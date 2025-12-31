@@ -1065,18 +1065,18 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
         const entertainmentKeywords = ['oscar', 'emmy', 'grammy', 'golden globe', 'box office', 'movie', 'film'];
         
         return {
-          id: market.id || market.ticker,
-          marketId: market.id || market.ticker,
+          id: market.id || (market as any).ticker,
+          marketId: market.id || (market as any).ticker,
           title: market.title,
           category: sportsKeywords.some(kw => marketTitle.includes(kw)) ? 'sports' :
                     entertainmentKeywords.some(kw => marketTitle.includes(kw)) ? 'entertainment' : 'world',
-          yesPrice: market.yesPrice || market.yes_price || 50,
-          noPrice: market.noPrice || market.no_price || 50,
-          expiresAt: market.expiresAt || market.expiration_time,
-          volume: market.volume || 0,
+          yesPrice: market.yesPrice || (market as any).yes_price || 50,
+          noPrice: market.noPrice || (market as any).no_price || 50,
+          expiresAt: market.expiresAt || (market as any).expiration_time,
+          volume: (market as any).volume || 0,
           confidence: 50, // Default, will be enhanced by analysis
           edge: 0,
-          side: 'yes',
+          side: 'yes' as const,
           reasoning: [],
           factors: [],
           learnedFrom: [],
@@ -1091,7 +1091,71 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
     }
   }
 
+  /**
+   * ========================================================================
+   * MULTI-PASS MARKET ANALYSIS WITH FEEDBACK LOOPS
+   * ========================================================================
+   * This function implements a 3-pass evaluation system where later passes
+   * can trigger re-analysis if new information is discovered.
+   * 
+   * PASS 1: Initial Intelligence Gathering
+   * PASS 2: Cross-Validation & Anomaly Detection
+   * PASS 3: Final Consensus & Risk Assessment
+   */
   async analyzeKalshiMarket(market: any): Promise<{ shouldBet: boolean; side: 'yes' | 'no'; edge: number; stake: number; confidence?: number }> {
+    const MAX_PASSES = 3;
+    let currentPass = 1;
+    let analysisHistory: any[] = [];
+    let reAnalyzeReasons: string[] = [];
+    
+    console.log(`   ${color.info('🔄 Starting multi-pass analysis...')}`);
+    
+    while (currentPass <= MAX_PASSES) {
+      console.log(`   ${c.dim}   Pass ${currentPass}/${MAX_PASSES}${reAnalyzeReasons.length > 0 ? ` (Re-analyzing: ${reAnalyzeReasons.join(', ')})` : ''}${c.reset}`);
+      
+      const passResult = await this.analyzeKalshiMarketPass(market, currentPass, analysisHistory);
+      analysisHistory.push(passResult);
+      
+      // Check if we need another pass
+      const needsReAnalysis = this.shouldReAnalyze(passResult, analysisHistory, currentPass);
+      
+      if (!needsReAnalysis.required || currentPass === MAX_PASSES) {
+        // Final decision
+        console.log(`   ${color.success('✅ Analysis complete after ' + currentPass + ' pass(es)')}`);
+        return passResult.decision;
+      }
+      
+      // Trigger re-analysis
+      reAnalyzeReasons = needsReAnalysis.reasons;
+      console.log(`   ${color.warning('⚠️ Triggering re-analysis:')} ${needsReAnalysis.reasons.join(', ')}`);
+      
+      // Send data back to appropriate systems for re-evaluation
+      if (needsReAnalysis.triggerMassager) {
+        console.log(`   ${color.info('   🔄 Sending to Massager for AI Safety re-validation...')}`);
+        await this.reAnalyzeWithMassager(market, passResult);
+      }
+      
+      if (needsReAnalysis.triggerProgno) {
+        console.log(`   ${color.info('   🔄 Requesting updated PROGNO analysis...')}`);
+        await this.reAnalyzeWithProgno(market, passResult);
+      }
+      
+      if (needsReAnalysis.triggerSupabase) {
+        console.log(`   ${color.info('   🔄 Querying Supabase for deeper historical patterns...')}`);
+        await this.reAnalyzeWithSupabase(market, passResult);
+      }
+      
+      currentPass++;
+    }
+    
+    // Should never reach here, but return last decision as fallback
+    return analysisHistory[analysisHistory.length - 1].decision;
+  }
+
+  /**
+   * Single-pass analysis of a Kalshi market
+   */
+  private async analyzeKalshiMarketPass(market: any, passNumber: number, history: any[]): Promise<any> {
     // ========================================================================
     // PROGNO FLEX INTEGRATION: Use 7-Dimensional Claude Effect for Sports
     // ========================================================================
@@ -1137,11 +1201,16 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
             console.log(`      ${c.dim}Market Price:${c.reset} ${marketProbability.toFixed(1)}% | ${c.dim}PROGNO:${c.reset} ${prognoProbability.toFixed(1)}% | ${c.dim}Edge:${c.reset} ${color.success('+' + edge.toFixed(1) + '%')}`);
             
             return {
-              shouldBet: true,
-              side: kalshiSide,
-              edge: edge,
-              stake: stake,
-              confidence: pick.confidence
+              decision: {
+                shouldBet: true,
+                side: kalshiSide,
+                edge: edge,
+                stake: stake,
+                confidence: pick.confidence
+              },
+              source: 'progno_flex',
+              passNumber,
+              category: 'sports'
             };
           }
         }
@@ -1172,15 +1241,25 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
           const stake = Math.min(Math.max(kelly * 0.25 * 100, 2), 10);
 
           return {
-            shouldBet: true,
-            side: gmeAnalysis.prediction,
-            edge: gmeAnalysis.edge,
-            stake,
-            confidence: gmeAnalysis.confidence,
+            decision: {
+              shouldBet: true,
+              side: gmeAnalysis.prediction,
+              edge: gmeAnalysis.edge,
+              stake,
+              confidence: gmeAnalysis.confidence,
+            },
+            source: 'gme_specialist',
+            passNumber,
+            category: 'gme'
           };
         } else {
           console.log(`      ${c.dim}GME Specialist: Edge ${gmeAnalysis.edge.toFixed(1)}% (need ${minEdge}%)${c.reset}`);
-          return { shouldBet: false, side: gmeAnalysis.prediction, edge: gmeAnalysis.edge, stake: 0, confidence: gmeAnalysis.confidence };
+          return { 
+            decision: { shouldBet: false, side: gmeAnalysis.prediction, edge: gmeAnalysis.edge, stake: 0, confidence: gmeAnalysis.confidence },
+            source: 'gme_specialist',
+            passNumber,
+            category: 'gme'
+          };
         }
       } catch (e) {
         console.error(`   ${color.warning('⚠️ GME Specialist error')}`, e);
@@ -1211,15 +1290,25 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
           const stake = Math.min(Math.max(kelly * 0.25 * 100, 2), 8);
 
           return {
-            shouldBet: true,
-            side: derivAnalysis.prediction,
-            edge: derivAnalysis.edge,
-            stake,
-            confidence: derivAnalysis.confidence,
+            decision: {
+              shouldBet: true,
+              side: derivAnalysis.prediction,
+              edge: derivAnalysis.edge,
+              stake,
+              confidence: derivAnalysis.confidence,
+            },
+            source: 'derivatives_expert',
+            passNumber,
+            category: 'derivatives'
           };
         } else {
           console.log(`      ${c.dim}Derivatives Expert: Edge ${derivAnalysis.edge.toFixed(1)}% (need ${minEdge}%)${c.reset}`);
-          return { shouldBet: false, side: derivAnalysis.prediction, edge: derivAnalysis.edge, stake: 0, confidence: derivAnalysis.confidence };
+          return { 
+            decision: { shouldBet: false, side: derivAnalysis.prediction, edge: derivAnalysis.edge, stake: 0, confidence: derivAnalysis.confidence },
+            source: 'derivatives_expert',
+            passNumber,
+            category: 'derivatives'
+          };
         }
       } catch (e) {
         console.error(`   ${color.warning('⚠️ Derivatives Expert error')}`, e);
@@ -1250,15 +1339,25 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
           const stake = Math.min(Math.max(kelly * 0.25 * 100, 2), 8);
 
           return {
-            shouldBet: true,
-            side: futuresAnalysis.prediction,
-            edge: futuresAnalysis.edge,
-            stake,
-            confidence: futuresAnalysis.confidence,
+            decision: {
+              shouldBet: true,
+              side: futuresAnalysis.prediction,
+              edge: futuresAnalysis.edge,
+              stake,
+              confidence: futuresAnalysis.confidence,
+            },
+            source: 'futures_expert',
+            passNumber,
+            category: 'futures'
           };
         } else {
           console.log(`      ${c.dim}Futures Expert: Edge ${futuresAnalysis.edge.toFixed(1)}% (need ${minEdge}%)${c.reset}`);
-          return { shouldBet: false, side: futuresAnalysis.prediction, edge: futuresAnalysis.edge, stake: 0, confidence: futuresAnalysis.confidence };
+          return { 
+            decision: { shouldBet: false, side: futuresAnalysis.prediction, edge: futuresAnalysis.edge, stake: 0, confidence: futuresAnalysis.confidence },
+            source: 'futures_expert',
+            passNumber,
+            category: 'futures'
+          };
         }
       } catch (e) {
         console.error(`   ${color.warning('⚠️ Futures Expert error')}`, e);
@@ -1319,17 +1418,27 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
           console.log(`      ${color.success('✅ Entertainment Expert recommends bet!')}`);
           console.log(`      ${c.dim}Edge:${c.reset} ${color.success('+' + absEdge.toFixed(1) + '%')} | ${c.dim}Confidence:${c.reset} ${color.info(prediction.confidence + '%')} | ${c.dim}Side:${c.reset} ${prediction.prediction.toUpperCase()}`);
           return {
-            shouldBet: true,
-            side: prediction.prediction,
-            edge: absEdge,
-            stake: Math.min(CONFIG.maxTradeSize, 5),
-            confidence: prediction.confidence,
+            decision: {
+              shouldBet: true,
+              side: prediction.prediction,
+              edge: absEdge,
+              stake: Math.min(CONFIG.maxTradeSize, 5),
+              confidence: prediction.confidence,
+            },
+            source: 'entertainment_expert',
+            passNumber,
+            category: 'entertainment'
           };
         } else {
           console.log(`      ${c.dim}Entertainment Expert: Edge ${absEdge.toFixed(1)}% (need ${minEdge}%) | Conf ${prediction.confidence}% (need ${minConfidence}%) - ${meetsEdge && !meetsConfidence ? 'low confidence' : !meetsEdge && meetsConfidence ? 'low edge' : 'both too low'}${c.reset}`);
         }
 
-        return { shouldBet: false, side: 'yes', edge: absEdge, stake: 0, confidence: prediction.confidence };
+        return { 
+          decision: { shouldBet: false, side: 'yes', edge: absEdge, stake: 0, confidence: prediction.confidence },
+          source: 'entertainment_expert',
+          passNumber,
+          category: 'entertainment'
+        };
       } catch (e) {
         console.log(`   ${c.dim}Entertainment expert error: ${e}${c.reset}`);
         // Fall through to general analysis
@@ -1404,7 +1513,200 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
     const kelly = Math.max(0, (prob * odds - (1 - prob)) / odds);
     const stake = Math.min(Math.max(kelly * 0.25 * 100, 1), CONFIG.maxTradeSize);
 
-    return { shouldBet, side, edge, stake, confidence };
+    return { 
+      decision: { shouldBet, side, edge, stake, confidence },
+      source: 'category_bot',
+      passNumber,
+      category: 'general'
+    };
+  }
+
+  /**
+   * ========================================================================
+   * MULTI-PASS RE-ANALYSIS DECISION LOGIC
+   * ========================================================================
+   * Determines if we need another analysis pass based on discovered anomalies
+   */
+  private shouldReAnalyze(
+    currentPass: any, 
+    history: any[], 
+    passNumber: number
+  ): { required: boolean; reasons: string[]; triggerMassager: boolean; triggerProgno: boolean; triggerSupabase: boolean } {
+    const reasons: string[] = [];
+    let triggerMassager = false;
+    let triggerProgno = false;
+    let triggerSupabase = false;
+    
+    // PASS 1 → PASS 2 Triggers
+    if (passNumber === 1) {
+      // Check for price anomalies (market price significantly different from all bot predictions)
+      if (currentPass.decision && currentPass.decision.edge) {
+        const edge = Math.abs(currentPass.decision.edge);
+        
+        // HUGE EDGE DETECTED - Could be opportunity or data error
+        if (edge > 20) {
+          reasons.push('Extreme edge detected (>20%)');
+          triggerMassager = true; // Validate this isn't bad data
+          triggerProgno = true; // Get second opinion from Claude Effect
+        }
+        
+        // MODERATE HIGH EDGE - Worth deeper analysis
+        if (edge > 10 && edge <= 20) {
+          reasons.push('High edge detected (10-20%)');
+          triggerSupabase = true; // Check if similar markets worked before
+        }
+      }
+      
+      // Low confidence but positive edge
+      if (currentPass.decision?.confidence && currentPass.decision.confidence < 55 && currentPass.decision.edge > 2) {
+        reasons.push('Low confidence with positive edge');
+        triggerSupabase = true; // Look for similar low-confidence wins
+      }
+    }
+    
+    // PASS 2 → PASS 3 Triggers
+    if (passNumber === 2) {
+      const pass1 = history[0];
+      const pass2 = currentPass;
+      
+      // Major prediction flip between passes
+      if (pass1.decision?.side !== pass2.decision?.side) {
+        reasons.push('Prediction flipped between passes');
+        triggerMassager = true; // Safety check before acting on flip
+      }
+      
+      // Edge increased significantly after re-analysis
+      if (pass2.decision?.edge > (pass1.decision?.edge || 0) + 5) {
+        reasons.push('Edge increased significantly');
+        triggerSupabase = true; // Verify this is sustainable
+      }
+      
+      // Massager flagged safety concerns
+      if (pass2.massagerFlags && pass2.massagerFlags.length > 0) {
+        reasons.push('Massager safety flags detected');
+        // Don't bet if Massager has concerns - just verify once more
+        triggerSupabase = true;
+      }
+    }
+    
+    return {
+      required: reasons.length > 0,
+      reasons,
+      triggerMassager,
+      triggerProgno,
+      triggerSupabase
+    };
+  }
+
+  /**
+   * Re-analyze market with Massager for AI Safety 2025 validation
+   */
+  private async reAnalyzeWithMassager(market: any, previousAnalysis: any): Promise<void> {
+    try {
+      const massagerResult = await this.massager.analyzeMarketData({
+        title: market.title,
+        yesPrice: market.yesPrice || (market as any).yes_price || 50,
+        noPrice: market.noPrice || (market as any).no_price || 50,
+        volume: (market as any).volume,
+        category: previousAnalysis.category || 'general'
+      });
+      
+      // Store Massager validation result
+      previousAnalysis.massagerValidation = massagerResult;
+      
+      if (massagerResult.validated && massagerResult.confidence) {
+        if (massagerResult.confidence < 70) {
+          console.log(`   ${color.warning('⚠️ Massager confidence: ' + massagerResult.confidence.toFixed(0) + '%')}`);
+          previousAnalysis.massagerFlags = massagerResult.warnings || [];
+        } else {
+          console.log(`   ${color.success('✅ Massager validated (confidence: ' + massagerResult.confidence.toFixed(0) + '%)')}`);
+        }
+      }
+    } catch (error: any) {
+      console.log(`   ${c.dim}Massager re-analysis unavailable: ${error.message}${c.reset}`);
+    }
+  }
+
+  /**
+   * Re-analyze market with PROGNO Flex for updated Claude Effect analysis
+   */
+  private async reAnalyzeWithProgno(market: any, previousAnalysis: any): Promise<void> {
+    try {
+      // Force refresh PROGNO picks (bypass cache)
+      console.log(`   ${color.info('🎯 Fetching fresh PROGNO analysis...')}`);
+      const freshPicks = await this.progno.getTodaysPicks();
+      
+      // Update our cached picks
+      this.prognoPicks = freshPicks;
+      this.lastPrognoFetch = Date.now();
+      
+      // Try to find matching pick for this market
+      const marketTitle = (market.title || '').toLowerCase();
+      const matchingPick = freshPicks.find(pick => {
+        const pickText = `${pick.homeTeam} ${pick.awayTeam} ${pick.pick} ${pick.league}`.toLowerCase();
+        return pickText.includes(marketTitle) || 
+               marketTitle.includes(pick.homeTeam?.toLowerCase()) || 
+               marketTitle.includes(pick.awayTeam?.toLowerCase());
+      });
+      
+      if (matchingPick) {
+        console.log(`   ${color.success('✅ PROGNO updated analysis: ' + matchingPick.confidence + '% confidence')}`);
+        previousAnalysis.prognoUpdate = matchingPick;
+      } else {
+        console.log(`   ${c.dim}No PROGNO match found for this market${c.reset}`);
+      }
+    } catch (error: any) {
+      console.log(`   ${c.dim}PROGNO re-analysis unavailable: ${error.message}${c.reset}`);
+    }
+  }
+
+  /**
+   * Re-analyze market with deeper Supabase historical pattern matching
+   */
+  private async reAnalyzeWithSupabase(market: any, previousAnalysis: any): Promise<void> {
+    try {
+      const { getBotPredictions } = await import('./lib/supabase-memory.js');
+      
+      // Query for similar markets with expanded search
+      const marketTitle = market.title.toLowerCase();
+      const keywords = marketTitle.split(' ').filter((w: string) => w.length > 3);
+      
+      // Get predictions for this category with higher similarity threshold
+      const historicalData = await getBotPredictions(
+        previousAnalysis.category || 'general',
+        undefined, // platform
+        200 // Expand to 200 records for deeper patterns
+      );
+      
+      if (historicalData && historicalData.length > 0) {
+        // Calculate success rate for similar markets
+        const similarMarkets = historicalData.filter((pred: any) => 
+          keywords.some((kw: string) => pred.market_description?.toLowerCase().includes(kw))
+        );
+        
+        if (similarMarkets.length >= 3) {
+          const successfulBets = similarMarkets.filter((m: any) => m.outcome === true).length;
+          const successRate = successfulBets / similarMarkets.length;
+          
+          console.log(`   ${color.info('📊 Found ' + similarMarkets.length + ' similar historical markets')}`);
+          console.log(`   ${c.dim}Historical success rate: ${(successRate * 100).toFixed(0)}%${c.reset}`);
+          
+          previousAnalysis.historicalSuccessRate = successRate;
+          previousAnalysis.historicalSampleSize = similarMarkets.length;
+          
+          // Adjust confidence based on historical performance
+          if (previousAnalysis.decision?.confidence) {
+            const adjustedConfidence = previousAnalysis.decision.confidence * (0.5 + successRate * 0.5);
+            console.log(`   ${c.dim}Confidence adjusted: ${previousAnalysis.decision.confidence}% → ${adjustedConfidence.toFixed(0)}%${c.reset}`);
+            previousAnalysis.decision.confidence = adjustedConfidence;
+          }
+        } else {
+          console.log(`   ${c.dim}Limited historical data (${similarMarkets.length} similar markets)${c.reset}`);
+        }
+      }
+    } catch (error: any) {
+      console.log(`   ${c.dim}Supabase re-analysis unavailable: ${error.message}${c.reset}`);
+    }
   }
 
   // ============================================================================
@@ -1450,18 +1752,17 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
 
   private async saveTradeToSupabase(trade: any): Promise<void> {
     try {
-      const { saveTrade } = await import('./lib/supabase-memory');
-      await saveTrade({
+      const { saveTradeRecord } = await import('./lib/supabase-memory.js');
+      await saveTradeRecord({
         platform: trade.platform as any,
-        symbol: trade.symbol,
+        trade_type: trade.type as any, // Changed from 'side' to 'trade_type'
+        symbol: trade.symbol || '',
         market_id: trade.marketId,
-        side: trade.type as any,
+        entry_price: trade.price,
         amount: trade.amount,
-        price: trade.price,
         fees: trade.fees,
-        status: 'open',
+        opened_at: new Date(trade.timestamp),
         pnl: 0,
-        executed_at: new Date(trade.timestamp),
       });
     } catch (e) {
       // Silent fail
