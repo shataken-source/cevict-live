@@ -88,31 +88,24 @@ const color = {
 const CONFIG = {
   // Trading intervals (in seconds)
   cryptoInterval: 30,        // Check crypto every 30 seconds
-  kalshiInterval: 60,        // Check Kalshi every 1 minute
+  kalshiInterval: 60,        // Check Kalshi every 1 minute (more frequent)
   learningInterval: 300,     // Deep learning every 5 minutes
   rebalanceCheck: 3600,      // Check rebalance every hour
 
-  // Risk parameters (OPTIMIZED - Based on 30-day simulation)
-  maxTradeSize: 5,           // Max $5 per trade (proven optimal)
-  minConfidence: 60,         // 60% minimum (more selective, +20% win rate)
-  maxOpenPositions: 6,       // Max 6 total (5 crypto + 1-2 Kalshi)
-  dailyLossLimit: 15,        // Stop if down $15 in a day (3 full stop losses)
-  dailySpendingLimit: 40,    // Max $40 total spending per day (prevents overtrading)
+  // Risk parameters (AGGRESSIVE)
+  maxTradeSize: 5,           // Max $5 per trade
+  minConfidence: 55,         // Lowered from 65% to 55%
+  maxOpenPositions: 5,       // Max 5 open positions total
+  dailyLossLimit: 25,        // Stop if down $25 in a day
+  dailySpendingLimit: 50,    // Max $50 total spending per day (crypto + Kalshi)
 
-  // Profit targets (OPTIMIZED - Better risk/reward)
-  takeProfitPercent: 4.0,    // Take profit at +4.0% (2.8% net after fees)
-  stopLossPercent: 3.0,      // Stop loss at -3.0% (4.2% net loss with fees)
+  // Profit targets
+  takeProfitPercent: 1.5,    // Take profit at +1.5% (faster exits)
+  stopLossPercent: 2.5,      // Stop loss at -2.5%
 
-  // Risk management (NEW)
-  maxSlippagePercent: 0.5,   // Max 0.5% slippage allowed
-  minRiskRewardRatio: 1.2,   // Min 1.2:1 reward/risk ratio
-
-  // Learning (NEW - Bounded adaptation)
+  // Learning
   learnFromEveryTrade: true,
   adaptStrategy: true,
-  confidenceFloor: 55,       // Never go below 55%
-  confidenceCeiling: 75,     // Never go above 75%
-  adaptationRate: 2,         // Adjust by 2% per adaptation (was 5%)
 };
 
 // ============================================================================
@@ -176,7 +169,6 @@ class LiveTrader24_7 {
   private kalshiFeesPaid = 0; // Track Kalshi-specific fees
   private kalshiBetMarkets: Set<string> = new Set(); // Track markets we've already bet on
   private kalshiBalance = 0; // Cache Kalshi balance
-  private cryptoOpenPositions: Map<string, Position> = new Map(); // Track open crypto positions by symbol
   private lastHourlyReport = Date.now();
   private hourlyPnL = 0; // Track P&L for hourly reports
   private dailySpending = 0; // Track total spending today (crypto + Kalshi)
@@ -381,48 +373,13 @@ ${c.brightCyan}╔════════════════════�
   }
 
   async executeCryptoTrade(signal: TradeSignal): Promise<boolean> {
-    // VALIDATION 1: Check daily spending limit
+    // Check daily spending limit
     if (!this.canSpendToday(signal.suggestedSize)) {
       const remaining = CONFIG.dailySpendingLimit - this.dailySpending;
       console.log(`\n${color.warning('⚠️ Daily spending limit reached!')}`);
       console.log(`   ${c.dim}Spent today:${c.reset} ${color.money('$' + this.dailySpending.toFixed(2))} / ${color.money('$' + CONFIG.dailySpendingLimit)}`);
       console.log(`   ${c.dim}Remaining:${c.reset} ${color.money('$' + remaining.toFixed(2))} (need ${color.money('$' + signal.suggestedSize.toFixed(2))})`);
       console.log(`   ${c.dim}Trade blocked to prevent overspending${c.reset}`);
-      return false;
-    }
-
-    // VALIDATION 2: Check for duplicate positions (prevent multiple positions in same symbol)
-    if (this.cryptoOpenPositions.has(signal.symbol)) {
-      console.log(`\n${color.warning('⚠️ Already have open position in ' + signal.symbol)}`);
-      console.log(`   ${c.dim}Skipping to avoid overexposure${c.reset}`);
-      return false;
-    }
-
-    // VALIDATION 3: Check balance before executing
-    try {
-      if (signal.action === 'buy') {
-        const usdBalance = await this.coinbase.getUSDBalance();
-        if (usdBalance < signal.suggestedSize + 0.50) { // Leave $0.50 buffer
-          console.log(`\n${color.warning('⚠️ Insufficient USD balance')}`);
-          console.log(`   ${c.dim}Need:${c.reset} ${color.money('$' + (signal.suggestedSize + 0.50).toFixed(2))} | ${c.dim}Have:${c.reset} ${color.money('$' + usdBalance.toFixed(2))}`);
-          console.log(`   ${c.dim}Trade blocked${c.reset}`);
-          return false;
-        }
-      } else if (signal.action === 'sell') {
-        const symbol = signal.symbol.split('-')[0];
-        const currentPrice = await this.coinbase.getPrice(signal.symbol);
-        const cryptoBalance = await this.coinbase.getCryptoBalance(symbol);
-        const requiredAmount = signal.suggestedSize / currentPrice;
-        if (cryptoBalance < requiredAmount) {
-          console.log(`\n${color.warning('⚠️ Insufficient ' + symbol + ' balance')}`);
-          console.log(`   ${c.dim}Need:${c.reset} ${requiredAmount.toFixed(6)} ${symbol} | ${c.dim}Have:${c.reset} ${cryptoBalance.toFixed(6)} ${symbol}`);
-          console.log(`   ${c.dim}Trade blocked${c.reset}`);
-          return false;
-        }
-      }
-    } catch (error) {
-      console.log(`\n${color.warning('⚠️ Balance check failed:' )} ${(error as Error).message}`);
-      console.log(`   ${c.dim}Skipping trade for safety${c.reset}`);
       return false;
     }
 
@@ -439,9 +396,6 @@ ${c.brightCyan}╔════════════════════�
         return false;
       }
 
-      // Get current price for slippage check
-      const expectedPrice = await this.coinbase.getPrice(signal.symbol);
-
       const trade = await this.coinbase.marketOrder(
         signal.symbol,
         signal.action, // Now TypeScript knows it's 'buy' | 'sell'
@@ -449,19 +403,9 @@ ${c.brightCyan}╔════════════════════�
       );
 
       if (trade) {
-        // VALIDATION 4: Check slippage
-        const slippage = Math.abs(trade.price - expectedPrice) / expectedPrice * 100;
-        if (slippage > CONFIG.maxSlippagePercent) {
-          console.log(`   ${color.warning('⚠️ Excessive slippage detected!')}`);
-          console.log(`   ${c.dim}Expected:${c.reset} $${expectedPrice.toFixed(2)} | ${c.dim}Filled:${c.reset} $${trade.price.toFixed(2)} | ${c.dim}Slippage:${c.reset} ${slippage.toFixed(2)}%`);
-          console.log(`   ${c.dim}Trade completed but flagged for review${c.reset}`);
-        }
-
-        // Calculate fees correctly (use actual Coinbase rate)
-        const COINBASE_TAKER_FEE = 0.006; // 0.6% for market orders
-        const tradeValue = signal.action === 'buy' ? signal.suggestedSize : (signal.suggestedSize / trade.price) * trade.price;
-        const entryFees = trade.fees || (tradeValue * COINBASE_TAKER_FEE);
-        const estimatedExitFees = tradeValue * COINBASE_TAKER_FEE; // Will be same on exit
+        // Estimate exit fees (same as entry for market orders)
+        const entryFees = trade.fees || (signal.suggestedSize * 0.006);
+        const estimatedExitFees = signal.suggestedSize * 0.006; // 0.6% taker fee
 
         const position: Position = {
           id: trade.id || `pos_${Date.now()}`,
@@ -479,7 +423,6 @@ ${c.brightCyan}╔════════════════════�
           totalFees: entryFees + estimatedExitFees,
         };
         this.positions.push(position);
-        this.cryptoOpenPositions.set(signal.symbol, position); // Track this position
         this.learningData.totalTrades++;
 
         this.totalFeesPaid += entryFees; // Track session fees
@@ -614,7 +557,6 @@ ${c.brightCyan}╔════════════════════�
 
       // Remove from positions
       this.positions = this.positions.filter(p => p.id !== position.id);
-      this.cryptoOpenPositions.delete(position.symbol); // Remove from tracking map
 
       const pnlStr = position.pnl >= 0 ? color.success('+$' + position.pnl.toFixed(2)) : color.error('-$' + Math.abs(position.pnl).toFixed(2));
       const feesStr = `${c.dim}(fees: -$${position.totalFees.toFixed(4)})${c.reset}`;
@@ -676,9 +618,9 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
 
       if (winRate < 40 && CONFIG.adaptStrategy) {
         console.log(`   ⚠️ Win rate low (${winRate}%), adapting strategy...`);
-        CONFIG.minConfidence = Math.min(CONFIG.confidenceCeiling, CONFIG.minConfidence + CONFIG.adaptationRate);
+        CONFIG.minConfidence = Math.min(80, CONFIG.minConfidence + 5);
       } else if (winRate > 70) {
-        CONFIG.minConfidence = Math.max(CONFIG.confidenceFloor, CONFIG.minConfidence - CONFIG.adaptationRate);
+        CONFIG.minConfidence = Math.max(60, CONFIG.minConfidence - 2);
       }
     }
 
@@ -801,11 +743,8 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
   // ============================================================================
 
   async analyzeKalshiMarkets(): Promise<void> {
-    // UPDATED: Lower max bets from 10 to 3 (better risk management)
-    const MAX_KALSHI_BETS = 3;
-    
-    if (this.kalshiOpenBets >= MAX_KALSHI_BETS) {
-      console.log(`   Max Kalshi bets reached (${MAX_KALSHI_BETS}), monitoring only`);
+    if (this.kalshiOpenBets >= 10) {
+      console.log('   Max Kalshi bets reached (10), monitoring only');
       return;
     }
 
@@ -896,11 +835,11 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
       }
 
       let betsPlaced = 0;
-      const maxBetsPerCycle = 1; // UPDATED: Limit to 1 bet per cycle (was 2)
+      const maxBetsPerCycle = 2; // Limit per cycle
 
       for (const market of sortedMarkets.slice(0, 50)) { // Check top 50 (now sorted)
         if (betsPlaced >= maxBetsPerCycle) break;
-        if (this.kalshiOpenBets >= MAX_KALSHI_BETS) break;
+        if (this.kalshiOpenBets >= 10) break;
 
         // Skip markets we've already bet on
         const marketId = market.id || (market as any).ticker;
@@ -1511,7 +1450,7 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
 
   private async saveTradeToSupabase(trade: any): Promise<void> {
     try {
-      const { saveTrade } = await import('./lib/supabase-memory.js');
+      const { saveTrade } = await import('./lib/supabase-memory');
       await saveTrade({
         platform: trade.platform as any,
         symbol: trade.symbol,
@@ -1585,9 +1524,7 @@ Give confidence 0-100 and one sentence reasoning. Format: CONFIDENCE: XX | REASO
       await this.checkPositions();
 
       // Crypto analysis (every cycle)
-      // UPDATED: Check position limit correctly (was 8, now 5 for crypto)
-      const MAX_CRYPTO_POSITIONS = 5;
-      if (this.positions.filter(p => p.platform === 'crypto').length < MAX_CRYPTO_POSITIONS) {
+      if (this.positions.filter(p => p.platform === 'crypto').length < 8) {
         console.log(`\n${color.crypto('📊 CRYPTO ANALYSIS:')}`);
         const cryptoSignals = await this.analyzeCrypto();
 

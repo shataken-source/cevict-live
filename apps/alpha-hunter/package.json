@@ -40,7 +40,6 @@
     "history:sports": "tsx src/intelligence/historical-knowledge.ts sports",
     "history:weather": "tsx src/intelligence/historical-knowledge.ts weather",
     "train-bots": "tsx src/train-category-bots.ts",
-    "train-academy": "tsx src/train-bot-academy.ts",
     "bot-stats": "tsx src/train-category-bots.ts stats",
     "bot-manager": "tsx src/bot-manager.ts",
     "bots": "tsx src/bot-manager.ts",

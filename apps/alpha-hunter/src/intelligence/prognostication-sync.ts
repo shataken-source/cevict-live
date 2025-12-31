@@ -49,28 +49,26 @@ export class PrognosticationSync {
   }
 
   /**
-   * Push ALL analyzed Kalshi picks to Prognostication homepage
-   * FREE FOR EVERYONE - Sharing all predictions to help fine-tune logic
-   * This runs after EVERY analysis cycle, regardless of trade execution
+   * Push high-confidence Kalshi picks to Prognostication homepage
+   * This runs after EVERY analysis cycle, not just when trades execute
    */
   async updatePrognosticationHomepage(allOpportunities: any[]): Promise<void> {
     try {
-      console.log('\n📡 Syncing ALL predictions to Prognostication homepage (free for everyone)...');
+      console.log('\n📡 Syncing high-confidence picks to Prognostication homepage...');
 
-      // UPDATED: Share ALL analyzed opportunities (removed confidence/edge filters)
-      // This allows users to see all predictions and helps us fine-tune the logic
-      const allPicks = allOpportunities
-        .filter(opp => opp.confidence > 0 && opp.title) // Only basic validation
-        .sort((a, b) => (b.confidence * b.edge) - (a.confidence * a.edge)) // Sort by confidence * edge
-        .slice(0, 50); // Top 50 picks (increased from 20)
+      // Filter for high-confidence opportunities
+      const highConfidencePicks = allOpportunities
+        .filter(opp => opp.confidence >= this.minConfidence && opp.edge >= this.minEdge)
+        .sort((a, b) => b.edge - a.edge)
+        .slice(0, 20); // Top 20 picks
 
-      if (allPicks.length === 0) {
-        console.log('   ℹ️  No predictions to sync this cycle');
+      if (highConfidencePicks.length === 0) {
+        console.log('   ℹ️  No high-confidence picks to sync this cycle');
         return;
       }
 
       // Transform to Prognostication format
-      const picks: KalshiPickForPrognostication[] = allPicks.map(opp => ({
+      const picks: KalshiPickForPrognostication[] = highConfidencePicks.map(opp => ({
         marketId: opp.marketId || opp.id || 'unknown',
         title: opp.title || opp.market || 'Unknown Market',
         category: this.categorizeMarket(opp.title || ''),
@@ -86,15 +84,12 @@ export class PrognosticationSync {
         expiresAt: opp.expiresAt ? new Date(opp.expiresAt) : undefined,
       }));
 
-      // Count high-confidence picks for stats
-      const highConfidencePicks = picks.filter(p => p.confidence >= 60 && p.edge >= 2.0);
-
       const update: PrognostationUpdate = {
         timestamp: new Date().toISOString(),
         picks,
         stats: {
           totalMarkets: allOpportunities.length,
-          highConfidencePicks: highConfidencePicks.length, // Count of high-confidence only
+          highConfidencePicks: picks.length,
           avgEdge: picks.reduce((sum, p) => sum + p.edge, 0) / picks.length,
           avgConfidence: picks.reduce((sum, p) => sum + p.confidence, 0) / picks.length,
         },
@@ -107,8 +102,7 @@ export class PrognosticationSync {
       await this.postToPrognosticationAPI(picks);
 
       this.lastUpdate = new Date();
-      console.log(`   ✅ Synced ${picks.length} predictions to Prognostication (${highConfidencePicks.length} high-confidence)`);
-      console.log(`   📊 Avg edge: ${update.stats.avgEdge.toFixed(1)}% | Avg confidence: ${update.stats.avgConfidence.toFixed(1)}%`);
+      console.log(`   ✅ Synced ${picks.length} picks to Prognostication (avg edge: ${update.stats.avgEdge.toFixed(1)}%)`);
     } catch (error: any) {
       console.error('   ❌ Failed to sync to Prognostication:', error.message);
     }
