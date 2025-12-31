@@ -1,0 +1,216 @@
+{
+  "simulationDate": "2025-12-31T22:56:18.279Z",
+  "days": 30,
+  "scenarios": [
+    {
+      "name": "Bull Trend",
+      "winRate": 0.65,
+      "avgMove": 2.5,
+      "volatility": 1.2
+    },
+    {
+      "name": "Range Bound",
+      "winRate": 0.45,
+      "avgMove": 1,
+      "volatility": 1.5
+    },
+    {
+      "name": "Bear Trend",
+      "winRate": 0.4,
+      "avgMove": -1.5,
+      "volatility": 2
+    },
+    {
+      "name": "High Volatility",
+      "winRate": 0.5,
+      "avgMove": 0.5,
+      "volatility": 4
+    },
+    {
+      "name": "Low Volatility",
+      "winRate": 0.55,
+      "avgMove": 0.8,
+      "volatility": 0.5
+    }
+  ],
+  "results": [
+    {
+      "name": "Wide Stops",
+      "config": {
+        "name": "Wide Stops",
+        "maxTradeSize": 5,
+        "minConfidence": 60,
+        "maxOpenPositions": 6,
+        "dailyLossLimit": 20,
+        "dailySpendingLimit": 40,
+        "takeProfitPercent": 4,
+        "stopLossPercent": 3
+      },
+      "metrics": {
+        "totalTrades": 225,
+        "winRate": 53.333333333333336,
+        "netPnL": -4.454176480798486,
+        "profitFactor": 0.7953813603788843,
+        "sharpeRatio": -0.2705965559944748,
+        "maxDrawdown": 6.60557538545412,
+        "score": 9.998579730194663
+      }
+    },
+    {
+      "name": "Balanced",
+      "config": {
+        "name": "Balanced",
+        "maxTradeSize": 5,
+        "minConfidence": 60,
+        "maxOpenPositions": 8,
+        "dailyLossLimit": 15,
+        "dailySpendingLimit": 40,
+        "takeProfitPercent": 3,
+        "stopLossPercent": 2
+      },
+      "metrics": {
+        "totalTrades": 224,
+        "winRate": 52.67857142857143,
+        "netPnL": -6.114646310674908,
+        "profitFactor": 0.6379320606263872,
+        "sharpeRatio": -0.49725487520159406,
+        "maxDrawdown": 6.385532395765504,
+        "score": 9.478398629758848
+      }
+    },
+    {
+      "name": "Fee Optimized",
+      "config": {
+        "name": "Fee Optimized",
+        "maxTradeSize": 5,
+        "minConfidence": 60,
+        "maxOpenPositions": 6,
+        "dailyLossLimit": 15,
+        "dailySpendingLimit": 35,
+        "takeProfitPercent": 3,
+        "stopLossPercent": 2,
+        "maxSlippagePercent": 0.3,
+        "minRiskRewardRatio": 1.5
+      },
+      "metrics": {
+        "totalTrades": 205,
+        "winRate": 49.75609756097561,
+        "netPnL": -6.531579774701218,
+        "profitFactor": 0.5858451952942528,
+        "sharpeRatio": -0.647554784142731,
+        "maxDrawdown": 6.673900294957211,
+        "score": 8.673342918765437
+      }
+    },
+    {
+      "name": "High Confidence",
+      "config": {
+        "name": "High Confidence",
+        "maxTradeSize": 6,
+        "minConfidence": 70,
+        "maxOpenPositions": 8,
+        "dailyLossLimit": 20,
+        "dailySpendingLimit": 48,
+        "takeProfitPercent": 3.5,
+        "stopLossPercent": 2.5
+      },
+      "metrics": {
+        "totalTrades": 191,
+        "winRate": 49.21465968586388,
+        "netPnL": -7.778073156568841,
+        "profitFactor": 0.6277131355571002,
+        "sharpeRatio": -0.5192487338512151,
+        "maxDrawdown": 7.778073156568839,
+        "score": 8.180941430253178
+      }
+    },
+    {
+      "name": "Tight Stops",
+      "config": {
+        "name": "Tight Stops",
+        "maxTradeSize": 5,
+        "minConfidence": 60,
+        "maxOpenPositions": 8,
+        "dailyLossLimit": 15,
+        "dailySpendingLimit": 40,
+        "takeProfitPercent": 2,
+        "stopLossPercent": 1
+      },
+      "metrics": {
+        "totalTrades": 224,
+        "winRate": 42.857142857142854,
+        "netPnL": -8.083290802969772,
+        "profitFactor": 0.3882103869156442,
+        "sharpeRatio": -1.1891643913554122,
+        "maxDrawdown": 8.312192796852157,
+        "score": 5.96817372066507
+      }
+    },
+    {
+      "name": "Conservative",
+      "config": {
+        "name": "Conservative",
+        "maxTradeSize": 5,
+        "minConfidence": 65,
+        "maxOpenPositions": 5,
+        "dailyLossLimit": 10,
+        "dailySpendingLimit": 30,
+        "takeProfitPercent": 2.5,
+        "stopLossPercent": 1.5
+      },
+      "metrics": {
+        "totalTrades": 167,
+        "winRate": 41.91616766467065,
+        "netPnL": -8.254885319236223,
+        "profitFactor": 0.3590911002898222,
+        "sharpeRatio": -1.0438704876297211,
+        "maxDrawdown": 8.254885319236221,
+        "score": 5.720369575212367
+      }
+    },
+    {
+      "name": "Current (Baseline)",
+      "config": {
+        "name": "Current (Baseline)",
+        "maxTradeSize": 5,
+        "minConfidence": 55,
+        "maxOpenPositions": 8,
+        "dailyLossLimit": 25,
+        "dailySpendingLimit": 50,
+        "takeProfitPercent": 1.5,
+        "stopLossPercent": 2.5
+      },
+      "metrics": {
+        "totalTrades": 286,
+        "winRate": 32.51748251748251,
+        "netPnL": -26.409108244799853,
+        "profitFactor": 0.10607237058430291,
+        "sharpeRatio": -2.808430123352713,
+        "maxDrawdown": 26.40910824479984,
+        "score": -6.158719853173996
+      }
+    },
+    {
+      "name": "Aggressive",
+      "config": {
+        "name": "Aggressive",
+        "maxTradeSize": 8,
+        "minConfidence": 50,
+        "maxOpenPositions": 10,
+        "dailyLossLimit": 30,
+        "dailySpendingLimit": 80,
+        "takeProfitPercent": 2,
+        "stopLossPercent": 3
+      },
+      "metrics": {
+        "totalTrades": 299,
+        "winRate": 47.15719063545151,
+        "netPnL": -34.43802093928763,
+        "profitFactor": 0.2567092262911903,
+        "sharpeRatio": -1.649018307443804,
+        "maxDrawdown": 34.52467928344316,
+        "score": -6.885993085942431
+      }
+    }
+  ]
+}

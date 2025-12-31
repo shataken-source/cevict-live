@@ -1,0 +1,25 @@
+[Unit]
+Description=Alpha Hunter 24/7 Live Trader - Coinbase + Kalshi
+Documentation=https://github.com/your-repo
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/alpha-hunter
+ExecStart=/usr/bin/npx tsx src/live-trader-24-7.ts
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/alpha-hunter/output.log
+StandardError=append:/var/log/alpha-hunter/error.log
+
+# Environment
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/alpha-hunter/.env.local
+
+# Process limits
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+
