@@ -1,0 +1,11 @@
+# Ignore all other apps
+apps/*
+!apps/prognostication
+
+# Ignore common directories
+node_modules
+.next
+.turbo
+dist
+build
+.env*.local

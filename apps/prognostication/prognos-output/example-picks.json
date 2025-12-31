@@ -1,0 +1,33 @@
+{
+  "picks": [
+    {
+      "id": "nfl_1",
+      "sport": "NFL",
+      "game": "Chiefs vs Bills",
+      "prediction": "Chiefs -3.5",
+      "confidence": 94,
+      "analysis": "Strong offensive matchup favoring Chiefs with home advantage",
+      "timestamp": "2025-12-20T12:00:00Z",
+      "status": "active",
+      "odds": {
+        "home": "-165",
+        "away": "+145"
+      }
+    },
+    {
+      "id": "nba_1",
+      "sport": "NBA", 
+      "game": "Lakers vs Celtics",
+      "prediction": "Celtics +2.5",
+      "confidence": 91,
+      "analysis": "Celtics playing well at home with defensive advantage",
+      "timestamp": "2025-12-20T12:15:00Z",
+      "status": "active",
+      "odds": {
+        "spread": "+2.5",
+        "homeOdds": -110,
+        "awayOdds": -110
+      }
+    }
+  ]
+}

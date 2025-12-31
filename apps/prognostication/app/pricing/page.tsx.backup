@@ -1,0 +1,396 @@
+'use client';
+
+import { useState } from 'react';
+
+type BillingType = 'weekly' | 'monthly';
+type Tier = 'pro' | 'elite';
+
+export default function PricingPage() {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleCheckout = async (tier: Tier, billingType: BillingType) => {
+    if (!email) {
+      alert('Please enter your email address');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, tier, billingType }),
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Failed to create checkout session');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Failed to process checkout');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '4rem 2rem',
+    }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          <h1 style={{
+            fontSize: '3.5rem',
+            fontWeight: 'bold',
+            color: 'white',
+            marginBottom: '1rem',
+          }}>
+            Choose Your Plan
+          </h1>
+          <p style={{
+            fontSize: '1.5rem',
+            color: 'rgba(255, 255, 255, 0.9)',
+            marginBottom: '2rem',
+          }}>
+            Start with a weekend trial or save with monthly billing
+          </p>
+
+          {/* Email Input */}
+          <input
+            type="email"
+            placeholder="Enter your email to get started"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{
+              width: '100%',
+              maxWidth: '500px',
+              padding: '1rem 1.5rem',
+              fontSize: '1.125rem',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'white',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            }}
+          />
+        </div>
+
+        {/* Pricing Cards */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '2rem',
+          marginBottom: '3rem',
+        }}>
+          {/* Pro Plan */}
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '2.5rem',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+          }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              marginBottom: '0.5rem',
+            }}>
+              PRO
+            </div>
+            <p style={{ color: '#666', marginBottom: '2rem' }}>
+              Perfect for weekend warriors
+            </p>
+
+            {/* Weekend Trial */}
+            <div style={{
+              background: '#f8f9ff',
+              padding: '1.5rem',
+              borderRadius: '12px',
+              marginBottom: '1rem',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                marginBottom: '0.5rem',
+              }}>
+                <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#333' }}>$9</span>
+                <span style={{ fontSize: '1rem', color: '#666', marginLeft: '0.5rem' }}>one-time</span>
+              </div>
+              <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                7-day access • Try it risk-free
+              </p>
+              <button
+                onClick={() => handleCheckout('pro', 'weekly')}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '0.875rem',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.6 : 1,
+                }}
+              >
+                Try for a Week
+              </button>
+            </div>
+
+            {/* Monthly Subscription */}
+            <div style={{
+              background: '#fff8e1',
+              padding: '1.5rem',
+              borderRadius: '12px',
+              border: '2px solid #ffd54f',
+              position: 'relative',
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-12px',
+                right: '16px',
+                background: '#ffd54f',
+                padding: '4px 12px',
+                borderRadius: '12px',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                color: '#333',
+              }}>
+                SAVE 24%
+              </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                marginBottom: '0.5rem',
+              }}>
+                <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#333' }}>$29</span>
+                <span style={{ fontSize: '1rem', color: '#666', marginLeft: '0.5rem' }}>/month</span>
+              </div>
+              <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                Unlimited access • Cancel anytime
+              </p>
+              <button
+                onClick={() => handleCheckout('pro', 'monthly')}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '0.875rem',
+                  background: 'linear-gradient(135deg, #ffd54f 0%, #ffab00 100%)',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.6 : 1,
+                }}
+              >
+                Start Monthly Plan
+              </button>
+            </div>
+
+            {/* Features */}
+            <ul style={{
+              listStyle: 'none',
+              padding: 0,
+              marginTop: '2rem',
+            }}>
+              {['10 premium picks per day', 'AI-powered analysis', 'Confidence scoring', 'Email alerts'].map((feature) => (
+                <li key={feature} style={{
+                  padding: '0.75rem 0',
+                  borderBottom: '1px solid #f0f0f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#666',
+                }}>
+                  <span style={{ color: '#10b981', marginRight: '0.75rem', fontSize: '1.25rem' }}>?</span>
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Elite Plan */}
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '2.5rem',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+            border: '3px solid #ffd54f',
+            position: 'relative',
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: '-16px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'linear-gradient(135deg, #ffd54f 0%, #ffab00 100%)',
+              padding: '8px 24px',
+              borderRadius: '20px',
+              fontSize: '0.875rem',
+              fontWeight: 'bold',
+              color: '#333',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            }}>
+              MOST POPULAR
+            </div>
+
+            <div style={{
+              background: 'linear-gradient(135deg, #ffd54f 0%, #ffab00 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              marginBottom: '0.5rem',
+            }}>
+              ELITE
+            </div>
+            <p style={{ color: '#666', marginBottom: '2rem' }}>
+              For serious sports bettors
+            </p>
+
+            {/* Weekend Trial */}
+            <div style={{
+              background: '#f8f9ff',
+              padding: '1.5rem',
+              borderRadius: '12px',
+              marginBottom: '1rem',
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                marginBottom: '0.5rem',
+              }}>
+                <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#333' }}>$29</span>
+                <span style={{ fontSize: '1rem', color: '#666', marginLeft: '0.5rem' }}>one-time</span>
+              </div>
+              <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                7-day access • Full features
+              </p>
+              <button
+                onClick={() => handleCheckout('elite', 'weekly')}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '0.875rem',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.6 : 1,
+                }}
+              >
+                Try for a Week
+              </button>
+            </div>
+
+            {/* Monthly Subscription */}
+            <div style={{
+              background: '#fff8e1',
+              padding: '1.5rem',
+              borderRadius: '12px',
+              border: '2px solid #ffd54f',
+              position: 'relative',
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-12px',
+                right: '16px',
+                background: '#ffd54f',
+                padding: '4px 12px',
+                borderRadius: '12px',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                color: '#333',
+              }}>
+                SAVE 75%
+              </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                marginBottom: '0.5rem',
+              }}>
+                <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#333' }}>$99</span>
+                <span style={{ fontSize: '1rem', color: '#666', marginLeft: '0.5rem' }}>/month</span>
+              </div>
+              <p style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                Best value • Cancel anytime
+              </p>
+              <button
+                onClick={() => handleCheckout('elite', 'monthly')}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '0.875rem',
+                  background: 'linear-gradient(135deg, #ffd54f 0%, #ffab00 100%)',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.6 : 1,
+                }}
+              >
+                Start Monthly Plan
+              </button>
+            </div>
+
+            {/* Features */}
+            <ul style={{
+              listStyle: 'none',
+              padding: 0,
+              marginTop: '2rem',
+            }}>
+              {[
+                'Unlimited premium picks',
+                'Real-time arbitrage alerts',
+                'Live odds monitoring',
+                'Priority support',
+                'Private Discord access',
+                'Weekly strategy calls'
+              ].map((feature) => (
+                <li key={feature} style={{
+                  padding: '0.75rem 0',
+                  borderBottom: '1px solid #f0f0f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: '#666',
+                }}>
+                  <span style={{ color: '#10b981', marginRight: '0.75rem', fontSize: '1.25rem' }}>?</span>
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Trust Signals */}
+        <div style={{
+          textAlign: 'center',
+          color: 'rgba(255, 255, 255, 0.9)',
+          fontSize: '0.875rem',
+        }}>
+          <p>?? Secure checkout powered by Stripe</p>
+          <p>?? All major credit cards accepted</p>
+          <p>? Cancel anytime • No hidden fees</p>
+        </div>
+      </div>
+    </div>
+  );
+}

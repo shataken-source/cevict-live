@@ -1,0 +1,68 @@
+[
+  {
+    "sport": "NFL",
+    "game": "Chiefs vs Bills",
+    "prediction": "Chiefs -3.5",
+    "confidence": 94,
+    "analysis": "Parsed from example-picks.txt",
+    "status": "active",
+    "id": "nfl_1766257074724_yftfx0elh",
+    "timestamp": "2025-12-20T18:57:54.724Z",
+    "source": "example-picks.txt"
+  },
+  {
+    "sport": "NBA",
+    "game": "Lakers vs Celtics",
+    "prediction": "Celtics +2.5",
+    "confidence": 91,
+    "analysis": "Parsed from example-picks.txt",
+    "status": "active",
+    "id": "nba_1766257074724_vq460h6fh",
+    "timestamp": "2025-12-20T18:57:54.724Z",
+    "source": "example-picks.txt"
+  },
+  {
+    "sport": "MLB",
+    "game": "Yankees vs Red Sox",
+    "prediction": "Over 9.5 runs",
+    "confidence": 88,
+    "analysis": "Parsed from example-picks.txt",
+    "status": "active",
+    "id": "mlb_1766257074724_y1riwypcc",
+    "timestamp": "2025-12-20T18:57:54.724Z",
+    "source": "example-picks.txt"
+  },
+  {
+    "sport": "NHL",
+    "game": "Rangers vs Devils",
+    "prediction": "Devils ML",
+    "confidence": 87,
+    "analysis": "Parsed from example-picks.txt",
+    "status": "active",
+    "id": "nhl_1766257074724_q4m7nr2ya",
+    "timestamp": "2025-12-20T18:57:54.724Z",
+    "source": "example-picks.txt"
+  },
+  {
+    "sport": "NFL",
+    "game": "Cowboys vs Eagles",
+    "prediction": "Cowboys +7",
+    "confidence": 82,
+    "analysis": "Cowboys defense should keep it close",
+    "timestamp": "2025-12-20T13:00:00Z",
+    "status": "active",
+    "id": "nfl_1766257074724_2lzkg5vd0",
+    "source": "example-picks.csv"
+  },
+  {
+    "sport": "NBA",
+    "game": "Warriors vs Suns",
+    "prediction": "Under 220.5",
+    "confidence": 85,
+    "analysis": "Both teams focusing on defense",
+    "timestamp": "2025-12-20T13:15:00Z",
+    "status": "lost",
+    "id": "nba_1766257074724_tzemn5fy8",
+    "source": "example-picks.csv"
+  }
+]

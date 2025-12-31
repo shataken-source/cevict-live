@@ -1,0 +1,7 @@
+sport,game,prediction,confidence,analysis,timestamp,status
+NFL,Chiefs vs Bills,Chiefs -3.5,94,Strong offensive matchup favoring Chiefs with home advantage,2025-12-20T12:00:00Z,active
+NBA,Lakers vs Celtics,Celtics +2.5,91,Celtics playing well at home with defensive advantage,2025-12-20T12:15:00Z,active
+MLB,Yankees vs Red Sox,Over 9.5 runs,88,Weather conditions and pitching matchups favor scoring,2025-12-20T12:30:00Z,active
+NHL,Rangers vs Devils,Devils ML,87,Devils have momentum and home ice advantage,2025-12-20T12:45:00Z,won
+NFL,Cowboys vs Eagles,Cowboys +7,82,Cowboys defense should keep it close,2025-12-20T13:00:00Z,active
+NBA,Warriors vs Suns,Under 220.5,85,Both teams focusing on defense,2025-12-20T13:15:00Z,lost
