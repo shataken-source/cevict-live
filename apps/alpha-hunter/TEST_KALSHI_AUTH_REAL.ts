@@ -25,10 +25,10 @@ async function testKalshiAuth() {
   // Wait a moment for initialization
   await new Promise(resolve => setTimeout(resolve, 1000));
   
-  console.log(`🔍 Testing getBalance()...\n`);
+  console.log(`🔍 Testing getBalanceResponse()...\n`);
   
   try {
-    const balance = await trader.getBalance();
+    const balance = await trader.getBalanceResponse();
     
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
     console.log(`✅ AUTHENTICATION SUCCESSFUL!\n`);

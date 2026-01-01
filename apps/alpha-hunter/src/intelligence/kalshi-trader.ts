@@ -6,6 +6,31 @@
 
 import { PredictionMarket, Opportunity, Trade, FundAccount } from '../types';
 import crypto from 'crypto';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+import * as fs from 'fs';
+
+// Load environment variables from root .env.local
+// Try multiple paths to handle different execution contexts
+const tryPaths = [
+  path.resolve(process.cwd(), '..', '.env.local'), // From apps/alpha-hunter/
+  path.resolve(process.cwd(), '.env.local'), // From root
+  path.resolve(__dirname, '..', '..', '..', '..', '.env.local'), // From compiled location
+];
+
+let envLoaded = false;
+for (const envPath of tryPaths) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    envLoaded = true;
+    break;
+  }
+}
+
+if (!envLoaded) {
+  console.warn('⚠️  Could not find .env.local in expected locations. Trying default dotenv.config()...');
+  dotenv.config(); // Fallback to default behavior
+}
 
 interface KalshiPosition {
   marketId: string;
@@ -34,6 +59,12 @@ export class KalshiTrader {
   constructor() {
     this.apiKeyId = process.env.KALSHI_API_KEY_ID || '';
     const rawKey = process.env.KALSHI_PRIVATE_KEY || '';
+    
+    // SENTINEL: Hard check - throw error if key not found
+    if (!rawKey || rawKey.length === 0) {
+      throw new Error('SENTINEL: KALSHI_PRIVATE_KEY NOT FOUND. Check .env.local path and ensure key is set.');
+    }
+    
     console.log(`   🔍 DEBUG: rawKey length = ${rawKey.length}`);
     this.privateKey = this.parsePrivateKey(rawKey);
     console.log(`   🔍 DEBUG: parsed privateKey length = ${this.privateKey.length}`);
@@ -294,6 +325,45 @@ export class KalshiTrader {
 
   isConfigured(): boolean {
     return this.keyConfigured;
+  }
+
+  /**
+   * Get balance as full JSON response (for testing/verification)
+   */
+  async getBalanceResponse(): Promise<any> {
+    if (!this.apiKeyId || !this.keyConfigured) {
+      return { error: 'Not configured', balance: 500 };
+    }
+
+    try {
+      const fullPath = '/trade-api/v2/portfolio/balance';
+      const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
+
+      if (!signature) {
+        return { error: 'Signature failed', balance: 500 };
+      }
+
+      const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          'KALSHI-ACCESS-KEY': this.apiKeyId,
+          'KALSHI-ACCESS-SIGNATURE': signature,
+          'KALSHI-ACCESS-TIMESTAMP': timestamp,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { error: `HTTP ${response.status}`, message: errorText, status: response.status };
+      }
+
+      const data = await response.json();
+      console.log('   ✅ Kalshi API connected successfully');
+      return data;
+    } catch (error: any) {
+      return { error: error.message, balance: 500 };
+    }
   }
 
   async getBalance(): Promise<number> {
