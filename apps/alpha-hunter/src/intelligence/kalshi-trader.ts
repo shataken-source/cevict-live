@@ -10,26 +10,44 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
 
-// Load environment variables from root .env.local
-// Try multiple paths to handle different execution contexts
-const tryPaths = [
-  path.resolve(process.cwd(), '..', '.env.local'), // From apps/alpha-hunter/
-  path.resolve(process.cwd(), '.env.local'), // From root
-  path.resolve(__dirname, '..', '..', '..', '..', '.env.local'), // From compiled location
-];
-
-let envLoaded = false;
-for (const envPath of tryPaths) {
-  if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath });
-    envLoaded = true;
-    break;
+// SENTINEL: Force Absolute Path to Root .env.local
+// Detect root path dynamically (works from any execution context)
+const detectRootPath = (): string => {
+  // Try to find root by looking for .env.local going up from current working directory
+  let currentPath = process.cwd();
+  const maxDepth = 5; // Prevent infinite loops
+  
+  for (let i = 0; i < maxDepth; i++) {
+    const envPath = path.join(currentPath, '.env.local');
+    if (fs.existsSync(envPath)) {
+      return envPath;
+    }
+    const parentPath = path.resolve(currentPath, '..');
+    if (parentPath === currentPath) break; // Reached filesystem root
+    currentPath = parentPath;
   }
-}
+  
+  // Fallback: try common locations
+  const fallbackPaths = [
+    'C:/cevict-live/.env.local',
+    path.resolve(process.cwd(), '..', '.env.local'),
+    path.resolve(process.cwd(), '.env.local'),
+  ];
+  
+  for (const fallbackPath of fallbackPaths) {
+    if (fs.existsSync(fallbackPath)) {
+      return fallbackPath;
+    }
+  }
+  
+  throw new Error(`[CRITICAL] Sentinel cannot find .env.local. Searched from: ${process.cwd()}`);
+};
 
-if (!envLoaded) {
-  console.warn('⚠️  Could not find .env.local in expected locations. Trying default dotenv.config()...');
-  dotenv.config(); // Fallback to default behavior
+const envPath = detectRootPath();
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else {
+  throw new Error(`[CRITICAL] Sentinel cannot find .env.local at ${envPath}`);
 }
 
 interface KalshiPosition {
