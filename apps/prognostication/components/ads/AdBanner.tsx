@@ -38,9 +38,24 @@ export default function AdBanner({
 
   useEffect(() => {
     try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
+      // Prevent double-initialization in Next.js dev mode
+      const adElements = document.querySelectorAll('.adsbygoogle');
+      let alreadyInitialized = false;
+      
+      adElements.forEach((el) => {
+        if (el.getAttribute('data-adsbygoogle-status') === 'done') {
+          alreadyInitialized = true;
+        }
+      });
+
+      if (!alreadyInitialized) {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      }
     } catch (err) {
-      console.error('AdSense error:', err);
+      // Suppress adsbygoogle errors in development
+      if (process.env.NODE_ENV === 'production') {
+        console.error('AdSense error:', err);
+      }
     }
   }, []);
 

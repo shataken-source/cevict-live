@@ -75,8 +75,8 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className={`${inter.className} antialiased`}>
+        {/* Only load AdSense script once */}
         <AdSenseScript />
-        <ConditionalAdSenseScript />
         {children}
         <InstallPrompt />
         <script
