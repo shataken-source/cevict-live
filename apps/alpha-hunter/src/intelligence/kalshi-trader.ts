@@ -11,41 +11,51 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 // SENTINEL: Force Absolute Path to Root .env.local
-// Detect root path dynamically (works from any execution context)
+// CRITICAL: Must use ROOT .env.local, not apps/alpha-hunter/.env.local
 const detectRootPath = (): string => {
-  // Try to find root by looking for .env.local going up from current working directory
+  // Priority 1: Explicit root path (C:/cevict-live/.env.local)
+  const explicitRoot = 'C:/cevict-live/.env.local';
+  if (fs.existsSync(explicitRoot)) {
+    return explicitRoot;
+  }
+  
+  // Priority 2: Find root by looking for .env.local in parent directories
+  // Skip any .env.local in apps/ subdirectories
   let currentPath = process.cwd();
-  const maxDepth = 5; // Prevent infinite loops
+  const maxDepth = 5;
   
   for (let i = 0; i < maxDepth; i++) {
     const envPath = path.join(currentPath, '.env.local');
     if (fs.existsSync(envPath)) {
-      return envPath;
+      // Check if this is in an apps/ subdirectory - if so, skip it
+      if (!envPath.includes(path.join('apps', path.sep))) {
+        return envPath; // Found root .env.local
+      }
     }
     const parentPath = path.resolve(currentPath, '..');
-    if (parentPath === currentPath) break; // Reached filesystem root
+    if (parentPath === currentPath) break;
     currentPath = parentPath;
   }
   
-  // Fallback: try common locations
-  const fallbackPaths = [
-    'C:/cevict-live/.env.local',
-    path.resolve(process.cwd(), '..', '.env.local'),
-    path.resolve(process.cwd(), '.env.local'),
-  ];
-  
-  for (const fallbackPath of fallbackPaths) {
-    if (fs.existsSync(fallbackPath)) {
-      return fallbackPath;
-    }
+  // Priority 3: Try to go up from apps/alpha-hunter/ to root
+  const fromAlphaHunter = path.resolve(process.cwd(), '..', '..', '.env.local');
+  if (fs.existsSync(fromAlphaHunter) && !fromAlphaHunter.includes(path.join('apps', path.sep))) {
+    return fromAlphaHunter;
   }
   
-  throw new Error(`[CRITICAL] Sentinel cannot find .env.local. Searched from: ${process.cwd()}`);
+  throw new Error(`[CRITICAL] Sentinel cannot find ROOT .env.local. Searched from: ${process.cwd()}`);
 };
 
 const envPath = detectRootPath();
+console.log(`   🔍 DEBUG: Loading .env.local from: ${envPath}`);
 if (fs.existsSync(envPath)) {
-  dotenv.config({ path: envPath });
+  // CRITICAL: Use override: true to override any variables loaded by other dotenv calls
+  const result = dotenv.config({ path: envPath, override: true });
+  if (result.error) {
+    console.error(`   ❌ Error loading .env.local: ${result.error.message}`);
+  } else {
+    console.log(`   ✅ Loaded .env.local, found ${Object.keys(result.parsed || {}).length} variables`);
+  }
 } else {
   throw new Error(`[CRITICAL] Sentinel cannot find .env.local at ${envPath}`);
 }
@@ -133,6 +143,9 @@ export class KalshiTrader {
 
     try {
       let key = keyStr;
+      
+      // DEBUG: Log what we received
+      console.log(`   🔍 DEBUG parsePrivateKey INPUT: length=${key.length}, first 100=${key.substring(0, 100)}`);
 
       // Remove surrounding quotes if present
       if ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'"))) {
@@ -140,12 +153,34 @@ export class KalshiTrader {
       }
 
       // Handle multiple types of escaped newlines
-      // Order matters: do double-escaped first, then single-escaped
-      key = key.replace(/\\\\n/g, '\n');  // \\n -> \n
-      key = key.replace(/\\n/g, '\n');     // \n -> newline
+      // CRITICAL: dotenv keeps \n as literal two-character string (backslash + n)
+      // We must convert these to actual newline characters
+      
+      // Method 1: Regex replacement (should work if \ is actually a backslash)
+      key = key.replace(/\\\\n/g, '\n');  // \\n -> \n (double-escaped in source)
+      key = key.replace(/\\n/g, '\n');     // \n -> newline (escaped in .env file)
+      
+      // Method 2: Direct character replacement (if regex didn't work)
+      // Replace literal backslash-n sequence
+      while (key.includes('\\n')) {
+        const index = key.indexOf('\\n');
+        if (index >= 0 && key.charCodeAt(index) === 92 && key.charCodeAt(index + 1) === 110) {
+          key = key.substring(0, index) + '\n' + key.substring(index + 2);
+        } else {
+          break; // Prevent infinite loop
+        }
+      }
+      
       key = key.replace(/\\r/g, '');       // Remove \r
       key = key.replace(/\r\n/g, '\n');    // Windows newlines
       key = key.replace(/\r/g, '\n');      // Old Mac newlines
+      
+      // DEBUG: Verify conversion
+      const hasLiteralBackslashN = key.includes('\\n');
+      const hasActualNewline = key.includes('\n');
+      if (hasLiteralBackslashN && !hasActualNewline) {
+        console.log('   ⚠️  WARNING: Key still contains literal \\n after all replacements');
+      }
 
       // If the key has proper PEM headers, process it
       if (key.includes('-----BEGIN') && key.includes('-----END')) {
@@ -156,17 +191,47 @@ export class KalshiTrader {
         if (beginMatch && endMatch) {
           const header = beginMatch[1];
           const footer = endMatch[1];
-          const body = key.substring(beginMatch.index! + beginMatch[0].length, endMatch.index!).trim();
+          // Get body between header and footer, handling case where header is attached to body
+          let bodyStart = beginMatch.index! + beginMatch[0].length;
+          // Skip any whitespace after header
+          while (bodyStart < key.length && /\s/.test(key[bodyStart])) {
+            bodyStart++;
+          }
+          const body = key.substring(bodyStart, endMatch.index!).trim();
+          
+          // DEBUG: Log what we found
+          console.log(`   🔍 DEBUG parsePrivateKey: body length=${body.length}, has spaces=${body.includes(' ')}, has newlines=${body.includes('\n')}`);
+          console.log(`   🔍 DEBUG: Body preview (first 100): ${body.substring(0, 100)}`);
+          console.log(`   🔍 DEBUG: Body preview (last 100): ${body.substring(Math.max(0, body.length - 100))}`);
           
           // If body contains spaces but no newlines, it's a single-line key - reformat it
           if (body.includes(' ') && !body.includes('\n')) {
             // Split on spaces and join with newlines (PEM format is 64 chars per line)
             const base64Chunks = body.split(/\s+/).filter(chunk => chunk.length > 0);
-            const formattedBody = base64Chunks.join('\n');
-            return `${header}\n${formattedBody}\n${footer}`;
+            console.log(`   🔍 DEBUG: Found ${base64Chunks.length} base64 chunks`);
+            console.log(`   🔍 DEBUG: Chunk lengths: ${base64Chunks.map(c => c.length).join(', ')}`);
+            
+            // If we have very few chunks, the key might be mostly one big chunk
+            // Try splitting the large chunks into 64-char lines
+            const formattedChunks: string[] = [];
+            for (const chunk of base64Chunks) {
+              if (chunk.length > 64) {
+                // Split large chunk into 64-char lines
+                for (let i = 0; i < chunk.length; i += 64) {
+                  formattedChunks.push(chunk.substring(i, i + 64));
+                }
+              } else {
+                formattedChunks.push(chunk);
+              }
+            }
+            
+            const formattedBody = formattedChunks.join('\n');
+            const result = `${header}\n${formattedBody}\n${footer}`;
+            console.log(`   🔍 DEBUG: Reformatted key length=${result.length}, lines=${result.split('\n').length}`);
+            return result;
           }
           
-          // Otherwise, ensure headers are on their own lines
+          // If body has newlines already, just ensure headers are on their own lines
           let formatted = key.replace(/(-----BEGIN[^-]+-----)/g, '\n$1\n');
           formatted = formatted.replace(/(-----END[^-]+-----)/g, '\n$1\n');
           formatted = formatted.replace(/\n{2,}/g, '\n').trim();
