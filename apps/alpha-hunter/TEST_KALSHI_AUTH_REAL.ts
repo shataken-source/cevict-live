@@ -8,8 +8,11 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { KalshiTrader } from './src/intelligence/kalshi-trader';
 
-// Load environment variables
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+// Load environment variables from root .env.local
+// This file is in apps/alpha-hunter/, so go up one level to find .env.local at root
+const rootPath = path.resolve(process.cwd(), '..');
+const envPath = path.join(rootPath, '.env.local');
+dotenv.config({ path: envPath });
 
 console.log(`\n🔍 KALSHI API AUTHENTICATION TEST (Using KalshiTrader Class)`);
 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
