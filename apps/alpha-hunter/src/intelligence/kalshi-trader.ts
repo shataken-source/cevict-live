@@ -67,6 +67,10 @@ export class KalshiTrader {
       console.log('   ✅ Kalshi private key is valid');
     } catch (err: any) {
       console.log(`   ❌ Kalshi key parse error: ${err.message}`);
+      console.log(`   📝 Parsed key preview (first 200 chars): ${this.privateKey.substring(0, 200)}`);
+      console.log(`   📝 Parsed key lines: ${this.privateKey.split('\n').length}`);
+      console.log(`   📝 Has BEGIN: ${this.privateKey.includes('-----BEGIN')}`);
+      console.log(`   📝 Has END: ${this.privateKey.includes('-----END')}`);
       this.keyConfigured = false;
     }
   }
@@ -94,12 +98,35 @@ export class KalshiTrader {
       key = key.replace(/\r\n/g, '\n');    // Windows newlines
       key = key.replace(/\r/g, '\n');      // Old Mac newlines
 
-      // If the key has proper PEM headers, return it
+      // If the key has proper PEM headers, process it
       if (key.includes('-----BEGIN') && key.includes('-----END')) {
-        // Make sure the headers are on their own lines
+        // Extract the header, body, and footer
+        const beginMatch = key.match(/(-----BEGIN[^-]+-----)/);
+        const endMatch = key.match(/(-----END[^-]+-----)/);
+        
+        if (beginMatch && endMatch) {
+          const header = beginMatch[1];
+          const footer = endMatch[1];
+          const body = key.substring(beginMatch.index! + beginMatch[0].length, endMatch.index!).trim();
+          
+          // If body contains spaces but no newlines, it's a single-line key - reformat it
+          if (body.includes(' ') && !body.includes('\n')) {
+            // Split on spaces and join with newlines (PEM format is 64 chars per line)
+            const base64Chunks = body.split(/\s+/).filter(chunk => chunk.length > 0);
+            const formattedBody = base64Chunks.join('\n');
+            return `${header}\n${formattedBody}\n${footer}`;
+          }
+          
+          // Otherwise, ensure headers are on their own lines
+          let formatted = key.replace(/(-----BEGIN[^-]+-----)/g, '\n$1\n');
+          formatted = formatted.replace(/(-----END[^-]+-----)/g, '\n$1\n');
+          formatted = formatted.replace(/\n{2,}/g, '\n').trim();
+          return formatted;
+        }
+        
+        // Fallback: just ensure headers are on their own lines
         key = key.replace(/(-----BEGIN[^-]+-----)/g, '\n$1\n');
         key = key.replace(/(-----END[^-]+-----)/g, '\n$1\n');
-        // Clean up multiple newlines
         key = key.replace(/\n{2,}/g, '\n').trim();
         return key;
       }
@@ -500,7 +527,8 @@ export class KalshiTrader {
 
       // Full path for signature (must match what we sign)
       const fullPath = '/trade-api/v2/portfolio/orders';
-      const body = {
+      const builderCode = process.env.KALSHI_BUILDER_CODE || '';
+      const body: any = {
         ticker: marketId,
         client_order_id: `bot_${Date.now()}`,
         side,
@@ -510,6 +538,11 @@ export class KalshiTrader {
         yes_price: side === 'yes' ? maxPrice : undefined,
         no_price: side === 'no' ? maxPrice : undefined,
       };
+      
+      // Add Builder Code if configured (Dec 2025 feature - earns % of volume)
+      if (builderCode) {
+        body.builder_code = builderCode;
+      }
 
       const { signature, timestamp } = await this.signRequestWithTimestamp('POST', fullPath, body);
 
@@ -587,7 +620,7 @@ export class KalshiTrader {
         headers: {
           'KALSHI-ACCESS-KEY': this.apiKeyId,
           'KALSHI-ACCESS-SIGNATURE': signature,
-          'KALSHI-ACCESS-TIMESTAMP': Math.floor(Date.now() / 1000).toString(),
+          'KALSHI-ACCESS-TIMESTAMP': timestamp,
         },
       });
 

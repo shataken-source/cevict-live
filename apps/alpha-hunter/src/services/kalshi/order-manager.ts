@@ -258,7 +258,8 @@ export class KalshiLiquidityProvider {
       
       // Step 4: Build order payload
       const fullPath = '/trade-api/v2/portfolio/orders';
-      const body = {
+      const builderCode = process.env.KALSHI_BUILDER_CODE || '';
+      const body: any = {
         ticker,
         client_order_id: `maker_${Date.now()}`,
         side,
@@ -268,6 +269,11 @@ export class KalshiLiquidityProvider {
         yes_price: side === 'yes' ? limitPrice : undefined,
         no_price: side === 'no' ? limitPrice : undefined,
       };
+      
+      // Add Builder Code if configured (Dec 2025 feature - earns % of volume)
+      if (builderCode) {
+        body.builder_code = builderCode;
+      }
       
       // Step 5: Sign and send
       const { signature, timestamp } = await this.signRequestWithTimestamp('POST', fullPath, body);
@@ -338,6 +344,7 @@ export class KalshiLiquidityProvider {
       const fullPath = '/trade-api/v2/portfolio/orders/batched';
       
       // Build batch payload
+      const builderCode = process.env.KALSHI_BUILDER_CODE || '';
       const batchOrders = await Promise.all(
         orders.map(async (order) => {
           const orderBook = await this.getOrderBook(order.ticker);
@@ -346,7 +353,7 @@ export class KalshiLiquidityProvider {
           const priceCalc = this.calculateMakerPrice(orderBook, order.side, order.action);
           if (!priceCalc) return null;
           
-          return {
+          const orderBody: any = {
             ticker: order.ticker,
             client_order_id: `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             side: order.side,
@@ -356,6 +363,13 @@ export class KalshiLiquidityProvider {
             yes_price: order.side === 'yes' ? priceCalc.price : undefined,
             no_price: order.side === 'no' ? priceCalc.price : undefined,
           };
+          
+          // Add Builder Code if configured (Dec 2025 feature - earns % of volume)
+          if (builderCode) {
+            orderBody.builder_code = builderCode;
+          }
+          
+          return orderBody;
         })
       );
       
