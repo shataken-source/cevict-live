@@ -43,8 +43,8 @@ export class PrognosticationSync {
   private minEdge: number = 2.0; // Minimum edge to post
 
   constructor() {
-    // Prognostication API endpoint (runs on port 3002 by default)
-    this.prognoBaseUrl = process.env.PROGNOSTICATION_URL || 'http://localhost:3002';
+    // Prognostication API endpoint (runs on port 3005 by default)
+    this.prognoBaseUrl = process.env.PROGNOSTICATION_URL || 'http://localhost:3005';
     this.prognoApiKey = process.env.PROGNO_INTERNAL_API_KEY || 'dev-key-12345';
   }
 

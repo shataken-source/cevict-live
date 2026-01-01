@@ -18,6 +18,9 @@ interface AdBannerProps {
   responsive?: boolean;
 }
 
+// Global map to track initialized ad slots (prevents duplicates across component instances)
+const initializedAdSlots = new Set<string>();
+
 export default function AdBanner({
   adSlot,
   adFormat,
@@ -39,25 +42,57 @@ export default function AdBanner({
   const { width: adWidth, height: adHeight } = dimensions[adFormat];
 
   useEffect(() => {
+    // Check global registry first (prevents duplicates across all component instances)
+    if (initializedAdSlots.has(adSlot)) {
+      adInitialized.current = true;
+      return;
+    }
+
     // Only initialize once per component instance
     if (adInitialized.current) return;
 
     try {
-      // Check if this specific ad slot is already initialized
+      // Wait for the DOM element to be available
       const thisAd = document.querySelector(`ins[data-ad-slot="${adSlot}"]`);
-      if (thisAd?.getAttribute('data-adsbygoogle-status') === 'done') {
+      if (!thisAd) {
+        // Element not ready yet, try again after a short delay
+        setTimeout(() => {
+          const retryAd = document.querySelector(`ins[data-ad-slot="${adSlot}"]`);
+          if (retryAd && !initializedAdSlots.has(adSlot)) {
+            const status = retryAd.getAttribute('data-adsbygoogle-status');
+            if (!status || status === '') {
+              (window.adsbygoogle = window.adsbygoogle || []).push({});
+              initializedAdSlots.add(adSlot);
+              adInitialized.current = true;
+            }
+          }
+        }, 100);
+        return;
+      }
+
+      // Check if this specific ad slot is already initialized (any status means it's been processed)
+      const status = thisAd.getAttribute('data-adsbygoogle-status');
+      if (status && status !== '') {
+        // Already initialized (could be 'done', 'loading', etc.)
+        initializedAdSlots.add(adSlot);
         adInitialized.current = true;
         return;
       }
 
-      // Initialize the ad
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-      adInitialized.current = true;
+      // Initialize the ad only if not already initialized
+      if (!initializedAdSlots.has(adSlot)) {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+        initializedAdSlots.add(adSlot);
+        adInitialized.current = true;
+      }
     } catch (err) {
       // Silently suppress AdSense errors in development (common with Fast Refresh)
       if (process.env.NODE_ENV === 'production') {
         console.error('AdSense error:', err);
       }
+      // Mark as initialized even on error to prevent retries
+      initializedAdSlots.add(adSlot);
+      adInitialized.current = true;
     }
   }, [adSlot]);
 

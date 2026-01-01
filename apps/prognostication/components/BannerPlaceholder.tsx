@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import AdBanner from './ads/AdBanner';
 
 // Extend Window interface to include adsbygoogle
@@ -21,13 +20,8 @@ export default function BannerPlaceholder({
   className = '',
   adSlot = '1234567890' // Default placeholder slot
 }: BannerPlaceholderProps) {
-  useEffect(() => {
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (err) {
-      console.error('AdSense error:', err);
-    }
-  }, []);
+  // Ad initialization is handled by AdBanner component
+  // No need to push here - AdBanner will handle it
 
   // Position-specific configurations
   const configs = {
