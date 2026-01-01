@@ -54,6 +54,7 @@ function generatePicks(category?: string): KalshiPick[] {
     },
     {
       id: 'KXGDP-Q1-25',
+      marketId: 'KXGDP-Q1-25',
       market: 'Will US GDP growth exceed 3% in Q1 2025?',
       category: 'economics',
       pick: 'NO',
@@ -67,6 +68,7 @@ function generatePicks(category?: string): KalshiPick[] {
     },
     {
       id: 'KXTEMP-JAN25-RECORD',
+      marketId: 'KXTEMP-JAN25-RECORD',
       market: 'Will January 2025 be warmest January on record globally?',
       category: 'weather',
       pick: 'YES',
@@ -80,6 +82,7 @@ function generatePicks(category?: string): KalshiPick[] {
     },
     {
       id: 'KXHURR-2025-MAJOR',
+      marketId: 'KXHURR-2025-MAJOR',
       market: 'Will 2025 Atlantic hurricane season have 5+ major hurricanes?',
       category: 'weather',
       pick: 'YES',
@@ -93,6 +96,7 @@ function generatePicks(category?: string): KalshiPick[] {
     },
     {
       id: 'KXOSCARS-CONCLAVE',
+      marketId: 'KXOSCARS-CONCLAVE',
       market: 'Will "Conclave" win Best Picture at 2025 Oscars?',
       category: 'entertainment',
       pick: 'YES',
@@ -106,6 +110,7 @@ function generatePicks(category?: string): KalshiPick[] {
     },
     {
       id: 'KXOSCARS-ACTOR',
+      marketId: 'KXOSCARS-ACTOR',
       market: 'Will Adrien Brody win Best Actor at 2025 Oscars?',
       category: 'entertainment',
       pick: 'YES',
@@ -119,6 +124,7 @@ function generatePicks(category?: string): KalshiPick[] {
     },
     {
       id: 'KXBTC-100K-Q1',
+      marketId: 'KXBTC-100K-Q1',
       market: 'Will Bitcoin exceed $100,000 by March 31, 2025?',
       category: 'crypto',
       pick: 'YES',
@@ -132,6 +138,7 @@ function generatePicks(category?: string): KalshiPick[] {
     },
     {
       id: 'KXETH-5K-2025',
+      marketId: 'KXETH-5K-2025',
       market: 'Will Ethereum exceed $5,000 in 2025?',
       category: 'crypto',
       pick: 'YES',
@@ -145,6 +152,7 @@ function generatePicks(category?: string): KalshiPick[] {
     },
     {
       id: 'KXSPACE-STARSHIP',
+      marketId: 'KXSPACE-STARSHIP',
       market: 'Will SpaceX Starship complete orbital flight by June 2025?',
       category: 'world',
       pick: 'YES',
@@ -158,6 +166,7 @@ function generatePicks(category?: string): KalshiPick[] {
     },
     {
       id: 'KXCHINA-TAIWAN',
+      marketId: 'KXCHINA-TAIWAN',
       market: 'Will China take military action against Taiwan in 2025?',
       category: 'world',
       pick: 'NO',
