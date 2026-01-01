@@ -29,21 +29,35 @@ interface KalshiPick {
 
 // GET handler - fetch picks
 export async function GET(request: Request) {
+  const startTime = Date.now();
+  
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category') || 'all';
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = parseInt(searchParams.get('limit') || '20');
+
+    console.log(`[${new Date().toISOString()}] Fetching picks for category: ${category}, limit: ${limit}`);
 
     // CRITICAL: ONLY USE LIVE DATA - NO FALLBACKS
-    const livePicks = await fetchLiveKalshiPicks(category === 'all' ? undefined : category);
+    // Add timeout wrapper
+    const fetchPromise = fetchLiveKalshiPicks(category === 'all' ? undefined : category);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('fetchLiveKalshiPicks timed out after 5 seconds')), 5000)
+    );
     
-    if (livePicks.length === 0) {
+    const livePicks = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`[${new Date().toISOString()}] Fetched ${livePicks?.length || 0} picks in ${elapsed}ms`);
+    
+    if (!livePicks || livePicks.length === 0) {
       console.error('❌ NO LIVE DATA AVAILABLE - Alpha-Hunter may not be running');
       return NextResponse.json({
         success: false,
         error: 'NO_LIVE_DATA',
         message: 'No live predictions available. Alpha-Hunter bot may not be running or no high-confidence picks found.',
         timestamp: new Date().toISOString(),
+        elapsed: `${elapsed}ms`,
       }, { status: 503 });
     }
 

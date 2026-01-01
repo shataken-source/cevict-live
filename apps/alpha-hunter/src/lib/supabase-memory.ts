@@ -580,3 +580,99 @@ export const supabaseMemory = {
   getBotHistoricalPerformance,
 };
 
+/**
+ * Fetch bot configuration from Supabase
+ * Returns default config if Supabase is unavailable or config doesn't exist
+ */
+export async function getBotConfig(): Promise<{
+  trading: {
+    maxTradeSize: number;
+    minConfidence: number;
+    minEdge: number;
+    dailySpendingLimit: number;
+    dailyLossLimit: number;
+    maxOpenPositions: number;
+    cryptoInterval: number;
+    kalshiInterval: number;
+  };
+  picks: {
+    maxPicksDisplay: number;
+    minConfidenceDisplay: number;
+  };
+}> {
+  const client = getClient();
+  if (!client) {
+    // Return defaults if Supabase unavailable
+    return {
+      trading: {
+        maxTradeSize: 5,
+        minConfidence: 55,
+        minEdge: 2,
+        dailySpendingLimit: 50,
+        dailyLossLimit: 25,
+        maxOpenPositions: 5,
+        cryptoInterval: 30000,
+        kalshiInterval: 60000,
+      },
+      picks: {
+        maxPicksDisplay: 20,
+        minConfidenceDisplay: 50,
+      },
+    };
+  }
+
+  try {
+    // Fetch trading config
+    const { data: tradingConfig, error: tradingError } = await client
+      .from('bot_config')
+      .select('config_value')
+      .eq('config_key', 'trading')
+      .single();
+
+    // Fetch picks config
+    const { data: picksConfig, error: picksError } = await client
+      .from('bot_config')
+      .select('config_value')
+      .eq('config_key', 'picks')
+      .single();
+
+    // Merge with defaults
+    const trading = tradingConfig?.config_value || {
+      maxTradeSize: 5,
+      minConfidence: 55,
+      minEdge: 2,
+      dailySpendingLimit: 50,
+      dailyLossLimit: 25,
+      maxOpenPositions: 5,
+      cryptoInterval: 30000,
+      kalshiInterval: 60000,
+    };
+
+    const picks = picksConfig?.config_value || {
+      maxPicksDisplay: 20,
+      minConfidenceDisplay: 50,
+    };
+
+    return { trading, picks };
+  } catch (error: any) {
+    // Return defaults on error
+    console.warn('⚠️ Failed to fetch bot config from Supabase, using defaults:', error.message);
+    return {
+      trading: {
+        maxTradeSize: 5,
+        minConfidence: 55,
+        minEdge: 2,
+        dailySpendingLimit: 50,
+        dailyLossLimit: 25,
+        maxOpenPositions: 5,
+        cryptoInterval: 30000,
+        kalshiInterval: 60000,
+      },
+      picks: {
+        maxPicksDisplay: 20,
+        minConfidenceDisplay: 50,
+      },
+    };
+  }
+}
+

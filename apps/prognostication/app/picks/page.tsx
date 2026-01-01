@@ -45,28 +45,98 @@ export default function PicksPage() {
   const [stats, setStats] = useState<PicksResponse['stats'] | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let isMounted = true;
+    
     async function loadPicks(isInitial = false) {
       if (isInitial) {
         setLoading(true);
+        setError(null);
       } else {
         setIsRefreshing(true);
       }
       
-      try {
-        const res = await fetch(`/api/kalshi/picks?category=${activeCategory}&limit=20`);
-        if (res.ok) {
-          const data: PicksResponse = await res.json();
-          setPicks(data.picks);
-          setStats(data.stats);
-          setLastUpdated(new Date());
+      // Set a timeout to prevent infinite loading
+      timeoutId = setTimeout(() => {
+        if (isMounted) {
+          console.warn('Fetch timeout - forcing loading state to false');
+          setLoading(false);
+          setIsRefreshing(false);
+          setError('Request timed out. The server may be slow or unavailable.');
+          setPicks([]);
+          setStats(null);
         }
-      } catch (e) {
-        console.warn('Failed to load picks:', e);
-      } finally {
+      }, 10000); // 10 second timeout
+      
+      try {
+        console.log('Fetching picks from API...');
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000); // 8 second abort
+        
+        const res = await fetch(`/api/kalshi/picks?category=${activeCategory}&limit=20`, {
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        
+        clearTimeout(timeout);
+        clearTimeout(timeoutId);
+        
+        console.log('API response status:', res.status);
+        
+        let data;
+        try {
+          const text = await res.text();
+          console.log('API response text:', text.substring(0, 200));
+          data = JSON.parse(text);
+        } catch (jsonError) {
+          console.error('JSON parse error:', jsonError);
+          data = { success: false, error: 'Invalid response from server', message: 'Server returned invalid data' };
+        }
+        
+        if (!isMounted) return;
+        
+        // Always stop loading
         setLoading(false);
         setIsRefreshing(false);
+        
+        // Check if we got successful data
+        if (res.ok && data.success && data.picks && Array.isArray(data.picks) && data.picks.length > 0) {
+          console.log('Successfully loaded picks:', data.picks.length);
+          setPicks(data.picks);
+          setStats(data.stats || null);
+          setLastUpdated(new Date());
+          setError(null);
+        } else {
+          // Handle API errors - API returns 503 when no data available
+          const errorMsg = data.message || data.error || 'No picks available';
+          console.log('API error response:', { status: res.status, success: data.success, error: errorMsg, hasPicks: data.picks?.length || 0 });
+          setError(errorMsg);
+          setPicks([]);
+          setStats(null);
+        }
+      } catch (e: any) {
+        clearTimeout(timeoutId);
+        
+        if (!isMounted) return;
+        
+        // Always stop loading on error
+        setLoading(false);
+        setIsRefreshing(false);
+        
+        let errorMsg = 'Network error loading picks';
+        if (e.name === 'AbortError') {
+          errorMsg = 'Request timed out. Please try again.';
+        } else if (e.message) {
+          errorMsg = e.message;
+        }
+        
+        console.error('Failed to load picks:', e);
+        setError(errorMsg);
+        setPicks([]);
+        setStats(null);
       }
     }
     
@@ -74,9 +144,17 @@ export default function PicksPage() {
     loadPicks(true);
     
     // Then refresh every 60 seconds (matching bot update frequency)
-    const interval = setInterval(() => loadPicks(false), 60000);
+    const interval = setInterval(() => {
+      if (isMounted) {
+        loadPicks(false);
+      }
+    }, 60000);
     
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [activeCategory]);
 
   const getCategoryInfo = (categoryId: string) => {
@@ -166,11 +244,95 @@ export default function PicksPage() {
           ))}
         </div>
 
+        {/* Error Message */}
+        {error && !loading && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6 mb-8 text-center">
+            <div className="text-4xl mb-3">⚠️</div>
+            <p className="text-yellow-400 text-lg font-semibold mb-2">Unable to Load Picks</p>
+            <p className="text-yellow-300/80 text-sm mb-4">{error}</p>
+            <p className="text-gray-400 text-xs">
+              The Alpha-Hunter bot may not be running or no high-confidence picks are available yet.
+            </p>
+          </div>
+        )}
+
         {/* Picks Grid */}
         {loading ? (
           <div className="text-center py-20">
             <div className="inline-block w-12 h-12 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mb-4" />
             <p className="text-indigo-300 text-lg">Loading picks...</p>
+            <p className="text-gray-500 text-sm mt-2">Checking for available predictions...</p>
+            <button
+              onClick={() => {
+                setLoading(false);
+                setError('Loading was taking too long. Click Retry to try again.');
+                setPicks([]);
+                setStats(null);
+              }}
+              className="mt-6 inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-3 rounded-xl border border-white/20 transition-all"
+            >
+              Cancel & Retry
+            </button>
+          </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <div className="text-6xl mb-4">📡</div>
+            <p className="text-xl text-indigo-300 mb-2">No Picks Available</p>
+            <p className="text-gray-400 mb-2 max-w-md mx-auto">
+              {error.includes('NO_LIVE_DATA') || error.includes('No live predictions')
+                ? 'The Alpha-Hunter bot may not be running or hasn\'t generated predictions yet.'
+                : error}
+            </p>
+            <div className="mt-6 space-y-3">
+              <p className="text-gray-500 text-sm">
+                To see picks, make sure:
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1 max-w-md mx-auto text-left">
+                <li>• The Alpha-Hunter bot is running</li>
+                <li>• The bot has generated predictions with confidence ≥ 50%</li>
+                <li>• Predictions are saved to Supabase</li>
+              </ul>
+            </div>
+            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+              <a
+                href="/"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold px-6 py-3 rounded-xl transition-all"
+              >
+                ← Back to Home
+              </a>
+              <button
+                onClick={() => {
+                  setLoading(true);
+                  setError(null);
+                  const loadPicks = async () => {
+                    try {
+                      const res = await fetch(`/api/kalshi/picks?category=${activeCategory}&limit=20`);
+                      const data = await res.json();
+                      if (res.ok && data.success && data.picks && data.picks.length > 0) {
+                        setPicks(data.picks);
+                        setStats(data.stats || null);
+                        setLastUpdated(new Date());
+                        setError(null);
+                      } else {
+                        setError(data.message || data.error || 'No picks available');
+                        setPicks([]);
+                        setStats(null);
+                      }
+                    } catch (e: any) {
+                      setError(e.message || 'Network error');
+                      setPicks([]);
+                      setStats(null);
+                    } finally {
+                      setLoading(false);
+                    }
+                  };
+                  loadPicks();
+                }}
+                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-3 rounded-xl border border-white/20 transition-all"
+              >
+                🔄 Retry
+              </button>
+            </div>
           </div>
         ) : picks.length === 0 ? (
           <div className="text-center py-20">

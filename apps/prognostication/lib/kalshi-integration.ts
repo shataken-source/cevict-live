@@ -78,14 +78,28 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
       .gte('confidence', 50) // Matches your new 50% threshold
       .is('actual_outcome', null) // Only open predictions (not yet resolved)
       .order('predicted_at', { ascending: false })
-      .limit(50); // Get more to account for duplicates (will deduplicate later)
+      .limit(100); // Get more to account for duplicates (will deduplicate later, then limit to 20)
 
     // Filter by category if provided
     if (category && category !== 'all') {
       query = query.eq('bot_category', category.toLowerCase());
     }
 
-    const { data, error } = await query;
+    // Add 3-second timeout to prevent hangs
+    const queryPromise = query;
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Supabase query timed out after 3 seconds')), 3000)
+    );
+
+    let data, error;
+    try {
+      const result = await Promise.race([queryPromise, timeoutPromise]);
+      data = (result as any).data;
+      error = (result as any).error;
+    } catch (timeoutError: any) {
+      console.error('❌ Query timeout:', timeoutError.message);
+      return [];
+    }
 
     if (error) {
       console.error('âŒ Error querying bot_predictions:', error);
@@ -118,10 +132,10 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
       }
     }
 
-    // Convert map back to array, sort by edge (highest first), and limit to top 10
+    // Convert map back to array, sort by edge (highest first), and limit to top 20
     const uniquePredictions = Array.from(marketMap.values())
       .sort((a: any, b: any) => (b.edge || 0) - (a.edge || 0))
-      .slice(0, 10); // Limit to top 10 after deduplication
+      .slice(0, 20); // Limit to top 20 after deduplication
 
     // Transform database records to API format
     return uniquePredictions.map((pred: any) => {

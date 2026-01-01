@@ -26,6 +26,7 @@ import { KalshiTrader } from './intelligence/kalshi-trader';
 import { marketLearner } from './intelligence/market-learner';
 import { PrognoIntegration } from './intelligence/progno-integration';
 import { PrognosticationSync } from './intelligence/prognostication-sync';
+import { getBotConfig, saveTradeRecord, TradeRecord } from './lib/supabase-memory';
 import { PrognoMassagerIntegration } from './intelligence/progno-massager';
 
 // Color constants
@@ -73,15 +74,17 @@ export class EventContractExecutionEngine {
   private kalshiOpenBets = new Set<string>();
   private cryptoOpenPositions: any[] = [];
 
-  // Trading config
-  private readonly CRYPTO_INTERVAL = 30000; // 30 seconds
-  private readonly KALSHI_INTERVAL = 60000; // 60 seconds
-  private readonly MAX_TRADE_SIZE = 5; // $5 max per trade
-  private readonly MIN_CONFIDENCE = 55; // 55% minimum confidence
-  private readonly MIN_EDGE = 2; // 2% minimum edge for Kalshi
-  private readonly DAILY_SPENDING_LIMIT = 50; // $50/day max
-  private readonly DAILY_LOSS_LIMIT = 25; // Stop if down $25
-  private readonly MAX_OPEN_POSITIONS = 5;
+  // Trading config (loaded from Supabase, defaults below)
+  private CRYPTO_INTERVAL = 30000; // 30 seconds
+  private KALSHI_INTERVAL = 60000; // 60 seconds
+  private MAX_TRADE_SIZE = 5; // $5 max per trade
+  private MIN_CONFIDENCE = 55; // 55% minimum confidence
+  private MIN_EDGE = 2; // 2% minimum edge for Kalshi
+  private DAILY_SPENDING_LIMIT = 50; // $50/day max
+  private DAILY_LOSS_LIMIT = 25; // Stop if down $25
+  private MAX_OPEN_POSITIONS = 5;
+  private lastConfigUpdate = 0;
+  private readonly CONFIG_UPDATE_INTERVAL = 60000; // Update config every 60 seconds
 
   constructor() {
     this.botManager = new BotManager();
@@ -95,8 +98,39 @@ export class EventContractExecutionEngine {
     console.log(`${color.info('✅ Bot Manager initialized')}`);
     console.log(`${color.info('✅ Trading engines initialized')}`);
     
+    // Load initial config from Supabase
+    await this.loadConfig();
+    
     // Verify API keys
     this.verifyApiKeys();
+  }
+
+  private async loadConfig(): Promise<void> {
+    try {
+      const config = await getBotConfig();
+      this.MAX_TRADE_SIZE = config.trading.maxTradeSize;
+      this.MIN_CONFIDENCE = config.trading.minConfidence;
+      this.MIN_EDGE = config.trading.minEdge;
+      this.DAILY_SPENDING_LIMIT = config.trading.dailySpendingLimit;
+      this.DAILY_LOSS_LIMIT = config.trading.dailyLossLimit;
+      this.MAX_OPEN_POSITIONS = config.trading.maxOpenPositions;
+      this.CRYPTO_INTERVAL = config.trading.cryptoInterval;
+      this.KALSHI_INTERVAL = config.trading.kalshiInterval;
+      this.lastConfigUpdate = Date.now();
+      
+      console.log(`${color.info('✅ Bot config loaded from Supabase')}`);
+      console.log(`   📊 Max Trade: $${this.MAX_TRADE_SIZE} | Min Confidence: ${this.MIN_CONFIDENCE}% | Min Edge: ${this.MIN_EDGE}%`);
+      console.log(`   💰 Daily Limits: $${this.DAILY_SPENDING_LIMIT} spending | $${this.DAILY_LOSS_LIMIT} loss`);
+    } catch (error: any) {
+      console.warn(`${color.warning('⚠️  Failed to load config from Supabase, using defaults')}`);
+    }
+  }
+
+  private async updateConfigIfNeeded(): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastConfigUpdate < this.CONFIG_UPDATE_INTERVAL) return;
+    
+    await this.loadConfig();
   }
 
   private verifyApiKeys(): void {
@@ -159,7 +193,7 @@ export class EventContractExecutionEngine {
     }
     console.log('');
   }
-
+  
   async start() {
     console.log('🚀 Starting Cevict-Live Alpha-Hunter...');
     console.log(`${color.warning('⚠️  REAL TRADES ENABLED - Using live APIs')}`);
@@ -224,6 +258,9 @@ export class EventContractExecutionEngine {
   }
 
   private async checkCryptoTrades(): Promise<void> {
+    // Update config if needed (every 60 seconds)
+    await this.updateConfigIfNeeded();
+    
     const now = Date.now();
     if (now - this.lastCryptoCheck < this.CRYPTO_INTERVAL) return;
     this.lastCryptoCheck = now;
@@ -279,6 +316,21 @@ export class EventContractExecutionEngine {
                 timestamp: new Date(),
               });
 
+              // Save trade to database
+              await saveTradeRecord({
+                platform: 'coinbase',
+                trade_type: side,
+                symbol: pair,
+                entry_price: order.entryPrice,
+                amount: tradeSize,
+                fees: tradeSize * 0.006, // Coinbase fee ~0.6%
+                opened_at: new Date(),
+                confidence: pred.confidence,
+                edge: pred.edge,
+                outcome: 'open',
+                bot_category: 'crypto',
+              });
+
               console.log(`   ${color.success('✅ Trade executed')} - $${tradeSize}`);
               break; // One trade per cycle
             } catch (err: any) {
@@ -293,6 +345,9 @@ export class EventContractExecutionEngine {
   }
 
   private async checkKalshiTrades(): Promise<void> {
+    // Update config if needed (every 60 seconds)
+    await this.updateConfigIfNeeded();
+    
     const now = Date.now();
     if (now - this.lastKalshiCheck < this.KALSHI_INTERVAL) return;
     this.lastKalshiCheck = now;
@@ -372,6 +427,23 @@ export class EventContractExecutionEngine {
           if (trade) {
             this.dailySpending += tradeSize;
             this.kalshiOpenBets.add(pred.market_id);
+            
+            // Save trade to database
+            await saveTradeRecord({
+              platform: 'kalshi',
+              trade_type: side,
+              symbol: pred.market_title,
+              market_id: pred.market_id,
+              entry_price: limitPrice,
+              amount: tradeSize,
+              fees: 0, // Maker orders have $0 fees
+              opened_at: new Date(),
+              confidence: pred.confidence,
+              edge: pred.edge,
+              outcome: 'open',
+              bot_category: pred.bot_category || 'unknown',
+            });
+
             console.log(`   ${color.success('✅ Bet placed')} - $${tradeSize} on ${side.toUpperCase()}`);
             break;
           }
