@@ -138,15 +138,25 @@ export default function HomePage() {
   useEffect(() => {
     async function loadStats() {
       try {
-        const res = await fetch('/api/stats');
+        // Add cache-busting timestamp to prevent browser caching
+        const timestamp = Date.now();
+        const res = await fetch(`/api/stats?t=${timestamp}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         if (res.ok) {
           const data = await res.json();
+          console.log('Stats updated:', data); // Debug log
           setStats({
             accuracy: data.accuracy || 0,
             roi: data.roi || 0,
             activeBets: data.active || 0,
             totalAnalyzed: data.analyzed || 0
           });
+        } else {
+          console.warn('Stats API returned error:', res.status, res.statusText);
         }
       } catch (e) {
         console.warn('Failed to load stats:', e);
