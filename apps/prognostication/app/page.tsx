@@ -357,7 +357,7 @@ export default function HomePage() {
                               rel="noopener noreferrer"
                               onClick={handleKalshiClick}
                               className="hover:scale-105 transition-transform cursor-pointer"
-                              title="Click to bet on Kalshi"
+                              title="Click to make your pick on Kalshi"
                             >
                               <span className="text-green-700">PROB:</span>
                               <span className="text-green-400 ml-1 underline decoration-dotted hover:text-green-300">{pick.probability}%</span>
@@ -380,7 +380,7 @@ export default function HomePage() {
                             // {pick.reasoning}
                           </div>
 
-                          {/* BET NOW Button with Referral Link */}
+                          {/* PICK NOW Button with Referral Link */}
                           <a
                             href={kalshiMarketUrl}
                             target="_blank"
@@ -389,7 +389,7 @@ export default function HomePage() {
                             className="block w-full text-center py-2 px-4 bg-gradient-to-r from-green-600 to-cyan-600 hover:from-green-500 hover:to-cyan-500 text-black font-bold rounded transition-all shadow-lg shadow-green-500/30 hover:shadow-green-500/50 text-sm group/bet hover:scale-105"
                           >
                             <span className="flex items-center justify-center gap-2">
-                              <span>🎯 BET NOW ON KALSHI</span>
+                              <span>🎯 PICK NOW ON KALSHI</span>
                               <span className="text-xs opacity-75 group-hover/bet:opacity-100">→</span>
                             </span>
                             <span className="block text-xs mt-1 opacity-60">
