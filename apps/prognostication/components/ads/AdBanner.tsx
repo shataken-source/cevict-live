@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 // Extend Window interface to include adsbygoogle
 declare global {
@@ -26,6 +26,8 @@ export default function AdBanner({
   className = '',
   responsive = true
 }: AdBannerProps) {
+  const adInitialized = useRef(false);
+
   // Ad format dimensions
   const dimensions = {
     banner: { width: width || 468, height: height || 60 },
@@ -37,27 +39,27 @@ export default function AdBanner({
   const { width: adWidth, height: adHeight } = dimensions[adFormat];
 
   useEffect(() => {
-    try {
-      // Prevent double-initialization in Next.js dev mode
-      const adElements = document.querySelectorAll('.adsbygoogle');
-      let alreadyInitialized = false;
-      
-      adElements.forEach((el) => {
-        if (el.getAttribute('data-adsbygoogle-status') === 'done') {
-          alreadyInitialized = true;
-        }
-      });
+    // Only initialize once per component instance
+    if (adInitialized.current) return;
 
-      if (!alreadyInitialized) {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
+    try {
+      // Check if this specific ad slot is already initialized
+      const thisAd = document.querySelector(`ins[data-ad-slot="${adSlot}"]`);
+      if (thisAd?.getAttribute('data-adsbygoogle-status') === 'done') {
+        adInitialized.current = true;
+        return;
       }
+
+      // Initialize the ad
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+      adInitialized.current = true;
     } catch (err) {
-      // Suppress adsbygoogle errors in development
+      // Silently suppress AdSense errors in development (common with Fast Refresh)
       if (process.env.NODE_ENV === 'production') {
         console.error('AdSense error:', err);
       }
     }
-  }, []);
+  }, [adSlot]);
 
   return (
     <div className={`ad-container ${className}`}>
