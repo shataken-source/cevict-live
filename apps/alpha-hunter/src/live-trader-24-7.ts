@@ -336,7 +336,31 @@ export class EventContractExecutionEngine {
 
         try {
           const side = pred.prediction === 'yes' ? 'yes' : 'no';
-          const limitPrice = pred.market_price + (side === 'yes' ? 2 : -2); // Small slippage buffer
+          
+          // ========================================================================
+          // MAKER STRATEGY: Limit orders 1 cent inside spread
+          // Benefits: $0 fees, qualifies for liquidity rebates, zero slippage
+          // ========================================================================
+          const orderBook = await this.kalshi.getOrderBook(pred.market_id);
+          let limitPrice: number;
+          
+          if (orderBook) {
+            const priceCalc = this.kalshi.calculateMakerPrice(orderBook, side, 'buy');
+            if (priceCalc && priceCalc.spread >= 2) {
+              // Use maker price (1 cent inside spread)
+              // BUY: best_bid + 1 cent (better than current best bid)
+              limitPrice = priceCalc.price;
+              console.log(`   💰 MAKER ORDER: Spread ${priceCalc.spread}¢ | Limit ${limitPrice}¢ (1¢ inside spread) | $0 fees`);
+            } else {
+              // Spread too tight (< 2 cents) - not profitable after fees, skip
+              console.log(`   ⚠️  Spread too tight (${priceCalc?.spread || 0}¢) - skipping trade (needs ≥2¢ for profitability)`);
+              continue;
+            }
+          } else {
+            // Fallback: use market price if orderbook unavailable (shouldn't happen)
+            console.log(`   ⚠️  Orderbook unavailable - using market price fallback`);
+            limitPrice = pred.market_price;
+          }
           
           const trade = await this.kalshi.placeBet(
             pred.market_id,

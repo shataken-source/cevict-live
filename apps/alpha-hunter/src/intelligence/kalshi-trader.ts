@@ -117,6 +117,91 @@ export class KalshiTrader {
     } catch (e) { return 500; }
   }
 
+  /**
+   * Get orderbook for a market to calculate Maker prices
+   * Returns best bid/ask for YES and NO sides
+   */
+  async getOrderBook(ticker: string): Promise<{
+    yes: { bid: number; ask: number };
+    no: { bid: number; ask: number };
+  } | null> {
+    if (!this.keyConfigured) return null;
+    try {
+      const fullPath = `/trade-api/v2/markets/${ticker}/orderbook`;
+      const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
+      if (!signature) return null;
+      
+      const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'KALSHI-ACCESS-KEY': this.apiKeyId,
+          'KALSHI-ACCESS-SIGNATURE': signature,
+          'KALSHI-ACCESS-TIMESTAMP': timestamp,
+        },
+      });
+      
+      if (!response.ok) return null;
+      const data = await response.json();
+      
+      // Extract best bid/ask from orderbook
+      const yesBids = data.yes?.bids || [];
+      const yesAsks = data.yes?.asks || [];
+      const noBids = data.no?.bids || [];
+      const noAsks = data.no?.asks || [];
+      
+      return {
+        yes: {
+          bid: yesBids.length > 0 ? yesBids[0].price : 50,
+          ask: yesAsks.length > 0 ? yesAsks[0].price : 50,
+        },
+        no: {
+          bid: noBids.length > 0 ? noBids[0].price : 50,
+          ask: noAsks.length > 0 ? noAsks[0].price : 50,
+        },
+      };
+    } catch (e) {
+      console.error('Error fetching orderbook:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Calculate Maker price (1 cent inside spread)
+   * For BUY: best_bid + 1 cent (better than current best bid)
+   * For SELL: best_ask - 1 cent (better than current best ask)
+   * Returns null if spread is too tight (< 2 cents)
+   */
+  public calculateMakerPrice(
+    orderBook: { yes: { bid: number; ask: number }; no: { bid: number; ask: number } },
+    side: 'yes' | 'no',
+    action: 'buy' | 'sell'
+  ): { price: number; spread: number } | null {
+    const market = side === 'yes' ? orderBook.yes : orderBook.no;
+    const bestBid = market.bid;
+    const bestAsk = market.ask;
+    const spread = bestAsk - bestBid;
+    
+    // Skip if spread is too tight (< 2 cents) - not profitable after fees
+    if (spread < 2) {
+      return null;
+    }
+    
+    // Calculate maker price: 1 cent inside spread
+    let makerPrice: number;
+    if (action === 'buy') {
+      // Buying: place at best_bid + 1 cent (better than current best bid)
+      makerPrice = Math.min(99, bestBid + 1);
+    } else {
+      // Selling: place at best_ask - 1 cent (better than current best ask)
+      makerPrice = Math.max(1, bestAsk - 1);
+    }
+    
+    return {
+      price: Math.round(makerPrice),
+      spread: spread,
+    };
+  }
+
   async placeOrder(order: any): Promise<any> {
       return this.executeTrade(order.ticker, order.side, order.count);
   }
@@ -151,12 +236,14 @@ export class KalshiTrader {
     }
     
     // SURGICAL PAYLOAD: Required fields for Kalshi API
-    // ticker, side, action, count, and EITHER yes_price OR no_price
+    // ticker, side, action, count, type, and EITHER yes_price OR no_price
+    // MAKER STRATEGY: Always use 'limit' orders (not 'market') to qualify for liquidity rebates
     const body: any = {
       ticker: ticker,
       side: side.toLowerCase(),
       action: 'buy', // Required by Kalshi API - 'buy' when placing bets
       count: countInteger, // Contract count (strictly integer, rounded from $5 allocation)
+      type: 'limit', // CRITICAL: Use limit orders for Maker status (no fees, earns rebates)
     };
 
     // Set price based on side - ONLY yes_price OR no_price (strictly integer cents)
@@ -179,7 +266,7 @@ export class KalshiTrader {
     });
     
     // CRITICAL VERIFICATION: Ensure payload contains ONLY allowed fields
-    const allowedFields = ['ticker', 'side', 'action', 'count', 'yes_price', 'no_price'];
+    const allowedFields = ['ticker', 'side', 'action', 'count', 'type', 'yes_price', 'no_price'];
     const bodyKeys = Object.keys(body);
     const invalidFields = bodyKeys.filter(key => !allowedFields.includes(key));
     if (invalidFields.length > 0) {
