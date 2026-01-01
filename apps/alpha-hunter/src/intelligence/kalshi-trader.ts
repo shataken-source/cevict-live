@@ -31,6 +31,21 @@ export class KalshiTrader {
   private isProduction: boolean;
   private keyConfigured: boolean = false;
 
+  // Rate limiting state (Kalshi Basic tier: 10 req/sec)
+  private rateLimitState: {
+    requests: number[];
+    maxPerSecond: number;
+    lastRequestTime: number;
+  } = {
+    requests: [],
+    maxPerSecond: 8, // Conservative: 8 req/sec to stay under 10 limit
+    lastRequestTime: 0,
+  };
+
+  // Orderbook cache (5 second TTL to reduce API calls)
+  private orderbookCache: Map<string, { data: any; timestamp: number }> = new Map();
+  private readonly ORDERBOOK_CACHE_TTL = 5000; // 5 seconds
+
   constructor() {
     this.apiKeyId = process.env.KALSHI_API_KEY_ID || '';
     const rawKey = process.env.KALSHI_PRIVATE_KEY || '';
@@ -43,6 +58,40 @@ export class KalshiTrader {
       ? 'https://api.elections.kalshi.com/trade-api/v2' 
       : 'https://demo-api.kalshi.co/trade-api/v2';
     this.isProduction = kalshiEnv === 'production';
+  }
+
+  /**
+   * Enforce rate limiting: 8 requests/second max (stays under 10/sec limit)
+   * Adds 500ms delay between requests if approaching limit
+   */
+  private async enforceRateLimit(): Promise<void> {
+    const now = Date.now();
+    const oneSecondAgo = now - 1000;
+
+    // Clean up old request timestamps
+    this.rateLimitState.requests = this.rateLimitState.requests.filter(
+      ts => ts > oneSecondAgo
+    );
+
+    // If at limit, wait before proceeding
+    if (this.rateLimitState.requests.length >= this.rateLimitState.maxPerSecond) {
+      const waitTime = 500; // 500ms delay as recommended
+      console.log(`   ⏸️  Rate limit approaching (${this.rateLimitState.requests.length}/${this.rateLimitState.maxPerSecond}/sec) - waiting ${waitTime}ms`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      // Recursively check again after delay
+      return this.enforceRateLimit();
+    }
+
+    // Enforce minimum 500ms between orderbook fetches
+    const timeSinceLastRequest = now - this.rateLimitState.lastRequestTime;
+    if (timeSinceLastRequest < 500) {
+      const waitTime = 500 - timeSinceLastRequest;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+
+    // Record this request
+    this.rateLimitState.requests.push(now);
+    this.rateLimitState.lastRequestTime = Date.now();
   }
 
   private async signRequestWithTimestamp(method: string, path: string, body?: any): Promise<{ signature: string; timestamp: string }> {
@@ -120,27 +169,77 @@ export class KalshiTrader {
   /**
    * Get orderbook for a market to calculate Maker prices
    * Returns best bid/ask for YES and NO sides
+   * 
+   * RATE LIMIT SAFE:
+   * - Caches orderbook for 5 seconds to reduce API calls
+   * - Enforces 500ms delay between fetches
+   * - Handles 429 errors with exponential backoff
    */
   async getOrderBook(ticker: string): Promise<{
     yes: { bid: number; ask: number };
     no: { bid: number; ask: number };
   } | null> {
     if (!this.keyConfigured) return null;
+
+    // Check cache first (5 second TTL)
+    const cached = this.orderbookCache.get(ticker);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < this.ORDERBOOK_CACHE_TTL) {
+      return cached.data;
+    }
+
+    // Enforce rate limiting before API call
+    await this.enforceRateLimit();
+
     try {
       const fullPath = `/trade-api/v2/markets/${ticker}/orderbook`;
       const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
       if (!signature) return null;
       
       const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
-      const response = await fetch(apiUrl, {
-        headers: {
-          'KALSHI-ACCESS-KEY': this.apiKeyId,
-          'KALSHI-ACCESS-SIGNATURE': signature,
-          'KALSHI-ACCESS-TIMESTAMP': timestamp,
-        },
-      });
+      let response: Response | null = null;
+      let retries = 0;
+      const maxRetries = 3;
+      let currentSignature = signature;
+      let currentTimestamp = timestamp;
+
+      // Retry logic for 429 errors
+      while (retries <= maxRetries) {
+        response = await fetch(apiUrl, {
+          headers: {
+            'KALSHI-ACCESS-KEY': this.apiKeyId,
+            'KALSHI-ACCESS-SIGNATURE': currentSignature,
+            'KALSHI-ACCESS-TIMESTAMP': currentTimestamp,
+          },
+        });
+
+        // Handle 429 Too Many Requests
+        if (response.status === 429) {
+          retries++;
+          const backoffDelay = Math.min(2000, 500 * Math.pow(2, retries)); // Exponential backoff: 500ms, 1000ms, 2000ms
+          console.warn(`   ⚠️  Rate limit hit (429) - waiting ${backoffDelay}ms before retry ${retries}/${maxRetries}`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          // Update signature/timestamp for new request
+          const sigResult = await this.signRequestWithTimestamp('GET', fullPath);
+          if (sigResult.signature) {
+            currentSignature = sigResult.signature;
+            currentTimestamp = sigResult.timestamp;
+            continue; // Retry with new signature
+          }
+          return null;
+        }
+
+        if (!response.ok) {
+          console.error(`   ❌ Orderbook fetch failed: ${response.status} ${response.statusText}`);
+          return null;
+        }
+
+        // Success - break retry loop
+        break;
+      }
+
+      if (!response || !response.ok) return null;
       
-      if (!response.ok) return null;
       const data = await response.json();
       
       // Extract best bid/ask from orderbook
@@ -149,7 +248,7 @@ export class KalshiTrader {
       const noBids = data.no?.bids || [];
       const noAsks = data.no?.asks || [];
       
-      return {
+      const orderbookData = {
         yes: {
           bid: yesBids.length > 0 ? yesBids[0].price : 50,
           ask: yesAsks.length > 0 ? yesAsks[0].price : 50,
@@ -159,8 +258,16 @@ export class KalshiTrader {
           ask: noAsks.length > 0 ? noAsks[0].price : 50,
         },
       };
-    } catch (e) {
-      console.error('Error fetching orderbook:', e);
+
+      // Cache the result
+      this.orderbookCache.set(ticker, {
+        data: orderbookData,
+        timestamp: now,
+      });
+
+      return orderbookData;
+    } catch (e: any) {
+      console.error(`   ❌ Error fetching orderbook for ${ticker}:`, e.message);
       return null;
     }
   }
