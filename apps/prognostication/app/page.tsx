@@ -25,8 +25,18 @@ interface KalshiPick {
   marketId?: string; // Kalshi market ID for referral links
 }
 
-// Matrix rain effect component
+// Matrix rain effect component - client-only to prevent hydration errors
 function MatrixRain() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null; // Don't render on server
+  }
+
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-20">
       {[...Array(20)].map((_, i) => (
@@ -92,15 +102,18 @@ export default function HomePage() {
   const [todaysPicks, setTodaysPicks] = useState<KalshiPick[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('all');
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [stats] = useState({
-    accuracy: 64.2,
-    roi: 18.7,
-    activeBets: 12,
-    totalAnalyzed: 2847
+  const [mounted, setMounted] = useState(false);
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [stats, setStats] = useState({
+    accuracy: 0,
+    roi: 0,
+    activeBets: 0,
+    totalAnalyzed: 0
   });
 
   useEffect(() => {
+    setMounted(true);
+    setCurrentTime(new Date());
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -120,6 +133,30 @@ export default function HomePage() {
       }
     }
     loadPicks();
+  }, []);
+
+  useEffect(() => {
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/stats');
+        if (res.ok) {
+          const data = await res.json();
+          setStats({
+            accuracy: data.accuracy || 0,
+            roi: data.roi || 0,
+            activeBets: data.active || 0,
+            totalAnalyzed: data.analyzed || 0
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to load stats:', e);
+      }
+    }
+    
+    // Load stats immediately and then every 30 seconds
+    loadStats();
+    const interval = setInterval(loadStats, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const filteredPicks = activeCategory === 'all'
@@ -177,7 +214,7 @@ export default function HomePage() {
                 <a href="/about" className="text-green-500 hover:text-green-300 transition-colors">[ABOUT]</a>
               </div>
               <div className="font-mono text-xs text-green-600">
-                {currentTime.toLocaleTimeString('en-US', { hour12: false })}
+                {mounted && currentTime ? currentTime.toLocaleTimeString('en-US', { hour12: false }) : '--:--:--'}
               </div>
             </div>
           </div>

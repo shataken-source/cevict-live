@@ -12,6 +12,27 @@ dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 let supabaseClient: SupabaseClient | null = null;
 let isInitialized = false;
+let hasWarnedAboutMissingKeys = false;
+let hasWarnedAboutInvalidKey = false;
+let hasWarnedAboutAuthError = false;
+
+// Helper to check if error is an auth error and log only once
+function handleSupabaseError(error: any, context: string): void {
+  const errorMessage = error?.message || String(error);
+  const isAuthError = errorMessage.includes('Invalid API key') || 
+                      errorMessage.includes('JWT') || 
+                      errorMessage.includes('authentication') ||
+                      errorMessage.includes('401');
+  
+  if (isAuthError && !hasWarnedAboutAuthError) {
+    console.warn(`⚠️ Supabase authentication error (${context}) - check SUPABASE_SERVICE_ROLE_KEY in .env.local`);
+    hasWarnedAboutAuthError = true;
+  } else if (!isAuthError) {
+    // Only log non-auth errors (and only once per type)
+    console.error(`Error in ${context}:`, error);
+  }
+  // Auth errors are silently ignored after first warning
+}
 
 function getClient(): SupabaseClient | null {
   if (supabaseClient) return supabaseClient;
@@ -23,8 +44,12 @@ function getClient(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url || !key) {
-    console.warn('⚠️ Supabase not configured (URL or key missing) - using JSON-only memory');
+  // Check for missing or placeholder keys
+  if (!url || !key || url.includes('placeholder') || key.includes('placeholder')) {
+    if (!hasWarnedAboutMissingKeys) {
+      console.warn('⚠️ Supabase not configured (URL or key missing/placeholder) - using JSON-only memory');
+      hasWarnedAboutMissingKeys = true;
+    }
     return null;
   }
 
@@ -33,7 +58,10 @@ function getClient(): SupabaseClient | null {
     console.log('✅ Supabase memory system connected');
     return supabaseClient;
   } catch (error) {
-    console.error('❌ Failed to connect to Supabase:', error);
+    if (!hasWarnedAboutInvalidKey) {
+      console.warn('⚠️ Failed to connect to Supabase - using JSON-only memory');
+      hasWarnedAboutInvalidKey = true;
+    }
     return null;
   }
 }
@@ -67,7 +95,65 @@ export async function saveBotPrediction(prediction: BotPrediction): Promise<bool
   if (!client) return false;
 
   try {
-    const { error } = await client
+    // CRITICAL: Check for existing prediction to prevent duplicates
+    // Find the most recent open prediction for this market_id + platform
+    const { data: existing, error: checkError } = await client
+      .from('bot_predictions')
+      .select('id, confidence, predicted_at')
+      .eq('market_id', prediction.market_id)
+      .eq('platform', prediction.platform)
+      .is('actual_outcome', null) // Only check open predictions
+      .order('predicted_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error checking for existing prediction:', checkError);
+    }
+
+    // If exists, decide whether to update or skip
+    if (existing) {
+      const existingConfidence = existing.confidence || 0;
+      const existingDate = new Date(existing.predicted_at || 0);
+      const newDate = prediction.predicted_at;
+
+      // Only update if new prediction is better (higher confidence OR same confidence but more recent)
+      if (prediction.confidence < existingConfidence) {
+        return true; // Keep existing, don't update
+      }
+      if (prediction.confidence === existingConfidence && newDate <= existingDate) {
+        return true; // Keep existing if same confidence but not newer
+      }
+
+      // Update existing prediction
+      const { error: updateError } = await client
+        .from('bot_predictions')
+        .update({
+          bot_category: prediction.bot_category,
+          market_title: prediction.market_title,
+          prediction: prediction.prediction,
+          probability: prediction.probability,
+          confidence: prediction.confidence,
+          edge: prediction.edge,
+          reasoning: prediction.reasoning,
+          factors: prediction.factors,
+          learned_from: prediction.learned_from,
+          market_price: prediction.market_price,
+          predicted_at: prediction.predicted_at.toISOString(),
+          expires_at: prediction.expires_at?.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id);
+
+      if (updateError) {
+        console.error('Error updating prediction:', updateError);
+        return false;
+      }
+      return true;
+    }
+
+    // No existing prediction - insert new one
+    const { error: insertError } = await client
       .from('bot_predictions')
       .insert({
         bot_category: prediction.bot_category,
@@ -88,14 +174,14 @@ export async function saveBotPrediction(prediction: BotPrediction): Promise<bool
         pnl: prediction.pnl,
       });
 
-    if (error) {
-      // Silent - tables might not exist yet
+    if (insertError) {
+      console.error('Error inserting prediction:', insertError);
       return false;
     }
 
     return true;
   } catch (e) {
-    // Silent fail
+    console.error('Exception saving prediction:', e);
     return false;
   }
 }
@@ -126,7 +212,7 @@ export async function getBotPredictions(
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching bot predictions:', error);
+      handleSupabaseError(error, 'getBotPredictions');
       return [];
     }
 
@@ -190,7 +276,7 @@ export async function saveTradeRecord(trade: TradeRecord): Promise<boolean> {
       });
 
     if (error) {
-      console.error('Error saving trade record:', error);
+      handleSupabaseError(error, 'saveTradeRecord');
       return false;
     }
 

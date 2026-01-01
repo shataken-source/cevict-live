@@ -43,24 +43,40 @@ export default function PicksPage() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('all');
   const [stats, setStats] = useState<PicksResponse['stats'] | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    async function loadPicks() {
-      setLoading(true);
+    async function loadPicks(isInitial = false) {
+      if (isInitial) {
+        setLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
+      
       try {
         const res = await fetch(`/api/kalshi/picks?category=${activeCategory}&limit=20`);
         if (res.ok) {
           const data: PicksResponse = await res.json();
           setPicks(data.picks);
           setStats(data.stats);
+          setLastUpdated(new Date());
         }
       } catch (e) {
         console.warn('Failed to load picks:', e);
       } finally {
         setLoading(false);
+        setIsRefreshing(false);
       }
     }
-    loadPicks();
+    
+    // Load immediately (initial load)
+    loadPicks(true);
+    
+    // Then refresh every 60 seconds (matching bot update frequency)
+    const interval = setInterval(() => loadPicks(false), 60000);
+    
+    return () => clearInterval(interval);
   }, [activeCategory]);
 
   const getCategoryInfo = (categoryId: string) => {
@@ -89,9 +105,25 @@ export default function PicksPage() {
           </a>
 
           <h1 className="text-4xl font-bold text-white mb-4">Kalshi Picks</h1>
-          <p className="text-indigo-300 max-w-2xl mx-auto">
-            AI-analyzed prediction market opportunities. Updated daily with edge calculations and historical pattern matching.
+          <p className="text-indigo-300 max-w-2xl mx-auto mb-2">
+            AI-analyzed prediction market opportunities. Updated every 60 seconds with edge calculations and historical pattern matching.
           </p>
+          <div className="flex items-center justify-center gap-2 text-sm">
+            {isRefreshing && (
+              <span className="inline-flex items-center gap-2 text-green-400">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                Updating...
+              </span>
+            )}
+            {lastUpdated && !isRefreshing && (
+              <span className="text-gray-400">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </span>
+            )}
+            {!lastUpdated && !loading && (
+              <span className="text-gray-500">Loading...</span>
+            )}
+          </div>
         </div>
 
         {/* Stats Bar */}
