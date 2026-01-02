@@ -1,0 +1,404 @@
+/**
+ * SmokersRights Regulation Scraper
+ * The Freedom Monitor - Tracks tobacco/vape regulations nationwide
+ * 
+ * Targets: Government RSS feeds, News APIs
+ * Keywords: Tobacco Tax, Vape Ban, Menthol Prohibition
+ * Feature: Paul Revere Algorithm - Geo-targeted alerts
+ */
+
+const https = require('https');
+
+// Configuration
+const CONFIG = {
+  // Keywords to monitor
+  keywords: {
+    high_priority: [
+      'tobacco tax increase', 'vape ban', 'menthol ban', 'menthol prohibition',
+      'flavored tobacco ban', 'nicotine limit', 'smoking age', 'tobacco 21',
+      'vaping prohibition', 'e-cigarette ban', 'tobacco license'
+    ],
+    medium_priority: [
+      'tobacco regulation', 'vape regulation', 'smoking restriction',
+      'tobacco legislation', 'nicotine regulation', 'tobacco control',
+      'cigar tax', 'cigarette tax', 'vaping tax'
+    ],
+    low_priority: [
+      'tobacco industry', 'vape industry', 'smoking cessation',
+      'tobacco company', 'nicotine products', 'smoking area'
+    ]
+  },
+  
+  // Government sources
+  govSources: [
+    { name: 'Congress.gov', url: 'congress.gov', type: 'federal' },
+    { name: 'Federal Register', url: 'federalregister.gov', type: 'federal' },
+    { name: 'FDA Tobacco', url: 'fda.gov/tobacco-products', type: 'federal' },
+    { name: 'ATF', url: 'atf.gov', type: 'federal' }
+  ],
+  
+  // State legislatures (sample - would expand in production)
+  stateSources: [
+    { state: 'CA', name: 'California Legislature', url: 'leginfo.legislature.ca.gov' },
+    { state: 'NY', name: 'New York Legislature', url: 'nysenate.gov' },
+    { state: 'TX', name: 'Texas Legislature', url: 'capitol.texas.gov' },
+    { state: 'FL', name: 'Florida Legislature', url: 'myfloridahouse.gov' }
+  ],
+  
+  // Alert thresholds
+  alerts: {
+    immediate: ['ban', 'prohibition', 'emergency', 'effective immediately'],
+    urgent: ['proposed', 'introduced', 'hearing scheduled', 'vote scheduled'],
+    watch: ['study', 'review', 'consideration', 'discussion']
+  }
+};
+
+// State abbreviation to full name mapping
+const STATE_NAMES = {
+  'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
+  'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
+  'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
+  'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+  'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
+  'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
+  'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
+  'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+  'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
+  'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
+};
+
+/**
+ * Analyze regulation priority level
+ */
+function analyzeRegulation(text) {
+  const textLower = text.toLowerCase();
+  let priority = 'low';
+  let matchedKeywords = [];
+  let alertLevel = 'watch';
+  
+  // Check high priority keywords
+  for (const keyword of CONFIG.keywords.high_priority) {
+    if (textLower.includes(keyword)) {
+      priority = 'high';
+      matchedKeywords.push(keyword);
+    }
+  }
+  
+  // Check medium priority if no high found
+  if (priority !== 'high') {
+    for (const keyword of CONFIG.keywords.medium_priority) {
+      if (textLower.includes(keyword)) {
+        priority = 'medium';
+        matchedKeywords.push(keyword);
+      }
+    }
+  }
+  
+  // Check low priority if nothing else found
+  if (matchedKeywords.length === 0) {
+    for (const keyword of CONFIG.keywords.low_priority) {
+      if (textLower.includes(keyword)) {
+        matchedKeywords.push(keyword);
+      }
+    }
+  }
+  
+  // Determine alert level
+  for (const word of CONFIG.alerts.immediate) {
+    if (textLower.includes(word)) {
+      alertLevel = 'immediate';
+      break;
+    }
+  }
+  
+  if (alertLevel !== 'immediate') {
+    for (const word of CONFIG.alerts.urgent) {
+      if (textLower.includes(word)) {
+        alertLevel = 'urgent';
+        break;
+      }
+    }
+  }
+  
+  return {
+    priority,
+    alertLevel,
+    matchedKeywords,
+    isPaulRevereAlert: alertLevel === 'immediate' || (alertLevel === 'urgent' && priority === 'high')
+  };
+}
+
+/**
+ * Extract geographic information from regulation
+ */
+function extractGeography(text) {
+  const textLower = text.toLowerCase();
+  const locations = {
+    federal: false,
+    states: [],
+    cities: [],
+    zipCodes: []
+  };
+  
+  // Check for federal indicators
+  if (textLower.includes('federal') || textLower.includes('nationwide') || 
+      textLower.includes('national') || textLower.includes('fda') || 
+      textLower.includes('congress')) {
+    locations.federal = true;
+  }
+  
+  // Check for state mentions
+  for (const [abbr, name] of Object.entries(STATE_NAMES)) {
+    if (textLower.includes(name.toLowerCase()) || 
+        new RegExp(`\\b${abbr}\\b`, 'i').test(text)) {
+      locations.states.push(abbr);
+    }
+  }
+  
+  // Extract zip codes (5-digit pattern)
+  const zipMatches = text.match(/\b\d{5}(?:-\d{4})?\b/g);
+  if (zipMatches) {
+    locations.zipCodes = [...new Set(zipMatches)];
+  }
+  
+  return locations;
+}
+
+/**
+ * Paul Revere Algorithm - Determine who to alert
+ */
+function paulRevereAlert(regulation) {
+  const alerts = [];
+  
+  if (regulation.analysis.isPaulRevereAlert) {
+    const geo = regulation.geography;
+    
+    if (geo.federal) {
+      // Alert all users nationwide
+      alerts.push({
+        scope: 'national',
+        urgency: regulation.analysis.alertLevel,
+        message: `🚨 FEDERAL ALERT: ${regulation.headline}`,
+        targetAudience: 'all_users'
+      });
+    }
+    
+    if (geo.states.length > 0) {
+      // Alert users in affected states
+      for (const state of geo.states) {
+        alerts.push({
+          scope: 'state',
+          state: state,
+          urgency: regulation.analysis.alertLevel,
+          message: `⚠️ ${STATE_NAMES[state]} ALERT: ${regulation.headline}`,
+          targetAudience: `users_in_${state}`
+        });
+      }
+    }
+    
+    if (geo.zipCodes.length > 0) {
+      // Alert users in specific zip codes
+      for (const zip of geo.zipCodes) {
+        alerts.push({
+          scope: 'local',
+          zipCode: zip,
+          urgency: regulation.analysis.alertLevel,
+          message: `📍 LOCAL ALERT (${zip}): ${regulation.headline}`,
+          targetAudience: `users_in_${zip}`
+        });
+      }
+    }
+  }
+  
+  return alerts;
+}
+
+/**
+ * Scrape regulation news
+ */
+async function scrapeRegulations() {
+  console.log('🗽 SmokersRights Regulation Scraper Starting...');
+  console.log('📡 Monitoring government sources for tobacco/vape regulations...\n');
+  
+  const regulations = [];
+  
+  // Simulated regulations for demonstration
+  const sampleRegulations = [
+    {
+      id: `sr_${Date.now()}_1`,
+      headline: 'California Proposes Statewide Flavored Tobacco Ban',
+      summary: 'New legislation would prohibit sale of all flavored tobacco products including menthol.',
+      source: 'California Legislature',
+      type: 'proposed_bill',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: `sr_${Date.now()}_2`,
+      headline: 'FDA Announces New Nicotine Limit Rule Effective 2027',
+      summary: 'Federal regulation would cap nicotine content in cigarettes nationwide.',
+      source: 'FDA',
+      type: 'federal_regulation',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: `sr_${Date.now()}_3`,
+      headline: 'New York City Emergency Vape Ban Takes Effect Immediately',
+      summary: 'City council passes emergency ordinance banning all vape sales in affected zip codes 10001-10010.',
+      source: 'NYC Council',
+      type: 'local_ban',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: `sr_${Date.now()}_4`,
+      headline: 'Texas Legislature Considers Tobacco Tax Increase',
+      summary: 'Proposed bill would raise cigarette tax by $2 per pack to fund healthcare programs.',
+      source: 'Texas Legislature',
+      type: 'proposed_bill',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: `sr_${Date.now()}_5`,
+      headline: 'Congress Reviews National Menthol Prohibition Bill',
+      summary: 'Federal legislation introduced to ban menthol cigarettes nationwide.',
+      source: 'Congress.gov',
+      type: 'federal_bill',
+      timestamp: new Date().toISOString()
+    }
+  ];
+  
+  // Process each regulation
+  for (const reg of sampleRegulations) {
+    const fullText = `${reg.headline} ${reg.summary}`;
+    
+    // Analyze regulation
+    const analysis = analyzeRegulation(fullText);
+    
+    // Extract geography
+    const geography = extractGeography(fullText);
+    
+    const processedReg = {
+      ...reg,
+      analysis,
+      geography
+    };
+    
+    // Generate Paul Revere alerts
+    const alerts = paulRevereAlert(processedReg);
+    processedReg.paulRevereAlerts = alerts;
+    
+    regulations.push(processedReg);
+    
+    // Log processing
+    const priorityEmoji = analysis.priority === 'high' ? '🔴' : 
+                          analysis.priority === 'medium' ? '🟡' : '🟢';
+    
+    console.log(`${priorityEmoji} ${reg.headline.substring(0, 60)}...`);
+    console.log(`   Priority: ${analysis.priority.toUpperCase()}`);
+    console.log(`   Alert Level: ${analysis.alertLevel}`);
+    console.log(`   Scope: ${geography.federal ? 'Federal' : ''} ${geography.states.join(', ')}`);
+    
+    if (alerts.length > 0) {
+      console.log(`   🔔 PAUL REVERE: ${alerts.length} alert(s) triggered!`);
+    }
+    console.log('');
+  }
+  
+  return {
+    success: true,
+    timestamp: new Date().toISOString(),
+    totalScraped: regulations.length,
+    byPriority: {
+      high: regulations.filter(r => r.analysis.priority === 'high').length,
+      medium: regulations.filter(r => r.analysis.priority === 'medium').length,
+      low: regulations.filter(r => r.analysis.priority === 'low').length
+    },
+    byAlertLevel: {
+      immediate: regulations.filter(r => r.analysis.alertLevel === 'immediate').length,
+      urgent: regulations.filter(r => r.analysis.alertLevel === 'urgent').length,
+      watch: regulations.filter(r => r.analysis.alertLevel === 'watch').length
+    },
+    paulRevereTriggered: regulations.filter(r => r.paulRevereAlerts?.length > 0).length,
+    totalAlerts: regulations.reduce((sum, r) => sum + (r.paulRevereAlerts?.length || 0), 0),
+    regulations
+  };
+}
+
+/**
+ * Get users to alert based on geography
+ */
+async function getUsersToAlert(alerts) {
+  // In production, this would query Supabase for users matching geography
+  const userAlerts = [];
+  
+  for (const alert of alerts) {
+    userAlerts.push({
+      alertId: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      ...alert,
+      // Would fetch actual users from database
+      estimatedRecipients: alert.scope === 'national' ? 'All Users' : 
+                           alert.scope === 'state' ? `Users in ${alert.state}` :
+                           `Users in ${alert.zipCode}`,
+      channels: ['email', 'sms', 'push'],
+      scheduledFor: new Date().toISOString()
+    });
+  }
+  
+  return userAlerts;
+}
+
+// Main execution
+async function main() {
+  try {
+    console.log('\n🗽 SMOKERSRIGHTS REGULATION SCRAPER 🗽');
+    console.log('=====================================\n');
+    
+    const results = await scrapeRegulations();
+    
+    // Collect all Paul Revere alerts
+    const allAlerts = results.regulations
+      .flatMap(r => r.paulRevereAlerts || []);
+    
+    const userAlerts = await getUsersToAlert(allAlerts);
+    
+    console.log('\n📊 SCRAPE RESULTS:');
+    console.log(`   Total Regulations: ${results.totalScraped}`);
+    console.log(`   🔴 High Priority: ${results.byPriority.high}`);
+    console.log(`   🟡 Medium Priority: ${results.byPriority.medium}`);
+    console.log(`   🟢 Low Priority: ${results.byPriority.low}`);
+    
+    console.log('\n⚡ ALERT LEVELS:');
+    console.log(`   🚨 Immediate: ${results.byAlertLevel.immediate}`);
+    console.log(`   ⚠️ Urgent: ${results.byAlertLevel.urgent}`);
+    console.log(`   👁️ Watch: ${results.byAlertLevel.watch}`);
+    
+    console.log('\n🔔 PAUL REVERE ALGORITHM:');
+    console.log(`   Regulations triggering alerts: ${results.paulRevereTriggered}`);
+    console.log(`   Total alerts generated: ${results.totalAlerts}`);
+    
+    if (userAlerts.length > 0) {
+      console.log('\n📬 SCHEDULED ALERTS:');
+      for (const alert of userAlerts) {
+        console.log(`   ${alert.urgency === 'immediate' ? '🚨' : '⚠️'} ${alert.message.substring(0, 50)}...`);
+        console.log(`      → ${alert.estimatedRecipients}`);
+      }
+    }
+    
+    // Output JSON for consumption
+    console.log('\n--- JSON OUTPUT ---');
+    console.log(JSON.stringify({ results, userAlerts }, null, 2));
+    
+    return { results, userAlerts };
+  } catch (error) {
+    console.error('❌ Scraper error:', error);
+    process.exit(1);
+  }
+}
+
+// Export for module use
+module.exports = { scrapeRegulations, analyzeRegulation, extractGeography, paulRevereAlert };
+
+// Run if called directly
+if (require.main === module) {
+  main();
+}
+
