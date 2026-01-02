@@ -227,6 +227,8 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
         reasoning: reasoning,
         confidence: Math.round(pred.confidence || 0),
         historicalPattern: historicalPattern,
+        predictedAt: pred.predicted_at || pred.created_at || undefined,
+        amount: pred.amount || pred.stake_size || undefined, // Trade amount if available
       };
     });
   } catch (error) {

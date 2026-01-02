@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
     const priceDetails: Record<string, { amount: number; currency: string; interval: string }> = {};
 
     for (const priceId of allPriceIds) {
+      if (!priceId) continue;
       try {
         const price = await stripe.prices.retrieve(priceId);
         priceDetails[priceId] = {
@@ -71,7 +72,8 @@ export async function GET(request: NextRequest) {
         let totalCount = 0;
 
         while (hasMore) {
-          const subscriptions = await stripe.subscriptions.list({
+          if (!priceId) break;
+          const subscriptions: Stripe.Response<Stripe.ApiList<Stripe.Subscription>> = await stripe.subscriptions.list({
             price: priceId,
             status: 'active',
             limit: 100,

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 
 const CATEGORIES = [
   { id: 'all', name: 'All Markets', icon: '🎯', color: 'from-indigo-500 to-purple-600' },
+  { id: 'sports', name: 'Sports', icon: '⚽', color: 'from-blue-500 to-cyan-600' },
   { id: 'politics', name: 'Politics', icon: '🗳️', color: 'from-red-500 to-rose-600' },
   { id: 'economics', name: 'Economics', icon: '📈', color: 'from-green-500 to-emerald-600' },
   { id: 'weather', name: 'Weather', icon: '🌡️', color: 'from-cyan-500 to-blue-600' },
@@ -25,6 +26,8 @@ interface KalshiPick {
   reasoning: string;
   confidence: number;
   historicalPattern?: string;
+  predictedAt?: string;
+  amount?: number;
 }
 
 interface PicksResponse {
@@ -341,78 +344,79 @@ export default function PicksPage() {
             <p className="text-gray-400">Try selecting a different category or check back later.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
             {picks.map((pick, i) => {
               const category = getCategoryInfo(pick.category);
+              const predictedDate = pick.predictedAt ? new Date(pick.predictedAt) : null;
               return (
                 <div
                   key={pick.id}
-                  className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden hover:border-white/30 transition-all group"
+                  className="bg-white/5 backdrop-blur-xl rounded-xl border border-white/10 overflow-hidden hover:border-white/30 transition-all"
                 >
-                  {/* Header */}
-                  <div className={`bg-gradient-to-r ${category.color} px-5 py-3 flex items-center justify-between`}>
+                  {/* Compact Header */}
+                  <div className={`bg-gradient-to-r ${category.color} px-4 py-2 flex items-center justify-between`}>
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">{category.icon}</span>
-                      <span className="font-semibold text-white">{category.name}</span>
+                      <span className="text-lg">{category.icon}</span>
+                      <span className="font-semibold text-white text-sm">{category.name}</span>
                     </div>
-                    <div className={`px-3 py-1 rounded-full font-bold text-sm ${
-                      pick.pick === 'YES'
-                        ? 'bg-green-500/30 text-green-200'
-                        : 'bg-red-500/30 text-red-200'
-                    }`}>
-                      {pick.pick}
-                    </div>
+                    {pick.amount && (
+                      <span className="text-xs text-white/80 font-medium">
+                        ${pick.amount.toFixed(2)}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Content */}
-                  <div className="p-5">
-                    <h3 className="text-white font-semibold text-lg mb-4 group-hover:text-indigo-300 transition-colors">
-                      {pick.market}
-                    </h3>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-4 gap-3 mb-4">
-                      <div className="text-center p-2 bg-white/5 rounded-lg">
-                        <div className="text-lg font-bold text-white">{pick.probability}%</div>
-                        <div className="text-xs text-gray-500">Our Prob</div>
-                      </div>
-                      <div className="text-center p-2 bg-white/5 rounded-lg">
-                        <div className="text-lg font-bold text-indigo-400">{pick.marketPrice}¢</div>
-                        <div className="text-xs text-gray-500">Market</div>
-                      </div>
-                      <div className="text-center p-2 bg-green-500/10 rounded-lg">
-                        <div className="text-lg font-bold text-green-400">+{pick.edge}%</div>
-                        <div className="text-xs text-gray-500">Edge</div>
-                      </div>
-                      <div className="text-center p-2 bg-white/5 rounded-lg">
-                        <div className="text-lg font-bold text-amber-400">{pick.confidence}%</div>
-                        <div className="text-xs text-gray-500">Conf</div>
-                      </div>
-                    </div>
-
-                    {/* Reasoning */}
-                    <div className="mb-3">
-                      <p className="text-sm text-gray-400">
-                        💡 <span className="italic">{pick.reasoning}</span>
+                  {/* Content - Linear Text Layout */}
+                  <div className="p-4 space-y-2.5">
+                    {/* Row 1: Exact Kalshi Question */}
+                    <div className="pb-2 border-b border-white/10">
+                      <p className="text-white font-medium text-sm leading-snug">
+                        {pick.market}
                       </p>
                     </div>
 
-                    {/* Historical Pattern */}
-                    {pick.historicalPattern && (
-                      <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-3">
-                        <p className="text-xs text-indigo-300">
-                          📚 <span className="font-medium">Historical:</span> {pick.historicalPattern}
-                        </p>
-                      </div>
-                    )}
+                    {/* Row 2: Analysis and Why Selected */}
+                    <div className="pb-2 border-b border-white/10">
+                      <p className="text-xs text-gray-300 leading-relaxed">
+                        {pick.reasoning}
+                        {pick.historicalPattern && (
+                          <span className="text-indigo-300"> • {pick.historicalPattern}</span>
+                        )}
+                      </p>
+                    </div>
 
-                    {/* Footer */}
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
-                      <span className="text-xs text-gray-500">
-                        ID: {pick.id}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        Expires: {new Date(pick.expires).toLocaleDateString()}
+                    {/* Row 3: The Actual Pick */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`px-3 py-1.5 rounded-md font-bold text-sm ${
+                          pick.pick === 'YES'
+                            ? 'bg-green-500/20 text-green-300 border border-green-500/40'
+                            : 'bg-red-500/20 text-red-300 border border-red-500/40'
+                        }`}>
+                          {pick.pick}
+                        </div>
+                        <div className="text-xs text-gray-400">
+                          {pick.probability}% prob • {pick.marketPrice}¢ market • +{pick.edge}% edge • {pick.confidence}% conf
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer - Date and Amount Info */}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs text-gray-500">
+                      <div className="flex items-center gap-3">
+                        {predictedDate && (
+                          <span>
+                            Picked: {predictedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
+                        {pick.amount && (
+                          <span className="text-gray-400">
+                            ${pick.amount.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      <span>
+                        Expires: {new Date(pick.expires).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
                   </div>

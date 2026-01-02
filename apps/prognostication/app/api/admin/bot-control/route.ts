@@ -40,13 +40,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validation = validateRequest(botControlSchema, body);
+    const validation = validateRequest<{ botId: string; action: string }>(botControlSchema, body);
 
-    if (validation.error) {
-      return NextResponse.json({ error: validation.error }, { status: 400 });
+    if (validation.error || !validation.value) {
+      return NextResponse.json({ error: validation.error || 'Invalid request' }, { status: 400 });
     }
 
-    const { botId, action } = validation.value!;
+    const { botId, action } = validation.value;
 
     let result;
     if (botId === 'all') {
