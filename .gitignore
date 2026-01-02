@@ -58,3 +58,18 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+# Google Drive temp files
+.tmp.driveupload/
+
+# PM2
+.pm2/
+runtime_alpha/
+runtime_v2/
+
+# Cursor
+.cursor/
+
+# Backup files
+*.backup
+backup.txt
