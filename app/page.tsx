@@ -1,8 +1,11 @@
 'use client'
+
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Shield, Scale, ShoppingBag, Search, Map, TrendingUp, ArrowRight, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
+import SafeHavenMarketplace from '@/components/marketplace/SafeHavenMarketplace'
+import { ALL_STATES } from '@/lib/states'
 
 interface LawCard {
   id: string;
@@ -52,7 +55,12 @@ export default function Home() {
   const loadRecentLaws = async () => {
     try {
       const supabase = createClient();
-      const { data, error } = await supabase
+      if (!supabase) {
+        setRecentLaws(fallbackLaws);
+        return;
+      }
+      const client = supabase as NonNullable<typeof supabase>;
+      const { data, error } = await client
         .from('sr_law_cards')
         .select('*')
         .eq('is_active', true)
@@ -95,7 +103,7 @@ export default function Home() {
               SmokersRights
             </h1>
             <p className="text-xl md:text-2xl text-slate-700 mb-8 max-w-2xl mx-auto leading-relaxed">
-              Navigate smoking and vaping laws across the Southeast with confidence.
+              Navigate smoking and vaping laws across the United States with confidence.
               <span className="block mt-2 text-lg text-slate-600">Your comprehensive utility for civil liberties and harm reduction.</span>
             </p>
 
@@ -122,7 +130,7 @@ export default function Home() {
             <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-600">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
-                <span>12 States Covered</span>
+                <span>50 States Covered</span>
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -233,25 +241,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* States Quick Access - Compact */}
+      {/* States Quick Access - All 50 */}
       <section className="container mx-auto px-4 py-16">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-slate-900 mb-6 text-center">Southeast States</h2>
+          <h2 className="text-2xl font-bold text-slate-900 mb-6 text-center">Browse All 50 States</h2>
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-            {[
-              { name: 'Alabama', code: 'AL' },
-              { name: 'Florida', code: 'FL' },
-              { name: 'Georgia', code: 'GA' },
-              { name: 'Louisiana', code: 'LA' },
-              { name: 'Mississippi', code: 'MS' },
-              { name: 'North Carolina', code: 'NC' },
-              { name: 'South Carolina', code: 'SC' },
-              { name: 'Tennessee', code: 'TN' },
-              { name: 'Virginia', code: 'VA' },
-              { name: 'Kentucky', code: 'KY' },
-              { name: 'Arkansas', code: 'AR' },
-              { name: 'West Virginia', code: 'WV' }
-            ].map(({ name, code }) => (
+            {ALL_STATES.map(({ code }) => (
               <Link
                 key={code}
                 href={`/search?state=${code}`}
@@ -261,6 +256,13 @@ export default function Home() {
               </Link>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Safe Haven Marketplace */}
+      <section className="bg-white py-16">
+        <div className="container mx-auto px-4">
+          <SafeHavenMarketplace />
         </div>
       </section>
 

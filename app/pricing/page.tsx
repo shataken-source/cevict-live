@@ -14,7 +14,7 @@ export default function PricingPage() {
     {
       icon: Globe,
       title: 'Comprehensive Coverage',
-      description: 'Access smoking and vaping laws for all Southeast states',
+      description: 'Access smoking and vaping laws for all 50 states',
     },
     {
       icon: Zap,

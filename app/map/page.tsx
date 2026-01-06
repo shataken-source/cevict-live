@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
+import { ALL_STATES } from '@/lib/states';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,20 +24,6 @@ import {
   Clock,
   Users
 } from 'lucide-react';
-import Link from 'next/link';
-
-const SOUTHEAST_STATES = [
-  { code: 'AL', name: 'Alabama' },
-  { code: 'FL', name: 'Florida' },
-  { code: 'MS', name: 'Mississippi' },
-  { code: 'LA', name: 'Louisiana' },
-  { code: 'TN', name: 'Tennessee' },
-  { code: 'KY', name: 'Kentucky' },
-  { code: 'AR', name: 'Arkansas' },
-  { code: 'GA', name: 'Georgia' },
-  { code: 'WV', name: 'West Virginia' },
-  { code: 'SC', name: 'South Carolina' },
-];
 
 const PLACE_CATEGORIES = {
   lounge: 'Smoking Lounge',
@@ -115,7 +103,11 @@ export default function MapView() {
   const loadPlaces = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      if (!supabase) {
+        throw new Error('Supabase client not available');
+      }
+      const client = supabase as NonNullable<typeof supabase>;
+      const { data, error } = await client
         .from('sr_directory_places')
         .select('*')
         .eq('status', 'verified')
@@ -230,7 +222,7 @@ export default function MapView() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Smoker-Friendly Places Map</h1>
-              <p className="text-slate-600">Discover smoking and vaping-friendly locations across the Southeast</p>
+              <p className="text-slate-600">Discover smoking and vaping-friendly locations across all 50 states</p>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
@@ -284,7 +276,7 @@ export default function MapView() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All States</SelectItem>
-                    {SOUTHEAST_STATES.map((state) => (
+                    {ALL_STATES.map((state) => (
                       <SelectItem key={state.code} value={state.code}>
                         {state.name}
                       </SelectItem>

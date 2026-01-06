@@ -70,6 +70,7 @@ interface Badge {
 export default function UserProfile() {
   const { user } = useUnifiedAuth();
   const supabase = createClient();
+  const client = supabase as NonNullable<typeof supabase> | null;
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
@@ -88,7 +89,8 @@ export default function UserProfile() {
 
   const loadUserProfile = async () => {
     try {
-      const { data, error } = await supabase
+      if (!client) return;
+      const { data, error } = await client
         .from('unified_users')
         .select('*')
         .eq('id', user?.id)
@@ -103,7 +105,8 @@ export default function UserProfile() {
 
   const loadUserStats = async () => {
     try {
-      const { data, error } = await supabase
+      if (!client) return;
+      const { data, error } = await client
         .from('unified_user_stats')
         .select('*')
         .eq('user_id', user?.id)
@@ -126,6 +129,10 @@ export default function UserProfile() {
 
   const createDefaultStats = async () => {
     try {
+      if (!supabase) {
+        console.warn('Supabase not configured, skipping default stats creation');
+        return;
+      }
       const { data, error } = await supabase
         .from('unified_user_stats')
         .insert({
@@ -150,6 +157,11 @@ export default function UserProfile() {
 
   const loadContributions = async () => {
     try {
+      if (!supabase) {
+        console.warn('Supabase not configured, skipping contributions load');
+        setContributions([]);
+        return;
+      }
       // Load places submitted by user
       const { data: places, error: placesError } = await supabase
         .from('sr_directory_places')
@@ -186,7 +198,8 @@ export default function UserProfile() {
           description: correction.proposed_summary || 'Correction submitted',
           status: correction.status,
           created_at: correction.created_at,
-          points_awarded: correction.points_awarded
+          points_awarded: correction.points_awarded,
+          state_code: correction.state_code || '',
         }))
       ];
 

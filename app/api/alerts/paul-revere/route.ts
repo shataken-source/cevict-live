@@ -122,6 +122,32 @@ export async function POST(req: NextRequest) {
       console.error('Failed to save alert:', alertError);
     }
 
+    // Send trade signal to Alpha Hunter webhook
+    if (alert.type === 'immediate' || (alert.type === 'urgent' && alert.scope === 'state')) {
+      try {
+        const alphaWebhook = process.env.ALPHA_HUNTER_WEBHOOK_URL;
+        if (alphaWebhook) {
+          const ticker = alert.headline?.toLowerCase().includes('vape') ? 'BTI' : 'MO';
+          const signal = {
+            ticker,
+            action: 'SHORT',
+            reason: `Legislative Alert: ${alert.headline}`,
+            confidence: 85,
+            state: alert.state,
+            timestamp: new Date().toISOString(),
+          };
+          await fetch(alphaWebhook, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(signal),
+          });
+          console.log('📊 Trade Signal Synced to Alpha Hunter Bot');
+        }
+      } catch (e) {
+        console.error('Failed to sync signal to trading bot:', e);
+      }
+    }
+
     // Queue alerts for each user
     const userAlerts: UserAlert[] = [];
     
@@ -168,6 +194,29 @@ export async function POST(req: NextRequest) {
         // Log summary
         console.log(`📧 Email batch: ${emailBatch.length} recipients`);
         console.log(`📱 SMS batch: ${smsBatch.length} recipients`);
+      }
+
+      // Push to Alpha Hunter webhook if configured
+      if (process.env.ALPHA_HUNTER_WEBHOOK_URL) {
+        try {
+          await fetch(process.env.ALPHA_HUNTER_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ticker: 'MO',
+              signal: 'SHORT',
+              reason: `Legislative Alert: ${alert.headline}`,
+              confidence: 85,
+              scope: alert.scope,
+              state: alert.state,
+              type: alert.type,
+              created_at: new Date().toISOString(),
+            }),
+          });
+          console.log('🔗 Sent Alpha Hunter webhook for Paul Revere alert');
+        } catch (err: any) {
+          console.error('Alpha Hunter webhook failed:', err?.message);
+        }
       }
     }
 

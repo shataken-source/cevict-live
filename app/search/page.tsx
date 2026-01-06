@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { ALL_STATES } from '@/lib/states';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -23,19 +24,6 @@ import {
   X
 } from 'lucide-react';
 import Link from 'next/link';
-
-const SOUTHEAST_STATES = [
-  { code: 'AL', name: 'Alabama' },
-  { code: 'FL', name: 'Florida' },
-  { code: 'MS', name: 'Mississippi' },
-  { code: 'LA', name: 'Louisiana' },
-  { code: 'TN', name: 'Tennessee' },
-  { code: 'KY', name: 'Kentucky' },
-  { code: 'AR', name: 'Arkansas' },
-  { code: 'GA', name: 'Georgia' },
-  { code: 'WV', name: 'West Virginia' },
-  { code: 'SC', name: 'South Carolina' },
-];
 
 const CATEGORY_LABELS = {
   indoor_smoking: 'Indoor Smoking',
@@ -114,7 +102,7 @@ interface SearchResult {
   highlights: string[];
 }
 
-export default function AdvancedSearch() {
+function AdvancedSearchContent() {
   const searchParams = useSearchParams();
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -133,7 +121,7 @@ export default function AdvancedSearch() {
     verifiedOnly: true
   });
 
-  const supabase = createClient();
+  const supabase = createClient() as NonNullable<ReturnType<typeof createClient>> | null;
 
   useEffect(() => {
     loadSavedSearches();
@@ -204,6 +192,10 @@ export default function AdvancedSearch() {
   };
 
   const searchLawsWithFilters = async (searchFilters: SearchFilters): Promise<SearchResult[]> => {
+    if (!supabase) {
+      console.warn('Supabase not configured; returning empty results');
+      return [];
+    }
     let query = supabase
       .from('sr_law_cards')
       .select('*', { count: 'exact' })
@@ -264,6 +256,10 @@ export default function AdvancedSearch() {
   };
 
   const searchPlacesWithFilters = async (searchFilters: SearchFilters): Promise<SearchResult[]> => {
+    if (!supabase) {
+      console.warn('Supabase not configured; returning empty places');
+      return [];
+    }
     let query = supabase
       .from('sr_directory_places')
       .select('*', { count: 'exact' });
@@ -512,7 +508,7 @@ export default function AdvancedSearch() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">All States</SelectItem>
-                  {SOUTHEAST_STATES.map((state) => (
+                  {ALL_STATES.map((state) => (
                     <SelectItem key={state.code} value={state.code}>
                       {state.name}
                     </SelectItem>
@@ -712,6 +708,14 @@ export default function AdvancedSearch() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+export default function AdvancedSearch() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading search...</div>}>
+      <AdvancedSearchContent />
+    </Suspense>
   );
 }
 

@@ -14,7 +14,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'SmokersRights.com - Freedom of Choice & Harm Reduction',
-  description: 'Your utility for civil liberties and harm reduction. Explore smoking and vaping laws across the Southeast United States.',
+  description: 'Your utility for civil liberties and harm reduction. Explore smoking and vaping laws across all 50 states.',
   keywords: ['smoking laws', 'vaping regulations', 'civil liberties', 'harm reduction', 'smoker-friendly places'],
   other: {
     'google-adsense-account': 'ca-pub-0940073536675562',

@@ -2,6 +2,7 @@ import CryptoPaymentService from '@/lib/crypto-payment';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
  * GET: Check crypto payment status

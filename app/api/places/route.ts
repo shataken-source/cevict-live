@@ -11,6 +11,10 @@ import { createClient } from '@/lib/supabase';
 export async function GET(request: NextRequest) {
   try {
     const supabase = createClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
+    }
+    const client = supabase as NonNullable<typeof supabase>;
     const { searchParams } = new URL(request.url);
     
     // Parse query parameters
@@ -25,7 +29,7 @@ export async function GET(request: NextRequest) {
     const radius = parseFloat(searchParams.get('radius') || '0'); // miles
     
     // Build query
-    let query = supabase
+    let query = client
       .from('sr_directory_places')
       .select('*', { count: 'exact' })
       .eq('status', 'verified');

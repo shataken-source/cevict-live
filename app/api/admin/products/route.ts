@@ -34,9 +34,22 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createClient();
     if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
+    }
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
+    }
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
+    }
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
+    }
+    if (!supabase) {
       return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
     }
-    const { data, error } = await supabase
+    const client = supabase as NonNullable<typeof supabase>;
+    const { data, error } = await client
       .from('affiliate_products')
       .select('*')
       .order('created_at', { ascending: false });
@@ -71,7 +84,11 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createClient();
-    const { data, error } = await supabase
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
+    }
+    const client = supabase as NonNullable<typeof supabase>;
+    const { data, error } = await client
       .from('affiliate_products')
       .insert({
         name,
@@ -119,7 +136,8 @@ export async function PUT(request: NextRequest) {
     if (link) updateData.affiliate_link = link;
     if (commission_rate !== undefined) updateData.commission_rate = parseFloat(commission_rate);
 
-    const { data, error } = await supabase
+    const client = supabase as NonNullable<typeof supabase>;
+    const { data, error } = await client
       .from('affiliate_products')
       .update(updateData)
       .eq('id', id)
@@ -153,7 +171,11 @@ export async function DELETE(request: NextRequest) {
     }
 
     const supabase = createClient();
-    const { error } = await supabase
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
+    }
+    const client = supabase as NonNullable<typeof supabase>;
+    const { error } = await client
       .from('affiliate_products')
       .delete()
       .eq('id', id);

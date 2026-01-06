@@ -11,9 +11,13 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
+    }
+    const client = supabase as NonNullable<typeof supabase>;
 
     // Record the click
-    const { error: clickError } = await supabase
+    const { error: clickError } = await client
       .from('product_clicks')
       .insert({
         product_id: productId,
@@ -26,14 +30,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Increment click count on product
-    const { data: product } = await supabase
+    const { data: product } = await client
       .from('affiliate_products')
       .select('clicks')
       .eq('id', productId)
       .single();
 
     if (product) {
-      await supabase
+      await client
         .from('affiliate_products')
         .update({ clicks: (product.clicks || 0) + 1 })
         .eq('id', productId);

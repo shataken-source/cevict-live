@@ -30,7 +30,7 @@ export interface BookmarkFolder {
 }
 
 export class BookmarkService {
-  private supabase = createClient();
+  private supabase = createClient()!;
 
   /**
    * Add a bookmark

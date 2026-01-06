@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase';
+import { ALL_STATES } from '@/lib/states';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,19 +23,6 @@ import {
   Mail
 } from 'lucide-react';
 import Link from 'next/link';
-
-const SOUTHEAST_STATES = [
-  { code: 'AL', name: 'Alabama' },
-  { code: 'FL', name: 'Florida' },
-  { code: 'MS', name: 'Mississippi' },
-  { code: 'LA', name: 'Louisiana' },
-  { code: 'TN', name: 'Tennessee' },
-  { code: 'KY', name: 'Kentucky' },
-  { code: 'AR', name: 'Arkansas' },
-  { code: 'GA', name: 'Georgia' },
-  { code: 'WV', name: 'West Virginia' },
-  { code: 'SC', name: 'South Carolina' },
-];
 
 const CATEGORY_LABELS = {
   indoor_smoking: 'Indoor Smoking',
@@ -100,7 +88,11 @@ export default function LawComparison() {
   const loadLawCards = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      if (!supabase) {
+        throw new Error('Supabase client not available');
+      }
+      const client = supabase as NonNullable<typeof supabase>;
+      const { data, error } = await client
         .from('sr_law_cards')
         .select('*')
         .eq('is_active', true)
@@ -165,8 +157,8 @@ export default function LawComparison() {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    const state1Name = SOUTHEAST_STATES.find(s => s.code === state1)?.name;
-    const state2Name = SOUTHEAST_STATES.find(s => s.code === state2)?.name;
+    const state1Name = ALL_STATES.find(s => s.code === state1)?.name;
+    const state2Name = ALL_STATES.find(s => s.code === state2)?.name;
 
     const html = `
       <!DOCTYPE html>
@@ -213,8 +205,8 @@ export default function LawComparison() {
   };
 
   const shareComparison = async () => {
-    const state1Name = SOUTHEAST_STATES.find(s => s.code === state1)?.name;
-    const state2Name = SOUTHEAST_STATES.find(s => s.code === state2)?.name;
+    const state1Name = ALL_STATES.find(s => s.code === state1)?.name;
+    const state2Name = ALL_STATES.find(s => s.code === state2)?.name;
     
     const shareText = `Smoking & Vaping Laws Comparison: ${state1Name} vs ${state2Name}\n\n` +
       comparison.map(comp => 
@@ -307,7 +299,7 @@ export default function LawComparison() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SOUTHEAST_STATES.map((state) => (
+                    {ALL_STATES.map((state) => (
                       <SelectItem key={state.code} value={state.code}>
                         {state.name}
                       </SelectItem>
@@ -331,7 +323,7 @@ export default function LawComparison() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SOUTHEAST_STATES.map((state) => (
+                    {ALL_STATES.map((state) => (
                       <SelectItem key={state.code} value={state.code}>
                         {state.name}
                       </SelectItem>
@@ -362,7 +354,7 @@ export default function LawComparison() {
                 {/* State 1 */}
                 <div>
                   <h3 className="text-lg font-semibold mb-4">
-                    {SOUTHEAST_STATES.find(s => s.code === state1)?.name}
+                    {ALL_STATES.find(s => s.code === state1)?.name}
                   </h3>
                   <div className="space-y-4">
                     {comparison.map((comp) => (
@@ -398,7 +390,7 @@ export default function LawComparison() {
                 {/* State 2 */}
                 <div>
                   <h3 className="text-lg font-semibold mb-4">
-                    {SOUTHEAST_STATES.find(s => s.code === state2)?.name}
+                    {ALL_STATES.find(s => s.code === state2)?.name}
                   </h3>
                   <div className="space-y-4">
                     {comparison.map((comp) => (
@@ -453,7 +445,7 @@ export default function LawComparison() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <h4 className="font-medium text-sm text-slate-900 mb-1">
-                            {SOUTHEAST_STATES.find(s => s.code === state1)?.name}:
+                            {ALL_STATES.find(s => s.code === state1)?.name}:
                           </h4>
                           <p className="text-sm text-slate-700">
                             {comp.state1Law?.summary || 'No specific laws'}
@@ -461,7 +453,7 @@ export default function LawComparison() {
                         </div>
                         <div>
                           <h4 className="font-medium text-sm text-slate-900 mb-1">
-                            {SOUTHEAST_STATES.find(s => s.code === state2)?.name}:
+                            {ALL_STATES.find(s => s.code === state2)?.name}:
                           </h4>
                           <p className="text-sm text-slate-700">
                             {comp.state2Law?.summary || 'No specific laws'}
@@ -490,8 +482,8 @@ export default function LawComparison() {
                 <CardHeader>
                   <CardTitle>Comparison Summary</CardTitle>
                   <CardDescription>
-                    Overview of smoking and vaping laws between {SOUTHEAST_STATES.find(s => s.code === state1)?.name} 
-                    and {SOUTHEAST_STATES.find(s => s.code === state2)?.name}
+                    Overview of smoking and vaping laws between {ALL_STATES.find(s => s.code === state1)?.name} 
+                    and {ALL_STATES.find(s => s.code === state2)?.name}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

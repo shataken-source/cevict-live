@@ -11,6 +11,9 @@ import { createClient } from '@/lib/supabase';
 export async function GET(request: NextRequest) {
   try {
     const supabase = createClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
+    }
     const { searchParams } = new URL(request.url);
     
     // Parse query parameters
@@ -21,8 +24,10 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const format = searchParams.get('format') || 'json';
     
+    const client = supabase as NonNullable<typeof supabase>;
+
     // Build query
-    let query = supabase
+    let query = client
       .from('sr_law_cards')
       .select('*', { count: 'exact' })
       .eq('is_active', true);

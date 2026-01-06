@@ -24,19 +24,30 @@ interface LawUpdate {
 }
 
 export class NotificationService {
-  private supabase: ReturnType<typeof createClient> | null;
+  private supabase: NonNullable<ReturnType<typeof createClient>>;
   private smsService: SMSService;
   private emailService: EmailService;
 
   constructor() {
-    try {
-      this.supabase = createClient();
-    } catch (error) {
-      console.warn('Supabase client initialization failed:', error);
-      this.supabase = null;
+    const client = createClient();
+    if (!client) {
+      throw new Error('Supabase client initialization failed: missing configuration');
     }
+    this.supabase = client;
     this.smsService = SMSService.getInstance();
     this.emailService = EmailService.getInstance();
+  }
+
+  /**
+   * Post a hype alert to X (Twitter) when AI Siren matches an Alpha pick.
+   * Placeholder client; wire actual API credentials separately.
+   */
+  async postViralSirenToX(params: { viralTitle: string; alphaPick: string; edge: number; url?: string }) {
+    const { viralTitle, alphaPick, edge, url } = params;
+    const message = `🚨 SIREN ALERT: ${viralTitle} matches ${alphaPick} with ${edge}% Edge! See the data on the Liberty Terminal${url ? ` ${url}` : ''}`;
+    // Placeholder: integrate X client here
+    console.log('[X BOT] (placeholder) would post:', message);
+    return { posted: true, message };
   }
 
   /**

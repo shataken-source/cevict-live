@@ -29,7 +29,15 @@ export interface EmailTemplate {
 }
 
 export class EmailNotificationService {
-  private supabase = createClient();
+  private supabase: NonNullable<ReturnType<typeof createClient>>;
+
+  constructor() {
+    const client = createClient();
+    if (!client) {
+      throw new Error('Supabase client initialization failed: missing configuration');
+    }
+    this.supabase = client;
+  }
 
   /**
    * Send notification when submission status changes

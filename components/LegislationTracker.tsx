@@ -7,15 +7,16 @@
  */
 
 import { useState, useEffect } from 'react';
-import { 
-  fetchStateLegislation, 
+import {
+  fetchStateLegislation,
   fetchLegislationAlerts,
-  LegislationBill, 
+  LegislationBill,
   LegislationAlert,
   getStatusColor,
   getImpactColor,
-  getAlertLevelColor
+  getAlertLevelColor,
 } from '@/lib/legislation-tracker';
+import { ALL_STATES } from '@/lib/states';
 
 interface Props {
   initialState?: string;
@@ -28,21 +29,6 @@ export default function LegislationTracker({ initialState = 'GA' }: Props) {
   const [loading, setLoading] = useState(true);
   const [selectedBill, setSelectedBill] = useState<LegislationBill | null>(null);
   const [filter, setFilter] = useState<'all' | 'urgent' | 'positive' | 'negative'>('all');
-
-  const states = [
-    { code: 'AL', name: 'Alabama' },
-    { code: 'FL', name: 'Florida' },
-    { code: 'GA', name: 'Georgia' },
-    { code: 'LA', name: 'Louisiana' },
-    { code: 'MS', name: 'Mississippi' },
-    { code: 'NC', name: 'North Carolina' },
-    { code: 'SC', name: 'South Carolina' },
-    { code: 'TN', name: 'Tennessee' },
-    { code: 'VA', name: 'Virginia' },
-    { code: 'KY', name: 'Kentucky' },
-    { code: 'AR', name: 'Arkansas' },
-    { code: 'WV', name: 'West Virginia' },
-  ];
 
   useEffect(() => {
     loadData();
@@ -106,7 +92,7 @@ export default function LegislationTracker({ initialState = 'GA' }: Props) {
             onChange={(e) => setSelectedState(e.target.value)}
             className="w-full bg-white/20 border border-white/30 rounded-xl px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-white/50"
           >
-            {states.map(state => (
+            {ALL_STATES.map((state) => (
               <option key={state.code} value={state.code} className="text-slate-900">
                 {state.name}
               </option>

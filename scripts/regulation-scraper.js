@@ -37,13 +37,35 @@ const CONFIG = {
     { name: 'ATF', url: 'atf.gov', type: 'federal' }
   ],
   
-  // State legislatures (sample - would expand in production)
-  stateSources: [
-    { state: 'CA', name: 'California Legislature', url: 'leginfo.legislature.ca.gov' },
-    { state: 'NY', name: 'New York Legislature', url: 'nysenate.gov' },
-    { state: 'TX', name: 'Texas Legislature', url: 'capitol.texas.gov' },
-    { state: 'FL', name: 'Florida Legislature', url: 'myfloridahouse.gov' }
-  ],
+  // State legislatures (real feeds for priority states; placeholders for others)
+  stateSources: (() => {
+    const priority = {
+      CA: 'https://leginfo.legislature.ca.gov/faces/rssSearch.xhtml',
+      NY: 'https://www.nysenate.gov/feed-bills',
+      TX: 'https://capitol.texas.gov/rss/LegislatureRss.aspx',
+      FL: 'https://www.myfloridahouse.gov/FileStores/Web/HouseContent/Lists/Bills/BillRSS.aspx',
+      WA: 'https://app.leg.wa.gov/bi/RSS/RSS.ashx',
+      MA: 'https://malegislature.gov/RSS/Bills',
+      IL: 'https://ilga.gov/rss/rss.asp',
+      NJ: 'https://www.njleg.state.nj.us/rss/bills',
+      OH: 'https://www.legislature.ohio.gov/rss/bills',
+      PA: 'https://www.legis.state.pa.us/WU01/LI/BI/RSS/BillRSS.aspx',
+    };
+    const allStates = US_STATES_FULL.map(s => s.code);
+    const sources = [];
+    for (const code of allStates) {
+      if (priority[code]) {
+        sources.push({ state: code, name: `${STATE_NAMES[code]} Legislature`, url: priority[code] });
+      } else {
+        sources.push({
+          state: code,
+          name: `${STATE_NAMES[code]} Legislature`,
+          url: `${STATE_NAMES[code].toLowerCase().replace(/\s+/g, '')}.gov`,
+        });
+      }
+    }
+    return sources;
+  })(),
   
   // Alert thresholds
   alerts: {
@@ -53,19 +75,61 @@ const CONFIG = {
   }
 };
 
-// State abbreviation to full name mapping
-const STATE_NAMES = {
-  'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
-  'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
-  'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
-  'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
-  'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
-  'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
-  'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
-  'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
-  'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
-  'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming'
-};
+// State abbreviation to full name mapping + full list
+const US_STATES_FULL = [
+  { code: 'AL', name: 'Alabama' },
+  { code: 'AK', name: 'Alaska' },
+  { code: 'AZ', name: 'Arizona' },
+  { code: 'AR', name: 'Arkansas' },
+  { code: 'CA', name: 'California' },
+  { code: 'CO', name: 'Colorado' },
+  { code: 'CT', name: 'Connecticut' },
+  { code: 'DE', name: 'Delaware' },
+  { code: 'FL', name: 'Florida' },
+  { code: 'GA', name: 'Georgia' },
+  { code: 'HI', name: 'Hawaii' },
+  { code: 'ID', name: 'Idaho' },
+  { code: 'IL', name: 'Illinois' },
+  { code: 'IN', name: 'Indiana' },
+  { code: 'IA', name: 'Iowa' },
+  { code: 'KS', name: 'Kansas' },
+  { code: 'KY', name: 'Kentucky' },
+  { code: 'LA', name: 'Louisiana' },
+  { code: 'ME', name: 'Maine' },
+  { code: 'MD', name: 'Maryland' },
+  { code: 'MA', name: 'Massachusetts' },
+  { code: 'MI', name: 'Michigan' },
+  { code: 'MN', name: 'Minnesota' },
+  { code: 'MS', name: 'Mississippi' },
+  { code: 'MO', name: 'Missouri' },
+  { code: 'MT', name: 'Montana' },
+  { code: 'NE', name: 'Nebraska' },
+  { code: 'NV', name: 'Nevada' },
+  { code: 'NH', name: 'New Hampshire' },
+  { code: 'NJ', name: 'New Jersey' },
+  { code: 'NM', name: 'New Mexico' },
+  { code: 'NY', name: 'New York' },
+  { code: 'NC', name: 'North Carolina' },
+  { code: 'ND', name: 'North Dakota' },
+  { code: 'OH', name: 'Ohio' },
+  { code: 'OK', name: 'Oklahoma' },
+  { code: 'OR', name: 'Oregon' },
+  { code: 'PA', name: 'Pennsylvania' },
+  { code: 'RI', name: 'Rhode Island' },
+  { code: 'SC', name: 'South Carolina' },
+  { code: 'SD', name: 'South Dakota' },
+  { code: 'TN', name: 'Tennessee' },
+  { code: 'TX', name: 'Texas' },
+  { code: 'UT', name: 'Utah' },
+  { code: 'VT', name: 'Vermont' },
+  { code: 'VA', name: 'Virginia' },
+  { code: 'WA', name: 'Washington' },
+  { code: 'WV', name: 'West Virginia' },
+  { code: 'WI', name: 'Wisconsin' },
+  { code: 'WY', name: 'Wyoming' },
+];
+
+const STATE_NAMES = US_STATES_FULL.reduce((acc, s) => ({ ...acc, [s.code]: s.name }), {});
 
 /**
  * Analyze regulation priority level

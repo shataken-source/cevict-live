@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import { useUnifiedAuth } from '@/shared/auth/UnifiedAuth';
+import { ALL_STATES } from '@/lib/states';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,19 +15,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ExternalLink, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-
-const SOUTHEAST_STATES = [
-  { code: 'AL', name: 'Alabama' },
-  { code: 'FL', name: 'Florida' },
-  { code: 'MS', name: 'Mississippi' },
-  { code: 'LA', name: 'Louisiana' },
-  { code: 'TN', name: 'Tennessee' },
-  { code: 'KY', name: 'Kentucky' },
-  { code: 'AR', name: 'Arkansas' },
-  { code: 'GA', name: 'Georgia' },
-  { code: 'WV', name: 'West Virginia' },
-  { code: 'SC', name: 'South Carolina' },
-];
 
 const POLICY_FIELDS = {
   indoor_smoking: 'Indoor Smoking',
@@ -81,6 +69,11 @@ export default function SubmitCorrection() {
 
     if (!formData.source_url) {
       setError('Source URL is required');
+      return;
+    }
+
+    if (!supabase) {
+      setError('Service unavailable: database is not configured');
       return;
     }
 
@@ -228,7 +221,7 @@ export default function SubmitCorrection() {
                     <SelectValue placeholder="Select a state" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SOUTHEAST_STATES.map((state) => (
+                    {ALL_STATES.map((state) => (
                       <SelectItem key={state.code} value={state.code}>
                         {state.name}
                       </SelectItem>

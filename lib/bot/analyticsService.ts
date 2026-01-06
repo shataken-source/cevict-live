@@ -20,15 +20,14 @@ interface AnalyticsResult {
 }
 
 export class AnalyticsService {
-  private supabase: ReturnType<typeof createClient> | null;
+  private supabase: NonNullable<ReturnType<typeof createClient>>;
 
   constructor() {
-    try {
-      this.supabase = createClient();
-    } catch (error) {
-      console.warn('Supabase client initialization failed:', error);
-      this.supabase = null;
+    const client = createClient();
+    if (!client) {
+      throw new Error('Supabase client initialization failed: missing configuration');
     }
+    this.supabase = client;
   }
 
   /**
@@ -197,7 +196,8 @@ export class AnalyticsService {
         .from('unified_users')
         .select('*', { count: 'exact', head: true });
 
-      const growthRate = totalUsers > 0 ? ((newUsers || 0) / totalUsers) * 100 : 0;
+      const totalUserCount = totalUsers || 0;
+      const growthRate = totalUserCount > 0 ? ((newUsers || 0) / totalUserCount) * 100 : 0;
 
       // Store trend data
       await this.supabase

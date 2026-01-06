@@ -11,6 +11,10 @@ import { createClient } from '@/lib/supabase';
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
+    }
+    const client = supabase as NonNullable<typeof supabase>;
     const { action, details } = await request.json();
 
     // Get user info from request
@@ -20,10 +24,10 @@ export async function POST(request: NextRequest) {
                    request.headers.get('x-real-ip') || '';
 
     // Get current user (if authenticated)
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await client.auth.getUser();
 
     // Log compliance event
-    const { error } = await supabase
+    const { error } = await client
       .from('compliance_logs')
       .insert({
         user_id: user?.id || null,

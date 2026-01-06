@@ -19,15 +19,14 @@ interface CleanupResult {
 }
 
 export class DataCleanupService {
-  private supabase: ReturnType<typeof createClient> | null;
+  private supabase: NonNullable<ReturnType<typeof createClient>>;
 
   constructor() {
-    try {
-      this.supabase = createClient();
-    } catch (error) {
-      console.warn('Supabase client initialization failed:', error);
-      this.supabase = null;
+    const client = createClient();
+    if (!client) {
+      throw new Error('Supabase client initialization failed: missing configuration');
     }
+    this.supabase = client;
   }
 
   /**

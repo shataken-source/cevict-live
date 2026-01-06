@@ -68,7 +68,7 @@ export default function EnhancedSearch({ onSearch, placeholder = 'Search laws, s
     const mockResults: SearchResult[] = [
       {
         id: '1',
-        type: 'state',
+        type: 'state' as const,
         title: 'Georgia',
         subtitle: '12 laws, 3 categories',
         icon: '🍑',
@@ -76,7 +76,7 @@ export default function EnhancedSearch({ onSearch, placeholder = 'Search laws, s
       },
       {
         id: '2',
-        type: 'law',
+        type: 'law' as const,
         title: 'Indoor Smoking Ban',
         subtitle: 'Georgia - Public workplaces',
         icon: '⚖️',
@@ -84,7 +84,7 @@ export default function EnhancedSearch({ onSearch, placeholder = 'Search laws, s
       },
       {
         id: '3',
-        type: 'category',
+        type: 'category' as const,
         title: 'Vaping Regulations',
         subtitle: 'All states',
         icon: '💨',
@@ -92,7 +92,7 @@ export default function EnhancedSearch({ onSearch, placeholder = 'Search laws, s
       },
       {
         id: '4',
-        type: 'place',
+        type: 'place' as const,
         title: 'Smoking-Friendly Bars',
         subtitle: 'Near Atlanta, GA',
         icon: '📍',
