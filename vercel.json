@@ -1,8 +1,7 @@
 {
-  "ignoreCommand": "if git rev-parse --verify HEAD^ >/dev/null 2>&1; then git diff --quiet HEAD^ HEAD -- 'apps/smokersrights/'; else exit 1; fi",
   "framework": "nextjs",
-  "buildCommand": "pnpm run build",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": ".next",
-  "installCommand": "pnpm install --no-frozen-lockfile"
+  "installCommand": "npm install --legacy-peer-deps"
 }
 
