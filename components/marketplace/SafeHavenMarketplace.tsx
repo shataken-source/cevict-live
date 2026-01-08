@@ -22,13 +22,20 @@ export default function SafeHavenMarketplace() {
   useEffect(() => {
     // Load affiliates from JSON file
     fetch("/data/affiliates.json")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch affiliates: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
         setProducts(data.products || []);
         setLoading(false);
       })
       .catch((err) => {
         console.error("Failed to load affiliates:", err);
+        // Set empty products array on error instead of crashing
+        setProducts([]);
         setLoading(false);
       });
 

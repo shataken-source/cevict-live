@@ -39,7 +39,17 @@ export function UnifiedAuthProvider({ children }: { children: ReactNode }) {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        if (!supabase) {
+          setLoading(false);
+          return;
+        }
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.warn('Error getting session:', error.message);
+          setLoading(false);
+          return;
+        }
 
         if (session?.user) {
           // Fetch user profile from unified_users table

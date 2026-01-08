@@ -7,7 +7,7 @@ import { ToasterProvider } from '@/components/ui/toaster';
 import { UnifiedAuthProvider } from '@/shared/auth/UnifiedAuth';
 import { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { ReactNode } from 'react';
+import { ReactNode, Suspense } from 'react';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -35,12 +35,14 @@ export default function RootLayout({
         <ErrorBoundary>
           <UnifiedAuthProvider>
             <ToasterProvider>
-              <AgeGateWrapper />
-              <AdSenseScript />
-              <ConditionalAdSenseScript />
-              <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-                <SmokersRightsAds>{children}</SmokersRightsAds>
-              </div>
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div>Loading...</div></div>}>
+                <AgeGateWrapper />
+                <AdSenseScript />
+                <ConditionalAdSenseScript />
+                <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+                  <SmokersRightsAds>{children}</SmokersRightsAds>
+                </div>
+              </Suspense>
             </ToasterProvider>
           </UnifiedAuthProvider>
         </ErrorBoundary>

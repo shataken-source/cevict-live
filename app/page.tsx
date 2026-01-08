@@ -56,7 +56,9 @@ export default function Home() {
     try {
       const supabase = createClient();
       if (!supabase) {
+        console.warn('Supabase client not available, using fallback laws');
         setRecentLaws(fallbackLaws);
+        setLoadingLaws(false);
         return;
       }
       const client = supabase as NonNullable<typeof supabase>;
@@ -70,10 +72,13 @@ export default function Home() {
       if (!error && data && data.length > 0) {
         setRecentLaws(data as LawCard[]);
       } else {
+        if (error) {
+          console.warn('Error loading laws from Supabase:', error.message);
+        }
         setRecentLaws(fallbackLaws);
       }
-    } catch (error) {
-      console.error('Error loading laws:', error);
+    } catch (error: any) {
+      console.error('Error loading laws:', error?.message || error);
       setRecentLaws(fallbackLaws);
     } finally {
       setLoadingLaws(false);
