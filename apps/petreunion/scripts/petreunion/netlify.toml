@@ -1,0 +1,6 @@
+﻿[build]
+  command = "cd ../.. && npm install -g pnpm && pnpm install && cd apps/petreunion && pnpm build"
+  publish = ".next"
+  
+[build.environment]
+  NODE_VERSION = "18"

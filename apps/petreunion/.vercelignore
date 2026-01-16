@@ -1,0 +1,19 @@
+# Build output / deps
+node_modules
+.next
+.turbo
+dist
+build
+
+# Local env / secrets / backups (never deploy)
+.env*
+.env-from*
+.env.local.backup*
+*.bak
+*.key
+*.pem
+
+# Local artifacts / exports (never deploy)
+*.docx
+*.7z
+*.zip

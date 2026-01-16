@@ -1,0 +1,1 @@
+PetReunion is the lost-and-found pet platform. Next.js frontend plus AI/vision matching and notifications. Key flows: panic/lost reporting, AI matcher (`lib/ai-matcher.ts`), stealth scraper (`lib/scraper.ts`), SMS alerts (`lib/notifications.ts`), privacy guardrails in API routes, and the liability modal on match details. Turbopack config externalizes sharp/canvas/puppeteer.

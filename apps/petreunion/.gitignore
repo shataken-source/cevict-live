@@ -1,0 +1,11 @@
+.vercel
+.env*.local
+.env*
+.env-from*
+.env.local.backup*
+*.bak
+*.key
+*.pem
+*.docx
+*.7z
+*.zip

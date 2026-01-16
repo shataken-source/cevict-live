@@ -1,0 +1,52 @@
+'use client';
+
+import Script from 'next/script';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { shouldShowAds, useContentPageCheck } from '@/lib/adsense-utils';
+
+function useSafePathname(): string {
+  try {
+    return usePathname() || '';
+  } catch {
+    // In some edge contexts (e.g. non-router renders), Next's PathnameContext may be missing.
+    return typeof window !== 'undefined' ? window.location.pathname || '' : '';
+  }
+}
+
+/**
+ * Conditionally loads AdSense script only on pages with sufficient content
+ * This prevents AdSense policy violations for pages without publisher content
+ *
+ * Note: Meta tag is placed in layout.tsx metadata, not here (meta tags must be in <head>)
+ */
+export default function ConditionalAdSenseScript() {
+  const pathname = useSafePathname();
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const hasContent = useContentPageCheck();
+
+  useEffect(() => {
+    // Always load on homepage for Google verification
+    const isHomepage = pathname === '/' || pathname === '';
+
+    // Check if ads should be shown on this page
+    // Homepage always loads script (for Google verification), other pages need content
+    const canShowAds = isHomepage || (shouldShowAds(pathname || '') && hasContent);
+    setShouldLoad(canShowAds);
+  }, [pathname, hasContent]);
+
+  if (!shouldLoad) {
+    return null;
+  }
+
+  return (
+    <Script
+      id="petreunion-adsense"
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0940073536675562"
+      strategy="afterInteractive"
+      crossOrigin="anonymous"
+    />
+  );
+}
+

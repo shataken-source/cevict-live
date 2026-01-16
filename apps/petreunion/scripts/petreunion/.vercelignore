@@ -1,0 +1,11 @@
+# Ignore all other apps
+apps/*
+!apps/petreunion
+
+# Ignore common directories
+node_modules
+.next
+.turbo
+dist
+build
+.env*.local

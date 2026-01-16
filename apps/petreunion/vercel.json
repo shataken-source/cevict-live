@@ -1,0 +1,31 @@
+{
+  "env": {
+    "NODE_OPTIONS": ""
+  },
+  "build": {
+    "env": {
+      "NODE_OPTIONS": ""
+    }
+  },
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": ".next",
+  "installCommand": "NODE_OPTIONS= npm install --legacy-peer-deps",
+  "crons": [
+    {
+      "path": "/api/petreunion/bulk-scrape-all-platforms",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/petreunion/bulk-scrape-facebook",
+      "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/petreunion/populate-database",
+      "schedule": "30 */6 * * *"
+    },
+    {
+      "path": "/api/petreunion/daily-run",
+      "schedule": "15 9 * * *"
+    }
+  ]
+}

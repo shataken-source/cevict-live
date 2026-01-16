@@ -1,0 +1,94 @@
+{
+  "shelters": [
+    {
+      "shelter_name": "Austin Animal Center",
+      "city": "Austin",
+      "state": "TX",
+      "email": "adopt@austintexas.gov",
+      "phone": "512-978-0500",
+      "url": "https://www.austintexas.gov/department/animal-services",
+      "address": "7201 Levander Loop, Austin, TX"
+    },
+    {
+      "shelter_name": "Houston SPCA",
+      "city": "Houston",
+      "state": "TX",
+      "email": "info@houstonspca.org",
+      "phone": "713-869-7722",
+      "url": "https://www.houstonspca.org",
+      "address": "7007 Old Katy Rd, Houston, TX"
+    },
+    {
+      "shelter_name": "PAWS Chicago",
+      "city": "Chicago",
+      "state": "IL",
+      "email": "info@pawschicago.org",
+      "phone": "773-475-9422",
+      "url": "https://www.pawschicago.org",
+      "address": "1997 N Clybourn Ave, Chicago, IL"
+    },
+    {
+      "shelter_name": "Best Friends Lifesaving Center",
+      "city": "Los Angeles",
+      "state": "CA",
+      "email": "lacity@bestfriends.org",
+      "phone": "818-643-3989",
+      "url": "https://la.bestfriends.org",
+      "address": "15321 Brand Blvd, Mission Hills, CA"
+    },
+    {
+      "shelter_name": "ASPCA Adoption Center",
+      "city": "New York",
+      "state": "NY",
+      "email": "adoption@aspca.org",
+      "phone": "212-876-7700",
+      "url": "https://www.aspca.org",
+      "address": "424 E 92nd St, New York, NY"
+    },
+    {
+      "shelter_name": "San Francisco SPCA",
+      "city": "San Francisco",
+      "state": "CA",
+      "email": "info@sfspca.org",
+      "phone": "415-554-3000",
+      "url": "https://www.sfspca.org",
+      "address": "201 Alabama St, San Francisco, CA"
+    },
+    {
+      "shelter_name": "LifeLine Animal Project",
+      "city": "Atlanta",
+      "state": "GA",
+      "email": "info@lifelineanimal.org",
+      "phone": "404-292-8800",
+      "url": "https://lifelineanimal.org",
+      "address": "3180 Presidential Dr, Atlanta, GA"
+    },
+    {
+      "shelter_name": "Brother Wolf Animal Rescue",
+      "city": "Asheville",
+      "state": "NC",
+      "email": "info@bwar.org",
+      "phone": "828-505-3440",
+      "url": "https://www.bwar.org",
+      "address": "31 Glendale Ave, Asheville, NC"
+    },
+    {
+      "shelter_name": "Denver Animal Shelter",
+      "city": "Denver",
+      "state": "CO",
+      "email": "DASinfo@denvergov.org",
+      "phone": "720-913-1311",
+      "url": "https://www.denvergov.org/animalshelter",
+      "address": "1241 W Bayaud Ave, Denver, CO"
+    },
+    {
+      "shelter_name": "Seattle Animal Shelter",
+      "city": "Seattle",
+      "state": "WA",
+      "email": "sasinfo@seattle.gov",
+      "phone": "206-386-7387",
+      "url": "https://www.seattle.gov/animal-shelter",
+      "address": "2061 15th Ave W, Seattle, WA"
+    }
+  ]
+}
