@@ -1,0 +1,60 @@
+// public/robots.txt - TELLS SEARCH ENGINES TO CRAWL EVERYTHING!
+User-agent: *
+Allow: /
+Sitemap: https://www.gulfcoastcharters.com/sitemap.xml
+Sitemap: https://www.gulfcoastcharters.com/sitemap-charters.xml
+Sitemap: https://www.gulfcoastcharters.com/sitemap-captains.xml
+Sitemap: https://www.gulfcoastcharters.com/sitemap-fishing-reports.xml
+
+# Priority crawling
+User-agent: Googlebot
+Crawl-delay: 0
+Allow: /
+
+User-agent: Bingbot
+Crawl-delay: 0
+Allow: /
+
+# Social media bots - VERY IMPORTANT!
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+User-agent: Slackbot
+Allow: /
+
+# SEO tool bots (for monitoring)
+User-agent: AhrefsBot
+Allow: /
+
+User-agent: SemrushBot
+Allow: /
+
+User-agent: MJ12bot
+Allow: /
+
+User-agent: DotBot
+Allow: /
+
+# Block bad bots
+User-agent: SemrushBot
+Disallow: /api/
+Disallow: /admin/
+
+# Encourage frequent crawling
+Crawl-delay: 0
+Request-rate: 1/1
+
+# Special fishing-related crawl hints
+# Charter-Booking-Pages: /booking/*
+# Captain-Profiles: /captain/*
+# Fishing-Reports: /reports/*
+# Community-Content: /community/*
