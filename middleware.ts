@@ -32,15 +32,6 @@ async function isAuthed(request: NextRequest): Promise<boolean> {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Age verification for shop/marketplace
-  if (pathname.startsWith("/shop") || pathname.startsWith("/marketplace")) {
-    const response = NextResponse.next();
-    response.cookies.set("age_verified", "true", {
-      maxAge: 60 * 60 * 24 * 365 // 1 year
-    });
-    return response;
-  }
-
   // Admin route protection
   const isAdminPath = pathname.startsWith('/admin');
   const isAdminApiPath = pathname.startsWith('/api/admin');

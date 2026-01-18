@@ -4,7 +4,7 @@
  * Sends notifications to users about law changes, updates, and other important events
  */
 
-import { createClient } from '@/lib/supabase';
+import { getSupabaseAdminClient } from '@/lib/supabase';
 import { SMSService } from '@/lib/sms';
 import { EmailService } from '@/lib/emailService';
 
@@ -24,12 +24,12 @@ interface LawUpdate {
 }
 
 export class NotificationService {
-  private supabase: NonNullable<ReturnType<typeof createClient>>;
+  private supabase: NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
   private smsService: SMSService;
   private emailService: EmailService;
 
   constructor() {
-    const client = createClient();
+    const client = getSupabaseAdminClient();
     if (!client) {
       throw new Error('Supabase client initialization failed: missing configuration');
     }

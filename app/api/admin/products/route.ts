@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
+import { securityMiddleware } from '@/lib/security-middleware';
 
 // Helper to check admin authentication
 async function isAuthed(request: NextRequest): Promise<boolean> {
@@ -27,6 +28,9 @@ async function isAuthed(request: NextRequest): Promise<boolean> {
 
 // GET - Fetch all products
 export async function GET(request: NextRequest) {
+  const sec = await securityMiddleware(request, { rateLimitType: 'admin' });
+  if (sec && sec.status !== 200) return sec;
+
   if (!(await isAuthed(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -68,6 +72,9 @@ export async function GET(request: NextRequest) {
 
 // POST - Create new product
 export async function POST(request: NextRequest) {
+  const sec = await securityMiddleware(request, { rateLimitType: 'admin' });
+  if (sec && sec.status !== 200) return sec;
+
   if (!(await isAuthed(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -116,6 +123,9 @@ export async function POST(request: NextRequest) {
 
 // PUT - Update product
 export async function PUT(request: NextRequest) {
+  const sec = await securityMiddleware(request, { rateLimitType: 'admin' });
+  if (sec && sec.status !== 200) return sec;
+
   if (!(await isAuthed(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -158,6 +168,9 @@ export async function PUT(request: NextRequest) {
 
 // DELETE - Delete product
 export async function DELETE(request: NextRequest) {
+  const sec = await securityMiddleware(request, { rateLimitType: 'admin' });
+  if (sec && sec.status !== 200) return sec;
+
   if (!(await isAuthed(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }

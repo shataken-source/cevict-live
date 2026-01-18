@@ -4,7 +4,7 @@
  * Updates analytics data and generates reports
  */
 
-import { createClient } from '@/lib/supabase';
+import { getSupabaseAdminClient } from '@/lib/supabase';
 
 interface AnalyticsResult {
   updated: boolean;
@@ -20,10 +20,10 @@ interface AnalyticsResult {
 }
 
 export class AnalyticsService {
-  private supabase: NonNullable<ReturnType<typeof createClient>>;
+  private supabase: NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
 
   constructor() {
-    const client = createClient();
+    const client = getSupabaseAdminClient();
     if (!client) {
       throw new Error('Supabase client initialization failed: missing configuration');
     }

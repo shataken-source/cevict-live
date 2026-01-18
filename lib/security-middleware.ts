@@ -30,6 +30,8 @@ const RATE_LIMITS = {
   api: { maxRequests: 100, windowMs: 15 * 60 * 1000 }, // 100 requests per 15 minutes
   auth: { maxRequests: 5, windowMs: 15 * 60 * 1000 }, // 5 requests per 15 minutes
   search: { maxRequests: 50, windowMs: 60 * 1000 }, // 50 requests per minute
+  admin: { maxRequests: 30, windowMs: 15 * 60 * 1000 }, // 30 requests per 15 minutes
+  payments: { maxRequests: 30, windowMs: 15 * 60 * 1000 }, // 30 requests per 15 minutes
   default: { maxRequests: 200, windowMs: 15 * 60 * 1000 }, // 200 requests per 15 minutes
 };
 

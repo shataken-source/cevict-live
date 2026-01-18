@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import affiliatesData from '@/data/affiliates.json';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
@@ -36,6 +35,7 @@ export default async function LegalPage({ params }: { params: { state: string; c
 
   const supabase = getSupabaseClient();
   let lawCards: any[] = [];
+  let products: any[] = [];
 
   if (supabase) {
     const { data } = await supabase
@@ -45,10 +45,20 @@ export default async function LegalPage({ params }: { params: { state: string; c
       .eq('category', category)
       .eq('is_active', true);
     lawCards = data || [];
+
+    const { data: prod } = await supabase
+      .from('affiliate_products')
+      .select('id,name,category,price,affiliate_link,commission_rate,description,sponsor,is_active')
+      .eq('is_active', true)
+      .order('sponsor', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(24);
+    products = prod || [];
   }
 
-  const products = (affiliatesData as any)?.products || [];
-  const legalProducts = products.filter((p: any) => p.category?.toLowerCase().includes('legal'));
+  const legalProducts = products.filter((p: any) =>
+    String(p.category || '').toLowerCase().includes('legal')
+  );
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '32px 16px' }}>
@@ -115,9 +125,11 @@ export default async function LegalPage({ params }: { params: { state: string; c
               <div key={product.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', background: '#fff' }}>
                 <div style={{ fontWeight: 700 }}>{product.name}</div>
                 <div style={{ color: '#444', margin: '8px 0' }}>{product.description}</div>
-                <div style={{ fontWeight: 700, marginBottom: '8px' }}>{product.price}</div>
+                <div style={{ fontWeight: 700, marginBottom: '8px' }}>
+                  {typeof product.price === 'number' ? `$${product.price.toFixed(2)}` : product.price}
+                </div>
                 <a
-                  href={`${product.link}?subid=liberty_terminal`}
+                  href={`${product.affiliate_link}${String(product.affiliate_link).includes('?') ? '&' : '?'}subid=liberty_terminal`}
                   target="_blank"
                   rel="noopener sponsored"
                   style={{

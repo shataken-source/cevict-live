@@ -2,6 +2,10 @@
   "framework": "nextjs",
   "buildCommand": "npm run vercel-build",
   "outputDirectory": ".next",
-  "installCommand": "npm install --legacy-peer-deps"
+  "installCommand": "npm install --legacy-peer-deps",
+  "crons": [
+    { "path": "/api/bot/run", "schedule": "0 */6 * * *" },
+    { "path": "/api/alerts/paul-revere", "schedule": "0 * * * *" }
+  ]
 }
 

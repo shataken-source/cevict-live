@@ -8,13 +8,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+import { getSupabaseAdminClient } from '@/lib/supabase';
+import EmailService from '@/lib/emailService';
+import SMSService from '@/lib/sms';
 
 interface PaulRevereAlert {
   id: string;
@@ -27,6 +23,7 @@ interface PaulRevereAlert {
   source: string;
   actionRequired?: string;
   expiresAt?: string;
+  sourceUrl?: string;
 }
 
 interface UserAlert {
@@ -40,7 +37,7 @@ interface UserAlert {
 
 /**
  * POST /api/alerts/paul-revere
- * Trigger a Paul Revere alert
+ * Trigger a Paul Revere alert (manual)
  */
 export async function POST(req: NextRequest) {
   try {
@@ -56,46 +53,13 @@ export async function POST(req: NextRequest) {
 
     console.log('🔔 Paul Revere Alert Triggered:', alert.headline);
 
-    // Determine target users based on scope
-    let targetUsers: any[] = [];
-
-    if (alert.scope === 'national') {
-      // Get all users with alerts enabled
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('id, email, phone, preferences')
-        .eq('alerts_enabled', true)
-        .limit(1000);
-
-      if (!error && users) {
-        targetUsers = users;
-      }
-    } else if (alert.scope === 'state' && alert.state) {
-      // Get users in specific state
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('id, email, phone, preferences')
-        .eq('alerts_enabled', true)
-        .eq('state', alert.state)
-        .limit(500);
-
-      if (!error && users) {
-        targetUsers = users;
-      }
-    } else if (alert.scope === 'local' && alert.zipCode) {
-      // Get users in specific ZIP code range
-      const zipPrefix = alert.zipCode.substring(0, 3);
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('id, email, phone, preferences')
-        .eq('alerts_enabled', true)
-        .like('zip_code', `${zipPrefix}%`)
-        .limit(200);
-
-      if (!error && users) {
-        targetUsers = users;
-      }
+    const supabase = getSupabaseAdminClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
     }
+
+    // Determine target users based on scope
+    const targetUsers = await getTargetUsers(supabase, alert);
 
     console.log(`📬 Targeting ${targetUsers.length} users for ${alert.scope} alert`);
 
@@ -110,10 +74,9 @@ export async function POST(req: NextRequest) {
         state: alert.state,
         zip_code: alert.zipCode,
         source: alert.source,
-        action_required: alert.actionRequired,
-        expires_at: alert.expiresAt,
         target_count: targetUsers.length,
-        created_at: new Date().toISOString()
+        source_url: alert.sourceUrl || null,
+        created_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -148,83 +111,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Queue alerts for each user
-    const userAlerts: UserAlert[] = [];
-    
-    for (const user of targetUsers) {
-      // Check user preferences for preferred channel
-      const preferredChannel = user.preferences?.alertChannel || 'email';
-      
-      userAlerts.push({
-        userId: user.id,
-        email: user.email,
-        phone: user.phone,
-        alertId: savedAlert?.id || 'unknown',
-        channel: preferredChannel,
-        status: 'pending'
-      });
-    }
-
-    // Queue for sending (in production, would use a queue service)
-    if (userAlerts.length > 0) {
-      // Batch insert pending alerts
-      const { error: queueError } = await supabase
-        .from('alert_queue')
-        .insert(userAlerts.map(ua => ({
-          user_id: ua.userId,
-          alert_id: ua.alertId,
-          channel: ua.channel,
-          status: 'pending',
-          created_at: new Date().toISOString()
-        })));
-
-      if (queueError) {
-        console.error('Failed to queue alerts:', queueError);
-      }
-
-      // Trigger immediate email sending for urgent/immediate alerts
-      if (alert.type === 'immediate' || alert.type === 'urgent') {
-        // In production, this would trigger an email service
-        console.log(`🚨 URGENT: Sending ${userAlerts.length} ${alert.type} alerts`);
-        
-        // Send emails in batches
-        const emailBatch = userAlerts.filter(ua => ua.channel === 'email');
-        const smsBatch = userAlerts.filter(ua => ua.channel === 'sms');
-
-        // Log summary
-        console.log(`📧 Email batch: ${emailBatch.length} recipients`);
-        console.log(`📱 SMS batch: ${smsBatch.length} recipients`);
-      }
-
-      // Push to Alpha Hunter webhook if configured
-      if (process.env.ALPHA_HUNTER_WEBHOOK_URL) {
-        try {
-          await fetch(process.env.ALPHA_HUNTER_WEBHOOK_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ticker: 'MO',
-              signal: 'SHORT',
-              reason: `Legislative Alert: ${alert.headline}`,
-              confidence: 85,
-              scope: alert.scope,
-              state: alert.state,
-              type: alert.type,
-              created_at: new Date().toISOString(),
-            }),
-          });
-          console.log('🔗 Sent Alpha Hunter webhook for Paul Revere alert');
-        } catch (err: any) {
-          console.error('Alpha Hunter webhook failed:', err?.message);
-        }
-      }
-    }
+    // Dispatch notifications immediately (server-side)
+    const dispatch = await dispatchToUsers(targetUsers, alert);
 
     return NextResponse.json({
       success: true,
       alertId: savedAlert?.id,
       targetUsers: targetUsers.length,
-      queued: userAlerts.length,
+      sent: dispatch.sent,
+      failed: dispatch.failed,
       scope: alert.scope,
       type: alert.type,
       message: `Paul Revere alert triggered for ${targetUsers.length} users`
@@ -241,10 +136,87 @@ export async function POST(req: NextRequest) {
 
 /**
  * GET /api/alerts/paul-revere
- * Get recent alerts and stats
+ * - If called by Vercel Cron: run the Paul Revere check (scrape + notify + persist)
+ * - Otherwise: get recent alerts + stats
  */
 export async function GET(req: NextRequest) {
   try {
+    const isCron = req.headers.get('x-vercel-cron') === '1';
+    const supabase = getSupabaseAdminClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 });
+    }
+
+    if (isCron) {
+      const { scrapeRegulations } = require('@/scripts/regulation-scraper.js');
+      const scraped = await scrapeRegulations();
+      const regs = Array.isArray(scraped?.regulations) ? scraped.regulations : [];
+
+      let alertsCreated = 0;
+      let notificationsSent = 0;
+      let notificationsFailed = 0;
+
+      for (const reg of regs) {
+        const regAlerts = Array.isArray(reg?.paulRevereAlerts) ? reg.paulRevereAlerts : [];
+        for (const a of regAlerts) {
+          const alert: PaulRevereAlert = {
+            id: String(reg.id || ''),
+            type: a.urgency === 'immediate' ? 'immediate' : a.urgency === 'urgent' ? 'urgent' : 'watch',
+            scope: a.scope,
+            state: a.state,
+            zipCode: a.zipCode,
+            headline: String(reg.headline || ''),
+            summary: String(reg.summary || ''),
+            source: String(reg.source || ''),
+            sourceUrl: String(reg.url || ''),
+          };
+
+          // Deduplicate: same headline + scope/state/zip within 24h
+          const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+          const { data: existing } = await supabase
+            .from('paul_revere_alerts')
+            .select('id')
+            .eq('headline', alert.headline)
+            .eq('scope', alert.scope)
+            .eq('state', alert.state || null)
+            .eq('zip_code', alert.zipCode || null)
+            .gte('created_at', since)
+            .maybeSingle();
+          if (existing?.id) continue;
+
+          const users = await getTargetUsers(supabase, alert);
+          await supabase.from('paul_revere_alerts').insert({
+            type: alert.type,
+            scope: alert.scope,
+            state: alert.state,
+            zip_code: alert.zipCode,
+            headline: alert.headline,
+            summary: alert.summary,
+            source: alert.source,
+            source_url: alert.sourceUrl || null,
+            matched_keywords: reg?.analysis?.matchedKeywords || [],
+            target_count: users.length,
+            created_at: new Date().toISOString(),
+          } as any);
+          alertsCreated++;
+
+          const dispatch = await dispatchToUsers(users, alert);
+          notificationsSent += dispatch.sent;
+          notificationsFailed += dispatch.failed;
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        mode: 'cron',
+        scraped: regs.length,
+        alertsCreated,
+        notificationsSent,
+        notificationsFailed,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     const { searchParams } = new URL(req.url);
     const scope = searchParams.get('scope');
     const state = searchParams.get('state');
@@ -304,5 +276,66 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+async function getTargetUsers(supabase: any, alert: PaulRevereAlert): Promise<any[]> {
+  let query = supabase
+    .from('unified_users')
+    .select('id,email,phone,email_notifications,sms_notifications,notifications_enabled,state_code,zip_code')
+    .eq('notifications_enabled', true);
+
+  if (alert.scope === 'state' && alert.state) {
+    query = query.eq('state_code', alert.state);
+  }
+
+  if (alert.scope === 'local' && alert.zipCode) {
+    const prefix = String(alert.zipCode).slice(0, 3);
+    query = query.like('zip_code', `${prefix}%`);
+  }
+
+  const { data, error } = await query.limit(1000);
+  if (error) return [];
+  return data || [];
+}
+
+async function dispatchToUsers(users: any[], alert: PaulRevereAlert): Promise<{ sent: number; failed: number }> {
+  let sent = 0;
+  let failed = 0;
+
+  const emailService = EmailService.getInstance();
+  const smsService = SMSService.getInstance();
+
+  const subject = `🚨 ${alert.type.toUpperCase()} ${alert.scope.toUpperCase()} ALERT: ${alert.headline}`;
+  const bodyText = `${alert.headline}\n\n${alert.summary || ''}\n\nSource: ${alert.source}\n${alert.sourceUrl || ''}`;
+
+  for (const user of users) {
+    try {
+      const wantsEmail = !!user.email_notifications && !!user.email;
+      const wantsSms = !!user.sms_notifications && !!user.phone;
+
+      if (wantsEmail) {
+        await emailService.sendEmail({
+          to: user.email,
+          subject,
+          text: bodyText,
+          html: `<h2>${alert.headline}</h2><p>${alert.summary || ''}</p><p><strong>Source:</strong> ${alert.source}</p>${alert.sourceUrl ? `<p><a href="${alert.sourceUrl}">${alert.sourceUrl}</a></p>` : ''}`,
+        });
+        sent++;
+      }
+
+      if (wantsSms) {
+        await smsService.sendSMS({
+          to: user.phone,
+          body: `SmokersRights ${alert.type.toUpperCase()}: ${alert.headline}`.slice(0, 155),
+          priority: alert.type === 'immediate' ? 'high' : 'normal',
+        });
+        sent++;
+      }
+    } catch {
+      failed++;
+    }
+  }
+
+  return { sent, failed };
 }
 

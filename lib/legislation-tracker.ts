@@ -44,7 +44,7 @@ export interface LegislationAlert {
 
 // Fetch active legislation for a state
 export async function fetchStateLegislation(stateCode: string): Promise<LegislationBill[]> {
-  if (!supabase) return getSampleLegislation(stateCode);
+  if (!supabase) return [];
 
   try {
     const { data, error } = await supabase
@@ -58,13 +58,13 @@ export async function fetchStateLegislation(stateCode: string): Promise<Legislat
     return data as LegislationBill[];
   } catch (error) {
     console.error('Error fetching legislation:', error);
-    return getSampleLegislation(stateCode);
+    return [];
   }
 }
 
 // Fetch legislation alerts
 export async function fetchLegislationAlerts(states: string[]): Promise<LegislationAlert[]> {
-  if (!supabase) return getSampleAlerts();
+  if (!supabase) return [];
 
   try {
     const { data, error } = await supabase
@@ -79,7 +79,7 @@ export async function fetchLegislationAlerts(states: string[]): Promise<Legislat
     return data as LegislationAlert[];
   } catch (error) {
     console.error('Error fetching alerts:', error);
-    return getSampleAlerts();
+    return [];
   }
 }
 
@@ -125,114 +125,6 @@ export async function trackBill(billId: string, userId: string): Promise<boolean
   } catch {
     return false;
   }
-}
-
-// Sample data
-function getSampleLegislation(stateCode: string): LegislationBill[] {
-  const stateLegislation: Record<string, LegislationBill[]> = {
-    GA: [
-      {
-        id: 'ga-hb-123',
-        state: 'GA',
-        billNumber: 'HB 123',
-        title: 'Tobacco Product Tax Increase Act',
-        summary: 'Proposes increasing the state tobacco tax by $1.00 per pack to fund healthcare programs.',
-        status: 'committee',
-        category: 'taxation',
-        impact: 'negative',
-        impactDescription: 'Would increase cigarette prices significantly',
-        sponsors: ['Rep. Smith', 'Rep. Johnson'],
-        introducedDate: '2024-01-15',
-        lastActionDate: '2024-12-20',
-        lastAction: 'Referred to Ways and Means Committee',
-        alertLevel: 'important',
-      },
-      {
-        id: 'ga-sb-456',
-        state: 'GA',
-        billNumber: 'SB 456',
-        title: 'Outdoor Smoking Area Designation Act',
-        summary: 'Would require designated outdoor smoking areas in public spaces rather than complete bans.',
-        status: 'introduced',
-        category: 'outdoor_smoking',
-        impact: 'positive',
-        impactDescription: 'Would protect smokers\' rights in outdoor areas',
-        sponsors: ['Sen. Williams'],
-        introducedDate: '2024-11-01',
-        lastActionDate: '2024-12-15',
-        lastAction: 'First reading',
-        alertLevel: 'monitor',
-      },
-    ],
-    FL: [
-      {
-        id: 'fl-hb-789',
-        state: 'FL',
-        billNumber: 'HB 789',
-        title: 'Vaping Product Flavor Ban',
-        summary: 'Would ban flavored vaping products except tobacco flavor.',
-        status: 'passed_house',
-        category: 'vaping',
-        impact: 'negative',
-        impactDescription: 'Would eliminate most vaping options',
-        sponsors: ['Rep. Garcia'],
-        introducedDate: '2024-02-01',
-        lastActionDate: '2024-12-18',
-        lastAction: 'Passed House 78-42',
-        votes: { house: { yea: 78, nay: 42 } },
-        alertLevel: 'urgent',
-      },
-    ],
-    NC: [
-      {
-        id: 'nc-sb-101',
-        state: 'NC',
-        billNumber: 'SB 101',
-        title: 'Tobacco Heritage Preservation Act',
-        summary: 'Would prevent localities from enacting smoking restrictions stricter than state law.',
-        status: 'committee',
-        category: 'indoor_smoking',
-        impact: 'positive',
-        impactDescription: 'Would preempt local smoking bans',
-        sponsors: ['Sen. Brown', 'Sen. Davis'],
-        introducedDate: '2024-03-15',
-        lastActionDate: '2024-12-10',
-        lastAction: 'Referred to Commerce Committee',
-        alertLevel: 'important',
-      },
-    ],
-  };
-
-  return stateLegislation[stateCode] || [];
-}
-
-function getSampleAlerts(): LegislationAlert[] {
-  return [
-    {
-      id: 'alert-1',
-      billId: 'fl-hb-789',
-      type: 'passed',
-      message: '🚨 URGENT: Florida HB 789 (Vaping Flavor Ban) passed the House! Moving to Senate.',
-      createdAt: new Date(Date.now() - 3600000).toISOString(),
-      read: false,
-    },
-    {
-      id: 'alert-2',
-      billId: 'ga-hb-123',
-      type: 'vote_scheduled',
-      message: '📅 Georgia HB 123 (Tobacco Tax) committee vote scheduled for January 5th',
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-      read: false,
-    },
-    {
-      id: 'alert-3',
-      billId: 'nc-sb-101',
-      type: 'status_change',
-      message: '📋 NC SB 101 (Heritage Act) received new co-sponsors',
-      createdAt: new Date(Date.now() - 172800000).toISOString(),
-      read: false,
-    },
-  ];
 }
 
 // Get status badge color

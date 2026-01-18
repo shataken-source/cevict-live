@@ -4,7 +4,7 @@
  * Cleans up old data, removes expired sessions, and optimizes database storage
  */
 
-import { createClient } from '@/lib/supabase';
+import { getSupabaseAdminClient } from '@/lib/supabase';
 
 interface CleanupResult {
   cleaned: number;
@@ -19,10 +19,10 @@ interface CleanupResult {
 }
 
 export class DataCleanupService {
-  private supabase: NonNullable<ReturnType<typeof createClient>>;
+  private supabase: NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
 
   constructor() {
-    const client = createClient();
+    const client = getSupabaseAdminClient();
     if (!client) {
       throw new Error('Supabase client initialization failed: missing configuration');
     }

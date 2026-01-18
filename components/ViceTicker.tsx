@@ -48,13 +48,13 @@ export default function ViceTicker() {
   }, []);
 
   return (
-    <div className="w-full overflow-hidden bg-zinc-950 border-b border-zinc-800 py-2">
+    <div className="w-full overflow-hidden bg-zinc-950 border-b border-zinc-800 py-2 vhs-scanlines">
       <div className="whitespace-nowrap animate-[ticker_25s_linear_infinite]">
         {items.map((item, idx) => (
           <span
             key={`${item.type}-${idx}`}
             className={`inline-flex items-center px-4 text-xs font-bold ${
-              item.type === "alert" ? "text-yellow-400" : "text-green-300"
+              item.type === "alert" ? "text-yellow-400 neon-alert-text" : "text-green-300"
             }`}
           >
             {item.text}

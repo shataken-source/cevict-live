@@ -195,7 +195,14 @@ export class CryptoPaymentService {
       const crypto = require('crypto');
       const hmac = crypto.createHmac('sha256', sharedSecret);
       const hash = hmac.update(payload).digest('hex');
-      return hash === signature;
+      try {
+        const a = Buffer.from(hash, 'hex');
+        const b = Buffer.from(signature || '', 'hex');
+        if (a.length !== b.length) return false;
+        return crypto.timingSafeEqual(a, b);
+      } catch {
+        return false;
+      }
     } else {
       // Client-side: would need to use Web Crypto API
       // For now, webhook verification should only happen server-side

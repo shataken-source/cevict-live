@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import StripeService from '@/lib/stripe';
+import { securityMiddleware } from '@/lib/security-middleware';
 
 export async function POST(request: NextRequest) {
+  const sec = await securityMiddleware(request, { rateLimitType: 'payments', requireCSRF: true });
+  if (sec && sec.status !== 200) return sec;
+
   try {
     const { amount, currency = 'usd', metadata } = await request.json();
 

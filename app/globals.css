@@ -67,6 +67,49 @@ body[data-age-gate-active="true"] [data-age-gate-modal] {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* 80s Retro / Modern Hybrid effects                                          */
+/* -------------------------------------------------------------------------- */
+
+.vhs-scanlines {
+  position: relative;
+}
+
+.vhs-scanlines::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.04) 0px,
+    rgba(255, 255, 255, 0.04) 1px,
+    rgba(0, 0, 0, 0) 3px,
+    rgba(0, 0, 0, 0) 6px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.4;
+  animation: vhs-flicker 6s infinite;
+}
+
+@keyframes vhs-flicker {
+  0% { opacity: 0.35; }
+  50% { opacity: 0.55; }
+  100% { opacity: 0.35; }
+}
+
+.neon-glow {
+  box-shadow:
+    0 0 12px rgba(255, 0, 255, 0.35),
+    0 0 24px rgba(0, 255, 255, 0.2);
+}
+
+.neon-alert-text {
+  text-shadow:
+    0 0 8px rgba(255, 255, 0, 0.55),
+    0 0 16px rgba(255, 0, 255, 0.25);
+}
+
 @layer components {
   .law-card {
     @apply bg-white rounded-lg shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow;

@@ -17,7 +17,7 @@ function isValidPlanId(planId: string): boolean {
 export async function POST(request: NextRequest) {
   // Apply security middleware
   const securityResponse = await securityMiddleware(request, {
-    rateLimitType: 'api',
+    rateLimitType: 'payments',
     requireCSRF: true,
   });
 
@@ -88,30 +88,20 @@ export async function POST(request: NextRequest) {
       // For subscriptions, use predefined price IDs if available
       const priceId = process.env[`STRIPE_${planId.toUpperCase()}_PRICE_ID`];
       
-      if (priceId) {
-        const session = await stripeService.createSubscriptionSession(
-          priceId,
-          customer.id,
-          `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-          `${baseUrl}/payment/cancel`
+      if (!priceId) {
+        return NextResponse.json(
+          { error: `Missing Stripe price ID: STRIPE_${planId.toUpperCase()}_PRICE_ID` },
+          { status: 503 }
         );
-        return NextResponse.json(session);
-      } else {
-        // Fallback to one-time payment
-        const session = await stripeService.createCheckoutSession(
-          amount,
-          'usd',
-          `SmokersRights ${planId} Plan`,
-          `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-          `${baseUrl}/payment/cancel`,
-          {
-            plan_id: planId,
-            customer_email: customerEmail,
-            customer_id: customer.id,
-          }
-        );
-        return NextResponse.json(session);
       }
+
+      const session = await stripeService.createSubscriptionSession(
+        priceId,
+        customer.id,
+        `${baseUrl}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+        `${baseUrl}/payment/cancel`
+      );
+      return NextResponse.json(session);
     } else {
       // One-time payment
       const session = await stripeService.createCheckoutSession(

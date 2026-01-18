@@ -1,6 +1,7 @@
 import CryptoPaymentService from '@/lib/crypto-payment';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { securityMiddleware } from '@/lib/security-middleware';
 
 export const runtime = 'nodejs';
 
@@ -19,6 +20,9 @@ function getSupabaseAdmin() {
  * Creates a payment request for BTC or ETH
  */
 export async function POST(request: NextRequest) {
+  const sec = await securityMiddleware(request, { rateLimitType: 'payments', requireCSRF: true });
+  if (sec && sec.status !== 200) return sec;
+
   try {
     const body = await request.json();
     const { amount, currency, description, metadata, userId, planId } = body;

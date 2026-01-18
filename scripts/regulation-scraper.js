@@ -1,13 +1,19 @@
 /**
  * SmokersRights Regulation Scraper
  * The Freedom Monitor - Tracks tobacco/vape regulations nationwide
- * 
- * Targets: Government RSS feeds, News APIs
- * Keywords: Tobacco Tax, Vape Ban, Menthol Prohibition
+ *
+ * Targets: Government RSS/Atom feeds
  * Feature: Paul Revere Algorithm - Geo-targeted alerts
  */
 
-const https = require('https');
+const Parser = require('rss-parser');
+
+const parser = new Parser({
+  timeout: 10_000,
+  headers: {
+    'User-Agent': 'SmokersRightsBot/1.0 (+https://smokersrights.com)',
+  },
+});
 
 // Configuration
 const CONFIG = {
@@ -72,7 +78,26 @@ const CONFIG = {
     immediate: ['ban', 'prohibition', 'emergency', 'effective immediately'],
     urgent: ['proposed', 'introduced', 'hearing scheduled', 'vote scheduled'],
     watch: ['study', 'review', 'consideration', 'discussion']
-  }
+  },
+
+  // Real RSS/Atom sources (keep this list small + reliable for serverless)
+  rssFeeds: [
+    {
+      name: 'Federal Register (tobacco search)',
+      url: 'https://www.federalregister.gov/documents/search.rss?conditions%5Bterm%5D=tobacco',
+      type: 'federal',
+    },
+    {
+      name: 'Federal Register (vaping search)',
+      url: 'https://www.federalregister.gov/documents/search.rss?conditions%5Bterm%5D=vaping',
+      type: 'federal',
+    },
+    {
+      name: 'Congress.gov (tobacco search)',
+      url: 'https://www.congress.gov/rss/search/?search=tobacco',
+      type: 'federal',
+    },
+  ],
 };
 
 // State abbreviation to full name mapping + full list
@@ -285,84 +310,58 @@ async function scrapeRegulations() {
   console.log('📡 Monitoring government sources for tobacco/vape regulations...\n');
   
   const regulations = [];
-  
-  // Simulated regulations for demonstration
-  const sampleRegulations = [
-    {
-      id: `sr_${Date.now()}_1`,
-      headline: 'California Proposes Statewide Flavored Tobacco Ban',
-      summary: 'New legislation would prohibit sale of all flavored tobacco products including menthol.',
-      source: 'California Legislature',
-      type: 'proposed_bill',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: `sr_${Date.now()}_2`,
-      headline: 'FDA Announces New Nicotine Limit Rule Effective 2027',
-      summary: 'Federal regulation would cap nicotine content in cigarettes nationwide.',
-      source: 'FDA',
-      type: 'federal_regulation',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: `sr_${Date.now()}_3`,
-      headline: 'New York City Emergency Vape Ban Takes Effect Immediately',
-      summary: 'City council passes emergency ordinance banning all vape sales in affected zip codes 10001-10010.',
-      source: 'NYC Council',
-      type: 'local_ban',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: `sr_${Date.now()}_4`,
-      headline: 'Texas Legislature Considers Tobacco Tax Increase',
-      summary: 'Proposed bill would raise cigarette tax by $2 per pack to fund healthcare programs.',
-      source: 'Texas Legislature',
-      type: 'proposed_bill',
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: `sr_${Date.now()}_5`,
-      headline: 'Congress Reviews National Menthol Prohibition Bill',
-      summary: 'Federal legislation introduced to ban menthol cigarettes nationwide.',
-      source: 'Congress.gov',
-      type: 'federal_bill',
-      timestamp: new Date().toISOString()
+
+  for (const feed of CONFIG.rssFeeds) {
+    try {
+      const parsed = await parser.parseURL(feed.url);
+      const items = Array.isArray(parsed.items) ? parsed.items : [];
+
+      for (const item of items.slice(0, 25)) {
+        const headline = String(item.title || '').trim();
+        const link = String(item.link || '').trim();
+        const summary = String(item.contentSnippet || item.content || '').trim();
+        if (!headline) continue;
+
+        const id = String(item.guid || link || `${feed.name}:${headline}`).slice(0, 500);
+        const timestamp = item.isoDate ? new Date(item.isoDate).toISOString() : new Date().toISOString();
+
+        const fullText = `${headline} ${summary}`;
+        const analysis = analyzeRegulation(fullText);
+        const geography = extractGeography(fullText);
+
+        const processedReg = {
+          id,
+          headline,
+          summary,
+          source: feed.name,
+          type: feed.type,
+          url: link,
+          timestamp,
+          analysis,
+          geography,
+        };
+
+        processedReg.paulRevereAlerts = paulRevereAlert(processedReg);
+
+        regulations.push(processedReg);
+      }
+    } catch (e) {
+      console.warn('[regulation-scraper] feed failed:', feed.name);
     }
-  ];
-  
-  // Process each regulation
-  for (const reg of sampleRegulations) {
-    const fullText = `${reg.headline} ${reg.summary}`;
-    
-    // Analyze regulation
-    const analysis = analyzeRegulation(fullText);
-    
-    // Extract geography
-    const geography = extractGeography(fullText);
-    
-    const processedReg = {
-      ...reg,
-      analysis,
-      geography
-    };
-    
-    // Generate Paul Revere alerts
-    const alerts = paulRevereAlert(processedReg);
-    processedReg.paulRevereAlerts = alerts;
-    
-    regulations.push(processedReg);
-    
-    // Log processing
-    const priorityEmoji = analysis.priority === 'high' ? '🔴' : 
+  }
+
+  // Log a quick summary
+  for (const reg of regulations.slice(0, 10)) {
+    const analysis = reg.analysis || {};
+    const geography = reg.geography || { states: [], federal: false };
+    const priorityEmoji = analysis.priority === 'high' ? '🔴' :
                           analysis.priority === 'medium' ? '🟡' : '🟢';
-    
-    console.log(`${priorityEmoji} ${reg.headline.substring(0, 60)}...`);
-    console.log(`   Priority: ${analysis.priority.toUpperCase()}`);
-    console.log(`   Alert Level: ${analysis.alertLevel}`);
-    console.log(`   Scope: ${geography.federal ? 'Federal' : ''} ${geography.states.join(', ')}`);
-    
-    if (alerts.length > 0) {
-      console.log(`   🔔 PAUL REVERE: ${alerts.length} alert(s) triggered!`);
+    console.log(`${priorityEmoji} ${String(reg.headline).substring(0, 60)}...`);
+    console.log(`   Priority: ${(analysis.priority || 'low').toUpperCase()}`);
+    console.log(`   Alert Level: ${analysis.alertLevel || 'watch'}`);
+    console.log(`   Scope: ${geography.federal ? 'Federal' : ''} ${(geography.states || []).join(', ')}`);
+    if (reg.paulRevereAlerts && reg.paulRevereAlerts.length > 0) {
+      console.log(`   🔔 PAUL REVERE: ${reg.paulRevereAlerts.length} alert(s) triggered!`);
     }
     console.log('');
   }

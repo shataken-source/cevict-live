@@ -9,15 +9,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DailyBot } from '@/lib/bot/dailyBot';
 
 // Authentication key for security (should be set in environment)
-const BOT_API_KEY = process.env.BOT_API_KEY || 'your-secret-bot-key';
+const BOT_API_KEY = process.env.BOT_API_KEY || '';
+
+function isVercelCron(request: NextRequest): boolean {
+  // Vercel Cron sets this header on scheduled invocations
+  return request.headers.get('x-vercel-cron') === '1';
+}
+
+function isAuthorized(request: NextRequest): boolean {
+  if (isVercelCron(request)) return true;
+  if (!BOT_API_KEY) return false;
+  const authHeader = request.headers.get('Authorization') || '';
+  const providedKey = authHeader.replace('Bearer ', '');
+  return providedKey === BOT_API_KEY;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify authentication
-    const authHeader = request.headers.get('Authorization');
-    const providedKey = authHeader?.replace('Bearer ', '');
-    
-    if (providedKey !== BOT_API_KEY) {
+    if (!isAuthorized(request)) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -61,22 +70,26 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication
-    const authHeader = request.headers.get('Authorization');
-    const providedKey = authHeader?.replace('Bearer ', '');
-    
-    if (providedKey !== BOT_API_KEY) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    // Cron should run the bot via GET
+    if (isVercelCron(request)) {
+      const bot = new DailyBot();
+      const result = await bot.runDaily();
+      return NextResponse.json({
+        success: result.success,
+        timestamp: result.timestamp,
+        duration: result.duration,
+        results: result.results,
+        errors: result.errors,
+      });
     }
 
-    // Get bot status
-    const bot = new DailyBot();
-    const status = await bot.getStatus();
+    // Otherwise, authenticated status endpoint
+    if (!isAuthorized(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    return NextResponse.json(status);
+    const bot = new DailyBot();
+    return NextResponse.json(await bot.getStatus());
 
   } catch (error) {
     console.error('Bot status API error:', error);

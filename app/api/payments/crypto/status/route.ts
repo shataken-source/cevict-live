@@ -1,5 +1,6 @@
 import CryptoPaymentService from '@/lib/crypto-payment';
 import { NextRequest, NextResponse } from 'next/server';
+import { securityMiddleware } from '@/lib/security-middleware';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,6 +10,9 @@ export const dynamic = 'force-dynamic';
  * Query param: chargeId
  */
 export async function GET(request: NextRequest) {
+  const sec = await securityMiddleware(request, { rateLimitType: 'payments' });
+  if (sec && sec.status !== 200) return sec;
+
   try {
     const { searchParams } = new URL(request.url);
     const chargeId = searchParams.get('chargeId');

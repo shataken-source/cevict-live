@@ -67,6 +67,9 @@ export function UnifiedAuthProvider({ children }: { children: ReactNode }) {
             avatar_url: profile?.avatar_url,
             role: profile?.role
           });
+
+          // Sync age gate cookie -> unified_users on login/session restore
+          await syncAgeVerifiedToUnifiedUsers(supabase, session.user.id).catch(() => {});
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
@@ -96,6 +99,8 @@ export function UnifiedAuthProvider({ children }: { children: ReactNode }) {
             avatar_url: profile?.avatar_url,
             role: profile?.role
           });
+
+          await syncAgeVerifiedToUnifiedUsers(supabase, session.user.id).catch(() => {});
         } else {
           setUser(null);
         }
@@ -191,4 +196,21 @@ export function useUnifiedAuth() {
     throw new Error('useUnifiedAuth must be used within a UnifiedAuthProvider');
   }
   return context;
+}
+
+async function syncAgeVerifiedToUnifiedUsers(supabase: any, userId: string): Promise<void> {
+  if (typeof document === 'undefined') return;
+  const cookies = document.cookie.split(';').map((c) => c.trim());
+  const verified = cookies.some((c) => c.startsWith('age_verified=yes') || c.startsWith('age_verified=true'));
+  if (!verified) return;
+
+  await supabase
+    .from('unified_users')
+    .update({
+      is_age_verified: true,
+      verification_status: 'approved',
+      verification_method: 'soft_gate',
+      verified_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
 }

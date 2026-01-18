@@ -3,7 +3,7 @@ import AgeGateWrapper from '@/components/AgeGateWrapper';
 import AdSenseScript from '@/components/AdSenseScript';
 import ConditionalAdSenseScript from '@/components/ConditionalAdSenseScript';
 import ErrorBoundary from '@/components/errors/ErrorBoundary';
-import { ToasterProvider } from '@/components/ui/toaster';
+import { Toaster } from '@/components/ui/toaster';
 import { UnifiedAuthProvider } from '@/shared/auth/UnifiedAuth';
 import { Metadata } from 'next';
 import { Inter } from 'next/font/google';
@@ -34,16 +34,15 @@ export default function RootLayout({
       <body className={inter.className}>
         <ErrorBoundary>
           <UnifiedAuthProvider>
-            <ToasterProvider>
-              <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div>Loading...</div></div>}>
-                <AgeGateWrapper />
-                <AdSenseScript />
-                <ConditionalAdSenseScript />
-                <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-                  <SmokersRightsAds>{children}</SmokersRightsAds>
-                </div>
-              </Suspense>
-            </ToasterProvider>
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div>Loading...</div></div>}>
+              <AgeGateWrapper />
+              <AdSenseScript />
+              <ConditionalAdSenseScript />
+              <Toaster />
+              <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+                <SmokersRightsAds>{children}</SmokersRightsAds>
+              </div>
+            </Suspense>
           </UnifiedAuthProvider>
         </ErrorBoundary>
       </body>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { securityMiddleware } from '@/lib/security-middleware';
 
 async function hmacHex(key: string, message: string): Promise<string> {
   const enc = new TextEncoder();
@@ -18,6 +19,9 @@ async function hmacHex(key: string, message: string): Promise<string> {
 }
 
 export async function POST(request: NextRequest) {
+  const sec = await securityMiddleware(request, { rateLimitType: 'admin' });
+  if (sec && sec.status !== 200) return sec;
+
   const adminPassword = process.env.SMOKERSRIGHTS_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD;
 
   if (!adminPassword) {

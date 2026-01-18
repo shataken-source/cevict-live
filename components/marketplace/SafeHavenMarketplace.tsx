@@ -18,23 +18,19 @@ export default function SafeHavenMarketplace() {
   const [loading, setLoading] = useState(true);
   const [panicMode, setPanicMode] = useState(false);
   const [userState, setUserState] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
   useEffect(() => {
-    // Load affiliates from JSON file
-    fetch("/data/affiliates.json")
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Failed to fetch affiliates: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setProducts(data.products || []);
+    // Load products from Supabase-backed API (enterprise persistence)
+    fetch("/api/products")
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error || `Failed to fetch products: ${res.status}`);
+        setProducts(Array.isArray(data?.products) ? data.products : []);
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Failed to load affiliates:", err);
-        // Set empty products array on error instead of crashing
+        console.error("Failed to load products:", err);
         setProducts([]);
         setLoading(false);
       });
@@ -65,7 +61,6 @@ export default function SafeHavenMarketplace() {
   }
 
   const categories = ["all", ...Array.from(new Set(products.map((p) => p.category)))];
-  const [selectedCategory, setSelectedCategory] = useState("all");
   const filtered = selectedCategory === "all" 
     ? products 
     : products.filter((p) => p.category === selectedCategory);
