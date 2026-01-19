@@ -14,7 +14,7 @@ Before starting, ensure you have:
 ## Step 1: Navigate to Alpha Hunter Directory
 
 ```bash
-cd C:\gcc\cevict-app\cevict-monorepo\apps\alpha-hunter
+cd C:\cevict-live\apps\alpha-hunter
 ```
 
 ---
@@ -141,7 +141,7 @@ This runs the complete Alpha Hunter system including Kalshi.
 
 ```bash
 # In a new terminal window
-cd C:\gcc\cevict-app\cevict-monorepo\apps\alpha-hunter
+cd C:\cevict-live\apps\alpha-hunter
 pnpm run report
 ```
 
@@ -157,7 +157,7 @@ pnpm start status
 
 ```bash
 # 1. Navigate to directory
-cd C:\gcc\cevict-app\cevict-monorepo\apps\alpha-hunter
+cd C:\cevict-live\apps\alpha-hunter
 
 # 2. Install dependencies (if needed)
 pnpm install

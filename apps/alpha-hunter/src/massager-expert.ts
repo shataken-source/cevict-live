@@ -252,7 +252,23 @@ Return ONLY valid JSON array of discoveries:
       const jsonMatch = text.match(/\[[\s\S]*\]/);
       if (!jsonMatch) return this.heuristicDiscovery(dataset);
 
-      let jsonStr = jsonMatch[0].replace(/,\s*([}\]])/g, `$1`); try { const discoveries = JSON.parse(jsonStr);
+      const rawJson = jsonMatch[0];
+      const cleanedJson = rawJson.replace(/,\s*([}\]])/g, '$1'); // strip trailing commas
+
+      let discoveries: any[] | null = null;
+      try {
+        discoveries = JSON.parse(rawJson);
+      } catch {
+        try {
+          discoveries = JSON.parse(cleanedJson);
+        } catch (parseErr: any) {
+          console.log(`   ⚠️ AI discovery JSON parse failed: ${parseErr?.message?.substring(0, 80) || 'unknown'}`);
+          return this.heuristicDiscovery(dataset);
+        }
+      }
+
+      if (!Array.isArray(discoveries)) return this.heuristicDiscovery(dataset);
+
       return discoveries.map((d: any, i: number) => ({
         id: `discovery_${Date.now()}_${i}`,
         timestamp: new Date(),
@@ -263,10 +279,10 @@ Return ONLY valid JSON array of discoveries:
         dataPoints: d.dataPoints || [],
         hypothesis: d.hypothesis || '',
         testable: !!d.hypothesis,
-        potentialValue: d.potentialValue || 'medium'
+        potentialValue: d.potentialValue || 'medium',
       }));
-    } catch (parseErr: any) { try { const discoveries = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, `$1`)); } catch (parseErr2: any) {
-      console.log(`   ⚠️ AI discovery failed: ${err.message?.substring(0, 50)}`);
+    } catch (err: any) {
+      console.log(`   ⚠️ AI discovery failed: ${err?.message?.substring(0, 80) || 'unknown'}`);
       return this.heuristicDiscovery(dataset);
     }
   }

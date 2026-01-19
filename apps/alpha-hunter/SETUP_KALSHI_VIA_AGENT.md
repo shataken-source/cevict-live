@@ -3,7 +3,7 @@
 ## Quick Command
 
 ```bash
-cd C:\gcc\cevict-app\cevict-monorepo\apps\alpha-hunter
+cd C:\cevict-live\apps\alpha-hunter
 pnpm run setup-kalshi
 ```
 
@@ -23,7 +23,7 @@ The script will:
 ### Option 1: Local Agent Running (Recommended)
 ```bash
 # In a separate terminal, start Local Agent:
-cd C:\gcc\cevict-app\cevict-monorepo\apps\local-agent
+cd C:\cevict-live\apps\local-agent
 pnpm dev
 ```
 
@@ -58,14 +58,14 @@ The script looks for these in your repo:
 curl http://localhost:3847/health
 
 # If not running, start it:
-cd C:\gcc\cevict-app\cevict-monorepo\apps\local-agent
+cd C:\cevict-live\apps\local-agent
 pnpm dev
 ```
 
 ### Step 2: Run Setup Script
 
 ```bash
-cd C:\gcc\cevict-app\cevict-monorepo\apps\alpha-hunter
+cd C:\cevict-live\apps\alpha-hunter
 pnpm run setup-kalshi
 ```
 
@@ -106,7 +106,7 @@ If Local Agent is not available:
 
 ```bash
 # 1. Navigate to directory
-cd C:\gcc\cevict-app\cevict-monorepo\apps\alpha-hunter
+cd C:\cevict-live\apps\alpha-hunter
 
 # 2. Copy example env file
 copy .env.example .env.local
@@ -146,7 +146,7 @@ The setup script automatically finds:
 ### "Local Agent not running"
 ```bash
 # Start Local Agent first:
-cd C:\gcc\cevict-app\cevict-monorepo\apps\local-agent
+cd C:\cevict-live\apps\local-agent
 pnpm dev
 ```
 
