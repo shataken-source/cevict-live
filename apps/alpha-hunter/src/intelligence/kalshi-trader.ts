@@ -6,23 +6,24 @@ import crypto from 'crypto';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
+import { assertKalshiDemoOnly, assertKalshiRequestUrlIsDemo, getKalshiDemoBaseUrl } from '../services/kalshi/execution-gate';
+import { loadAlphaHunterSecrets } from '../lib/secret-store';
 
-// --- ROOT PATH FINDER ---
-const detectRootPath = (): string => {
-  const explicitRoot = 'C:/cevict-live/.env.local';
-  if (fs.existsSync(explicitRoot)) return explicitRoot;
-  let currentPath = process.cwd();
-  for (let i = 0; i < 5; i++) {
-    const envPath = path.join(currentPath, '.env.local');
-    if (fs.existsSync(envPath) && !envPath.includes(path.join('apps', path.sep))) return envPath;
-    const parentPath = path.resolve(currentPath, '..');
-    if (parentPath === currentPath) break;
-    currentPath = parentPath;
-  }
-  return path.resolve(process.cwd(), '..', '..', '.env.local');
-};
-const envPath = detectRootPath();
-if (fs.existsSync(envPath)) dotenv.config({ path: envPath, override: true });
+/**
+ * Environment loading policy (alpha-hunter):
+ * - NEVER load repo-root env files (they may contain prod settings for other apps).
+ * - Always prefer the alpha-hunter app's own `.env.local`, then `.env`.
+ *
+ * We load by file-location so it works regardless of current working directory.
+ */
+const alphaHunterRoot = path.resolve(__dirname, '..', '..', '..'); // src/intelligence -> alpha-hunter/
+const alphaEnvLocal = path.join(alphaHunterRoot, '.env.local');
+const alphaEnv = path.join(alphaHunterRoot, '.env');
+
+// Prefer `.env.local` and allow it to override inherited env vars (workspace/global).
+if (fs.existsSync(alphaEnvLocal)) dotenv.config({ path: alphaEnvLocal, override: true });
+// Load `.env` as defaults only (do not override `.env.local` / process env).
+if (fs.existsSync(alphaEnv)) dotenv.config({ path: alphaEnv, override: false });
 
 export class KalshiTrader {
   private apiKeyId: string;
@@ -30,6 +31,10 @@ export class KalshiTrader {
   private baseUrl: string;
   private isProduction: boolean;
   private keyConfigured: boolean = false;
+  private privateKeyPath: string | null = null;
+  private privateKeyPathExists: boolean = false;
+  private privateKeyPathLooksPartialDownload: boolean = false;
+  private privateKeyPathBytes: number | null = null;
 
   // Rate limiting state (Kalshi Basic tier: 10 req/sec)
   private rateLimitState: {
@@ -47,17 +52,57 @@ export class KalshiTrader {
   private readonly ORDERBOOK_CACHE_TTL = 5000; // 5 seconds
 
   constructor() {
-    this.apiKeyId = process.env.KALSHI_API_KEY_ID || '';
-    const rawKey = process.env.KALSHI_PRIVATE_KEY || '';
-    if (rawKey) {
-        this.privateKey = rawKey.replace(/\\n/g, '\n').replace(/\"/g, '');
-        this.keyConfigured = true;
+    // Hard safety: never allow production trading from this repo.
+    assertKalshiDemoOnly();
+
+    const secrets = loadAlphaHunterSecrets();
+
+    this.apiKeyId = (process.env.KALSHI_API_KEY_ID || secrets?.kalshi?.apiKeyId || '')
+      .replace(/^"(.*)"$/, '$1')
+      .trim();
+
+    let rawKey = process.env.KALSHI_PRIVATE_KEY || secrets?.kalshi?.privateKey || '';
+
+    // Optional: load from PEM file to avoid .env newline/quoting issues.
+    if (!rawKey) {
+      const keyPath = (process.env.KALSHI_PRIVATE_KEY_PATH || secrets?.kalshi?.privateKeyPath || '').trim();
+      if (keyPath) {
+        this.privateKeyPath = keyPath;
+        this.privateKeyPathExists = fs.existsSync(keyPath);
+        this.privateKeyPathLooksPartialDownload = keyPath.toLowerCase().endsWith('.crdownload');
+        if (this.privateKeyPathExists) {
+          try {
+            const st = fs.statSync(keyPath);
+            this.privateKeyPathBytes = st.size;
+            rawKey = fs.readFileSync(keyPath, 'utf8');
+          } catch {
+            rawKey = '';
+          }
+        }
+      }
     }
-    const kalshiEnv = process.env.KALSHI_ENV;
-    this.baseUrl = kalshiEnv === 'production' 
-      ? 'https://api.elections.kalshi.com/trade-api/v2' 
-      : 'https://demo-api.kalshi.co/trade-api/v2';
-    this.isProduction = kalshiEnv === 'production';
+
+    if (rawKey) {
+      // Typical .env format uses "\n" escapes; support that.
+      const normalized = rawKey.replace(/\\n/g, '\n').replace(/\"/g, '').trim();
+      this.privateKey = normalized;
+
+      // Validate the key is plausibly complete and parseable.
+      // (Do NOT log key contents.)
+      if (normalized.length > 256 && normalized.includes('BEGIN') && normalized.includes('PRIVATE KEY')) {
+        try {
+          crypto.createPrivateKey(normalized);
+          this.keyConfigured = true;
+        } catch {
+          this.keyConfigured = false;
+        }
+      } else {
+        this.keyConfigured = false;
+      }
+    }
+    // Always use demo base URL; prod is blocked above.
+    this.baseUrl = getKalshiDemoBaseUrl();
+    this.isProduction = false;
   }
 
   /**
@@ -130,6 +175,7 @@ export class KalshiTrader {
       if (!signature) return [];
 
       const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
+      assertKalshiRequestUrlIsDemo(apiUrl);
       const response = await fetch(apiUrl, {
         headers: {
           'KALSHI-ACCESS-KEY': this.apiKeyId,
@@ -154,6 +200,7 @@ export class KalshiTrader {
       const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
       if (!signature) return 500;
       const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
+      assertKalshiRequestUrlIsDemo(apiUrl);
       const response = await fetch(apiUrl, {
         headers: {
           'KALSHI-ACCESS-KEY': this.apiKeyId,
@@ -164,6 +211,143 @@ export class KalshiTrader {
       const data = await response.json();
       return (data.balance || 0) / 100;
     } catch (e) { return 500; }
+  }
+
+  /**
+   * Auth preflight for DEMO.
+   * Returns a structured result so runners can stop early with a clear message.
+   */
+  async probeAuth(): Promise<
+    | { ok: true; balanceUsd?: number }
+    | { ok: false; code?: string; details?: string; message?: string; raw?: any }
+  > {
+    if (!this.apiKeyId) {
+      return { ok: false, code: 'missing_key_id', message: 'KALSHI_API_KEY_ID not configured' };
+    }
+    if (!this.keyConfigured) {
+      const hints: string[] = [];
+      if (this.privateKeyPath) {
+        hints.push(`KALSHI_PRIVATE_KEY_PATH=${this.privateKeyPath}`);
+        hints.push(this.privateKeyPathExists ? 'file exists' : 'file not found');
+        if (this.privateKeyPathBytes !== null) hints.push(`bytes=${this.privateKeyPathBytes}`);
+        if (this.privateKeyPathLooksPartialDownload) {
+          hints.push('looks like a partial download (.crdownload) — rename after download completes');
+        }
+        if (this.privateKeyPathBytes !== null && this.privateKeyPathBytes < 800) {
+          hints.push('key file looks too small — ensure it contains the full BEGIN/END PRIVATE KEY block');
+        }
+      }
+      return {
+        ok: false,
+        code: 'missing_private_key',
+        details: hints.length ? hints.join('; ') : undefined,
+        message:
+          'KALSHI_PRIVATE_KEY missing or invalid. Prefer KALSHI_PRIVATE_KEY_PATH to a PEM file, or use ONE LINE with \\n escapes and wrap in quotes.',
+      };
+    }
+    try {
+      const fullPath = '/trade-api/v2/portfolio/balance';
+      const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
+      if (!signature) return { ok: false, code: 'signature_failed', message: 'Could not sign request' };
+
+      const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
+      assertKalshiRequestUrlIsDemo(apiUrl);
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          'KALSHI-ACCESS-KEY': this.apiKeyId,
+          'KALSHI-ACCESS-SIGNATURE': signature,
+          'KALSHI-ACCESS-TIMESTAMP': timestamp,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        // Make NOT_FOUND clearer: demo/prod mismatch OR wrong key id/private key pair.
+        const code = data?.error?.code;
+        const details = data?.error?.details;
+        const message = data?.error?.message;
+        const isNotFoundAuth =
+          String(code || '') === 'authentication_error' && String(details || '').toUpperCase() === 'NOT_FOUND';
+        return {
+          ok: false,
+          code,
+          message: isNotFoundAuth
+            ? 'authentication_error (NOT_FOUND): key id not recognized in DEMO (or key pair mismatch)'
+            : message,
+          details: isNotFoundAuth
+            ? 'Make sure you created the API key in the Kalshi DEMO environment and that KALSHI_API_KEY_ID matches the downloaded private key.'
+            : details,
+          raw: data,
+        };
+      }
+      return { ok: true, balanceUsd: (data.balance || 0) / 100 };
+    } catch (e: any) {
+      return { ok: false, code: 'exception', message: e?.message || String(e) };
+    }
+  }
+
+  /**
+   * Get open (unsettled) portfolio positions.
+   * NOTE: Kalshi returns open positions here; settled positions are in /portfolio/settlements.
+   */
+  async getPositions(ticker?: string): Promise<Array<{ marketId: string; position: number; pnl: number }>> {
+    if (!this.keyConfigured) return [];
+    try {
+      const qs = ticker ? `?ticker=${encodeURIComponent(ticker)}` : '';
+      const fullPath = `/trade-api/v2/portfolio/positions${qs}`;
+      const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
+      if (!signature) return [];
+
+      const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
+      assertKalshiRequestUrlIsDemo(apiUrl);
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          'KALSHI-ACCESS-KEY': this.apiKeyId,
+          'KALSHI-ACCESS-SIGNATURE': signature,
+          'KALSHI-ACCESS-TIMESTAMP': timestamp,
+        },
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      const positions = Array.isArray(data.market_positions) ? data.market_positions : [];
+      return positions.map((p: any) => ({
+        marketId: p.ticker,
+        position: Number(p.position || 0),
+        pnl: typeof p.realized_pnl_dollars === 'string' ? parseFloat(p.realized_pnl_dollars) : Number(p.realized_pnl_dollars || 0),
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Get settlements for a market ticker from demo environment.
+   * Returns newest-first (as provided by API).
+   */
+  async getSettlementsForTicker(ticker: string, limit = 5): Promise<any[]> {
+    if (!this.keyConfigured) return [];
+    try {
+      const fullPath = `/trade-api/v2/portfolio/settlements?ticker=${encodeURIComponent(ticker)}&limit=${limit}`;
+      const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
+      if (!signature) return [];
+
+      const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
+      assertKalshiRequestUrlIsDemo(apiUrl);
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          'KALSHI-ACCESS-KEY': this.apiKeyId,
+          'KALSHI-ACCESS-SIGNATURE': signature,
+          'KALSHI-ACCESS-TIMESTAMP': timestamp,
+        },
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data.settlements) ? data.settlements : [];
+    } catch {
+      return [];
+    }
   }
 
   /**
@@ -197,6 +381,7 @@ export class KalshiTrader {
       if (!signature) return null;
       
       const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
+      assertKalshiRequestUrlIsDemo(apiUrl);
       let response: Response | null = null;
       let retries = 0;
       const maxRetries = 3;
@@ -273,6 +458,69 @@ export class KalshiTrader {
   }
 
   /**
+   * Find basic opportunities.
+   * This is a lightweight heuristic used by trainers/tests; primary trading uses Supabase predictions.
+   */
+  async findOpportunities(minEdgePct: number): Promise<Opportunity[]> {
+    const markets = await this.getMarkets();
+    const minEdge = Number(minEdgePct) || 0;
+    const nowIso = new Date().toISOString();
+
+    const opps: Opportunity[] = [];
+    for (const m of markets) {
+      const yesPrice = Number(m.yesPrice || 50);
+      const noPrice = Number(m.noPrice || 50);
+
+      // Simple contrarian calibration (placeholder until learning loop tunes these)
+      const syntheticAi = yesPrice > 50 ? Math.max(1, yesPrice - 5) : Math.min(99, yesPrice + 5);
+      const yesEdge = syntheticAi - yesPrice;
+      const noEdge = (100 - syntheticAi) - noPrice;
+
+      let side: 'yes' | 'no' | null = null;
+      let edge = 0;
+      if (yesEdge >= minEdge) {
+        side = 'yes';
+        edge = yesEdge;
+      } else if (noEdge >= minEdge) {
+        side = 'no';
+        edge = noEdge;
+      }
+      if (!side) continue;
+
+      const confidence = Math.min(90, Math.max(50, 50 + Math.abs(edge) * 3));
+      opps.push({
+        id: `kalshi_${m.id}_${side}_${Date.now()}`,
+        type: 'prediction_market',
+        source: 'Kalshi',
+        title: `${side.toUpperCase()}: ${m.title}`,
+        description: `Heuristic edge ${edge.toFixed(1)}% at ${side === 'yes' ? yesPrice : noPrice}¢`,
+        confidence,
+        expectedValue: edge,
+        riskLevel: 'medium',
+        timeframe: '48h',
+        requiredCapital: 5,
+        potentialReturn: 5 * (edge / 100),
+        reasoning: ['Heuristic contrarian edge (training mode)'],
+        dataPoints: [],
+        action: {
+          platform: 'kalshi',
+          actionType: 'bet',
+          amount: 5,
+          target: `${m.id} ${side.toUpperCase()}`,
+          instructions: [`Place ${side.toUpperCase()} on ${m.id} at ≤${side === 'yes' ? yesPrice : noPrice}¢`],
+          autoExecute: true,
+        },
+        expiresAt: m.expiresAt || nowIso,
+        createdAt: nowIso,
+      });
+    }
+
+    // Best first
+    opps.sort((a, b) => b.expectedValue - a.expectedValue);
+    return opps;
+  }
+
+  /**
    * Calculate Maker price (1 cent inside spread)
    * For BUY: best_bid + 1 cent (better than current best bid)
    * For SELL: best_ask - 1 cent (better than current best ask)
@@ -318,18 +566,30 @@ export class KalshiTrader {
   }
 
   /**
-   * Place a limit order bet on Kalshi
+   * Convert USD stake into integer contract count at a given limit price (cents).
+   * Contracts are $1 max payout each; cost per contract ≈ price_cents / 100.
+   */
+  public usdToContracts(usdAmount: number, priceCents: number): number {
+    const amount = Number(usdAmount);
+    const price = Math.round(priceCents);
+    if (!Number.isFinite(amount) || amount <= 0) return 0;
+    if (!Number.isFinite(price) || price <= 0 || price > 100) return 0;
+    return Math.floor((amount * 100) / price);
+  }
+
+  /**
+   * Place a limit order on Kalshi by CONTRACT COUNT.
    * @param ticker Market ticker
    * @param side 'yes' or 'no'
-   * @param count Contract count (already calculated)
+   * @param contracts Contract count (integer)
    * @param limitPrice Limit price in cents (0-100)
    * @returns Trade result
    */
-  async placeBet(ticker: string, side: 'yes' | 'no', count: number, limitPrice: number): Promise<any> {
+  async placeLimitOrderContracts(ticker: string, side: 'yes' | 'no', contracts: number, limitPrice: number): Promise<any> {
     if (!this.keyConfigured) return { status: 'simulated' };
     
     // CRITICAL: Verify count is a rounded integer derived from $5 notional allocation
-    const countInteger = Math.round(count);
+    const countInteger = Math.round(contracts);
     if (countInteger <= 0) {
       throw new Error(`Invalid contract count: ${countInteger} (price: ${limitPrice})`);
     }
@@ -413,6 +673,7 @@ export class KalshiTrader {
     const { signature, timestamp } = await this.signRequestWithTimestamp('POST', fullPath, body);
     if (!signature) throw new Error("Signature failed");
 
+    assertKalshiRequestUrlIsDemo(`${this.baseUrl}/portfolio/orders`);
     const response = await fetch(`${this.baseUrl}/portfolio/orders`, {
       method: 'POST',
       headers: {
@@ -427,6 +688,27 @@ export class KalshiTrader {
     const data = await response.json();
     if (!response.ok) throw new Error(JSON.stringify(data));
     return data;
+  }
+
+  /**
+   * Place a limit order on Kalshi by USD STAKE.
+   * Converts USD → contracts at the provided limit price.
+   */
+  async placeLimitOrderUsd(ticker: string, side: 'yes' | 'no', usdAmount: number, limitPrice: number): Promise<any> {
+    const contracts = this.usdToContracts(usdAmount, limitPrice);
+    if (contracts <= 0) {
+      throw new Error(`Invalid USD stake: $${usdAmount} at ${limitPrice}¢ yields 0 contracts`);
+    }
+    return this.placeLimitOrderContracts(ticker, side, contracts, limitPrice);
+  }
+
+  /**
+   * Backwards-compatible alias (historical name).
+   * IMPORTANT: This method expects CONTRACTS, not USD.
+   * Prefer placeLimitOrderUsd() at call sites using dollar amounts.
+   */
+  async placeBet(ticker: string, side: 'yes' | 'no', count: number, limitPrice: number): Promise<any> {
+    return this.placeLimitOrderContracts(ticker, side, count, limitPrice);
   }
 
   private async executeTrade(ticker: string, side: string, count: number) {
@@ -444,6 +726,7 @@ export class KalshiTrader {
       const { signature, timestamp } = await this.signRequestWithTimestamp('POST', fullPath, body);
       if (!signature) throw new Error("Signature failed");
 
+      assertKalshiRequestUrlIsDemo(`${this.baseUrl}/portfolio/orders`);
       const response = await fetch(`${this.baseUrl}/portfolio/orders`, {
         method: 'POST',
         headers: {

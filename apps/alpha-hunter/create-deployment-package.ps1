@@ -100,7 +100,7 @@ $envExample = @"
 # Kalshi API (Required)
 KALSHI_API_KEY_ID=your_kalshi_api_key_id
 KALSHI_PRIVATE_KEY=your_kalshi_private_key
-KALSHI_ENV=production
+KALSHI_ENV=demo
 
 # Coinbase API (Required)
 COINBASE_API_KEY=your_coinbase_api_key

@@ -467,7 +467,7 @@ export class HistoricalKnowledge {
   }
 
   // Get relevant knowledge for a market
-  getRelevantKnowledge(marketTitle: string): string[] {
+  getRelevantKnowledge(marketTitle: string, _category?: string): string[] {
     const title = marketTitle.toLowerCase();
     const knowledge: string[] = [];
 

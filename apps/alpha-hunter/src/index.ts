@@ -158,7 +158,7 @@ class AlphaHunter {
 
   async runDailyHunt(): Promise<void> {
     // Import and run daily hunter
-    const { DailyHunter } = await import('./daily-hunter');
+    await import('./daily-hunter.js');
     // The daily-hunter module runs on import when executed directly
   }
 

@@ -73,7 +73,7 @@ AUTO_EXECUTE=false  # Set to 'true' for autonomous trading
 **Important Notes:**
 - For `KALSHI_PRIVATE_KEY`: The key should include `\n` for newlines (the code will convert them)
 - For demo mode: Set `KALSHI_ENV=demo` (no real money)
-- For production: Set `KALSHI_ENV=production` (real money trading)
+- **Production trading is intentionally blocked** in this repo. Do NOT set `KALSHI_ENV=production`.
 
 ---
 

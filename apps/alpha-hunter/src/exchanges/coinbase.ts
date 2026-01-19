@@ -54,9 +54,12 @@ async function createJWT(apiKey: string, privateKey: string, uri: string): Promi
 interface CoinbaseAccount {
   id: string;
   currency: string;
+  // Keep these as numbers for internal math; parsing happens at API boundary.
   balance: number;
   available: number;
   hold: number;
+  // Some endpoints return nested balance objects; optional support for portfolio view.
+  available_balance?: { value: string };
 }
 
 interface CoinbaseOrder {
@@ -70,6 +73,9 @@ interface CoinbaseOrder {
   filledSize: number;
   fillFees: number;
   createdAt: string;
+  // Advanced Trade API fields frequently used by this code
+  orderId?: string;
+  avgPrice?: number;
 }
 
 interface CoinbaseTicker {
@@ -484,8 +490,8 @@ export class CoinbaseExchange {
       const estimatedFees = order.fillFees || (amount * 0.006);
 
       return {
-        id: order.orderId,
-        price: order.avgPrice || await this.getPrice(productId),
+        id: order.orderId || order.id,
+        price: order.avgPrice || order.price || await this.getPrice(productId),
         size: order.filledSize || amount,
         side: order.side,
         fees: estimatedFees,

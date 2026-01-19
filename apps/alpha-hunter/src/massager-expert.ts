@@ -14,10 +14,7 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 import Anthropic from '@anthropic-ai/sdk';
 import { MassagerClient } from './intelligence/massager-client';
@@ -391,48 +388,6 @@ Return ONLY valid JSON array of discoveries:
       process.stdout.write('\r' + ' '.repeat(50) + '\r'); // Clear timer line
       
       if (error.message.includes('timeout')) {
-        console.log(`\n⚠️  Training session timed out after 3 minutes. Continuing...`);
-        return null;
-      }
-      throw error;
-    }
-  }
-
-
-  /**
-   * Run training session with 3-minute timeout and visible timer
-   */
-  async runTrainingSessionWithTimeout(): Promise<TrainingSession | null> {
-    const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
-    let timerInterval: NodeJS.Timeout | null = null;
-    let elapsed = 0;
-    
-    // Start visible timer
-    timerInterval = setInterval(() => {
-      elapsed += 1000;
-      const remaining = Math.max(0, TIMEOUT_MS - elapsed);
-      const mins = Math.floor(remaining / 60000);
-      const secs = Math.floor((remaining % 60000) / 1000);
-      process.stdout.write(`\r⏱️  Time remaining: ${mins}m ${secs}s`);
-    }, 1000);
-    
-    try {
-      const sessionPromise = this.runTrainingSession();
-      const timeoutPromise = new Promise<null>((_, reject) => {
-        setTimeout(() => reject(new Error("Training session timeout (3 minutes)")), TIMEOUT_MS);
-      });
-      
-      const result = await Promise.race([sessionPromise, timeoutPromise]);
-      
-      if (timerInterval) clearInterval(timerInterval);
-      process.stdout.write("\r" + " ".repeat(50) + "\r"); // Clear timer line
-      
-      return result as TrainingSession;
-    } catch (error: any) {
-      if (timerInterval) clearInterval(timerInterval);
-      process.stdout.write("\r" + " ".repeat(50) + "\r"); // Clear timer line
-      
-      if (error.message.includes("timeout")) {
         console.log(`\n⚠️  Training session timed out after 3 minutes. Continuing...`);
         return null;
       }

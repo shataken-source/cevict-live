@@ -6,11 +6,9 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
 
-// Load .env.local from the app directory
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+// Load .env.local from the app directory (avoid import.meta for CJS builds)
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 import { CoinbaseExchange } from './exchanges/coinbase';
 import Anthropic from '@anthropic-ai/sdk';
