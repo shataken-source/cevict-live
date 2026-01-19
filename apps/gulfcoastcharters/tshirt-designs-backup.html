@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gulf Coast Charters - T-Shirt Design Vote</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+        
+        .header-section {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            padding: 80px 20px 60px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        h1 {
+            color: white;
+            font-size: 3.5em;
+            font-weight: 700;
+            margin-bottom: 16px;
+            letter-spacing: -0.02em;
+        }
+        
+        .subtitle {
+            color: #cbd5e1;
+            font-size: 1.25em;
+            font-weight: 400;
+            max-width: 600px;
+            margin: 0 auto 20px;
+        }
+        
+        .header-meta {
+            color: #94a3b8;
+            font-size: 0.95em;
+            margin-top: 30px;
+        }
+        
+        .main-content {
+            padding: 60px 20px;
+            background: #f8fafc;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .section-header h2 {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 12px;
+            letter-spacing: -0.02em;
+        }
+        
+        .section-header p {
+            color: #64748b;
+            font-size: 1.1em;
+        }
+        
+        .designs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 32px;
+            margin-bottom: 80px;
+        }
+        
+        .design-card {
+            background: white;
+            border-radius: 16px;
+            padding: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+        
+        .design-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+            border-color: #cbd5e1;
+        }
+        
+        .design-header {
+            padding: 24px 24px 16px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .design-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 8px;
+        }
+        
+        .design-label {
+            display: inline-block;
+            background: #0ea5e9;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .mockup-container {
+            padding: 20px;
+            background: #f8fafc;
+        }
+        
+        .tshirt-mockup {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .tshirt-front, .tshirt-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+        
+        .tshirt-back {
+            background: #fff;
+        }
+        
+        .logo-large {
+            width: 70%;
+            max-width: 300px;
+            height: auto;
+        }
+        
+        .logo-small {
+            width: 30%;
+            max-width: 120px;
+            height: auto;
+        }
+        
+        .logo-pocket {
+            position: absolute;
+            top: 20%;
+            left: 20%;
+            width: 25%;
+            max-width: 100px;
+        }
+        
+        .slogan {
+            margin-top: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .placement-label {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #0f172a;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.7em;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        
+        .design-content {
+            padding: 24px;
+        }
+        
+        .description {
+            color: #475569;
+            line-height: 1.7;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+        
+        .features {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .features ul {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        
+        .features li {
+            padding: 6px 0;
+            color: #64748b;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+        }
+        
+        .features li:before {
+            content: "✓";
+            color: #0ea5e9;
+            font-weight: 700;
+            margin-right: 10px;
+            font-size: 1.1em;
+        }
+        
+        .vote-section {
+            background: white;
+            border-radius: 16px;
+            padding: 48px;
+            margin: 80px auto 40px;
+            max-width: 900px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            border: 1px solid #e2e8f0;
+        }
+        
+        .vote-section h2 {
+            color: #0f172a;
+            font-size: 2.25em;
+            font-weight: 700;
+            margin-bottom: 24px;
+            text-align: center;
+            letter-spacing: -0.02em;
+        }
+        
+        .vote-instructions {
+            color: #475569;
+            line-height: 1.8;
+            font-size: 1.05em;
+            margin-bottom: 32px;
+        }
+        
+        .vote-instructions strong {
+            color: #0f172a;
+        }
+        
+        .vote-section h3 {
+            color: #0f172a;
+            font-size: 1.25em;
+            font-weight: 600;
+            margin: 40px 0 20px;
+        }
+        
+        .color-options {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 24px 0;
+        }
+        
+        .color-swatch {
+            width: 90px;
+            height: 90px;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85em;
+            color: white;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        
+        .color-swatch:hover {
+            transform: translateY(-2px);
+            border-color: #0ea5e9;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25);
+        }
+        
+        .example-response {
+            background: #f0f9ff;
+            border-left: 3px solid #0ea5e9;
+            padding: 16px 20px;
+            margin: 16px 0;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            color: #0f172a;
+            font-size: 0.95em;
+        }
+        
+        .footer-note {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 32px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-note p {
+            color: #64748b;
+            font-size: 1.05em;
+            line-height: 1.6;
+        }
+        
+        .footer-note strong {
+            color: #0f172a;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            .designs-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 2.25em;
+            }
+            
+            .section-header h2 {
+                font-size: 2em;
+            }
+            
+            .vote-section {
+                padding: 32px 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="container">
+            <h1>🎣 Gulf Coast Charters</h1>
+            <p class="subtitle">T-Shirt Design Selection — Help us choose the perfect crew design</p>
+            <div class="header-meta">13 Professional Designs • Vote on Your Favorites</div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container">
+            <div class="section-header">
+                <h2>Design Options</h2>
+                <p>Browse through our curated collection and pick your top choice</p>
+            </div>
+            
+            <div class="designs-grid">
+            <!-- Design A: Compass Logo Back, Small Front -->
+            <div class="design-card">
+                <div class="design-header">
+                    <span class="design-label">DESIGN A</span>
+                    <div class="design-title">Classic Back Logo</div>
+                </div>
+                <div class="mockup-container">
+                    <div class="tshirt-mockup">
+                        <div class="tshirt-back">
+                            <div class="placement-label">BACK</div>
+                            <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-large">
+                        </div>
+                    </div>
+                    <div class="tshirt-mockup">
+                        <div class="tshirt-front">
+                            <div class="placement-label">FRONT</div>
+                            <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-pocket">
+                            <div class="slogan" style="margin-top: 120px;">Captain's Crew</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="design-content">
+                    <div class="description">
+                        <strong>Big compass logo on back</strong> with adventure tagline. Small pocket logo with "Captain's Crew" on front.
+                    </div>
+                    <div class="features">
+                        <ul>
+                            <li>Bold back statement piece</li>
+                            <li>Subtle front pocket detail</li>
+                            <li>Professional crew look</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Design B: Rope Badge Back, Small Front -->
+            <div class="design-card">
+                <div class="design-header">
+                    <span class="design-label">DESIGN B</span>
+                    <div class="design-title">Rope Badge Classic</div>
+                </div>
+                <div class="mockup-container">
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <img src="gcc-logo-rope-badge.png" alt="Rope Badge Logo" class="logo-large">
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <img src="gcc-logo-rope-badge.png" alt="Rope Badge Logo" class="logo-pocket">
+                        <div class="slogan" style="margin-top: 120px;">Est. 2024</div>
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Big rope badge on back</strong> with "Sail. Fish. Explore. Repeat." Small badge with "Est. 2024" on front.
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Vintage nautical style</li>
+                        <li>Circular rope border detail</li>
+                        <li>Timeless badge design</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Design C: Compass Back, Text Front -->
+            <div class="design-card">
+                <div class="design-title">
+                    <span class="design-label">DESIGN C</span>
+                    <br>Adventure Statement
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-large">
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-pocket">
+                        <div class="slogan" style="margin-top: 120px;">Life's Better<br>on the Water</div>
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Big compass logo on back.</strong> Small pocket logo with "Life's Better on the Water" on front.
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Lifestyle messaging</li>
+                        <li>Relatable slogan</li>
+                        <li>Conversation starter</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Design D: Rope Badge Back, Reel Adventures Front -->
+            <div class="design-card">
+                <div class="design-title">
+                    <span class="design-label">DESIGN D</span>
+                    <br>Reel Adventures
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <img src="gcc-logo-rope-badge.png" alt="Rope Badge Logo" class="logo-large">
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <img src="gcc-logo-rope-badge.png" alt="Rope Badge Logo" class="logo-pocket">
+                        <div class="slogan" style="margin-top: 120px;">Reel Adventures</div>
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Big rope badge on back.</strong> Small badge with "Reel Adventures" on front (fishing pun!).
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Clever fishing wordplay</li>
+                        <li>Fun and memorable</li>
+                        <li>Shows personality</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Design E: Both Logos Mixed -->
+            <div class="design-card">
+                <div class="design-title">
+                    <span class="design-label">DESIGN E</span>
+                    <br>Best of Both
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <img src="gcc-logo-rope-badge.png" alt="Rope Badge Logo" class="logo-large">
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-pocket">
+                        <div class="slogan" style="margin-top: 120px;">Captain's Crew</div>
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Rope badge on back, compass on front.</strong> Mix both logo styles for variety.
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Two logo styles</li>
+                        <li>Unique combination</li>
+                        <li>More visual interest</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Design F: Minimalist -->
+            <div class="design-card">
+                <div class="design-title">
+                    <span class="design-label">DESIGN F</span>
+                    <br>Clean & Simple
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-large">
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-small" style="margin-top: 80px;">
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Big logo on back, small centered logo on front.</strong> No text - just clean logo placement.
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Minimalist approach</li>
+                        <li>Logo speaks for itself</li>
+                        <li>Timeless design</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Design G: Text Only Simple -->
+            <div class="design-card">
+                <div class="design-title">
+                    <span class="design-label">DESIGN G</span>
+                    <br>Text Only Bold
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 3em; font-weight: 900; color: #001f3f; letter-spacing: 2px;">GULF COAST</div>
+                            <div style="font-size: 3em; font-weight: 900; color: #17a2b8; margin-top: -10px;">CHARTERS</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <div class="slogan" style="font-size: 0.9em; margin-top: 100px;">GCC</div>
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Bold text on back, simple "GCC" on front.</strong> No graphics - just clean typography.
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Simple & professional</li>
+                        <li>Easy to read from distance</li>
+                        <li>Modern athletic style</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Design H: Just the Name -->
+            <div class="design-card">
+                <div class="design-title">
+                    <span class="design-label">DESIGN H</span>
+                    <br>Company Name Only
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5em; font-weight: 800; color: #001f3f;">Gulf Coast Charters</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <div style="position: absolute; top: 25%; left: 15%; text-align: left;">
+                            <div style="font-size: 1.2em; font-weight: 700; color: #001f3f;">Gulf Coast</div>
+                            <div style="font-size: 1.2em; font-weight: 700; color: #17a2b8;">Charters</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Company name on back, small logo-style text on front left chest.</strong>
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Clean business look</li>
+                        <li>Professional crew uniform</li>
+                        <li>Name recognition focus</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Design I: Catch of the Day -->
+            <div class="design-card">
+                <div class="design-title">
+                    <span class="design-label">DESIGN I</span>
+                    <br>Catch of the Day
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <img src="gcc-logo-rope-badge.png" alt="Rope Badge Logo" class="logo-large">
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <img src="gcc-logo-rope-badge.png" alt="Rope Badge Logo" class="logo-pocket">
+                        <div class="slogan" style="margin-top: 120px;">Today's Catch:<br>Memories</div>
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Rope badge on back.</strong> Pocket logo with "Today's Catch: Memories" on front.
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Emotional connection</li>
+                        <li>Memorable phrase</li>
+                        <li>Great conversation starter</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Design J: Anchor & Waves -->
+            <div class="design-card">
+                <div class="design-title">
+                    <span class="design-label">DESIGN J</span>
+                    <br>Drop Anchor
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-large">
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-pocket">
+                        <div class="slogan" style="margin-top: 120px;">Drop Anchor<br>Make Waves</div>
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Compass logo on back.</strong> Pocket logo with "Drop Anchor, Make Waves" on front.
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Action-oriented phrase</li>
+                        <li>Nautical wordplay</li>
+                        <li>Motivational vibe</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Design K: Gulf Life -->
+            <div class="design-card">
+                <div class="design-title">
+                    <span class="design-label">DESIGN K</span>
+                    <br>Living the Gulf Life
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <img src="gcc-logo-rope-badge.png" alt="Rope Badge Logo" class="logo-large">
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <img src="gcc-logo-rope-badge.png" alt="Rope Badge Logo" class="logo-pocket">
+                        <div class="slogan" style="margin-top: 120px;">Living the<br>Gulf Life</div>
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Rope badge on back.</strong> Pocket logo with "Living the Gulf Life" on front.
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Lifestyle branding</li>
+                        <li>Regional pride</li>
+                        <li>Aspirational message</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Design L: Where the Fish Are -->
+            <div class="design-card">
+                <div class="design-title">
+                    <span class="design-label">DESIGN L</span>
+                    <br>Fish Finder
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-large">
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-pocket">
+                        <div class="slogan" style="margin-top: 120px;">We Know Where<br>the Fish Are</div>
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Compass logo on back.</strong> Pocket logo with "We Know Where the Fish Are" on front.
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Confident statement</li>
+                        <li>Expertise message</li>
+                        <li>Builds trust</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Design M: Not Just a Vacation -->
+            <div class="design-card">
+                <div class="design-title">
+                    <span class="design-label">DESIGN M</span>
+                    <br>It's an Adventure
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-back">
+                        <div class="placement-label">BACK</div>
+                        <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-large">
+                    </div>
+                </div>
+                <div class="tshirt-mockup">
+                    <div class="tshirt-front">
+                        <div class="placement-label">FRONT</div>
+                        <img src="gcc-logo-compass-adventure.png" alt="Compass Logo" class="logo-pocket">
+                        <div class="slogan" style="margin-top: 120px; font-size: 0.95em;">It's Not Just a Vacation,<br>It's an Adventure</div>
+                    </div>
+                </div>
+                <div class="description">
+                    <strong>Compass logo on back.</strong> Pocket logo with "It's Not Just a Vacation, It's an Adventure" on front.
+                </div>
+                <div class="features">
+                    <ul>
+                        <li>Powerful value proposition</li>
+                        <li>Emotional appeal</li>
+                        <li>Sets expectations high</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Voting Section -->
+        <div class="vote-section">
+            <h2>📝 How to Vote</h2>
+            <div class="vote-instructions">
+                <p><strong>Please reply with your choices:</strong></p>
+                <ol style="margin: 20px 0; padding-left: 30px; line-height: 2;">
+                    <li><strong>Design:</strong> Which design do you like best? (A through M)</li>
+                    <li><strong>Color(s):</strong> What shirt color(s) would you actually wear?</li>
+                    <li><strong>Size:</strong> What size do you need?</li>
+                </ol>
+            </div>
+
+            <h3 style="color: #2c3e50; margin-top: 30px; margin-bottom: 15px;">Available Colors:</h3>
+            <div class="color-options">
+                <div class="color-swatch" style="background: white; color: #333; border: 3px solid #333;">White</div>
+                <div class="color-swatch" style="background: #001f3f;">Navy</div>
+                <div class="color-swatch" style="background: #111;">Black</div>
+                <div class="color-swatch" style="background: #95a5a6; color: #333;">Heather<br>Gray</div>
+                <div class="color-swatch" style="background: #87ceeb; color: #333;">Light<br>Blue</div>
+                <div class="color-swatch" style="background: #2ecc71;">Kelly<br>Green</div>
+            </div>
+
+            <h3 style="color: #2c3e50; margin-top: 30px; margin-bottom: 15px;">Example Response:</h3>
+            <div class="example-response">
+                "Design B, navy or black, size XL"
+            </div>
+            <div class="example-response">
+                "Design A, heather gray, size L"
+            </div>
+
+            <p style="margin-top: 30px; text-align: center; color: #555; font-size: 1.1em;">
+                <strong>Thanks for your input! 🎣</strong><br>
+                <em>- Shane, Gulf Coast Charters</em>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -11,10 +11,20 @@ function normalizeRole(v: unknown): AppRole | null {
 async function getRoleForUser(user: User): Promise<AppRole | null> {
   try {
     const admin = getSupabaseAdmin();
-    const { data, error } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle();
-    if (!error) {
-      const r = normalizeRole((data as any)?.role);
-      if (r) return r;
+    // Prefer `profiles.user_id` (common schema). Fallback to `profiles.id` for legacy schemas.
+    {
+      const { data, error } = await admin.from('profiles').select('role').eq('user_id', user.id).maybeSingle();
+      if (!error) {
+        const r = normalizeRole((data as any)?.role);
+        if (r) return r;
+      }
+    }
+    {
+      const { data, error } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle();
+      if (!error) {
+        const r = normalizeRole((data as any)?.role);
+        if (r) return r;
+      }
     }
   } catch {
     // ignore, fallback below

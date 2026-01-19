@@ -1,0 +1,86 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      commit-sha:
+        description: 'Commit SHA to rollback to (leave empty for previous)'
+        required: false
+      reason:
+        description: 'Reason for rollback'
+        required: true
+
+jobs:
+  rollback:
+    name: Rollback ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get previous deployment
+        id: get-previous
+        if: github.event.inputs.commit-sha == ''
+        run: |
+          PREV_SHA=$(git log --format="%H" -n 2 | tail -1)
+          echo "sha=$PREV_SHA" >> $GITHUB_OUTPUT
+
+      - name: Set rollback SHA
+        id: rollback-sha
+        run: |
+          if [ -z "${{ github.event.inputs.commit-sha }}" ]; then
+            echo "sha=${{ steps.get-previous.outputs.sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "sha=${{ github.event.inputs.commit-sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout rollback commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.rollback-sha.outputs.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build rollback version
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets[format('{0}_SUPABASE_URL', github.event.inputs.environment == 'production' && 'VITE' || 'STAGING')] }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets[format('{0}_SUPABASE_ANON_KEY', github.event.inputs.environment == 'production' && 'VITE' || 'STAGING')] }}
+
+      - name: Deploy rollback to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: ${{ github.event.inputs.environment == 'production' && '--prod' || '' }}
+
+      - name: Create rollback issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Rollback: ${{ github.event.inputs.environment }} to ${{ steps.rollback-sha.outputs.sha }}`,
+              body: `## Rollback Details\n\n**Environment:** ${{ github.event.inputs.environment }}\n**Rolled back to:** ${{ steps.rollback-sha.outputs.sha }}\n**Reason:** ${{ github.event.inputs.reason }}\n**Triggered by:** @${{ github.actor }}\n**Time:** ${new Date().toISOString()}`,
+              labels: ['rollback', 'deployment', '${{ github.event.inputs.environment }}']
+            });

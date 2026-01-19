@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gulf Coast Charters - Logo Concepts</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0077be 0%, #00a8e8 100%);
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #7f8c8d;
+      margin-bottom: 40px;
+      font-size: 1.1em;
+    }
+
+    .logo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+
+    .logo-card {
+      background: #f8f9fa;
+      border-radius: 15px;
+      padding: 30px;
+      text-align: center;
+      transition: transform 0.3s, box-shadow 0.3s;
+      border: 3px solid transparent;
+    }
+
+    .logo-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      border-color: #0077be;
+    }
+
+    .logo-title {
+      font-weight: 700;
+      color: #2c3e50;
+      margin-bottom: 20px;
+      font-size: 1.3em;
+    }
+
+    .logo-preview {
+      background: white;
+      border-radius: 10px;
+      padding: 40px;
+      margin-bottom: 20px;
+      min-height: 250px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .logo-description {
+      color: #7f8c8d;
+      margin-bottom: 20px;
+      line-height: 1.6;
+      font-size: 0.95em;
+    }
+
+    .logo-tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .tag {
+      background: #e8f4f8;
+      color: #0077be;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .btn-download {
+      background: linear-gradient(135deg, #0077be 0%, #00a8e8 100%);
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1em;
+      transition: transform 0.3s;
+      width: 100%;
+    }
+
+    .btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 119, 190, 0.4);
+    }
+
+    /* Logo Designs */
+    .logo1 {
+      font-size: 3em;
+      font-weight: 900;
+      color: #0077be;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1;
+    }
+
+    .logo1-icon {
+      font-size: 2em;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #0077be 0%, #00a8e8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo1-text {
+      font-size: 0.8em;
+    }
+
+    .logo1-subtext {
+      font-size: 0.35em;
+      color: #6c757d;
+      letter-spacing: 3px;
+      margin-top: 5px;
+    }
+
+    .logo2 {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+    }
+
+    .logo2-circle {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #0077be 0%, #00a8e8 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5em;
+      box-shadow: 0 5px 20px rgba(0, 119, 190, 0.3);
+    }
+
+    .logo2-text {
+      text-align: left;
+    }
+
+    .logo2-name {
+      font-size: 2em;
+      font-weight: 900;
+      color: #2c3e50;
+      line-height: 1;
+    }
+
+    .logo2-tagline {
+      font-size: 0.9em;
+      color: #6c757d;
+      font-weight: 600;
+      margin-top: 5px;
+    }
+
+    .logo3 {
+      position: relative;
+      display: inline-block;
+    }
+
+    .logo3-text {
+      font-size: 2.5em;
+      font-weight: 900;
+      color: #0077be;
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .logo3-wave {
+      font-size: 3em;
+      position: absolute;
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0.2;
+      z-index: 1;
+    }
+
+    .logo4 {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .logo4-badge {
+      width: 120px;
+      height: 120px;
+      border: 4px solid #0077be;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .logo4-icon {
+      font-size: 2.5em;
+    }
+
+    .logo4-year {
+      font-size: 0.7em;
+      font-weight: 700;
+      color: #0077be;
+      position: absolute;
+      bottom: 15px;
+    }
+
+    .logo4-text {
+      font-size: 1.8em;
+      font-weight: 900;
+      color: #2c3e50;
+      text-align: center;
+    }
+
+    .logo5 {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .logo5-box {
+      background: linear-gradient(135deg, #0077be 0%, #00a8e8 100%);
+      padding: 20px 40px;
+      border-radius: 10px;
+      transform: rotate(-2deg);
+      box-shadow: 0 8px 25px rgba(0, 119, 190, 0.3);
+    }
+
+    .logo5-text {
+      font-size: 2.2em;
+      font-weight: 900;
+      color: white;
+      text-align: center;
+      line-height: 1.1;
+      transform: rotate(2deg);
+    }
+
+    .logo5-subtext {
+      font-size: 0.5em;
+      letter-spacing: 2px;
+    }
+
+    .logo6 {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .logo6-icon {
+      font-size: 4em;
+      background: linear-gradient(135deg, #0077be 0%, #00a8e8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo6-text {
+      text-align: left;
+    }
+
+    .logo6-name {
+      font-size: 2.2em;
+      font-weight: 900;
+      color: #2c3e50;
+      line-height: 1;
+    }
+
+    .logo6-slogan {
+      font-size: 0.85em;
+      color: #0077be;
+      font-weight: 700;
+      font-style: italic;
+      margin-top: 5px;
+    }
+
+    .info-box {
+      background: #e8f4f8;
+      border-left: 4px solid #0077be;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 40px;
+    }
+
+    .info-box h3 {
+      color: #2c3e50;
+      margin-bottom: 15px;
+      font-size: 1.3em;
+    }
+
+    .info-box ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .info-box li {
+      color: #555;
+      padding: 8px 0;
+      padding-left: 25px;
+      position: relative;
+      line-height: 1.6;
+    }
+
+    .info-box li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #0077be;
+      font-weight: bold;
+    }
+
+    @media (max-width: 768px) {
+      .logo-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .logo1 {
+        font-size: 2.5em;
+      }
+      
+      .logo2-name, .logo6-name {
+        font-size: 1.8em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Gulf Coast Charters Logo Concepts</h1>
+    <p class="subtitle">Professional logo designs ready to use or customize</p>
+
+    <div class="logo-grid">
+      <!-- Logo 1: Minimalist Stack -->
+      <div class="logo-card">
+        <h3 class="logo-title">Minimalist Stack</h3>
+        <div class="logo-preview">
+          <div class="logo1">
+            <div class="logo1-icon">⚓</div>
+            <div class="logo1-text">GULF COAST<br>CHARTERS</div>
+            <div class="logo1-subtext">EST. 2024</div>
+          </div>
+        </div>
+        <div class="logo-tags">
+          <span class="tag">Modern</span>
+          <span class="tag">Clean</span>
+          <span class="tag">Professional</span>
+        </div>
+        <p class="logo-description">
+          Simple and elegant design with anchor symbol. Works great in any size and looks professional on all materials.
+        </p>
+        <button class="btn-download" onclick="alert('Screenshot this logo or take it to a designer on Fiverr to recreate in high resolution!')">💾 Use This Design</button>
+      </div>
+
+      <!-- Logo 2: Circle Badge -->
+      <div class="logo-card">
+        <h3 class="logo-title">Circle Badge</h3>
+        <div class="logo-preview">
+          <div class="logo2">
+            <div class="logo2-circle">🎣</div>
+            <div class="logo2-text">
+              <div class="logo2-name">Gulf Coast</div>
+              <div class="logo2-tagline">Charters</div>
+            </div>
+          </div>
+        </div>
+        <div class="logo-tags">
+          <span class="tag">Friendly</span>
+          <span class="tag">Approachable</span>
+          <span class="tag">Memorable</span>
+        </div>
+        <p class="logo-description">
+          Circular icon with fishing hook creates instant recognition. Perfect for social media profile pictures.
+        </p>
+        <button class="btn-download" onclick="alert('Screenshot this logo or take it to a designer on Fiverr to recreate in high resolution!')">💾 Use This Design</button>
+      </div>
+
+      <!-- Logo 3: Wave Overlay -->
+      <div class="logo-card">
+        <h3 class="logo-title">Wave Overlay</h3>
+        <div class="logo-preview">
+          <div class="logo3">
+            <div class="logo3-text">
+              <div>GULF COAST</div>
+              <div style="font-size: 0.6em; margin-top: 5px;">CHARTERS</div>
+            </div>
+            <div class="logo3-wave">〰</div>
+          </div>
+        </div>
+        <div class="logo-tags">
+          <span class="tag">Nautical</span>
+          <span class="tag">Dynamic</span>
+          <span class="tag">Stylish</span>
+        </div>
+        <p class="logo-description">
+          Bold text with subtle wave element. Creates movement and connection to the ocean theme.
+        </p>
+        <button class="btn-download" onclick="alert('Screenshot this logo or take it to a designer on Fiverr to recreate in high resolution!')">💾 Use This Design</button>
+      </div>
+
+      <!-- Logo 4: Classic Badge -->
+      <div class="logo-card">
+        <h3 class="logo-title">Classic Badge</h3>
+        <div class="logo-preview">
+          <div class="logo4">
+            <div class="logo4-badge">
+              <div class="logo4-icon">⛵</div>
+              <div class="logo4-year">2024</div>
+            </div>
+            <div class="logo4-text">GULF COAST<br>CHARTERS</div>
+          </div>
+        </div>
+        <div class="logo-tags">
+          <span class="tag">Traditional</span>
+          <span class="tag">Trustworthy</span>
+          <span class="tag">Established</span>
+        </div>
+        <p class="logo-description">
+          Vintage-inspired circular badge design. Conveys trust and experience, perfect for building brand credibility.
+        </p>
+        <button class="btn-download" onclick="alert('Screenshot this logo or take it to a designer on Fiverr to recreate in high resolution!')">💾 Use This Design</button>
+      </div>
+
+      <!-- Logo 5: Tilted Box -->
+      <div class="logo-card">
+        <h3 class="logo-title">Dynamic Box</h3>
+        <div class="logo-preview">
+          <div class="logo5">
+            <div class="logo5-box">
+              <div class="logo5-text">
+                GULF COAST
+                <div class="logo5-subtext">CHARTERS</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="logo-tags">
+          <span class="tag">Bold</span>
+          <span class="tag">Energetic</span>
+          <span class="tag">Modern</span>
+        </div>
+        <p class="logo-description">
+          Eye-catching tilted design with gradient background. Stands out and creates visual interest.
+        </p>
+        <button class="btn-download" onclick="alert('Screenshot this logo or take it to a designer on Fiverr to recreate in high resolution!')">💾 Use This Design</button>
+      </div>
+
+      <!-- Logo 6: Icon + Text -->
+      <div class="logo-card">
+        <h3 class="logo-title">Icon + Slogan</h3>
+        <div class="logo-preview">
+          <div class="logo6">
+            <div class="logo6-icon">🚤</div>
+            <div class="logo6-text">
+              <div class="logo6-name">Gulf Coast</div>
+              <div class="logo6-slogan">"Your Adventure Awaits"</div>
+            </div>
+          </div>
+        </div>
+        <div class="logo-tags">
+          <span class="tag">Complete</span>
+          <span class="tag">Versatile</span>
+          <span class="tag">Expressive</span>
+        </div>
+        <p class="logo-description">
+          Combines iconic symbol with tagline for maximum impact. Great for headers and marketing materials.
+        </p>
+        <button class="btn-download" onclick="alert('Screenshot this logo or take it to a designer on Fiverr to recreate in high resolution!')">💾 Use This Design</button>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <h3>📋 How to Use These Logo Concepts</h3>
+      <ul>
+        <li><strong>Screenshot your favorite:</strong> Use Windows Snipping Tool (Win + Shift + S) to capture the logo</li>
+        <li><strong>Hire a designer:</strong> Go to Fiverr.com and search "logo design" - show them your chosen concept</li>
+        <li><strong>Budget option:</strong> Use Canva.com to recreate the design yourself (Free or $12.99/month)</li>
+        <li><strong>Professional quality:</strong> A designer can create high-resolution versions for $25-$150</li>
+        <li><strong>Get multiple formats:</strong> Ask for PNG (transparent), JPG (web), SVG (scalable), and AI (editable)</li>
+        <li><strong>Include variations:</strong> Full color, white version, black version, and icon-only versions</li>
+      </ul>
+    </div>
+
+    <div class="info-box" style="margin-top: 20px; background: #fff3cd; border-color: #ffc107;">
+      <h3>💡 Pro Tips for Working with Designers</h3>
+      <ul>
+        <li><strong>Show examples:</strong> Screenshot your favorite logo concept above and share it</li>
+        <li><strong>Specify colors:</strong> Use the brand colors from your Visual Design Guide (#0077be, #00a8e8)</li>
+        <li><strong>Request revisions:</strong> Most designers offer 2-3 revision rounds included</li>
+        <li><strong>Get source files:</strong> Always ask for editable files (.ai, .svg, .psd) so you can modify later</li>
+        <li><strong>Check their portfolio:</strong> Look for designers who have done marine/nautical logos before</li>
+        <li><strong>Communicate clearly:</strong> Describe your brand personality (professional, fun, adventurous, etc.)</li>
+      </ul>
+    </div>
+
+    <div class="info-box" style="margin-top: 20px; background: #d1ecf1; border-color: #17a2b8;">
+      <h3>🎯 What to Say to Your Designer</h3>
+      <p style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px; font-style: italic; color: #333;">
+        "I need a professional logo for my charter fishing business called 'Gulf Coast Charters'. I like the [STYLE NAME] concept. I want it to feel [professional/adventurous/fun/trustworthy]. Please use these colors: Ocean Blue (#0077be) and Sky Blue (#00a8e8). I need the logo in multiple formats: PNG with transparent background, JPG, SVG, and editable source files. Please provide full color, white, and black versions, plus an icon-only version for social media."
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // Add some interactivity
+    document.querySelectorAll('.logo-card').forEach(card => {
+      card.addEventListener('click', function(e) {
+        if (!e.target.classList.contains('btn-download')) {
+          this.style.borderColor = '#0077be';
+          setTimeout(() => {
+            this.style.borderColor = 'transparent';
+          }, 1000);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

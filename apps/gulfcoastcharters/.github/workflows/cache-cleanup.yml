@@ -1,0 +1,60 @@
+name: Cache Cleanup
+
+on:
+  schedule:
+    - cron: '0 3 * * 0' # Weekly on Sunday at 3 AM
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  cleanup:
+    name: Clean Old Caches
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Cleanup old caches
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const caches = await github.rest.actions.getActionsCacheList({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+            
+            const now = new Date();
+            const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+            
+            let deletedCount = 0;
+            let totalSize = 0;
+            
+            for (const cache of caches.data.actions_caches) {
+              const cacheDate = new Date(cache.created_at);
+              
+              // Delete caches older than 7 days
+              if (cacheDate < sevenDaysAgo) {
+                try {
+                  await github.rest.actions.deleteActionsCacheById({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    cache_id: cache.id
+                  });
+                  
+                  deletedCount++;
+                  totalSize += cache.size_in_bytes;
+                  
+                  console.log(`Deleted cache: ${cache.key} (${(cache.size_in_bytes / 1024 / 1024).toFixed(2)} MB)`);
+                } catch (error) {
+                  console.error(`Failed to delete cache ${cache.key}:`, error.message);
+                }
+              }
+            }
+            
+            const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+            console.log(`\n✅ Cleanup complete:`);
+            console.log(`   - Deleted ${deletedCount} old caches`);
+            console.log(`   - Freed ${totalSizeMB} MB of storage`);

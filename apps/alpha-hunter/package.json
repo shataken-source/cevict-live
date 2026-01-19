@@ -29,6 +29,7 @@
     "sports-nfl": "tsx src/sports-kalshi-bot.ts nfl",
     "kalshi-auto": "tsx src/kalshi-auto-trader.ts",
     "bet": "tsx src/kalshi-auto-trader.ts",
+    "kalshi:sandbox": "tsx src/kalshi-sandbox-autopilot.ts",
     "entertainment": "tsx src/intelligence/entertainment-expert.ts",
     "movies": "tsx src/intelligence/entertainment-expert.ts boxoffice",
     "oscars": "tsx src/intelligence/entertainment-expert.ts oscars",

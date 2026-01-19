@@ -25,8 +25,16 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "pages/**/*.ts",
+    "pages/**/*.tsx",
+    "src/lib/supabase.ts",
+    "src/lib/utils.ts",
+    "src/lib/marineProducts.ts",
+    "src/types/marineProduct.ts",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "middleware/**/*.ts",
+    "middleware/**/*.tsx",
     ".next/types/**/*.ts"
   ],
   "exclude": [

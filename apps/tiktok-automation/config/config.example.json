@@ -1,0 +1,37 @@
+{
+  "project": {
+    "timezone": "America/Chicago",
+    "paths": {
+      "videosDailyDir": "../videos/daily",
+      "logsDir": "../logs",
+      "stateDir": "../state"
+    }
+  },
+  "accounts": [
+    {
+      "id": "primary",
+      "username": "your_tiktok_username",
+      "cookiesFile": "../state/cookies/primary.cookies.json",
+      "repliedStateFile": "../state/replied/primary.replied.json",
+      "schedule": {
+        "dailyPostTimeCST": "09:00",
+        "hourlyReplies": true,
+        "qaEveryHours": 2
+      },
+      "videoFolder": "../videos/daily/primary"
+    }
+  ],
+  "petreunion": {
+    "latestApiUrl": "https://petreunion.com/api/latest",
+    "maxStoriesPerRun": 5
+  },
+  "tiktok": {
+    "headless": false,
+    "slowMoMs": 50,
+    "navigationTimeoutMs": 60000,
+    "selectors": {
+      "note": "UI selectors change frequently; keep them in one place per implementation."
+    }
+  }
+}
+

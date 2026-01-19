@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gulf Coast Charters - Your Charter Fishing Community</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1A2332;
+        }
+
+        /* Header/Navigation */
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0066CC;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #0066CC, #1E90FF);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #1A2332;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #0066CC;
+        }
+
+        .cta-button {
+            background: linear-gradient(135deg, #0066CC, #1E90FF);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+        }
+
+        /* Hero Section */
+        .hero {
+            margin-top: 70px;
+            background: linear-gradient(135deg, #0066CC 0%, #1E90FF 100%);
+            color: white;
+            padding: 8rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255,255,255,0.08) 0%, transparent 50%);
+            opacity: 0.5;
+        }
+
+        .hero-waves {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 120px;
+            overflow: hidden;
+        }
+
+        .hero-icons {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .float-icon {
+            position: absolute;
+            font-size: 3rem;
+            opacity: 0.2;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #0066CC;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            border: 2px solid white;
+            transition: background 0.3s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 2rem;
+            background: #F5F7FA;
+        }
+
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #1A2332;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #6B7280;
+            margin-bottom: 4rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #0066CC, #1E90FF);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #1A2332;
+        }
+
+        .feature-card p {
+            color: #6B7280;
+            line-height: 1.6;
+        }
+
+        /* Weather Alert Preview */
+        .weather-preview {
+            padding: 6rem 2rem;
+            background: white;
+        }
+
+        .weather-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .weather-mockup {
+            background: linear-gradient(135deg, #FFA500, #FF6B35);
+            padding: 2rem;
+            border-radius: 16px;
+            color: white;
+            box-shadow: 0 8px 24px rgba(255, 107, 53, 0.3);
+        }
+
+        .alert-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .alert-icon {
+            font-size: 2rem;
+        }
+
+        .weather-data {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .data-label {
+            opacity: 0.9;
+        }
+
+        .data-value {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        /* Gamification Section */
+        .gamification {
+            padding: 6rem 2rem;
+            background: #1A2332;
+            color: white;
+        }
+
+        .gamification-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .badges-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .badge {
+            text-align: center;
+        }
+
+        .badge-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin: 0 auto 1rem;
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+        }
+
+        .badge-name {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .badge-description {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* Pricing Section */
+        .pricing {
+            padding: 6rem 2rem;
+            background: #F5F7FA;
+        }
+
+        .pricing-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .pricing-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .pricing-card.featured {
+            background: linear-gradient(135deg, #0066CC, #1E90FF);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .plan-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .plan-price {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .plan-period {
+            opacity: 0.7;
+            margin-bottom: 2rem;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+
+        .plan-features li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .pricing-card.featured .plan-features li {
+            border-bottom-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .plan-features li::before {
+            content: "✓";
+            color: #10B981;
+            font-weight: bold;
+            margin-right: 0.5rem;
+        }
+
+        .pricing-card.featured .plan-features li::before {
+            color: #FFD700;
+        }
+
+        /* Footer */
+        .footer {
+            background: #1A2332;
+            color: white;
+            padding: 3rem 2rem 1rem;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            margin-bottom: 2rem;
+        }
+
+        .footer-section h4 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.5rem;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            opacity: 0.7;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .weather-container {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <div class="logo-icon">⚓</div>
+                <span>Gulf Coast Charters</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="#captains">For Captains</a></li>
+                <li><a href="#community">Community</a></li>
+            </ul>
+            <a href="#signup" class="cta-button">Get Started</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <!-- Animated waves background -->
+        <div class="hero-waves">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 120px;">
+                <path d="M0,0 Q300,50 600,0 T1200,0 L1200,120 L0,120 Z" fill="rgba(255,255,255,0.1)"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 100" preserveAspectRatio="none" style="position: absolute; bottom: 0; left: 0; width: 100%; height: 100px;">
+                <path d="M0,20 Q300,60 600,20 T1200,20 L1200,100 L0,100 Z" fill="rgba(255,255,255,0.15)"/>
+            </svg>
+        </div>
+        
+        <!-- Floating icons -->
+        <div class="hero-icons">
+            <div class="float-icon" style="top: 20%; left: 10%; animation-delay: 0s;">⚓</div>
+            <div class="float-icon" style="top: 30%; right: 15%; animation-delay: 1s;">🎣</div>
+            <div class="float-icon" style="bottom: 25%; left: 20%; animation-delay: 2s;">⛵</div>
+            <div class="float-icon" style="top: 40%; right: 25%; animation-delay: 1.5s;">🌊</div>
+        </div>
+        
+        <div class="hero-content">
+            <div class="hero-badge">🌟 Trusted by 10,000+ Fishermen</div>
+            <h1>Your Charter Fishing Community</h1>
+            <p>Stay safe with real-time weather alerts, connect with captains, earn rewards, and never miss the perfect fishing day.</p>
+            
+            <!-- Stats preview -->
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-number">95%</div>
+                    <div class="stat-label">Alert Accuracy</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">NOAA Monitoring</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">10K+</div>
+                    <div class="stat-label">Active Users</div>
+                </div>
+            </div>
+            
+            <div class="hero-buttons">
+                <a href="#signup" class="btn-primary">Start Free Today</a>
+                <a href="#demo" class="btn-secondary">Watch Demo</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="features-container">
+            <h2 class="section-title">Everything You Need to Fish Smarter</h2>
+            <p class="section-subtitle">Comprehensive tools designed specifically for charter fishing enthusiasts and professionals</p>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚠️</div>
+                    <h3>Weather Alerts</h3>
+                    <p>Get automatic alerts 24 hours before your trip with real NOAA buoy data. Stay safe and avoid cancellations.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🏆</div>
+                    <h3>Gamification</h3>
+                    <p>Earn points, unlock badges, and compete on leaderboards. Share your catches and become a legend.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📍</div>
+                    <h3>Live GPS Tracking</h3>
+                    <p>Share your location with family or keep it private. Pin your favorite spots and discover new ones.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🎣</div>
+                    <h3>Fishing Reports</h3>
+                    <p>Read and share detailed fishing reports with photos. Learn from the community's experience.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3>Captain Tools</h3>
+                    <p>Manage bookings, track earnings, and grow your charter business with professional tools.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3>Works Offline</h3>
+                    <p>Access critical information even without internet. PWA technology keeps you connected.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Weather Alert Preview -->
+    <section class="weather-preview">
+        <div class="weather-container">
+            <div>
+                <h2 class="section-title" style="text-align: left;">Never Get Caught in Bad Weather</h2>
+                <p style="font-size: 1.1rem; color: #6B7280; margin-bottom: 2rem;">
+                    Our intelligent weather alert system monitors NOAA buoys 24/7 and sends you beautiful, actionable alerts before your trip.
+                </p>
+                <ul style="list-style: none; margin-left: 0;">
+                    <li style="padding: 0.75rem 0; display: flex; align-items: start; gap: 0.75rem;">
+                        <span style="color: #10B981; font-size: 1.5rem;">✓</span>
+                        <span>Real-time NOAA buoy integration</span>
+                    </li>
+                    <li style="padding: 0.75rem 0; display: flex; align-items: start; gap: 0.75rem;">
+                        <span style="color: #10B981; font-size: 1.5rem;">✓</span>
+                        <span>Wind speed, wave height, and pressure analysis</span>
+                    </li>
+                    <li style="padding: 0.75rem 0; display: flex; align-items: start; gap: 0.75rem;">
+                        <span style="color: #10B981; font-size: 1.5rem;">✓</span>
+                        <span>Clear recommendations: Go, Caution, or Cancel</span>
+                    </li>
+                    <li style="padding: 0.75rem 0; display: flex; align-items: start; gap: 0.75rem;">
+                        <span style="color: #10B981; font-size: 1.5rem;">✓</span>
+                        <span>Email and push notifications</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="weather-mockup">
+                <div class="alert-header">
+                    <span class="alert-icon">⚠️</span>
+                    <div>
+                        <h3 style="margin: 0;">HIGH ALERT</h3>
+                        <p style="margin: 0; opacity: 0.9;">Your trip tomorrow</p>
+                    </div>
+                </div>
+
+                <div class="weather-data">
+                    <div class="data-row">
+                        <span class="data-label">Wind Speed:</span>
+                        <span class="data-value">28 kt (gusting 34 kt)</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Wave Height:</span>
+                        <span class="data-value">6.5 ft @ 7 sec</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Pressure:</span>
+                        <span class="data-value">1008 hPa (falling)</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Direction:</span>
+                        <span class="data-value">SE</span>
+                    </div>
+                </div>
+
+                <p style="background: rgba(255,255,255,0.2); padding: 1rem; border-radius: 8px;">
+                    <strong>⚠️ Recommendation:</strong> Hazardous conditions. Strong winds and rough seas. Only experienced captains in larger vessels should proceed.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gamification Section -->
+    <section class="gamification">
+        <div class="gamification-container">
+            <h2 class="section-title">Level Up Your Fishing Game</h2>
+            <p class="section-subtitle">Earn points, unlock achievements, and compete with the community</p>
+
+            <div class="badges-grid">
+                <div class="badge">
+                    <div class="badge-icon">🎣</div>
+                    <div class="badge-name">Breaking the Ice</div>
+                    <div class="badge-description">First catch posted</div>
+                </div>
+
+                <div class="badge">
+                    <div class="badge-icon">📚</div>
+                    <div class="badge-name">Chronicler</div>
+                    <div class="badge-description">50 reports shared</div>
+                </div>
+
+                <div class="badge">
+                    <div class="badge-icon">🏆</div>
+                    <div class="badge-name">Legend</div>
+                    <div class="badge-description">200+ posts</div>
+                </div>
+
+                <div class="badge">
+                    <div class="badge-icon">🤝</div>
+                    <div class="badge-name">Helper</div>
+                    <div class="badge-description">25 helpful votes</div>
+                </div>
+
+                <div class="badge">
+                    <div class="badge-icon">👑</div>
+                    <div class="badge-name">Veteran</div>
+                    <div class="badge-description">180 days active</div>
+                </div>
+
+                <div class="badge">
+                    <div class="badge-icon">⭐</div>
+                    <div class="badge-name">Weekly Champion</div>
+                    <div class="badge-description">Top of leaderboard</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing" id="pricing">
+        <div class="pricing-container">
+            <h2 class="section-title">Choose Your Plan</h2>
+            <p class="section-subtitle">Start free, upgrade when you're ready</p>
+
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="plan-name">FREE</div>
+                    <div class="plan-price">$0</div>
+                    <div class="plan-period">Forever</div>
+                    <ul class="plan-features">
+                        <li>Basic fishing reports</li>
+                        <li>1 NOAA buoy access</li>
+                        <li>5 GPS pins</li>
+                        <li>Community access</li>
+                        <li>Weather alerts</li>
+                    </ul>
+                    <a href="#signup" class="cta-button" style="display: inline-block; background: #6B7280;">Get Started</a>
+                </div>
+
+                <div class="pricing-card featured">
+                    <div class="plan-name">PRO</div>
+                    <div class="plan-price">$9.99</div>
+                    <div class="plan-period">per month</div>
+                    <ul class="plan-features">
+                        <li>Unlimited reports</li>
+                        <li>All NOAA buoys</li>
+                        <li>Unlimited GPS pins</li>
+                        <li>Ad-free experience</li>
+                        <li>Fish forecasts</li>
+                        <li>7-day weather</li>
+                        <li>Priority support</li>
+                    </ul>
+                    <a href="#signup" class="cta-button" style="display: inline-block;">Upgrade Now</a>
+                </div>
+
+                <div class="pricing-card">
+                    <div class="plan-name">CAPTAIN</div>
+                    <div class="plan-price">$29.99</div>
+                    <div class="plan-period">per month</div>
+                    <ul class="plan-features">
+                        <li>Everything in Pro</li>
+                        <li>Booking management</li>
+                        <li>Business analytics</li>
+                        <li>API access</li>
+                        <li>Featured listings</li>
+                        <li>Customer management</li>
+                        <li>Revenue tracking</li>
+                    </ul>
+                    <a href="#signup" class="cta-button" style="display: inline-block; background: #6B7280;">Start Free Trial</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-section">
+                <h4>Gulf Coast Charters</h4>
+                <p style="opacity: 0.7;">The premier community platform for charter fishing enthusiasts and professionals.</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Product</h4>
+                <ul class="footer-links">
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                    <li><a href="#api">API</a></li>
+                    <li><a href="#mobile">Mobile App</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Company</h4>
+                <ul class="footer-links">
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#blog">Blog</a></li>
+                    <li><a href="#careers">Careers</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Support</h4>
+                <ul class="footer-links">
+                    <li><a href="#help">Help Center</a></li>
+                    <li><a href="#docs">Documentation</a></li>
+                    <li><a href="#community">Community</a></li>
+                    <li><a href="#status">Status</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2024 Gulf Coast Charters. All rights reserved. | <a href="#privacy" style="color: inherit;">Privacy</a> | <a href="#terms" style="color: inherit;">Terms</a></p>
+        </div>
+    </footer>
+</body>
+</html>

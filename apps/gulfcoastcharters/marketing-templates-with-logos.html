@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gulf Coast Charters - Marketing Materials with Your Logos</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e3a5f 0%, #0d8a99 100%);
+      color: #333;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      text-align: center;
+      color: #1e3a5f;
+      margin-bottom: 15px;
+      font-size: 2.5em;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #7f8c8d;
+      margin-bottom: 30px;
+      font-size: 1.2em;
+    }
+
+    .logo-showcase {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-bottom: 40px;
+      padding: 30px;
+      background: #f8f9fa;
+      border-radius: 15px;
+    }
+
+    .logo-box {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .logo-box h3 {
+      color: #1e3a5f;
+      margin-bottom: 15px;
+      font-size: 1.3em;
+    }
+
+    .logo-placeholder {
+      background: linear-gradient(135deg, #f5f1e8 0%, #e8f4f8 100%);
+      border: 3px dashed #0d8a99;
+      border-radius: 10px;
+      padding: 60px 20px;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+      font-weight: 600;
+      color: #1e3a5f;
+      text-align: center;
+    }
+
+    .template-grid {
+      display: grid;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+
+    .template-card {
+      background: #f8f9fa;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .template-header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0d8a99 100%);
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .template-title {
+      font-size: 1.4em;
+      font-weight: 700;
+    }
+
+    .template-size {
+      background: rgba(255,255,255,0.2);
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.9em;
+    }
+
+    .template-preview {
+      background: white;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      position: relative;
+    }
+
+    /* Hero Banner with Logo */
+    .hero-banner-template {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0d8a99 100%);
+      width: 100%;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      padding: 60px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-logo-area {
+      position: absolute;
+      top: 30px;
+      left: 60px;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      width: 180px;
+      height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: #1e3a5f;
+      font-size: 0.9em;
+      text-align: center;
+    }
+
+    .hero-content {
+      max-width: 700px;
+      margin-left: auto;
+      text-align: right;
+    }
+
+    .hero-headline {
+      font-size: 3.5em;
+      font-weight: 900;
+      margin-bottom: 20px;
+      line-height: 1.1;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .hero-subheadline {
+      font-size: 1.5em;
+      margin-bottom: 30px;
+      opacity: 0.95;
+    }
+
+    .hero-cta {
+      background: #f9a03f;
+      color: white;
+      padding: 18px 50px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 1.2em;
+      display: inline-block;
+      text-decoration: none;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    /* Business Card Template */
+    .business-card {
+      width: 600px;
+      height: 350px;
+      background: white;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+      margin: 0 auto;
+    }
+
+    .card-front {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0d8a99 100%);
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      text-align: center;
+    }
+
+    .card-logo-placeholder {
+      width: 120px;
+      height: 120px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      font-size: 0.8em;
+      color: #1e3a5f;
+      font-weight: 600;
+      text-align: center;
+      padding: 10px;
+    }
+
+    .card-business-name {
+      font-size: 1.3em;
+      font-weight: 900;
+      margin-bottom: 5px;
+    }
+
+    .card-tagline {
+      font-size: 0.85em;
+      opacity: 0.9;
+    }
+
+    .card-back {
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .card-info {
+      margin-bottom: 12px;
+      color: #1e3a5f;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-icon {
+      width: 20px;
+      text-align: center;
+    }
+
+    /* Social Media Post Template */
+    .social-post {
+      width: 600px;
+      height: 600px;
+      background: linear-gradient(135deg, #1e3a5f 0%, #0d8a99 100%);
+      border-radius: 15px;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      text-align: center;
+      position: relative;
+      margin: 0 auto;
+    }
+
+    .social-logo-area {
+      width: 150px;
+      height: 150px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 30px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+      font-size: 0.8em;
+      color: #1e3a5f;
+      font-weight: 600;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .social-headline {
+      font-size: 2.5em;
+      font-weight: 900;
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+
+    .social-text {
+      font-size: 1.3em;
+      margin-bottom: 30px;
+      opacity: 0.95;
+    }
+
+    .social-cta {
+      background: #f9a03f;
+      color: white;
+      padding: 15px 40px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 1.1em;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    /* Email Header Template */
+    .email-header {
+      width: 600px;
+      height: 200px;
+      background: linear-gradient(135deg, #1e3a5f 0%, #0d8a99 100%);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      padding: 30px 50px;
+      color: white;
+      margin: 0 auto;
+      gap: 30px;
+    }
+
+    .email-logo-area {
+      width: 140px;
+      height: 140px;
+      background: white;
+      border-radius: 10px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8em;
+      color: #1e3a5f;
+      font-weight: 600;
+      text-align: center;
+      padding: 10px;
+    }
+
+    .email-content {
+      flex: 1;
+    }
+
+    .email-headline {
+      font-size: 2em;
+      font-weight: 900;
+      margin-bottom: 10px;
+    }
+
+    .email-text {
+      font-size: 1.1em;
+      opacity: 0.95;
+    }
+
+    .instructions {
+      background: #e8f4f8;
+      border-left: 4px solid #0d8a99;
+      padding: 20px;
+      border-radius: 10px;
+      margin: 30px 0;
+    }
+
+    .instructions h3 {
+      color: #1e3a5f;
+      margin-bottom: 15px;
+    }
+
+    .instructions ol {
+      margin-left: 20px;
+      color: #555;
+      line-height: 1.8;
+    }
+
+    .instructions ol li {
+      margin-bottom: 10px;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .btn {
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1em;
+      transition: transform 0.3s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0d8a99 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(30, 58, 95, 0.4);
+    }
+
+    @media (max-width: 768px) {
+      .logo-showcase {
+        grid-template-columns: 1fr;
+      }
+      
+      .business-card {
+        width: 100%;
+        height: auto;
+        grid-template-columns: 1fr;
+      }
+      
+      .social-post, .email-header {
+        width: 100%;
+        height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Marketing Materials with Your Professional Logos</h1>
+    <p class="subtitle">See how to use your logos across different marketing materials</p>
+
+    <!-- Logo Showcase -->
+    <div class="logo-showcase">
+      <div class="logo-box">
+        <h3>🏆 Logo 1: Classic Badge</h3>
+        <div class="logo-placeholder">
+          Your "Classic Nautical Badge" logo<br>
+          (Circular design with rope border)<br><br>
+          📁 File: generated-image-1__1_.png
+        </div>
+        <p><strong>Best for:</strong> Business cards, print materials, merchandise</p>
+      </div>
+      <div class="logo-box">
+        <h3>🚀 Logo 2: Dynamic Adventure</h3>
+        <div class="logo-placeholder">
+          Your "Dynamic Adventure" logo<br>
+          (Boat with sunset and compass)<br><br>
+          📁 File: generated-image-1.png
+        </div>
+        <p><strong>Best for:</strong> Website, social media, digital marketing</p>
+      </div>
+    </div>
+
+    <div class="instructions">
+      <h3>📝 How to Use These Templates</h3>
+      <ol>
+        <li><strong>Open your logo files</strong> - You have both professional logos saved</li>
+        <li><strong>Choose a template below</strong> - Pick the marketing material you want to create</li>
+        <li><strong>Use Canva or Photoshop</strong> - Recreate these templates with your actual logos</li>
+        <li><strong>Replace placeholder areas</strong> - Drop in your logo files where indicated</li>
+        <li><strong>Customize colors/text</strong> - Match your brand colors (#1e3a5f, #0d8a99, #f9a03f)</li>
+        <li><strong>Export and use!</strong> - Download as PNG/JPG for use</li>
+      </ol>
+    </div>
+
+    <!-- Template 1: Hero Banner -->
+    <div class="template-card">
+      <div class="template-header">
+        <span class="template-title">🌊 Website Hero Banner</span>
+        <span class="template-size">1920 x 600px</span>
+      </div>
+      <div class="template-preview">
+        <div class="hero-banner-template">
+          <div class="hero-logo-area">
+            Place<br>Logo 2<br>Here
+          </div>
+          <div class="hero-content">
+            <div class="hero-headline">Cast Your Line,<br>Catch Memories</div>
+            <div class="hero-subheadline">Book the Gulf Coast's best fishing charters</div>
+            <a href="#" class="hero-cta">Book Your Adventure</a>
+          </div>
+        </div>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="alert('Use Canva.com to recreate this with your Logo 2 file!')">Create in Canva</button>
+      </div>
+    </div>
+
+    <!-- Template 2: Business Card -->
+    <div class="template-card" style="margin-top: 30px;">
+      <div class="template-header">
+        <span class="template-title">💼 Business Card</span>
+        <span class="template-size">3.5 x 2 inches</span>
+      </div>
+      <div class="template-preview" style="padding: 40px;">
+        <div class="business-card">
+          <div class="card-front">
+            <div class="card-logo-placeholder">Logo 1<br>(Badge)</div>
+            <div class="card-business-name">GULF COAST<br>CHARTERS</div>
+            <div class="card-tagline">Your Gulf Adventure Starts Here</div>
+          </div>
+          <div class="card-back">
+            <div class="card-info">
+              <span class="card-icon">📞</span>
+              <span>(251) 555-FISH</span>
+            </div>
+            <div class="card-info">
+              <span class="card-icon">📧</span>
+              <span>info@gulfcoastcharters.com</span>
+            </div>
+            <div class="card-info">
+              <span class="card-icon">🌐</span>
+              <span>www.gulfcoastcharters.com</span>
+            </div>
+            <div class="card-info">
+              <span class="card-icon">📍</span>
+              <span>Orange Beach, Alabama</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="alert('Use VistaPrint or Canva to create business cards with Logo 1!')">Design Business Card</button>
+      </div>
+    </div>
+
+    <!-- Template 3: Social Media Post -->
+    <div class="template-card" style="margin-top: 30px;">
+      <div class="template-header">
+        <span class="template-title">📱 Social Media Post</span>
+        <span class="template-size">1080 x 1080px</span>
+      </div>
+      <div class="template-preview" style="padding: 40px;">
+        <div class="social-post">
+          <div class="social-logo-area">Logo 1 or 2</div>
+          <div class="social-headline">Special Offer!</div>
+          <div class="social-text">Book This Week & Get 20% OFF<br>Your First Charter</div>
+          <div class="social-cta">Book Now</div>
+        </div>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="alert('Create square posts in Canva with your logos!')">Create Social Post</button>
+      </div>
+    </div>
+
+    <!-- Template 4: Email Header -->
+    <div class="template-card" style="margin-top: 30px;">
+      <div class="template-header">
+        <span class="template-title">📧 Email Newsletter Header</span>
+        <span class="template-size">600 x 200px</span>
+      </div>
+      <div class="template-preview" style="padding: 40px;">
+        <div class="email-header">
+          <div class="email-logo-area">Logo 2</div>
+          <div class="email-content">
+            <div class="email-headline">Summer Special!</div>
+            <div class="email-text">Book your Gulf Coast adventure today</div>
+          </div>
+        </div>
+      </div>
+      <div class="action-buttons">
+        <button class="btn btn-primary" onclick="alert('Use Mailchimp or Canva to create email headers!')">Design Email Header</button>
+      </div>
+    </div>
+
+    <!-- Final Instructions -->
+    <div class="instructions" style="margin-top: 40px; background: #fff3cd; border-color: #ffc107;">
+      <h3>🎯 Your Next Steps</h3>
+      <ol>
+        <li><strong>Go to Canva.com</strong> (free account)</li>
+        <li><strong>Upload both your logo files</strong> to Canva</li>
+        <li><strong>Search for templates:</strong>
+          <ul style="margin-top: 10px;">
+            <li>"Website header" for hero banners</li>
+            <li>"Business card" for cards</li>
+            <li>"Instagram post" for social media</li>
+            <li>"Email header" for newsletters</li>
+          </ul>
+        </li>
+        <li><strong>Replace template logos</strong> with your actual logo files</li>
+        <li><strong>Match the colors:</strong> #1e3a5f (navy), #0d8a99 (teal), #f9a03f (orange)</li>
+        <li><strong>Customize text</strong> with your actual information</li>
+        <li><strong>Download and use!</strong></li>
+      </ol>
+    </div>
+
+    <div class="instructions" style="margin-top: 20px; background: #d1ecf1; border-color: #0d8a99;">
+      <h3>💡 Pro Tips</h3>
+      <ol>
+        <li><strong>Logo 1 (Badge)</strong> works best in circles and squares - use for profile pictures, badges, stamps</li>
+        <li><strong>Logo 2 (Dynamic)</strong> works best horizontally - use for headers, banners, covers</li>
+        <li><strong>White space is your friend</strong> - don't crowd your logos, give them room to breathe</li>
+        <li><strong>Consistent colors</strong> - always use the same navy (#1e3a5f) and teal (#0d8a99) from your logos</li>
+        <li><strong>High resolution</strong> - always export at highest quality for professional look</li>
+      </ol>
+    </div>
+
+    <div style="background: linear-gradient(135deg, #1e3a5f 0%, #0d8a99 100%); color: white; padding: 30px; border-radius: 15px; text-align: center; margin-top: 40px;">
+      <h2 style="margin-bottom: 15px; font-size: 2em;">🎉 You Have Amazing Professional Logos!</h2>
+      <p style="font-size: 1.2em; opacity: 0.95; margin-bottom: 20px;">Use these templates as inspiration to create stunning marketing materials</p>
+      <p style="font-size: 1em;">Both logos are production-ready and professional quality! 🏆</p>
+    </div>
+  </div>
+
+  <script>
+    console.log('Gulf Coast Charters Marketing Templates Ready!');
+  </script>
+</body>
+</html>

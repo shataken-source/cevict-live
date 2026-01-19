@@ -1,0 +1,68 @@
+# netlify.toml - NETLIFY DEPLOYMENT CONFIGURATION
+# Place this in your project root directory
+
+[build]
+  # Directory where Netlify runs the build command
+  base = ""
+  
+  # Build command - what Netlify runs to build your site
+  command = "npm run build"
+  
+  # Directory that contains the deploy-ready files
+  publish = ".next"
+
+[build.environment]
+  # Node version for building
+  NODE_VERSION = "18"
+  
+  # Required for Next.js
+  NEXT_PRIVATE_TARGET = "server"
+
+# Redirects and rewrites
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Headers for better performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer-when-downgrade"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"  
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Environment variables (add your actual values in Netlify dashboard)
+[context.production.environment]
+  NEXT_PUBLIC_SITE_URL = "https://gulfcoastcharters.com"
+
+[context.deploy-preview.environment]
+  NEXT_PUBLIC_SITE_URL = "https://deploy-preview.gulfcoastcharters.com"
+
+[context.branch-deploy.environment]
+  NEXT_PUBLIC_SITE_URL = "https://branch.gulfcoastcharters.com"
+
+# Plugins to enhance your site
+[[plugins]]
+  # Essential for Next.js on Netlify
+  package = "@netlify/plugin-nextjs"
+
+[[plugins]]
+  # Improves build times by caching
+  package = "netlify-plugin-cache-nextjs"

@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gulf Coast Charters - Visual Design Studio</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #7f8c8d;
+      margin-bottom: 30px;
+      font-size: 1.1em;
+    }
+
+    .controls {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+
+    .control-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .control-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #2c3e50;
+      font-size: 0.9em;
+    }
+
+    select, input[type="text"], input[type="color"] {
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 5px;
+      font-size: 1em;
+      transition: border-color 0.3s;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: #3498db;
+    }
+
+    input[type="color"] {
+      height: 45px;
+      cursor: pointer;
+    }
+
+    .banner-grid {
+      display: grid;
+      gap: 30px;
+      margin-bottom: 30px;
+    }
+
+    .banner-card {
+      background: white;
+      border: 2px solid #e1e8ed;
+      border-radius: 15px;
+      padding: 20px;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .banner-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+
+    .banner-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .banner-title {
+      font-weight: 700;
+      color: #2c3e50;
+      font-size: 1.2em;
+    }
+
+    .banner-size {
+      background: #3498db;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.85em;
+      font-weight: 600;
+    }
+
+    .banner-preview {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
+      position: relative;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 0.95em;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #ecf0f1;
+      color: #2c3e50;
+    }
+
+    .btn-secondary:hover {
+      background: #bdc3c7;
+    }
+
+    /* Banner Designs */
+    .hero-banner {
+      min-height: 400px;
+      background: linear-gradient(135deg, #0077be 0%, #00a8e8 100%);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 60px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-banner::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><path d="M0,300 Q300,100 600,300 T1200,300 L1200,600 L0,600 Z" fill="rgba(255,255,255,0.1)"/></svg>') no-repeat bottom;
+      background-size: cover;
+      opacity: 0.3;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 600px;
+    }
+
+    .hero-title {
+      font-size: 3.5em;
+      font-weight: 900;
+      margin-bottom: 20px;
+      line-height: 1.1;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .hero-subtitle {
+      font-size: 1.5em;
+      margin-bottom: 30px;
+      opacity: 0.95;
+    }
+
+    .hero-cta {
+      background: white;
+      color: #0077be;
+      padding: 18px 40px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 1.2em;
+      display: inline-block;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      text-decoration: none;
+    }
+
+    .ad-banner {
+      min-height: 250px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      display: flex;
+      align-items: center;
+      padding: 40px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ad-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .ad-badge {
+      background: rgba(255,255,255,0.3);
+      padding: 8px 20px;
+      border-radius: 25px;
+      display: inline-block;
+      margin-bottom: 15px;
+      font-weight: 600;
+      font-size: 0.9em;
+    }
+
+    .ad-title {
+      font-size: 2.5em;
+      font-weight: 900;
+      margin-bottom: 15px;
+      line-height: 1.2;
+    }
+
+    .ad-description {
+      font-size: 1.2em;
+      margin-bottom: 25px;
+      opacity: 0.95;
+    }
+
+    .ad-cta {
+      background: white;
+      color: #f5576c;
+      padding: 15px 35px;
+      border-radius: 50px;
+      font-weight: 700;
+      display: inline-block;
+      text-decoration: none;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    .social-banner {
+      aspect-ratio: 16/9;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      color: white;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .social-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .social-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 2.5em;
+    }
+
+    .social-title {
+      font-size: 2.5em;
+      font-weight: 900;
+      margin-bottom: 15px;
+    }
+
+    .social-subtitle {
+      font-size: 1.3em;
+      opacity: 0.95;
+    }
+
+    .promo-banner {
+      min-height: 300px;
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 50px;
+      color: white;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .promo-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .promo-label {
+      background: rgba(255,255,255,0.3);
+      padding: 10px 25px;
+      border-radius: 25px;
+      display: inline-block;
+      margin-bottom: 20px;
+      font-weight: 700;
+      font-size: 1em;
+    }
+
+    .promo-offer {
+      font-size: 4em;
+      font-weight: 900;
+      margin-bottom: 10px;
+      line-height: 1;
+      text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+    }
+
+    .promo-description {
+      font-size: 1.5em;
+      margin-bottom: 25px;
+      font-weight: 600;
+    }
+
+    .promo-cta {
+      background: white;
+      color: #fa709a;
+      padding: 18px 40px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 1.2em;
+      display: inline-block;
+      text-decoration: none;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    .download-info {
+      background: #e8f4f8;
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 30px;
+      border-left: 4px solid #3498db;
+    }
+
+    .download-info h3 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+
+    .download-info p {
+      color: #7f8c8d;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 768px) {
+      .hero-title {
+        font-size: 2.5em;
+      }
+      
+      .hero-banner, .ad-banner, .promo-banner {
+        padding: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Gulf Coast Charters Visual Design Studio</h1>
+    <p class="subtitle">Create stunning banners, graphics, and marketing materials</p>
+
+    <div class="controls">
+      <div class="control-group">
+        <div class="control-item">
+          <label for="businessName">Business Name</label>
+          <input type="text" id="businessName" value="Gulf Coast Charters">
+        </div>
+        <div class="control-item">
+          <label for="tagline">Tagline</label>
+          <input type="text" id="tagline" value="Your Adventure Awaits">
+        </div>
+        <div class="control-item">
+          <label for="primaryColor">Primary Color</label>
+          <input type="color" id="primaryColor" value="#0077be">
+        </div>
+        <div class="control-item">
+          <label for="secondaryColor">Secondary Color</label>
+          <input type="color" id="secondaryColor" value="#00a8e8">
+        </div>
+      </div>
+      <div class="control-group">
+        <div class="control-item">
+          <label for="offerText">Promotional Offer</label>
+          <input type="text" id="offerText" value="20% OFF">
+        </div>
+        <div class="control-item">
+          <label for="offerDescription">Offer Description</label>
+          <input type="text" id="offerDescription" value="First Booking Special">
+        </div>
+        <div class="control-item">
+          <label for="ctaText">Call-to-Action Text</label>
+          <input type="text" id="ctaText" value="Book Now">
+        </div>
+      </div>
+    </div>
+
+    <div class="banner-grid">
+      <!-- Hero Banner -->
+      <div class="banner-card">
+        <div class="banner-header">
+          <span class="banner-title">🌊 Hero Banner (Homepage)</span>
+          <span class="banner-size">1920 x 600px</span>
+        </div>
+        <div class="banner-preview" id="heroPreview">
+          <div class="hero-banner">
+            <div class="hero-content">
+              <div class="hero-title">Cast Your Line<br>Catch Memories</div>
+              <div class="hero-subtitle">Book the best charter fishing experiences on the Gulf Coast</div>
+              <a href="#" class="hero-cta">Start Your Adventure</a>
+            </div>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="downloadBanner('heroPreview', 'hero-banner')">📥 Download</button>
+          <button class="btn btn-secondary" onclick="customizeBanner('hero')">✏️ Customize</button>
+        </div>
+      </div>
+
+      <!-- Ad Banner -->
+      <div class="banner-card">
+        <div class="banner-header">
+          <span class="banner-title">📢 Marketing Ad Banner</span>
+          <span class="banner-size">728 x 90px / 300 x 250px</span>
+        </div>
+        <div class="banner-preview" id="adPreview">
+          <div class="ad-banner">
+            <div class="ad-content">
+              <div class="ad-badge">LIMITED TIME OFFER</div>
+              <div class="ad-title">Best Charters.<br>Best Prices.</div>
+              <div class="ad-description">Over 500+ verified captains ready to take you fishing</div>
+              <a href="#" class="ad-cta">Explore Now →</a>
+            </div>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="downloadBanner('adPreview', 'ad-banner')">📥 Download</button>
+          <button class="btn btn-secondary" onclick="customizeBanner('ad')">✏️ Customize</button>
+        </div>
+      </div>
+
+      <!-- Promotional Banner -->
+      <div class="banner-card">
+        <div class="banner-header">
+          <span class="banner-title">🎉 Promotional Banner</span>
+          <span class="banner-size">1200 x 628px</span>
+        </div>
+        <div class="banner-preview" id="promoPreview">
+          <div class="promo-banner">
+            <div class="promo-content">
+              <div class="promo-label">🎣 SPECIAL OFFER</div>
+              <div class="promo-offer">20% OFF</div>
+              <div class="promo-description">Your First Charter Booking</div>
+              <a href="#" class="promo-cta">Claim Offer Now</a>
+            </div>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="downloadBanner('promoPreview', 'promo-banner')">📥 Download</button>
+          <button class="btn btn-secondary" onclick="customizeBanner('promo')">✏️ Customize</button>
+        </div>
+      </div>
+
+      <!-- Social Media Banner -->
+      <div class="banner-card">
+        <div class="banner-header">
+          <span class="banner-title">📱 Social Media Post</span>
+          <span class="banner-size">1080 x 1080px</span>
+        </div>
+        <div class="banner-preview" id="socialPreview">
+          <div class="social-banner">
+            <div class="social-content">
+              <div class="social-icon">🎣</div>
+              <div class="social-title">Gulf Coast Charters</div>
+              <div class="social-subtitle">Book Your Dream Fishing Trip Today</div>
+            </div>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="downloadBanner('socialPreview', 'social-media')">📥 Download</button>
+          <button class="btn btn-secondary" onclick="customizeBanner('social')">✏️ Customize</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="download-info">
+      <h3>📥 How to Use Your Banners</h3>
+      <p><strong>To download:</strong> Click any "Download" button above. The image will open in a new tab - right-click and "Save Image As".</p>
+      <p><strong>To customize:</strong> Click "Customize" to edit colors and text using the controls at the top.</p>
+      <p><strong>To get high-resolution versions:</strong> Take these designs to a graphic designer on Fiverr or 99designs, or use tools like Canva to recreate them at higher quality.</p>
+      <p><strong>Recommended sizes:</strong> Hero (1920x600), Leaderboard Ad (728x90), Medium Rectangle (300x250), Social (1080x1080), Facebook Cover (1200x628)</p>
+    </div>
+  </div>
+
+  <script>
+    function updateBanners() {
+      const businessName = document.getElementById('businessName').value;
+      const tagline = document.getElementById('tagline').value;
+      const primaryColor = document.getElementById('primaryColor').value;
+      const secondaryColor = document.getElementById('secondaryColor').value;
+      const offerText = document.getElementById('offerText').value;
+      const offerDescription = document.getElementById('offerDescription').value;
+      const ctaText = document.getElementById('ctaText').value;
+
+      // Update hero banner
+      const heroBanner = document.querySelector('#heroPreview .hero-banner');
+      heroBanner.style.background = `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`;
+      
+      // Update ad banner
+      const adBanner = document.querySelector('#adPreview .ad-banner');
+      adBanner.style.background = `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`;
+
+      // Update social banner
+      const socialBanner = document.querySelector('#socialPreview .social-banner');
+      socialBanner.style.background = `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)`;
+
+      // Update promo banner
+      const promoBanner = document.querySelector('#promoPreview .promo-banner');
+      const promoOffer = document.querySelector('#promoPreview .promo-offer');
+      const promoDesc = document.querySelector('#promoPreview .promo-description');
+      promoOffer.textContent = offerText;
+      promoDesc.textContent = offerDescription;
+    }
+
+    // Add event listeners
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', updateBanners);
+    });
+
+    function downloadBanner(elementId, filename) {
+      alert('To download:\n\n1. Right-click on the banner image\n2. Select "Save Image As..."\n3. Choose where to save it\n\nOr use the screenshot tool (Windows: Win + Shift + S) to capture the exact area you want!');
+    }
+
+    function customizeBanner(type) {
+      alert(`Customizing ${type} banner! Use the controls at the top to change colors, text, and offers. Changes appear in real-time!`);
+    }
+  </script>
+</body>
+</html>

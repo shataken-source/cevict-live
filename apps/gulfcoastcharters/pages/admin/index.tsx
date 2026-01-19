@@ -65,6 +65,18 @@ export default function AdminDashboard() {
               onClick={() => router.push('/admin/campaigns')}
             />
             <ActionCard
+              title="GPS Live Tracking"
+              description="Enable and preview public captain location sharing"
+              icon="🛰️"
+              onClick={() => router.push('/admin/gps')}
+            />
+            <ActionCard
+              title="Scraper"
+              description="Configure and run boat discovery"
+              icon="🔍"
+              onClick={() => router.push('/admin/scraper')}
+            />
+            <ActionCard
               title="User Management"
               description="View and manage users and captains"
               icon="👥"

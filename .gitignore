@@ -82,3 +82,9 @@ keeks/
 
 # Old repo copies (do not deploy from here)
 old-cevict-monorepo/
+
+# Secrets vault (never commit)
+vault/secrets/
+
+# KeyVault targets (local overrides)
+config/keyvault.targets.json

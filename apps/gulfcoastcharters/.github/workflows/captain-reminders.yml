@@ -1,0 +1,46 @@
+name: Captain Reminder Emails
+
+on:
+  schedule:
+    # Run daily at 9 AM UTC (4 AM EST / 1 AM PST)
+    - cron: '0 9 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  send-document-reminders:
+    runs-on: ubuntu-latest
+    name: Send Document Expiration Reminders
+    steps:
+      - name: Trigger Document Expiration Reminder Function
+        run: |
+          curl -X POST \
+            ${{ secrets.SUPABASE_URL }}/functions/v1/document-expiration-reminder \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            --fail-with-body
+        continue-on-error: true
+
+  send-profile-reminders:
+    runs-on: ubuntu-latest
+    name: Send Profile Update Reminders
+    needs: send-document-reminders
+    steps:
+      - name: Trigger Profile Update Reminder Function
+        run: |
+          curl -X POST \
+            ${{ secrets.SUPABASE_URL }}/functions/v1/profile-update-reminder \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            --fail-with-body
+        continue-on-error: true
+
+  notify-on-failure:
+    runs-on: ubuntu-latest
+    name: Notify on Failure
+    needs: [send-document-reminders, send-profile-reminders]
+    if: failure()
+    steps:
+      - name: Send Failure Notification
+        run: |
+          echo "Reminder job failed. Check logs for details."
+          # Add notification logic here (email, Slack, etc.)

@@ -1,0 +1,32 @@
+name: Insurance Policy Verification
+
+on:
+  schedule:
+    # Run daily at 8 AM UTC to check for expiring policies
+    - cron: '0 8 * * *'
+    # Run monthly on the 1st at 8 AM UTC for batch verification
+    - cron: '0 8 1 * *'
+  workflow_dispatch:
+
+jobs:
+  check-expirations:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 8 * * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Check Expiring Insurance Policies
+        run: |
+          curl -X POST 'https://api.databasepad.com/functions/v1/insurance-policy-verifier' \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action": "check-expirations"}'
+
+  batch-verification:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 8 1 * *' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Batch Verify All Insurance Policies
+        run: |
+          curl -X POST 'https://api.databasepad.com/functions/v1/insurance-policy-verifier' \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action": "batch-verify"}'
