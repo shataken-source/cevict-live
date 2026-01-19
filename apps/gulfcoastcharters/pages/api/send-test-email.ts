@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       to: [to],
       subject: subject,
       text: body,
-      replyTo: process.env.RESEND_REPLY_TO || 'shataken@gmail.com'
+      reply_to: process.env.RESEND_REPLY_TO || 'shataken@gmail.com'
     });
 
     if (error) {

@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getSupabaseAdmin } from '../../_lib/supabase';
-import { getAuthedUser } from '../../_lib/supabase';
+import { getAuthedUser, getSupabaseAdmin } from '../../_lib/supabase';
 import { requireRole } from '../../_lib/rbac';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -9,15 +8,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const supabase = getSupabaseAdmin();
   if (req.method === 'GET') {
-    return getCampaigns(req, res);
+    return getCampaigns(req, res, supabase);
   } else if (req.method === 'POST') {
-    return createCampaign(req, res);
+    return createCampaign(req, res, supabase);
   } else {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 }
 
-async function getCampaigns(req: NextApiRequest, res: NextApiResponse) {
+async function getCampaigns(req: NextApiRequest, res: NextApiResponse, supabase: any) {
   try {
     const { data: campaigns, error } = await supabase
       .from('email_campaigns')
@@ -32,7 +31,7 @@ async function getCampaigns(req: NextApiRequest, res: NextApiResponse) {
 
     // Transform data to include recipient count
     const campaignsWithStats = await Promise.all(
-      (campaigns || []).map(async (campaign) => {
+      (campaigns || []).map(async (campaign: any) => {
         const { data: stats } = await supabase.rpc('get_campaign_stats', {
           campaign_uuid: campaign.id
         });
@@ -52,7 +51,7 @@ async function getCampaigns(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
-async function createCampaign(req: NextApiRequest, res: NextApiResponse) {
+async function createCampaign(req: NextApiRequest, res: NextApiResponse, supabase: any) {
   try {
     const { name, subject, body, recipients, sendNow = true } = req.body;
 

@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           to: [recipient.email],
           subject: campaign.subject,
           text: personalizedBody,
-          replyTo: process.env.RESEND_REPLY_TO || 'shataken@gmail.com'
+          reply_to: process.env.RESEND_REPLY_TO || 'shataken@gmail.com'
         });
 
         if (error) {

@@ -44,7 +44,9 @@ export default function WeatherAlertSystem({ latitude, longitude }: WeatherAlert
       setNotificationsEnabled(permission === 'granted');
       
       if (permission === 'granted') {
-        toast({ title: 'Notifications enabled', description: 'You will receive weather alerts' });
+        toast.success('Notifications enabled', { description: 'You will receive weather alerts' });
+      } else if (permission === 'denied') {
+        toast.error('Notifications blocked', { description: 'Enable notifications in your browser settings.' });
       }
     }
   };

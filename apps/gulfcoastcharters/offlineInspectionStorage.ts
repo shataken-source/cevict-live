@@ -28,21 +28,27 @@ function assertBrowser() {
   if (!window.crypto?.subtle) throw new Error('WebCrypto not available');
 }
 
-function b64Encode(bytes: Uint8Array): string {
+function b64Encode(bytes: Uint8Array<ArrayBufferLike>): string {
   let s = '';
   bytes.forEach((b) => (s += String.fromCharCode(b)));
   return btoa(s);
 }
 
-function b64Decode(b64: string): Uint8Array {
+function b64Decode(b64: string): Uint8Array<ArrayBuffer> {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
 
-function utf8Encode(s: string): Uint8Array {
-  return new TextEncoder().encode(s);
+function utf8Encode(s: string): Uint8Array<ArrayBuffer> {
+  // TS/DOM lib typings can treat TextEncoder output as Uint8Array<ArrayBufferLike>,
+  // which is incompatible with WebCrypto's BufferSource constraints in `next build`.
+  // Copy into a fresh ArrayBuffer-backed Uint8Array to satisfy types.
+  const tmp = new TextEncoder().encode(s);
+  const out = new Uint8Array(tmp.byteLength);
+  out.set(tmp);
+  return out;
 }
 
 function utf8Decode(b: ArrayBuffer): string {
