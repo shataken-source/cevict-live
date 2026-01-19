@@ -1,0 +1,396 @@
+import { cursorLearnFromFinals } from "./cursor-effect";
+// cursorLearnFromFinals is now async and uses Claude Effect
+import { updatePredictionsFromLiveGames } from "./prediction-tracker";
+import { Game } from "./weekly-analyzer";
+
+type SupportedSport = "NFL" | "NBA" | "MLB" | "NHL" | "NCAAF" | "NCAAB";
+
+interface SimplifiedOdds {
+  homeTeam: string;
+  awayTeam: string;
+  moneyline?: { home?: number; away?: number };
+  spread?: number;
+  total?: number;
+}
+
+const SPORT_KEY_MAP: Record<SupportedSport, string> = {
+  NFL: "americanfootball_nfl",
+  NBA: "basketball_nba",
+  MLB: "baseball_mlb",
+  NHL: "icehockey_nhl",
+  NCAAF: "americanfootball_ncaaf",
+  NCAAB: "basketball_ncaab"
+};
+
+function normalizeName(name: string) {
+  return name.toLowerCase().replace(/\s+/g, "");
+}
+
+export async function fetchLiveOddsTheOddsApi(apiKey: string, sport: SupportedSport): Promise<SimplifiedOdds[]> {
+  if (!apiKey) {
+    throw new Error('ODDS_API_KEY not configured');
+  }
+  const sportKey = SPORT_KEY_MAP[sport];
+  if (!sportKey) {
+    throw new Error(`Unsupported sport: ${sport}`);
+  }
+
+  const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`;
+
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch (fetchError: any) {
+    throw new Error(`Network error: ${fetchError.message || 'Failed to connect to Odds API'}`);
+  }
+
+  if (!res.ok) {
+    let errorDetails = '';
+    try {
+      const errorData = await res.json();
+      errorDetails = errorData.message || errorData.error || '';
+    } catch {
+      errorDetails = res.statusText;
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('Invalid or expired API key. Please check your ODDS_API_KEY.');
+    } else if (res.status === 429) {
+      throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+    } else {
+      throw new Error(`Odds API error (${res.status}): ${errorDetails || 'Unknown error'}`);
+    }
+  }
+
+  const data = await res.json();
+
+  const simplified: SimplifiedOdds[] = [];
+
+  for (const game of data || []) {
+    const homeTeam: string = game?.home_team;
+    const awayTeam: string = game?.away_team;
+    if (!homeTeam || !awayTeam) continue;
+
+    let moneylineHome: number | undefined;
+    let moneylineAway: number | undefined;
+    let spread: number | undefined;
+    let total: number | undefined;
+
+    const bookmaker = game.bookmakers?.[0];
+    if (bookmaker?.markets) {
+      for (const market of bookmaker.markets) {
+        if (market.key === "h2h" && Array.isArray(market.outcomes)) {
+          const home = market.outcomes.find((o: any) => normalizeName(o.name) === normalizeName(homeTeam));
+          const away = market.outcomes.find((o: any) => normalizeName(o.name) === normalizeName(awayTeam));
+          moneylineHome = home?.price;
+          moneylineAway = away?.price;
+        }
+        if (market.key === "spreads" && Array.isArray(market.outcomes)) {
+          const home = market.outcomes.find((o: any) => normalizeName(o.name) === normalizeName(homeTeam));
+          spread = home?.point;
+        }
+        if (market.key === "totals" && Array.isArray(market.outcomes)) {
+          const over = market.outcomes.find((o: any) => o.name?.toLowerCase?.() === "over");
+          total = over?.point;
+        }
+      }
+    }
+
+    simplified.push({
+      homeTeam,
+      awayTeam,
+      moneyline: { home: moneylineHome, away: moneylineAway },
+      spread,
+      total
+    });
+  }
+
+  return simplified;
+}
+
+// Fetch upcoming schedule + odds (single call)
+export async function fetchScheduleFromOddsApi(apiKey: string, sport: SupportedSport): Promise<Game[]> {
+  if (!apiKey) {
+    throw new Error('ODDS_API_KEY not configured');
+  }
+  const sportKey = SPORT_KEY_MAP[sport];
+  if (!sportKey) {
+    throw new Error(`Unsupported sport: ${sport}`);
+  }
+
+  const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`;
+
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch (fetchError: any) {
+    throw new Error(`Network error: ${fetchError.message || 'Failed to connect to Odds API'}`);
+  }
+
+  if (!res.ok) {
+    let errorDetails = '';
+    try {
+      const errorData = await res.json();
+      errorDetails = errorData.message || errorData.error || '';
+    } catch {
+      errorDetails = res.statusText;
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('Invalid or expired API key. Please check your ODDS_API_KEY.');
+    } else if (res.status === 429) {
+      throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+    } else {
+      throw new Error(`Odds API error (${res.status}): ${errorDetails || 'Unknown error'}`);
+    }
+  }
+
+  const data = await res.json();
+  if (!Array.isArray(data)) return [];
+
+  const games: Game[] = [];
+
+  for (const item of data) {
+    const homeTeam: string = item?.home_team;
+    const awayTeam: string = item?.away_team;
+    if (!homeTeam || !awayTeam) continue;
+
+    let moneylineHome: number | undefined;
+    let moneylineAway: number | undefined;
+    let spread: number | undefined;
+    let total: number | undefined;
+
+    // Collect odds from all bookmakers and average them for better accuracy
+    const moneylineHomeOdds: number[] = [];
+    const moneylineAwayOdds: number[] = [];
+    const spreads: number[] = [];
+    const totals: number[] = [];
+
+    if (item.bookmakers && Array.isArray(item.bookmakers)) {
+      for (const bookmaker of item.bookmakers) {
+        if (!bookmaker?.markets) continue;
+
+        for (const market of bookmaker.markets) {
+          if (market.key === "h2h" && Array.isArray(market.outcomes)) {
+            const home = market.outcomes.find((o: any) => normalizeName(o.name) === normalizeName(homeTeam));
+            const away = market.outcomes.find((o: any) => normalizeName(o.name) === normalizeName(awayTeam));
+            if (home?.price !== undefined) moneylineHomeOdds.push(home.price);
+            if (away?.price !== undefined) moneylineAwayOdds.push(away.price);
+          }
+          if (market.key === "spreads" && Array.isArray(market.outcomes)) {
+            const home = market.outcomes.find((o: any) => normalizeName(o.name) === normalizeName(homeTeam));
+            if (home?.point !== undefined) spreads.push(home.point);
+          }
+          if (market.key === "totals" && Array.isArray(market.outcomes)) {
+            const over = market.outcomes.find((o: any) => o.name?.toLowerCase?.() === "over");
+            if (over?.point !== undefined) totals.push(over.point);
+          }
+        }
+      }
+    }
+
+    // Average the odds across all bookmakers
+    if (moneylineHomeOdds.length > 0) {
+      moneylineHome = Math.round(moneylineHomeOdds.reduce((a, b) => a + b, 0) / moneylineHomeOdds.length);
+    }
+    if (moneylineAwayOdds.length > 0) {
+      moneylineAway = Math.round(moneylineAwayOdds.reduce((a, b) => a + b, 0) / moneylineAwayOdds.length);
+    }
+    if (spreads.length > 0) {
+      spread = spreads.reduce((a, b) => a + b, 0) / spreads.length;
+    }
+    if (totals.length > 0) {
+      total = totals.reduce((a, b) => a + b, 0) / totals.length;
+    }
+
+    // If no moneyline odds found, use default odds based on spread (if available)
+    // This handles cases where bookmakers only offer spread betting
+    let finalHome = moneylineHome;
+    let finalAway = moneylineAway;
+
+    if (finalHome === undefined && finalAway === undefined && spread !== undefined) {
+      // Estimate moneyline from spread (rough approximation)
+      // A spread of -16.5 suggests a heavy favorite, roughly -1200 to -1500
+      if (spread < -10) {
+        finalHome = -1200;
+        finalAway = 800;
+      } else if (spread < -5) {
+        finalHome = -300;
+        finalAway = 250;
+      } else if (spread < 0) {
+        finalHome = -150;
+        finalAway = 130;
+      } else if (spread > 5) {
+        finalHome = 250;
+        finalAway = -300;
+      } else {
+        finalHome = -110;
+        finalAway = 110;
+      }
+    } else if (finalHome === undefined || finalAway === undefined) {
+      // If only one side has odds, estimate the other
+      if (finalHome !== undefined && finalAway === undefined) {
+        // Estimate away odds from home odds
+        finalAway = finalHome > 0 ? -finalHome : Math.abs(finalHome);
+      } else if (finalAway !== undefined && finalHome === undefined) {
+        // Estimate home odds from away odds
+        finalHome = finalAway > 0 ? -finalAway : Math.abs(finalAway);
+      } else {
+        // No odds at all, use defaults
+        finalHome = -110;
+        finalAway = 110;
+      }
+    }
+
+    games.push({
+      id: item.id || `${homeTeam}-${awayTeam}-${item.commence_time || Date.now()}`,
+      homeTeam,
+      awayTeam,
+      sport,
+      date: item.commence_time ? new Date(item.commence_time) : new Date(),
+      venue: item.venue || "TBD",
+      odds: {
+        home: finalHome ?? -110,
+        away: finalAway ?? 110,
+        spread,
+        total
+      }
+    });
+  }
+
+  return games;
+}
+
+export function mergeOddsIntoGames(games: Game[], odds: SimplifiedOdds[]): Game[] {
+  if (!odds || odds.length === 0) return games;
+  return games.map(game => {
+    const match = odds.find(o =>
+      normalizeName(o.homeTeam) === normalizeName(game.homeTeam) &&
+      normalizeName(o.awayTeam) === normalizeName(game.awayTeam)
+    );
+    if (!match) return game;
+    return {
+      ...game,
+      odds: {
+        home: match.moneyline?.home ?? game.odds?.home ?? 0,
+        away: match.moneyline?.away ?? game.odds?.away ?? 0,
+        spread: match.spread ?? game.odds?.spread,
+        total: match.total ?? game.odds?.total
+      }
+    };
+  });
+}
+
+// Fetch final scores and update prediction tracker (use in Tuesday cron)
+export async function fetchScoresAndUpdatePredictions(
+  apiKey: string,
+  sport: SupportedSport,
+  games: Game[] = [],
+  daysFrom: number = 3
+): Promise<{ completedGames: number; predictionsUpdated: number; cursorLearnGames: number }> {
+  const sportKey = SPORT_KEY_MAP[sport];
+  if (!apiKey || !sportKey) return { completedGames: 0, predictionsUpdated: 0, cursorLearnGames: 0 };
+
+  const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/scores/?daysFrom=${daysFrom}&apiKey=${apiKey}`;
+  let data: any;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error(`Scores API failed: ${res.status} for ${url}`);
+      return { completedGames: 0, predictionsUpdated: 0, cursorLearnGames: 0 };
+    }
+    data = await res.json();
+  } catch (err) {
+    console.error("Scores API request error", err);
+    return { completedGames: 0, predictionsUpdated: 0, cursorLearnGames: 0 };
+  }
+  if (!Array.isArray(data)) return { completedGames: 0, predictionsUpdated: 0, cursorLearnGames: 0 };
+
+  const norm = (name: string) => name?.toLowerCase().replace(/\s+/g, "") || "";
+  const completedForCursor: Game[] = [];
+  let completedGames = 0;
+  let predictionsUpdated = 0;
+  let gamesWithoutMatch = 0;
+  let gamesWithoutScores = 0;
+
+  for (const g of data) {
+    if (!g.completed || !g.scores || !Array.isArray(g.scores)) {
+      if (g.completed && (!g.scores || !Array.isArray(g.scores))) gamesWithoutScores++;
+      continue;
+    }
+    completedGames++;
+    const homeTeam = g.home_team;
+    const awayTeam = g.away_team;
+    const homeScoreEntry = g.scores.find((s: any) => norm(s.name) === norm(homeTeam));
+    const awayScoreEntry = g.scores.find((s: any) => norm(s.name) === norm(awayTeam));
+    if (!homeScoreEntry || !awayScoreEntry) {
+      gamesWithoutScores++;
+      continue;
+    }
+
+    const homeScore = Number(homeScoreEntry.score ?? homeScoreEntry.points ?? 0);
+    const awayScore = Number(awayScoreEntry.score ?? awayScoreEntry.points ?? 0);
+
+    const matchingGame = games.find(
+      gg => norm(gg.homeTeam) === norm(homeTeam) && norm(gg.awayTeam) === norm(awayTeam)
+    );
+
+    if (!matchingGame) {
+      gamesWithoutMatch++;
+    }
+
+    // Update predictions stored locally (by Odds API game id first)
+    try {
+      const liveGameFromOddsApi = {
+        id: g.id, // The Odds API game id (best match for stored predictions)
+        homeTeam,
+        awayTeam,
+        liveScore: { home: homeScore, away: awayScore },
+        isCompleted: true
+      };
+      predictionsUpdated += await updatePredictionsFromLiveGames([liveGameFromOddsApi]);
+
+      // If our locally-tracked game id differs (e.g., sample ids), also update by the local game id.
+      if (matchingGame && matchingGame.id !== g.id) {
+        predictionsUpdated += await updatePredictionsFromLiveGames([{
+          id: matchingGame.id,
+          homeTeam: matchingGame.homeTeam,
+          awayTeam: matchingGame.awayTeam,
+          liveScore: { home: homeScore, away: awayScore },
+          isCompleted: true
+        }]);
+      }
+    } catch (err) {
+      console.error("Prediction tracker update failed", err);
+    }
+
+    // Feed cursor learner only when we have full game context (odds, etc.)
+    if (matchingGame) {
+      completedForCursor.push({
+        ...matchingGame,
+        liveScore: { home: homeScore, away: awayScore },
+        isCompleted: true
+      });
+    }
+  }
+
+  if (completedForCursor.length > 0) {
+    try {
+      await cursorLearnFromFinals(completedForCursor);
+    } catch (err) {
+      console.error("Cursor effect update failed", err);
+    }
+  }
+
+  // Log diagnostic info if no games matched
+  if (completedGames > 0 && completedForCursor.length === 0) {
+    console.warn(`[${sport}] Found ${completedGames} completed games but ${gamesWithoutMatch} had no matching game context. Games array length: ${games.length}`);
+  }
+
+  return {
+    completedGames,
+    predictionsUpdated,
+    cursorLearnGames: completedForCursor.length
+  };
+}
+

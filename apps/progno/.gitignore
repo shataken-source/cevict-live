@@ -1,0 +1,13 @@
+.vercel
+.next
+node_modules
+
+# local env
+.env
+.env.*
+.env*.local
+
+# runtime caches / data
+.progno/
+logs/
+*.log

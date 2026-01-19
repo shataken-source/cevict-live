@@ -1,0 +1,1 @@
+$json = Get-Content vercel.json | ConvertFrom-Json; $json | Add-Member -MemberType NoteProperty -Name installCommand -Value "npm install" -Force; $json | ConvertTo-Json -Depth 10 | Set-Content vercel.json

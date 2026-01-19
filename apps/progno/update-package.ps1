@@ -1,0 +1,1 @@
+$json = Get-Content package.json | ConvertFrom-Json; $json | Add-Member -MemberType NoteProperty -Name packageManager -Value "npm@10.0.0" -Force; $json | ConvertTo-Json -Depth 10 | Set-Content package.json
