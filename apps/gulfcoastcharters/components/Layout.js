@@ -28,6 +28,9 @@ export default function Layout({ children, session }) {
               <Link href="/vessels" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
                 Vessels
               </Link>
+              <Link href="/gear" className="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600">
+                Gear
+              </Link>
               {session ? (
                 <Link href="/admin" className="px-3 py-2 rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
                   Dashboard

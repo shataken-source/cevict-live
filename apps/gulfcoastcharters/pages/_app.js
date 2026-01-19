@@ -4,6 +4,7 @@ import Head from 'next/head'
 import Script from 'next/script'
 import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
+import { Toaster } from 'sonner'
 
 const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_GOOGLE_ADS_CLIENT_ID || 'ca-pub-0940073536675562'
 
@@ -58,6 +59,7 @@ export default function App({ Component, pageProps }) {
         />
       ) : null}
 
+      <Toaster richColors position="top-right" />
       <Component {...pageProps} />
     </>
   )
