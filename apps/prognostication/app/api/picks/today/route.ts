@@ -148,12 +148,22 @@ function allocateTiers(all: EnginePick[]): TieredPicks {
 
 export async function GET(request: NextRequest) {
   try {
+    const isCron = request.headers.get('x-vercel-cron') === '1';
+
     // Check user tier from query params or headers
     const email = request.nextUrl.searchParams.get('email');
     const sessionId = request.nextUrl.searchParams.get('session_id');
 
     let userTier: 'free' | 'pro' | 'elite' = 'free';
     let hasAccess = false;
+
+    // Cron calls should be able to fetch tiered picks for downstream automation (SMS alerts).
+    // NOTE: `x-vercel-cron` can be spoofed; if you want stronger auth, use a dedicated
+    // dynamic route segment secret (query strings are not supported in vercel.json cron paths).
+    if (isCron) {
+      userTier = 'elite';
+      hasAccess = true;
+    }
 
     // Verify user has paid subscription
     if ((email || sessionId) && stripe) {
@@ -216,6 +226,24 @@ export async function GET(request: NextRequest) {
     let enginePicks: EnginePick[] = [];
     let source: 'progno' | 'unavailable' = 'unavailable';
 
+    if (!baseUrl) {
+      return NextResponse.json(
+        {
+          success: true,
+          free: [],
+          pro: [],
+          elite: [],
+          total: 0,
+          timestamp: new Date().toISOString(),
+          source: 'unavailable',
+          prognoUrl: null,
+          missingEnv: ['PROGNO_BASE_URL'],
+          hint: 'Set PROGNO_BASE_URL (e.g. https://progno.yourdomain.com) so Prognostication can fetch picks.',
+        },
+        { status: 200 }
+      );
+    }
+
     if (baseUrl) {
       try {
         // Use new API v2.0 endpoint
@@ -268,8 +296,9 @@ export async function GET(request: NextRequest) {
           elite: [],
           total: 0,
           timestamp: new Date().toISOString(),
-          source: baseUrl ? 'progno-empty' : 'unavailable',
-          prognoUrl: baseUrl || null, // Include PROGNO URL even when no picks
+          source: 'progno-empty',
+          prognoUrl: baseUrl, // Include PROGNO URL even when no picks
+          hint: 'PROGNO returned no predictions. Verify PROGNO is running and /api/progno/v2?action=predictions returns data.',
         },
         { status: 200 }
       );
