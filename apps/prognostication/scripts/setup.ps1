@@ -4,7 +4,8 @@
 
 Write-Host "`n=== PROGNOSTICATION AUTOMATED SETUP ===" -ForegroundColor Cyan
 
-$PROJECT_DIR = "C:\gcc\cevict-app\cevict-monorepo\apps\prognostication"
+# Project root (C:\cevict-live\apps\prognostication). Script lives in apps\prognostication\scripts\
+$PROJECT_DIR = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
 # ================================================================
 # STEP 1: CHECK/COPY SOURCE FILES

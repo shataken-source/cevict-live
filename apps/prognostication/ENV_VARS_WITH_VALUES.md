@@ -16,8 +16,8 @@
 
 | Variable Name | Value | App | Status |
 |--------------|-------|-----|--------|
-| `STRIPE_SECRET_KEY` | `sk_test_51STl4a18sNHY3ux6XnFq6q6VJO5qmViVRPmsnE7pNbZCTJW6yDurvehjWPrg7tAChVWvnYaNP8VHcD7rJhN68BHt00tjApjqBq` | **Prognostication** | ✅ Found in `DISTRIBUTE_KEYS.ps1` |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_test_51STl4a18sNHY3ux6bXxWbRti6senllwMD7cotvuw1jYSdq7R8SUf4TstSWnlUIc5hMkGTkCFGQ1EpiPDEL2A51Wb007ve9cFL2` | **Prognostication** | ✅ Found in `DISTRIBUTE_KEYS.ps1` |
+| `STRIPE_SECRET_KEY` | **REDACTED (store in Vercel env / password manager; never commit)** | **Prognostication** | ✅ Set in Vercel |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | **REDACTED (store in Vercel env; safe to expose to client but still avoid hardcoding here)** | **Prognostication** | ✅ Set in Vercel |
 | `NEXT_PUBLIC_STRIPE_PRO_WEEKLY_PRICE_ID` | `price_1ShEH018sNHY3ux6QlOjdb8z` | **Prognostication** | ✅ Created (from `ENV_VARS_CHECKLIST.md`) |
 | `NEXT_PUBLIC_STRIPE_ELITE_WEEKLY_PRICE_ID` | `price_1ShEIC18sNHY3ux6Wf9FUX0W` | **Prognostication** | ✅ Created (from `ENV_VARS_CHECKLIST.md`) |
 | `NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID` | `price_1ShDtF18sNHY3ux6uxm5aUxx` | **Prognostication** | ✅ Created (from `ENV_VARS_CHECKLIST.md`) |
@@ -42,8 +42,8 @@
 
 | Variable Name | Value | App | Status |
 |--------------|-------|-----|--------|
-| `SINCH_SERVICE_PLAN_ID` | `5ead1f97ab94481c80d3a52e13de95bb` | **Prognostication** | ✅ Found in `ENV_VARS_CHECKLIST.md` |
-| `SINCH_API_TOKEN` | `78f84e980220406892c2cfccf515e755` | **Prognostication** | ✅ Found in `ENV_VARS_CHECKLIST.md` |
+| `SINCH_SERVICE_PLAN_ID` | **REDACTED (store in Vercel env; never commit)** | **Prognostication** | ✅ Set in Vercel |
+| `SINCH_API_TOKEN` | **REDACTED (store in Vercel env; never commit)** | **Prognostication** | ✅ Set in Vercel |
 | `SINCH_FROM_NUMBER` | `+12085812971` | **Prognostication** | ✅ Found in `ENV_VARS_CHECKLIST.md` |
 | `SINCH_FROM` | `+12085812971` (alternative name) | **Prognostication** | ✅ Found in `ENV_VARS_CHECKLIST.md` |
 
@@ -84,8 +84,8 @@
 
 ### Critical (Required for Payments)
 ```
-STRIPE_SECRET_KEY=sk_test_51STl4a18sNHY3ux6XnFq6q6VJO5qmViVRPmsnE7pNbZCTJW6yDurvehjWPrg7tAChVWvnYaNP8VHcD7rJhN68BHt00tjApjqBq
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51STl4a18sNHY3ux6bXxWbRti6senllwMD7cotvuw1jYSdq7R8SUf4TstSWnlUIc5hMkGTkCFGQ1EpiPDEL2A51Wb007ve9cFL2
+STRIPE_SECRET_KEY=<<set-in-vercel>>
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=<<set-in-vercel>>
 NEXT_PUBLIC_STRIPE_PRO_WEEKLY_PRICE_ID=price_1ShEH018sNHY3ux6QlOjdb8z
 NEXT_PUBLIC_STRIPE_ELITE_WEEKLY_PRICE_ID=price_1ShEIC18sNHY3ux6Wf9FUX0W
 NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PRICE_ID=price_1ShDtF18sNHY3ux6uxm5aUxx
@@ -96,8 +96,8 @@ PROGNO_BASE_URL=https://progno.vercel.app
 
 ### SMS Alerts (Optional but Recommended)
 ```
-SINCH_SERVICE_PLAN_ID=5ead1f97ab94481c80d3a52e13de95bb
-SINCH_API_TOKEN=78f84e980220406892c2cfccf515e755
+SINCH_SERVICE_PLAN_ID=<<set-in-vercel>>
+SINCH_API_TOKEN=<<set-in-vercel>>
 SINCH_FROM_NUMBER=+12085812971
 ```
 
@@ -105,20 +105,20 @@ SINCH_FROM_NUMBER=+12085812971
 
 ## 📁 Source Files
 
-1. **`ENV_VARS_CHECKLIST.md`** (root directory)
-   - Path: `C:\gcc\cevict-app\cevict-monorepo\ENV_VARS_CHECKLIST.md`
+1. **`ENV_VARS_CHECKLIST.md`** (repo root)
+   - Path: `C:\cevict-live\ENV_VARS_CHECKLIST.md`
    - Contains: All env vars with values, organized by app
 
-2. **`VERCEL_ENV_VARS_COPY.md`** (root directory)
-   - Path: `C:\gcc\cevict-app\cevict-monorepo\VERCEL_ENV_VARS_COPY.md`
+2. **`VERCEL_ENV_VARS_COPY.md`** (repo root)
+   - Path: `C:\cevict-live\VERCEL_ENV_VARS_COPY.md`
    - Contains: Ready-to-copy values for Vercel
 
-3. **`DISTRIBUTE_KEYS.ps1`** (root directory)
-   - Path: `C:\gcc\cevict-app\cevict-monorepo\DISTRIBUTE_KEYS.ps1`
+3. **`DISTRIBUTE_KEYS.ps1`** (repo root)
+   - Path: `C:\cevict-live\DISTRIBUTE_KEYS.ps1`
    - Contains: Master list of all API keys
 
 4. **`apps/prognostication/ENV_VARS_REQUIRED.md`**
-   - Path: `C:\gcc\cevict-app\cevict-monorepo\apps\prognostication\ENV_VARS_REQUIRED.md`
+   - Path: `C:\cevict-live\apps\prognostication\ENV_VARS_REQUIRED.md`
    - Contains: Descriptions and setup instructions (no values)
 
 ---
