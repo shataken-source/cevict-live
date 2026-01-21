@@ -1,0 +1,271 @@
+# 🍿 PopThePopcorn - Drudge Report-Style News Aggregator
+
+A lightning-fast, Drudge Report-inspired news aggregator with AI-powered drama scoring, real-time updates, and SMS alerts.
+
+## 🎯 Features
+
+- **Drudge-Style Layout**: Minimalist, high-contrast design optimized for speed
+- **AI-Powered Drama Scoring**: Automatic 1-10 drama score calculation for every headline
+- **Real-Time Updates**: Auto-refreshes every 60 seconds
+- **Breaking News Ticker**: Sticky top bar with scrolling breaking headlines
+- **Voting System**: Upvote/downvote stories to influence ranking
+- **SMS Alerts**: Get notified via Sinch when high-drama stories break
+- **Three-Column Layout**: Politics, Tech & Business, Entertainment
+- **Trending Topics**: Auto-detected trending keywords
+- **Admin Dashboard**: Analytics, reported stories, drama history
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 20+
+- Supabase account and project
+- (Optional) Sinch account for SMS alerts
+
+### Installation
+
+1. **Install dependencies:**
+   ```bash
+   cd apps/popthepopcorn
+   npm install
+   ```
+
+2. **Set up environment variables:**
+   Create a `.env.local` file:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+   
+   # Admin password (default: admin123)
+   ADMIN_PASSWORD=your_secure_admin_password
+   
+   # Optional: Sinch for SMS alerts
+   SINCH_SERVICE_PLAN_ID=your_sinch_service_plan_id
+   SINCH_API_TOKEN=your_sinch_api_token
+   SINCH_FROM_NUMBER=your_sinch_phone_number
+   SINCH_REGION=us
+   ```
+
+3. **Set up database:**
+   Run the SQL schema in your Supabase SQL editor:
+   ```bash
+   # Copy and paste the contents of supabase/schema.sql
+   ```
+   
+   **If you've already created the tables**, run the RLS policies separately:
+   ```bash
+   # Copy and paste the contents of supabase/rls-policies.sql
+   ```
+   
+   **IMPORTANT:** After running the schema, refresh Supabase's schema cache:
+   - Go to: Supabase Dashboard > Settings > API
+   - Click the "Reload schema cache" button
+   - OR wait 1-2 minutes for automatic refresh
+   
+   **If headlines aren't showing up:** This is usually a Row Level Security (RLS) issue. Make sure you've run the RLS policies from `supabase/rls-policies.sql` to allow public read access to the headlines table.
+
+4. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
+
+   Visit [http://localhost:3003](http://localhost:3003)
+
+## 📋 Available Scripts
+
+- `npm run dev` - Start development server (port 3003)
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run scraper` - Run news scraper once
+- `npm run scraper:watch` - Run scraper in watch mode
+- `npm run trends` - Monitor trends and update drama scores
+- `npm run trends:watch` - Monitor trends in watch mode
+
+## 🔧 Configuration
+
+### News Sources
+
+Edit `lib/scraper.ts` to add or modify news sources. Current sources include:
+
+- **Politics (Mainstream)**: CNN, BBC News, NPR, The Hill, Axios
+- **Politics (Alternative - Left)**: Truthout, Raw Story, Common Dreams, The Intercept, Democracy Now
+- **Politics (Alternative - Right)**: Breitbart, The Daily Wire, The Federalist
+- **Tech**: TechCrunch, The Verge, Ars Technica, Hacker News, Wired, Engadget
+- **Business**: Bloomberg, CNBC, MarketWatch, Forbes
+- **Entertainment**: TMZ, People, Entertainment Weekly, Variety, Deadline, Hollywood Reporter, Rolling Stone
+- **Sports**: ESPN, BBC Sport
+
+### Drama Scoring
+
+The enhanced drama score algorithm (in `lib/drama-score.ts`) considers:
+- **High-impact keywords**: breaking, bombshell, scandal, crisis, chaos, etc. (up to +4 points)
+- **Medium-impact keywords**: urgent, exclusive, leaked, controversial, etc. (up to +2 points)
+- **Low-impact keywords**: drama, tension, concern, etc. (up to +1 point)
+- **Source type**: Tabloids get +1.8, major outlets +0.6, tech outlets +0.3
+- **Title characteristics**: ALL CAPS words, exclamation marks, question marks
+- **Engagement**: Vote counts and controversial vote ratios
+- **Recency**: Fresh stories (< 30 min) get +1.5, decaying over 12 hours
+- **Category**: Politics and entertainment get slight boosts
+
+The algorithm produces scores from 1-10, with higher scores indicating more dramatic/engaging content.
+
+### Scraping Schedule
+
+Set up a cron job to run the scraper every 5 minutes:
+
+```bash
+# Add to crontab
+*/5 * * * * cd /path/to/popthepopcorn && npm run scraper
+```
+
+Or use a service like Vercel Cron or GitHub Actions.
+
+## 📱 SMS Alerts Setup
+
+1. Sign up for [Sinch](https://www.sinch.com/)
+2. Get your Service Plan ID, API Token, and phone number from the Sinch Dashboard
+3. Add them to `.env.local`:
+   - `SINCH_SERVICE_PLAN_ID` - Your Sinch service plan ID
+   - `SINCH_API_TOKEN` - Your Sinch API token
+   - `SINCH_FROM_NUMBER` - Your Sinch phone number (or `SINCH_PHONE_NUMBER`)
+   - `SINCH_REGION` - Region code (us, eu, br, au, ca) - defaults to 'us'
+4. Users can subscribe to alerts via the "Subscribe to Alerts" button
+5. Alerts are sent automatically when drama score ≥ 8
+
+## 🗄️ Database Schema
+
+The app uses Supabase with the following main tables:
+
+- `headlines` - News stories with drama scores
+- `votes` - User votes (IP-based to prevent duplicates)
+- `user_alerts` - SMS/email alert subscriptions
+- `reported_stories` - User-reported content
+- `drama_history` - Historical drama score tracking
+
+See `supabase/schema.sql` for the complete schema.
+
+## 🚢 Deployment
+
+**📖 Full deployment guide:** See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed instructions.
+
+### Quick Deploy to Vercel
+
+1. **Install Vercel CLI:**
+   ```bash
+   npm i -g vercel
+   ```
+
+2. **Deploy:**
+   ```bash
+   cd apps/popthepopcorn
+   vercel --prod
+   ```
+
+3. **Set environment variables:**
+   - Go to Vercel Dashboard → Project Settings → Environment Variables
+   - Add all required variables (see DEPLOYMENT.md)
+
+4. **Enable cron jobs:**
+   - Vercel Dashboard → Settings → Cron Jobs
+   - Cron jobs are automatically configured in `vercel.json`
+
+**Or use the deployment script:**
+```powershell
+.\deploy.ps1
+```
+
+### Required Environment Variables
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `ADMIN_PASSWORD`
+- `CRON_SECRET` (optional but recommended)
+
+## 📊 Admin Dashboard
+
+Access at `/admin` (password protected) to view:
+- Total headlines and statistics
+- Top voted stories
+- Reported stories requiring review
+- Drama score history charts
+- Active alert subscriptions
+- **Scraper Controls** - Run news scraper and trend monitor directly from the dashboard
+
+**Login:** Visit `/admin/login` and enter the password set in `ADMIN_PASSWORD` environment variable (default: `admin123`).
+
+### Running the Scraper
+
+You can run the scraper in three ways:
+
+1. **From Admin Dashboard** (Recommended):
+   - Log into `/admin/login`
+   - Click "Run Scraper" button in the Scraper Controls section
+   - Stats will auto-refresh after completion
+
+2. **Via Command Line**:
+   ```bash
+   npm run scraper
+   ```
+
+3. **Via API** (requires authentication):
+   ```bash
+   curl -X POST http://localhost:3003/api/admin/scraper \
+     -H "x-admin-token: your_admin_password"
+   ```
+
+The scraper will:
+- Fetch headlines from all configured RSS feeds
+- Calculate drama scores for each headline
+- Store new headlines in the database
+- Skip duplicates (based on URL)
+
+## 🎨 Customization
+
+### Colors
+
+Edit `tailwind.config.js` to customize the color scheme:
+- `drama-high`: Red for high drama (9-10)
+- `drama-medium`: Yellow for medium drama (4-6)
+- `drama-low`: Green for low drama (1-3)
+
+### Layout
+
+The main page (`app/page.tsx`) uses a three-column grid that becomes single-column on mobile. Modify the grid classes to adjust the layout.
+
+## 🔒 Security
+
+- Votes are IP-based to prevent spam
+- API routes validate all inputs
+- Supabase Row Level Security (RLS) should be configured for production
+- Never commit `.env.local` files
+
+## 📝 License
+
+Private - Part of the Cevict Empire
+
+## 🆘 Troubleshooting
+
+**Scraper not working:**
+- Check RSS feed URLs are accessible
+- Verify Supabase connection
+- Check environment variables
+
+**Drama scores seem off:**
+- Adjust weights in `lib/drama-score.ts`
+- Check source categorization
+
+**SMS alerts not sending:**
+- Verify Sinch credentials (Service Plan ID, API Token)
+- Check phone number format (E.164 format: +1234567890)
+- Verify SINCH_REGION matches your Sinch account region
+- Review Sinch dashboard logs
+
+## 🤝 Contributing
+
+This is part of the Cevict Empire monorepo. Follow the established patterns and conventions.
+
+---
+
+Built with Next.js 14, TypeScript, Tailwind CSS, and Supabase.
