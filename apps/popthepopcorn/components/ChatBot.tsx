@@ -91,45 +91,45 @@ export default function ChatBot({ headlineId, headlineTitle }: ChatBotProps) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white rounded-full p-4 shadow-lg hover:bg-blue-700 transition-all z-50"
+        className="fixed bottom-6 right-6 bg-gradient-to-r from-[#FFD700] to-[#FF6B35] text-black rounded-full p-5 shadow-2xl shadow-[#FFD700]/50 hover:scale-110 transition-all z-50 cyber-glow"
         aria-label="Open chat"
       >
-        <MessageCircle size={24} />
+        <MessageCircle size={28} className="font-black" />
       </button>
     )
   }
 
   return (
-    <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-white border border-gray-300 rounded-lg shadow-2xl flex flex-col z-50">
-      {/* Header */}
-      <div className="bg-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🍿</span>
+    <div className="fixed bottom-6 right-6 w-96 h-[600px] bg-gradient-to-br from-[#1A1A1A] to-[#0A0A0A] border-2 border-[#FFD700] rounded-2xl shadow-2xl flex flex-col z-50 cyber-glow">
+      {/* Header - The Kernel */}
+      <div className="bg-gradient-to-r from-[#FFD700] to-[#FF6B35] text-black p-4 rounded-t-xl flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🍿</span>
           <div>
-            <h3 className="font-bold">The Kernel</h3>
-            <p className="text-xs text-blue-100">AI News Expert</p>
+            <h3 className="font-black text-lg">The Kernel</h3>
+            <p className="text-xs text-black/70 font-semibold">AI News Expert</p>
           </div>
         </div>
         <button
           onClick={() => setIsOpen(false)}
-          className="hover:bg-blue-700 rounded p-1 transition-colors"
+          className="hover:bg-black/20 rounded-lg p-2 transition-colors"
         >
           <X size={20} />
         </button>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0A0A0A]">
         {messages.map((message, index) => (
           <div
             key={index}
             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] rounded-lg p-3 ${
+              className={`max-w-[80%] rounded-2xl p-4 ${
                 message.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-800'
+                  ? 'bg-gradient-to-r from-[#FFD700] to-[#FF6B35] text-black font-semibold'
+                  : 'bg-[#1A1A1A] text-gray-200 border border-[#333]'
               }`}
             >
               <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -150,7 +150,7 @@ export default function ChatBot({ headlineId, headlineTitle }: ChatBotProps) {
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-300 p-4">
+      <div className="border-t-2 border-[#333] p-4 bg-[#0A0A0A]">
         <div className="flex gap-2">
           <input
             type="text"
@@ -158,19 +158,19 @@ export default function ChatBot({ headlineId, headlineTitle }: ChatBotProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Ask The Kernel..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-4 py-3 bg-[#1A1A1A] border-2 border-[#333] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#FFD700] focus:border-[#FFD700] disabled:opacity-50"
             disabled={loading}
           />
           <button
             onClick={handleSend}
             disabled={loading || !input.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-5 py-3 bg-gradient-to-r from-[#FFD700] to-[#FF6B35] text-black rounded-xl hover:from-[#FFC700] hover:to-[#FF5B25] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-black transition-all shadow-lg shadow-[#FFD700]/30"
           >
-            <Send size={16} />
+            <Send size={18} />
           </button>
         </div>
         {headlineId && (
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-gray-500 mt-2 text-center">
             Context: {headlineTitle || 'Current headline'}
           </p>
         )}

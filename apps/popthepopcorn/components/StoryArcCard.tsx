@@ -84,17 +84,17 @@ export default function StoryArcCard({ arc }: StoryArcCardProps) {
       </div>
 
       {/* Progress Bar (Netflix-style) */}
-      <div className="mb-3">
-        <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-          <span>Episode {arc.total_episodes}</span>
-          <span className="flex items-center gap-1">
+      <div className="mb-4">
+        <div className="flex items-center justify-between text-xs mb-2">
+          <span className="text-gray-300 font-semibold">Episode {arc.total_episodes}</span>
+          <span className="flex items-center gap-1 text-[#FFD700] font-bold">
             <TrendingUp size={12} />
             {arc.total_drama_score} drama points
           </span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-[#0A0A0A] rounded-full h-3 border border-[#333] overflow-hidden">
           <div
-            className="bg-blue-600 h-2 rounded-full transition-all"
+            className="bg-gradient-to-r from-[#FFD700] to-[#FF6B35] h-3 rounded-full transition-all shadow-lg shadow-[#FFD700]/50"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -104,21 +104,21 @@ export default function StoryArcCard({ arc }: StoryArcCardProps) {
       <div className="flex items-center gap-2">
         <Link
           href={`/arc/${arc.id}`}
-          className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#FFD700] to-[#FF6B35] text-black rounded-lg hover:from-[#FFC700] hover:to-[#FF5B25] text-sm font-black transition-all shadow-lg shadow-[#FFD700]/30"
         >
-          <Play size={14} />
+          <Play size={16} />
           Watch Arc
         </Link>
         <button
           onClick={handleSubscribe}
           disabled={loading}
-          className={`flex items-center gap-1 px-3 py-1.5 border rounded text-sm transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2.5 border-2 rounded-lg text-sm font-bold transition-all ${
             isSubscribed
-              ? 'bg-green-50 border-green-300 text-green-700'
-              : 'bg-white border-gray-300 hover:bg-gray-50'
+              ? 'bg-green-900/30 border-green-500 text-green-300 hover:bg-green-900/40'
+              : 'bg-[#0A0A0A] border-[#333] text-gray-300 hover:border-[#FFD700] hover:text-[#FFD700]'
           }`}
         >
-          {isSubscribed ? <BellOff size={14} /> : <Bell size={14} />}
+          {isSubscribed ? <BellOff size={16} /> : <Bell size={16} />}
           {isSubscribed ? 'Subscribed' : 'Subscribe'}
         </button>
       </div>

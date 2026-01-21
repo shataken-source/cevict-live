@@ -103,22 +103,22 @@ export default function DramaVoteSlider({
 
   return (
     <div className="space-y-3">
-      {/* Probability Display */}
+      {/* Probability Display - Cyber Style */}
       {probability && (
-        <div className="p-4 bg-gradient-to-r from-[#FFD700] to-[#FF6B35] rounded-lg text-white">
-          <div className="text-sm font-semibold mb-2">PROBABILITY CALCULATOR</div>
-          <div className="flex items-center justify-between mb-2">
+        <div className="p-5 bg-gradient-to-br from-[#FFD700] via-[#FF6B35] to-[#FF4444] rounded-2xl text-black border-2 border-[#FFD700] shadow-2xl shadow-[#FFD700]/50">
+          <div className="text-xs font-black uppercase mb-3 tracking-wider">PROBABILITY CALCULATOR</div>
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <div className="text-3xl font-black">{probability.probability}%</div>
-              <div className="text-xs opacity-90">{probability.interpretation}</div>
+              <div className="text-5xl font-black mb-1">{probability.probability}%</div>
+              <div className="text-sm font-bold opacity-90">{probability.interpretation}</div>
             </div>
             <div className="text-right">
-              <div className="text-sm opacity-90">Volatility</div>
-              <div className="text-xl font-bold">{probability.volatility}%</div>
+              <div className="text-xs font-bold uppercase opacity-80 mb-1">Volatility</div>
+              <div className="text-2xl font-black">{probability.volatility}%</div>
             </div>
           </div>
-          <div className="text-xs opacity-75">
-            Confidence: {probability.confidence}% • {voteCount} votes
+          <div className="text-xs font-semibold opacity-80 pt-3 border-t border-black/20">
+            Confidence: {probability.confidence}% • {voteCount} {voteCount === 1 ? 'vote' : 'votes'}
           </div>
         </div>
       )}

@@ -213,14 +213,18 @@ export default function Home() {
       {/* Ticker */}
       {headlines.length > 0 && <Ticker headlines={headlines} />}
 
-      {/* Header */}
-      <header className="border-b-2 border-black p-4">
+      {/* Header - The Arena */}
+      <header className={`${darkMode ? 'border-[#333] cyber-glow' : 'border-black'} border-b-2 p-4 sticky top-0 z-40 ${darkMode ? 'bg-[#0A0A0A] bg-opacity-95 backdrop-blur-sm' : 'bg-white'}`}>
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-4xl font-bold">
-              PopThePopcorn 🍿
-              <span className="text-sm font-normal text-gray-500 ml-2">(aka The Kernel)</span>
-            </h1>
+            <div>
+              <h1 className={`text-4xl font-black ${darkMode ? 'text-white' : 'text-black'}`}>
+                <span className="text-[#FFD700]">Pop</span>The<span className="text-[#FFD700]">Popcorn</span> 🍿
+              </h1>
+              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
+                The Arena • News as Entertainment • aka "The Kernel"
+              </p>
+            </div>
             <div className="flex items-center gap-4">
               {/* Virtual Currency Display */}
               <div className="flex items-center gap-2 px-3 py-1.5 bg-[#FFD700] bg-opacity-20 rounded-lg border border-[#FFD700]">
@@ -288,20 +292,32 @@ export default function Home() {
 
       {/* Main Content - Vertical Feed (TikTok-style) */}
       <main className="max-w-4xl mx-auto p-4">
-        {/* Story Arcs Section (The "Lore" System) */}
+        {/* Story Arcs Section (The "Lore" System) - Netflix-style */}
         {storyArcs.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Tv size={20} />
-                <h2 className="text-2xl font-bold">📺 Story Arcs</h2>
-                <span className="text-sm text-gray-500">(Netflix-style news seasons)</span>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${darkMode ? 'bg-[#FFD700] bg-opacity-20' : 'bg-[#FFD700] bg-opacity-10'}`}>
+                  <Tv size={24} className="text-[#FFD700]" />
+                </div>
+                <div>
+                  <h2 className={`text-2xl font-black ${darkMode ? 'text-white' : 'text-black'}`}>
+                    📺 Story Arcs
+                  </h2>
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    Netflix-style news seasons • Subscribe for episode alerts
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setShowArcs(!showArcs)}
-                className="text-sm text-blue-600 hover:underline"
+                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+                  darkMode 
+                    ? 'bg-[#FFD700] bg-opacity-20 text-[#FFD700] hover:bg-opacity-30 border border-[#FFD700]' 
+                    : 'bg-[#FFD700] text-black hover:bg-[#FFC700]'
+                }`}
               >
-                {showArcs ? 'Hide' : 'Show All'}
+                {showArcs ? 'Hide' : `Show All (${storyArcs.length})`}
               </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -312,10 +328,20 @@ export default function Home() {
           </div>
         )}
 
-        {/* Primary Headline */}
+        {/* Primary Headline - The Main Event */}
         {primaryHeadline && (
-          <div className={`mb-6 rounded-xl overflow-hidden border-2 ${primaryHeadline.drama_score >= 9 ? 'border-[#FF4444] breaking-pulse' : 'border-[#FFD700]'}`}>
-            <Headline headline={primaryHeadline} isPrimary />
+          <div className={`mb-8 rounded-2xl overflow-hidden border-2 ${
+            primaryHeadline.drama_score >= 9 
+              ? 'border-[#FF4444] breaking-pulse cyber-glow' 
+              : primaryHeadline.drama_score >= 7
+              ? 'border-[#FF6B35]'
+              : 'border-[#FFD700]'
+          } ${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'}`}>
+            <div className={`p-1 ${primaryHeadline.drama_score >= 9 ? 'bg-gradient-to-r from-[#FF4444] to-[#FF6B35]' : 'bg-gradient-to-r from-[#FFD700] to-[#FF6B35]'}`}>
+              <div className={`${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'} rounded-xl`}>
+                <Headline headline={primaryHeadline} isPrimary />
+              </div>
+            </div>
           </div>
         )}
 
@@ -403,24 +429,43 @@ export default function Home() {
           </div>
         )}
 
-        {/* Drama Alerts Sidebar */}
+        {/* Drama Alerts - High Stakes Section */}
         {highDramaAlerts.length > 0 && (
-          <div className="mt-8 p-4 border-2 border-red-500 bg-red-50">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              🚨 DRAMA DETECTED
-            </h2>
-            <ul className="space-y-2">
+          <div className={`mt-8 p-6 rounded-2xl border-2 border-[#FF4444] ${darkMode ? 'bg-gradient-to-br from-red-900/20 to-orange-900/20 cyber-glow' : 'bg-red-50'}`}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="text-3xl">🚨</div>
+              <div>
+                <h2 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-black'}`}>
+                  DRAMA DETECTED
+                </h2>
+                <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  High-stakes stories (7+ drama)
+                </p>
+              </div>
+            </div>
+            <ul className="space-y-3 mb-4">
               {highDramaAlerts.slice(0, 5).map((headline) => (
-                <li key={headline.id} className="flex items-start gap-2">
-                  <span className="font-bold text-red-600">{headline.drama_score}/10</span>
-                  <Link href={headline.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                <li key={headline.id} className={`flex items-start gap-3 p-3 rounded-lg ${darkMode ? 'bg-[#0A0A0A] border border-[#333]' : 'bg-white border border-red-200'}`}>
+                  <div className={`text-2xl font-black ${headline.drama_score >= 9 ? 'text-[#FF4444]' : 'text-[#FF6B35]'}`}>
+                    {headline.drama_score}/10
+                  </div>
+                  <Link 
+                    href={headline.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className={`flex-1 hover:underline ${darkMode ? 'text-white' : 'text-black'}`}
+                  >
                     {headline.title}
                   </Link>
                 </li>
               ))}
             </ul>
-            <button className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
-              Subscribe to Alerts
+            <button className={`w-full px-6 py-3 font-bold rounded-lg transition-all ${
+              darkMode 
+                ? 'bg-[#FF4444] text-white hover:bg-[#FF5555]' 
+                : 'bg-red-600 text-white hover:bg-red-700'
+            }`}>
+              🔔 Subscribe to Drama Alerts
             </button>
           </div>
         )}

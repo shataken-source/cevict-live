@@ -65,13 +65,23 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
 
   if (isPrimary) {
     return (
-      <div className={`mb-8 p-6 border-2 ${headline.is_breaking ? 'border-red-500 breaking-pulse' : 'border-gray-300'}`}>
+      <div className="p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="text-xs text-gray-500 uppercase">{headline.category}</span>
-              <span className="text-xs text-gray-500">•</span>
-              <span className="text-xs text-gray-500">{headline.source}</span>
+            {/* Breaking Badge */}
+            {headline.is_breaking && (
+              <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 bg-[#FF4444] text-white rounded-full text-xs font-black uppercase breaking-pulse">
+                🚨 BREAKING NOW
+              </div>
+            )}
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${headline.category === 'politics' ? 'bg-blue-100 text-blue-700' : headline.category === 'tech' ? 'bg-purple-100 text-purple-700' : 'bg-pink-100 text-pink-700'}`}>
+                {headline.category}
+              </span>
+              <span className="text-xs text-gray-400">•</span>
+              <span className={`text-xs font-semibold ${headline.verification_status === 'verified' ? 'text-green-400' : 'text-gray-400'}`}>
+                {headline.source}
+              </span>
               {headline.source_verification && (
                 <>
                   <span className="text-xs text-gray-500">•</span>
@@ -100,11 +110,20 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
             </h1>
             {headline.description && (
               <div className="mb-4">
-                <p className="text-lg text-gray-700 mb-1">{headline.description}</p>
-                {/* AI Transparency Label */}
-                <p className="ai-label text-xs">
-                  AI-Generated Summary • Verification confidence: {headline.verification_confidence || 'N/A'}%
+                <p className={`text-lg leading-relaxed mb-2 ${headline.verification_status === 'verified' ? 'text-gray-200' : 'text-gray-300'}`}>
+                  {headline.description}
                 </p>
+                {/* AI Transparency Label */}
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="px-2 py-0.5 bg-purple-900/30 text-purple-300 rounded border border-purple-700/50">
+                    🤖 AI-Generated Summary
+                  </span>
+                  {headline.verification_confidence !== undefined && (
+                    <span className="px-2 py-0.5 bg-blue-900/30 text-blue-300 rounded border border-blue-700/50">
+                      {headline.verification_confidence}% confidence
+                    </span>
+                  )}
+                </div>
               </div>
             )}
             
@@ -137,18 +156,13 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
             )}
           </div>
         </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <PopcornDramaMeter score={headline.drama_score} size="md" />
-            {headline.verification_confidence !== undefined && (
-              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                {headline.verification_confidence}% confidence
-              </span>
-            )}
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <PopcornDramaMeter score={headline.drama_score} size="lg" />
             {/* Versus Frame - "Mainstream vs. The Leaks" */}
-            <span className="text-xs px-2 py-1 bg-[#FFD700] text-black rounded font-bold">
+            <div className="px-3 py-1.5 bg-gradient-to-r from-[#FFD700] to-[#FF6B35] text-black rounded-lg font-black text-xs uppercase">
               {generateVersusFrame(headline)}
-            </span>
+            </div>
           </div>
           <div className="flex flex-col gap-4">
             {/* Crowd Drama Vote & Probability */}
@@ -191,21 +205,48 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
   }
 
   return (
-    <div className={`p-4 border-b ${headline.is_breaking ? 'border-l-4 border-l-red-500' : ''}`}>
+    <div className={`p-5 ${headline.is_breaking ? 'border-l-4 border-l-[#FF4444]' : ''}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs text-gray-500">{headline.source}</span>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            {headline.is_breaking && (
+              <span className="px-2 py-0.5 bg-[#FF4444] text-white rounded text-xs font-black uppercase">
+                🚨 BREAKING
+              </span>
+            )}
+            <span className={`text-xs font-semibold ${headline.verification_status === 'verified' ? 'text-green-400' : 'text-gray-400'}`}>
+              {headline.source}
+            </span>
             <span className="text-xs text-gray-500">•</span>
             <span className="text-xs text-gray-500">{timeAgo}</span>
-            {headline.is_breaking && (
+            {headline.verification_status && (
               <>
-                <span className="text-xs text-red-600 font-bold">BREAKING</span>
+                <span className="text-xs text-gray-500">•</span>
+                <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
+                  headline.verification_status === 'verified'
+                    ? 'bg-green-900/30 text-green-300 border border-green-700/50'
+                    : headline.verification_status === 'ai_generated'
+                    ? 'bg-red-900/30 text-red-300 border border-red-700/50'
+                    : headline.verification_status === 'satire'
+                    ? 'bg-purple-900/30 text-purple-300 border border-purple-700/50'
+                    : 'bg-yellow-900/30 text-yellow-300 border border-yellow-700/50'
+                }`}>
+                  {headline.verification_status === 'verified' ? '✓ Verified' :
+                   headline.verification_status === 'ai_generated' ? '🤖 AI' :
+                   headline.verification_status === 'satire' ? '🎭 Satire' :
+                   headline.verification_status === 'misleading' ? '⚠️ Misleading' :
+                   '⚠️ Unverified'}
+                </span>
               </>
             )}
           </div>
-          <h3 className="text-lg font-semibold mb-2">
-            <Link href={headline.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+          <h3 className="text-xl font-black mb-3 leading-tight">
+            <Link 
+              href={headline.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="hover:underline transition-colors hover:text-[#FFD700]"
+            >
               {headline.title}
             </Link>
           </h3>
@@ -217,15 +258,26 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
             </div>
           )}
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-gray-600">{getDramaEmojis(headline.drama_score)}</span>
-            <span className="text-xs px-2 py-0.5 bg-gray-100 rounded">{headline.drama_score}/10</span>
+          <div className="flex items-center gap-2 flex-wrap mb-3">
+            <PopcornDramaMeter score={headline.drama_score} size="sm" />
             {headline.verification_confidence !== undefined && (
-              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+              <span className="text-xs px-2 py-1 bg-blue-900/30 text-blue-300 rounded border border-blue-700/50 font-semibold">
                 {headline.verification_confidence}% confidence
               </span>
             )}
+            {/* Versus Frame for feed items */}
+            <span className="text-xs px-2 py-1 bg-[#FFD700] bg-opacity-20 text-[#FFD700] rounded border border-[#FFD700] font-bold">
+              {generateVersusFrame(headline)}
+            </span>
           </div>
+          
+          {/* Crowd Drama Vote & Probability for feed items */}
+          <DramaVoteSlider
+            headlineId={headline.id}
+            initialDramaScore={headline.drama_score}
+            verificationConfidence={headline.verification_confidence}
+            sentiment={headline.sentiment}
+          />
 
           {/* Source Trace (Receipts) - Compact version for feed */}
           {headline.source_trace && headline.source_trace.timeline && headline.source_trace.timeline.length > 1 && (

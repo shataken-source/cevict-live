@@ -107,19 +107,19 @@ export default function BingeMode({ headlines, onClose }: BingeModeProps) {
         {currentIndex + 1} / {bingeStories.length}
       </div>
 
-      {/* Main card */}
+      {/* Main card - Cinematic */}
       <div
         ref={containerRef}
-        className="w-full max-w-md mx-4 text-center"
+        className="w-full max-w-lg mx-4 text-center"
         style={{
           animation: 'slideIn 0.4s ease-out',
         }}
       >
         <div
-          className="bg-gradient-to-br from-gray-900 to-black rounded-2xl p-8 border-2"
+          className="bg-gradient-to-br from-[#1A0A2E] via-[#0A0A0A] to-[#1A0A2E] rounded-3xl p-10 border-2 cyber-glow"
           style={{
             borderColor: dramaVisual.color,
-            boxShadow: `0 0 30px ${dramaVisual.color}40`,
+            boxShadow: `0 0 40px ${dramaVisual.color}60, 0 0 80px ${dramaVisual.color}30`,
           }}
         >
           {/* Drama score with popcorn overflow */}
