@@ -460,7 +460,7 @@ export default function Home() {
         {/* Bento Grid 2.0 Layout (Optional - can toggle) */}
         <div className="space-y-4">
           {/* All headlines in vertical feed, sorted by drama score */}
-          {headlines.length > 0 && feedHeadlines.length > 0 ? (
+          {headlines.length > 0 ? (
             feedHeadlines.map((headline) => (
               <div
                 key={headline.id}
