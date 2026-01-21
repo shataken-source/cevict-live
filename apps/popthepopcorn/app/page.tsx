@@ -72,6 +72,8 @@ export default function Home() {
   const [twitterTrends, setTwitterTrends] = useState<TrendingTopic[]>([])
   const [storyArcs, setStoryArcs] = useState<StoryArc[]>([])
   const [showArcs, setShowArcs] = useState(false)
+  const [bingeMode, setBingeMode] = useState(false)
+  const [darkMode, setDarkMode] = useState(true) // Default to dark mode (cinema feel)
 
   const fetchHeadlines = async () => {
     try {
@@ -146,8 +148,8 @@ export default function Home() {
     }
   }, [headlines])
 
-  const primaryHeadline = headlines.find(h => h.is_breaking || h.drama_score >= 8) || headlines[0]
-  const secondaryHeadlines = headlines.filter(h => h.id !== primaryHeadline?.id)
+  const primaryHeadline = headlines.find(h => h.is_breaking || h.drama_score >= 9) || headlines[0]
+  const feedHeadlines = headlines.filter(h => h.id !== primaryHeadline?.id)
 
   const headlinesPerCategory = parseInt(process.env.NEXT_PUBLIC_HEADLINES_PER_CATEGORY || '10', 10)
   // Gen Z-focused categorization
@@ -191,12 +193,27 @@ export default function Home() {
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-4xl font-bold">PopThePopcorn 🍿</h1>
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => setBingeMode(true)}
+                className="px-4 py-2 bg-[#FFD700] text-black font-bold rounded-lg hover:bg-[#FFC700] transition-all flex items-center gap-2"
+                title="Binge Mode - Quick-Pop Feed"
+              >
+                <Zap size={18} />
+                Binge Mode
+              </button>
               <button 
                 onClick={fetchHeadlines}
                 className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100"
                 title="Refresh headlines"
               >
                 Refresh
+              </button>
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="p-2 hover:bg-gray-100 rounded"
+                title="Toggle dark mode"
+              >
+                {darkMode ? '☀️' : '🌙'}
               </button>
               <button className="p-2 hover:bg-gray-100 rounded">
                 <Bell size={20} />
@@ -260,7 +277,9 @@ export default function Home() {
 
         {/* Primary Headline */}
         {primaryHeadline && (
-          <Headline headline={primaryHeadline} isPrimary />
+          <div className={`mb-6 rounded-xl overflow-hidden border-2 ${primaryHeadline.drama_score >= 9 ? 'border-[#FF4444] breaking-pulse' : 'border-[#FFD700]'}`}>
+            <Headline headline={primaryHeadline} isPrimary />
+          </div>
         )}
 
         {/* Vertical Feed - Gen Z Style (TikTok-like) */}
@@ -268,14 +287,20 @@ export default function Home() {
           {/* All headlines in vertical feed, sorted by drama score */}
           {feedHeadlines.length > 0 ? (
             feedHeadlines.map((headline) => (
-              <div key={headline.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+              <div
+                key={headline.id}
+                className={`${darkMode ? 'bg-[#1A1A1A] border-[#333]' : 'bg-white border-gray-200'} border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all hover:-translate-y-1`}
+                style={{
+                  boxShadow: headline.drama_score >= 8 ? `0 4px 20px ${headline.drama_score >= 9 ? 'rgba(255, 68, 68, 0.3)' : 'rgba(255, 215, 0, 0.2)'}` : undefined,
+                }}
+              >
                 <Headline headline={headline} />
               </div>
             ))
           ) : (
             <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No headlines yet</p>
-              <p className="text-gray-400 text-sm mt-2">Run the scraper to get started</p>
+              <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-lg`}>No headlines yet</p>
+              <p className={`${darkMode ? 'text-gray-500' : 'text-gray-400'} text-sm mt-2`}>Run the scraper to get started</p>
             </div>
           )}
         </div>

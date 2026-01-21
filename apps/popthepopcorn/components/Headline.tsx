@@ -4,9 +4,11 @@ import Link from 'next/link'
 import VoteButtons from './VoteButtons'
 import ReactionButtons from './ReactionButtons'
 import DramaMeter from './DramaMeter'
+import PopcornDramaMeter from './PopcornDramaMeter'
 import VibeMeter from './VibeMeter'
 import { Share2, ExternalLink, Clock, TrendingUp, FileText } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { generateVersusFrame } from '@/lib/brand-guide'
 
 interface HeadlineProps {
   headline: {
@@ -131,13 +133,16 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <DramaMeter score={headline.drama_score} size="md" />
-            <span className="text-xl">{getDramaEmojis(headline.drama_score)}</span>
+            <PopcornDramaMeter score={headline.drama_score} size="md" />
             {headline.verification_confidence !== undefined && (
               <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
                 {headline.verification_confidence}% confidence
               </span>
             )}
+            {/* Versus Frame - "Mainstream vs. The Leaks" */}
+            <span className="text-xs px-2 py-1 bg-[#FFD700] text-black rounded font-bold">
+              {generateVersusFrame(headline)}
+            </span>
           </div>
           <div className="flex flex-col gap-4">
             {/* Gen Z Reactions */}
