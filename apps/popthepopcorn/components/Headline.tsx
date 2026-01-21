@@ -190,10 +190,38 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
               {headline.title}
             </Link>
           </h3>
-          <div className="flex items-center gap-2">
+          
+          {/* Vibe-O-Meter for feed items */}
+          {headline.sentiment && headline.vibe_score !== undefined && (
+            <div className="mb-2">
+              <VibeMeter sentiment={headline.sentiment} score={headline.vibe_score} size="sm" />
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-gray-600">{getDramaEmojis(headline.drama_score)}</span>
             <span className="text-xs px-2 py-0.5 bg-gray-100 rounded">{headline.drama_score}/10</span>
+            {headline.verification_confidence !== undefined && (
+              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                {headline.verification_confidence}% confidence
+              </span>
+            )}
           </div>
+
+          {/* Source Trace (Receipts) - Compact version for feed */}
+          {headline.source_trace && headline.source_trace.timeline && headline.source_trace.timeline.length > 1 && (
+            <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+              <FileText size={12} />
+              <span>
+                {headline.source_trace.timeline.map((trace: any, idx: number) => (
+                  <span key={idx}>
+                    {idx > 0 && ' → '}
+                    {trace.platform}
+                  </span>
+                ))}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex flex-col items-end gap-2">
           <ReactionButtons headlineId={headline.id} />

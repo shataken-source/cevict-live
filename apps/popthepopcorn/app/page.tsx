@@ -21,8 +21,15 @@ interface Headline {
   posted_at: string
   is_breaking: boolean
   description?: string
-  source_verification?: 'verified' | 'unverified' | 'user_report' | 'viral' | 'official'
+  source_verification?: 'verified' | 'unverified' | 'user_report' | 'viral' | 'official' | 'ai_generated' | 'satire' | 'misleading'
   video_script?: string
+  verification_status?: 'verified' | 'unverified' | 'ai_generated' | 'satire' | 'misleading'
+  verification_confidence?: number
+  verification_risk?: 'high' | 'medium' | 'low'
+  sentiment?: 'hype' | 'panic' | 'satire' | 'neutral' | 'concern'
+  vibe_score?: number
+  source_trace?: any
+  provenance?: any
 }
 
 interface TrendingTopic {
@@ -308,12 +315,18 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="mt-12 border-t-2 border-black p-4 text-center text-sm text-gray-600">
-        <p>PopThePopcorn 🍿 - Real-time news aggregation with AI-powered drama scoring</p>
+        <p>PopThePopcorn 🍿 - Contextual Intelligence Hub for Gen Z</p>
+        <p className="mt-2 text-xs text-gray-500">
+          AI-powered verification • Source trace receipts • Real-time sentiment analysis
+        </p>
         <p className="mt-2">
           <a href="/admin/login" className="underline">Admin Dashboard</a> | 
           <a href="/feed" className="underline ml-2">RSS Feed</a>
         </p>
       </footer>
+
+      {/* AI Chatbot - The Kernel */}
+      <ChatBot />
     </div>
   )
 }

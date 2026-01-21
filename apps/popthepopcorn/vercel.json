@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/trends",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/news-drop",
+      "schedule": "0 9,21 * * *"
     }
   ]
 }
