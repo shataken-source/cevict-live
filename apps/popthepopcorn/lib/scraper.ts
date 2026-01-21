@@ -118,7 +118,31 @@ async function scrapeSource(source: NewsSource, trendingTopics: string[] = [], r
         })
         const tiktokScript = formatScriptForPlatform(videoScript, 'tiktok')
 
-        // Insert into database
+        // Run Verification Agent
+        const verification = await verifyHeadline({
+          title: item.title,
+          description: item.contentSnippet || item.content || '',
+          source: source.name,
+          url: item.link,
+          category: source.category,
+        })
+
+        // Analyze sentiment (Vibe-O-Meter)
+        const sentiment = analyzeSentiment({
+          title: item.title,
+          description: item.contentSnippet || item.content || '',
+          category: source.category,
+        })
+
+        // Build source trace (Receipts)
+        const sourceTrace = await buildSourceTrace({
+          title: item.title,
+          source: source.name,
+          posted_at: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+          url: item.link,
+        })
+
+        // Insert into database with verification and sentiment data
         const { error, data: insertedHeadline } = await supabase
           .from('headlines')
           .insert({
@@ -132,8 +156,19 @@ async function scrapeSource(source: NewsSource, trendingTopics: string[] = [], r
             posted_at: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
             is_breaking: isBreaking,
             description: item.contentSnippet || item.content?.substring(0, 500) || null,
-            source_verification: 'verified', // RSS feeds are generally verified
+            source_verification: verification.verification_status,
             video_script: tiktokScript,
+            verification_status: verification.verification_status,
+            verification_confidence: verification.confidence,
+            verification_risk: verification.risk,
+            verification_summary: verification.summary,
+            evidence_links: verification.evidence_links,
+            red_flags: verification.red_flags,
+            bias_label: verification.bias_label,
+            sentiment: sentiment.sentiment,
+            vibe_score: sentiment.score,
+            provenance: verification.provenance,
+            source_trace: sourceTrace,
           })
           .select()
           .single()
@@ -245,6 +280,30 @@ async function scrapeAll() {
         trendingTopics: matchingTrends,
       })
 
+      // Run Verification Agent
+      const verification = await verifyHeadline({
+        title: headlineData.title,
+        description: headlineData.description || '',
+        source: headlineData.source,
+        url: headlineData.url,
+        category: headlineData.category,
+      })
+
+      // Analyze sentiment
+      const sentiment = analyzeSentiment({
+        title: headlineData.title,
+        description: headlineData.description || '',
+        category: headlineData.category,
+      })
+
+      // Build source trace
+      const sourceTrace = await buildSourceTrace({
+        title: headlineData.title,
+        source: headlineData.source,
+        posted_at: new Date(post.created_utc * 1000).toISOString(),
+        url: headlineData.url,
+      })
+
       // Generate video script
       const videoScript = generateVideoScript({
         ...headlineData,
@@ -253,7 +312,7 @@ async function scrapeAll() {
       })
       const tiktokScript = formatScriptForPlatform(videoScript, 'tiktok')
 
-      // Insert Reddit post as headline
+      // Insert Reddit post as headline with full verification data
       const { data: insertedHeadline } = await supabase
         .from('headlines')
         .insert({
@@ -269,6 +328,17 @@ async function scrapeAll() {
           description: headlineData.description,
           source_verification: headlineData.source_verification,
           video_script: tiktokScript,
+          verification_status: verification.verification_status,
+          verification_confidence: verification.confidence,
+          verification_risk: verification.risk,
+          verification_summary: verification.summary,
+          evidence_links: verification.evidence_links,
+          red_flags: verification.red_flags,
+          bias_label: verification.bias_label,
+          sentiment: sentiment.sentiment,
+          vibe_score: sentiment.score,
+          provenance: verification.provenance,
+          source_trace: sourceTrace,
         })
         .select()
         .single()

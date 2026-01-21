@@ -22,10 +22,24 @@ CREATE TABLE headlines (
   is_breaking BOOLEAN DEFAULT FALSE,
   image_url TEXT,
   description TEXT,
-  source_verification TEXT CHECK (source_verification IN ('verified', 'unverified', 'user_report', 'viral', 'official')),
+  source_verification TEXT CHECK (source_verification IN ('verified', 'unverified', 'user_report', 'viral', 'official', 'ai_generated', 'satire', 'misleading')),
   video_script TEXT,
   discord_sent BOOLEAN DEFAULT FALSE,
   telegram_sent BOOLEAN DEFAULT FALSE,
+  -- Verification Agent fields
+  verification_status TEXT CHECK (verification_status IN ('verified', 'unverified', 'ai_generated', 'satire', 'misleading')),
+  verification_confidence INTEGER CHECK (verification_confidence >= 0 AND verification_confidence <= 100),
+  verification_risk TEXT CHECK (verification_risk IN ('high', 'medium', 'low')),
+  verification_summary TEXT,
+  evidence_links JSONB DEFAULT '[]'::jsonb,
+  red_flags JSONB DEFAULT '[]'::jsonb,
+  bias_label TEXT CHECK (bias_label IN ('mainstream', 'alternative', 'neutral')),
+  sentiment TEXT CHECK (sentiment IN ('hype', 'panic', 'satire', 'neutral', 'concern')),
+  provenance JSONB,
+  -- Vibe-O-Meter
+  vibe_score INTEGER CHECK (vibe_score >= -100 AND vibe_score <= 100), -- -100 (panic) to +100 (hype)
+  -- Receipts
+  source_trace JSONB, -- Timeline of where story spread
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -42,8 +56,18 @@ CREATE TABLE user_alerts (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Votes table (to prevent duplicate voting)
--- Note: Created after headlines table to ensure foreign key works
+-- Reactions table (Gen Z emoji reactions instead of up/down votes)
+CREATE TABLE IF NOT EXISTS reactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  headline_id UUID,
+  ip_address TEXT,
+  reaction_type TEXT CHECK (reaction_type IN ('🔥', '🧢', '🧐', '🍿', '📈', '📉', '🎭')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(headline_id, ip_address, reaction_type),
+  CONSTRAINT fk_headline_reaction FOREIGN KEY (headline_id) REFERENCES headlines(id) ON DELETE CASCADE
+);
+
+-- Legacy votes table (for backward compatibility)
 CREATE TABLE IF NOT EXISTS votes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   headline_id UUID,
@@ -105,7 +129,11 @@ CREATE INDEX idx_headlines_category ON headlines(category);
 CREATE INDEX idx_headlines_drama_score ON headlines(drama_score DESC);
 CREATE INDEX idx_headlines_posted_at ON headlines(posted_at DESC);
 CREATE INDEX idx_headlines_is_breaking ON headlines(is_breaking) WHERE is_breaking = TRUE;
+CREATE INDEX idx_headlines_verification_status ON headlines(verification_status);
+CREATE INDEX idx_headlines_sentiment ON headlines(sentiment);
 CREATE INDEX idx_votes_headline_id ON votes(headline_id);
+CREATE INDEX idx_reactions_headline_id ON reactions(headline_id);
+CREATE INDEX idx_reactions_type ON reactions(reaction_type);
 CREATE INDEX idx_user_alerts_phone ON user_alerts(phone_number) WHERE phone_number IS NOT NULL;
 CREATE INDEX idx_user_alerts_email ON user_alerts(email) WHERE email IS NOT NULL;
 CREATE INDEX idx_trending_topics_fetched_at ON trending_topics(fetched_at DESC);

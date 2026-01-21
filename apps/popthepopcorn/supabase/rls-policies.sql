@@ -4,6 +4,7 @@
 -- Enable RLS on tables (if not already enabled)
 ALTER TABLE headlines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reported_stories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drama_history ENABLE ROW LEVEL SECURITY;
@@ -70,6 +71,16 @@ CREATE POLICY "Allow admin read access to app_settings"
 CREATE POLICY "Allow admin write access to app_settings"
   ON app_settings FOR ALL
   USING (true)
+  WITH CHECK (true);
+
+-- Allow public read access to reactions (for reaction counts)
+CREATE POLICY "Allow public read access to reactions"
+  ON reactions FOR SELECT
+  USING (true);
+
+-- Allow public insert access to reactions (for voting)
+CREATE POLICY "Allow public insert access to reactions"
+  ON reactions FOR INSERT
   WITH CHECK (true);
 
 -- IMPORTANT: After running this script, refresh Supabase's schema cache

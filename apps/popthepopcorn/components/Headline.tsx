@@ -2,8 +2,10 @@
 
 import Link from 'next/link'
 import VoteButtons from './VoteButtons'
+import ReactionButtons from './ReactionButtons'
 import DramaMeter from './DramaMeter'
-import { Share2, ExternalLink } from 'lucide-react'
+import VibeMeter from './VibeMeter'
+import { Share2, ExternalLink, Clock, TrendingUp, FileText } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 interface HeadlineProps {
@@ -19,8 +21,14 @@ interface HeadlineProps {
     posted_at: string
     is_breaking: boolean
     description?: string
-    source_verification?: 'verified' | 'unverified' | 'user_report' | 'viral' | 'official'
+    source_verification?: 'verified' | 'unverified' | 'user_report' | 'viral' | 'official' | 'ai_generated' | 'satire' | 'misleading'
     video_script?: string
+    verification_status?: 'verified' | 'unverified' | 'ai_generated' | 'satire' | 'misleading'
+    verification_confidence?: number
+    sentiment?: 'hype' | 'panic' | 'satire' | 'neutral' | 'concern'
+    vibe_score?: number
+    source_trace?: any
+    provenance?: any
   }
   isPrimary?: boolean
 }
@@ -91,34 +99,72 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
             {headline.description && (
               <p className="text-lg text-gray-700 mb-4">{headline.description}</p>
             )}
+            
+            {/* Vibe-O-Meter */}
+            {headline.sentiment && headline.vibe_score !== undefined && (
+              <div className="mb-4">
+                <VibeMeter sentiment={headline.sentiment} score={headline.vibe_score} size="md" />
+              </div>
+            )}
+
+            {/* Receipts / Source Trace */}
+            {headline.source_trace && headline.source_trace.timeline && (
+              <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText size={14} className="text-gray-600" />
+                  <span className="text-xs font-semibold text-gray-700">SOURCE TRACE</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  {headline.source_trace.timeline.map((trace: any, idx: number) => (
+                    <span key={idx} className="flex items-center gap-1">
+                      {idx > 0 && <span>→</span>}
+                      <span className="px-2 py-0.5 bg-white rounded border">{trace.platform}</span>
+                      <span className="text-gray-400">
+                        {formatDistanceToNow(new Date(trace.timestamp), { addSuffix: true })}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <DramaMeter score={headline.drama_score} size="md" />
             <span className="text-xl">{getDramaEmojis(headline.drama_score)}</span>
+            {headline.verification_confidence !== undefined && (
+              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                {headline.verification_confidence}% confidence
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-4">
-            <VoteButtons
-              headlineId={headline.id}
-              initialUpvotes={headline.upvotes}
-              initialDownvotes={headline.downvotes}
-            />
-            <button
-              onClick={handleShare}
-              className="flex items-center gap-1 px-3 py-1 border rounded hover:bg-gray-100"
-            >
-              <Share2 size={16} />
-              Share
-            </button>
-            <Link
-              href={headline.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-blue-600 hover:underline"
-            >
-              Read <ExternalLink size={16} />
-            </Link>
+          <div className="flex flex-col gap-4">
+            {/* Gen Z Reactions */}
+            <ReactionButtons headlineId={headline.id} />
+            
+            <div className="flex items-center gap-4">
+              <VoteButtons
+                headlineId={headline.id}
+                initialUpvotes={headline.upvotes}
+                initialDownvotes={headline.downvotes}
+              />
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-1 px-3 py-1 border rounded hover:bg-gray-100"
+              >
+                <Share2 size={16} />
+                Share
+              </button>
+              <Link
+                href={headline.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-blue-600 hover:underline"
+              >
+                Read <ExternalLink size={16} />
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -150,6 +196,7 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
+          <ReactionButtons headlineId={headline.id} />
           <VoteButtons
             headlineId={headline.id}
             initialUpvotes={headline.upvotes}

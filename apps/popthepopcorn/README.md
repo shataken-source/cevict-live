@@ -51,6 +51,12 @@ A Gen Z-focused breaking news aggregator with AI-powered drama scoring, social l
    # Optional: Twitter/X API for trending topics
    TWITTER_BEARER_TOKEN=your_twitter_bearer_token
    TWITTER_TRENDS_LOCATION=worldwide  # Options: worldwide, usa, uk, canada, australia
+   
+   # Optional: Perplexity API for fast research and verification
+   PERPLEXITY_API_KEY=pplx-your_api_key_here
+   
+   # Optional: Discord webhook for breaking news
+   DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
    ```
 
 3. **Set up database:**

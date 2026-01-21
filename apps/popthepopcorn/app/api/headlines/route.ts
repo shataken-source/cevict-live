@@ -20,9 +20,13 @@ export async function GET() {
     }
 
     // Fetch headlines ordered by drama score and recency
+    // Include reaction counts for Gen Z reactions
     const { data: headlines, error } = await supabase
       .from('headlines')
-      .select('*')
+      .select(`
+        *,
+        reactions:reactions(reaction_type)
+      `)
       .order('drama_score', { ascending: false })
       .order('posted_at', { ascending: false })
       .limit(100)

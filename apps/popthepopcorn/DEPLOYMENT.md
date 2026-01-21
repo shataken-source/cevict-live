@@ -191,6 +191,7 @@ Vercel Cron jobs are automatically configured in `vercel.json`:
 | `TWITTER_TRENDS_LOCATION` | Location for Twitter trending topics | `worldwide`, `usa`, `uk`, `canada`, `australia` |
 | `GOOGLE_TRENDS_LOCATION` | Location for Google Trends | `US`, `GB`, `CA`, `AU`, `DE`, `FR`, `ES`, `IT`, `JP`, `IN`, `BR`, etc. |
 | `DISCORD_WEBHOOK_URL` | Discord webhook URL for breaking news | `https://discord.com/api/webhooks/...` |
+| `PERPLEXITY_API_KEY` | Perplexity API key for fast research and verification | `pplx-...` (Get from perplexity.ai) |
 
 ## Troubleshooting
 

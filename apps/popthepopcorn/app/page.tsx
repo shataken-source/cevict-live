@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Ticker from '@/components/Ticker'
 import Headline from '@/components/Headline'
 import DramaMeter from '@/components/DramaMeter'
+import ReactionButtons from '@/components/ReactionButtons'
 import { Settings, Bell } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -197,62 +198,28 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto p-4">
+      {/* Main Content - Vertical Feed (TikTok-style) */}
+      <main className="max-w-4xl mx-auto p-4">
         {/* Primary Headline */}
         {primaryHeadline && (
           <Headline headline={primaryHeadline} isPrimary />
         )}
 
-        {/* Three Column Layout - Gen Z Focused */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Entertainment & Viral (Gen Z Priority) */}
-          <div>
-            <h2 className="text-2xl font-bold mb-4 border-b-2 border-black pb-2">
-              🎬 ENTERTAINMENT & VIRAL
-            </h2>
-            <div className="space-y-0">
-              {entertainmentHeadlines.length > 0 ? (
-                entertainmentHeadlines.map((headline) => (
-                  <Headline key={headline.id} headline={headline} />
-                ))
-              ) : (
-                <p className="text-gray-500 p-4">No entertainment headlines yet</p>
-              )}
+        {/* Vertical Feed - Gen Z Style (TikTok-like) */}
+        <div className="space-y-4">
+          {/* All headlines in vertical feed, sorted by drama score */}
+          {feedHeadlines.length > 0 ? (
+            feedHeadlines.map((headline) => (
+              <div key={headline.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <Headline headline={headline} />
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">No headlines yet</p>
+              <p className="text-gray-400 text-sm mt-2">Run the scraper to get started</p>
             </div>
-          </div>
-
-          {/* Tech & Social Issues */}
-          <div>
-            <h2 className="text-2xl font-bold mb-4 border-b-2 border-black pb-2">
-              💻 TECH & SOCIAL
-            </h2>
-            <div className="space-y-0">
-              {techHeadlines.length > 0 ? (
-                techHeadlines.map((headline) => (
-                  <Headline key={headline.id} headline={headline} />
-                ))
-              ) : (
-                <p className="text-gray-500 p-4">No tech headlines yet</p>
-              )}
-            </div>
-          </div>
-
-          {/* Politics Column */}
-          <div>
-            <h2 className="text-2xl font-bold mb-4 border-b-2 border-black pb-2">
-              🏛️ POLITICS
-            </h2>
-            <div className="space-y-0">
-              {politicsHeadlines.length > 0 ? (
-                politicsHeadlines.map((headline) => (
-                  <Headline key={headline.id} headline={headline} />
-                ))
-              ) : (
-                <p className="text-gray-500 p-4">No politics headlines yet</p>
-              )}
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Trending Topics */}
