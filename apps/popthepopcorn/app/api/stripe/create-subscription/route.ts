@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
         },
         product_data: {
           name: SEASON_PASS.name,
-          description: SEASON_PASS.benefits.join(', '),
         },
       })
 
