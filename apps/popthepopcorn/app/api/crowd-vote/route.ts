@@ -114,10 +114,14 @@ export async function GET(request: NextRequest) {
       .eq('headline_id', headlineId)
 
     if (error) {
+      console.error('[API] Error fetching crowd votes:', error)
+      // Return empty stats instead of error - votes are optional
       return NextResponse.json({
-        error: 'Database error',
-        message: error.message,
-      }, { status: 500 })
+        crowdAverage: 0,
+        voteCount: 0,
+        votes: [],
+        warning: error.message,
+      }, { status: 200 })
     }
 
     const avgScore = votes && votes.length > 0

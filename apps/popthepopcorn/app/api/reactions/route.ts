@@ -152,10 +152,12 @@ export async function GET(request: NextRequest) {
       .eq('headline_id', headlineId)
 
     if (error) {
+      console.error('[API] Error fetching reactions:', error)
+      // Return empty counts instead of error - reactions are optional
       return NextResponse.json({
-        error: 'Database error',
-        message: error.message,
-      }, { status: 500 })
+        reactionCounts: {},
+        warning: error.message,
+      }, { status: 200 })
     }
 
     const reactionCounts = reactions?.reduce((acc, r) => {
