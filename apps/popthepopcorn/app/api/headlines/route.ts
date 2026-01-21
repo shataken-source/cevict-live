@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
 export async function GET() {
+  const startTime = Date.now()
+  
   try {
     // Validate Supabase configuration
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -18,6 +20,11 @@ export async function GET() {
         }
       }, { status: 500 })
     }
+
+    // Add timeout wrapper for database queries (8 seconds)
+    const queryTimeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database query timeout')), 8000)
+    )
 
     // Fetch headlines ordered by drama score and recency
     // Try with reactions join first, fallback to simple query if it fails
@@ -47,6 +54,11 @@ export async function GET() {
     if (error) {
       console.warn('[API] Headlines query with reactions failed, trying without:', error.message)
       try {
+        // Create new timeout for simple query
+        const simpleQueryTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Simple query timeout')), 8000)
+        )
+
         const simpleQueryPromise = supabase
           .from('headlines')
           .select('*')
@@ -54,7 +66,7 @@ export async function GET() {
           .order('posted_at', { ascending: false })
           .limit(100)
 
-        const simpleResult = await Promise.race([simpleQueryPromise, queryTimeout]) as any
+        const simpleResult = await Promise.race([simpleQueryPromise, simpleQueryTimeout]) as any
         
         if (simpleResult.error) {
           console.error('[API] Error fetching headlines (simple query):', simpleResult.error)
