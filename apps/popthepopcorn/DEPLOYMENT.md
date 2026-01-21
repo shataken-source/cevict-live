@@ -77,7 +77,14 @@
    # openssl rand -hex 32
    ```
 
-8. **Redeploy to apply environment variables:**
+8. **Optional - Twitter/X API for trending topics:**
+   ```bash
+   vercel env add TWITTER_BEARER_TOKEN
+   vercel env add TWITTER_TRENDS_LOCATION
+   # TWITTER_TRENDS_LOCATION options: worldwide, usa, uk, canada, australia
+   ```
+
+9. **Redeploy to apply environment variables:**
    ```bash
    vercel --prod
    ```
@@ -108,6 +115,8 @@
    - `SINCH_API_TOKEN` (optional)
    - `SINCH_FROM_NUMBER` (optional)
    - `SINCH_REGION` (optional, defaults to 'us')
+   - `TWITTER_BEARER_TOKEN` (optional, for trending topics)
+   - `TWITTER_TRENDS_LOCATION` (optional, defaults to 'worldwide')
 
 5. **Deploy:**
    Click "Deploy" and wait for the build to complete.
@@ -169,6 +178,8 @@ Vercel Cron jobs are automatically configured in `vercel.json`:
 | `SINCH_API_TOKEN` | Sinch API token | `xxxxx` |
 | `SINCH_FROM_NUMBER` | Sinch phone number | `+1234567890` |
 | `SINCH_REGION` | Sinch region code | `us`, `eu`, `br`, `au`, `ca` |
+| `TWITTER_BEARER_TOKEN` | Twitter/X API Bearer Token | `Bearer token from Twitter Developer Portal` |
+| `TWITTER_TRENDS_LOCATION` | Location for trending topics | `worldwide`, `usa`, `uk`, `canada`, `australia` |
 
 ## Troubleshooting
 

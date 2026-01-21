@@ -1,6 +1,7 @@
 /**
  * Calculate drama score (1-10) for a headline
  * Enhanced algorithm with better keyword detection and source weighting
+ * @param trendingTopics - Optional array of trending topic names (from Twitter) to boost matching headlines
  */
 export function calculateDramaScore(headline: {
   title: string
@@ -9,6 +10,7 @@ export function calculateDramaScore(headline: {
   upvotes?: number
   downvotes?: number
   posted_at: string
+  trendingTopics?: string[]
 }): number {
   let score = 4 // Base score (slightly lower to allow more range)
 
@@ -130,6 +132,24 @@ export function calculateDramaScore(headline: {
   }
   if (sourceLower.includes('entertainment') || tabloids.some(t => sourceLower.includes(t))) {
     score += 0.3
+  }
+
+  // Trending topics boost (if headline matches Twitter/X trending topics)
+  if (headline.trendingTopics && headline.trendingTopics.length > 0) {
+    const text = `${title} ${description}`
+    const matchingTrends = headline.trendingTopics.filter(trend => {
+      const normalizedTrend = trend.toLowerCase().replace(/[#@]/g, '').trim()
+      return text.includes(normalizedTrend)
+    })
+    
+    if (matchingTrends.length > 0) {
+      // Boost based on number of matching trends (up to +2.5 points)
+      score += Math.min(matchingTrends.length * 0.8, 2.5)
+      // Multiple trend matches = very hot topic
+      if (matchingTrends.length >= 2) {
+        score += 0.5 // Extra boost for multiple trend matches
+      }
+    }
   }
 
   // Clamp between 1 and 10 and round to integer

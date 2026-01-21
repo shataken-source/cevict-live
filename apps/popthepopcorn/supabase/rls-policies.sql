@@ -7,6 +7,7 @@ ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reported_stories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drama_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trending_topics ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist (to allow re-running this script)
 DROP POLICY IF EXISTS "Allow public read access to headlines" ON headlines;
@@ -16,6 +17,7 @@ DROP POLICY IF EXISTS "Allow public insert access to user_alerts" ON user_alerts
 DROP POLICY IF EXISTS "Allow public read access to user_alerts" ON user_alerts;
 DROP POLICY IF EXISTS "Allow public insert access to reported_stories" ON reported_stories;
 DROP POLICY IF EXISTS "Allow public read access to drama_history" ON drama_history;
+DROP POLICY IF EXISTS "Allow public read access to trending_topics" ON trending_topics;
 
 -- Allow public read access to headlines (for the news aggregator)
 CREATE POLICY "Allow public read access to headlines"
@@ -50,6 +52,11 @@ CREATE POLICY "Allow public insert access to reported_stories"
 -- Allow public read access to drama_history (for charts)
 CREATE POLICY "Allow public read access to drama_history"
   ON drama_history FOR SELECT
+  USING (true);
+
+-- Allow public read access to trending_topics
+CREATE POLICY "Allow public read access to trending_topics"
+  ON trending_topics FOR SELECT
   USING (true);
 
 -- IMPORTANT: After running this script, refresh Supabase's schema cache

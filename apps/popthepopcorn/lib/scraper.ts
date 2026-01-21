@@ -1,6 +1,7 @@
 import Parser from 'rss-parser'
 import { supabase } from './supabase'
 import { calculateDramaScore } from './drama-score'
+import { getCurrentTrends, findMatchingTrends } from './twitter-trends'
 
 // Create parser instance
 const parser = new Parser({
@@ -94,7 +95,12 @@ async function scrapeSource(source: NewsSource, retries = 2) {
           continue // Skip duplicates
         }
 
-        // Calculate drama score
+        // Find matching trends for this headline
+        const matchingTrends = trendingTopics.length > 0
+          ? findMatchingTrends(`${item.title} ${item.contentSnippet || item.content || ''}`, trendingTopics)
+          : []
+
+        // Calculate drama score (with trending topics boost)
         const dramaScore = calculateDramaScore({
           title: item.title,
           description: item.contentSnippet || item.content || '',
@@ -102,6 +108,7 @@ async function scrapeSource(source: NewsSource, retries = 2) {
           upvotes: 0,
           downvotes: 0,
           posted_at: item.pubDate || new Date().toISOString(),
+          trendingTopics: matchingTrends,
         })
 
         // Determine if breaking (drama score >= 8 or title contains "breaking")
@@ -153,9 +160,37 @@ async function scrapeSource(source: NewsSource, retries = 2) {
   }
 }
 
+/**
+ * Get current trending topics (cached from database)
+ */
+async function getTrendingTopics(): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('trending_topics')
+      .select('topic_name')
+      .gt('expires_at', new Date().toISOString())
+      .order('fetched_at', { ascending: false })
+      .limit(20)
+
+    if (error || !data) {
+      return []
+    }
+
+    return data.map(t => t.topic_name)
+  } catch (error) {
+    return []
+  }
+}
+
 async function scrapeAll() {
   console.log('Starting news scrape...')
   console.log(`Scraping ${newsSources.length} sources...\n`)
+
+  // Get current trending topics to boost matching headlines
+  const trendingTopics = await getTrendingTopics()
+  if (trendingTopics.length > 0) {
+    console.log(`Using ${trendingTopics.length} trending topics for drama score boost\n`)
+  }
 
   let successCount = 0
   let failCount = 0

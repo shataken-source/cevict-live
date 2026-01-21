@@ -45,6 +45,10 @@ A lightning-fast, Drudge Report-inspired news aggregator with AI-powered drama s
    SINCH_API_TOKEN=your_sinch_api_token
    SINCH_FROM_NUMBER=your_sinch_phone_number
    SINCH_REGION=us
+   
+   # Optional: Twitter/X API for trending topics
+   TWITTER_BEARER_TOKEN=your_twitter_bearer_token
+   TWITTER_TRENDS_LOCATION=worldwide  # Options: worldwide, usa, uk, canada, australia
    ```
 
 3. **Set up database:**
@@ -146,6 +150,42 @@ Or use a service like Vercel Cron or GitHub Actions.
    - `SINCH_REGION` - Region code (us, eu, br, au, ca) - defaults to 'us'
 4. Users can subscribe to alerts via the "Subscribe to Alerts" button
 5. Alerts are sent automatically when drama score ≥ 8
+
+## 🐦 Twitter/X Trending Topics Setup
+
+The app can fetch trending topics from Twitter/X to boost drama scores for matching headlines and display them on the frontend.
+
+### Setup Steps:
+
+1. **Create a Twitter Developer Account:**
+   - Go to [developer.twitter.com](https://developer.twitter.com/)
+   - Sign up or log in with your Twitter/X account
+   - Create a new App or use an existing one
+
+2. **Get Your Bearer Token:**
+   - Go to your App's "Keys and Tokens" section
+   - Generate a "Bearer Token" (App-only authentication)
+   - Copy the token
+
+3. **Add to Environment Variables:**
+   ```env
+   TWITTER_BEARER_TOKEN=your_bearer_token_here
+   TWITTER_TRENDS_LOCATION=worldwide  # Options: worldwide, usa, uk, canada, australia
+   ```
+
+4. **How It Works:**
+   - The trend monitor (`npm run trends`) fetches Twitter trends every 15 minutes
+   - Trends are stored in the `trending_topics` table (expires after 1 hour)
+   - Headlines matching trending topics get a drama score boost (+0.8 to +2.5 points)
+   - Trending topics are displayed on the homepage with a Twitter/X indicator
+   - The scraper uses current trends when calculating drama scores for new headlines
+
+5. **Without Twitter API:**
+   - The app will still work fine without Twitter API
+   - It will fall back to extracting keywords from headlines for trending topics
+   - Drama scores won't get the trending boost, but all other features work normally
+
+**Note:** Twitter API v2 has rate limits. The app handles rate limiting gracefully and will continue working even if the API is temporarily unavailable.
 
 ## 🗄️ Database Schema
 

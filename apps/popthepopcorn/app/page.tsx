@@ -22,12 +22,19 @@ interface Headline {
   description?: string
 }
 
+interface TrendingTopic {
+  name: string
+  tweetCount?: number
+  fetchedAt: string
+}
+
 export default function Home() {
   const [headlines, setHeadlines] = useState<Headline[]>([])
   const [overallDrama, setOverallDrama] = useState(5)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [loading, setLoading] = useState(true)
+  const [twitterTrends, setTwitterTrends] = useState<TrendingTopic[]>([])
 
   const fetchHeadlines = async () => {
     try {
@@ -58,8 +65,22 @@ export default function Home() {
     }
   }
 
+  const fetchTwitterTrends = async () => {
+    try {
+      const response = await fetch('/api/trends')
+      if (response.ok) {
+        const data = await response.json()
+        setTwitterTrends(data.trends || [])
+      }
+    } catch (error) {
+      // Silently fail - Twitter trends are optional
+      console.log('[Frontend] Twitter trends not available')
+    }
+  }
+
   useEffect(() => {
     fetchHeadlines()
+    fetchTwitterTrends()
   }, [])
 
   useEffect(() => {
@@ -91,13 +112,16 @@ export default function Home() {
   const techHeadlines = secondaryHeadlines.filter(h => h.category === 'tech' || h.category === 'business').slice(0, 10)
   const entertainmentHeadlines = secondaryHeadlines.filter(h => h.category === 'entertainment').slice(0, 10)
 
-  const trendingTopics = Array.from(
-    new Set(
-      headlines
-        .flatMap(h => h.title.toLowerCase().split(/\s+/))
-        .filter(word => word.length > 4)
-    )
-  ).slice(0, 15)
+  // Use Twitter trends if available, otherwise fall back to extracted keywords
+  const trendingTopics = twitterTrends.length > 0
+    ? twitterTrends.map(t => t.name).slice(0, 15)
+    : Array.from(
+        new Set(
+          headlines
+            .flatMap(h => h.title.toLowerCase().split(/\s+/))
+            .filter(word => word.length > 4)
+        )
+      ).slice(0, 15)
 
   const highDramaAlerts = headlines.filter(h => h.drama_score >= 7)
 
@@ -222,16 +246,29 @@ export default function Home() {
         {/* Trending Topics */}
         {trendingTopics.length > 0 && (
           <div className="mt-8 p-4 border-t-2 border-black">
-            <h2 className="text-xl font-bold mb-4">TRENDING TOPICS</h2>
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              TRENDING TOPICS
+              {twitterTrends.length > 0 && (
+                <span className="text-sm font-normal text-gray-600">(from Twitter/X)</span>
+              )}
+            </h2>
             <div className="flex flex-wrap gap-2">
-              {trendingTopics.map((topic, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 cursor-pointer"
-                >
-                  #{topic}
-                </span>
-              ))}
+              {trendingTopics.map((topic, index) => {
+                const twitterTrend = twitterTrends.find(t => t.name === topic)
+                return (
+                  <span
+                    key={index}
+                    className="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 cursor-pointer flex items-center gap-1"
+                    title={twitterTrend?.tweetCount ? `${twitterTrend.tweetCount.toLocaleString()} tweets` : undefined}
+                  >
+                    {twitterTrend && <span className="text-blue-500">𝕏</span>}
+                    #{topic}
+                    {twitterTrend?.tweetCount && (
+                      <span className="text-xs text-gray-500">({twitterTrend.tweetCount.toLocaleString()})</span>
+                    )}
+                  </span>
+                )
+              })}
             </div>
           </div>
         )}

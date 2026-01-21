@@ -70,6 +70,17 @@ CREATE TABLE IF NOT EXISTS drama_history (
   CONSTRAINT fk_top_headline FOREIGN KEY (top_headline_id) REFERENCES headlines(id) ON DELETE SET NULL
 );
 
+-- Trending topics table (from Twitter/X)
+CREATE TABLE IF NOT EXISTS trending_topics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  topic_name TEXT NOT NULL,
+  tweet_count INTEGER,
+  woeid INTEGER DEFAULT 1,
+  fetched_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  expires_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '1 hour'),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX idx_headlines_category ON headlines(category);
 CREATE INDEX idx_headlines_drama_score ON headlines(drama_score DESC);
@@ -78,6 +89,8 @@ CREATE INDEX idx_headlines_is_breaking ON headlines(is_breaking) WHERE is_breaki
 CREATE INDEX idx_votes_headline_id ON votes(headline_id);
 CREATE INDEX idx_user_alerts_phone ON user_alerts(phone_number) WHERE phone_number IS NOT NULL;
 CREATE INDEX idx_user_alerts_email ON user_alerts(email) WHERE email IS NOT NULL;
+CREATE INDEX idx_trending_topics_fetched_at ON trending_topics(fetched_at DESC);
+CREATE INDEX idx_trending_topics_expires_at ON trending_topics(expires_at) WHERE expires_at > NOW();
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -106,6 +119,7 @@ ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reported_stories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drama_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trending_topics ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access to headlines (for the news aggregator)
 CREATE POLICY "Allow public read access to headlines"
@@ -140,6 +154,11 @@ CREATE POLICY "Allow public insert access to reported_stories"
 -- Allow public read access to drama_history (for charts)
 CREATE POLICY "Allow public read access to drama_history"
   ON drama_history FOR SELECT
+  USING (true);
+
+-- Allow public read access to trending_topics
+CREATE POLICY "Allow public read access to trending_topics"
+  ON trending_topics FOR SELECT
   USING (true);
 
 -- IMPORTANT: After running this schema, you MUST refresh Supabase's schema cache
