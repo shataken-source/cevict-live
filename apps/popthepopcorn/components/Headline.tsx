@@ -145,6 +145,14 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
             </span>
           </div>
           <div className="flex flex-col gap-4">
+            {/* Crowd Drama Vote & Probability */}
+            <DramaVoteSlider
+              headlineId={headline.id}
+              initialDramaScore={headline.drama_score}
+              verificationConfidence={headline.verification_confidence}
+              sentiment={headline.sentiment}
+            />
+
             {/* Gen Z Reactions */}
             <ReactionButtons headlineId={headline.id} />
             

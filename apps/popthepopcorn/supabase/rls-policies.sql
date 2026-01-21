@@ -10,6 +10,7 @@ ALTER TABLE reported_stories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drama_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trending_topics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE crowd_drama_votes ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist (to allow re-running this script)
 DROP POLICY IF EXISTS "Allow public read access to headlines" ON headlines;
@@ -82,6 +83,20 @@ CREATE POLICY "Allow public read access to reactions"
 CREATE POLICY "Allow public insert access to reactions"
   ON reactions FOR INSERT
   WITH CHECK (true);
+
+-- Allow public read access to crowd_drama_votes
+CREATE POLICY "Allow public read access to crowd_drama_votes"
+  ON crowd_drama_votes FOR SELECT
+  USING (true);
+
+-- Allow public insert/update access to crowd_drama_votes
+CREATE POLICY "Allow public insert access to crowd_drama_votes"
+  ON crowd_drama_votes FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY "Allow public update access to crowd_drama_votes"
+  ON crowd_drama_votes FOR UPDATE
+  USING (true);
 
 -- IMPORTANT: After running this script, refresh Supabase's schema cache
 -- Go to: Supabase Dashboard > Settings > API > Click "Reload schema cache" button

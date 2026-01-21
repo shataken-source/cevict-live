@@ -191,7 +191,10 @@ export default function Home() {
       <header className="border-b-2 border-black p-4">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-4xl font-bold">PopThePopcorn 🍿</h1>
+            <h1 className="text-4xl font-bold">
+              PopThePopcorn 🍿
+              <span className="text-sm font-normal text-gray-500 ml-2">(aka The Kernel)</span>
+            </h1>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setBingeMode(true)}

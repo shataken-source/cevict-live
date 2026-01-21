@@ -67,6 +67,17 @@ CREATE TABLE IF NOT EXISTS reactions (
   CONSTRAINT fk_headline_reaction FOREIGN KEY (headline_id) REFERENCES headlines(id) ON DELETE CASCADE
 );
 
+-- Crowd Drama Votes (users vote on drama score 1-10)
+CREATE TABLE IF NOT EXISTS crowd_drama_votes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  headline_id UUID,
+  ip_address TEXT,
+  drama_score INTEGER NOT NULL CHECK (drama_score >= 1 AND drama_score <= 10),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(headline_id, ip_address),
+  CONSTRAINT fk_headline_crowd_vote FOREIGN KEY (headline_id) REFERENCES headlines(id) ON DELETE CASCADE
+);
+
 -- Legacy votes table (for backward compatibility)
 CREATE TABLE IF NOT EXISTS votes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -134,6 +145,8 @@ CREATE INDEX idx_headlines_sentiment ON headlines(sentiment);
 CREATE INDEX idx_votes_headline_id ON votes(headline_id);
 CREATE INDEX idx_reactions_headline_id ON reactions(headline_id);
 CREATE INDEX idx_reactions_type ON reactions(reaction_type);
+CREATE INDEX idx_crowd_drama_votes_headline_id ON crowd_drama_votes(headline_id);
+CREATE INDEX idx_crowd_drama_votes_drama_score ON crowd_drama_votes(drama_score);
 CREATE INDEX idx_user_alerts_phone ON user_alerts(phone_number) WHERE phone_number IS NOT NULL;
 CREATE INDEX idx_user_alerts_email ON user_alerts(email) WHERE email IS NOT NULL;
 CREATE INDEX idx_trending_topics_fetched_at ON trending_topics(fetched_at DESC);
