@@ -51,6 +51,18 @@ interface StoryArc {
   last_episode_at?: string
 }
 
+interface StoryArc {
+  id: string
+  title: string
+  description?: string
+  category: string
+  season_number: number
+  status: 'ongoing' | 'concluded' | 'archived'
+  total_episodes: number
+  total_drama_score: number
+  last_episode_at?: string
+}
+
 export default function Home() {
   const [headlines, setHeadlines] = useState<Headline[]>([])
   const [overallDrama, setOverallDrama] = useState(5)
@@ -58,6 +70,8 @@ export default function Home() {
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [loading, setLoading] = useState(true)
   const [twitterTrends, setTwitterTrends] = useState<TrendingTopic[]>([])
+  const [storyArcs, setStoryArcs] = useState<StoryArc[]>([])
+  const [showArcs, setShowArcs] = useState(false)
 
   const fetchHeadlines = async () => {
     try {

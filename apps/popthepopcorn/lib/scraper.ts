@@ -193,6 +193,22 @@ async function scrapeSource(source: NewsSource, trendingTopics: string[] = [], r
           console.error(`Error inserting headline from ${source.name}:`, error)
         } else {
           addedCount++
+          
+          // Add to Story Arc (The "Lore" System) if high drama
+          if (insertedHeadline && dramaScore >= 7) {
+            try {
+              await findOrCreateStoryArc({
+                id: insertedHeadline.id,
+                title: item.title,
+                description: item.contentSnippet || item.content?.substring(0, 500) || '',
+                category: source.category,
+                drama_score: dramaScore,
+              })
+            } catch (arcError) {
+              console.warn('[Scraper] Error adding to story arc:', arcError)
+              // Don't fail the scrape if arc tracking fails
+            }
+          }
           console.log(`✓ Added: ${item.title.substring(0, 60)}... (Drama: ${dramaScore}/10)`)
           
           // Send to Discord if high drama (Gen Z distribution)
