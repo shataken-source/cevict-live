@@ -70,11 +70,16 @@ export async function sendSMSAlerts() {
         continue
       }
 
-      // Gen Z optimized: Short, punchy, emoji-rich SMS
-      const dramaEmoji = headline.drama_score >= 9 ? '🔴' : headline.drama_score >= 7 ? '🟠' : '🟡'
-      const breakingBadge = headline.is_breaking ? '🚨 BREAKING ' : ''
-      const title = headline.title.length > 80 ? headline.title.substring(0, 77) + '...' : headline.title
-      const message = `${breakingBadge}${dramaEmoji} ${title}\n\n${headline.url}\n\n🍿 Popcorn Bot`
+      // Calculate probability for SMS
+      const probability = calculateProbability(
+        headline.drama_score,
+        undefined,
+        headline.verification_confidence,
+        headline.sentiment
+      )
+      
+      // Format message with nickname and probability
+      const message = formatProbabilityAlert(headline, probability)
 
       try {
         const response = await fetch(sinchApiUrl, {

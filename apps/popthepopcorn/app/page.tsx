@@ -203,8 +203,13 @@ export default function Home() {
     )
   }
 
+  // Age gate
+  if (!ageVerified) {
+    return <AgeGate onVerified={() => setAgeVerified(true)} />
+  }
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className={`min-h-screen transition-colors ${darkMode ? 'cyber-gradient text-white' : 'bg-white text-black'}`}>
       {/* Ticker */}
       {headlines.length > 0 && <Ticker headlines={headlines} />}
 
