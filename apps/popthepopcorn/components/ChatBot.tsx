@@ -104,10 +104,13 @@ export default function ChatBot({ headlineId, headlineTitle }: ChatBotProps) {
       {/* Header - The Kernel */}
       <div className="bg-gradient-to-r from-[#FFD700] to-[#FF6B35] text-black p-4 rounded-t-xl flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🍿</span>
+          <div className="flex items-center gap-1">
+            <span className="text-2xl animate-bounce">🍿</span>
+            <span className="text-xl animate-bounce" style={{ animationDelay: '0.1s' }}>🍿</span>
+          </div>
           <div>
             <h3 className="font-black text-lg">The Kernel</h3>
-            <p className="text-xs text-black/70 font-semibold">AI News Expert</p>
+            <p className="text-xs text-black/70 font-semibold">AI News Expert • Watching the drama</p>
           </div>
         </div>
         <button

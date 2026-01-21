@@ -6,6 +6,7 @@ import ReactionButtons from './ReactionButtons'
 import DramaMeter from './DramaMeter'
 import PopcornDramaMeter from './PopcornDramaMeter'
 import DramaVoteSlider from './DramaVoteSlider'
+import PopcornAnimation from './PopcornAnimation'
 import VibeMeter from './VibeMeter'
 import { Share2, ExternalLink, Clock, TrendingUp, FileText } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -159,6 +160,7 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
         </div>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4 flex-wrap">
+            <PopcornAnimation dramaScore={headline.drama_score} isBreaking={headline.is_breaking} />
             <PopcornDramaMeter score={headline.drama_score} size="lg" />
             {/* Versus Frame - "Mainstream vs. The Leaks" */}
             <div className="px-3 py-1.5 bg-gradient-to-r from-[#FFD700] to-[#FF6B35] text-black rounded-lg font-black text-xs uppercase">

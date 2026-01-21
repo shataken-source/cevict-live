@@ -80,9 +80,13 @@ export default function AgeGate({ onVerified, minimumAge = 13 }: AgeGateProps) {
     <div className="fixed inset-0 bg-gradient-to-br from-[#0A0A0A] via-[#1A0A2E] to-[#0A0A0A] z-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-[#1A1A1A] border-2 border-[#FFD700] rounded-2xl p-8 text-center">
         <div className="mb-6">
-          <div className="text-6xl mb-4">🍿</div>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <span className="text-6xl animate-bounce">🍿</span>
+            <span className="text-4xl animate-bounce" style={{ animationDelay: '0.1s' }}>🍿</span>
+            <span className="text-6xl animate-bounce" style={{ animationDelay: '0.2s' }}>🍿</span>
+          </div>
           <h1 className="text-3xl font-black text-white mb-2">Welcome to The Kernel</h1>
-          <p className="text-gray-400">Age verification required</p>
+          <p className="text-gray-400">Grab your popcorn • Age verification required</p>
         </div>
 
         <div className="mb-6">

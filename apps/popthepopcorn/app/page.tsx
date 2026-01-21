@@ -218,11 +218,14 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className={`text-4xl font-black ${darkMode ? 'text-white' : 'text-black'}`}>
-                <span className="text-[#FFD700]">Pop</span>The<span className="text-[#FFD700]">Popcorn</span> 🍿
-              </h1>
+              <div className="flex items-center gap-3">
+                <h1 className={`text-4xl font-black ${darkMode ? 'text-white' : 'text-black'}`}>
+                  <span className="text-[#FFD700]">Pop</span>The<span className="text-[#FFD700]">Popcorn</span>
+                </h1>
+                <PopcornAnimation dramaScore={overallDrama} isBreaking={headlines.some(h => h.is_breaking)} />
+              </div>
               <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
-                The Arena • News as Entertainment • aka "The Kernel"
+                The Arena • News as Entertainment • aka "The Kernel" • 🍿 Watching the drama unfold
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -336,9 +339,27 @@ export default function Home() {
               : primaryHeadline.drama_score >= 7
               ? 'border-[#FF6B35]'
               : 'border-[#FFD700]'
-          } ${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'}`}>
+          } ${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'} relative`}>
+            {/* Popcorn particles for extreme drama */}
+            {primaryHeadline.drama_score >= 9 && (
+              <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+                {[...Array(3)].map((_, i) => (
+                  <span
+                    key={i}
+                    className="popcorn-particle"
+                    style={{
+                      left: `${20 + i * 30}%`,
+                      bottom: '10%',
+                      animationDelay: `${i * 0.3}s`,
+                    }}
+                  >
+                    🍿
+                  </span>
+                ))}
+              </div>
+            )}
             <div className={`p-1 ${primaryHeadline.drama_score >= 9 ? 'bg-gradient-to-r from-[#FF4444] to-[#FF6B35]' : 'bg-gradient-to-r from-[#FFD700] to-[#FF6B35]'}`}>
-              <div className={`${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'} rounded-xl`}>
+              <div className={`${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'} rounded-xl relative z-10`}>
                 <Headline headline={primaryHeadline} isPrimary />
               </div>
             </div>

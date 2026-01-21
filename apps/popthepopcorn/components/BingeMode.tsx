@@ -124,7 +124,17 @@ export default function BingeMode({ headlines, onClose }: BingeModeProps) {
         >
           {/* Drama score with popcorn overflow */}
           <div className="mb-6 relative">
-            <div className="text-6xl mb-2">{dramaVisual.emoji}</div>
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {[...Array(Math.min(5, currentStory.drama_score))].map((_, i) => (
+                <span
+                  key={i}
+                  className="text-5xl animate-bounce"
+                  style={{ animationDelay: `${i * 0.1}s` }}
+                >
+                  🍿
+                </span>
+              ))}
+            </div>
             <div
               className="text-4xl font-black mb-2"
               style={{ color: dramaVisual.color }}
