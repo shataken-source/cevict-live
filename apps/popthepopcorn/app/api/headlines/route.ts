@@ -3,6 +3,22 @@ import { supabase } from '@/lib/supabase'
 
 export async function GET() {
   try {
+    // Validate Supabase configuration
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('[API] Missing Supabase environment variables')
+      return NextResponse.json({ 
+        error: 'Server configuration error', 
+        message: 'Supabase credentials not configured. Please check environment variables.',
+        details: {
+          hasUrl: !!supabaseUrl,
+          hasKey: !!supabaseKey
+        }
+      }, { status: 500 })
+    }
+
     // Fetch headlines ordered by drama score and recency
     const { data: headlines, error } = await supabase
       .from('headlines')
@@ -12,8 +28,13 @@ export async function GET() {
       .limit(100)
 
     if (error) {
-      console.error('Error fetching headlines:', error)
-      return NextResponse.json({ error: 'Failed to fetch headlines', details: error }, { status: 500 })
+      console.error('[API] Error fetching headlines:', error)
+      return NextResponse.json({ 
+        error: 'Failed to fetch headlines', 
+        message: error.message,
+        code: error.code,
+        details: error 
+      }, { status: 500 })
     }
 
     // Log for debugging

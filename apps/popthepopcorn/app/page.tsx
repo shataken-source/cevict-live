@@ -40,9 +40,15 @@ export default function Home() {
         setOverallDrama(data.overallDrama || 5)
         setLastUpdated(new Date())
       } else {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({ error: 'Network error' }))
         console.error('[Frontend] API error:', errorData)
-        toast.error(`Failed to load headlines: ${errorData.error || 'Unknown error'}`)
+        const errorMessage = errorData.message || errorData.error || 'Unknown error'
+        toast.error(`Failed to load headlines: ${errorMessage}`)
+        
+        // Log more details for debugging
+        if (errorData.details) {
+          console.error('[Frontend] Error details:', errorData.details)
+        }
       }
     } catch (error) {
       console.error('[Frontend] Error fetching headlines:', error)
