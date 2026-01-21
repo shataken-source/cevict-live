@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+// Force dynamic rendering (can't be statically generated due to DB queries)
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 export async function GET() {
   const startTime = Date.now()
   
@@ -11,6 +15,13 @@ export async function GET() {
 
     if (!supabaseUrl || !supabaseKey) {
       console.error('[API] Missing Supabase environment variables')
+      // During build, return empty array instead of error
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
+        return NextResponse.json({
+          headlines: [],
+          overallDrama: 5,
+        })
+      }
       return NextResponse.json({ 
         error: 'Server configuration error', 
         message: 'Supabase credentials not configured. Please check environment variables.',
@@ -70,6 +81,14 @@ export async function GET() {
         
         if (simpleResult.error) {
           console.error('[API] Error fetching headlines (simple query):', simpleResult.error)
+          // During build or schema cache issues, return empty array
+          if (process.env.NEXT_PHASE === 'phase-production-build' || simpleResult.error.code === 'PGRST205') {
+            console.warn('[API] Schema cache issue during build, returning empty headlines')
+            return NextResponse.json({
+              headlines: [],
+              overallDrama: 5,
+            })
+          }
           return NextResponse.json({ 
             error: 'Failed to fetch headlines', 
             message: simpleResult.error.message,

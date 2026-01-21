@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sendNewsDrop } from '@/lib/news-drops'
 
+// Force dynamic rendering (can't be statically generated)
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 /**
  * POST /api/cron/news-drop
  * Generate and send News Drop (twice daily)

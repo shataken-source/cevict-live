@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+// Force dynamic rendering (can't be statically generated due to DB queries)
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 /**
  * GET /api/trends
  * Returns current trending topics from Twitter/X and Google Trends
@@ -29,6 +33,13 @@ export async function GET() {
 
     if (error) {
       console.error('[API] Error fetching trends:', error)
+      // During build or schema cache issues, return empty trends
+      if (process.env.NEXT_PHASE === 'phase-production-build' || error.code === 'PGRST205') {
+        console.warn('[API] Schema cache issue during build, returning empty trends')
+        return NextResponse.json({
+          trends: [],
+        })
+      }
       return NextResponse.json({
         error: 'Database error',
         message: error.message,

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { scrapeAll } from '@/lib/scraper'
 
+// Force dynamic rendering (can't be statically generated)
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 export async function GET(request: Request) {
   // Verify cron secret if needed
   const authHeader = request.headers.get('authorization')
