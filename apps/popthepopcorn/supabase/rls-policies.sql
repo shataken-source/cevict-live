@@ -51,3 +51,7 @@ CREATE POLICY "Allow public insert access to reported_stories"
 CREATE POLICY "Allow public read access to drama_history"
   ON drama_history FOR SELECT
   USING (true);
+
+-- IMPORTANT: After running this script, refresh Supabase's schema cache
+-- Go to: Supabase Dashboard > Settings > API > Click "Reload schema cache" button
+-- This is required for the API to recognize the new policies

@@ -197,7 +197,25 @@ Vercel Cron jobs are automatically configured in `vercel.json`:
    - Vercel will retry automatically
    - If persistent, check Vercel's status page or try redeploying
 
-### Headlines Not Showing
+### Headlines Not Showing / "Could not find the table" Error
+
+**🚨 Most Common Issue: Schema Cache Not Refreshed**
+
+If you see: `"Could not find the table 'public.headlines' in the schema cache"`
+
+**Fix immediately:**
+1. Go to **Supabase Dashboard → Settings → API**
+2. Scroll to **"Schema Cache"** section
+3. Click **"Reload schema cache"** button
+4. Wait 10-30 seconds
+5. Refresh your website
+
+**Alternative fix (SQL):**
+```sql
+NOTIFY pgrst, 'reload schema';
+```
+
+**Other checks:**
 
 1. **Verify RLS policies:**
    - Make sure you've run `supabase/rls-policies.sql` in Supabase
@@ -206,8 +224,14 @@ Vercel Cron jobs are automatically configured in `vercel.json`:
 2. **Check environment variables:**
    - Verify `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are set
    - Check Vercel Dashboard → Settings → Environment Variables
+   - **Important:** After adding env vars, redeploy your Vercel project
 
-3. **Check Supabase logs:**
+3. **Verify table exists:**
+   - Go to Supabase Dashboard → Table Editor
+   - Confirm `headlines` table is visible
+   - Or run: `SELECT COUNT(*) FROM headlines;` in SQL Editor
+
+4. **Check Supabase logs:**
    - Go to Supabase Dashboard → Logs
    - Look for API errors
 

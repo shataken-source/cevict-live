@@ -58,12 +58,26 @@ A lightning-fast, Drudge Report-inspired news aggregator with AI-powered drama s
    # Copy and paste the contents of supabase/rls-policies.sql
    ```
    
-   **IMPORTANT:** After running the schema, refresh Supabase's schema cache:
-   - Go to: Supabase Dashboard > Settings > API
-   - Click the "Reload schema cache" button
-   - OR wait 1-2 minutes for automatic refresh
+   **🚨 CRITICAL: Refresh Supabase Schema Cache**
    
-   **If headlines aren't showing up:** This is usually a Row Level Security (RLS) issue. Make sure you've run the RLS policies from `supabase/rls-policies.sql` to allow public read access to the headlines table.
+   After running the schema, you MUST refresh Supabase's schema cache, otherwise you'll get:
+   > "Could not find the table 'public.headlines' in the schema cache"
+   
+   **To fix:**
+   1. Go to: **Supabase Dashboard → Settings → API**
+   2. Scroll down to find **"Schema Cache"** section
+   3. Click the **"Reload schema cache"** button
+   4. Wait 10-30 seconds for it to refresh
+   
+   **Alternative:** Run this SQL command in Supabase SQL Editor:
+   ```sql
+   NOTIFY pgrst, 'reload schema';
+   ```
+   
+   **If headlines aren't showing up after refresh:**
+   - Make sure you've run the RLS policies from `supabase/rls-policies.sql`
+   - Check that environment variables are set in Vercel
+   - Verify the table exists: Run `SELECT COUNT(*) FROM headlines;` in Supabase SQL Editor
 
 4. **Run the development server:**
    ```bash

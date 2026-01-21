@@ -142,8 +142,20 @@ CREATE POLICY "Allow public read access to drama_history"
   ON drama_history FOR SELECT
   USING (true);
 
--- IMPORTANT: After running this schema, you may need to refresh Supabase's schema cache
--- Go to: Supabase Dashboard > Settings > API > Click "Reload schema cache" button
--- OR wait 1-2 minutes for it to auto-refresh
--- OR run this command in the SQL editor (if you have admin access):
+-- IMPORTANT: After running this schema, you MUST refresh Supabase's schema cache
+-- The error "Could not find the table 'public.headlines' in the schema cache" means the cache needs refreshing
+--
+-- OPTION 1 (Recommended): Use Supabase Dashboard
+-- 1. Go to: Supabase Dashboard > Settings > API
+-- 2. Scroll down to "Schema Cache"
+-- 3. Click "Reload schema cache" button
+-- 4. Wait 10-30 seconds for it to refresh
+--
+-- OPTION 2: Use SQL command (requires admin access)
+-- Run this in the SQL editor:
 -- NOTIFY pgrst, 'reload schema';
+--
+-- OPTION 3: Wait for auto-refresh (can take 1-5 minutes)
+-- Supabase will eventually auto-refresh, but it's faster to do it manually
+--
+-- After refreshing, your API routes should work immediately
