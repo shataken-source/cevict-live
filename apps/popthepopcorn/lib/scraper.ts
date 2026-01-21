@@ -147,33 +147,40 @@ async function scrapeSource(source: NewsSource, trendingTopics: string[] = [], r
         })
 
         // Insert into database with verification and sentiment data
+        // Build insert object, making bias_label optional in case schema cache is stale
+        const insertData: any = {
+          title: item.title,
+          url: item.link,
+          source: source.name,
+          category: source.category,
+          drama_score: dramaScore,
+          upvotes: 0,
+          downvotes: 0,
+          posted_at: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+          is_breaking: isBreaking,
+          description: item.contentSnippet || item.content?.substring(0, 500) || null,
+          source_verification: verification.verification_status,
+          video_script: tiktokScript,
+          verification_status: verification.verification_status,
+          verification_confidence: verification.confidence,
+          verification_risk: verification.risk,
+          verification_summary: verification.summary,
+          evidence_links: verification.evidence_links,
+          red_flags: verification.red_flags,
+          sentiment: sentiment.sentiment,
+          vibe_score: sentiment.score,
+          provenance: verification.provenance,
+          source_trace: sourceTrace,
+        }
+        
+        // Only include bias_label if it exists (schema cache might be stale)
+        if (verification.bias_label) {
+          insertData.bias_label = verification.bias_label
+        }
+
         const { error, data: insertedHeadline } = await supabase
           .from('headlines')
-          .insert({
-            title: item.title,
-            url: item.link,
-            source: source.name,
-            category: source.category,
-            drama_score: dramaScore,
-            upvotes: 0,
-            downvotes: 0,
-            posted_at: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
-            is_breaking: isBreaking,
-            description: item.contentSnippet || item.content?.substring(0, 500) || null,
-            source_verification: verification.verification_status,
-            video_script: tiktokScript,
-            verification_status: verification.verification_status,
-            verification_confidence: verification.confidence,
-            verification_risk: verification.risk,
-            verification_summary: verification.summary,
-            evidence_links: verification.evidence_links,
-            red_flags: verification.red_flags,
-            bias_label: verification.bias_label,
-            sentiment: sentiment.sentiment,
-            vibe_score: sentiment.score,
-            provenance: verification.provenance,
-            source_trace: sourceTrace,
-          })
+          .insert(insertData)
           .select()
           .single()
 
@@ -348,35 +355,47 @@ async function scrapeAll() {
       const tiktokScript = formatScriptForPlatform(videoScript, 'tiktok')
 
       // Insert Reddit post as headline with full verification data
-      const { data: insertedHeadline } = await supabase
+      // Build insert object, making bias_label optional in case schema cache is stale
+      const redditInsertData: any = {
+        title: headlineData.title,
+        url: headlineData.url,
+        source: headlineData.source,
+        category: headlineData.category,
+        drama_score: dramaScore,
+        upvotes: post.score,
+        downvotes: 0,
+        posted_at: new Date(post.created_utc * 1000).toISOString(),
+        is_breaking: dramaScore >= 8,
+        description: headlineData.description,
+        source_verification: headlineData.source_verification,
+        video_script: tiktokScript,
+        verification_status: verification.verification_status,
+        verification_confidence: verification.confidence,
+        verification_risk: verification.risk,
+        verification_summary: verification.summary,
+        evidence_links: verification.evidence_links,
+        red_flags: verification.red_flags,
+        sentiment: sentiment.sentiment,
+        vibe_score: sentiment.score,
+        provenance: verification.provenance,
+        source_trace: sourceTrace,
+      }
+      
+      // Only include bias_label if it exists (schema cache might be stale)
+      if (verification.bias_label) {
+        redditInsertData.bias_label = verification.bias_label
+      }
+
+      const { error: redditError, data: insertedHeadline } = await supabase
         .from('headlines')
-        .insert({
-          title: headlineData.title,
-          url: headlineData.url,
-          source: headlineData.source,
-          category: headlineData.category,
-          drama_score: dramaScore,
-          upvotes: post.score,
-          downvotes: 0,
-          posted_at: new Date(post.created_utc * 1000).toISOString(),
-          is_breaking: dramaScore >= 8,
-          description: headlineData.description,
-          source_verification: headlineData.source_verification,
-          video_script: tiktokScript,
-          verification_status: verification.verification_status,
-          verification_confidence: verification.confidence,
-          verification_risk: verification.risk,
-          verification_summary: verification.summary,
-          evidence_links: verification.evidence_links,
-          red_flags: verification.red_flags,
-          bias_label: verification.bias_label,
-          sentiment: sentiment.sentiment,
-          vibe_score: sentiment.score,
-          provenance: verification.provenance,
-          source_trace: sourceTrace,
-        })
+        .insert(redditInsertData)
         .select()
         .single()
+
+      if (redditError) {
+        console.error(`Error inserting Reddit headline:`, redditError)
+        continue // Skip this headline and continue with next
+      }
 
       if (insertedHeadline && dramaScore >= 7) {
         await sendDiscordNotification({
