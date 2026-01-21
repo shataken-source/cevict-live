@@ -1,0 +1,23 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Minimalist version - best for Stripe -->
+  <defs>
+    <linearGradient id="minimalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Circular background -->
+  <circle cx="256" cy="256" r="240" fill="url(#minimalGrad)"/>
+  
+  <!-- Clean paw print silhouette -->
+  <g transform="translate(256, 256)" fill="#FFFFFF">
+    <!-- Bottom large pad -->
+    <ellipse cx="0" cy="55" rx="52" ry="42" opacity="0.98"/>
+    
+    <!-- Top three pads -->
+    <ellipse cx="-38" cy="5" rx="26" ry="21" opacity="0.98"/>
+    <ellipse cx="38" cy="5" rx="26" ry="21" opacity="0.98"/>
+    <ellipse cx="0" cy="-30" rx="26" ry="21" opacity="0.98"/>
+  </g>
+</svg>
