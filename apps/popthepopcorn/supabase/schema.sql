@@ -224,7 +224,8 @@ CREATE TABLE IF NOT EXISTS sponsored_clicks (
 CREATE INDEX idx_sponsored_clicks_report ON sponsored_clicks(sponsored_report_id);
 CREATE INDEX idx_sponsored_clicks_user ON sponsored_clicks(user_identifier);
 CREATE INDEX idx_trending_topics_fetched_at ON trending_topics(fetched_at DESC);
-CREATE INDEX idx_trending_topics_expires_at ON trending_topics(expires_at) WHERE expires_at > NOW();
+CREATE INDEX idx_trending_topics_expires_at ON trending_topics(expires_at);
+-- Note: Filter by expires_at > NOW() in queries, not in index predicate (NOW() is not IMMUTABLE)
 CREATE INDEX idx_app_settings_key ON app_settings(key);
 CREATE INDEX idx_app_settings_category ON app_settings(category);
 
