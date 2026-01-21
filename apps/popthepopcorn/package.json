@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Drudge Report-style news aggregator with AI-powered drama scoring",
   "private": true,
+  "packageManager": "npm@10.0.0",
   "scripts": {
     "dev": "next dev -p 3003",
     "build": "next build",

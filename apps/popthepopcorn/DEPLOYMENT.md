@@ -174,18 +174,28 @@ Vercel Cron jobs are automatically configured in `vercel.json`:
 
 ### Build Fails
 
-1. **Check Node.js version:**
+1. **pnpm/npm detection issues:**
+   - If you see `ERR_PNPM_META_FETCH_FAIL` or pnpm errors, Vercel may be auto-detecting pnpm from other apps in the monorepo
+   - **Fix:** Go to Vercel Dashboard → Project Settings → General → **Package Manager** → Select **npm**
+   - Or ensure `vercel.json` has `"installCommand": "npm install --legacy-peer-deps"` (already configured)
+
+2. **Check Node.js version:**
    - Vercel uses Node 20.x by default (matches `package.json` engines)
    - If issues, specify in `vercel.json`: `"nodeVersion": "20.x"`
 
-2. **Check build logs:**
+3. **Check build logs:**
    - Go to Vercel Dashboard → Deployments → Click failed deployment
    - Review build logs for errors
 
-3. **Test locally:**
+4. **Test locally:**
    ```bash
    npm run build
    ```
+
+5. **npm registry errors:**
+   - If you see `ERR_INVALID_THIS` or registry errors, it's usually a temporary npm registry issue
+   - Vercel will retry automatically
+   - If persistent, check Vercel's status page or try redeploying
 
 ### Headlines Not Showing
 
