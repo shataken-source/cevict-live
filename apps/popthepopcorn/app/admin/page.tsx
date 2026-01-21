@@ -206,6 +206,8 @@ export default function AdminDashboard() {
 
   const handleRunScraper = async () => {
     setScraperRunning(true)
+    const startTime = Date.now()
+    
     try {
       const response = await fetch('/api/admin/scraper', {
         method: 'POST',
@@ -213,23 +215,96 @@ export default function AdminDashboard() {
       })
 
       if (response.ok) {
-        toast.success('Scraper started! This may take a few minutes.')
-        // Wait a bit then refresh stats
+        const data = await response.json()
+        toast.success('Scraper started! Running in background...', {
+          duration: 5000,
+          icon: '🚀',
+        })
+        
+        // Show progress updates - poll for new headlines
+        let checkCount = 0
+        const maxChecks = 12 // Check for 2 minutes (12 * 10 seconds)
+        let lastHeadlineCount = stats?.totalHeadlines || 0
+        
+        // Show initial feedback
+        toast.loading('Scraper started! Monitoring progress...', {
+          id: 'scraper-progress',
+          duration: 10000,
+        })
+        
+        const checkProgress = setInterval(async () => {
+          checkCount++
+          
+          try {
+            // Fetch stats directly to get current count
+            const statsResponse = await fetch('/api/admin/stats', {
+              headers: getAuthHeaders(),
+            })
+            
+            if (statsResponse.ok) {
+              const statsData = await statsResponse.json()
+              const currentCount = statsData.totalHeadlines || 0
+              
+              // Update state
+              setStats(statsData)
+              await fetchLastScrapeTime()
+              
+              // Check if new headlines were added
+              if (currentCount > lastHeadlineCount) {
+                const added = currentCount - lastHeadlineCount
+                toast.dismiss('scraper-progress')
+                toast.success(`✅ ${added} new headline${added > 1 ? 's' : ''} added! (Total: ${currentCount})`, {
+                  duration: 5000,
+                  icon: '📰',
+                })
+                lastHeadlineCount = currentCount
+              } else if (checkCount === 1) {
+                // First check - update loading message
+                toast.loading(`Scraper running... (${currentCount} headlines so far)`, {
+                  id: 'scraper-progress',
+                  duration: 10000,
+                })
+              } else if (checkCount % 3 === 0) {
+                // Every 30 seconds, show still running
+                toast.loading(`Still running... (${currentCount} headlines, checked ${checkCount} times)`, {
+                  id: 'scraper-progress',
+                  duration: 10000,
+                })
+              }
+            }
+          } catch (error) {
+            console.error('Error checking progress:', error)
+          }
+          
+          if (checkCount >= maxChecks) {
+            clearInterval(checkProgress)
+            setScraperRunning(false)
+            toast.dismiss('scraper-progress')
+            toast.success('Scraper monitoring complete! Check stats below for final results.', {
+              duration: 5000,
+            })
+            fetchStats() // Final refresh
+          }
+        }, 10000) // Check every 10 seconds
+        
+        // Also set a timeout to reset button after reasonable time
         setTimeout(() => {
-          fetchStats()
-          fetchLastScrapeTime()
-        }, 5000)
+          clearInterval(checkProgress)
+          setScraperRunning(false)
+        }, 120000) // 2 minutes max
       } else if (response.status === 401) {
         sessionStorage.removeItem('admin_auth')
         sessionStorage.removeItem('admin_token')
         router.push('/admin/login')
+        setScraperRunning(false)
       } else {
-        toast.error('Failed to start scraper')
+        const errorData = await response.json().catch(() => ({}))
+        toast.error(errorData.message || 'Failed to start scraper')
+        setScraperRunning(false)
       }
     } catch (error) {
       console.error('Error running scraper:', error)
-      toast.error('Error starting scraper')
-    } finally {
+      toast.error('Error starting scraper. Check console for details.')
       setScraperRunning(false)
     }
   }
@@ -342,15 +417,35 @@ export default function AdminDashboard() {
                   disabled={scraperRunning}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Play size={16} />
-                  {scraperRunning ? 'Running...' : 'Run Scraper'}
+                  {scraperRunning ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      Running... (checking progress)
+                    </>
+                  ) : (
+                    <>
+                      <Play size={16} />
+                      Run Scraper
+                    </>
+                  )}
                 </button>
               </div>
               <p className="text-sm text-gray-600 mb-2">
                 Scrapes news from all configured RSS feeds and calculates drama scores.
               </p>
+              {scraperRunning && (
+                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+                  <div className="flex items-center gap-2">
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Scraper is running... Checking for new headlines every 10 seconds.</span>
+                  </div>
+                  <div className="mt-1 text-xs text-blue-600">
+                    Check the "Total Headlines" stat below - it will update as headlines are added.
+                  </div>
+                </div>
+              )}
               {lastScrapeTime && (
-                <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
                   <Clock size={14} />
                   <span>Last run: {new Date(lastScrapeTime).toLocaleString()}</span>
                 </div>
