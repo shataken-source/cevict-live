@@ -187,6 +187,44 @@ The app can fetch trending topics from Twitter/X to boost drama scores for match
 
 **Note:** Twitter API v2 has rate limits. The app handles rate limiting gracefully and will continue working even if the API is temporarily unavailable.
 
+## 🔍 Google Trends Setup
+
+The app can also fetch trending topics from Google Trends (no API key required!) to supplement or replace Twitter trends.
+
+### Setup Steps:
+
+1. **No API Key Required:**
+   - Google Trends uses RSS feeds, so no authentication is needed
+   - The app will automatically fetch trends from Google Trends RSS feeds
+
+2. **Optional Configuration:**
+   ```env
+   GOOGLE_TRENDS_LOCATION=US  # Options: US, GB, CA, AU, DE, FR, ES, IT, JP, IN, BR, etc.
+   ```
+   - If not set, defaults to `TWITTER_TRENDS_LOCATION` or `US`
+   - See [Google Trends](https://trends.google.com/trending) for available locations
+
+3. **How It Works:**
+   - The trend monitor fetches both Twitter and Google Trends (if configured)
+   - Trends from both sources are combined and deduplicated
+   - Trends appearing in both sources are marked as "both" for higher priority
+   - Headlines matching any trending topics get a drama score boost
+   - All trends are displayed on the homepage
+
+4. **RSS Feed Notes:**
+   - Google Trends RSS feeds are available via the Export feature on [trends.google.com](https://trends.google.com/trending)
+   - The app tries common RSS feed URL patterns
+   - If the primary URL pattern doesn't work, the app will try alternative patterns
+   - If all patterns fail, the app gracefully falls back to Twitter-only or keyword extraction
+
+5. **Benefits of Using Both:**
+   - **More comprehensive coverage:** Catch trends that might only appear on one platform
+   - **Higher confidence:** Trends appearing on both platforms are likely more significant
+   - **Redundancy:** If one source fails, the other can still provide trends
+   - **No API limits:** Google Trends RSS has no rate limits (unlike Twitter API)
+
+**Note:** Google Trends RSS feed URLs may change over time. If you encounter issues, you can manually get the RSS feed URL from Google Trends → Trending → Export → RSS Feed and update the URL pattern in `lib/google-trends.ts`.
+
 ## 🗄️ Database Schema
 
 The app uses Supabase with the following main tables:
@@ -196,6 +234,7 @@ The app uses Supabase with the following main tables:
 - `user_alerts` - SMS/email alert subscriptions
 - `reported_stories` - User-reported content
 - `drama_history` - Historical drama score tracking
+- `trending_topics` - Trending topics from Twitter/X and Google Trends
 
 See `supabase/schema.sql` for the complete schema.
 

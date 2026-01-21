@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 
 /**
  * GET /api/trends
- * Returns current trending topics from Twitter/X
+ * Returns current trending topics from Twitter/X and Google Trends
  */
 export async function GET() {
   try {
@@ -18,12 +18,14 @@ export async function GET() {
     }
 
     // Get current trending topics (not expired)
+    // Prioritize trends that appear in both sources
     const { data: trends, error } = await supabase
       .from('trending_topics')
-      .select('topic_name, tweet_count, fetched_at')
+      .select('topic_name, tweet_count, source, fetched_at')
       .gt('expires_at', new Date().toISOString())
+      .order('source', { ascending: true }) // 'both' comes before 'google' and 'twitter'
       .order('fetched_at', { ascending: false })
-      .limit(20)
+      .limit(25)
 
     if (error) {
       console.error('[API] Error fetching trends:', error)
@@ -37,6 +39,7 @@ export async function GET() {
       trends: (trends || []).map(t => ({
         name: t.topic_name,
         tweetCount: t.tweet_count,
+        source: t.source || 'unknown',
         fetchedAt: t.fetched_at,
       })),
     })

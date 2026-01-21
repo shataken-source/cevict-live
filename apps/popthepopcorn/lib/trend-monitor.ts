@@ -1,51 +1,101 @@
 import { supabase } from './supabase'
 import { calculateDramaScore } from './drama-score'
 import { fetchTwitterTrends, getWOEID, findMatchingTrends } from './twitter-trends'
+import { fetchGoogleTrends, getGoogleTrendsLocation } from './google-trends'
 
 /**
- * Fetch and store Twitter trending topics
+ * Fetch and store trending topics from both Twitter and Google Trends
  */
 async function fetchAndStoreTrends() {
+  const allTrends: string[] = []
+  
+  // Fetch Twitter trends
   try {
     const woeid = getWOEID(process.env.TWITTER_TRENDS_LOCATION || 'worldwide')
-    const trends = await fetchTwitterTrends(woeid)
-
-    if (trends.length === 0) {
+    const twitterTrends = await fetchTwitterTrends(woeid)
+    
+    if (twitterTrends.length > 0) {
+      console.log(`✓ Fetched ${twitterTrends.length} Twitter trends`)
+      allTrends.push(...twitterTrends.map(t => `twitter:${t}`))
+    } else {
       console.log('No Twitter trends fetched (API may not be configured)')
-      return []
     }
-
-    // Delete expired trends
-    await supabase
-      .from('trending_topics')
-      .delete()
-      .lt('expires_at', new Date().toISOString())
-
-    // Insert new trends
-    const expiresAt = new Date()
-    expiresAt.setHours(expiresAt.getHours() + 1) // Trends expire after 1 hour
-
-    const trendsToInsert = trends.map(topic => ({
-      topic_name: topic,
-      woeid,
-      expires_at: expiresAt.toISOString(),
-    }))
-
-    const { error: insertError } = await supabase
-      .from('trending_topics')
-      .upsert(trendsToInsert, { onConflict: 'topic_name,woeid' })
-
-    if (insertError) {
-      console.error('Error storing trends:', insertError)
-      return trends
-    }
-
-    console.log(`✓ Stored ${trends.length} trending topics`)
-    return trends
   } catch (error) {
-    console.error('Error fetching/storing trends:', error)
+    console.warn('Error fetching Twitter trends:', error)
+  }
+
+  // Fetch Google Trends
+  try {
+    const location = process.env.GOOGLE_TRENDS_LOCATION || process.env.TWITTER_TRENDS_LOCATION || 'US'
+    const googleTrends = await fetchGoogleTrends(location)
+    
+    if (googleTrends.length > 0) {
+      console.log(`✓ Fetched ${googleTrends.length} Google Trends`)
+      allTrends.push(...googleTrends.map(t => `google:${t}`))
+    } else {
+      console.log('No Google Trends fetched (RSS feed may be unavailable)')
+    }
+  } catch (error) {
+    console.warn('Error fetching Google Trends:', error)
+  }
+
+  if (allTrends.length === 0) {
+    console.log('No trends fetched from any source')
     return []
   }
+
+  // Track which trends come from which source
+  const twitterTrendNames = allTrends
+    .filter(t => t.startsWith('twitter:'))
+    .map(t => t.replace('twitter:', ''))
+  const googleTrendNames = allTrends
+    .filter(t => t.startsWith('google:'))
+    .map(t => t.replace('google:', ''))
+  
+  // Find trends that appear in both sources
+  const bothTrends = twitterTrendNames.filter(t => googleTrendNames.includes(t))
+  const twitterOnly = twitterTrendNames.filter(t => !googleTrendNames.includes(t))
+  const googleOnly = googleTrendNames.filter(t => !twitterTrendNames.includes(t))
+
+  // Delete expired trends
+  await supabase
+    .from('trending_topics')
+    .delete()
+    .lt('expires_at', new Date().toISOString())
+
+  // Insert new trends with source tracking
+  const expiresAt = new Date()
+  expiresAt.setHours(expiresAt.getHours() + 1) // Trends expire after 1 hour
+
+  const trendsToInsert = [
+    ...bothTrends.map(topic => ({
+      topic_name: topic,
+      source: 'both' as const,
+      expires_at: expiresAt.toISOString(),
+    })),
+    ...twitterOnly.map(topic => ({
+      topic_name: topic,
+      source: 'twitter' as const,
+      expires_at: expiresAt.toISOString(),
+    })),
+    ...googleOnly.map(topic => ({
+      topic_name: topic,
+      source: 'google' as const,
+      expires_at: expiresAt.toISOString(),
+    })),
+  ]
+
+  const { error: insertError } = await supabase
+    .from('trending_topics')
+    .upsert(trendsToInsert, { onConflict: 'topic_name' })
+
+  if (insertError) {
+    console.error('Error storing trends:', insertError)
+    return uniqueTrends
+  }
+
+  console.log(`✓ Stored ${uniqueTrends.length} unique trending topics (from ${allTrends.length} total)`)
+  return uniqueTrends
 }
 
 /**

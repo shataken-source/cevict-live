@@ -70,15 +70,17 @@ CREATE TABLE IF NOT EXISTS drama_history (
   CONSTRAINT fk_top_headline FOREIGN KEY (top_headline_id) REFERENCES headlines(id) ON DELETE SET NULL
 );
 
--- Trending topics table (from Twitter/X)
+-- Trending topics table (from Twitter/X and Google Trends)
 CREATE TABLE IF NOT EXISTS trending_topics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   topic_name TEXT NOT NULL,
   tweet_count INTEGER,
   woeid INTEGER DEFAULT 1,
+  source TEXT CHECK (source IN ('twitter', 'google', 'both')),
   fetched_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   expires_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '1 hour'),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(topic_name)
 );
 
 -- Indexes for performance

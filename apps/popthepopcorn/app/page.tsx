@@ -25,6 +25,7 @@ interface Headline {
 interface TrendingTopic {
   name: string
   tweetCount?: number
+  source?: 'twitter' | 'google' | 'both' | 'unknown'
   fetchedAt: string
 }
 
@@ -112,16 +113,16 @@ export default function Home() {
   const techHeadlines = secondaryHeadlines.filter(h => h.category === 'tech' || h.category === 'business').slice(0, 10)
   const entertainmentHeadlines = secondaryHeadlines.filter(h => h.category === 'entertainment').slice(0, 10)
 
-  // Use Twitter trends if available, otherwise fall back to extracted keywords
+  // Use trends from API if available, otherwise fall back to extracted keywords
   const trendingTopics = twitterTrends.length > 0
-    ? twitterTrends.map(t => t.name).slice(0, 15)
+    ? twitterTrends.slice(0, 15)
     : Array.from(
         new Set(
           headlines
             .flatMap(h => h.title.toLowerCase().split(/\s+/))
             .filter(word => word.length > 4)
         )
-      ).slice(0, 15)
+      ).map(name => ({ name, source: 'unknown' as const, fetchedAt: new Date().toISOString() })).slice(0, 15)
 
   const highDramaAlerts = headlines.filter(h => h.drama_score >= 7)
 
@@ -249,22 +250,44 @@ export default function Home() {
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               TRENDING TOPICS
               {twitterTrends.length > 0 && (
-                <span className="text-sm font-normal text-gray-600">(from Twitter/X)</span>
+                <span className="text-sm font-normal text-gray-600">
+                  ({twitterTrends.filter(t => t.source === 'both').length > 0 && '🔥 '}
+                  from {twitterTrends.some(t => t.source === 'google' || t.source === 'both') ? 'Google Trends & ' : ''}Twitter/X)
+                </span>
               )}
             </h2>
             <div className="flex flex-wrap gap-2">
-              {trendingTopics.map((topic, index) => {
-                const twitterTrend = twitterTrends.find(t => t.name === topic)
+              {twitterTrends.map((trend, index) => {
+                const isBoth = trend.source === 'both'
+                const isGoogle = trend.source === 'google'
+                const isTwitter = trend.source === 'twitter'
+                
                 return (
                   <span
                     key={index}
-                    className="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 cursor-pointer flex items-center gap-1"
-                    title={twitterTrend?.tweetCount ? `${twitterTrend.tweetCount.toLocaleString()} tweets` : undefined}
+                    className={`px-3 py-1 rounded-full text-sm hover:opacity-80 cursor-pointer flex items-center gap-1 ${
+                      isBoth 
+                        ? 'bg-gradient-to-r from-blue-100 to-red-100 border border-blue-300' 
+                        : isGoogle
+                        ? 'bg-red-100 border border-red-300'
+                        : 'bg-gray-100 border border-gray-300'
+                    }`}
+                    title={
+                      trend.tweetCount 
+                        ? `${trend.tweetCount.toLocaleString()} tweets` 
+                        : isBoth 
+                        ? 'Trending on both Twitter and Google'
+                        : isGoogle
+                        ? 'Trending on Google'
+                        : 'Trending on Twitter'
+                    }
                   >
-                    {twitterTrend && <span className="text-blue-500">𝕏</span>}
-                    #{topic}
-                    {twitterTrend?.tweetCount && (
-                      <span className="text-xs text-gray-500">({twitterTrend.tweetCount.toLocaleString()})</span>
+                    {isBoth && <span className="text-orange-500">🔥</span>}
+                    {isTwitter && !isBoth && <span className="text-blue-500">𝕏</span>}
+                    {isGoogle && !isBoth && <span className="text-red-500">G</span>}
+                    #{trend.name}
+                    {trend.tweetCount && (
+                      <span className="text-xs text-gray-500">({trend.tweetCount.toLocaleString()})</span>
                     )}
                   </span>
                 )
