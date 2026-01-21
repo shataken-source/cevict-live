@@ -1,18 +1,20 @@
-# 🍿 PopThePopcorn - Drudge Report-Style News Aggregator
+# 🍿 PopThePopcorn - Gen Z Breaking News Platform
 
-A lightning-fast, Drudge Report-inspired news aggregator with AI-powered drama scoring, real-time updates, and SMS alerts.
+A Gen Z-focused breaking news aggregator with AI-powered drama scoring, social listening (Reddit/Twitter), video script generation, and multi-platform distribution (Discord, SMS, TikTok-ready).
 
-## 🎯 Features
+## 🎯 Features (Gen Z Optimized)
 
-- **Drudge-Style Layout**: Minimalist, high-contrast design optimized for speed
-- **AI-Powered Drama Scoring**: Automatic 1-10 drama score calculation for every headline
-- **Real-Time Updates**: Auto-refreshes every 60 seconds
+- **Video-First Content**: Auto-generates TikTok/YouTube Shorts/Reels scripts for every headline
+- **Social Listening**: Monitors Reddit, Twitter/X, and Google Trends (Gen Z's preferred sources)
+- **Multi-Platform Distribution**: Discord webhooks, SMS alerts, and website
+- **AI-Powered Drama Scoring**: Automatic 1-10 drama score with trending topic boosts
+- **Source Transparency**: Labels for verified/unverified/viral/user reports (Gen Z values authenticity)
+- **Real-Time Updates**: Auto-refreshes with configurable intervals
 - **Breaking News Ticker**: Sticky top bar with scrolling breaking headlines
 - **Voting System**: Upvote/downvote stories to influence ranking
-- **SMS Alerts**: Get notified via Sinch when high-drama stories break
-- **Three-Column Layout**: Politics, Tech & Business, Entertainment
-- **Trending Topics**: Auto-detected trending keywords
-- **Admin Dashboard**: Analytics, reported stories, drama history
+- **Gen Z-Focused Categories**: Entertainment/Viral, Tech/Social, Politics (prioritized for Gen Z interests)
+- **Trending Topics**: Twitter and Google Trends integration
+- **Admin Dashboard**: Analytics, settings, scraper controls, and more
 
 ## 🚀 Quick Start
 

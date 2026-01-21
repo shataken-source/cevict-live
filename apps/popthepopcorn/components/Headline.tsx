@@ -19,6 +19,8 @@ interface HeadlineProps {
     posted_at: string
     is_breaking: boolean
     description?: string
+    source_verification?: 'verified' | 'unverified' | 'user_report' | 'viral' | 'official'
+    video_script?: string
   }
   isPrimary?: boolean
 }
@@ -56,10 +58,28 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
       <div className={`mb-8 p-6 border-2 ${headline.is_breaking ? 'border-red-500 breaking-pulse' : 'border-gray-300'}`}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="text-xs text-gray-500 uppercase">{headline.category}</span>
               <span className="text-xs text-gray-500">•</span>
               <span className="text-xs text-gray-500">{headline.source}</span>
+              {headline.source_verification && (
+                <>
+                  <span className="text-xs text-gray-500">•</span>
+                  <span className={`text-xs px-2 py-0.5 rounded ${
+                    headline.source_verification === 'verified' || headline.source_verification === 'official'
+                      ? 'bg-green-100 text-green-700'
+                      : headline.source_verification === 'viral'
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {headline.source_verification === 'verified' ? '✓ Verified' :
+                     headline.source_verification === 'official' ? '✓ Official' :
+                     headline.source_verification === 'viral' ? '🔥 Viral' :
+                     headline.source_verification === 'user_report' ? '👤 User Report' :
+                     '⚠️ Unverified'}
+                  </span>
+                </>
+              )}
               <span className="text-xs text-gray-500">•</span>
               <span className="text-xs text-gray-500">{timeAgo}</span>
             </div>

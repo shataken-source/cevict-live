@@ -12,7 +12,8 @@ async function fetchAndStoreTrends() {
   
   // Fetch Twitter trends
   try {
-    const woeid = getWOEID(process.env.TWITTER_TRENDS_LOCATION || 'worldwide')
+    const twitterLocation = await getSetting('TWITTER_TRENDS_LOCATION', process.env.TWITTER_TRENDS_LOCATION || 'worldwide')
+    const woeid = getWOEID(twitterLocation || 'worldwide')
     const twitterTrends = await fetchTwitterTrends(woeid)
     
     if (twitterTrends.length > 0) {
@@ -96,9 +97,19 @@ async function fetchAndStoreTrends() {
 
   if (insertError) {
     console.error('Error storing trends:', insertError)
+    const uniqueTrends = Array.from(new Set([
+      ...bothTrends,
+      ...twitterOnly,
+      ...googleOnly,
+    ]))
     return uniqueTrends
   }
 
+  const uniqueTrends = Array.from(new Set([
+    ...bothTrends,
+    ...twitterOnly,
+    ...googleOnly,
+  ]))
   console.log(`✓ Stored ${uniqueTrends.length} unique trending topics (from ${allTrends.length} total)`)
   return uniqueTrends
 }

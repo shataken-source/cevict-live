@@ -13,7 +13,7 @@ CREATE TABLE headlines (
   title TEXT NOT NULL,
   url TEXT NOT NULL,
   source TEXT NOT NULL,
-  category TEXT NOT NULL CHECK (category IN ('politics', 'tech', 'entertainment', 'business', 'sports', 'other')),
+  category TEXT NOT NULL CHECK (category IN ('politics', 'tech', 'entertainment', 'business', 'sports', 'lifestyle', 'social', 'viral', 'other')),
   drama_score INTEGER NOT NULL CHECK (drama_score >= 1 AND drama_score <= 10),
   upvotes INTEGER DEFAULT 0,
   downvotes INTEGER DEFAULT 0,
@@ -22,6 +22,10 @@ CREATE TABLE headlines (
   is_breaking BOOLEAN DEFAULT FALSE,
   image_url TEXT,
   description TEXT,
+  source_verification TEXT CHECK (source_verification IN ('verified', 'unverified', 'user_report', 'viral', 'official')),
+  video_script TEXT,
+  discord_sent BOOLEAN DEFAULT FALSE,
+  telegram_sent BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

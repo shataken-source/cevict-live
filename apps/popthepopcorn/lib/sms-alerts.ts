@@ -68,8 +68,11 @@ export async function sendSMSAlerts() {
         continue
       }
 
-      // Send batch SMS via Sinch API
-      const message = `🍿 [Drama: ${headline.drama_score}/10] ${headline.title} - ${headline.url}`
+      // Gen Z optimized: Short, punchy, emoji-rich SMS
+      const dramaEmoji = headline.drama_score >= 9 ? '🔴' : headline.drama_score >= 7 ? '🟠' : '🟡'
+      const breakingBadge = headline.is_breaking ? '🚨 BREAKING ' : ''
+      const title = headline.title.length > 80 ? headline.title.substring(0, 77) + '...' : headline.title
+      const message = `${breakingBadge}${dramaEmoji} ${title}\n\n${headline.url}\n\n🍿 Popcorn Bot`
 
       try {
         const response = await fetch(sinchApiUrl, {

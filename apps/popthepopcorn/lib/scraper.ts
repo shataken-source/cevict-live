@@ -3,6 +3,9 @@ import { supabase } from './supabase'
 import { calculateDramaScore } from './drama-score'
 import { getCurrentTrends, findMatchingTrends } from './twitter-trends'
 import { getSetting } from './settings'
+import { generateVideoScript, formatScriptForPlatform } from './video-script-generator'
+import { sendDiscordNotification } from './discord-webhook'
+import { monitorRedditForBreakingNews, redditPostToHeadline } from './reddit-listener'
 
 // Create parser instance
 const parser = new Parser({
@@ -21,50 +24,36 @@ interface NewsSource {
 }
 
 const newsSources: NewsSource[] = [
-  // Politics - Mainstream
-  { name: 'CNN', url: 'http://rss.cnn.com/rss/cnn_topstories.rss', category: 'politics' },
-  { name: 'BBC News', url: 'http://feeds.bbci.co.uk/news/rss.xml', category: 'politics' },
-  { name: 'NPR', url: 'https://feeds.npr.org/1001/rss.xml', category: 'politics' },
-  { name: 'The Hill', url: 'https://thehill.com/rss/syndicator/19110', category: 'politics' },
-  { name: 'Axios', url: 'https://api.axios.com/feed/', category: 'politics' },
-  
-  // Politics - Alternative/Independent (Left-leaning)
-  { name: 'Truthout', url: 'https://truthout.org/feed/?withoutcomments=1', category: 'politics' },
-  { name: 'Raw Story', url: 'https://www.rawstory.com/feeds/feed.rss', category: 'politics' },
-  { name: 'Common Dreams', url: 'https://www.commondreams.org/rss.xml', category: 'politics' },
-  { name: 'The Intercept', url: 'https://theintercept.com/feed', category: 'politics' },
-  { name: 'Democracy Now', url: 'http://www.democracynow.org/democracynow.rss', category: 'politics' },
-  
-  // Politics - Alternative/Independent (Right-leaning)
-  { name: 'Breitbart', url: 'http://feeds.feedburner.com/Breitbart', category: 'politics' },
-  { name: 'The Daily Wire', url: 'https://www.dailywire.com/feeds/rss.xml', category: 'politics' },
-  { name: 'The Federalist', url: 'https://thefederalist.com/feed/', category: 'politics' },
-  
-  // Tech & Business
-  { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', category: 'tech' },
-  { name: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', category: 'tech' },
-  { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', category: 'tech' },
-  { name: 'Hacker News', url: 'https://hnrss.org/frontpage', category: 'tech' },
-  { name: 'Wired', url: 'https://www.wired.com/feed/rss', category: 'tech' },
-  { name: 'Engadget', url: 'https://www.engadget.com/rss.xml', category: 'tech' },
-  { name: 'Bloomberg', url: 'https://feeds.bloomberg.com/markets/news.rss', category: 'business' },
-  { name: 'CNBC', url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html', category: 'business' },
-  { name: 'MarketWatch', url: 'https://www.marketwatch.com/rss/topstories', category: 'business' },
-  // Note: Forbes, Politico, Reuters RSSHub, People, Entertainment Weekly may have access restrictions
-  
-  // Entertainment
+  // Gen Z Focus: Entertainment & Lifestyle (Top Priority)
   { name: 'TMZ', url: 'https://www.tmz.com/rss.xml', category: 'entertainment' },
   { name: 'Variety', url: 'https://variety.com/feed/', category: 'entertainment' },
   { name: 'Deadline', url: 'https://deadline.com/feed/', category: 'entertainment' },
-  { name: 'Hollywood Reporter', url: 'https://www.hollywoodreporter.com/feed/', category: 'entertainment' },
   { name: 'Rolling Stone', url: 'https://www.rollingstone.com/feed/', category: 'entertainment' },
+  { name: 'People', url: 'https://people.com/feed/', category: 'entertainment' },
+  
+  // Social Issues (Gen Z cares deeply about)
+  { name: 'Vox', url: 'https://www.vox.com/rss/index.xml', category: 'social' },
+  { name: 'The Guardian', url: 'https://www.theguardian.com/world/rss', category: 'social' },
+  
+  // Tech (Gen Z is tech-native)
+  { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', category: 'tech' },
+  { name: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', category: 'tech' },
+  { name: 'Hacker News', url: 'https://hnrss.org/frontpage', category: 'tech' },
+  { name: 'Wired', url: 'https://www.wired.com/feed/rss', category: 'tech' },
+  
+  // Viral/Entertainment
+  { name: 'BuzzFeed News', url: 'https://www.buzzfeed.com/news.xml', category: 'viral' },
+  
+  // Politics (Secondary for Gen Z, but still important)
+  { name: 'CNN', url: 'http://rss.cnn.com/rss/cnn_topstories.rss', category: 'politics' },
+  { name: 'BBC News', url: 'http://feeds.bbci.co.uk/news/rss.xml', category: 'politics' },
+  { name: 'Axios', url: 'https://api.axios.com/feed/', category: 'politics' },
   
   // Sports
   { name: 'ESPN', url: 'https://www.espn.com/espn/rss/news', category: 'sports' },
-  { name: 'BBC Sport', url: 'http://feeds.bbci.co.uk/sport/rss.xml', category: 'sports' },
 ]
 
-async function scrapeSource(source: NewsSource, retries = 2) {
+async function scrapeSource(source: NewsSource, trendingTopics: string[] = [], retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       if (attempt > 0) {
@@ -118,8 +107,19 @@ async function scrapeSource(source: NewsSource, retries = 2) {
                           item.title.toLowerCase().includes('breaking') ||
                           item.title.toLowerCase().includes('urgent')
 
+        // Generate video script for Gen Z platforms
+        const videoScript = generateVideoScript({
+          title: item.title,
+          description: item.contentSnippet || item.content || '',
+          source: source.name,
+          drama_score: dramaScore,
+          category: source.category,
+          url: item.link,
+        })
+        const tiktokScript = formatScriptForPlatform(videoScript, 'tiktok')
+
         // Insert into database
-        const { error } = await supabase
+        const { error, data: insertedHeadline } = await supabase
           .from('headlines')
           .insert({
             title: item.title,
@@ -132,13 +132,30 @@ async function scrapeSource(source: NewsSource, retries = 2) {
             posted_at: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
             is_breaking: isBreaking,
             description: item.contentSnippet || item.content?.substring(0, 500) || null,
+            source_verification: 'verified', // RSS feeds are generally verified
+            video_script: tiktokScript,
           })
+          .select()
+          .single()
 
         if (error) {
           console.error(`Error inserting headline from ${source.name}:`, error)
         } else {
           addedCount++
           console.log(`✓ Added: ${item.title.substring(0, 60)}... (Drama: ${dramaScore}/10)`)
+          
+          // Send to Discord if high drama (Gen Z distribution)
+          if (dramaScore >= 7 && insertedHeadline) {
+            await sendDiscordNotification({
+              title: insertedHeadline.title,
+              url: insertedHeadline.url,
+              source: insertedHeadline.source,
+              drama_score: insertedHeadline.drama_score,
+              category: insertedHeadline.category,
+              description: insertedHeadline.description,
+              is_breaking: insertedHeadline.is_breaking,
+            })
+          }
         }
       }
       
@@ -194,12 +211,90 @@ async function scrapeAll() {
     console.log(`Using ${trendingTopics.length} trending topics for drama score boost\n`)
   }
 
+  // Also scrape Reddit for Gen Z-preferred social listening
+  console.log('Monitoring Reddit for breaking news...\n')
+  try {
+    const redditPosts = await monitorRedditForBreakingNews()
+    console.log(`Found ${redditPosts.length} high-engagement Reddit posts\n`)
+    
+    // Process Reddit posts as headlines
+    for (const post of redditPosts.slice(0, 20)) { // Limit to top 20
+      const headlineData = redditPostToHeadline(post)
+      
+      // Check if already exists
+      const { data: existing } = await supabase
+        .from('headlines')
+        .select('id')
+        .eq('url', headlineData.url)
+        .single()
+
+      if (existing) continue
+
+      // Calculate drama score
+      const matchingTrends = trendingTopics.length > 0
+        ? findMatchingTrends(`${headlineData.title} ${headlineData.description || ''}`, trendingTopics)
+        : []
+
+      const dramaScore = calculateDramaScore({
+        title: headlineData.title,
+        description: headlineData.description || '',
+        source: headlineData.source,
+        upvotes: 0,
+        downvotes: 0,
+        posted_at: new Date(post.created_utc * 1000).toISOString(),
+        trendingTopics: matchingTrends,
+      })
+
+      // Generate video script
+      const videoScript = generateVideoScript({
+        ...headlineData,
+        drama_score: dramaScore,
+        url: headlineData.url,
+      })
+      const tiktokScript = formatScriptForPlatform(videoScript, 'tiktok')
+
+      // Insert Reddit post as headline
+      const { data: insertedHeadline } = await supabase
+        .from('headlines')
+        .insert({
+          title: headlineData.title,
+          url: headlineData.url,
+          source: headlineData.source,
+          category: headlineData.category,
+          drama_score: dramaScore,
+          upvotes: post.score,
+          downvotes: 0,
+          posted_at: new Date(post.created_utc * 1000).toISOString(),
+          is_breaking: dramaScore >= 8,
+          description: headlineData.description,
+          source_verification: headlineData.source_verification,
+          video_script: tiktokScript,
+        })
+        .select()
+        .single()
+
+      if (insertedHeadline && dramaScore >= 7) {
+        await sendDiscordNotification({
+          title: insertedHeadline.title,
+          url: insertedHeadline.url,
+          source: insertedHeadline.source,
+          drama_score: insertedHeadline.drama_score,
+          category: insertedHeadline.category,
+          description: insertedHeadline.description,
+          is_breaking: insertedHeadline.is_breaking,
+        })
+      }
+    }
+  } catch (error) {
+    console.warn('Error scraping Reddit:', error)
+  }
+
   let successCount = 0
   let failCount = 0
 
   for (const source of newsSources) {
     try {
-      await scrapeSource(source)
+      await scrapeSource(source, trendingTopics)
       successCount++
     } catch (error) {
       failCount++

@@ -125,6 +125,7 @@
    - `TWITTER_BEARER_TOKEN` (optional, for trending topics)
    - `TWITTER_TRENDS_LOCATION` (optional, defaults to 'worldwide')
    - `GOOGLE_TRENDS_LOCATION` (optional, defaults to 'US' or TWITTER_TRENDS_LOCATION)
+   - `DISCORD_WEBHOOK_URL` (optional, for Discord notifications)
 
 5. **Deploy:**
    Click "Deploy" and wait for the build to complete.
@@ -189,6 +190,7 @@ Vercel Cron jobs are automatically configured in `vercel.json`:
 | `TWITTER_BEARER_TOKEN` | Twitter/X API Bearer Token | `Bearer token from Twitter Developer Portal` |
 | `TWITTER_TRENDS_LOCATION` | Location for Twitter trending topics | `worldwide`, `usa`, `uk`, `canada`, `australia` |
 | `GOOGLE_TRENDS_LOCATION` | Location for Google Trends | `US`, `GB`, `CA`, `AU`, `DE`, `FR`, `ES`, `IT`, `JP`, `IN`, `BR`, etc. |
+| `DISCORD_WEBHOOK_URL` | Discord webhook URL for breaking news | `https://discord.com/api/webhooks/...` |
 
 ## Troubleshooting
 

@@ -20,6 +20,8 @@ interface Headline {
   posted_at: string
   is_breaking: boolean
   description?: string
+  source_verification?: 'verified' | 'unverified' | 'user_report' | 'viral' | 'official'
+  video_script?: string
 }
 
 interface TrendingTopic {
@@ -113,9 +115,14 @@ export default function Home() {
   const secondaryHeadlines = headlines.filter(h => h.id !== primaryHeadline?.id)
 
   const headlinesPerCategory = parseInt(process.env.NEXT_PUBLIC_HEADLINES_PER_CATEGORY || '10', 10)
+  // Gen Z-focused categorization
+  const entertainmentHeadlines = secondaryHeadlines.filter(h => 
+    h.category === 'entertainment' || h.category === 'viral'
+  ).slice(0, headlinesPerCategory)
+  const techHeadlines = secondaryHeadlines.filter(h => 
+    h.category === 'tech' || h.category === 'social' || h.category === 'business'
+  ).slice(0, headlinesPerCategory)
   const politicsHeadlines = secondaryHeadlines.filter(h => h.category === 'politics').slice(0, headlinesPerCategory)
-  const techHeadlines = secondaryHeadlines.filter(h => h.category === 'tech' || h.category === 'business').slice(0, headlinesPerCategory)
-  const entertainmentHeadlines = secondaryHeadlines.filter(h => h.category === 'entertainment').slice(0, headlinesPerCategory)
 
   // Use trends from API if available, otherwise fall back to extracted keywords
   const trendingTopics = twitterTrends.length > 0
@@ -197,12 +204,44 @@ export default function Home() {
           <Headline headline={primaryHeadline} isPrimary />
         )}
 
-        {/* Three Column Layout */}
+        {/* Three Column Layout - Gen Z Focused */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Entertainment & Viral (Gen Z Priority) */}
+          <div>
+            <h2 className="text-2xl font-bold mb-4 border-b-2 border-black pb-2">
+              🎬 ENTERTAINMENT & VIRAL
+            </h2>
+            <div className="space-y-0">
+              {entertainmentHeadlines.length > 0 ? (
+                entertainmentHeadlines.map((headline) => (
+                  <Headline key={headline.id} headline={headline} />
+                ))
+              ) : (
+                <p className="text-gray-500 p-4">No entertainment headlines yet</p>
+              )}
+            </div>
+          </div>
+
+          {/* Tech & Social Issues */}
+          <div>
+            <h2 className="text-2xl font-bold mb-4 border-b-2 border-black pb-2">
+              💻 TECH & SOCIAL
+            </h2>
+            <div className="space-y-0">
+              {techHeadlines.length > 0 ? (
+                techHeadlines.map((headline) => (
+                  <Headline key={headline.id} headline={headline} />
+                ))
+              ) : (
+                <p className="text-gray-500 p-4">No tech headlines yet</p>
+              )}
+            </div>
+          </div>
+
           {/* Politics Column */}
           <div>
             <h2 className="text-2xl font-bold mb-4 border-b-2 border-black pb-2">
-              POLITICS
+              🏛️ POLITICS
             </h2>
             <div className="space-y-0">
               {politicsHeadlines.length > 0 ? (
