@@ -253,38 +253,6 @@ export default function Home() {
               )}
             </div>
           </div>
-
-          {/* Tech & Business Column */}
-          <div>
-            <h2 className="text-2xl font-bold mb-4 border-b-2 border-black pb-2">
-              TECH & BUSINESS
-            </h2>
-            <div className="space-y-0">
-              {techHeadlines.length > 0 ? (
-                techHeadlines.map((headline) => (
-                  <Headline key={headline.id} headline={headline} />
-                ))
-              ) : (
-                <p className="text-gray-500 p-4">No tech headlines yet</p>
-              )}
-            </div>
-          </div>
-
-          {/* Entertainment Column */}
-          <div>
-            <h2 className="text-2xl font-bold mb-4 border-b-2 border-black pb-2">
-              ENTERTAINMENT & CULTURE
-            </h2>
-            <div className="space-y-0">
-              {entertainmentHeadlines.length > 0 ? (
-                entertainmentHeadlines.map((headline) => (
-                  <Headline key={headline.id} headline={headline} />
-                ))
-              ) : (
-                <p className="text-gray-500 p-4">No entertainment headlines yet</p>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Trending Topics */}

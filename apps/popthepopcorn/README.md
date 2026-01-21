@@ -227,6 +227,72 @@ The app can also fetch trending topics from Google Trends (no API key required!)
 
 **Note:** Google Trends RSS feed URLs may change over time. If you encounter issues, you can manually get the RSS feed URL from Google Trends → Trending → Export → RSS Feed and update the URL pattern in `lib/google-trends.ts`.
 
+## 🎮 Discord Integration (Gen Z Distribution)
+
+Discord is Gen Z's preferred communication platform. Breaking news automatically posts to Discord channels.
+
+### Setup Steps:
+
+1. **Create a Discord Webhook:**
+   - Go to your Discord server
+   - Server Settings → Integrations → Webhooks
+   - Click "New Webhook"
+   - Copy the webhook URL
+
+2. **Add to Environment Variables:**
+   ```env
+   DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+   ```
+   
+   Or set it in the admin dashboard under Settings → Discord Integration
+
+3. **How It Works:**
+   - Headlines with drama score ≥ 7 automatically post to Discord
+   - Messages include emoji-rich formatting, drama score, and source verification
+   - Gen Z-optimized tone with "Popcorn Bot" personality
+   - Can be configured per category (entertainment, tech, politics, etc.)
+
+## 📹 Video Script Generation
+
+Every headline automatically generates TikTok/YouTube Shorts/Instagram Reels scripts optimized for Gen Z.
+
+### Features:
+
+- **Hook Generation**: First 3 seconds optimized for retention
+- **Body Content**: 20-30 second scripts with Gen Z tone
+- **Hashtags**: Platform-specific hashtag suggestions
+- **Tone Matching**: Casual, urgent, dramatic, or informative based on content
+
+### Accessing Scripts:
+
+- Scripts are stored in the `video_script` field in the database
+- Can be exported via API or viewed in admin dashboard
+- Ready to paste into TikTok/YouTube Shorts/Reels
+
+## 🔍 Reddit Social Listening
+
+The scraper now monitors Reddit for breaking news (Gen Z's preferred source over RSS feeds).
+
+### Monitored Subreddits:
+
+- `r/news` - General news
+- `r/worldnews` - International news
+- `r/entertainment` - Entertainment news
+- `r/technology` - Tech news
+- `r/videos` - Viral videos
+- `r/PublicFreakout` - Viral content
+- `r/UpliftingNews` - Positive news
+- `r/nottheonion` - Unbelievable news
+
+### Source Verification:
+
+Reddit posts are labeled with source verification:
+- **Viral**: High engagement (1000+ upvotes or 100+ comments)
+- **User Report**: Regular Reddit post
+- **Unverified**: Default for user-generated content
+
+This transparency builds trust with Gen Z, who value authenticity.
+
 ## 🗄️ Database Schema
 
 The app uses Supabase with the following main tables:

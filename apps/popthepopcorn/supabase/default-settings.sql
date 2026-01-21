@@ -23,3 +23,8 @@ ON CONFLICT (key) DO NOTHING;
 INSERT INTO app_settings (key, value, description, category) VALUES
   ('AUTO_REFRESH_INTERVAL', '60', 'Auto-refresh interval in seconds for homepage (10-300)', 'display')
 ON CONFLICT (key) DO NOTHING;
+
+-- Discord Integration (Gen Z distribution)
+INSERT INTO app_settings (key, value, description, category, is_sensitive) VALUES
+  ('DISCORD_WEBHOOK_URL', '', 'Discord webhook URL for breaking news notifications. Get from: Server Settings → Integrations → Webhooks', 'distribution', true)
+ON CONFLICT (key) DO NOTHING;

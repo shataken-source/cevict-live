@@ -651,15 +651,51 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* Discord Integration */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3 text-gray-700">Discord Integration</h3>
+              <div className="space-y-4 pl-4 border-l-2 border-indigo-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Discord Webhook URL
+                    {settings['DISCORD_WEBHOOK_URL']?.description && (
+                      <span className="text-xs text-gray-500 ml-2">
+                        ({settings['DISCORD_WEBHOOK_URL'].description})
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={editingSettings['DISCORD_WEBHOOK_URL'] || ''}
+                      onChange={(e) => handleSettingChange('DISCORD_WEBHOOK_URL', e.target.value)}
+                      placeholder="https://discord.com/api/webhooks/..."
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => handleSaveSetting('DISCORD_WEBHOOK_URL')}
+                      disabled={savingSettings}
+                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Breaking news (drama score ≥ 7) will automatically post to Discord
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Custom Settings */}
             {Object.keys(settings).filter(key => 
-              !['TWITTER_TRENDS_LOCATION', 'GOOGLE_TRENDS_LOCATION', 'SCRAPER_ITEMS_PER_SOURCE', 'HEADLINES_PER_CATEGORY', 'AUTO_REFRESH_INTERVAL'].includes(key)
+              !['TWITTER_TRENDS_LOCATION', 'GOOGLE_TRENDS_LOCATION', 'SCRAPER_ITEMS_PER_SOURCE', 'HEADLINES_PER_CATEGORY', 'AUTO_REFRESH_INTERVAL', 'DISCORD_WEBHOOK_URL'].includes(key)
             ).length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-3 text-gray-700">Other Settings</h3>
                 <div className="space-y-4 pl-4 border-l-2 border-gray-200">
                   {Object.keys(settings).filter(key => 
-                    !['TWITTER_TRENDS_LOCATION', 'GOOGLE_TRENDS_LOCATION', 'SCRAPER_ITEMS_PER_SOURCE', 'HEADLINES_PER_CATEGORY', 'AUTO_REFRESH_INTERVAL'].includes(key)
+                    !['TWITTER_TRENDS_LOCATION', 'GOOGLE_TRENDS_LOCATION', 'SCRAPER_ITEMS_PER_SOURCE', 'HEADLINES_PER_CATEGORY', 'AUTO_REFRESH_INTERVAL', 'DISCORD_WEBHOOK_URL'].includes(key)
                   ).map(key => (
                     <div key={key}>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
