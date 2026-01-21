@@ -106,7 +106,12 @@ export default function DramaVoteSlider({
       {/* Probability Display - Cyber Style */}
       {probability && (
         <div className="p-5 bg-gradient-to-br from-[#FFD700] via-[#FF6B35] to-[#FF4444] rounded-2xl text-black border-2 border-[#FFD700] shadow-2xl shadow-[#FFD700]/50">
-          <div className="text-xs font-black uppercase mb-3 tracking-wider">PROBABILITY CALCULATOR</div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-black uppercase tracking-wider">PROBABILITY CALCULATOR</div>
+            <span className="text-xs px-2 py-0.5 bg-black/20 rounded border border-black/30">
+              ⚠️ AI Prediction
+            </span>
+          </div>
           <div className="flex items-center justify-between mb-3">
             <div>
               <div className="text-5xl font-black mb-1">{probability.probability}%</div>

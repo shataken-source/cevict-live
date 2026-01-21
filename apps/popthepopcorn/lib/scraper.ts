@@ -1,11 +1,15 @@
 import Parser from 'rss-parser'
 import { supabase } from './supabase'
 import { calculateDramaScore } from './drama-score'
-import { getCurrentTrends, findMatchingTrends } from './twitter-trends'
+import { findMatchingTrends } from './twitter-trends'
 import { getSetting } from './settings'
 import { generateVideoScript, formatScriptForPlatform } from './video-script-generator'
 import { sendDiscordNotification } from './discord-webhook'
 import { monitorRedditForBreakingNews, redditPostToHeadline } from './reddit-listener'
+import { verifyHeadline } from './verification-agent'
+import { buildSourceTrace } from './receipts-engine'
+import { analyzeSentiment } from './sentiment-analyzer'
+import { findOrCreateStoryArc } from './story-arc-tracker'
 
 // Create parser instance
 const parser = new Parser({
@@ -32,8 +36,8 @@ const newsSources: NewsSource[] = [
   { name: 'People', url: 'https://people.com/feed/', category: 'entertainment' },
   
   // Social Issues (Gen Z cares deeply about)
-  { name: 'Vox', url: 'https://www.vox.com/rss/index.xml', category: 'social' },
-  { name: 'The Guardian', url: 'https://www.theguardian.com/world/rss', category: 'social' },
+  { name: 'Vox', url: 'https://www.vox.com/rss/index.xml', category: 'other' },
+  { name: 'The Guardian', url: 'https://www.theguardian.com/world/rss', category: 'other' },
   
   // Tech (Gen Z is tech-native)
   { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', category: 'tech' },
@@ -42,7 +46,7 @@ const newsSources: NewsSource[] = [
   { name: 'Wired', url: 'https://www.wired.com/feed/rss', category: 'tech' },
   
   // Viral/Entertainment
-  { name: 'BuzzFeed News', url: 'https://www.buzzfeed.com/news.xml', category: 'viral' },
+  { name: 'BuzzFeed News', url: 'https://www.buzzfeed.com/news.xml', category: 'entertainment' },
   
   // Politics (Secondary for Gen Z, but still important)
   { name: 'CNN', url: 'http://rss.cnn.com/rss/cnn_topstories.rss', category: 'politics' },
@@ -298,9 +302,8 @@ async function scrapeAll() {
       if (existing) continue
 
       // Calculate drama score
-      const matchingTrends = trendingTopics.length > 0
-        ? findMatchingTrends(`${headlineData.title} ${headlineData.description || ''}`, trendingTopics)
-        : []
+        // Twitter trends matching (optional - requires TWITTER_BEARER_TOKEN)
+        const matchingTrends: string[] = [] // Disabled for now - can be enabled with Twitter API
 
       const dramaScore = calculateDramaScore({
         title: headlineData.title,

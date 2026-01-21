@@ -11,6 +11,11 @@ ALTER TABLE drama_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE trending_topics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE crowd_drama_votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE virtual_currency_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE story_boosts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sponsored_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sponsored_impressions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sponsored_clicks ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist (to allow re-running this script)
 DROP POLICY IF EXISTS "Allow public read access to headlines" ON headlines;
@@ -97,6 +102,29 @@ CREATE POLICY "Allow public insert access to crowd_drama_votes"
 CREATE POLICY "Allow public update access to crowd_drama_votes"
   ON crowd_drama_votes FOR UPDATE
   USING (true);
+
+-- Story boosts: Public read, authenticated insert
+CREATE POLICY "Allow public read access to story_boosts"
+  ON story_boosts FOR SELECT
+  USING (true);
+
+CREATE POLICY "Allow public insert access to story_boosts"
+  ON story_boosts FOR INSERT
+  WITH CHECK (true);
+
+-- Sponsored reports: Public read
+CREATE POLICY "Allow public read access to sponsored_reports"
+  ON sponsored_reports FOR SELECT
+  USING (true);
+
+-- Sponsored impressions/clicks: Allow inserts for tracking
+CREATE POLICY "Allow public insert access to sponsored_impressions"
+  ON sponsored_impressions FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY "Allow public insert access to sponsored_clicks"
+  ON sponsored_clicks FOR INSERT
+  WITH CHECK (true);
 
 -- IMPORTANT: After running this script, refresh Supabase's schema cache
 -- Go to: Supabase Dashboard > Settings > API > Click "Reload schema cache" button

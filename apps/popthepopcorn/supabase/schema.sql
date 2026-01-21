@@ -52,8 +52,25 @@ CREATE TABLE user_alerts (
   alert_types JSONB DEFAULT '[]'::jsonb,
   custom_keywords JSONB DEFAULT '[]'::jsonb,
   is_active BOOLEAN DEFAULT TRUE,
+  -- 2026 Compliance: Age category and privacy settings
+  age_category TEXT CHECK (age_category IN ('13-15', '16-17', '18+', 'unknown')),
+  requires_parental_consent BOOLEAN DEFAULT FALSE,
+  privacy_settings JSONB DEFAULT '{"shareData": false, "allowNotifications": true, "allowLateNightNotifications": false, "allowTracking": false, "allowInAppPurchases": false}'::jsonb,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Virtual currency transactions table (2026 IRS compliance - Form 1099-DA)
+CREATE TABLE IF NOT EXISTS virtual_currency_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_identifier TEXT NOT NULL,
+  transaction_type TEXT NOT NULL CHECK (transaction_type IN ('earn', 'spend', 'transfer')),
+  amount INTEGER NOT NULL,
+  currency TEXT NOT NULL CHECK (currency IN ('salt', 'kernels')),
+  description TEXT,
+  cost_basis INTEGER, -- For tax reporting (spending)
+  gross_proceeds INTEGER, -- For tax reporting (earning)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Reactions table (Gen Z emoji reactions instead of up/down votes)
@@ -149,6 +166,63 @@ CREATE INDEX idx_crowd_drama_votes_headline_id ON crowd_drama_votes(headline_id)
 CREATE INDEX idx_crowd_drama_votes_drama_score ON crowd_drama_votes(drama_score);
 CREATE INDEX idx_user_alerts_phone ON user_alerts(phone_number) WHERE phone_number IS NOT NULL;
 CREATE INDEX idx_user_alerts_email ON user_alerts(email) WHERE email IS NOT NULL;
+CREATE INDEX idx_user_alerts_age_category ON user_alerts(age_category);
+CREATE INDEX idx_virtual_currency_transactions_user ON virtual_currency_transactions(user_identifier);
+CREATE INDEX idx_virtual_currency_transactions_created_at ON virtual_currency_transactions(created_at DESC);
+
+-- Story boosts table (for "Salt the Story" feature)
+CREATE TABLE IF NOT EXISTS story_boosts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  headline_id UUID NOT NULL REFERENCES headlines(id) ON DELETE CASCADE,
+  user_identifier TEXT NOT NULL,
+  kernels_spent INTEGER NOT NULL,
+  boost_multiplier DECIMAL(3,2) NOT NULL DEFAULT 1.0,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_story_boosts_headline ON story_boosts(headline_id);
+CREATE INDEX idx_story_boosts_expires_at ON story_boosts(expires_at);
+
+-- Sponsored reports table
+CREATE TABLE IF NOT EXISTS sponsored_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  headline_id UUID REFERENCES headlines(id) ON DELETE CASCADE,
+  sponsor_name TEXT NOT NULL,
+  sponsor_logo TEXT,
+  sponsor_category TEXT,
+  placement TEXT NOT NULL CHECK (placement IN ('probability_report', 'drama_meter', 'story_card')),
+  cpm INTEGER NOT NULL, -- cost per mille in cents
+  start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  end_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  target_audience JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_sponsored_reports_headline ON sponsored_reports(headline_id);
+CREATE INDEX idx_sponsored_reports_dates ON sponsored_reports(start_date, end_date);
+
+-- Sponsored impressions tracking
+CREATE TABLE IF NOT EXISTS sponsored_impressions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sponsored_report_id UUID NOT NULL REFERENCES sponsored_reports(id) ON DELETE CASCADE,
+  user_identifier TEXT NOT NULL,
+  viewed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_sponsored_impressions_report ON sponsored_impressions(sponsored_report_id);
+CREATE INDEX idx_sponsored_impressions_user ON sponsored_impressions(user_identifier);
+
+-- Sponsored clicks tracking
+CREATE TABLE IF NOT EXISTS sponsored_clicks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sponsored_report_id UUID NOT NULL REFERENCES sponsored_reports(id) ON DELETE CASCADE,
+  user_identifier TEXT NOT NULL,
+  clicked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_sponsored_clicks_report ON sponsored_clicks(sponsored_report_id);
+CREATE INDEX idx_sponsored_clicks_user ON sponsored_clicks(user_identifier);
 CREATE INDEX idx_trending_topics_fetched_at ON trending_topics(fetched_at DESC);
 CREATE INDEX idx_trending_topics_expires_at ON trending_topics(expires_at) WHERE expires_at > NOW();
 CREATE INDEX idx_app_settings_key ON app_settings(key);

@@ -5,9 +5,17 @@ import Link from 'next/link'
 import Ticker from '@/components/Ticker'
 import Headline from '@/components/Headline'
 import DramaMeter from '@/components/DramaMeter'
+import PopcornDramaMeter from '@/components/PopcornDramaMeter'
 import ReactionButtons from '@/components/ReactionButtons'
-import { Settings, Bell } from 'lucide-react'
+import ChatBot from '@/components/ChatBot'
+import StoryArcCard from '@/components/StoryArcCard'
+import AgeGate from '@/components/AgeGate'
+import PopcornAnimation from '@/components/PopcornAnimation'
+import KeyboardShortcuts from '@/components/KeyboardShortcuts'
+import { Settings, Bell, Tv, Zap, Coins, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { generateVersusFrame } from '@/lib/brand-guide'
+import { getUserBalance, updateStreak, getStreakBadge } from '@/lib/virtual-currency'
 
 interface Headline {
   id: string
@@ -74,6 +82,8 @@ export default function Home() {
   const [showArcs, setShowArcs] = useState(false)
   const [bingeMode, setBingeMode] = useState(false)
   const [darkMode, setDarkMode] = useState(true) // Default to dark mode (cinema feel)
+  const [ageVerified, setAgeVerified] = useState(false)
+  const [userBalance, setUserBalance] = useState({ kernels: 0, salt: 0, streak: 0, lastActiveDate: '' })
 
   const fetchHeadlines = async () => {
     try {
@@ -117,18 +127,38 @@ export default function Home() {
     }
   }
 
+  const fetchStoryArcs = async () => {
+    try {
+      const response = await fetch('/api/story-arcs?limit=6')
+      if (response.ok) {
+        const data = await response.json()
+        setStoryArcs(data.arcs || [])
+      }
+    } catch (error) {
+      console.error('Error fetching story arcs:', error)
+    }
+  }
+
   useEffect(() => {
     // Check age verification
-    const verified = sessionStorage.getItem('age_verified')
-    if (verified === 'true') {
-      setAgeVerified(true)
+    if (typeof window !== 'undefined') {
+      const verified = sessionStorage.getItem('age_verified')
+      if (verified === 'true') {
+        setAgeVerified(true)
+      }
     }
+  }, [])
+
+  useEffect(() => {
+    if (!ageVerified) return
 
     // Load user balance and update streak
     const loadUserData = async () => {
-      const userIdentifier = typeof window !== 'undefined' ? localStorage.getItem('user_id') || 'anonymous' : 'anonymous'
+      if (typeof window === 'undefined') return
+      
+      const userIdentifier = localStorage.getItem('user_id') || 'anonymous'
       if (!localStorage.getItem('user_id')) {
-        localStorage.setItem('user_id', `user_${Date.now()}`)
+        localStorage.setItem('user_id', `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
       }
       
       const balance = await getUserBalance(userIdentifier)
@@ -136,12 +166,10 @@ export default function Home() {
       setUserBalance({ ...balance, streak })
     }
 
-    if (ageVerified) {
-      fetchHeadlines()
-      fetchTwitterTrends()
-      fetchStoryArcs()
-      loadUserData()
-    }
+    fetchHeadlines()
+    fetchTwitterTrends()
+    fetchStoryArcs()
+    loadUserData()
   }, [ageVerified])
 
   useEffect(() => {
@@ -172,16 +200,6 @@ export default function Home() {
   const primaryHeadline = headlines.find(h => h.is_breaking || h.drama_score >= 9) || headlines[0]
   const feedHeadlines = headlines.filter(h => h.id !== primaryHeadline?.id)
 
-  const headlinesPerCategory = parseInt(process.env.NEXT_PUBLIC_HEADLINES_PER_CATEGORY || '10', 10)
-  // Gen Z-focused categorization
-  const entertainmentHeadlines = secondaryHeadlines.filter(h => 
-    h.category === 'entertainment' || h.category === 'viral'
-  ).slice(0, headlinesPerCategory)
-  const techHeadlines = secondaryHeadlines.filter(h => 
-    h.category === 'tech' || h.category === 'social' || h.category === 'business'
-  ).slice(0, headlinesPerCategory)
-  const politicsHeadlines = secondaryHeadlines.filter(h => h.category === 'politics').slice(0, headlinesPerCategory)
-
   // Use trends from API if available, otherwise fall back to extracted keywords
   const trendingTopics = twitterTrends.length > 0
     ? twitterTrends.slice(0, 15)
@@ -210,6 +228,13 @@ export default function Home() {
 
   return (
     <div className={`min-h-screen transition-colors ${darkMode ? 'cyber-gradient text-white' : 'bg-white text-black'}`}>
+      {/* Keyboard Shortcuts */}
+      <KeyboardShortcuts
+        onBingeMode={() => setBingeMode(true)}
+        onRefresh={fetchHeadlines}
+        onToggleDarkMode={() => setDarkMode(!darkMode)}
+      />
+
       {/* Ticker */}
       {headlines.length > 0 && <Ticker headlines={headlines} />}
 
@@ -247,15 +272,23 @@ export default function Home() {
               </button>
               <button 
                 onClick={fetchHeadlines}
-                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100"
-                title="Refresh headlines"
+                className={`px-3 py-1 text-sm border rounded transition-all ${
+                  darkMode 
+                    ? 'border-[#333] hover:border-[#FFD700] hover:bg-[#FFD700] hover:bg-opacity-10' 
+                    : 'border-gray-300 hover:bg-gray-100'
+                }`}
+                title="Refresh headlines (Ctrl/Cmd + R)"
               >
                 Refresh
               </button>
               <button
                 onClick={() => setDarkMode(!darkMode)}
-                className="p-2 hover:bg-gray-100 rounded"
-                title="Toggle dark mode"
+                className={`p-2 rounded transition-all ${
+                  darkMode 
+                    ? 'hover:bg-[#FFD700] hover:bg-opacity-20' 
+                    : 'hover:bg-gray-100'
+                }`}
+                title="Toggle dark mode (Ctrl/Cmd + D)"
               >
                 {darkMode ? '☀️' : '🌙'}
               </button>

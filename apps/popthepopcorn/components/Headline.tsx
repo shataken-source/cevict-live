@@ -7,10 +7,12 @@ import DramaMeter from './DramaMeter'
 import PopcornDramaMeter from './PopcornDramaMeter'
 import DramaVoteSlider from './DramaVoteSlider'
 import PopcornAnimation from './PopcornAnimation'
+import ShareCard from './ShareCard'
 import VibeMeter from './VibeMeter'
 import { Share2, ExternalLink, Clock, TrendingUp, FileText } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { generateVersusFrame } from '@/lib/brand-guide'
+import { calculateProbability } from '@/lib/probability-calculator'
 
 interface HeadlineProps {
   headline: {
@@ -115,10 +117,13 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
                 <p className={`text-lg leading-relaxed mb-2 ${headline.verification_status === 'verified' ? 'text-gray-200' : 'text-gray-300'}`}>
                   {headline.description}
                 </p>
-                {/* AI Transparency Label */}
-                <div className="flex items-center gap-2 text-xs">
+                {/* AI Transparency Label - 2026 EU AI Act Compliance */}
+                <div className="flex items-center gap-2 text-xs flex-wrap">
                   <span className="px-2 py-0.5 bg-purple-900/30 text-purple-300 rounded border border-purple-700/50">
                     🤖 AI-Generated Summary
+                  </span>
+                  <span className="px-2 py-0.5 bg-orange-900/30 text-orange-300 rounded border border-orange-700/50">
+                    ⚠️ AI Prediction (Probability Calculator)
                   </span>
                   {headline.verification_confidence !== undefined && (
                     <span className="px-2 py-0.5 bg-blue-900/30 text-blue-300 rounded border border-blue-700/50">
@@ -297,7 +302,20 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
             </div>
           )}
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-end gap-3">
+          <ShareCard
+            headline={{
+              title: headline.title,
+              url: headline.url,
+              drama_score: headline.drama_score,
+              probability: calculateProbability(
+                headline.drama_score,
+                undefined,
+                headline.verification_confidence,
+                headline.sentiment
+              ).probability,
+            }}
+          />
           <ReactionButtons headlineId={headline.id} />
           <VoteButtons
             headlineId={headline.id}

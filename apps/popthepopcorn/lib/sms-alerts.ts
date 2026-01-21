@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { formatProbabilityAlert, calculateProbability } from './probability-calculator'
 import { generateNicknameUsage } from './nicknames'
+import { isRestrictedNotificationHours } from './age-verification'
 
 // Sinch configuration (set via environment variables)
 const SINCH_SERVICE_PLAN_ID = process.env.SINCH_SERVICE_PLAN_ID
@@ -34,6 +35,9 @@ export async function sendSMSAlerts() {
     }
 
     // Get active alert subscriptions
+    // 2026 Compliance: Filter out minors during restricted hours (12am-6am)
+    const isRestrictedHours = isRestrictedNotificationHours()
+    
     const { data: alerts } = await supabase
       .from('user_alerts')
       .select('*')
@@ -53,6 +57,13 @@ export async function sendSMSAlerts() {
       const recipients: string[] = []
       
       for (const alert of alerts) {
+        // 2026 Compliance: Check if user is a minor (stored in alert metadata)
+        // If restricted hours (12am-6am) and user is minor, skip notification
+        const userAgeCategory = alert.age_category // Would be stored when user signs up
+        if (isRestrictedHours && (userAgeCategory === '13-15' || userAgeCategory === '16-17')) {
+          continue // California law: No notifications for minors 12am-6am
+        }
+
         const alertTypes = alert.alert_types || []
         const shouldAlert = 
           alertTypes.includes('breaking') ||

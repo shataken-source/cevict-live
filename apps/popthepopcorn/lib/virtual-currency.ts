@@ -6,6 +6,8 @@
  */
 
 import { supabase } from './supabase'
+import { trackTransaction } from './transaction-tracking'
+import { isRestrictedNotificationHours } from './age-verification'
 
 export interface UserBalance {
   kernels: number
@@ -104,6 +106,7 @@ export async function updateStreak(userIdentifier: string): Promise<number> {
 
 /**
  * Spend Salt to boost a story
+ * Tracks transaction for 2026 IRS reporting
  */
 export async function spendSalt(
   userIdentifier: string,
@@ -122,6 +125,15 @@ export async function spendSalt(
   }
   
   localStorage.setItem(`balance_${userIdentifier}`, JSON.stringify(updated))
+  
+  // Track transaction for tax reporting (2026 IRS compliance)
+  await trackTransaction(
+    userIdentifier,
+    'spend',
+    amount,
+    'salt',
+    `Spent ${amount} Salt for ${action}`
+  )
   
   return true
 }
