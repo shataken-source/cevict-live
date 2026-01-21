@@ -20,8 +20,8 @@ export async function GET() {
     }
 
     // Fetch headlines ordered by drama score and recency
-    // Include reaction counts for Gen Z reactions
-    const { data: headlines, error } = await supabase
+    // Try with reactions join first, fallback to simple query if it fails
+    let { data: headlines, error } = await supabase
       .from('headlines')
       .select(`
         *,
@@ -31,14 +31,29 @@ export async function GET() {
       .order('posted_at', { ascending: false })
       .limit(100)
 
+    // If join fails (e.g., RLS issue), try without reactions
     if (error) {
-      console.error('[API] Error fetching headlines:', error)
-      return NextResponse.json({ 
-        error: 'Failed to fetch headlines', 
-        message: error.message,
-        code: error.code,
-        details: error 
-      }, { status: 500 })
+      console.warn('[API] Headlines query with reactions failed, trying without:', error.message)
+      const simpleQuery = await supabase
+        .from('headlines')
+        .select('*')
+        .order('drama_score', { ascending: false })
+        .order('posted_at', { ascending: false })
+        .limit(100)
+      
+      if (simpleQuery.error) {
+        console.error('[API] Error fetching headlines (simple query):', simpleQuery.error)
+        return NextResponse.json({ 
+          error: 'Failed to fetch headlines', 
+          message: simpleQuery.error.message,
+          code: simpleQuery.error.code,
+          details: simpleQuery.error,
+          hint: 'Check RLS policies and schema cache'
+        }, { status: 500 })
+      }
+      
+      headlines = simpleQuery.data
+      error = null
     }
 
     // Log for debugging
