@@ -39,6 +39,18 @@ interface TrendingTopic {
   fetchedAt: string
 }
 
+interface StoryArc {
+  id: string
+  title: string
+  description?: string
+  category: string
+  season_number: number
+  status: 'ongoing' | 'concluded' | 'archived'
+  total_episodes: number
+  total_drama_score: number
+  last_episode_at?: string
+}
+
 export default function Home() {
   const [headlines, setHeadlines] = useState<Headline[]>([])
   const [overallDrama, setOverallDrama] = useState(5)
@@ -92,6 +104,7 @@ export default function Home() {
   useEffect(() => {
     fetchHeadlines()
     fetchTwitterTrends()
+    fetchStoryArcs()
   }, [])
 
   useEffect(() => {
@@ -207,6 +220,30 @@ export default function Home() {
 
       {/* Main Content - Vertical Feed (TikTok-style) */}
       <main className="max-w-4xl mx-auto p-4">
+        {/* Story Arcs Section (The "Lore" System) */}
+        {storyArcs.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Tv size={20} />
+                <h2 className="text-2xl font-bold">📺 Story Arcs</h2>
+                <span className="text-sm text-gray-500">(Netflix-style news seasons)</span>
+              </div>
+              <button
+                onClick={() => setShowArcs(!showArcs)}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                {showArcs ? 'Hide' : 'Show All'}
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {storyArcs.slice(0, showArcs ? storyArcs.length : 2).map((arc) => (
+                <StoryArcCard key={arc.id} arc={arc} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Primary Headline */}
         {primaryHeadline && (
           <Headline headline={primaryHeadline} isPrimary />
