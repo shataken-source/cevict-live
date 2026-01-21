@@ -21,43 +21,66 @@ export async function GET() {
 
     // Fetch headlines ordered by drama score and recency
     // Try with reactions join first, fallback to simple query if it fails
-    let { data: headlines, error } = await supabase
-      .from('headlines')
-      .select(`
-        *,
-        reactions:reactions(reaction_type)
-      `)
-      .order('drama_score', { ascending: false })
-      .order('posted_at', { ascending: false })
-      .limit(100)
+    let headlines: any[] = []
+    let error: any = null
 
-    // If join fails (e.g., RLS issue), try without reactions
-    if (error) {
-      console.warn('[API] Headlines query with reactions failed, trying without:', error.message)
-      const simpleQuery = await supabase
+    try {
+      const queryPromise = supabase
         .from('headlines')
-        .select('*')
+        .select(`
+          *,
+          reactions:reactions(reaction_type)
+        `)
         .order('drama_score', { ascending: false })
         .order('posted_at', { ascending: false })
         .limit(100)
-      
-      if (simpleQuery.error) {
-        console.error('[API] Error fetching headlines (simple query):', simpleQuery.error)
+
+      const result = await Promise.race([queryPromise, queryTimeout]) as any
+      headlines = result.data || []
+      error = result.error
+    } catch (timeoutError: any) {
+      console.error('[API] Query timeout, trying simple query')
+      error = timeoutError
+    }
+
+    // If join fails (e.g., RLS issue or timeout), try without reactions
+    if (error) {
+      console.warn('[API] Headlines query with reactions failed, trying without:', error.message)
+      try {
+        const simpleQueryPromise = supabase
+          .from('headlines')
+          .select('*')
+          .order('drama_score', { ascending: false })
+          .order('posted_at', { ascending: false })
+          .limit(100)
+
+        const simpleResult = await Promise.race([simpleQueryPromise, queryTimeout]) as any
+        
+        if (simpleResult.error) {
+          console.error('[API] Error fetching headlines (simple query):', simpleResult.error)
+          return NextResponse.json({ 
+            error: 'Failed to fetch headlines', 
+            message: simpleResult.error.message,
+            code: simpleResult.error.code,
+            details: simpleResult.error,
+            hint: 'Check RLS policies and schema cache'
+          }, { status: 500 })
+        }
+        
+        headlines = simpleResult.data || []
+        error = null
+      } catch (simpleTimeoutError) {
+        console.error('[API] Simple query also timed out')
         return NextResponse.json({ 
-          error: 'Failed to fetch headlines', 
-          message: simpleQuery.error.message,
-          code: simpleQuery.error.code,
-          details: simpleQuery.error,
-          hint: 'Check RLS policies and schema cache'
-        }, { status: 500 })
+          error: 'Request timeout', 
+          message: 'Database query took too long. Please try again.',
+        }, { status: 504 })
       }
-      
-      headlines = simpleQuery.data
-      error = null
     }
 
     // Log for debugging
-    console.log(`[API] Fetched ${headlines?.length || 0} headlines`)
+    const duration = Date.now() - startTime
+    console.log(`[API] Fetched ${headlines?.length || 0} headlines in ${duration}ms`)
     if (headlines && headlines.length > 0) {
       const categories = [...new Set(headlines.map(h => h.category))]
       console.log(`[API] Categories found: ${categories.join(', ')}`)

@@ -87,7 +87,16 @@ export default function Home() {
 
   const fetchHeadlines = async () => {
     try {
-      const response = await fetch('/api/headlines')
+      // Add timeout to prevent hanging
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      
+      const response = await fetch('/api/headlines', {
+        signal: controller.signal,
+      })
+      
+      clearTimeout(timeoutId)
+      
       if (response.ok) {
         const data = await response.json()
         console.log('[Frontend] Fetched headlines:', data.headlines?.length || 0)
@@ -106,9 +115,13 @@ export default function Home() {
           console.error('[Frontend] Error details:', errorData.details)
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Frontend] Error fetching headlines:', error)
-      toast.error('Failed to load headlines')
+      if (error.name === 'AbortError') {
+        toast.error('Request timed out. Please check your connection.')
+      } else {
+        toast.error('Failed to load headlines')
+      }
     } finally {
       setLoading(false)
     }
@@ -140,36 +153,66 @@ export default function Home() {
   }
 
   useEffect(() => {
+    // Safety timeout: never hang for more than 15 seconds
+    const safetyTimeout = setTimeout(() => {
+      console.warn('[Frontend] Safety timeout: forcing loading to false')
+      setLoading(false)
+    }, 15000)
+
     // Check age verification
     if (typeof window !== 'undefined') {
       const verified = sessionStorage.getItem('age_verified')
       if (verified === 'true') {
         setAgeVerified(true)
+      } else {
+        // If not verified, show age gate immediately (don't wait for API)
+        setLoading(false)
+        clearTimeout(safetyTimeout)
       }
+    } else {
+      // Server-side: don't block on loading
+      setLoading(false)
+      clearTimeout(safetyTimeout)
     }
+
+    return () => clearTimeout(safetyTimeout)
   }, [])
 
   useEffect(() => {
     if (!ageVerified) return
 
+    // Set loading to true when starting to fetch
+    setLoading(true)
+
     // Load user balance and update streak
     const loadUserData = async () => {
       if (typeof window === 'undefined') return
       
-      const userIdentifier = localStorage.getItem('user_id') || 'anonymous'
-      if (!localStorage.getItem('user_id')) {
-        localStorage.setItem('user_id', `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+      try {
+        const userIdentifier = localStorage.getItem('user_id') || 'anonymous'
+        if (!localStorage.getItem('user_id')) {
+          localStorage.setItem('user_id', `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+        }
+        
+        const balance = await getUserBalance(userIdentifier)
+        const streak = await updateStreak(userIdentifier)
+        setUserBalance({ ...balance, streak })
+      } catch (error) {
+        console.error('Error loading user data:', error)
+        // Don't block on user data errors
       }
-      
-      const balance = await getUserBalance(userIdentifier)
-      const streak = await updateStreak(userIdentifier)
-      setUserBalance({ ...balance, streak })
     }
 
-    fetchHeadlines()
-    fetchTwitterTrends()
-    fetchStoryArcs()
-    loadUserData()
+    // Fetch all data in parallel
+    Promise.all([
+      fetchHeadlines(),
+      fetchTwitterTrends().catch(() => {}), // Optional, don't block
+      fetchStoryArcs().catch(() => {}), // Optional, don't block
+      loadUserData(),
+    ]).finally(() => {
+      // Ensure loading is false even if some requests fail
+      setLoading(false)
+    })
   }, [ageVerified])
 
   useEffect(() => {
