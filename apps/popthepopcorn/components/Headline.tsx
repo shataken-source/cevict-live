@@ -99,7 +99,13 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
               </Link>
             </h1>
             {headline.description && (
-              <p className="text-lg text-gray-700 mb-4">{headline.description}</p>
+              <div className="mb-4">
+                <p className="text-lg text-gray-700 mb-1">{headline.description}</p>
+                {/* AI Transparency Label */}
+                <p className="ai-label text-xs">
+                  AI-Generated Summary • Verification confidence: {headline.verification_confidence || 'N/A'}%
+                </p>
+              </div>
             )}
             
             {/* Vibe-O-Meter */}

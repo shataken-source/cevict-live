@@ -118,10 +118,31 @@ export default function Home() {
   }
 
   useEffect(() => {
-    fetchHeadlines()
-    fetchTwitterTrends()
-    fetchStoryArcs()
-  }, [])
+    // Check age verification
+    const verified = sessionStorage.getItem('age_verified')
+    if (verified === 'true') {
+      setAgeVerified(true)
+    }
+
+    // Load user balance and update streak
+    const loadUserData = async () => {
+      const userIdentifier = typeof window !== 'undefined' ? localStorage.getItem('user_id') || 'anonymous' : 'anonymous'
+      if (!localStorage.getItem('user_id')) {
+        localStorage.setItem('user_id', `user_${Date.now()}`)
+      }
+      
+      const balance = await getUserBalance(userIdentifier)
+      const streak = await updateStreak(userIdentifier)
+      setUserBalance({ ...balance, streak })
+    }
+
+    if (ageVerified) {
+      fetchHeadlines()
+      fetchTwitterTrends()
+      fetchStoryArcs()
+      loadUserData()
+    }
+  }, [ageVerified])
 
   useEffect(() => {
     if (!autoRefresh) return
@@ -196,6 +217,14 @@ export default function Home() {
               <span className="text-sm font-normal text-gray-500 ml-2">(aka The Kernel)</span>
             </h1>
             <div className="flex items-center gap-4">
+              {/* Virtual Currency Display */}
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#FFD700] bg-opacity-20 rounded-lg border border-[#FFD700]">
+                <Coins size={16} className="text-[#FFD700]" />
+                <span className="text-sm font-bold text-[#FFD700]">{userBalance.salt} Salt</span>
+                {userBalance.streak >= 3 && (
+                  <span className="text-xs ml-1">{getStreakBadge(userBalance.streak)} {userBalance.streak} day streak</span>
+                )}
+              </div>
               <button
                 onClick={() => setBingeMode(true)}
                 className="px-4 py-2 bg-[#FFD700] text-black font-bold rounded-lg hover:bg-[#FFC700] transition-all flex items-center gap-2"
@@ -285,14 +314,14 @@ export default function Home() {
           </div>
         )}
 
-        {/* Vertical Feed - Gen Z Style (TikTok-like) */}
+        {/* Bento Grid 2.0 Layout (Optional - can toggle) */}
         <div className="space-y-4">
           {/* All headlines in vertical feed, sorted by drama score */}
           {feedHeadlines.length > 0 ? (
             feedHeadlines.map((headline) => (
               <div
                 key={headline.id}
-                className={`${darkMode ? 'bg-[#1A1A1A] border-[#333]' : 'bg-white border-gray-200'} border rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all hover:-translate-y-1`}
+                className={`bento-card ${darkMode ? 'bg-[#1A1A1A] border-[#333] cyber-glow' : 'bg-white border-gray-200'} border overflow-hidden shadow-sm hover:shadow-lg transition-all`}
                 style={{
                   boxShadow: headline.drama_score >= 8 ? `0 4px 20px ${headline.drama_score >= 9 ? 'rgba(255, 68, 68, 0.3)' : 'rgba(255, 215, 0, 0.2)'}` : undefined,
                 }}

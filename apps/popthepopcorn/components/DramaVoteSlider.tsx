@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { calculateProbability } from '@/lib/probability-calculator'
+import SquishyButton from './SquishyButton'
+import { awardSalt } from '@/lib/virtual-currency'
 import toast from 'react-hot-toast'
 
 interface DramaVoteSliderProps {
@@ -128,17 +130,18 @@ export default function DramaVoteSlider({
           <span className="text-lg font-black text-[#FFD700]">{currentScore}/10</span>
         </div>
         
-        {/* Quick Vote Buttons (1-10) */}
+        {/* Quick Vote Buttons (1-10) - Squishy Tactile UI */}
         <div className="grid grid-cols-10 gap-1 mb-2">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
-            <button
+            <SquishyButton
               key={score}
               onClick={() => handleVote(score)}
+              score={score}
               disabled={loading}
               className={`
-                py-2 px-1 rounded text-xs font-bold transition-all
+                py-2 px-1 rounded-lg text-xs font-bold
                 ${userVote === score
-                  ? 'bg-[#FFD700] text-black scale-110'
+                  ? 'bg-[#FFD700] text-black shadow-lg'
                   : score <= 3
                   ? 'bg-gray-200 hover:bg-gray-300'
                   : score <= 6
@@ -147,12 +150,10 @@ export default function DramaVoteSlider({
                   ? 'bg-orange-200 hover:bg-orange-300'
                   : 'bg-red-200 hover:bg-red-300'
                 }
-                disabled:opacity-50 disabled:cursor-not-allowed
               `}
-              title={`Vote ${score}/10`}
             >
               {score}
-            </button>
+            </SquishyButton>
           ))}
         </div>
 
