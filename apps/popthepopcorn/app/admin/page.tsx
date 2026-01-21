@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, TrendingUp, AlertTriangle, Users, BarChart3, LogOut, RefreshCw, Play, Clock } from 'lucide-react'
+import { ArrowLeft, TrendingUp, AlertTriangle, Users, BarChart3, LogOut, RefreshCw, Play, Clock, Settings, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 interface Stats {
@@ -23,6 +23,9 @@ export default function AdminDashboard() {
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null)
   const [scraperRunning, setScraperRunning] = useState(false)
   const [trendsRunning, setTrendsRunning] = useState(false)
+  const [settings, setSettings] = useState<Record<string, { value: string; description?: string; category?: string; is_sensitive?: boolean }>>({})
+  const [editingSettings, setEditingSettings] = useState<Record<string, string>>({})
+  const [savingSettings, setSavingSettings] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -33,6 +36,7 @@ export default function AdminDashboard() {
       fetchStats()
       fetchReportedStories()
       fetchLastScrapeTime()
+      fetchSettings()
     } else {
       router.push('/admin/login')
     }
@@ -42,6 +46,101 @@ export default function AdminDashboard() {
     sessionStorage.removeItem('admin_auth')
     sessionStorage.removeItem('admin_token')
     router.push('/admin/login')
+  }
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/admin/settings', {
+        headers: getAuthHeaders(),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setSettings(data.settings || {})
+        // Initialize editing state with current values
+        const editing: Record<string, string> = {}
+        Object.keys(data.settings || {}).forEach(key => {
+          editing[key] = data.settings[key].value
+        })
+        setEditingSettings(editing)
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error)
+    }
+  }
+
+  const handleSettingChange = (key: string, value: string) => {
+    setEditingSettings(prev => ({
+      ...prev,
+      [key]: value,
+    }))
+  }
+
+  const handleSaveSetting = async (key: string) => {
+    setSavingSettings(true)
+    try {
+      const value = editingSettings[key] || ''
+      const setting = settings[key]
+      
+      const response = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          key,
+          value,
+          description: setting?.description,
+          category: setting?.category,
+        }),
+      })
+
+      if (response.ok) {
+        toast.success(`Setting ${key} saved successfully`)
+        await fetchSettings() // Refresh settings
+      } else {
+        const error = await response.json()
+        toast.error(error.message || 'Failed to save setting')
+      }
+    } catch (error) {
+      console.error('Error saving setting:', error)
+      toast.error('Failed to save setting')
+    } finally {
+      setSavingSettings(false)
+    }
+  }
+
+  const handleSaveAllSettings = async () => {
+    setSavingSettings(true)
+    try {
+      const promises = Object.keys(editingSettings).map(key => {
+        const value = editingSettings[key] || ''
+        const setting = settings[key]
+        
+        return fetch('/api/admin/settings', {
+          method: 'PUT',
+          headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            key,
+            value,
+            description: setting?.description,
+            category: setting?.category,
+          }),
+        })
+      })
+
+      await Promise.all(promises)
+      toast.success('All settings saved successfully')
+      await fetchSettings() // Refresh settings
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      toast.error('Failed to save some settings')
+    } finally {
+      setSavingSettings(false)
+    }
   }
 
   const getAuthHeaders = () => {
@@ -377,6 +476,231 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* Settings */}
+        <div className="bg-white p-6 rounded-lg shadow mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Settings size={24} />
+              Settings
+            </h2>
+            <button
+              onClick={handleSaveAllSettings}
+              disabled={savingSettings}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              <Save size={16} />
+              Save All
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            {/* Trending Topics Settings */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3 text-gray-700">Trending Topics</h3>
+              <div className="space-y-4 pl-4 border-l-2 border-blue-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Twitter Trends Location
+                    {settings['TWITTER_TRENDS_LOCATION']?.description && (
+                      <span className="text-xs text-gray-500 ml-2">
+                        ({settings['TWITTER_TRENDS_LOCATION'].description})
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editingSettings['TWITTER_TRENDS_LOCATION'] || ''}
+                      onChange={(e) => handleSettingChange('TWITTER_TRENDS_LOCATION', e.target.value)}
+                      placeholder="worldwide, usa, uk, canada, australia"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => handleSaveSetting('TWITTER_TRENDS_LOCATION')}
+                      disabled={savingSettings}
+                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Google Trends Location
+                    {settings['GOOGLE_TRENDS_LOCATION']?.description && (
+                      <span className="text-xs text-gray-500 ml-2">
+                        ({settings['GOOGLE_TRENDS_LOCATION'].description})
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editingSettings['GOOGLE_TRENDS_LOCATION'] || ''}
+                      onChange={(e) => handleSettingChange('GOOGLE_TRENDS_LOCATION', e.target.value)}
+                      placeholder="US, GB, CA, AU, DE, FR, ES, IT, JP, IN, BR, etc."
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => handleSaveSetting('GOOGLE_TRENDS_LOCATION')}
+                      disabled={savingSettings}
+                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Scraper Settings */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3 text-gray-700">Scraper</h3>
+              <div className="space-y-4 pl-4 border-l-2 border-green-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Items Per Source
+                    {settings['SCRAPER_ITEMS_PER_SOURCE']?.description && (
+                      <span className="text-xs text-gray-500 ml-2">
+                        ({settings['SCRAPER_ITEMS_PER_SOURCE'].description})
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={editingSettings['SCRAPER_ITEMS_PER_SOURCE'] || '20'}
+                      onChange={(e) => handleSettingChange('SCRAPER_ITEMS_PER_SOURCE', e.target.value)}
+                      min="1"
+                      max="100"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => handleSaveSetting('SCRAPER_ITEMS_PER_SOURCE')}
+                      disabled={savingSettings}
+                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Display Settings */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3 text-gray-700">Display</h3>
+              <div className="space-y-4 pl-4 border-l-2 border-purple-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Headlines Per Category
+                    {settings['HEADLINES_PER_CATEGORY']?.description && (
+                      <span className="text-xs text-gray-500 ml-2">
+                        ({settings['HEADLINES_PER_CATEGORY'].description})
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={editingSettings['HEADLINES_PER_CATEGORY'] || '10'}
+                      onChange={(e) => handleSettingChange('HEADLINES_PER_CATEGORY', e.target.value)}
+                      min="1"
+                      max="50"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => handleSaveSetting('HEADLINES_PER_CATEGORY')}
+                      disabled={savingSettings}
+                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Auto-Refresh Interval (seconds)
+                    {settings['AUTO_REFRESH_INTERVAL']?.description && (
+                      <span className="text-xs text-gray-500 ml-2">
+                        ({settings['AUTO_REFRESH_INTERVAL'].description})
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={editingSettings['AUTO_REFRESH_INTERVAL'] || '60'}
+                      onChange={(e) => handleSettingChange('AUTO_REFRESH_INTERVAL', e.target.value)}
+                      min="10"
+                      max="300"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => handleSaveSetting('AUTO_REFRESH_INTERVAL')}
+                      disabled={savingSettings}
+                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Custom Settings */}
+            {Object.keys(settings).filter(key => 
+              !['TWITTER_TRENDS_LOCATION', 'GOOGLE_TRENDS_LOCATION', 'SCRAPER_ITEMS_PER_SOURCE', 'HEADLINES_PER_CATEGORY', 'AUTO_REFRESH_INTERVAL'].includes(key)
+            ).length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-gray-700">Other Settings</h3>
+                <div className="space-y-4 pl-4 border-l-2 border-gray-200">
+                  {Object.keys(settings).filter(key => 
+                    !['TWITTER_TRENDS_LOCATION', 'GOOGLE_TRENDS_LOCATION', 'SCRAPER_ITEMS_PER_SOURCE', 'HEADLINES_PER_CATEGORY', 'AUTO_REFRESH_INTERVAL'].includes(key)
+                  ).map(key => (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {key}
+                        {settings[key]?.description && (
+                          <span className="text-xs text-gray-500 ml-2">
+                            ({settings[key].description})
+                          </span>
+                        )}
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type={settings[key]?.is_sensitive ? 'password' : 'text'}
+                          value={editingSettings[key] || ''}
+                          onChange={(e) => handleSettingChange(key, e.target.value)}
+                          placeholder={settings[key]?.is_sensitive ? '••••••••' : 'Enter value'}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                          onClick={() => handleSaveSetting(key)}
+                          disabled={savingSettings}
+                          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {Object.keys(settings).length === 0 && (
+              <p className="text-gray-500 text-center py-8">
+                No settings found. Settings will appear here once they are created.
+                <br />
+                <span className="text-sm">You can create settings by using the API or they will be created automatically when first used.</span>
+              </p>
+            )}
+          </div>
+        </div>
 
         {/* Reported Stories */}
         <div className="bg-white p-6 rounded-lg shadow">

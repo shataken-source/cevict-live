@@ -83,6 +83,19 @@ CREATE TABLE IF NOT EXISTS trending_topics (
   UNIQUE(topic_name)
 );
 
+-- Settings table (for admin-configurable variables)
+CREATE TABLE IF NOT EXISTS app_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key TEXT NOT NULL UNIQUE,
+  value TEXT,
+  description TEXT,
+  category TEXT DEFAULT 'general',
+  is_sensitive BOOLEAN DEFAULT FALSE,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_by TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX idx_headlines_category ON headlines(category);
 CREATE INDEX idx_headlines_drama_score ON headlines(drama_score DESC);
@@ -93,6 +106,8 @@ CREATE INDEX idx_user_alerts_phone ON user_alerts(phone_number) WHERE phone_numb
 CREATE INDEX idx_user_alerts_email ON user_alerts(email) WHERE email IS NOT NULL;
 CREATE INDEX idx_trending_topics_fetched_at ON trending_topics(fetched_at DESC);
 CREATE INDEX idx_trending_topics_expires_at ON trending_topics(expires_at) WHERE expires_at > NOW();
+CREATE INDEX idx_app_settings_key ON app_settings(key);
+CREATE INDEX idx_app_settings_category ON app_settings(category);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -162,6 +177,10 @@ CREATE POLICY "Allow public read access to drama_history"
 CREATE POLICY "Allow public read access to trending_topics"
   ON trending_topics FOR SELECT
   USING (true);
+
+-- Settings: Only allow admin access (will be handled via API with admin auth)
+-- For now, allow service role to manage settings
+-- In production, you may want to restrict this further
 
 -- IMPORTANT: After running this schema, you MUST refresh Supabase's schema cache
 -- The error "Could not find the table 'public.headlines' in the schema cache" means the cache needs refreshing

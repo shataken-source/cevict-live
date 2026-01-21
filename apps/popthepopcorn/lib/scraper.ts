@@ -2,6 +2,7 @@ import Parser from 'rss-parser'
 import { supabase } from './supabase'
 import { calculateDramaScore } from './drama-score'
 import { getCurrentTrends, findMatchingTrends } from './twitter-trends'
+import { getSetting } from './settings'
 
 // Create parser instance
 const parser = new Parser({
@@ -81,7 +82,8 @@ async function scrapeSource(source: NewsSource, retries = 2) {
       }
 
       let addedCount = 0
-      for (const item of feed.items.slice(0, 20)) { // Limit to 20 items per source
+      const itemsPerSource = parseInt(await getSetting('SCRAPER_ITEMS_PER_SOURCE', '20') || '20', 10)
+      for (const item of feed.items.slice(0, itemsPerSource)) {
         if (!item.title || !item.link) continue
 
         // Check if headline already exists

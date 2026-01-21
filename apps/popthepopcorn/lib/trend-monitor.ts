@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import { calculateDramaScore } from './drama-score'
 import { fetchTwitterTrends, getWOEID, findMatchingTrends } from './twitter-trends'
 import { fetchGoogleTrends, getGoogleTrendsLocation } from './google-trends'
+import { getSetting } from './settings'
 
 /**
  * Fetch and store trending topics from both Twitter and Google Trends
@@ -26,8 +27,12 @@ async function fetchAndStoreTrends() {
 
   // Fetch Google Trends
   try {
-    const location = process.env.GOOGLE_TRENDS_LOCATION || process.env.TWITTER_TRENDS_LOCATION || 'US'
-    const googleTrends = await fetchGoogleTrends(location)
+    const googleLocation = await getSetting('GOOGLE_TRENDS_LOCATION', 
+      process.env.GOOGLE_TRENDS_LOCATION || 
+      process.env.TWITTER_TRENDS_LOCATION || 
+      'US'
+    )
+    const googleTrends = await fetchGoogleTrends(googleLocation || 'US')
     
     if (googleTrends.length > 0) {
       console.log(`✓ Fetched ${googleTrends.length} Google Trends`)

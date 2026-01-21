@@ -87,9 +87,12 @@ export default function Home() {
   useEffect(() => {
     if (!autoRefresh) return
 
+    // Get refresh interval from settings (default 60 seconds)
+    const refreshInterval = parseInt(process.env.NEXT_PUBLIC_AUTO_REFRESH_INTERVAL || '60', 10) * 1000
+    
     const interval = setInterval(() => {
       fetchHeadlines()
-    }, 60000) // Refresh every 60 seconds
+    }, refreshInterval)
 
     return () => clearInterval(interval)
   }, [autoRefresh])
@@ -109,9 +112,10 @@ export default function Home() {
   const primaryHeadline = headlines.find(h => h.is_breaking || h.drama_score >= 8) || headlines[0]
   const secondaryHeadlines = headlines.filter(h => h.id !== primaryHeadline?.id)
 
-  const politicsHeadlines = secondaryHeadlines.filter(h => h.category === 'politics').slice(0, 10)
-  const techHeadlines = secondaryHeadlines.filter(h => h.category === 'tech' || h.category === 'business').slice(0, 10)
-  const entertainmentHeadlines = secondaryHeadlines.filter(h => h.category === 'entertainment').slice(0, 10)
+  const headlinesPerCategory = parseInt(process.env.NEXT_PUBLIC_HEADLINES_PER_CATEGORY || '10', 10)
+  const politicsHeadlines = secondaryHeadlines.filter(h => h.category === 'politics').slice(0, headlinesPerCategory)
+  const techHeadlines = secondaryHeadlines.filter(h => h.category === 'tech' || h.category === 'business').slice(0, headlinesPerCategory)
+  const entertainmentHeadlines = secondaryHeadlines.filter(h => h.category === 'entertainment').slice(0, headlinesPerCategory)
 
   // Use trends from API if available, otherwise fall back to extracted keywords
   const trendingTopics = twitterTrends.length > 0
@@ -257,10 +261,17 @@ export default function Home() {
               )}
             </h2>
             <div className="flex flex-wrap gap-2">
-              {twitterTrends.map((trend, index) => {
-                const isBoth = trend.source === 'both'
-                const isGoogle = trend.source === 'google'
-                const isTwitter = trend.source === 'twitter'
+              {trendingTopics.map((trend, index) => {
+                // Handle both object and string formats for backward compatibility
+                const trendObj = typeof trend === 'string' 
+                  ? { name: trend, source: 'unknown' as const, fetchedAt: new Date().toISOString() }
+                  : trend
+                const isBoth = trendObj.source === 'both'
+                const isGoogle = trendObj.source === 'google'
+                const isTwitter = trendObj.source === 'twitter'
+                
+                // Find matching trend from API for tweet count
+                const apiTrend = twitterTrends.find(t => t.name === trendObj.name)
                 
                 return (
                   <span
@@ -273,21 +284,23 @@ export default function Home() {
                         : 'bg-gray-100 border border-gray-300'
                     }`}
                     title={
-                      trend.tweetCount 
-                        ? `${trend.tweetCount.toLocaleString()} tweets` 
+                      apiTrend?.tweetCount 
+                        ? `${apiTrend.tweetCount.toLocaleString()} tweets` 
                         : isBoth 
                         ? 'Trending on both Twitter and Google'
                         : isGoogle
                         ? 'Trending on Google'
-                        : 'Trending on Twitter'
+                        : isTwitter
+                        ? 'Trending on Twitter'
+                        : 'Trending topic'
                     }
                   >
                     {isBoth && <span className="text-orange-500">🔥</span>}
                     {isTwitter && !isBoth && <span className="text-blue-500">𝕏</span>}
                     {isGoogle && !isBoth && <span className="text-red-500">G</span>}
-                    #{trend.name}
-                    {trend.tweetCount && (
-                      <span className="text-xs text-gray-500">({trend.tweetCount.toLocaleString()})</span>
+                    #{trendObj.name}
+                    {apiTrend?.tweetCount && (
+                      <span className="text-xs text-gray-500">({apiTrend.tweetCount.toLocaleString()})</span>
                     )}
                   </span>
                 )
