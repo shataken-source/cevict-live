@@ -99,11 +99,18 @@ export default function Home() {
       
       if (response.ok) {
         const data = await response.json()
-        console.log('[Frontend] Fetched headlines:', data.headlines?.length || 0)
-        console.log('[Frontend] Sample headlines:', data.headlines?.slice(0, 3))
-        setHeadlines(data.headlines || [])
+        const fetchedHeadlines = data.headlines || []
+        console.log('[Frontend] Fetched headlines:', fetchedHeadlines.length)
+        console.log('[Frontend] Sample headlines:', fetchedHeadlines.slice(0, 3))
+        console.log('[Frontend] Setting headlines state with', fetchedHeadlines.length, 'items')
+        setHeadlines(fetchedHeadlines)
         setOverallDrama(data.overallDrama || 5)
         setLastUpdated(new Date())
+        
+        // Debug: Log after state update
+        setTimeout(() => {
+          console.log('[Frontend] Headlines state after update:', fetchedHeadlines.length)
+        }, 100)
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Network error' }))
         console.error('[Frontend] API error:', errorData)
@@ -230,18 +237,26 @@ export default function Home() {
 
   // Debug logging
   useEffect(() => {
+    console.log('[Frontend] Headlines state changed. Count:', headlines.length)
     if (headlines.length > 0) {
       console.log('[Frontend] Total headlines:', headlines.length)
+      console.log('[Frontend] First headline:', headlines[0]?.title?.substring(0, 50))
       const categories = [...new Set(headlines.map(h => h.category))]
       console.log('[Frontend] Categories:', categories)
       console.log('[Frontend] Politics count:', headlines.filter(h => h.category === 'politics').length)
       console.log('[Frontend] Tech/Business count:', headlines.filter(h => h.category === 'tech' || h.category === 'business').length)
       console.log('[Frontend] Entertainment count:', headlines.filter(h => h.category === 'entertainment').length)
+    } else {
+      console.warn('[Frontend] Headlines array is empty!')
     }
   }, [headlines])
 
-  const primaryHeadline = headlines.find(h => h.is_breaking || h.drama_score >= 9) || headlines[0]
-  const feedHeadlines = headlines.filter(h => h.id !== primaryHeadline?.id)
+  const primaryHeadline = headlines.length > 0 
+    ? (headlines.find(h => h.is_breaking || h.drama_score >= 9) || headlines[0])
+    : null
+  const feedHeadlines = headlines.length > 0 && primaryHeadline
+    ? headlines.filter(h => h.id !== primaryHeadline.id)
+    : headlines
 
   // Use trends from API if available, otherwise fall back to extracted keywords
   const trendingTopics = twitterTrends.length > 0
@@ -445,7 +460,7 @@ export default function Home() {
         {/* Bento Grid 2.0 Layout (Optional - can toggle) */}
         <div className="space-y-4">
           {/* All headlines in vertical feed, sorted by drama score */}
-          {feedHeadlines.length > 0 ? (
+          {headlines.length > 0 && feedHeadlines.length > 0 ? (
             feedHeadlines.map((headline) => (
               <div
                 key={headline.id}
