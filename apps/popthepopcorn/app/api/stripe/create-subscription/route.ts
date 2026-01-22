@@ -71,9 +71,15 @@ export async function POST(request: NextRequest) {
         expand: ['latest_invoice.payment_intent'],
       })
 
+      const latestInvoice = subscription.latest_invoice as Stripe.Invoice
+      const paymentIntent = latestInvoice?.payment_intent
+      const clientSecret = typeof paymentIntent === 'object' && paymentIntent !== null
+        ? paymentIntent.client_secret
+        : null
+
       return NextResponse.json({
         subscriptionId: subscription.id,
-        clientSecret: (subscription.latest_invoice as Stripe.Invoice)?.payment_intent?.client_secret,
+        clientSecret,
         status: subscription.status,
       })
     } else {
@@ -90,9 +96,15 @@ export async function POST(request: NextRequest) {
         expand: ['latest_invoice.payment_intent'],
       })
 
+      const latestInvoice = subscription.latest_invoice as Stripe.Invoice
+      const paymentIntent = latestInvoice?.payment_intent
+      const clientSecret = typeof paymentIntent === 'object' && paymentIntent !== null
+        ? paymentIntent.client_secret
+        : null
+
       return NextResponse.json({
         subscriptionId: subscription.id,
-        clientSecret: (subscription.latest_invoice as Stripe.Invoice)?.payment_intent?.client_secret,
+        clientSecret,
         status: subscription.status,
       })
     }

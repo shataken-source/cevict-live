@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { addSecurityHeaders } from '@/lib/security-headers'
 
 // Force dynamic rendering (can't be statically generated due to DB queries)
 export const dynamic = 'force-dynamic'
@@ -36,17 +37,19 @@ export async function GET() {
       // During build or schema cache issues, return empty trends
       if (process.env.NEXT_PHASE === 'phase-production-build' || error.code === 'PGRST205') {
         console.warn('[API] Schema cache issue during build, returning empty trends')
-        return NextResponse.json({
-          trends: [],
-        })
+      const response = NextResponse.json({
+        trends: [],
+      })
+      return addSecurityHeaders(response)
       }
-      return NextResponse.json({
+      const response = NextResponse.json({
         error: 'Database error',
         message: error.message,
       }, { status: 500 })
+      return addSecurityHeaders(response)
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       trends: (trends || []).map(t => ({
         name: t.topic_name,
         tweetCount: t.tweet_count,
@@ -54,11 +57,14 @@ export async function GET() {
         fetchedAt: t.fetched_at,
       })),
     })
-  } catch (error: any) {
+    return addSecurityHeaders(response)
+  } catch (error: unknown) {
     console.error('[API] Error in trends route:', error)
-    return NextResponse.json({
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const response = NextResponse.json({
       error: 'Internal server error',
-      message: error.message || 'Unknown error',
+      message: errorMessage,
     }, { status: 500 })
+    return response
   }
 }

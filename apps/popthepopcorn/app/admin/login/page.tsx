@@ -20,19 +20,24 @@ export default function AdminLogin() {
         body: JSON.stringify({ password }),
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          // Store auth token in sessionStorage
-          sessionStorage.setItem('admin_auth', 'authenticated')
-          sessionStorage.setItem('admin_token', password) // Store password as token for API calls
-          toast.success('Login successful!')
-          router.push('/admin')
-        } else {
-          toast.error('Invalid password')
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        // Store JWT token (not password!)
+        sessionStorage.setItem('admin_auth', 'authenticated')
+        if (data.token) {
+          sessionStorage.setItem('admin_token', data.token)
         }
+        toast.success('Login successful!')
+        router.push('/admin')
       } else {
-        toast.error('Authentication failed')
+        // Check for rate limiting
+        const retryAfter = response.headers.get('Retry-After')
+        if (retryAfter) {
+          toast.error(`Too many attempts. Try again in ${Math.ceil(parseInt(retryAfter) / 60)} minutes.`)
+        } else {
+          toast.error(data.error || 'Invalid password')
+        }
       }
     } catch (error) {
       toast.error('Error authenticating')

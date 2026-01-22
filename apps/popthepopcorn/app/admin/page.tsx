@@ -6,18 +6,11 @@ import Link from 'next/link'
 import { ArrowLeft, TrendingUp, AlertTriangle, Users, BarChart3, LogOut, RefreshCw, Play, Clock, Settings, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-interface Stats {
-  totalHeadlines: number
-  topVotedStory: any
-  reportedStories: number
-  activeAlerts: number
-  averageDrama: number
-  dramaHistory: Array<{ overall_drama_score: number; recorded_at: string }>
-}
+import type { AdminStats, Headline, ReportedStory } from '@/lib/types'
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [reportedStories, setReportedStories] = useState<any[]>([])
+  const [stats, setStats] = useState<AdminStats | null>(null)
+  const [reportedStories, setReportedStories] = useState<ReportedStory[]>([])
   const [loading, setLoading] = useState(true)
   const [authenticated, setAuthenticated] = useState(false)
   const [lastScrapeTime, setLastScrapeTime] = useState<string | null>(null)

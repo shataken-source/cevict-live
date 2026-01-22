@@ -4,7 +4,7 @@ import { monitorTrends } from '@/lib/trend-monitor'
 
 export async function POST(request: NextRequest) {
   // Check authentication
-  if (!isAdminAuthenticated(request)) {
+  if (!(await isAdminAuthenticated(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

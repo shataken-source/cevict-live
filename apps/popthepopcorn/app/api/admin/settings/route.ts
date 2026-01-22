@@ -7,18 +7,19 @@ import { getAllSettings, updateSetting } from '@/lib/settings'
  * Get all settings (for admin display)
  */
 export async function GET(request: NextRequest) {
-  if (!isAdminAuthenticated(request)) {
+  if (!(await isAdminAuthenticated(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
     const settings = await getAllSettings()
     return NextResponse.json({ settings })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] Error fetching settings:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({
       error: 'Internal server error',
-      message: error.message,
+      message: errorMessage,
     }, { status: 500 })
   }
 }
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
  * Update a setting
  */
 export async function PUT(request: NextRequest) {
-  if (!isAdminAuthenticated(request)) {
+  if (!(await isAdminAuthenticated(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -55,11 +56,12 @@ export async function PUT(request: NextRequest) {
       success: true,
       message: `Setting ${key} updated successfully`,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API] Error updating setting:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({
       error: 'Internal server error',
-      message: error.message,
+      message: errorMessage,
     }, { status: 500 })
   }
 }

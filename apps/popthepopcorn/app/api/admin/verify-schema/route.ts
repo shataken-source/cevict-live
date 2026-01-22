@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
   // Check authentication
-  if (!isAdminAuthenticated(request)) {
+  if (!(await isAdminAuthenticated(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -38,10 +38,11 @@ export async function GET(request: NextRequest) {
       tableCount: data?.length || 0,
       message: 'Headlines table exists and is accessible',
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({
       exists: false,
-      error: error.message,
+      error: errorMessage,
     }, { status: 200 })
   }
 }

@@ -1,14 +1,10 @@
 import { NextRequest } from 'next/server'
+import { isAdminAuthenticated as verifyAdminToken } from './admin-auth-secure'
 
 /**
  * Check if request is authenticated for admin routes
- * In production, use proper session management or JWT tokens
+ * Uses secure JWT token verification
  */
-export function isAdminAuthenticated(request: NextRequest): boolean {
-  // Check for admin password in header (sent from client after login)
-  const adminToken = request.headers.get('x-admin-token')
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123'
-  
-  // Simple token check - in production, use proper JWT or session tokens
-  return adminToken === adminPassword
+export async function isAdminAuthenticated(request: NextRequest): Promise<boolean> {
+  return await verifyAdminToken(request)
 }

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   // Check authentication
-  if (!isAdminAuthenticated(request)) {
+  if (!(await isAdminAuthenticated(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   // Check authentication
-  if (!isAdminAuthenticated(request)) {
+  if (!(await isAdminAuthenticated(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -1,6 +1,13 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { validateStartup } from '@/lib/startup-validation'
+
+// Validate environment on startup (non-blocking)
+if (typeof window === 'undefined') {
+  // Server-side only
+  validateStartup()
+}
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -13,8 +20,8 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: 'PopThePopcorn - The Kernel | News as Entertainment',
-  description: 'The Arena • News as Entertainment • Spectator Era • AI-powered verification • Source trace receipts • Real-time sentiment analysis',
+  title: 'PopThePopcorn - Breaking News with Drama',
+  description: 'Gen Z-focused breaking news aggregator with AI-powered drama scoring. Get the tea, stay informed.',
   keywords: ['news', 'breaking news', 'gen z', 'drama', 'entertainment', 'the kernel', 'popcorn'],
   authors: [{ name: 'PopThePopcorn' }],
   creator: 'PopThePopcorn',
@@ -25,28 +32,22 @@ export const metadata: Metadata = {
     telephone: false,
   },
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://popthepopcorn.com'),
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
-    title: 'PopThePopcorn - The Kernel 🍿',
-    description: 'The Arena • News as Entertainment • Did you check The Kernel today?',
-    url: '/',
-    siteName: 'PopThePopcorn',
-    locale: 'en_US',
     type: 'website',
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'PopThePopcorn - The Kernel',
-      },
-    ],
+    locale: 'en_US',
+    url: 'https://popthepopcorn.com',
+    siteName: 'PopThePopcorn',
+    title: 'PopThePopcorn - Breaking News with Drama',
+    description: 'Gen Z-focused breaking news aggregator with AI-powered drama scoring',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'PopThePopcorn - The Kernel 🍿',
-    description: 'The Arena • News as Entertainment • Watching the drama unfold',
-    creator: '@PopThePopcorn',
-    images: ['/og-image.png'],
+    title: 'PopThePopcorn - Breaking News with Drama',
+    description: 'Gen Z-focused breaking news aggregator with AI-powered drama scoring',
+    creator: '@popthepopcorn',
   },
   robots: {
     index: true,
@@ -59,11 +60,11 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'The Kernel',
+  verification: {
+    // Add your verification codes here when available
+    // google: 'your-google-verification-code',
+    // yandex: 'your-yandex-verification-code',
+    // yahoo: 'your-yahoo-verification-code',
   },
 }
 
@@ -74,13 +75,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍿</text></svg>" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="The Kernel" />
-      </head>
       <body className={inter.className}>{children}</body>
     </html>
   )

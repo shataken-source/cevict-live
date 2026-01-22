@@ -36,8 +36,8 @@ interface Headline {
   verification_risk?: 'high' | 'medium' | 'low'
   sentiment?: 'hype' | 'panic' | 'satire' | 'neutral' | 'concern'
   vibe_score?: number
-  source_trace?: any
-  provenance?: any
+  source_trace?: unknown
+  provenance?: unknown
 }
 
 interface TrendingTopic {
@@ -122,7 +122,7 @@ export default function Home() {
           console.error('[Frontend] Error details:', errorData.details)
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[Frontend] Error fetching headlines:', error)
       if (error.name === 'AbortError') {
         toast.error('Request timed out. Please check your connection.')

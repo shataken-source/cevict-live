@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limiter'
+import { addSecurityHeaders } from '@/lib/security-headers'
 
 /**
  * POST /api/reactions
@@ -7,6 +9,26 @@ import { supabase } from '@/lib/supabase'
  * Reactions: 🔥 (fire/hype), 🧢 (cap/fake), 🧐 (interesting), 🍿 (drama), 📈 (hype), 📉 (panic), 🎭 (satire)
  */
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(`reactions:${ip}`, RATE_LIMITS.publicWrite)
+
+  if (!rateLimit.allowed) {
+    const response = NextResponse.json(
+      {
+        error: 'Rate limit exceeded',
+        message: 'Too many requests. Please try again later.',
+        retryAfter: rateLimit.retryAfter,
+      },
+      { status: 429 }
+    )
+    response.headers.set('Retry-After', (rateLimit.retryAfter || 60).toString())
+    response.headers.set('X-RateLimit-Limit', RATE_LIMITS.publicWrite.maxRequests.toString())
+    response.headers.set('X-RateLimit-Remaining', '0')
+    response.headers.set('X-RateLimit-Reset', new Date(rateLimit.resetTime).toISOString())
+    return addSecurityHeaders(response)
+  }
+
   try {
     const body = await request.json()
     const { headlineId, reactionType } = body
@@ -118,16 +140,20 @@ export async function POST(request: NextRequest) {
       return acc
     }, {} as Record<string, number>) || {}
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       reactionCounts,
     })
-  } catch (error: any) {
+    response.headers.set('X-RateLimit-Remaining', rateLimit.remaining.toString())
+    return addSecurityHeaders(response)
+  } catch (error: unknown) {
     console.error('[API] Error in reactions route:', error)
-    return NextResponse.json({
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const response = NextResponse.json({
       error: 'Internal server error',
-      message: error.message || 'Unknown error',
+      message: errorMessage,
     }, { status: 500 })
+    return addSecurityHeaders(response)
   }
 }
 
@@ -140,10 +166,19 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const headlineId = searchParams.get('headlineId')
 
-    if (!headlineId) {
-      return NextResponse.json({
-        error: 'Missing headlineId',
-      }, { status: 400 })
+    // Validate headlineId
+    const { validateRequest, headlineIdSchema } = await import('@/lib/input-validation')
+    const validation = validateRequest(headlineIdSchema, headlineId)
+    
+    if (!validation.success) {
+      const response = NextResponse.json(
+        {
+          error: 'Validation failed',
+          message: validation.error,
+        },
+        { status: 400 }
+      )
+      return addSecurityHeaders(response)
     }
 
     const { data: reactions, error } = await supabase
@@ -165,14 +200,17 @@ export async function GET(request: NextRequest) {
       return acc
     }, {} as Record<string, number>) || {}
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       reactionCounts,
     })
-  } catch (error: any) {
+    return addSecurityHeaders(response)
+  } catch (error: unknown) {
     console.error('[API] Error fetching reactions:', error)
-    return NextResponse.json({
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const response = NextResponse.json({
       error: 'Internal server error',
-      message: error.message || 'Unknown error',
+      message: errorMessage,
     }, { status: 500 })
+    return addSecurityHeaders(response)
   }
 }

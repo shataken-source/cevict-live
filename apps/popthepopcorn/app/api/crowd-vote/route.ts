@@ -1,11 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/rate-limiter'
+import { addSecurityHeaders } from '@/lib/security-headers'
 
 /**
  * POST /api/crowd-vote
  * Users vote on drama score (1-10) for crowd-sourced probability
  */
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const ip = getClientIp(request)
+  const rateLimit = checkRateLimit(`crowd-vote:${ip}`, RATE_LIMITS.publicWrite)
+
+  if (!rateLimit.allowed) {
+    const response = NextResponse.json(
+      {
+        error: 'Rate limit exceeded',
+        message: 'Too many requests. Please try again later.',
+        retryAfter: rateLimit.retryAfter,
+      },
+      { status: 429 }
+    )
+    response.headers.set('Retry-After', (rateLimit.retryAfter || 60).toString())
+    response.headers.set('X-RateLimit-Limit', RATE_LIMITS.publicWrite.maxRequests.toString())
+    response.headers.set('X-RateLimit-Remaining', '0')
+    response.headers.set('X-RateLimit-Reset', new Date(rateLimit.resetTime).toISOString())
+    return addSecurityHeaders(response)
+  }
+
   try {
     const body = await request.json()
     const { headlineId, dramaScore } = body
@@ -78,12 +100,19 @@ export async function POST(request: NextRequest) {
       ? votes.reduce((sum, v) => sum + v.drama_score, 0) / votes.length
       : dramaScore
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       crowdAverage: Math.round(avgScore * 10) / 10,
       voteCount: votes?.length || 1,
       userVote: dramaScore,
     })
+    
+    // Add rate limit headers
+    response.headers.set('X-RateLimit-Limit', RATE_LIMITS.publicWrite.maxRequests.toString())
+    response.headers.set('X-RateLimit-Remaining', rateLimit.remaining.toString())
+    response.headers.set('X-RateLimit-Reset', new Date(rateLimit.resetTime).toISOString())
+    
+    return addSecurityHeaders(response)
   } catch (error: any) {
     console.error('[API] Error in crowd-vote route:', error)
     return NextResponse.json({
@@ -102,10 +131,19 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const headlineId = searchParams.get('headlineId')
 
-    if (!headlineId) {
-      return NextResponse.json({
-        error: 'Missing headlineId',
-      }, { status: 400 })
+    // Validate headlineId
+    const { validateRequest, headlineIdSchema } = await import('@/lib/input-validation')
+    const validation = validateRequest(headlineIdSchema, headlineId)
+    
+    if (!validation.success) {
+      const response = NextResponse.json(
+        {
+          error: 'Validation failed',
+          message: validation.error,
+        },
+        { status: 400 }
+      )
+      return addSecurityHeaders(response)
     }
 
     const { data: votes, error } = await supabase
@@ -128,16 +166,19 @@ export async function GET(request: NextRequest) {
       ? votes.reduce((sum, v) => sum + v.drama_score, 0) / votes.length
       : 0
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       crowdAverage: Math.round(avgScore * 10) / 10,
       voteCount: votes?.length || 0,
       votes: votes || [],
     })
-  } catch (error: any) {
+    return addSecurityHeaders(response)
+  } catch (error: unknown) {
     console.error('[API] Error fetching crowd votes:', error)
-    return NextResponse.json({
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const response = NextResponse.json({
       error: 'Internal server error',
-      message: error.message || 'Unknown error',
+      message: errorMessage,
     }, { status: 500 })
+    return addSecurityHeaders(response)
   }
 }

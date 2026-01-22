@@ -6,7 +6,12 @@ import { supabase } from '@/lib/supabase'
  * GET /api/debug/headlines
  */
 export async function GET() {
-  const diagnostics: any = {
+  const diagnostics: {
+    timestamp: string
+    env: Record<string, boolean | string>
+    tests: Record<string, unknown>
+    error?: { message: string; stack?: string }
+  } = {
     timestamp: new Date().toISOString(),
     env: {
       hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -93,10 +98,12 @@ export async function GET() {
     }
 
     return NextResponse.json(diagnostics, { status: 200 })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : undefined
     diagnostics.error = {
-      message: error.message,
-      stack: error.stack,
+      message: errorMessage,
+      stack: errorStack,
     }
     return NextResponse.json(diagnostics, { status: 500 })
   }

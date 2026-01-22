@@ -4,7 +4,7 @@ import { isAdminAuthenticated } from '@/lib/admin-auth'
 
 export async function GET(request: NextRequest) {
   // Check authentication
-  if (!isAdminAuthenticated(request)) {
+  if (!(await isAdminAuthenticated(request))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -39,8 +39,20 @@ export async function GET() {
 
     // Fetch headlines ordered by drama score and recency
     // Try with reactions join first, fallback to simple query if it fails
-    let headlines: any[] = []
-    let error: any = null
+    let headlines: Array<{
+      id: string
+      title: string
+      url: string
+      source: string
+      category: string
+      drama_score: number
+      upvotes: number
+      downvotes: number
+      posted_at: string
+      is_breaking: boolean
+      [key: string]: unknown
+    }> = []
+    let error: Error | null = null
 
     try {
       const queryPromise = supabase
@@ -56,7 +68,7 @@ export async function GET() {
       const result = await Promise.race([queryPromise, queryTimeout]) as any
       headlines = result.data || []
       error = result.error
-    } catch (timeoutError: any) {
+    } catch (timeoutError: unknown) {
       console.error('[API] Query timeout, trying simple query')
       error = timeoutError
     }
@@ -77,7 +89,10 @@ export async function GET() {
           .order('posted_at', { ascending: false })
           .limit(100)
 
-        const simpleResult = await Promise.race([simpleQueryPromise, simpleQueryTimeout]) as any
+        const simpleResult = await Promise.race([simpleQueryPromise, simpleQueryTimeout]) as {
+          data: Array<Record<string, unknown>> | null
+          error: { code?: string; message: string } | null
+        }
         
         if (simpleResult.error) {
           console.error('[API] Error fetching headlines (simple query):', simpleResult.error)
