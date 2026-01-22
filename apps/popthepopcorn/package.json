@@ -20,7 +20,7 @@
     "@supabase/supabase-js": "^2.39.0",
     "cheerio": "^1.0.0-rc.12",
     "date-fns": "^3.0.0",
-    "jose": "^5.2.0",
+    "jose": "^5.10.0",
     "lucide-react": "^0.362.0",
     "next": "^14.2.35",
     "node-cron": "^3.0.3",
@@ -29,7 +29,7 @@
     "react-hot-toast": "^2.4.1",
     "rss-parser": "^3.13.0",
     "stripe": "^14.21.0",
-    "zod": "^3.22.4"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

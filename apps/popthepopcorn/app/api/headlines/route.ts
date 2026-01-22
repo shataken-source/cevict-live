@@ -52,7 +52,7 @@ export async function GET() {
       is_breaking: boolean
       [key: string]: unknown
     }> = []
-    let error: Error | null = null
+    let error: Error | { code?: string; message: string } | null = null
 
     try {
       const queryPromise = supabase
@@ -65,17 +65,23 @@ export async function GET() {
         .order('posted_at', { ascending: false })
         .limit(100)
 
-      const result = await Promise.race([queryPromise, queryTimeout]) as any
+      const result = await Promise.race([queryPromise, queryTimeout]) as {
+        data: typeof headlines | null
+        error: { code?: string; message: string } | null
+      }
       headlines = result.data || []
       error = result.error
     } catch (timeoutError: unknown) {
       console.error('[API] Query timeout, trying simple query')
-      error = timeoutError
+      error = timeoutError instanceof Error 
+        ? timeoutError 
+        : { message: timeoutError ? String(timeoutError) : 'Unknown timeout error' }
     }
 
     // If join fails (e.g., RLS issue or timeout), try without reactions
     if (error) {
-      console.warn('[API] Headlines query with reactions failed, trying without:', error.message)
+      const errorMessage = error instanceof Error ? error.message : error?.message || 'Unknown error'
+      console.warn('[API] Headlines query with reactions failed, trying without:', errorMessage)
       try {
         // Create new timeout for simple query
         const simpleQueryTimeout = new Promise((_, reject) => 
@@ -113,7 +119,7 @@ export async function GET() {
           }, { status: 500 })
         }
         
-        headlines = simpleResult.data || []
+        headlines = (simpleResult.data || []) as typeof headlines
         error = null
       } catch (simpleTimeoutError) {
         console.error('[API] Simple query also timed out')

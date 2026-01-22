@@ -124,7 +124,7 @@ export default function Home() {
       }
     } catch (error: unknown) {
       console.error('[Frontend] Error fetching headlines:', error)
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         toast.error('Request timed out. Please check your connection.')
       } else {
         toast.error('Failed to load headlines')
