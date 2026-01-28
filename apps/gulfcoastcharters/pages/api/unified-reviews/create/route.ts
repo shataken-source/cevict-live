@@ -65,16 +65,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Create unified review directly (inline function to avoid import issues)
-    const reviewPayload = {
+    const reviewPayload: any = {
       user_id: userId,
       review_type: reviewData.review_type,
-      entity_type: reviewData.entity_type || 'vessel',
-      entity_id: reviewData.entity_id || '',
       rating: reviewData.rating,
-      review_text: reviewData.review_text || '',
       platform: reviewData.platform || 'gcc',
-      metadata: reviewData.metadata || {},
+      status: 'pending',
+      photos: [],
     };
+
+    // Add optional fields
+    if (reviewData.title) reviewPayload.title = reviewData.title;
+    if (reviewData.content) reviewPayload.content = reviewData.content;
+    if (reviewData.wtv_property_id) reviewPayload.wtv_property_id = reviewData.wtv_property_id;
+    if (reviewData.wtv_booking_id) reviewPayload.wtv_booking_id = reviewData.wtv_booking_id;
+    if (reviewData.gcc_vessel_id) reviewPayload.gcc_vessel_id = reviewData.gcc_vessel_id;
+    if (reviewData.gcc_booking_id) reviewPayload.gcc_booking_id = reviewData.gcc_booking_id;
+    if (reviewData.gcc_captain_id) reviewPayload.gcc_captain_id = reviewData.gcc_captain_id;
+    if (reviewData.unified_booking_id) reviewPayload.unified_booking_id = reviewData.unified_booking_id;
+    if (reviewData.communication_rating) reviewPayload.communication_rating = reviewData.communication_rating;
+    if (reviewData.value_rating) reviewPayload.value_rating = reviewData.value_rating;
+    if (reviewData.cleanliness_rating) reviewPayload.cleanliness_rating = reviewData.cleanliness_rating;
+    if (reviewData.location_rating) reviewPayload.location_rating = reviewData.location_rating;
+    if (reviewData.experience_rating) reviewPayload.experience_rating = reviewData.experience_rating;
+    if (reviewData.photos) reviewPayload.photos = reviewData.photos;
 
     const { data: review, error: reviewError } = await supabaseAdmin
       .from('unified_reviews')
