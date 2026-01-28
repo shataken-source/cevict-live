@@ -43,10 +43,18 @@ export default function CaptainAvailabilityManager({ captainId }: { captainId: s
 
   const loadAvailability = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('availability-manager', {
-        body: { action: 'get', captainId, date: selectedDate?.toISOString() }
-      });
-      if (data?.slots) setTimeSlots(data.slots);
+      const params = new URLSearchParams();
+      if (selectedDate) params.append('date', selectedDate.toISOString().split('T')[0]);
+      
+      const response = await fetch(`/api/captain/availability?${params.toString()}`);
+      const result = await response.json();
+      
+      if (result.success && result.slots) {
+        setTimeSlots(result.slots);
+      } else if (result.success && result.availability) {
+        // Convert availability data to time slots format if needed
+        setTimeSlots(result.availability);
+      }
     } catch (err) {
       console.error('Error loading availability:', err);
     }
@@ -54,10 +62,19 @@ export default function CaptainAvailabilityManager({ captainId }: { captainId: s
 
   const loadBlockedDates = async () => {
     try {
-      const { data } = await supabase.functions.invoke('availability-manager', {
-        body: { action: 'getBlocked', captainId }
-      });
-      if (data?.blocked) setBlockedDates(data.blocked);
+      const response = await fetch('/api/captain/availability?status=blocked');
+      const result = await response.json();
+      
+      if (result.success && result.availability) {
+        // Convert availability to blocked dates format
+        const blocked = result.availability
+          .filter((a: any) => a.status === 'blocked')
+          .map((a: any) => ({
+            date: a.date,
+            reason: a.notes || 'Blocked',
+          }));
+        setBlockedDates(blocked);
+      }
     } catch (err) {
       console.error('Error loading blocked dates:', err);
     }
@@ -66,18 +83,36 @@ export default function CaptainAvailabilityManager({ captainId }: { captainId: s
   const saveCapacities = async (slots: TimeSlot[]) => {
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('availability-manager', {
-        body: { 
-          action: 'updateCapacity', 
-          captainId, 
-          date: selectedDate?.toISOString(),
-          slots 
-        }
-      });
-      if (!error) {
-        setTimeSlots(slots);
-        toast({ title: 'Capacities updated successfully' });
+      if (!selectedDate) {
+        toast({ title: 'Please select a date', variant: 'destructive' });
+        setLoading(false);
+        return;
       }
+
+      // Create/update availability for each time slot
+      const promises = slots.map(slot => {
+        const [hours, minutes] = slot.time.split(':');
+        const startTime = `${hours}:${minutes}:00`;
+        
+        return fetch('/api/captain/availability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'create',
+            data: {
+              date: selectedDate.toISOString().split('T')[0],
+              time_slot: 'custom',
+              start_time: startTime,
+              max_passengers: slot.capacity,
+              status: slot.booked >= slot.capacity ? 'booked' : 'available',
+            },
+          }),
+        });
+      });
+
+      await Promise.all(promises);
+      setTimeSlots(slots);
+      toast({ title: 'Capacities updated successfully' });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     }
