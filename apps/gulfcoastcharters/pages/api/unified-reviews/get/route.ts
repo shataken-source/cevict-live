@@ -22,32 +22,61 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get reviews
-    const reviews = await getReviewsForEntity(reviewType, {
-      wtv_property_id: wtvPropertyId || undefined,
-      gcc_vessel_id: gccVesselId || undefined,
-      gcc_captain_id: gccCaptainId || undefined,
-      status: status || 'approved',
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      );
+    }
+
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get reviews (inline function)
+    let query = supabaseAdmin
+      .from('unified_reviews')
+      .select('*')
+      .eq('review_type', reviewType);
+
+    if (wtvPropertyId) {
+      query = query.eq('wtv_property_id', wtvPropertyId);
+    }
+    if (gccVesselId) {
+      query = query.eq('gcc_vessel_id', gccVesselId);
+    }
+    if (gccCaptainId) {
+      query = query.eq('gcc_captain_id', gccCaptainId);
+    }
+
+    if (status && status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    const { data: reviews, error: reviewsError } = await query.order('created_at', { ascending: false });
+
+    // Get average rating using SQL function
+    const { data: avgRating, error: avgError } = await supabaseAdmin.rpc('get_average_rating', {
+      p_review_type: reviewType,
+      p_wtv_property_id: wtvPropertyId || null,
+      p_gcc_vessel_id: gccVesselId || null,
+      p_gcc_captain_id: gccCaptainId || null,
     });
 
-    // Get average rating and count
-    const avgRating = await getAverageRating(reviewType, {
-      wtv_property_id: wtvPropertyId || undefined,
-      gcc_vessel_id: gccVesselId || undefined,
-      gcc_captain_id: gccCaptainId || undefined,
-    });
-
-    const count = await getReviewCount(reviewType, {
-      wtv_property_id: wtvPropertyId || undefined,
-      gcc_vessel_id: gccVesselId || undefined,
-      gcc_captain_id: gccCaptainId || undefined,
+    // Get review count using SQL function
+    const { data: count, error: countError } = await supabaseAdmin.rpc('get_review_count', {
+      p_review_type: reviewType,
+      p_wtv_property_id: wtvPropertyId || null,
+      p_gcc_vessel_id: gccVesselId || null,
+      p_gcc_captain_id: gccCaptainId || null,
     });
 
     return NextResponse.json({
       success: true,
-      reviews,
-      average_rating: avgRating,
-      review_count: count,
+      reviews: reviews || [],
+      average_rating: avgRating || 0,
+      review_count: count || 0,
     });
   } catch (error: any) {
     console.error('Error fetching unified reviews:', error);
