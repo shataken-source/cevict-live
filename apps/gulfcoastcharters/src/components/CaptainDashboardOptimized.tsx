@@ -312,8 +312,16 @@ export default function CaptainDashboardOptimized() {
           </TabsContent>
 
           <TabsContent value="operations" className="space-y-6">
-            <CaptainAvailabilityCalendar captainId={captainId} />
-            <CaptainEarnings captainId={captainId} />
+            {captainId ? (
+              <>
+                <CaptainAvailabilityCalendar captainId={captainId} />
+                <CaptainEarnings captainId={captainId} />
+              </>
+            ) : (
+              <Card className="p-12 text-center">
+                <p className="text-gray-600">Loading captain profile...</p>
+              </Card>
+            )}
             <CaptainAlertPreferences />
           </TabsContent>
 
