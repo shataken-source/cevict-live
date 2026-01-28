@@ -33,15 +33,28 @@ export default function MaintenanceBlockManager({ captainId }: { captainId: stri
 
   const loadBlocks = async () => {
     try {
-      const { data } = await supabase
-        .from('blocked_dates')
-        .select('*')
-        .eq('captain_id', captainId)
-        .order('start_date');
-
-      if (data) setBlocks(data);
+      // Use availability API endpoint instead of direct table query
+      const response = await fetch(`/api/captain/availability?status=blocked`);
+      const result = await response.json();
+      
+      if (result.success && result.availability) {
+        // Convert availability records to blocked dates format
+        const blocked = result.availability
+          .filter((a: any) => a.status === 'blocked')
+          .map((a: any) => ({
+            id: a.id || Date.now().toString(),
+            start_date: a.date || a.start_date,
+            end_date: a.end_date || a.date,
+            reason: a.notes || a.reason || 'Blocked',
+            type: a.type || 'maintenance'
+          }));
+        setBlocks(blocked);
+      } else {
+        setBlocks([]);
+      }
     } catch (error) {
       console.error('Error loading blocks:', error);
+      setBlocks([]);
     }
   };
 
@@ -53,27 +66,39 @@ export default function MaintenanceBlockManager({ captainId }: { captainId: stri
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('availability-manager', {
-        body: {
-          action: 'blockDates',
-          captainId,
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
-          reason,
-          type
-        }
-      });
-
-      if (error) throw error;
+      // Use availability API endpoint to block dates
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
       
-      if (data?.error) {
-        toast.error(data.error);
-        if (data.conflictDates) {
-          toast.error(`Conflicts on: ${data.conflictDates.join(', ')}`);
-        }
-        return;
+      // Block each date in the range
+      const datesToBlock: string[] = [];
+      const currentDate = new Date(startDate);
+      const end = new Date(endDate);
+      
+      while (currentDate <= end) {
+        datesToBlock.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
       }
 
+      // Create blocked availability for each date
+      const promises = datesToBlock.map(date => 
+        fetch('/api/captain/availability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'create',
+            data: {
+              date,
+              status: 'blocked',
+              notes: reason,
+              type
+            }
+          })
+        })
+      );
+
+      await Promise.all(promises);
+      
       toast.success('Dates blocked successfully');
       setStartDate(undefined);
       setEndDate(undefined);
@@ -89,14 +114,19 @@ export default function MaintenanceBlockManager({ captainId }: { captainId: stri
 
   const removeBlock = async (id: string) => {
     try {
-      const { error } = await supabase.functions.invoke('availability-manager', {
-        body: { action: 'unblockDates', captainId, blockedId: id }
+      // Use availability API endpoint to unblock dates (id in query string)
+      const response = await fetch(`/api/captain/availability?id=${id}`, {
+        method: 'DELETE'
       });
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to remove block');
+      }
+      
       toast.success('Block removed');
       loadBlocks();
-    } catch (error) {
+    } catch (error: any) {
       toast.error('Failed to remove block');
     }
   };

@@ -79,24 +79,30 @@ export default function LiveAvailabilityView({
 
   const loadBlockedDates = async () => {
     try {
-      const { data } = await supabase
-        .from('blocked_dates')
-        .select('*')
-        .eq('captain_id', captainId);
-
-      if (data) {
+      // Use availability API endpoint instead of direct table query
+      const response = await fetch(`/api/captain/availability?status=blocked`);
+      const result = await response.json();
+      
+      if (result.success && result.availability) {
         const dates: Date[] = [];
-        data.forEach((block: any) => {
-          const start = new Date(block.start_date);
-          const end = new Date(block.end_date);
-          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            dates.push(new Date(d));
+        result.availability.forEach((block: any) => {
+          if (block.date) {
+            dates.push(new Date(block.date));
+          } else if (block.start_date && block.end_date) {
+            const start = new Date(block.start_date);
+            const end = new Date(block.end_date);
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              dates.push(new Date(d));
+            }
           }
         });
         setBlockedDates(dates);
+      } else {
+        setBlockedDates([]);
       }
     } catch (error) {
       console.error('Error loading blocked dates:', error);
+      setBlockedDates([]);
     }
   };
 

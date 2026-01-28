@@ -43,57 +43,118 @@ export default function CaptainDashboardOptimized() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('bookings');
 
-  const captainId = 'captain1';
+  const [captainId, setCaptainId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get captain ID from auth
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase
+          .from('captain_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile) {
+              setCaptainId(profile.id);
+            }
+          });
+      }
+    });
+  }, []);
 
   const loadBookings = useCallback(async () => {
+    if (!captainId) return;
+    
     setLoading(true);
     try {
-      const { data } = await supabase.functions.invoke('captain-bookings', {
-        body: {
-          action: 'getBookings',
-          captainId,
-          data: { status: statusFilter, startDate, endDate }
-        }
-      });
-      setBookings(data?.bookings || []);
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.append('status', statusFilter);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const response = await fetch(`/api/captain/bookings?${params.toString()}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setBookings(result.bookings || []);
+      }
     } catch (error) {
       console.error('Error loading bookings:', error);
     }
     setLoading(false);
-  }, [statusFilter, startDate, endDate]);
+  }, [captainId, statusFilter, startDate, endDate]);
 
   const loadAnalytics = useCallback(async () => {
+    if (!captainId) return;
+    
     try {
-      const { data } = await supabase.functions.invoke('captain-bookings', {
-        body: { action: 'getAnalytics', captainId }
-      });
-      setAnalytics(data);
+      const response = await fetch('/api/captain/analytics');
+      const result = await response.json();
+      
+      if (result.success) {
+        setAnalytics({
+          totalRevenue: result.analytics.totalRevenue,
+          totalBookings: result.analytics.totalBookings,
+          completedBookings: result.analytics.completedBookings,
+          upcomingBookings: result.analytics.upcomingBookings,
+        });
+      }
     } catch (error) {
       console.error('Error loading analytics:', error);
     }
-  }, []);
+  }, [captainId]);
 
   useEffect(() => {
-    loadBookings();
-    loadAnalytics();
-  }, [loadBookings, loadAnalytics]);
+    if (captainId) {
+      loadBookings();
+      loadAnalytics();
+    }
+  }, [captainId, loadBookings, loadAnalytics]);
 
   const updateStatus = useCallback(async (bookingId: string, status: string) => {
-    await supabase.functions.invoke('captain-bookings', {
-      body: { action: 'updateStatus', bookingId, data: { status } }
-    });
-    loadBookings();
-    loadAnalytics();
+    try {
+      const response = await fetch('/api/captain/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'updateStatus',
+          bookingId,
+          data: { status },
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        loadBookings();
+        loadAnalytics();
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   }, [loadBookings, loadAnalytics]);
 
   const saveNotes = useCallback(async () => {
     if (!selectedBooking) return;
-    await supabase.functions.invoke('captain-bookings', {
-      body: { action: 'addNotes', bookingId: selectedBooking.id, data: { notes } }
-    });
-    setSelectedBooking(null);
-    loadBookings();
+    try {
+      const response = await fetch('/api/captain/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'addNotes',
+          bookingId: selectedBooking.id,
+          data: { notes },
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setSelectedBooking(null);
+        loadBookings();
+      }
+    } catch (error) {
+      console.error('Error saving notes:', error);
+    }
   }, [selectedBooking, notes, loadBookings]);
 
   const sendReminder = useCallback(async (bookingId: string) => {
@@ -153,7 +214,7 @@ export default function CaptainDashboardOptimized() {
           </div>
         )}
 
-        <Tabs defaultValue="bookings" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="bookings">Bookings</TabsTrigger>
             <TabsTrigger value="operations">Operations</TabsTrigger>
@@ -165,19 +226,25 @@ export default function CaptainDashboardOptimized() {
           <TabsContent value="bookings" className="space-y-4">
             <Card className="p-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <div className="relative z-0">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="relative z-0">
+                  <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                </div>
+                <div className="relative z-0">
+                  <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                </div>
                 <Button onClick={loadBookings}>Apply Filters</Button>
               </div>
             </Card>
@@ -251,16 +318,32 @@ export default function CaptainDashboardOptimized() {
           </TabsContent>
 
           <TabsContent value="compliance" className="space-y-6">
-            <CertificationManager captainId={captainId} />
-            <InsuranceVerification captainId={captainId} />
+            {captainId ? (
+              <>
+                <CertificationManager captainId={captainId} />
+                <InsuranceVerification captainId={captainId} />
+              </>
+            ) : (
+              <Card className="p-12 text-center">
+                <p className="text-gray-600">Loading captain profile...</p>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="performance">
             <CaptainPerformanceTracker />
           </TabsContent>
 
-          <TabsContent value="reviews">
-            <ReviewModeration captainId={captainId} />
+          <TabsContent value="reviews" className="space-y-4 mt-4" forceMount={false}>
+            <div className="min-h-[400px]">
+              {captainId ? (
+                <ReviewModeration captainId={captainId} />
+              ) : (
+                <Card className="p-12 text-center">
+                  <p className="text-gray-600">Loading captain profile...</p>
+                </Card>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

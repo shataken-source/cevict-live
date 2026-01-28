@@ -33,15 +33,13 @@ export default function SeasonalPricingManager({ captainId }: { captainId: strin
 
   const loadSeasons = async () => {
     try {
-      const { data } = await supabase
-        .from('seasonal_pricing')
-        .select('*')
-        .eq('captain_id', captainId)
-        .order('start_date');
-
-      if (data) setSeasons(data);
+      // TODO: Create API endpoint for seasonal pricing
+      // For now, use local state (table doesn't exist)
+      // This prevents 404 errors
+      setSeasons([]);
     } catch (error) {
       console.error('Error loading seasons:', error);
+      setSeasons([]);
     }
   };
 
@@ -53,25 +51,23 @@ export default function SeasonalPricingManager({ captainId }: { captainId: strin
 
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('availability-manager', {
-        body: {
-          action: 'addSeasonalPricing',
-          captainId,
-          seasonName,
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
-          priceMultiplier: parseFloat(multiplier)
-        }
-      });
-
-      if (error) throw error;
+      // TODO: Create API endpoint for seasonal pricing
+      // For now, add to local state to prevent errors
+      const newSeason: SeasonalPrice = {
+        id: Date.now().toString(),
+        season_name: seasonName,
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split('T')[0],
+        price_multiplier: parseFloat(multiplier),
+        active: true
+      };
       
-      toast.success('Seasonal pricing added');
+      setSeasons([...seasons, newSeason]);
+      toast.success('Seasonal pricing added (local only - API endpoint needed)');
       setSeasonName('');
       setStartDate(undefined);
       setEndDate(undefined);
       setMultiplier('1.5');
-      loadSeasons();
     } catch (error: any) {
       toast.error('Failed to add seasonal pricing');
     } finally {
@@ -81,14 +77,10 @@ export default function SeasonalPricingManager({ captainId }: { captainId: strin
 
   const removeSeason = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('seasonal_pricing')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      // TODO: Create API endpoint for seasonal pricing
+      // For now, remove from local state
+      setSeasons(seasons.filter(s => s.id !== id));
       toast.success('Season removed');
-      loadSeasons();
     } catch (error) {
       toast.error('Failed to remove season');
     }
