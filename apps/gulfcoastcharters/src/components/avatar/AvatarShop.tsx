@@ -69,30 +69,39 @@ export default function AvatarShop({ userId, userPoints, onPointsChange }: Avata
         return;
       }
 
-      // Get current points
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('points')
+      // Get current points from shared_users
+      const { data: sharedUser } = await supabase
+        .from('shared_users')
+        .select('total_points')
         .eq('id', userId)
         .single();
 
-      if (!profile || profile.points < item.price_points) {
+      if (!sharedUser || sharedUser.total_points < item.price_points) {
         toast({ title: 'Insufficient points', variant: 'destructive' });
         return;
       }
 
-      // Transaction
-      const [updateRes, inventoryRes, logRes] = await Promise.all([
-        supabase.from('profiles').update({ points: profile.points - item.price_points }).eq('id', userId),
-        supabase.from('user_avatar_inventory').insert({ user_id: userId, item_id: item.id }),
-        supabase.from('avatar_purchase_log').insert({
-          user_id: userId,
-          item_id: item.id,
-          points_spent: item.price_points
-        })
-      ]);
+      // Use the purchase_avatar_item function if available, otherwise manual transaction
+      const { data: purchaseResult, error: purchaseError } = await supabase.rpc('purchase_avatar_item', {
+        user_uuid: userId,
+        item_uuid: item.id,
+      });
 
-      if (updateRes.error || inventoryRes.error) throw new Error('Transaction failed');
+      if (purchaseError) {
+        // Fallback to manual transaction
+        const newPoints = sharedUser.total_points - item.price_points;
+        const [updateRes, inventoryRes, logRes] = await Promise.all([
+          supabase.from('shared_users').update({ total_points: newPoints }).eq('id', userId),
+          supabase.from('user_avatar_inventory').insert({ user_id: userId, item_id: item.id }),
+          supabase.from('avatar_purchase_log').insert({
+            user_id: userId,
+            item_id: item.id,
+            points_spent: item.price_points
+          })
+        ]);
+
+        if (updateRes.error || inventoryRes.error) throw new Error('Transaction failed');
+      }
 
       // Analytics
       await supabase.from('avatar_analytics').insert({
@@ -102,8 +111,37 @@ export default function AvatarShop({ userId, userPoints, onPointsChange }: Avata
         metadata: { price: item.price_points, item_name: item.name }
       });
 
-      toast({ title: 'Item purchased!', description: `${item.name} added to your inventory` });
-      onPointsChange(profile.points - item.price_points);
+      // Award points for first purchase (gamification)
+      const isFirstPurchase = inventory.length === 0;
+      if (isFirstPurchase) {
+        try {
+          await supabase.functions.invoke('points-rewards-system', {
+            body: {
+              action: 'award_points',
+              userId,
+              actionType: 'avatar_first_purchase',
+              amount: 25,
+            },
+          });
+          toast({ 
+            title: 'Item purchased!', 
+            description: `${item.name} added to your inventory. +25 bonus points for first purchase!` 
+          });
+        } catch (error) {
+          console.error('Error awarding first purchase points:', error);
+        }
+      } else {
+        toast({ title: 'Item purchased!', description: `${item.name} added to your inventory` });
+      }
+
+      // Get updated points
+      const { data: updatedUser } = await supabase
+        .from('shared_users')
+        .select('total_points')
+        .eq('id', userId)
+        .single();
+
+      onPointsChange(updatedUser?.total_points || sharedUser.total_points - item.price_points);
       setInventory([...inventory, item.id]);
     } catch (error: any) {
       toast({ title: 'Purchase failed', description: error.message, variant: 'destructive' });
