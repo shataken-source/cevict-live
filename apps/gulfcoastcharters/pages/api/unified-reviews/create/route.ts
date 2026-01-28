@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createUnifiedReview } from '../../../src/lib/unified-reviews';
+import { createUnifiedReview } from '@/src/lib/unified-reviews';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
