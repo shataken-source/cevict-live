@@ -342,7 +342,7 @@ export default function CaptainDashboardOptimized() {
             <CaptainPerformanceTracker />
           </TabsContent>
 
-          <TabsContent value="reviews" className="space-y-4 mt-4" forceMount={false}>
+          <TabsContent value="reviews" className="space-y-4 mt-4">
             <div className="min-h-[400px]">
               {captainId ? (
                 <ReviewModeration captainId={captainId} />
