@@ -4,7 +4,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createUnifiedReview } from '@/src/lib/unified-reviews';
 import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request: NextRequest) {
@@ -65,15 +64,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create unified review
-    const review = await createUnifiedReview(userId, {
-      ...reviewData,
-      platform: reviewData.platform || 'gcc', // Default to GCC if not specified
-    });
+    // Create unified review directly (inline function to avoid import issues)
+    const reviewPayload = {
+      user_id: userId,
+      review_type: reviewData.review_type,
+      entity_type: reviewData.entity_type || 'vessel',
+      entity_id: reviewData.entity_id || '',
+      rating: reviewData.rating,
+      review_text: reviewData.review_text || '',
+      platform: reviewData.platform || 'gcc',
+      metadata: reviewData.metadata || {},
+    };
 
-    if (!review) {
+    const { data: review, error: reviewError } = await supabaseAdmin
+      .from('unified_reviews')
+      .insert(reviewPayload)
+      .select()
+      .single();
+
+    if (reviewError || !review) {
+      console.error('Error creating review:', reviewError);
       return NextResponse.json(
-        { error: 'Failed to create unified review' },
+        { error: 'Failed to create unified review', details: reviewError?.message },
         { status: 500 }
       );
     }
