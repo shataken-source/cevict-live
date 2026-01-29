@@ -9,7 +9,9 @@
         "lint": "next lint",
         "simulate": "tsx scripts/run-simulation.ts",
         "simulate:2024": "tsx scripts/simulate-2024.ts",
-        "calculate:winrate": "tsx scripts/calculate-2024-win-rate.ts"
+        "calculate:winrate": "tsx scripts/calculate-2024-win-rate.ts",
+        "backtest:fetch": "tsx scripts/fetch-sports-reference-backtest.ts",
+        "backtest:run": "cross-env tsx scripts/run-backtest-historical.ts"
     },
     "dependencies": {
         "@supabase/ssr": "^0.0.10",
@@ -30,6 +32,8 @@
         "@types/react": "18.3.27",
         "@types/react-dom": "^18",
         "autoprefixer": "^10.4.20",
+        "cheerio": "^1.2.0",
+        "cross-env": "^7.0.3",
         "eslint": "^8.57.1",
         "eslint-config-next": "14.2.3",
         "postcss": "^8.4.49",

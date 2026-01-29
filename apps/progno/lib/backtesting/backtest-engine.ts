@@ -1,7 +1,13 @@
 /**
  * Backtesting Framework for Claude Effect
- * Validates predictions on historical data
+ * Validates predictions on historical data.
+ * predictGame() uses the real PredictionEngine and, when useClaudeEffect is true,
+ * applies the Claude Effect via gatherClaudeEffectData + applyClaudeEffect (same as v2 route).
  */
+
+import { PredictionEngine } from '../../app/lib/prediction-engine';
+import type { GameData } from '../../app/lib/prediction-engine';
+import { gatherClaudeEffectData, applyClaudeEffect } from '../../app/lib/claude-effect-integration';
 
 export interface HistoricalGame {
   id: string;
@@ -35,12 +41,14 @@ export interface BacktestResult {
     roi: number;
     totalWagered: number;
     totalReturn: number;
+    gamesBet: number;
   };
   withoutClaudeEffect: {
     winRate: number;
     roi: number;
     totalWagered: number;
     totalReturn: number;
+    gamesBet: number;
   };
   dimensionImpact: {
     sentiment: { winRate: number; roi: number };
@@ -86,12 +94,14 @@ export class BacktestEngine {
         roi: 0,
         totalWagered: 0,
         totalReturn: 0,
+        gamesBet: 0,
       },
       withoutClaudeEffect: {
         winRate: 0,
         roi: 0,
         totalWagered: 0,
         totalReturn: 0,
+        gamesBet: 0,
       },
       dimensionImpact: {
         sentiment: { winRate: 0, roi: 0 },
@@ -108,6 +118,8 @@ export class BacktestEngine {
     let wageredWithoutClaude = 0;
     let returnWithClaude = 0;
     let returnWithoutClaude = 0;
+    let gamesBetWithClaude = 0;
+    let gamesBetWithoutClaude = 0;
 
     // Process each game
     for (const game of games) {
@@ -129,6 +141,7 @@ export class BacktestEngine {
           );
 
           wageredWithClaude += betSize;
+          gamesBetWithClaude += 1;
 
           // Check if prediction was correct
           const isCorrect = this.isPredictionCorrect(
@@ -156,6 +169,7 @@ export class BacktestEngine {
           );
 
           wageredWithoutClaude += betSize;
+          gamesBetWithoutClaude += 1;
 
           const isCorrect = this.isPredictionCorrect(
             predictionWithoutClaude,
@@ -177,23 +191,20 @@ export class BacktestEngine {
     }
 
     // Calculate final metrics
-    const gamesWithBetsClaude = wageredWithClaude > 0 ?
-      Math.ceil(wageredWithClaude / (config.bankroll * 0.01)) : 0;
-    const gamesWithBetsNoClaude = wageredWithoutClaude > 0 ?
-      Math.ceil(wageredWithoutClaude / (config.bankroll * 0.01)) : 0;
-
     results.withClaudeEffect = {
-      winRate: gamesWithBetsClaude > 0 ? correctWithClaude / gamesWithBetsClaude : 0,
+      winRate: gamesBetWithClaude > 0 ? correctWithClaude / gamesBetWithClaude : 0,
       roi: wageredWithClaude > 0 ? (returnWithClaude / wageredWithClaude) * 100 : 0,
       totalWagered: wageredWithClaude,
       totalReturn: returnWithClaude,
+      gamesBet: gamesBetWithClaude,
     };
 
     results.withoutClaudeEffect = {
-      winRate: gamesWithBetsNoClaude > 0 ? correctWithoutClaude / gamesWithBetsNoClaude : 0,
+      winRate: gamesBetWithoutClaude > 0 ? correctWithoutClaude / gamesBetWithoutClaude : 0,
       roi: wageredWithoutClaude > 0 ? (returnWithoutClaude / wageredWithoutClaude) * 100 : 0,
       totalWagered: wageredWithoutClaude,
       totalReturn: returnWithoutClaude,
+      gamesBet: gamesBetWithoutClaude,
     };
 
     results.winRate = results.withClaudeEffect.winRate;
@@ -204,21 +215,64 @@ export class BacktestEngine {
     return results;
   }
 
+  private predictionEngine: PredictionEngine;
+
+  constructor() {
+    this.predictionEngine = new PredictionEngine();
+  }
+
   /**
-   * Generate prediction for a game
+   * Generate prediction for a game using the real PredictionEngine.
+   * When useClaudeEffect is true, gathers Claude Effect data and applies the same adjustment as the v2 route.
+   * If gather/apply fails (e.g. no server for sentiment/narrative APIs), falls back to base prediction.
    */
   private async predictGame(
     game: HistoricalGame,
     useClaudeEffect: boolean,
-    config: BacktestConfig
+    _config: BacktestConfig
   ): Promise<any> {
-    // This would call the actual prediction engine
-    // For now, return placeholder
+    const gameData: GameData = {
+      homeTeam: game.homeTeam,
+      awayTeam: game.awayTeam,
+      league: game.league,
+      sport: game.league?.toLowerCase() || 'nfl',
+      odds: game.odds,
+      date: game.date?.toISOString?.() || new Date().toISOString(),
+      venue: (game.gameData as any)?.venue,
+    };
+    const result = await this.predictionEngine.predict(gameData, false);
+    // Engine may return confidence as 0–1 or 0–100
+    let confidence0to1 = result.confidence <= 1 ? result.confidence : result.confidence / 100;
+    const edgePct = typeof result.edge === 'number' ? (result.edge <= 1 ? result.edge : result.edge / 100) : 0.05;
+
+    if (useClaudeEffect) {
+      try {
+        const claudeData = await gatherClaudeEffectData(gameData, {
+          includePhase1: true,
+          includePhase2: true,
+          includePhase3: true,
+          includePhase4: true,
+          includePhase5: false,
+          includePhase6: false,
+          includePhase7: false,
+        });
+        const ceResult = await applyClaudeEffect(confidence0to1, confidence0to1, gameData, claudeData);
+        // Same small adjustment as v2 route: preserve base variance, apply -0.04 to +0.04
+        const claudeAdjustment = (ceResult.adjustedConfidence - 0.5) * 0.08;
+        confidence0to1 = Math.min(0.95, Math.max(0.58, confidence0to1 + claudeAdjustment));
+      } catch {
+        // Claude Effect APIs may be unavailable when running backtest standalone; use base prediction
+      }
+    }
+
     return {
-      predictedWinner: game.homeTeam,
-      confidence: 0.65,
-      edge: 0.05,
-      probability: 0.65,
+      predictedWinner: result.predictedWinner,
+      confidence: confidence0to1,
+      edge: edgePct,
+      probability: confidence0to1,
+      recommendedBet: result.recommendedBet
+        ? { type: result.recommendedBet.type, side: result.recommendedBet.side, value: result.recommendedBet.value, confidence: result.recommendedBet.confidence }
+        : { type: 'moneyline' as const, side: result.predictedWinner, value: 0, confidence: result.confidence },
     };
   }
 

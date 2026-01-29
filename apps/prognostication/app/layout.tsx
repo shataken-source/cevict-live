@@ -1,5 +1,3 @@
-import AdSenseScript from '@/components/AdSenseScript'
-import ConditionalAdSenseScript from '@/components/ConditionalAdSenseScript'
 import InstallPrompt from '@/components/InstallPrompt'
 import type { Metadata, Viewport } from 'next'
 import { Inter, Space_Grotesk } from 'next/font/google'
@@ -71,12 +69,16 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <head>
         <meta name="google-adsense-account" content="ca-pub-0940073536675562" />
+        {/* AdSense: in head on every page so Google can verify (crawler sees initial HTML) */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-0940073536675562"
+          crossOrigin="anonymous"
+        />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className={`${inter.className} antialiased`}>
-        {/* Only load AdSense script once */}
-        <AdSenseScript />
         {children}
         <InstallPrompt />
         <script
