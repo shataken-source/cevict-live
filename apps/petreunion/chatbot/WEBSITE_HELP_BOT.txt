@@ -1,0 +1,356 @@
+PetReunion Website Help Bot - Complete Guide
+
+About This Help Bot
+
+I'm here to help you use PetReunion.com! I can answer questions about:
+- How to report a lost pet
+- How to report a found pet
+- How to search for pets
+- Troubleshooting form errors
+- Understanding website features
+- Finding help with any issue
+
+Website Overview
+
+PetReunion.com has 4 main sections:
+
+1. Search Lost Pets (/search)
+   - Search our database by breed, color, city, description, or name
+   - Use filters to narrow results
+   - View pet details and contact owners
+
+2. Report Lost Pet (/report/lost)
+   - Submit a report when your pet goes missing
+   - Include photos and detailed information
+   - Get matched with found pet reports
+
+3. Report Found Pet (/report/found)
+   - Report a pet you found
+   - Help reunite them with their family
+   - Match with lost pet reports
+
+4. Find Shelters (/shelters)
+   - Browse local animal shelters
+   - Get contact information
+   - Find resources in your area
+
+How to Report a Lost Pet - Step by Step
+
+Step 1: Go to Report Lost Pet Page
+- Click "Report Lost Pet" on the homepage
+- Or visit: petreunion.com/report/lost
+
+Step 2: Fill Out Pet Information
+Required Fields:
+- Pet Type: Select "Dog" or "Cat" (required)
+- Color: Enter your pet's color (required, max 50 characters)
+  Example: "Brown, Black, White" or "Orange Tabby"
+
+Optional but Helpful:
+- Pet Name: Your pet's name (max 100 characters)
+- Breed: Your pet's breed (max 100 characters)
+  Example: "Labrador Retriever" or "Golden Retriever"
+- Size: Select Small, Medium, or Large
+- Age: Enter age (e.g., "2 years old", max 50 characters)
+- Gender: Select if known
+- Description: Add distinctive markings, collar info, microchip, etc. (max 2000 characters)
+
+Step 3: When & Where
+Required Fields:
+- Date Lost: Select the date your pet went missing (required)
+  - Cannot be in the future
+  - Cannot be more than 10 years ago
+- Last Seen Location: Enter city and state (required, max 200 characters)
+  Format Examples:
+  ✅ "Columbus Indiana"
+  ✅ "Columbus, Indiana"
+  ✅ "Columbus, IN"
+  ✅ "Columbus IN"
+  
+  Common Mistakes:
+  ❌ Just "Columbus" (missing state)
+  ❌ "Indiana" (missing city)
+  ❌ Full address (use city and state only)
+
+Step 4: Contact Information
+All fields are optional but recommended:
+- Your Name: Your name (max 100 characters)
+- Email: Valid email address (max 255 characters)
+  Format: yourname@example.com
+- Phone: Phone number (10-15 digits)
+  Format: +1 (555) 123-4567 or 5551234567
+
+Step 5: Submit
+- Click "Submit Report" button
+- Wait for confirmation message
+- You'll be redirected to the search page
+
+Common Form Errors and How to Fix Them
+
+Error: "Please enter the location where your pet was last seen"
+Fix: Enter both city AND state. Examples:
+- ✅ "Columbus Indiana"
+- ✅ "Indianapolis, IN"
+- ❌ "Columbus" (missing state)
+
+Error: "Please enter your pet's color"
+Fix: Enter at least one color. Examples:
+- ✅ "Brown"
+- ✅ "Black and White"
+- ✅ "Orange Tabby"
+- ❌ Empty field
+
+Error: "Please select the date your pet was lost"
+Fix: Click the date field and select a date from the calendar. The date must be:
+- Not in the future
+- Not more than 10 years ago
+
+Error: "Date cannot be in the future"
+Fix: Select a date that is today or in the past.
+
+Error: "Date cannot be more than 10 years ago"
+Fix: Select a more recent date. If your pet was lost more than 10 years ago, contact support.
+
+Error: "Please enter a valid email address"
+Fix: Check your email format. Must include:
+- @ symbol
+- Domain name (e.g., gmail.com)
+- Top-level domain (e.g., .com, .org)
+Examples:
+- ✅ yourname@email.com
+- ❌ yourname@email (missing .com)
+- ❌ yourname email.com (missing @)
+
+Error: "Please enter a valid phone number (10-15 digits)"
+Fix: Enter a phone number with 10-15 digits. You can include spaces, dashes, or parentheses - they'll be removed automatically.
+Examples:
+- ✅ (555) 123-4567
+- ✅ 555-123-4567
+- ✅ 5551234567
+- ✅ +1 555 123 4567
+- ❌ 555-123 (too short)
+
+Error: "Location is too long (maximum 200 characters)"
+Fix: Shorten your location. Use format: "City, State" or "City State"
+Examples:
+- ✅ "Columbus, Indiana"
+- ❌ "123 Main Street, Columbus, Indiana, United States, North America" (too long)
+
+Error: "Pet name is too long (maximum 100 characters)"
+Fix: Shorten the pet name to 100 characters or less.
+
+Error: "Breed is too long (maximum 100 characters)"
+Fix: Shorten the breed description to 100 characters or less.
+
+Error: "Color is too long (maximum 50 characters)"
+Fix: Shorten the color description. Examples:
+- ✅ "Brown, Black, White"
+- ❌ "Light brown with dark brown spots and white chest and paws" (too long, use "Brown and White")
+
+Error: "Description is too long (maximum 2000 characters)"
+Fix: Shorten your description. Focus on the most important details:
+- Distinctive markings
+- Collar or tags
+- Microchip information
+- Special behaviors
+
+How to Search for Pets - Complete Guide
+
+Step 1: Go to Search Page
+- Click "Search Lost Pets" on homepage
+- Or visit: petreunion.com/search
+
+Step 2: Use the Search Bar
+You can search by:
+- Pet name: "Buddy"
+- Breed: "Golden Retriever"
+- Color: "Brown"
+- City: "Columbus"
+- Description keywords: "collar", "microchip"
+- Combination: "Brown dog Columbus"
+
+Step 3: Use Filters (Optional)
+Click the "Filters" button to narrow your search:
+
+Pet Type Filter:
+- All (default)
+- Dog
+- Cat
+
+Location State Filter:
+- All (default)
+- Select specific state
+
+Location City Filter:
+- Enter city name (optional)
+- Works with or without state filter
+
+Status Filter:
+- All (default)
+- Lost
+- Found
+- Reunited
+
+Date Range Filter:
+- All (default)
+- Last 24 hours
+- Last week
+- Last month
+- Last 3 months
+
+Step 4: View Results
+- Results appear in a grid
+- Each card shows:
+  - Pet name
+  - Breed and type
+  - Status badge (Lost/Found/Reunited)
+  - Location
+  - Date lost/found
+  - Description preview
+  - "View Details" button
+
+Step 5: Clear Filters
+- Click "Clear Filters" button to reset all filters
+- Or manually change each filter back to "All"
+
+Troubleshooting Search Issues
+
+Problem: "No pets found"
+Solutions:
+1. Check your spelling in the search bar
+2. Try broader search terms (e.g., "dog" instead of "Golden Retriever")
+3. Clear filters and try again
+4. Try searching by location only
+5. Check that you're searching in the right status (Lost vs Found)
+
+Problem: Search is slow
+Solutions:
+- Wait a few seconds for results to load
+- Try a more specific search to reduce results
+- Check your internet connection
+
+Problem: Can't see filters
+Solutions:
+- Click the "Filters" button to expand filter options
+- Make sure JavaScript is enabled in your browser
+- Try refreshing the page
+
+How to Report a Found Pet
+
+The process is similar to reporting a lost pet:
+
+1. Go to "Report Found Pet" on homepage
+2. Fill out the form with:
+   - Pet information (type, breed, color, etc.)
+   - Where you found them
+   - When you found them
+   - Your contact information
+3. Submit the report
+4. Our system will automatically search for matching lost pet reports
+
+Important: If the pet has a collar with tags, check those first before reporting!
+
+Understanding Pet Status
+
+Lost: Pet is missing, owner is searching
+Found: Pet has been found, waiting to be reunited
+Reunited: Pet has been successfully reunited with owner
+
+When you find your pet, update your report status to "Reunited" so others know the search is complete.
+
+Location Format Help
+
+The location field accepts city and state in various formats:
+
+✅ CORRECT Formats:
+- "Columbus Indiana"
+- "Columbus, Indiana"
+- "Columbus, IN"
+- "Columbus IN"
+- "Indianapolis, IN"
+- "New York, NY"
+
+❌ INCORRECT Formats:
+- "Columbus" (missing state)
+- "Indiana" (missing city)
+- "123 Main Street, Columbus, IN" (too specific, use city and state only)
+- Full addresses (not needed)
+
+Tip: If you're unsure, use "City, State" format (e.g., "Columbus, Indiana")
+
+Contact Information Privacy
+
+Your contact information is:
+- Private and secure
+- Only shared when you choose to contact someone
+- Never displayed publicly on the website
+- Used only to help reunite pets
+
+You can report a pet without providing contact information, but it's recommended so people can reach you if they find your pet.
+
+Browser and Device Compatibility
+
+PetReunion.com works on:
+- Desktop computers (Windows, Mac, Linux)
+- Tablets (iPad, Android tablets)
+- Mobile phones (iPhone, Android)
+- All modern browsers (Chrome, Firefox, Safari, Edge)
+
+If you're having issues:
+1. Make sure your browser is up to date
+2. Try a different browser
+3. Clear your browser cache
+4. Check your internet connection
+5. Try on a different device
+
+Common Questions About Adding Pets
+
+Q: Why can't I submit my report?
+A: Check for red error messages. Common issues:
+- Missing required fields (Pet Type, Color, Date Lost, Location)
+- Invalid email format
+- Invalid phone number format
+- Date in the future
+- Location missing state
+
+Q: The form keeps saying "Please enter location"
+A: Make sure you include BOTH city AND state. Examples:
+- ✅ "Columbus Indiana"
+- ✅ "Columbus, IN"
+- ❌ "Columbus" (missing state)
+
+Q: Can I add photos?
+A: Photo upload is coming soon! For now, focus on detailed descriptions in the "Description" field.
+
+Q: What if I don't know my pet's exact breed?
+A: That's okay! Leave breed blank or enter your best guess. The description field is more important.
+
+Q: What if I don't know the exact date?
+A: Enter your best estimate. The date helps with matching but isn't critical if you're unsure.
+
+Q: Can I edit my report after submitting?
+A: Editing functionality is coming soon! For now, contact support if you need to update your report.
+
+Q: Why is my report not showing in search?
+A: Reports appear immediately after submission. Try:
+- Refreshing the search page
+- Clearing filters
+- Searching by your pet's name or location
+
+Q: How long does it take for my report to appear?
+A: Reports appear instantly after successful submission. If you don't see it:
+- Check that submission was successful (you should see a success message)
+- Try searching for your pet's name
+- Make sure you're searching in the correct status filter
+
+Getting Additional Help
+
+If you're still having trouble:
+
+1. Check this help bot for common solutions
+2. Review the form requirements above
+3. Make sure all required fields are filled correctly
+4. Try submitting from a different browser or device
+5. Contact support if the issue persists
+
+Remember: I'm here to help! Ask me any question about using PetReunion.com and I'll guide you through it step by step.

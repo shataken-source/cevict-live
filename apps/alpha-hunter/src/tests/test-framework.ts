@@ -12,16 +12,16 @@ export interface TestResult {
 
 export class TestSuite {
   private tests: Array<{ name: string; fn: () => Promise<void> | void }> = [];
-  private beforeEach: (() => Promise<void> | void) | null = null;
-  private afterEach: (() => Promise<void> | void) | null = null;
+  private beforeEachFn: (() => Promise<void> | void) | null = null;
+  private afterEachFn: (() => Promise<void> | void) | null = null;
   private results: TestResult[] = [];
 
   beforeEach(fn: () => Promise<void> | void) {
-    this.beforeEach = fn;
+    this.beforeEachFn = fn;
   }
 
   afterEach(fn: () => Promise<void> | void) {
-    this.afterEach = fn;
+    this.afterEachFn = fn;
   }
 
   it(name: string, fn: () => Promise<void> | void) {
@@ -35,9 +35,9 @@ export class TestSuite {
       const start = Date.now();
       
       try {
-        if (this.beforeEach) await this.beforeEach();
+        if (this.beforeEachFn) await this.beforeEachFn();
         await test.fn();
-        if (this.afterEach) await this.afterEach();
+        if (this.afterEachFn) await this.afterEachFn();
         
         this.results.push({
           name: test.name,
@@ -45,9 +45,9 @@ export class TestSuite {
           duration: Date.now() - start
         });
       } catch (error: any) {
-        if (this.afterEach) {
+        if (this.afterEachFn) {
           try {
-            await this.afterEach();
+            await this.afterEachFn();
           } catch {}
         }
         

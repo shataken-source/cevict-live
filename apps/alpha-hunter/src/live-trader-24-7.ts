@@ -1,4 +1,4 @@
-﻿/**
+/**
  * LIVE 24/7 TRADING BOT
  * Runs both Coinbase (Crypto) and Kalshi (Predictions) continuously
  * Learning, adapting, and trading around the clock
@@ -417,7 +417,7 @@ export class EventContractExecutionEngine {
             limitPrice = pred.market_price;
           }
           
-          const trade = await this.kalshi.placeBet(
+          const trade = await this.kalshi.placeLimitOrderUsd(
             pred.market_id,
             side,
             tradeSize,
@@ -429,6 +429,7 @@ export class EventContractExecutionEngine {
             this.kalshiOpenBets.add(pred.market_id);
             
             // Save trade to database
+            const contracts = this.kalshi.usdToContracts(tradeSize, limitPrice);
             await saveTradeRecord({
               platform: 'kalshi',
               trade_type: side,
@@ -436,6 +437,7 @@ export class EventContractExecutionEngine {
               market_id: pred.market_id,
               entry_price: limitPrice,
               amount: tradeSize,
+              contracts,
               fees: 0, // Maker orders have $0 fees
               opened_at: new Date(),
               confidence: pred.confidence,

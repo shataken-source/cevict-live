@@ -8,11 +8,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const envPath = path.join(__dirname, '..', '.env.local');
+const envPath = path.join(process.cwd(), '.env.local');
 
 console.log(`
 ╔══════════════════════════════════════════════════════════════╗
@@ -153,9 +151,8 @@ Your credentials have been saved to .env.local
 2. Start trading (DEMO mode by default):
    npm run kalshi
 
-3. To switch to PRODUCTION (real money):
-   Edit .env.local and change:
-   KALSHI_ENV=production
+3. Production trading:
+   This repo is intentionally DEMO-ONLY for Kalshi; do NOT set KALSHI_ENV=production.
 
 ⚠️  SECURITY REMINDER:
 - Never share your private key

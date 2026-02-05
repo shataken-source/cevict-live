@@ -1,0 +1,17 @@
+GULF COAST CHARTERS - STATUS
+
+✅ WORKING:
+- Site live: https://charter-booking-platform.vercel.app/
+- Email login works
+- Supabase connected
+
+🔗 CREDENTIALS:
+- Supabase URL: https://rdbuwyefbgnbuhmjrizo.supabase.co
+- GitHub: shataken-source/charter-booking-platform
+- Vercel: charter-booking-platform project
+
+✅ FIXED TODAY:
+- Environment variables in Vercel
+- .env.production typo (.com → .co)
+
+⚠️ NEXT: Deploy edge functions for payments/weather/features

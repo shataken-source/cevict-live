@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Captain's Bridge - Maritime Management System</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Navigation -->
+        <nav class="main-nav">
+            <div class="nav-brand">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 12h18M3 12l7-7m-7 7l7 7m11-7v7a2 2 0 01-2 2H5a2 2 0 01-2-2v-7"/>
+                </svg>
+                Captain's Bridge
+            </div>
+            <div class="nav-status">
+                <span id="offline-indicator" class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span id="connection-status">Online</span>
+                </span>
+            </div>
+        </nav>
+
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="documents">Documents</button>
+            <button class="tab-btn" data-tab="map">Navigation</button>
+            <button class="tab-btn" data-tab="log">Ship's Log</button>
+            <button class="tab-btn" data-tab="checklist">CG Checklist</button>
+            <button class="tab-btn" data-tab="waypoints">Waypoints</button>
+            <button class="tab-btn" data-tab="community">Fleet</button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Documents Tab -->
+            <div id="documents" class="tab-pane active">
+                <div class="section-header">
+                    <h2>Coast Guard Documents</h2>
+                    <button class="btn btn-primary" onclick="document.getElementById('doc-upload').click()">
+                        Upload Document
+                    </button>
+                    <input type="file" id="doc-upload" accept=".pdf,.jpg,.jpeg,.png" style="display:none" multiple>
+                </div>
+                
+                <div class="document-categories">
+                    <div class="doc-category">
+                        <h3>Required Documents</h3>
+                        <ul id="required-docs" class="doc-list">
+                            <li class="doc-item">
+                                <span class="doc-icon">📄</span>
+                                <div class="doc-info">
+                                    <div class="doc-name">Certificate of Documentation</div>
+                                    <div class="doc-meta">Valid until: 2025-12-31</div>
+                                </div>
+                                <button class="btn-sm">View</button>
+                            </li>
+                            <li class="doc-item">
+                                <span class="doc-icon">📋</span>
+                                <div class="doc-info">
+                                    <div class="doc-name">Safety Equipment Certificate</div>
+                                    <div class="doc-meta">Last inspection: 2024-06-15</div>
+                                </div>
+                                <button class="btn-sm">View</button>
+                            </li>
+                            <li class="doc-item">
+                                <span class="doc-icon">🛡️</span>
+                                <div class="doc-info">
+                                    <div class="doc-name">Insurance Policy</div>
+                                    <div class="doc-meta">Policy #: MAR-2024-78934</div>
+                                </div>
+                                <button class="btn-sm">View</button>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="doc-category">
+                        <h3>Crew Documents</h3>
+                        <ul id="crew-docs" class="doc-list">
+                            <li class="doc-item">
+                                <span class="doc-icon">👤</span>
+                                <div class="doc-info">
+                                    <div class="doc-name">Captain's License</div>
+                                    <div class="doc-meta">USCG License: 100 Ton Master</div>
+                                </div>
+                                <button class="btn-sm">View</button>
+                            </li>
+                            <li class="doc-item">
+                                <span class="doc-icon">👥</span>
+                                <div class="doc-info">
+                                    <div class="doc-name">Crew List</div>
+                                    <div class="doc-meta">4 crew members</div>
+                                </div>
+                                <button class="btn-sm">View</button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Tab -->
+            <div id="map" class="tab-pane">
+                <div class="map-controls">
+                    <button class="btn btn-primary" onclick="getCurrentLocation()">📍 Current Location</button>
+                    <button class="btn btn-secondary" onclick="dropPin()">📌 Drop Pin</button>
+                    <button class="btn btn-danger" onclick="markCoastGuardStop()">🚨 CG Stop</button>
+                    <input type="text" id="coord-input" placeholder="Lat, Lon" class="coord-input">
+                </div>
+                <div id="map-container"></div>
+                <div class="location-info">
+                    <div id="current-coords">Coordinates: Loading...</div>
+                    <div id="saved-pins">Saved Pins: <span id="pin-count">0</span></div>
+                </div>
+            </div>
+
+            <!-- Ship's Log Tab -->
+            <div id="log" class="tab-pane">
+                <div class="section-header">
+                    <h2>Ship's Log</h2>
+                    <button class="btn btn-secondary" onclick="clearLog()">Clear Log</button>
+                </div>
+                
+                <div class="log-entry-form">
+                    <input type="datetime-local" id="log-datetime" class="form-control">
+                    <textarea id="log-entry" placeholder="Enter log entry..." class="form-control" rows="3"></textarea>
+                    <div class="log-meta">
+                        <input type="text" id="log-position" placeholder="Position" class="form-control">
+                        <input type="text" id="log-weather" placeholder="Weather conditions" class="form-control">
+                    </div>
+                    <button class="btn btn-primary" onclick="addLogEntry()">Add Entry</button>
+                </div>
+                
+                <div id="log-entries" class="log-entries">
+                    <!-- Log entries will appear here -->
+                </div>
+            </div>
+
+            <!-- Coast Guard Checklist Tab -->
+            <div id="checklist" class="tab-pane">
+                <div class="section-header">
+                    <h2>Coast Guard Inspection Checklist</h2>
+                    <button class="btn btn-primary" onclick="resetChecklist()">Reset All</button>
+                </div>
+                
+                <div class="checklist-container">
+                    <div class="checklist-section">
+                        <h3>Safety Equipment</h3>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Life jackets for all passengers</span>
+                        </label>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Fire extinguishers (current inspection)</span>
+                        </label>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Flares (not expired)</span>
+                        </label>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Sound signaling devices</span>
+                        </label>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Navigation lights operational</span>
+                        </label>
+                    </div>
+                    
+                    <div class="checklist-section">
+                        <h3>Documentation</h3>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Registration/Documentation</span>
+                        </label>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Captain's license</span>
+                        </label>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Insurance documents</span>
+                        </label>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Waste management plan</span>
+                        </label>
+                    </div>
+                    
+                    <div class="checklist-section">
+                        <h3>Vessel Condition</h3>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Hull integrity</span>
+                        </label>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Engine compartment ventilation</span>
+                        </label>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Electrical systems</span>
+                        </label>
+                        <label class="checklist-item">
+                            <input type="checkbox" class="check-input">
+                            <span>Bilge pumps operational</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Waypoints Tab -->
+            <div id="waypoints" class="tab-pane">
+                <div class="section-header">
+                    <h2>Waypoint Sharing</h2>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" onclick="shareCurrentWaypoint()">
+                            📤 Share Current Position
+                        </button>
+                        <button class="btn btn-secondary" onclick="enablePushNotifications()">
+                            🔔 Enable Notifications
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="waypoint-sections">
+                    <div class="waypoint-section">
+                        <h3>Share Waypoint</h3>
+                        <div class="waypoint-form">
+                            <input type="text" id="waypoint-name" placeholder="Waypoint name (e.g., Best Fishing Spot)" class="form-control">
+                            <textarea id="waypoint-description" placeholder="Description and notes..." class="form-control" rows="2"></textarea>
+                            <div class="waypoint-coords">
+                                <input type="text" id="waypoint-lat" placeholder="Latitude" class="form-control">
+                                <input type="text" id="waypoint-lng" placeholder="Longitude" class="form-control">
+                            </div>
+                            <select id="waypoint-recipients" class="form-control" multiple>
+                                <option value="fleet">Entire Fleet</option>
+                                <option value="buddy1">Captain Mike</option>
+                                <option value="buddy2">Captain Sarah</option>
+                                <option value="buddy3">Captain Tom</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="sendWaypoint()">📍 Send Waypoint</button>
+                        </div>
+                    </div>
+                    
+                    <div class="waypoint-section">
+                        <h3>Received Waypoints</h3>
+                        <div id="received-waypoints" class="waypoint-list">
+                            <div class="waypoint-item">
+                                <div class="waypoint-header">
+                                    <span class="waypoint-from">From: Captain Mike</span>
+                                    <span class="waypoint-time">2 hours ago</span>
+                                </div>
+                                <div class="waypoint-name">Secret Cove Anchorage</div>
+                                <div class="waypoint-details">28.5421°N, 80.3452°W</div>
+                                <div class="waypoint-actions">
+                                    <button class="btn-sm" onclick="viewWaypoint(this)">View on Map</button>
+                                    <button class="btn-sm" onclick="saveWaypoint(this)">Save</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fleet Community Tab -->
+            <div id="community" class="tab-pane">
+                <div class="section-header">
+                    <h2>Fleet Community</h2>
+                    <button class="btn btn-primary" onclick="inviteCaptain()">
+                        ➕ Invite Captain
+                    </button>
+                </div>
+                
+                <div class="community-sections">
+                    <div class="fleet-status">
+                        <h3>Fleet Status</h3>
+                        <div class="fleet-grid">
+                            <div class="fleet-member">
+                                <div class="member-status online"></div>
+                                <div class="member-info">
+                                    <div class="member-name">Captain Mike</div>
+                                    <div class="member-vessel">S/V Wind Dancer</div>
+                                    <div class="member-location">Miami Harbor</div>
+                                </div>
+                                <button class="btn-sm" onclick="messageCaptain('mike')">Message</button>
+                            </div>
+                            <div class="fleet-member">
+                                <div class="member-status offline"></div>
+                                <div class="member-info">
+                                    <div class="member-name">Captain Sarah</div>
+                                    <div class="member-vessel">M/Y Blue Horizon</div>
+                                    <div class="member-location">Key West</div>
+                                </div>
+                                <button class="btn-sm" onclick="messageCaptain('sarah')">Message</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="fleet-alerts">
+                        <h3>Fleet Alerts</h3>
+                        <div class="alert-list">
+                            <div class="alert-item weather">
+                                <span class="alert-icon">⛈️</span>
+                                <div class="alert-content">
+                                    <div class="alert-title">Storm Warning</div>
+                                    <div class="alert-message">Tropical storm approaching from SE. ETA 48 hours.</div>
+                                </div>
+                            </div>
+                            <div class="alert-item coast-guard">
+                                <span class="alert-icon">🚨</span>
+                                <div class="alert-content">
+                                    <div class="alert-title">CG Safety Check</div>
+                                    <div class="alert-message">Coast Guard conducting safety inspections at Marina Bay.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fishy AI Assistant -->
+    <div id="fishy-container" class="fishy-minimized">
+        <div id="fishy-icon" onclick="toggleFishy()">
+            <span class="fishy-emoji">🐠</span>
+            <span class="fishy-badge" id="fishy-notification" style="display:none;">!</span>
+        </div>
+        
+        <div id="fishy-chat" class="fishy-chat">
+            <div class="fishy-header">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 60'%3E%3Cellipse cx='40' cy='30' rx='25' ry='15' fill='%234A90E2'/%3E%3Cpath d='M15 30 L5 20 L5 40 Z' fill='%234A90E2'/%3E%3Ccircle cx='50' cy='25' r='3' fill='white'/%3E%3Ccircle cx='51' cy='24' r='2' fill='black'/%3E%3Cpath d='M45 35 Q50 38 55 35' stroke='white' stroke-width='2' fill='none'/%3E%3C/svg%3E" alt="Fishy" class="fishy-avatar">
+                <div class="fishy-info">
+                    <div class="fishy-name">Fishy - Your AI First Mate</div>
+                    <div class="fishy-status">🟢 Ready to help!</div>
+                </div>
+                <button class="fishy-close" onclick="toggleFishy()">×</button>
+            </div>
+            
+            <div class="fishy-messages" id="fishy-messages">
+                <div class="fishy-message fishy">
+                    <div class="message-content">
+                        Ahoy Captain! 🚢 I'm Fishy, your AI first mate. I can help with:
+                        <ul>
+                            <li>Navigation and waypoints</li>
+                            <li>Coast Guard regulations</li>
+                            <li>Weather updates</li>
+                            <li>System maintenance checks</li>
+                            <li>Emergency procedures</li>
+                        </ul>
+                        Just ask me anything!
+                    </div>
+                </div>
+            </div>
+            
+            <div class="fishy-input-area">
+                <input type="text" id="fishy-input" placeholder="Ask Fishy anything..." onkeypress="handleFishyInput(event)">
+                <button onclick="sendToFishy()" class="fishy-send">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GCC Themed Popup Modal -->
+    <div id="gcc-modal" class="gcc-modal" style="display:none;">
+        <div class="gcc-modal-content">
+            <div class="gcc-modal-header">
+                <h2 id="gcc-modal-title">Alert</h2>
+                <span class="gcc-modal-close" onclick="closeGCCModal()">&times;</span>
+            </div>
+            <div class="gcc-modal-body" id="gcc-modal-body">
+                <!-- Content will be inserted here -->
+            </div>
+            <div class="gcc-modal-footer">
+                <button class="btn btn-primary" onclick="closeGCCModal()">OK</button>
+                <button class="btn btn-secondary" id="gcc-modal-cancel" style="display:none;" onclick="closeGCCModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+                </div>
+            </div>
+
+    <script src="app.js"></script>
+    <script>
+        // Register service worker for offline functionality
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => {
+                    console.log('Service Worker registered successfully');
+                    // Check for updates monthly
+                    setInterval(() => {
+                        reg.update();
+                    }, 30 * 24 * 60 * 60 * 1000);
+                })
+                .catch(err => console.error('Service Worker registration failed:', err));
+        }
+        
+        // Check URL parameters for quick actions
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('fishy') === 'open') {
+            setTimeout(() => {
+                document.getElementById('fishy-container').classList.remove('fishy-minimized');
+            }, 1000);
+        }
+        if (urlParams.get('tab')) {
+            const tab = urlParams.get('tab');
+            setTimeout(() => {
+                document.querySelector(`[data-tab="${tab}"]`).click();
+            }, 100);
+        }
+    </script>
+</body>
+</html>

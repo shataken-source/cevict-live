@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Captain's Bridge - Marketing Materials</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 3rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .tagline {
+            text-align: center;
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 50px;
+            opacity: 0.95;
+        }
+
+        .materials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+        }
+
+        .material-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+
+        .material-card:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Social Media Post Card */
+        .social-post {
+            padding: 20px;
+            background: linear-gradient(135deg, #1877f2 0%, #0a54b3 100%);
+            color: white;
+        }
+
+        .social-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .social-avatar {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .social-name {
+            font-weight: bold;
+        }
+
+        .social-time {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .social-content {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .social-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            margin: 15px 0;
+        }
+
+        .social-actions {
+            display: flex;
+            justify-content: space-around;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* Email Template */
+        .email-template {
+            background: white;
+        }
+
+        .email-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .email-logo {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .email-title {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .email-body {
+            padding: 30px;
+            color: #333;
+        }
+
+        .email-section {
+            margin-bottom: 25px;
+        }
+
+        .email-cta {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 30px;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        /* Flyer Design */
+        .flyer {
+            background: linear-gradient(135deg, #4A90E2 0%, #5BA3F5 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .flyer::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='rgba(255,255,255,0.2)' d='M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,138.7C960,139,1056,117,1152,112C1248,107,1344,117,1392,122.7L1440,128L1440,320L0,320Z'%3E%3C/path%3E%3C/svg%3E") no-repeat;
+            background-size: cover;
+        }
+
+        .flyer-title {
+            font-size: 32px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .flyer-subtitle {
+            font-size: 18px;
+            margin-bottom: 30px;
+            opacity: 0.95;
+        }
+
+        .flyer-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 30px 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .flyer-feature {
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .qr-code {
+            width: 100px;
+            height: 100px;
+            background: white;
+            margin: 20px auto;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            font-size: 12px;
+        }
+
+        /* Banner Ad */
+        .banner-ad {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        .banner-content {
+            flex: 1;
+        }
+
+        .banner-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .banner-text {
+            margin-bottom: 15px;
+            opacity: 0.95;
+        }
+
+        .banner-cta {
+            background: white;
+            color: #667eea;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: bold;
+        }
+
+        .banner-graphic {
+            font-size: 80px;
+            opacity: 0.8;
+        }
+
+        /* Business Card */
+        .business-card {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .bcard-logo {
+            font-size: 40px;
+            margin-bottom: 20px;
+        }
+
+        .bcard-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .bcard-title {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .bcard-contact {
+            font-size: 12px;
+            line-height: 1.8;
+        }
+
+        .bcard-tagline {
+            font-size: 14px;
+            font-style: italic;
+            opacity: 0.8;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* Sticker Design */
+        .sticker {
+            background: radial-gradient(circle, #4A90E2 0%, #5BA3F5 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            border-radius: 50%;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .sticker-emoji {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+
+        .sticker-text {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .sticker-tagline {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* Download Button */
+        .download-all {
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        .download-btn {
+            background: white;
+            color: #667eea;
+            padding: 15px 40px;
+            border-radius: 30px;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            
+            .material-card {
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚢 Captain's Bridge</h1>
+        <p class="tagline">Navigate Together, Sail Safer</p>
+
+        <div class="materials-grid">
+            <!-- Facebook/LinkedIn Post -->
+            <div class="material-card">
+                <div class="social-post">
+                    <div class="social-header">
+                        <div class="social-avatar">🚢</div>
+                        <div>
+                            <div class="social-name">Captain's Bridge App</div>
+                            <div class="social-time">Sponsored · Just now</div>
+                        </div>
+                    </div>
+                    <div class="social-content">
+                        🚢 Attention Captains!<br><br>
+                        Tired of scrambling for documents during Coast Guard inspections?<br><br>
+                        Captain's Bridge keeps everything organized, accessible, and works 100% OFFLINE at sea!<br><br>
+                        ✅ Digital logbook<br>
+                        ✅ Document storage<br>
+                        ✅ Waypoint sharing<br>
+                        🐠 Fishy AI assistant<br><br>
+                        Join 5,000+ captains already aboard!
+                    </div>
+                    <div class="social-image">⚓</div>
+                    <div class="social-actions">
+                        <span>👍 Like</span>
+                        <span>💬 Comment</span>
+                        <span>↗️ Share</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Email Template -->
+            <div class="material-card">
+                <div class="email-template">
+                    <div class="email-header">
+                        <div class="email-logo">🐠</div>
+                        <div class="email-title">Welcome Aboard, Captain!</div>
+                    </div>
+                    <div class="email-body">
+                        <div class="email-section">
+                            <strong>Ahoy Captain!</strong><br><br>
+                            Welcome to Captain's Bridge - your new digital first mate!
+                        </div>
+                        <div class="email-section">
+                            I'm Fishy, your AI assistant, here to help you:<br>
+                            • Navigate smarter<br>
+                            • Stay Coast Guard ready<br>
+                            • Connect with your fleet<br>
+                            • Work completely offline
+                        </div>
+                        <center>
+                            <a href="#" class="email-cta">Start Your Journey</a>
+                        </center>
+                        <div class="email-section">
+                            Fair winds and following seas!<br>
+                            - Fishy 🐠
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Marina Flyer -->
+            <div class="material-card">
+                <div class="flyer">
+                    <div class="flyer-title">FREE APP FOR CAPTAINS!</div>
+                    <div class="flyer-subtitle">Digital First Mate in Your Pocket</div>
+                    
+                    <div class="flyer-features">
+                        <div class="flyer-feature">📄 Documents</div>
+                        <div class="flyer-feature">🗺️ Navigation</div>
+                        <div class="flyer-feature">📝 Logbook</div>
+                        <div class="flyer-feature">🐠 AI Help</div>
+                    </div>
+                    
+                    <div class="qr-code">[QR CODE]</div>
+                    
+                    <div style="position: relative; z-index: 1;">
+                        <strong>SCAN TO DOWNLOAD</strong><br>
+                        Works 100% Offline!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Banner Ad -->
+            <div class="material-card">
+                <div class="banner-ad">
+                    <div class="banner-content">
+                        <div class="banner-title">Coast Guard Ready?</div>
+                        <div class="banner-text">
+                            Pass inspections with confidence.<br>
+                            All documents. One app. Always ready.
+                        </div>
+                        <a href="#" class="banner-cta">Get Captain's Bridge</a>
+                    </div>
+                    <div class="banner-graphic">⚓</div>
+                </div>
+            </div>
+
+            <!-- Business Card -->
+            <div class="material-card">
+                <div class="business-card">
+                    <div>
+                        <div class="bcard-logo">🐠</div>
+                        <div class="bcard-name">Fishy</div>
+                        <div class="bcard-title">Your AI First Mate</div>
+                    </div>
+                    <div class="bcard-contact">
+                        📱 Download: CaptainsBridge.app<br>
+                        📧 Support: fishy@captainsbridge.app<br>
+                        🌊 Available 24/7<br>
+                        🚢 Works 100% Offline
+                    </div>
+                    <div class="bcard-tagline">
+                        "Navigate Together, Sail Safer"
+                    </div>
+                </div>
+            </div>
+
+            <!-- Boat Show Sticker -->
+            <div class="material-card">
+                <div class="sticker">
+                    <div class="sticker-emoji">🐠</div>
+                    <div class="sticker-text">I'M COAST GUARD READY!</div>
+                    <div class="sticker-tagline">Captain's Bridge User</div>
+                    <div style="position: absolute; bottom: 30px; font-size: 12px;">
+                        #NavigateTogether
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="download-all">
+            <a href="#" class="download-btn" onclick="window.print()">
+                📥 Download All Marketing Materials
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Animate elements on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animation = 'fadeIn 0.5s ease-in';
+                }
+            });
+        });
+
+        document.querySelectorAll('.material-card').forEach(card => {
+            observer.observe(card);
+        });
+
+        // Add fade-in animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

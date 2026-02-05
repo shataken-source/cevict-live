@@ -1,4 +1,5 @@
-$DIR = "C:\gcc\cevict-app\cevict-monorepo\apps\prognostication"
+# Project root (C:\cevict-live\apps\prognostication). Script lives in apps\prognostication\scripts\
+$DIR = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
 Write-Host "Creating project..." -ForegroundColor Cyan
 

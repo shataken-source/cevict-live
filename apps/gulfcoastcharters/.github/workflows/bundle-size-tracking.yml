@@ -1,0 +1,127 @@
+name: Bundle Size Tracking
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+  track-bundle-size:
+    name: Track & Compare Bundle Size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for comparison
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci --prefer-offline
+      
+      - name: Build current branch
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      
+      - name: Calculate current bundle size
+        id: current
+        run: |
+          TOTAL_BYTES=$(du -sb dist | cut -f1)
+          TOTAL_KB=$((TOTAL_BYTES / 1024))
+          TOTAL_MB=$((TOTAL_KB / 1024))
+          
+          JS_BYTES=$(find dist/assets -name "*.js" -exec du -sb {} + | awk '{sum+=$1} END {print sum}')
+          JS_KB=$((JS_BYTES / 1024))
+          
+          CSS_BYTES=$(find dist/assets -name "*.css" -exec du -sb {} + | awk '{sum+=$1} END {print sum}')
+          CSS_KB=$((CSS_BYTES / 1024))
+          
+          echo "total_kb=$TOTAL_KB" >> $GITHUB_OUTPUT
+          echo "total_mb=$TOTAL_MB" >> $GITHUB_OUTPUT
+          echo "js_kb=$JS_KB" >> $GITHUB_OUTPUT
+          echo "css_kb=$CSS_KB" >> $GITHUB_OUTPUT
+          
+          # Save to file for history
+          mkdir -p .bundle-history
+          echo "$TOTAL_KB" > .bundle-history/current-size.txt
+          echo "$JS_KB" > .bundle-history/current-js.txt
+          echo "$CSS_KB" > .bundle-history/current-css.txt
+      
+      - name: Checkout base branch for comparison
+        if: github.event_name == 'pull_request'
+        run: |
+          git checkout ${{ github.base_ref }}
+          npm ci --prefer-offline
+          npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      
+      - name: Calculate base bundle size
+        if: github.event_name == 'pull_request'
+        id: base
+        run: |
+          BASE_BYTES=$(du -sb dist | cut -f1)
+          BASE_KB=$((BASE_BYTES / 1024))
+          echo "total_kb=$BASE_KB" >> $GITHUB_OUTPUT
+      
+      - name: Compare and comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const currentKB = parseInt('${{ steps.current.outputs.total_kb }}');
+            const currentMB = parseFloat('${{ steps.current.outputs.total_mb }}');
+            const currentJS = parseInt('${{ steps.current.outputs.js_kb }}');
+            const currentCSS = parseInt('${{ steps.current.outputs.css_kb }}');
+            const baseKB = parseInt('${{ steps.base.outputs.total_kb }}');
+            
+            const diff = currentKB - baseKB;
+            const diffPercent = ((diff / baseKB) * 100).toFixed(2);
+            const emoji = diff > 0 ? '📈' : diff < 0 ? '📉' : '➡️';
+            const status = diff > 100 ? '⚠️ Warning: Significant size increase!' : 
+                          diff > 50 ? '⚡ Size increased' : 
+                          diff < -50 ? '✅ Great job reducing bundle size!' : 
+                          '✅ Bundle size stable';
+            
+            const comment = `## 📦 Bundle Size Comparison\n\n` +
+              `${status}\n\n` +
+              `| Metric | Current | Base | Change |\n` +
+              `|--------|---------|------|--------|\n` +
+              `| 📁 Total Size | ${currentMB.toFixed(2)} MB (${currentKB} KB) | ${(baseKB/1024).toFixed(2)} MB | ${emoji} ${diff > 0 ? '+' : ''}${diff} KB (${diffPercent}%) |\n` +
+              `| 📜 JavaScript | ${currentJS} KB | - | - |\n` +
+              `| 🎨 CSS | ${currentCSS} KB | - | - |\n\n` +
+              `### 💡 Bundle Size Guidelines:\n` +
+              `- ✅ Total < 1 MB: Excellent\n` +
+              `- ⚡ Total 1-2 MB: Good\n` +
+              `- ⚠️ Total > 2 MB: Consider optimization\n\n` +
+              `**Tip:** Use code splitting and lazy loading to reduce bundle size.`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+      
+      - name: Save bundle size history
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p bundle-history
+          DATE=$(date +%Y-%m-%d)
+          echo "${{ steps.current.outputs.total_kb }},${{ steps.current.outputs.js_kb }},${{ steps.current.outputs.css_kb }},$DATE" >> bundle-history/history.csv
+      
+      - name: Upload bundle history
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-size-history-${{ github.sha }}
+          path: bundle-history/
+          retention-days: 365

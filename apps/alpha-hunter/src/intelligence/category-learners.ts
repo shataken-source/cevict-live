@@ -773,7 +773,7 @@ Provide probability, confidence, factors, reasoning in JSON.`;
 
   private async savePredictionToSupabase(prediction: MarketPrediction): Promise<void> {
     try {
-      const { saveBotPrediction } = await import('../lib/supabase-memory');
+      const { saveBotPrediction } = await import('../lib/supabase-memory.js');
       await saveBotPrediction({
         bot_category: prediction.category,
         market_id: prediction.marketId,

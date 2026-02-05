@@ -1,0 +1,687 @@
+'use client';
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { BarChart3, Minus, Search, Sparkles, Target, TrendingDown, TrendingUp, Trophy } from 'lucide-react';
+import { useMemo, useState } from 'react';
+// Badge component inline since it may not exist in CEVICT
+const Badge = ({ children, variant, className }: { children: React.ReactNode; variant?: 'default' | 'secondary'; className?: string }) => (
+  <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${className || (variant === 'default' ? 'bg-indigo-600 text-white' : 'bg-slate-500 text-white')}`}>
+    {children}
+  </span>
+);
+
+interface TeamOdds {
+  team: string;
+  odds: number[]; // Array of odds from different sportsbooks
+  averageOdds: number;
+  impliedProbability: number;
+  bestOdds: number;
+  worstOdds: number;
+  variance: number;
+}
+
+interface AdjustmentFactors {
+  weather: number;
+  injuries: number;
+  teamRecord: number;
+  strengthOfSchedule: number;
+  homeField: number;
+}
+
+interface AdjustedTeamOdds extends TeamOdds {
+  adjustedProbability: number;
+  adjustmentBreakdown: {
+    original: number;
+    weatherImpact: number;
+    injuryImpact: number;
+    recordImpact: number;
+    sosImpact: number;
+    homeFieldImpact: number;
+  };
+}
+
+const BCS_ODDS_DATA: Record<string, number[]> = {
+  'Ohio State Buckeyes': [250, 225, 240, 250, 220, 230],
+  'Indiana Hoosiers': [250, 275, 250, 280, 290, 250],
+  'Georgia Bulldogs': [550, 500, 600, 450, 550, 650],
+  'Oregon Ducks': [900, 900, 750, 750, 800, 900],
+  'Texas Tech Red Raiders': [900, 900, 800, 750, 900, 900],
+  'Texas A&M Aggies': [1400, 1700, 1800, 1600, 1700, 1400],
+  'Ole Miss Rebels': [2000, 2500, 2500, 2200, 2200, 2500],
+  'Miami (FL) Hurricanes': [2500, 2200, 2500, 2200, 2200, 2300],
+  'Alabama Crimson Tide': [2200, 2000, 2500, 1800, 2200, 2000],
+  'Oklahoma Sooners': [5000, 6600, 5500, 4000, 5000, 5000],
+  'James Madison Dukes': [40000, 50000, 60000, 40000, 50000, 75000],
+  'Tulane Green Wave': [50000, 50000, 80000, 55000, 75000, 50000],
+};
+
+const SPORTSBOOKS = ['Book 1', 'Book 2', 'Book 3', 'Book 4', 'Book 5', 'Book 6'];
+
+// Convert American odds to implied probability
+function oddsToProbability(odds: number): number {
+  if (odds > 0) {
+    return 100 / (odds + 100);
+  } else {
+    return Math.abs(odds) / (Math.abs(odds) + 100);
+  }
+}
+
+// Convert American odds to decimal odds
+function americanToDecimal(odds: number): number {
+  if (odds > 0) {
+    return (odds / 100) + 1;
+  } else {
+    return (100 / Math.abs(odds)) + 1;
+  }
+}
+
+// Calculate variance of odds
+function calculateVariance(odds: number[]): number {
+  const mean = odds.reduce((a, b) => a + b, 0) / odds.length;
+  const variance = odds.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / odds.length;
+  return Math.sqrt(variance); // Standard deviation
+}
+
+// Process teams data
+function processTeamsData(): TeamOdds[] {
+  return Object.entries(BCS_ODDS_DATA).map(([team, odds]) => {
+    const averageOdds = odds.reduce((a, b) => a + b, 0) / odds.length;
+    const impliedProbability = oddsToProbability(averageOdds) * 100;
+    const bestOdds = Math.max(...odds);
+    const worstOdds = Math.min(...odds);
+    const variance = calculateVariance(odds);
+
+    return {
+      team,
+      odds,
+      averageOdds: Math.round(averageOdds),
+      impliedProbability: Math.round(impliedProbability * 100) / 100,
+      bestOdds,
+      worstOdds,
+      variance: Math.round(variance),
+    };
+  });
+}
+
+// Apply adjustments to team odds
+function applyAdjustments(team: TeamOdds, factors: AdjustmentFactors): AdjustedTeamOdds {
+  const original = team.impliedProbability;
+
+  // Simulate factor impacts (replace with real data later)
+  const weatherImpact = (Math.random() * 2 - 1) * (factors.weather / 100) * 5; // ±5% max
+  const injuryImpact = (Math.random() * -1) * (factors.injuries / 100) * 8; // -8% max
+  const recordImpact = (Math.random() * 2 - 1) * (factors.teamRecord / 100) * 6; // ±6% max
+  const sosImpact = (Math.random() * 2 - 1) * (factors.strengthOfSchedule / 100) * 7; // ±7% max
+  const homeFieldImpact = (Math.random() * 1) * (factors.homeField / 100) * 3; // +3% max
+
+  const adjustedProbability = Math.max(0.01, Math.min(99.99,
+    original + weatherImpact + injuryImpact + recordImpact + sosImpact + homeFieldImpact
+  ));
+
+  return {
+    ...team,
+    adjustedProbability: Math.round(adjustedProbability * 100) / 100,
+    adjustmentBreakdown: {
+      original,
+      weatherImpact: Math.round(weatherImpact * 100) / 100,
+      injuryImpact: Math.round(injuryImpact * 100) / 100,
+      recordImpact: Math.round(recordImpact * 100) / 100,
+      sosImpact: Math.round(sosImpact * 100) / 100,
+      homeFieldImpact: Math.round(homeFieldImpact * 100) / 100,
+    },
+  };
+}
+
+// Get team color (approximate)
+function getTeamColor(team: string): string {
+  const colors: Record<string, string> = {
+    'Ohio State Buckeyes': 'bg-red-600',
+    'Indiana Hoosiers': 'bg-red-700',
+    'Georgia Bulldogs': 'bg-red-800',
+    'Oregon Ducks': 'bg-green-600',
+    'Texas Tech Red Raiders': 'bg-red-900',
+    'Texas A&M Aggies': 'bg-red-950',
+    'Ole Miss Rebels': 'bg-blue-800',
+    'Miami (FL) Hurricanes': 'bg-orange-600',
+    'Alabama Crimson Tide': 'bg-red-700',
+    'Oklahoma Sooners': 'bg-red-600',
+    'James Madison Dukes': 'bg-purple-700',
+    'Tulane Green Wave': 'bg-green-700',
+  };
+  return colors[team] || 'bg-gray-600';
+}
+
+export default function BCSChampionshipOddsPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'probability' | 'bestOdds' | 'variance'>('probability');
+  const [showDetails, setShowDetails] = useState<string | null>(null);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adjustmentFactors, setAdjustmentFactors] = useState<AdjustmentFactors>({
+    weather: 50,
+    injuries: 50,
+    teamRecord: 50,
+    strengthOfSchedule: 50,
+    homeField: 50,
+  });
+  const [useAdjustments, setUseAdjustments] = useState(false);
+
+  const teamsData = useMemo(() => {
+    const baseData = processTeamsData();
+    if (useAdjustments) {
+      return baseData.map(team => applyAdjustments(team, adjustmentFactors));
+    }
+    return baseData;
+  }, [useAdjustments, adjustmentFactors]);
+
+  const filteredAndSorted = useMemo(() => {
+    let filtered = teamsData.filter(team =>
+      team.team.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'probability':
+          const aProbability: number = ('adjustedProbability' in a ? a.adjustedProbability : a.impliedProbability) as number;
+          const bProbability: number = ('adjustedProbability' in b ? b.adjustedProbability : b.impliedProbability) as number;
+          return bProbability - aProbability;
+        case 'bestOdds':
+          return a.bestOdds - b.bestOdds;
+        case 'variance':
+          return b.variance - a.variance;
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [teamsData, searchQuery, sortBy]);
+
+  const totalImpliedProbability = teamsData.reduce((sum, team) => {
+    const prob: number = ('adjustedProbability' in team ? team.adjustedProbability : team.impliedProbability) as number;
+    return sum + prob;
+  }, 0);
+  const marketEfficiency = Math.abs(100 - totalImpliedProbability);
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-4 py-8">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <Trophy className="w-10 h-10 text-amber-500" />
+            <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white tracking-tight">
+              BCS Championship Odds
+            </h1>
+            <Trophy className="w-10 h-10 text-amber-500" />
+          </div>
+          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+            Compare odds across multiple sportsbooks and find the best value
+          </p>
+        </div>
+
+        {/* Admin Panel */}
+        <Card className="border border-slate-200 dark:border-slate-800 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-100 dark:bg-indigo-950 rounded-lg">
+                  <Target className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-semibold text-slate-900 dark:text-white">
+                    Prediction Controls
+                  </CardTitle>
+                  <CardDescription className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    Adjust factors to refine predictions
+                  </CardDescription>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAdminPanel(!showAdminPanel)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium transition-colors"
+              >
+                {showAdminPanel ? 'Hide' : 'Show'}
+              </button>
+            </div>
+          </CardHeader>
+          {showAdminPanel && (
+            <CardContent>
+              <div className="space-y-6">
+                {/* Enable/Disable Adjustments */}
+                <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                  <div>
+                    <div className="text-slate-900 dark:text-white font-semibold">Use Adjusted Predictions</div>
+                    <div className="text-slate-600 dark:text-slate-400 text-sm">Apply custom factors to modify odds-based predictions</div>
+                  </div>
+                  <button
+                    onClick={() => setUseAdjustments(!useAdjustments)}
+                    className={`px-6 py-2.5 rounded-lg font-semibold transition-all ${
+                      useAdjustments
+                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    {useAdjustments ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+
+                {/* Adjustment Sliders */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Weather Impact */}
+                  <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-slate-900 dark:text-white font-medium text-sm">Weather Impact</label>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm">{adjustmentFactors.weather}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={adjustmentFactors.weather}
+                      onChange={(e) => setAdjustmentFactors({...adjustmentFactors, weather: Number(e.target.value)})}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    />
+                    <div className="text-slate-500 dark:text-slate-400 text-xs mt-2">
+                      How much weather conditions affect performance (±5% max)
+                    </div>
+                  </div>
+
+                  {/* Injury Factor */}
+                  <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-slate-900 dark:text-white font-medium text-sm">Injury Factor</label>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm">{adjustmentFactors.injuries}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={adjustmentFactors.injuries}
+                      onChange={(e) => setAdjustmentFactors({...adjustmentFactors, injuries: Number(e.target.value)})}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    />
+                    <div className="text-slate-500 dark:text-slate-400 text-xs mt-2">
+                      Impact of key player injuries (negative impact, -8% max)
+                    </div>
+                  </div>
+
+                  {/* Team Record Weight */}
+                  <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-slate-900 dark:text-white font-medium text-sm">Team Record Weight</label>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm">{adjustmentFactors.teamRecord}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={adjustmentFactors.teamRecord}
+                      onChange={(e) => setAdjustmentFactors({...adjustmentFactors, teamRecord: Number(e.target.value)})}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    />
+                    <div className="text-slate-500 dark:text-slate-400 text-xs mt-2">
+                      How much win/loss record matters (±6% max)
+                    </div>
+                  </div>
+
+                  {/* Strength of Schedule */}
+                  <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-slate-900 dark:text-white font-medium text-sm">Strength of Schedule</label>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm">{adjustmentFactors.strengthOfSchedule}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={adjustmentFactors.strengthOfSchedule}
+                      onChange={(e) => setAdjustmentFactors({...adjustmentFactors, strengthOfSchedule: Number(e.target.value)})}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    />
+                    <div className="text-slate-500 dark:text-slate-400 text-xs mt-2">
+                      Quality of opponents faced (±7% max)
+                    </div>
+                  </div>
+
+                  {/* Home Field Advantage */}
+                  <div className="bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-slate-900 dark:text-white font-medium text-sm">Home Field Advantage</label>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm">{adjustmentFactors.homeField}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={adjustmentFactors.homeField}
+                      onChange={(e) => setAdjustmentFactors({...adjustmentFactors, homeField: Number(e.target.value)})}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    />
+                    <div className="text-slate-500 dark:text-slate-400 text-xs mt-2">
+                      Boost for home teams (positive only, +3% max)
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reset Button */}
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={() => setAdjustmentFactors({
+                      weather: 50,
+                      injuries: 50,
+                      teamRecord: 50,
+                      strengthOfSchedule: 50,
+                      homeField: 50,
+                    })}
+                    className="px-6 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium transition-colors"
+                  >
+                    Reset All to 50%
+                  </button>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Market Overview */}
+        <div className="grid md:grid-cols-3 gap-4">
+          <Card className="border border-slate-200 dark:border-slate-800 shadow-sm">
+            <CardContent className="pt-6">
+              <div className="text-sm text-slate-500 dark:text-slate-400 mb-2 font-medium">Total Implied Probability</div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-white">{totalImpliedProbability.toFixed(2)}%</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                {totalImpliedProbability > 100 ? 'Over-round market' : 'Under-round market'}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border border-slate-200 dark:border-slate-800 shadow-sm">
+            <CardContent className="pt-6">
+              <div className="text-sm text-slate-500 dark:text-slate-400 mb-2 font-medium">Market Efficiency</div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-white">{marketEfficiency.toFixed(2)}%</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                {marketEfficiency < 5 ? 'Highly efficient' : 'Some inefficiency'}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border border-slate-200 dark:border-slate-800 shadow-sm">
+            <CardContent className="pt-6">
+              <div className="text-sm text-slate-500 dark:text-slate-400 mb-2 font-medium">Teams Tracked</div>
+              <div className="text-3xl font-bold text-slate-900 dark:text-white">{teamsData.length}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">Across {SPORTSBOOKS.length} sportsbooks</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Controls */}
+        <Card className="border border-slate-200 dark:border-slate-800 shadow-sm">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <Input
+                  placeholder="Search teams..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400"
+                />
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setSortBy('probability')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    sortBy === 'probability'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  By Probability
+                </button>
+                <button
+                  onClick={() => setSortBy('bestOdds')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    sortBy === 'bestOdds'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  Best Odds
+                </button>
+                <button
+                  onClick={() => setSortBy('variance')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    sortBy === 'variance'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  Variance
+                </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Teams List */}
+        <div className="grid gap-3">
+          {filteredAndSorted.map((team, index) => {
+            const isTop3 = index < 3;
+            const displayProbability: number = ('adjustedProbability' in team ? team.adjustedProbability : team.impliedProbability) as number;
+            const probabilityTrend = displayProbability > 5 ? 'high' : displayProbability > 2 ? 'medium' : 'low';
+
+            return (
+              <Card
+                key={team.team}
+                className={`border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer shadow-sm hover:shadow-md ${
+                  isTop3 ? 'ring-2 ring-amber-400 dark:ring-amber-500' : ''
+                }`}
+                onClick={() => setShowDetails(showDetails === team.team ? null : team.team)}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className={`w-12 h-12 rounded-full ${getTeamColor(team.team)} flex items-center justify-center text-white font-bold text-lg shadow-sm`}>
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{team.team}</h3>
+                          {isTop3 && <Sparkles className="w-4 h-4 text-amber-500" />}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+                          <span>Avg: +{team.averageOdds}</span>
+                          <span>Best: +{team.bestOdds}</span>
+                          <span className="flex items-center gap-1">
+                            {probabilityTrend === 'high' && <TrendingUp className="w-4 h-4 text-emerald-500" />}
+                            {probabilityTrend === 'low' && <TrendingDown className="w-4 h-4 text-rose-500" />}
+                            {probabilityTrend === 'medium' && <Minus className="w-4 h-4 text-amber-500" />}
+                            {useAdjustments && 'adjustedProbability' in team ? (
+                              <>
+                                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{Number(team.adjustedProbability)}%</span>
+                                <span className="text-slate-400 dark:text-slate-500 line-through text-xs ml-1">{Number(team.impliedProbability)}%</span>
+                              </>
+                            ) : (
+                              <span>{Number(team.impliedProbability)}% chance</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-slate-900 dark:text-white">+{team.bestOdds}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Best Odds</div>
+                    </div>
+                  </div>
+
+                  {/* Expanded Details */}
+                  {showDetails === team.team && (
+                    <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <h4 className="text-slate-900 dark:text-white font-semibold mb-3 text-sm">Odds by Sportsbook</h4>
+                          <div className="space-y-2">
+                            {team.odds.map((odd, idx) => (
+                              <div key={idx} className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 rounded-lg p-3 border border-slate-200 dark:border-slate-800">
+                                <span className="text-slate-700 dark:text-slate-300 text-sm font-medium">{SPORTSBOOKS[idx]}</span>
+                                <Badge
+                                  variant={odd === team.bestOdds ? 'default' : 'secondary'}
+                                  className={odd === team.bestOdds ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'}
+                                >
+                                  +{odd}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-slate-900 dark:text-white font-semibold mb-3 text-sm">Analysis</h4>
+                          <div className="space-y-3">
+                            <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
+                              <div className="text-slate-600 dark:text-slate-400 text-xs mb-2 font-medium">
+                                {useAdjustments && 'adjustedProbability' in team ? 'Adjusted Probability' : 'Implied Probability'}
+                              </div>
+                              <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                                {Number(useAdjustments && 'adjustedProbability' in team ? team.adjustedProbability : team.impliedProbability)}%
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                Decimal: {americanToDecimal(team.averageOdds).toFixed(2)}
+                              </div>
+                            </div>
+
+                            {useAdjustments && 'adjustmentBreakdown' in team && (() => {
+                              const adjustedTeam = team as AdjustedTeamOdds;
+                              return (
+                                <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
+                                  <div className="text-slate-600 dark:text-slate-400 text-xs mb-3 font-medium">Adjustment Breakdown</div>
+                                  <div className="space-y-2 text-xs">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-slate-600 dark:text-slate-400">Weather:</span>
+                                      <span className={`font-semibold ${adjustedTeam.adjustmentBreakdown.weatherImpact >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                        {adjustedTeam.adjustmentBreakdown.weatherImpact >= 0 ? '+' : ''}{adjustedTeam.adjustmentBreakdown.weatherImpact}%
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-slate-600 dark:text-slate-400">Injuries:</span>
+                                      <span className="text-rose-600 dark:text-rose-400 font-semibold">{adjustedTeam.adjustmentBreakdown.injuryImpact}%</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-slate-600 dark:text-slate-400">Record:</span>
+                                      <span className={`font-semibold ${adjustedTeam.adjustmentBreakdown.recordImpact >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                        {adjustedTeam.adjustmentBreakdown.recordImpact >= 0 ? '+' : ''}{adjustedTeam.adjustmentBreakdown.recordImpact}%
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-slate-600 dark:text-slate-400">SOS:</span>
+                                      <span className={`font-semibold ${adjustedTeam.adjustmentBreakdown.sosImpact >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                        {adjustedTeam.adjustmentBreakdown.sosImpact >= 0 ? '+' : ''}{adjustedTeam.adjustmentBreakdown.sosImpact}%
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-slate-600 dark:text-slate-400">Home Field:</span>
+                                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">+{adjustedTeam.adjustmentBreakdown.homeFieldImpact}%</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
+                              <div className="text-slate-600 dark:text-slate-400 text-xs mb-2 font-medium">Odds Variance</div>
+                              <div className="text-xl font-bold text-slate-900 dark:text-white">{team.variance}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                {team.variance > 500 ? 'High variance - shop around!' : 'Consistent odds'}
+                              </div>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 border border-slate-200 dark:border-slate-800">
+                              <div className="text-slate-600 dark:text-slate-400 text-xs mb-2 font-medium">Value Range</div>
+                              <div className="text-lg font-bold text-slate-900 dark:text-white">
+                                +{team.worstOdds} to +{team.bestOdds}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                                Difference: +{team.bestOdds - team.worstOdds}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* PROGNO Prediction Section */}
+        <Card className="border border-indigo-200 dark:border-indigo-900 shadow-sm bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950">
+          <CardHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-indigo-600 rounded-lg">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold text-slate-900 dark:text-white">
+                  PROGNO AI Prediction
+                </CardTitle>
+                <CardDescription className="text-slate-600 dark:text-slate-400 mt-1">
+                  {useAdjustments ? 'Adjusted predictions with custom factors' : 'Based on odds analysis and market data'}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800">
+              <div className="space-y-6">
+                <div>
+                  <div className="text-slate-700 dark:text-slate-300 text-sm font-semibold mb-3">Top 3 Most Likely Winners</div>
+                  <div className="space-y-2">
+                    {filteredAndSorted.slice(0, 3).map((team, idx) => {
+                      const displayProb: number = ('adjustedProbability' in team ? team.adjustedProbability : team.impliedProbability) as number;
+                      return (
+                        <div key={team.team} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                              {idx + 1}
+                            </div>
+                            <span className="text-slate-900 dark:text-white font-medium">{team.team}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-slate-900 dark:text-white font-bold">{displayProb}%</div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">+{team.bestOdds}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                  <div className="text-slate-700 dark:text-slate-300 text-sm font-semibold mb-2">Best Value Picks</div>
+                  <div className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                    {useAdjustments
+                      ? 'Adjusted predictions show how external factors may shift the odds. Use the admin panel to fine-tune weights based on your analysis.'
+                      : 'Based on odds variance and implied probability, the best value appears to be on teams with high variance between sportsbooks. Consider shopping around for the best odds!'
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Footer Info */}
+        <Card className="border border-slate-200 dark:border-slate-800 shadow-sm bg-slate-50 dark:bg-slate-900">
+          <CardContent className="pt-6">
+            <div className="text-slate-600 dark:text-slate-400 text-sm text-center space-y-2">
+              <p>Odds are in American format (+250 means bet $100 to win $250)</p>
+              <p>Implied probability = 100 / (odds + 100) × 100</p>
+              <p>Always shop around for the best odds! Variance shows how much odds differ between books.</p>
+              {useAdjustments && (
+                <p className="mt-3 text-amber-600 dark:text-amber-400 font-medium">⚠️ Adjusted predictions are simulated. Replace with real data for accurate results.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

@@ -13,10 +13,7 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 import { fundManager } from './fund-manager';
 import { CoinbaseExchange } from './exchanges/coinbase';

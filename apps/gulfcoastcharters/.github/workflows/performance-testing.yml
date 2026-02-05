@@ -1,0 +1,146 @@
+name: Performance Testing
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 0 * * 0' # Weekly on Sunday
+
+jobs:
+  lighthouse:
+    name: Lighthouse Performance Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci --prefer-offline
+      
+      - name: Build project
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-key' }}
+
+      
+      - name: Serve build locally
+        run: |
+          npm install -g serve
+          serve -s dist -l 8080 &
+          sleep 5
+      
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v11
+        continue-on-error: true
+        with:
+          urls: |
+            http://localhost:8080
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          budgetPath: ./lighthouse-budget.json
+
+      
+      - name: Save Lighthouse results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results
+          path: .lighthouseci/
+          retention-days: 30
+      
+      - name: Comment Lighthouse scores on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const resultsPath = '.lighthouseci/manifest.json';
+            
+            if (fs.existsSync(resultsPath)) {
+              const manifest = JSON.parse(fs.readFileSync(resultsPath));
+              const report = manifest[0];
+              
+              const comment = `## ⚡ Lighthouse Performance Report\n\n` +
+                `| Metric | Score |\n` +
+                `|--------|-------|\n` +
+                `| 🎯 Performance | ${report.summary.performance * 100}/100 |\n` +
+                `| ♿ Accessibility | ${report.summary.accessibility * 100}/100 |\n` +
+                `| 🎨 Best Practices | ${report.summary['best-practices'] * 100}/100 |\n` +
+                `| 🔍 SEO | ${report.summary.seo * 100}/100 |\n\n` +
+                `[View Full Report](${report.url})`;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+
+  bundle-analysis:
+    name: Bundle Size Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci --prefer-offline
+      - name: Build with stats
+        run: npm run build -- --mode production
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-key' }}
+
+      
+      - name: Analyze bundle size
+        run: |
+          npm install -g source-map-explorer
+          source-map-explorer 'dist/assets/*.js' --json > bundle-analysis.json || true
+      
+      - name: Calculate bundle sizes
+        id: bundle
+        run: |
+          TOTAL=$(du -sh dist | cut -f1)
+          JS_SIZE=$(du -sh dist/assets/*.js 2>/dev/null | awk '{sum+=$1} END {print sum}' || echo "0")
+          CSS_SIZE=$(du -sh dist/assets/*.css 2>/dev/null | awk '{sum+=$1} END {print sum}' || echo "0")
+          
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          echo "js=$JS_SIZE" >> $GITHUB_OUTPUT
+          echo "css=$CSS_SIZE" >> $GITHUB_OUTPUT
+      
+      - name: Comment bundle size on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const total = '${{ steps.bundle.outputs.total }}';
+            const js = '${{ steps.bundle.outputs.js }}';
+            const css = '${{ steps.bundle.outputs.css }}';
+            
+            const comment = `## 📦 Bundle Size Report\n\n` +
+              `| Asset Type | Size |\n` +
+              `|------------|------|\n` +
+              `| 📁 Total | ${total} |\n` +
+              `| 📜 JavaScript | ${js}K |\n` +
+              `| 🎨 CSS | ${css}K |\n\n` +
+              `💡 **Tip:** Keep bundle sizes small for faster load times!`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

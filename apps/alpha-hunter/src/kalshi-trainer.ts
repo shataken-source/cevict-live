@@ -5,10 +5,7 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 import Anthropic from '@anthropic-ai/sdk';
 import { KalshiTrader } from './intelligence/kalshi-trader';
@@ -258,7 +255,7 @@ Should I bet? Respond with JSON only:
     console.log(`   Confidence: ${confidence}%`);
     console.log(`   Reasoning: ${reasoning}`);
     
-    const trade = await this.kalshi.placeBet(market.id, side, amount, price);
+    const trade = await this.kalshi.placeLimitOrderUsd(market.id, side, amount, price);
     
     if (trade) {
       const bet: KalshiBet = {

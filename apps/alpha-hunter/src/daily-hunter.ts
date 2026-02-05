@@ -144,7 +144,7 @@ class DailyHunter {
         const side = parts[1]?.toLowerCase() as 'yes' | 'no' || 'yes';
         const price = opp.type === 'prediction_market' ? 50 : 100; // Default max price
         
-        trade = await this.kalshi.placeBet(marketId, side, opp.requiredCapital, price);
+        trade = await this.kalshi.placeLimitOrderUsd(marketId, side, opp.requiredCapital, price);
         break;
 
       case 'manual':

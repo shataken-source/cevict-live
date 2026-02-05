@@ -1,0 +1,62 @@
+name: Automated Database Backup
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Database Backup
+        id: backup
+        run: |
+          response=$(curl -s -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/database-backup" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action":"backup"}')
+          
+          echo "Response: $response"
+          echo "backup_result=$response" >> $GITHUB_OUTPUT
+          
+          # Check if backup was successful
+          if echo "$response" | grep -q '"success":true'; then
+            echo "Backup completed successfully"
+            exit 0
+          else
+            echo "Backup failed"
+            exit 1
+          fi
+
+      - name: Verify Backup Health
+        if: success()
+        run: |
+          health=$(curl -s -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/database-backup" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action":"health"}')
+          
+          echo "Health Status: $health"
+          
+          # Alert if unhealthy
+          if echo "$health" | grep -q '"healthy":false'; then
+            echo "⚠️ Backup system is unhealthy!"
+            exit 1
+          fi
+
+      - name: Notify on Failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Database Backup Failed',
+              body: `Database backup job failed at ${new Date().toISOString()}\n\nPlease check the workflow logs and backup system health.`,
+              labels: ['backup', 'critical']
+            })

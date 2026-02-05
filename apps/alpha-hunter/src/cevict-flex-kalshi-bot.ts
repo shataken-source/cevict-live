@@ -281,7 +281,7 @@ class CevictFlexKalshiBot {
         try {
           console.log(`💰 Executing: ${opp.title}`);
           
-          const trade = await this.kalshi.placeBet(
+          const trade = await this.kalshi.placeLimitOrderUsd(
             opp.market.id,
             opp.action.target.includes('YES') ? 'yes' : 'no',
             opp.action.amount,

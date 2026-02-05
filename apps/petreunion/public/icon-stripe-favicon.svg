@@ -1,0 +1,20 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Favicon size version -->
+  <defs>
+    <linearGradient id="favGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="url(#favGrad)"/>
+  
+  <!-- Simplified paw for small size -->
+  <g transform="translate(16, 16)" fill="#FFFFFF">
+    <ellipse cx="0" cy="3" rx="3" ry="2.5" opacity="0.95"/>
+    <ellipse cx="-2.2" cy="0.3" rx="1.5" ry="1.2" opacity="0.95"/>
+    <ellipse cx="2.2" cy="0.3" rx="1.5" ry="1.2" opacity="0.95"/>
+    <ellipse cx="0" cy="-1.8" rx="1.5" ry="1.2" opacity="0.95"/>
+  </g>
+</svg>

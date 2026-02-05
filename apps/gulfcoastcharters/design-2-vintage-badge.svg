@@ -1,0 +1,123 @@
+<svg width="800" height="800" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background (navy t-shirt) -->
+  <rect width="800" height="800" fill="#0a1f3d"/>
+  
+  <!-- Outer Circle Badge -->
+  <circle cx="400" cy="400" r="280" 
+          fill="none" 
+          stroke="#d4a574" 
+          stroke-width="8"/>
+  
+  <circle cx="400" cy="400" r="260" 
+          fill="none" 
+          stroke="#d4a574" 
+          stroke-width="2"/>
+  
+  <!-- Inner Circle -->
+  <circle cx="400" cy="400" r="240" 
+          fill="#0a1f3d" 
+          stroke="#ffffff" 
+          stroke-width="3"/>
+  
+  <!-- Anchor -->
+  <g id="anchor" transform="translate(400, 420)">
+    <!-- Shank -->
+    <rect x="-8" y="-120" width="16" height="140" 
+          fill="#d4a574"/>
+    
+    <!-- Ring -->
+    <circle cx="0" cy="-120" r="25" 
+            fill="none" 
+            stroke="#d4a574" 
+            stroke-width="12"/>
+    
+    <!-- Flukes (arms) -->
+    <path d="M -8 20 L -80 80 L -80 100 L -50 80 L -8 50" 
+          fill="#d4a574"/>
+    <path d="M 8 20 L 80 80 L 80 100 L 50 80 L 8 50" 
+          fill="#d4a574"/>
+    
+    <!-- Stock (crossbar) -->
+    <rect x="-70" y="-20" width="140" height="16" 
+          fill="#d4a574"
+          rx="8"/>
+    
+    <!-- Fluke details -->
+    <ellipse cx="-65" cy="90" rx="25" ry="35" 
+             fill="#d4a574"/>
+    <ellipse cx="65" cy="90" rx="25" ry="35" 
+             fill="#d4a574"/>
+  </g>
+  
+  <!-- Rope Circle Detail -->
+  <circle cx="400" cy="400" r="250" 
+          fill="none" 
+          stroke="#d4a574" 
+          stroke-width="4"
+          stroke-dasharray="10,10"/>
+  
+  <!-- Top Text: EST. 2024 -->
+  <path id="topCurve" 
+        d="M 150 400 A 250 250 0 0 1 650 400" 
+        fill="none"/>
+  <text font-family="Georgia, serif" 
+        font-size="36" 
+        fill="#ffffff"
+        font-weight="bold"
+        letter-spacing="8">
+    <textPath href="#topCurve" startOffset="50%" text-anchor="middle">
+      EST. 2024
+    </textPath>
+  </text>
+  
+  <!-- Main Text: GULF COAST -->
+  <text x="400" y="250" 
+        font-family="Georgia, serif" 
+        font-size="56" 
+        font-weight="bold"
+        fill="#ffffff"
+        text-anchor="middle"
+        letter-spacing="6">
+    GULF COAST
+  </text>
+  
+  <!-- Bottom Text on Curve -->
+  <path id="bottomCurve" 
+        d="M 650 400 A 250 250 0 0 1 150 400" 
+        fill="none"/>
+  <text font-family="Georgia, serif" 
+        font-size="32" 
+        fill="#d4a574"
+        font-weight="bold"
+        letter-spacing="4">
+    <textPath href="#bottomCurve" startOffset="50%" text-anchor="middle">
+      CHARTERS
+    </textPath>
+  </text>
+  
+  <!-- Tagline -->
+  <text x="400" y="610" 
+        font-family="Georgia, serif" 
+        font-size="24" 
+        fill="#d4a574"
+        text-anchor="middle"
+        font-style="italic">
+    Premium Fishing Adventures
+  </text>
+  
+  <!-- Decorative Stars -->
+  <g id="star" fill="#d4a574">
+    <polygon points="0,-10 2.5,-3 10,-3 4,2 6,9 0,5 -6,9 -4,2 -10,-3 -2.5,-3" 
+             transform="translate(200, 250)"/>
+    <polygon points="0,-10 2.5,-3 10,-3 4,2 6,9 0,5 -6,9 -4,2 -10,-3 -2.5,-3" 
+             transform="translate(600, 250)"/>
+  </g>
+  
+  <!-- Nautical Wheel Spokes (decorative) -->
+  <g id="wheel-spokes" opacity="0.2">
+    <line x1="400" y1="200" x2="400" y2="160" stroke="#ffffff" stroke-width="3"/>
+    <line x1="400" y1="600" x2="400" y2="640" stroke="#ffffff" stroke-width="3"/>
+    <line x1="200" y1="400" x2="160" y2="400" stroke="#ffffff" stroke-width="3"/>
+    <line x1="600" y1="400" x2="640" y2="400" stroke="#ffffff" stroke-width="3"/>
+  </g>
+</svg>

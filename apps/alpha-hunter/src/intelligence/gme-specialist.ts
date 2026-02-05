@@ -20,10 +20,13 @@ const c = {
   green: '\x1b[32m',
   brightGreen: '\x1b[92m',
   red: '\x1b[31m',
+  brightRed: '\x1b[91m',
   yellow: '\x1b[33m',
+  brightYellow: '\x1b[93m',
   magenta: '\x1b[35m',
   white: '\x1b[37m',
   brightWhite: '\x1b[97m',
+  dim: '\x1b[2m',
 };
 
 interface GMEPrediction {

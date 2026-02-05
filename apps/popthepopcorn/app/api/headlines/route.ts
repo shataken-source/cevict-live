@@ -1,0 +1,155 @@
+import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
+
+// Force dynamic rendering (can't be statically generated due to DB queries)
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
+export async function GET() {
+  const startTime = Date.now()
+  
+  try {
+    // Validate Supabase configuration
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('[API] Missing Supabase environment variables')
+      // During build, return empty array instead of error
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
+        return NextResponse.json({
+          headlines: [],
+          overallDrama: 5,
+        })
+      }
+      return NextResponse.json({ 
+        error: 'Server configuration error', 
+        message: 'Supabase credentials not configured. Please check environment variables.',
+        details: {
+          hasUrl: !!supabaseUrl,
+          hasKey: !!supabaseKey
+        }
+      }, { status: 500 })
+    }
+
+    // Add timeout wrapper for database queries (8 seconds)
+    const queryTimeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database query timeout')), 8000)
+    )
+
+    // Fetch headlines ordered by drama score and recency
+    // Try with reactions join first, fallback to simple query if it fails
+    let headlines: Array<{
+      id: string
+      title: string
+      url: string
+      source: string
+      category: string
+      drama_score: number
+      upvotes: number
+      downvotes: number
+      posted_at: string
+      is_breaking: boolean
+      [key: string]: unknown
+    }> = []
+    let error: Error | { code?: string; message: string } | null = null
+
+    try {
+      const queryPromise = supabase
+        .from('headlines')
+        .select(`
+          *,
+          reactions:reactions(reaction_type)
+        `)
+        .order('drama_score', { ascending: false })
+        .order('posted_at', { ascending: false })
+        .limit(100)
+
+      const result = await Promise.race([queryPromise, queryTimeout]) as {
+        data: typeof headlines | null
+        error: { code?: string; message: string } | null
+      }
+      headlines = result.data || []
+      error = result.error
+    } catch (timeoutError: unknown) {
+      console.error('[API] Query timeout, trying simple query')
+      error = timeoutError instanceof Error 
+        ? timeoutError 
+        : { message: timeoutError ? String(timeoutError) : 'Unknown timeout error' }
+    }
+
+    // If join fails (e.g., RLS issue or timeout), try without reactions
+    if (error) {
+      const errorMessage = error instanceof Error ? error.message : error?.message || 'Unknown error'
+      console.warn('[API] Headlines query with reactions failed, trying without:', errorMessage)
+      try {
+        // Create new timeout for simple query
+        const simpleQueryTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Simple query timeout')), 8000)
+        )
+
+        const simpleQueryPromise = supabase
+          .from('headlines')
+          .select('*')
+          .order('drama_score', { ascending: false })
+          .order('posted_at', { ascending: false })
+          .limit(100)
+
+        const simpleResult = await Promise.race([simpleQueryPromise, simpleQueryTimeout]) as {
+          data: Array<Record<string, unknown>> | null
+          error: { code?: string; message: string } | null
+        }
+        
+        if (simpleResult.error) {
+          console.error('[API] Error fetching headlines (simple query):', simpleResult.error)
+          // During build or schema cache issues, return empty array
+          if (process.env.NEXT_PHASE === 'phase-production-build' || simpleResult.error.code === 'PGRST205') {
+            console.warn('[API] Schema cache issue during build, returning empty headlines')
+            return NextResponse.json({
+              headlines: [],
+              overallDrama: 5,
+            })
+          }
+          return NextResponse.json({ 
+            error: 'Failed to fetch headlines', 
+            message: simpleResult.error.message,
+            code: simpleResult.error.code,
+            details: simpleResult.error,
+            hint: 'Check RLS policies and schema cache'
+          }, { status: 500 })
+        }
+        
+        headlines = (simpleResult.data || []) as typeof headlines
+        error = null
+      } catch (simpleTimeoutError) {
+        console.error('[API] Simple query also timed out')
+        return NextResponse.json({ 
+          error: 'Request timeout', 
+          message: 'Database query took too long. Please try again.',
+        }, { status: 504 })
+      }
+    }
+
+    // Log for debugging
+    const duration = Date.now() - startTime
+    console.log(`[API] Fetched ${headlines?.length || 0} headlines in ${duration}ms`)
+    if (headlines && headlines.length > 0) {
+      const categories = [...new Set(headlines.map(h => h.category))]
+      console.log(`[API] Categories found: ${categories.join(', ')}`)
+    }
+
+    // Calculate overall drama score (average of top 10)
+    const topHeadlines = headlines?.slice(0, 10) || []
+    const overallDrama = topHeadlines.length > 0
+      ? Math.round(topHeadlines.reduce((sum, h) => sum + h.drama_score, 0) / topHeadlines.length)
+      : 5
+
+    return NextResponse.json({
+      headlines: headlines || [],
+      overallDrama,
+    })
+  } catch (error) {
+    console.error('Error in headlines API:', error)
+    return NextResponse.json({ error: 'Internal server error', details: error }, { status: 500 })
+  }
+}

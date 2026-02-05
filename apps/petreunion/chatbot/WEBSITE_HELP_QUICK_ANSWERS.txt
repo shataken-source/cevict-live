@@ -1,0 +1,255 @@
+PetReunion Website Help - Quick Answer Library
+
+Common Questions - Instant Answers
+
+"How do I report a lost pet?"
+"Go to petreunion.com/report/lost. Fill out the form with:
+1. Pet Type (required: Dog or Cat)
+2. Color (required)
+3. Date Lost (required)
+4. Location (required: city AND state, like 'Columbus, Indiana')
+5. Contact info (optional but recommended)
+Click 'Submit Report' when done!"
+
+"I'm getting a location error"
+"Location needs BOTH city AND state. Examples:
+✅ 'Columbus, Indiana'
+✅ 'Columbus IN'
+✅ 'Indianapolis, IN'
+❌ 'Columbus' (missing state)
+❌ 'Indiana' (missing city)"
+
+"Date error - can't select date"
+"Make sure:
+- Date is not in the future
+- Date is not more than 10 years ago
+- You're clicking the date field
+- Try typing date manually: YYYY-MM-DD format"
+
+"Email format error"
+"Email must have: name@domain.com
+✅ yourname@email.com
+✅ user.name@example.org
+❌ yourname@email (missing .com)
+❌ @email.com (missing name)"
+
+"Phone number error"
+"Phone needs 10-15 digits. Formats that work:
+✅ (555) 123-4567
+✅ 555-123-4567
+✅ 5551234567
+Spaces and dashes are fine - they're removed automatically."
+
+"Form won't submit"
+"Check for red error messages. Common issues:
+1. Missing required field (Pet Type, Color, Date, Location)
+2. Location missing state
+3. Invalid email format
+4. Invalid phone format
+5. Date in future
+Scroll through form and fix any red error messages."
+
+"Can't find my report after submitting"
+"Try:
+1. Wait 10-30 seconds and refresh
+2. Search by your pet's name
+3. Search by city name
+4. Clear all filters
+5. Make sure status filter is 'All' or 'Lost'"
+
+"How do I search?"
+"Go to petreunion.com/search:
+1. Type in search bar (name, breed, color, city)
+2. Click 'Filters' to narrow results
+3. Select filters (type, location, status, date)
+4. Click 'Search' or press Enter
+5. Click 'View Details' on any pet card"
+
+"No results found"
+"Try:
+1. Broader search terms ('dog' instead of 'Golden Retriever')
+2. Clear all filters
+3. Check spelling
+4. Search by location only
+5. Make sure status filter is correct"
+
+"Field says 'too long'"
+"Character limits:
+- Pet Name: 100
+- Breed: 100
+- Color: 50
+- Description: 2000
+- Location: 200
+Shorten the text to fit."
+
+"What's required vs optional?"
+"REQUIRED:
+- Pet Type
+- Color
+- Date Lost
+- Location (city AND state)
+
+OPTIONAL (but helpful):
+- Pet Name
+- Breed
+- Size
+- Age
+- Gender
+- Description
+- Contact info"
+
+"Can I add photos?"
+"Photo upload is coming soon! For now, use the Description field to describe your pet in detail - colors, markings, collar, microchip, etc."
+
+"Can I edit my report?"
+"Editing is coming soon! For now, contact support to update your report, or submit a new report with updated information."
+
+"Location format help"
+"Use: 'City, State' or 'City State'
+✅ Columbus, Indiana
+✅ Columbus IN
+✅ Indianapolis, IN
+❌ Columbus (needs state)
+❌ 123 Main St (too specific)"
+
+"Date picker not working"
+"Try:
+1. Click directly on date field
+2. Type date manually: YYYY-MM-DD
+3. Try different browser
+4. Try on mobile device"
+
+"Submit button doesn't work"
+"Check:
+1. All required fields filled
+2. No red error messages
+3. Try different browser
+4. Check internet connection
+5. Refresh page and try again"
+
+"Page won't load"
+"Try:
+1. Refresh page (F5)
+2. Clear browser cache
+3. Different browser
+4. Check internet connection
+5. Try on mobile device"
+
+"Can't see all form fields"
+"Try:
+1. Scroll down
+2. Zoom out (Ctrl + minus)
+3. Try on larger screen
+4. Use mobile device"
+
+"Search is slow"
+"Try:
+1. Wait a few seconds
+2. More specific search
+3. Check internet connection
+4. Clear browser cache"
+
+"Filter button not working"
+"Try:
+1. Click 'Filters' button
+2. Make sure JavaScript enabled
+3. Refresh page
+4. Try different browser"
+
+"Status badges meaning"
+"- Red 'Lost': Pet is missing
+- Blue 'Found': Pet was found
+- Green 'Reunited': Successfully reunited"
+
+"Contact info privacy"
+"Your contact info is:
+- Private and secure
+- Only shared when you contact someone
+- Never shown publicly
+- Used only to reunite pets"
+
+"Browser compatibility"
+"Works on:
+- Chrome, Firefox, Safari, Edge
+- Desktop, tablet, mobile
+- All modern browsers
+- Responsive design"
+
+"Form validation errors"
+"Common errors:
+- 'Please enter location' → Add city AND state
+- 'Please enter color' → Fill color field
+- 'Please select date' → Pick a date
+- 'Invalid email' → Fix email format
+- 'Invalid phone' → Fix phone format"
+
+"Success but report not showing"
+"Reports appear instantly. If not visible:
+1. Refresh search page
+2. Clear filters
+3. Search by pet name
+4. Search by location
+5. Check status filter"
+
+"Description character limit"
+"Description allows 2000 characters. Character counter shows: '150 / 2000'. Focus on:
+- Distinctive markings
+- Collar/tags info
+- Microchip number
+- Special behaviors"
+
+"Pet type dropdown not working"
+"Try:
+1. Click dropdown arrow
+2. Click different part of box
+3. Use keyboard: Click field, arrow keys, Enter
+4. Try different browser"
+
+"Report found vs lost"
+"Report Found Pet form is similar but asks:
+- 'Date Found' instead of 'Date Lost'
+- 'Where Found' instead of 'Last Seen'
+- Same pet info fields
+- Same contact fields"
+
+"Multiple pets missing"
+"Submit separate reports for each pet. Each pet needs their own report with unique details."
+
+"Pet found - what now?"
+"Great news! Update your report status to 'Reunited' when that feature is available. For now, contact support to mark as found."
+
+"Wrong information submitted"
+"Contact support to correct your report. Include:
+- Your report details
+- What needs to be changed
+- Correct information"
+
+"Can't remember what I entered"
+"Check your email for confirmation (if provided). Otherwise, search for your pet by name or location to find your report."
+
+"Form keeps resetting"
+"Possible causes:
+1. Browser refresh
+2. Form timeout
+3. Browser issue
+
+Try:
+1. Fill form faster
+2. Different browser
+3. Copy text before submitting
+4. Submit in sections if possible"
+
+"Help with specific field"
+"Tell me which field and I'll help:
+- Pet Name
+- Pet Type
+- Breed
+- Color
+- Size
+- Age
+- Date Lost
+- Location
+- Description
+- Contact fields"
+
+These quick answers cover the most common questions. If your question isn't here, ask me and I'll provide detailed help!

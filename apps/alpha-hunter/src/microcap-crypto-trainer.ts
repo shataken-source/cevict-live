@@ -12,10 +12,7 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 import { CoinbaseExchange } from './exchanges/coinbase';
 import Anthropic from '@anthropic-ai/sdk';
@@ -737,17 +734,25 @@ What's the ONE most important lesson from this trade? (Max 50 words)`
   }
 }
 
-// CLI runner
-if (import.meta.url === `file://${process.argv[1]}`) {
+async function runCli(): Promise<void> {
   const trainer = new MicroCapCryptoTrainer();
-  
+
   console.log(colorize('\n💎 MICRO-CAP CRYPTO TRAINER', colors.cyan + colors.bright));
   console.log(colorize('   Specializing in crypto under $1.00\n', colors.cyan));
-  
+
   // Run discovery and preparation
   await trainer.discoverAndPrepare();
-  
+
   // Start training
   await trainer.startTraining();
+}
+
+// CLI runner (avoid import.meta + top-level await for CJS build)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const require: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+declare const module: any;
+if (typeof require !== 'undefined' && typeof module !== 'undefined' && require.main === module) {
+  runCli().catch(console.error);
 }
 

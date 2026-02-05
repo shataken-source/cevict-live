@@ -240,6 +240,7 @@ export interface TradeRecord {
   entry_price: number;
   exit_price?: number;
   amount: number;
+  contracts?: number;
   pnl?: number;
   fees: number;
   opened_at: Date;
@@ -265,6 +266,7 @@ export async function saveTradeRecord(trade: TradeRecord): Promise<boolean> {
         entry_price: trade.entry_price,
         exit_price: trade.exit_price,
         amount: trade.amount,
+        contracts: trade.contracts,
         pnl: trade.pnl,
         fees: trade.fees,
         opened_at: trade.opened_at.toISOString(),
@@ -319,6 +321,207 @@ export async function getTradeHistory(
     }));
   } catch (e) {
     console.error('Exception fetching trade history:', e);
+    return [];
+  }
+}
+
+export async function getOpenTradeRecords(
+  platform: 'kalshi' | 'coinbase',
+  limit = 200
+): Promise<TradeRecord[]> {
+  const client = getClient();
+  if (!client) return [];
+
+  try {
+    const { data, error } = await client
+      .from('trade_history')
+      .select('*')
+      .eq('platform', platform)
+      .eq('outcome', 'open')
+      .order('opened_at', { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      handleSupabaseError(error, 'getOpenTradeRecords');
+      return [];
+    }
+
+    return (data || []).map(d => ({
+      ...d,
+      opened_at: new Date(d.opened_at),
+      closed_at: d.closed_at ? new Date(d.closed_at) : undefined,
+    }));
+  } catch (e) {
+    console.error('Exception fetching open trade records:', e);
+    return [];
+  }
+}
+
+export async function closeTradeRecord(
+  tradeId: string,
+  updates: Pick<TradeRecord, 'outcome' | 'pnl' | 'exit_price' | 'closed_at'> & { contracts?: number }
+): Promise<boolean> {
+  const client = getClient();
+  if (!client) return false;
+
+  try {
+    const { error } = await client
+      .from('trade_history')
+      .update({
+        outcome: updates.outcome,
+        pnl: updates.pnl,
+        exit_price: updates.exit_price,
+        closed_at: updates.closed_at?.toISOString(),
+        contracts: updates.contracts,
+      })
+      .eq('id', tradeId);
+
+    if (error) {
+      handleSupabaseError(error, 'closeTradeRecord');
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('Exception closing trade record:', e);
+    return false;
+  }
+}
+
+export async function markBotPredictionsResolved(
+  platform: 'kalshi' | 'coinbase',
+  marketId: string,
+  outcome: 'win' | 'loss',
+  pnl?: number
+): Promise<boolean> {
+  const client = getClient();
+  if (!client) return false;
+
+  try {
+    const { error } = await client
+      .from('bot_predictions')
+      .update({
+        actual_outcome: outcome,
+        pnl: pnl,
+      })
+      .eq('platform', platform)
+      .eq('market_id', marketId)
+      .is('actual_outcome', null);
+
+    if (error) {
+      handleSupabaseError(error, 'markBotPredictionsResolved');
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('Exception marking predictions resolved:', e);
+    return false;
+  }
+}
+
+export interface StrategyParams {
+  platform: 'kalshi' | 'coinbase';
+  bot_category: string;
+  min_confidence: number;
+  min_edge: number;
+  max_trade_usd: number;
+  daily_spending_limit: number;
+  max_open_positions: number;
+  updated_at?: Date;
+}
+
+export async function getStrategyParams(
+  platform: 'kalshi' | 'coinbase',
+  botCategory: string
+): Promise<StrategyParams | null> {
+  const client = getClient();
+  if (!client) return null;
+
+  try {
+    const { data, error } = await client
+      .from('bot_strategy_params')
+      .select('*')
+      .eq('platform', platform)
+      .eq('bot_category', botCategory)
+      .single();
+
+    if (error) return null;
+    if (!data) return null;
+
+    return {
+      platform: data.platform,
+      bot_category: data.bot_category,
+      min_confidence: Number(data.min_confidence),
+      min_edge: Number(data.min_edge),
+      max_trade_usd: Number(data.max_trade_usd),
+      daily_spending_limit: Number(data.daily_spending_limit),
+      max_open_positions: Number(data.max_open_positions),
+      updated_at: data.updated_at ? new Date(data.updated_at) : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function upsertStrategyParams(params: StrategyParams): Promise<boolean> {
+  const client = getClient();
+  if (!client) return false;
+
+  try {
+    const { error } = await client
+      .from('bot_strategy_params')
+      .upsert(
+        {
+          platform: params.platform,
+          bot_category: params.bot_category,
+          min_confidence: params.min_confidence,
+          min_edge: params.min_edge,
+          max_trade_usd: params.max_trade_usd,
+          daily_spending_limit: params.daily_spending_limit,
+          max_open_positions: params.max_open_positions,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'platform,bot_category' }
+      );
+
+    if (error) {
+      handleSupabaseError(error, 'upsertStrategyParams');
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('Exception upserting strategy params:', e);
+    return false;
+  }
+}
+
+export async function getRecentClosedTradeRecords(
+  platform: 'kalshi' | 'coinbase',
+  limit = 500
+): Promise<TradeRecord[]> {
+  const client = getClient();
+  if (!client) return [];
+
+  try {
+    const { data, error } = await client
+      .from('trade_history')
+      .select('*')
+      .eq('platform', platform)
+      .in('outcome', ['win', 'loss'])
+      .order('closed_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      handleSupabaseError(error, 'getRecentClosedTradeRecords');
+      return [];
+    }
+
+    return (data || []).map(d => ({
+      ...d,
+      opened_at: new Date(d.opened_at),
+      closed_at: d.closed_at ? new Date(d.closed_at) : undefined,
+    }));
+  } catch (e) {
+    console.error('Exception fetching recent closed trades:', e);
     return [];
   }
 }
@@ -573,6 +776,12 @@ export const supabaseMemory = {
   getBotPredictions,
   saveTradeRecord,
   getTradeHistory,
+  getOpenTradeRecords,
+  closeTradeRecord,
+  markBotPredictionsResolved,
+  getStrategyParams,
+  upsertStrategyParams,
+  getRecentClosedTradeRecords,
   saveBotLearning,
   getBotLearnings,
   updateBotMetrics,

@@ -1,0 +1,264 @@
+PetReunion Website Troubleshooting Guide
+
+Common Issues When Adding Pets
+
+Issue: "I can't submit my report"
+
+Checklist:
+1. ✅ Pet Type selected (Dog or Cat)
+2. ✅ Color entered (not empty)
+3. ✅ Date Lost selected (not in future, not more than 10 years ago)
+4. ✅ Location entered with city AND state
+5. ✅ Email format correct (if provided)
+6. ✅ Phone number format correct (if provided)
+
+If all checked but still not working:
+- Look for red error messages on the form
+- Check each field for specific error text
+- Try refreshing the page and starting over
+
+Issue: "Location error - Please enter location"
+
+Problem: Location field requires BOTH city AND state
+
+Correct Examples:
+✅ "Columbus Indiana"
+✅ "Columbus, Indiana"  
+✅ "Columbus, IN"
+✅ "Indianapolis IN"
+
+Wrong Examples:
+❌ "Columbus" (missing state)
+❌ "Indiana" (missing city)
+❌ Empty field
+
+Solution: Always include city and state, separated by comma or space.
+
+Issue: "Date error - Date cannot be in future"
+
+Problem: Selected a future date
+
+Solution: 
+- Click the date field
+- Select today's date or a past date
+- The calendar won't let you select future dates, but if you type manually, make sure it's not in the future
+
+Issue: "Email format error"
+
+Problem: Email address format is incorrect
+
+Correct Format:
+✅ yourname@email.com
+✅ user.name@example.org
+✅ test123@gmail.com
+
+Wrong Format:
+❌ yourname@email (missing .com)
+❌ @email.com (missing username)
+❌ yourname email.com (missing @)
+❌ yourname@ (incomplete)
+
+Solution: Make sure email has:
+- Username before @
+- @ symbol
+- Domain name
+- Top-level domain (.com, .org, etc.)
+
+Issue: "Phone number error"
+
+Problem: Phone number doesn't have 10-15 digits
+
+Correct Formats:
+✅ (555) 123-4567
+✅ 555-123-4567
+✅ 5551234567
+✅ +1 555 123 4567
+
+Wrong Formats:
+❌ 555-123 (too short, needs 10 digits minimum)
+❌ abc-def-ghij (contains letters)
+❌ Empty if you want to include it
+
+Solution: Enter 10-15 digits. Spaces, dashes, and parentheses are okay - they'll be removed automatically.
+
+Issue: "Field is too long"
+
+Problem: Text exceeds maximum character limit
+
+Character Limits:
+- Pet Name: 100 characters
+- Breed: 100 characters
+- Color: 50 characters
+- Description: 2000 characters
+- Location: 200 characters
+- Owner Name: 100 characters
+- Email: 255 characters
+- Phone: 20 characters
+
+Solution: Shorten the text to fit within limits. For descriptions, focus on most important details.
+
+Issue: "Form won't submit / Submit button doesn't work"
+
+Possible Causes:
+1. Required field is empty (check for red asterisks *)
+2. Validation error (look for red error messages)
+3. Browser issue
+4. Internet connection problem
+
+Solutions:
+1. Scroll through form and check all required fields
+2. Look for red error messages above the submit button
+3. Try a different browser (Chrome, Firefox, Safari)
+4. Check your internet connection
+5. Refresh the page and try again
+6. Clear browser cache
+
+Issue: "Success message but report not in search"
+
+Possible Causes:
+1. Report needs a moment to appear
+2. Search filters are hiding it
+3. Wrong search terms
+
+Solutions:
+1. Wait 10-30 seconds and refresh search page
+2. Clear all filters and search again
+3. Search by your pet's name
+4. Search by location (city name)
+5. Make sure status filter is set to "All" or "Lost"
+
+Issue: "Can't find the Report Lost Pet button"
+
+Solution:
+- Go to homepage: petreunion.com
+- Click the card that says "Report Lost Pet" (red icon with AlertCircle)
+- Or go directly to: petreunion.com/report/lost
+
+Issue: "Search not working / No results"
+
+Solutions:
+1. Try broader search terms:
+   - Instead of "Golden Retriever", try "dog"
+   - Instead of "Buddy", try searching by location
+2. Clear all filters
+3. Check spelling
+4. Try different search terms
+5. Make sure you're searching in the right status (Lost vs Found)
+
+Issue: "Page won't load"
+
+Solutions:
+1. Check internet connection
+2. Refresh the page (F5 or Ctrl+R)
+3. Clear browser cache
+4. Try a different browser
+5. Check if other websites load (to rule out internet issue)
+6. Try on mobile device if desktop isn't working
+
+Issue: "Form fields are cut off / Can't see all fields"
+
+Solutions:
+1. Scroll down on the page
+2. Zoom out (Ctrl + minus key, or Cmd + minus on Mac)
+3. Try on a larger screen
+4. Use mobile device (form is mobile-friendly)
+5. Check browser zoom level (should be 100%)
+
+Issue: "Date picker not showing"
+
+Solutions:
+1. Click directly on the date field
+2. Make sure JavaScript is enabled
+3. Try a different browser
+4. Try on mobile device (date picker works better on mobile)
+5. You can also type the date manually in format: YYYY-MM-DD
+
+Issue: "Can't select pet type"
+
+Solutions:
+1. Click the dropdown arrow
+2. Make sure you're clicking on the select box, not just the label
+3. Try clicking different parts of the dropdown
+4. Try keyboard: Click field, then use arrow keys and Enter
+5. Try a different browser
+
+Issue: "Description field too small"
+
+Solution: The description field expands as you type. You can also:
+- Resize your browser window
+- The field will show character count (e.g., "150 / 2000 characters")
+- Focus on most important details if hitting limit
+
+Issue: "Submitted but got error message"
+
+Read the error message carefully:
+- It will tell you which field has the problem
+- Fix that specific field
+- Try submitting again
+
+Common error messages:
+- "Please enter the location..." → Add city AND state
+- "Please enter your pet's color" → Fill in color field
+- "Please select the date..." → Select a date
+- "Please enter a valid email" → Fix email format
+- "Please enter a valid phone number" → Fix phone format
+
+Issue: "Want to edit my report after submitting"
+
+Current Status: Editing is not available yet, but coming soon!
+
+Workaround:
+- Contact support to update your report
+- Or submit a new report with updated information
+- Note in description that it's an update
+
+Issue: "Can't upload photos"
+
+Current Status: Photo upload is coming soon!
+
+For now:
+- Use the Description field to describe your pet in detail
+- Include distinctive markings, colors, size
+- Mention if they have a collar, tags, or microchip
+- Be as detailed as possible
+
+Issue: "Report found pet form is different"
+
+The "Report Found Pet" form is similar but asks for:
+- Where you found the pet (instead of where lost)
+- Date found (instead of date lost)
+- Same pet information fields
+
+All the same troubleshooting applies!
+
+Quick Fix Checklist
+
+Before submitting, verify:
+□ Pet Type selected
+□ Color entered (required)
+□ Date Lost selected (required, not future)
+□ Location entered with city AND state (required)
+□ Email format correct (if provided): name@domain.com
+□ Phone has 10+ digits (if provided)
+□ No fields exceed character limits
+□ All error messages are resolved
+
+Still Having Issues?
+
+1. Take a screenshot of the error message
+2. Note which field is causing the problem
+3. Check this troubleshooting guide
+4. Try the solutions above
+5. Contact support with:
+   - Screenshot
+   - Which step you're on
+   - What error you're seeing
+   - What you've already tried
+
+Remember: Most issues are solved by:
+- Including city AND state in location
+- Selecting a valid date (not future)
+- Entering required fields
+- Fixing email/phone format
+
+I'm here to help! Ask me any specific question about your issue.

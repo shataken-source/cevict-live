@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* PopThePopcorn Brand Animations - Cinematic Chaos */
+@keyframes pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes popcornOverflow {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-20px) rotate(360deg); opacity: 0; }
+}
+
+@keyframes dramaPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
+  50% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Breaking news pulse */
+.breaking-pulse {
+  animation: dramaPulse 2s infinite;
+}
+
+/* Popcorn overflow effect */
+.popcorn-overflow {
+  animation: popcornOverflow 2s ease-out infinite;
+}
+
+/* Cyber Gradient Dark Mode 2.0 */
+.cyber-gradient {
+  background: linear-gradient(135deg, #0A0A0A 0%, #1A0A2E 50%, #0A0A0A 100%);
+}
+
+.cyber-glow {
+  box-shadow: 0 0 20px rgba(138, 43, 226, 0.3), 0 0 40px rgba(0, 255, 255, 0.1);
+}
+
+/* Bento Grid 2.0 - Rounded modular blocks */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.bento-card {
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.bento-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(255, 215, 0, 0.2);
+}
+
+/* AI Transparency Label */
+.ai-label {
+  font-size: 0.75rem;
+  color: #888;
+  font-style: italic;
+}
+
+/* Popcorn Animation - The Core Vibe */
+@keyframes popcornBounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-10px) rotate(-5deg); }
+  50% { transform: translateY(-15px) rotate(5deg); }
+  75% { transform: translateY(-10px) rotate(-3deg); }
+}
+
+.popcorn-bounce {
+  animation: popcornBounce 1s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* Subtle popcorn particles for high drama */
+@keyframes popcornFloat {
+  0% { transform: translateY(0) translateX(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-30px) translateX(10px) rotate(360deg); opacity: 0; }
+}
+
+.popcorn-particle {
+  position: absolute;
+  animation: popcornFloat 2s ease-out forwards;
+  pointer-events: none;
+  font-size: 1.5rem;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #000000;
+  --link-blue: #0000FF;
+  --link-purple: #551A8B;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: var(--link-blue);
+  text-decoration: underline;
+}
+
+a:visited {
+  color: var(--link-purple);
+}
+
+@keyframes pulse-red {
+  0%, 100% {
+    border-color: transparent;
+  }
+  50% {
+    border-color: #DC2626;
+  }
+}
+
+.breaking-pulse {
+  animation: pulse-red 1s infinite;
+}

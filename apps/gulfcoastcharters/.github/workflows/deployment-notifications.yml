@@ -1,0 +1,36 @@
+name: Deployment Notifications
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+  deployments: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  notify:
+    name: Send Deployment Notifications
+    runs-on: ubuntu-latest
+    if: github.event.deployment_status.state == 'success' || github.event.deployment_status.state == 'failure'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Notify on Success
+        if: github.event.deployment_status.state == 'success'
+        run: |
+          echo "✅ Deployment successful!"
+          echo "Environment: ${{ github.event.deployment.environment }}"
+          echo "URL: ${{ github.event.deployment_status.target_url }}"
+          echo "Commit: ${{ github.sha }}"
+
+      - name: Notify on Failure
+        if: github.event.deployment_status.state == 'failure'
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Environment: ${{ github.event.deployment.environment }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Check logs for details"

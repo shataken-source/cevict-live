@@ -162,66 +162,6 @@ export class UnifiedFundManager {
       winRate
     };
   }
-
-
-  /**
-   * Update Kalshi cumulative P&L and stats
-   */
-  updateKalshiStats(pnl: number, isWin: boolean): void {
-    this.kalshiCumulativePnL += pnl;
-    this.kalshiTotalTrades++;
-    if (isWin) {
-      this.kalshiWins++;
-    } else {
-      this.kalshiLosses++;
-    }
-  }
-
-  /**
-   * Update Crypto cumulative P&L and stats
-   */
-  updateCryptoStats(pnl: number, isWin: boolean): void {
-    this.cryptoCumulativePnL += pnl;
-    this.cryptoTotalTrades++;
-    if (isWin) {
-      this.cryptoWins++;
-    } else {
-      this.cryptoLosses++;
-    }
-  }
-
-  /**
-   * Get Kalshi cumulative stats
-   */
-  getKalshiStats(): { pnl: number; trades: number; wins: number; losses: number; winRate: number } {
-    const winRate = this.kalshiTotalTrades > 0
-      ? (this.kalshiWins / this.kalshiTotalTrades * 100)
-      : 0;
-    return {
-      pnl: this.kalshiCumulativePnL,
-      trades: this.kalshiTotalTrades,
-      wins: this.kalshiWins,
-      losses: this.kalshiLosses,
-      winRate
-    };
-  }
-
-  /**
-   * Get Crypto cumulative stats
-   */
-  getCryptoStats(): { pnl: number; trades: number; wins: number; losses: number; winRate: number } {
-    const winRate = this.cryptoTotalTrades > 0
-      ? (this.cryptoWins / this.cryptoTotalTrades * 100)
-      : 0;
-    return {
-      pnl: this.cryptoCumulativePnL,
-      trades: this.cryptoTotalTrades,
-      wins: this.cryptoWins,
-      losses: this.cryptoLosses,
-      winRate
-    };
-  }
-
   /**
    * Get TOTAL funds across all platforms
    */

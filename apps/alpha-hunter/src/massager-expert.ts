@@ -14,10 +14,7 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 import Anthropic from '@anthropic-ai/sdk';
 import { MassagerClient } from './intelligence/massager-client';
@@ -252,7 +249,23 @@ Return ONLY valid JSON array of discoveries:
       const jsonMatch = text.match(/\[[\s\S]*\]/);
       if (!jsonMatch) return this.heuristicDiscovery(dataset);
 
-      let jsonStr = jsonMatch[0].replace(/,\s*([}\]])/g, `$1`); try { const discoveries = JSON.parse(jsonStr);
+      const rawJson = jsonMatch[0];
+      const cleanedJson = rawJson.replace(/,\s*([}\]])/g, '$1'); // strip trailing commas
+
+      let discoveries: any[] | null = null;
+      try {
+        discoveries = JSON.parse(rawJson);
+      } catch {
+        try {
+          discoveries = JSON.parse(cleanedJson);
+        } catch (parseErr: any) {
+          console.log(`   ⚠️ AI discovery JSON parse failed: ${parseErr?.message?.substring(0, 80) || 'unknown'}`);
+          return this.heuristicDiscovery(dataset);
+        }
+      }
+
+      if (!Array.isArray(discoveries)) return this.heuristicDiscovery(dataset);
+
       return discoveries.map((d: any, i: number) => ({
         id: `discovery_${Date.now()}_${i}`,
         timestamp: new Date(),
@@ -263,10 +276,10 @@ Return ONLY valid JSON array of discoveries:
         dataPoints: d.dataPoints || [],
         hypothesis: d.hypothesis || '',
         testable: !!d.hypothesis,
-        potentialValue: d.potentialValue || 'medium'
+        potentialValue: d.potentialValue || 'medium',
       }));
-    } catch (parseErr: any) { try { const discoveries = JSON.parse(jsonMatch[0].replace(/,\s*([}\]])/g, `$1`)); } catch (parseErr2: any) {
-      console.log(`   ⚠️ AI discovery failed: ${err.message?.substring(0, 50)}`);
+    } catch (err: any) {
+      console.log(`   ⚠️ AI discovery failed: ${err?.message?.substring(0, 80) || 'unknown'}`);
       return this.heuristicDiscovery(dataset);
     }
   }
@@ -375,48 +388,6 @@ Return ONLY valid JSON array of discoveries:
       process.stdout.write('\r' + ' '.repeat(50) + '\r'); // Clear timer line
       
       if (error.message.includes('timeout')) {
-        console.log(`\n⚠️  Training session timed out after 3 minutes. Continuing...`);
-        return null;
-      }
-      throw error;
-    }
-  }
-
-
-  /**
-   * Run training session with 3-minute timeout and visible timer
-   */
-  async runTrainingSessionWithTimeout(): Promise<TrainingSession | null> {
-    const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
-    let timerInterval: NodeJS.Timeout | null = null;
-    let elapsed = 0;
-    
-    // Start visible timer
-    timerInterval = setInterval(() => {
-      elapsed += 1000;
-      const remaining = Math.max(0, TIMEOUT_MS - elapsed);
-      const mins = Math.floor(remaining / 60000);
-      const secs = Math.floor((remaining % 60000) / 1000);
-      process.stdout.write(`\r⏱️  Time remaining: ${mins}m ${secs}s`);
-    }, 1000);
-    
-    try {
-      const sessionPromise = this.runTrainingSession();
-      const timeoutPromise = new Promise<null>((_, reject) => {
-        setTimeout(() => reject(new Error("Training session timeout (3 minutes)")), TIMEOUT_MS);
-      });
-      
-      const result = await Promise.race([sessionPromise, timeoutPromise]);
-      
-      if (timerInterval) clearInterval(timerInterval);
-      process.stdout.write("\r" + " ".repeat(50) + "\r"); // Clear timer line
-      
-      return result as TrainingSession;
-    } catch (error: any) {
-      if (timerInterval) clearInterval(timerInterval);
-      process.stdout.write("\r" + " ".repeat(50) + "\r"); // Clear timer line
-      
-      if (error.message.includes("timeout")) {
         console.log(`\n⚠️  Training session timed out after 3 minutes. Continuing...`);
         return null;
       }

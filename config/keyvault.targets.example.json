@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "apps": {
+    "gulfcoastcharters": {
+      "path": "apps/gulfcoastcharters",
+      "vercel": {
+        "projectId": "YOUR_VERCEL_PROJECT_ID",
+        "teamId": "",
+        "environments": ["development", "preview", "production"]
+      },
+      "supabase": {
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "edgeSecrets": [
+          "SUPABASE_URL",
+          "SUPABASE_SERVICE_ROLE_KEY"
+        ]
+      }
+    },
+    "progno": {
+      "path": "apps/progno",
+      "vercel": {
+        "projectId": "YOUR_VERCEL_PROJECT_ID",
+        "teamId": "",
+        "environments": ["development", "preview", "production"]
+      },
+      "supabase": {
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "edgeSecrets": [
+          "SUPABASE_URL",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "CRON_SECRET",
+          "ODDS_API_KEY",
+          "API_SPORTS_KEY"
+        ]
+      }
+    },
+    "prognostication": {
+      "path": "apps/prognostication",
+      "vercel": {
+        "projectId": "YOUR_VERCEL_PROJECT_ID",
+        "teamId": "",
+        "environments": ["development", "preview", "production"]
+      },
+      "supabase": {
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "edgeSecrets": []
+      }
+    },
+    "wheretovacation": {
+      "path": "apps/wheretovacation",
+      "vercel": {
+        "projectId": "YOUR_VERCEL_PROJECT_ID",
+        "teamId": "",
+        "environments": ["development", "preview", "production"]
+      },
+      "supabase": {
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "edgeSecrets": []
+      }
+    },
+    "alpha-hunter": {
+      "path": "apps/alpha-hunter",
+      "vercel": {
+        "projectId": "YOUR_VERCEL_PROJECT_ID",
+        "teamId": "",
+        "environments": ["development", "preview", "production"]
+      },
+      "supabase": {
+        "projectRef": "YOUR_SUPABASE_PROJECT_REF",
+        "edgeSecrets": [
+          "SUPABASE_URL",
+          "SUPABASE_SERVICE_ROLE_KEY"
+        ]
+      }
+    }
+  }
+}
+

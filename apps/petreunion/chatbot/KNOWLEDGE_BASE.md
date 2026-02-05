@@ -1,0 +1,176 @@
+# PetReunion Chatbot Knowledge Base
+
+## About PetReunion
+
+**PetReunion** is a free, community-powered platform dedicated to reuniting lost pets with their families. We provide:
+
+- Lost pet reporting and search
+- Found pet reporting and matching
+- Community alerts and sharing
+- Shelter directory and resources
+- Image matching technology
+- Free service for everyone
+
+**Mission**: Together We Bring Them Home 🐾
+
+## How PetReunion Works
+
+### Step 1: Report
+Users can report a lost or found pet with:
+- Photos (multiple angles recommended)
+- Pet details (breed, color, size, age, name)
+- Location (where lost/found, last seen)
+- Contact information
+- Special markings or features
+
+### Step 2: Search
+- Our database searches for matches
+- Community members can search and share
+- Image recognition helps identify pets
+- Location-based alerts notify nearby users
+
+### Step 3: Reunite
+- Matches are suggested based on criteria
+- Users can contact each other directly
+- Success stories are celebrated
+
+## Key Features
+
+### Lost Pet Reporting
+- Upload photos
+- Add detailed description
+- Set location and radius
+- Get community alerts
+- Track search status
+
+### Found Pet Reporting
+- Report found pets
+- Match with lost pet reports
+- Connect with owners
+- Shelter resources
+
+### Search Functionality
+- Search by breed, color, location
+- Filter by date, size, type
+- Image-based matching
+- Advanced filters
+
+### Shelter Directory
+- Find local animal shelters
+- Contact information
+- Hours and services
+- Adoption resources
+
+## Common Pet Types
+
+**Dogs**: All breeds, sizes, ages
+**Cats**: Indoor, outdoor, feral
+**Birds**: Parrots, canaries, wild birds
+**Small Animals**: Rabbits, hamsters, guinea pigs
+**Reptiles**: Turtles, lizards, snakes
+**Other**: Farm animals, exotic pets
+
+## Location Information
+
+PetReunion works best when users provide:
+- **City and State** (required)
+- **Neighborhood or area** (helpful)
+- **Street or landmark** (optional but useful)
+- **Radius** for search alerts
+
+## Reporting Requirements
+
+### Minimum Information Needed:
+1. Pet type (dog, cat, etc.)
+2. Photos (at least 1, more is better)
+3. Location (city/state minimum)
+4. Contact information
+
+### Helpful Additional Details:
+- Breed or breed mix
+- Color and markings
+- Size and weight
+- Age
+- Name
+- Microchip number (if applicable)
+- Special behaviors or needs
+- Last seen date and time
+
+## Success Tips
+
+### For Lost Pet Owners:
+1. **Act quickly** - Report within first 24 hours
+2. **Post everywhere** - Social media, flyers, shelters
+3. **Check shelters daily** - Visit in person
+4. **Don't give up** - Many pets are found weeks later
+5. **Use multiple photos** - Different angles help identification
+
+### For Found Pet Helpers:
+1. **Check for ID** - Collar tags, microchip
+2. **Report immediately** - Time matters
+3. **Take clear photos** - Multiple angles
+4. **Post in local groups** - Facebook, Nextdoor
+5. **Contact shelters** - They may have reports
+
+## Safety Guidelines
+
+- **Never share personal addresses** in public posts
+- **Meet in public places** when reuniting
+- **Verify ownership** - Ask for photos, vet records
+- **Trust your instincts** - If something feels wrong, involve authorities
+- **Contact animal control** for aggressive or injured pets
+
+## Platform Policies
+
+- **Free service** - No charges for basic features
+- **Community powered** - Success depends on sharing
+- **Privacy respected** - Contact info only shared with matches
+- **No spam** - Report abuse or inappropriate content
+- **Be respectful** - Support each other during difficult times
+
+## Technical Information
+
+- **Website**: petreunion.org (or your actual domain)
+- **Mobile friendly** - Works on all devices
+- **Real-time updates** - New reports appear quickly
+- **Image matching** - AI-powered identification
+- **Email alerts** - Optional notifications
+
+## Emergency Situations
+
+For **injured pets**: Contact local animal control or emergency vet
+For **aggressive animals**: Do not approach, call animal control
+For **wildlife**: Contact wildlife rescue organizations
+For **immediate danger**: Call 911 if pet or person is at risk
+
+## Resources
+
+- **Local Shelters**: Use shelter directory
+- **Veterinarians**: Check for microchips
+- **Animal Control**: For strays and emergencies
+- **Pet Recovery Services**: Some areas have specialized services
+- **Social Media**: Facebook groups, Nextdoor, local pages
+
+## Common Questions
+
+**Q: Is PetReunion free?**
+A: Yes, completely free for all users.
+
+**Q: How long do reports stay active?**
+A: Reports remain active until marked as found or closed by user.
+
+**Q: Can I edit my report?**
+A: Yes, you can update photos, location, and details anytime.
+
+**Q: What if I find my pet?**
+A: Mark your report as "Found" to help others know the search is complete.
+
+**Q: Do you share my contact info?**
+A: Only with potential matches, and only if you choose to contact them.
+
+**Q: How accurate is image matching?**
+A: It's a helpful tool, but always verify matches with other details.
+
+---
+
+**Remember**: Every report matters. Even if a pet isn't found immediately, keeping reports active helps build a network that can reunite pets weeks or months later.

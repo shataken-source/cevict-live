@@ -1,0 +1,37 @@
+# QUICK REFERENCE - CHARTER APP
+
+## START APP
+```
+cd C:\gcc\charter-booking-platform
+npm run dev
+```
+Open: http://localhost:3000
+
+## STOP APP
+Press: CTRL+C in terminal
+
+## PROJECT LOCATION
+C:\gcc\charter-booking-platform
+
+## DATABASE
+Supabase: https://supabase.com/dashboard/project/rdbuwyefbgnbuhmjrizo
+Tables: profiles, captain_profiles, bookings, fishing_reports, user_stats, user_badges
+Sample Data: 3 captains loaded
+
+## FILES
+- pages/index.js = Home page
+- pages/captains/index.js = Captain list
+- lib/supabase.js = Database client
+- .env.local = Supabase credentials
+
+## STATUS
+✅ Working
+✅ Database connected
+✅ 3 sample captains visible
+
+## IF BROKEN
+```
+cd C:\gcc\charter-booking-platform
+npm install
+npm run dev
+```

@@ -6,10 +6,7 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 import { KalshiTrader } from './intelligence/kalshi-trader';
 import Anthropic from '@anthropic-ai/sdk';
@@ -418,7 +415,7 @@ async function main() {
 
     const price = opp.recommendedSide === 'yes' ? opp.market.yesPrice : opp.market.noPrice;
 
-    const trade = await kalshi.placeBet(
+    const trade = await kalshi.placeLimitOrderUsd(
       opp.market.id,
       opp.recommendedSide as 'yes' | 'no',
       opp.recommendedStake,

@@ -1,0 +1,56 @@
+name: Dependency Cache Warmup
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+  schedule:
+    - cron: '0 2 * * 1' # Weekly on Monday at 2 AM
+
+jobs:
+  warmup-cache:
+    name: Warmup Dependency Cache
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ matrix.node-version }}-
+      
+      - name: Install dependencies
+        run: npm ci --prefer-offline
+      
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/Library/Caches/ms-playwright
+            %USERPROFILE%\AppData\Local\ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      
+      - name: Verify cache
+        run: |
+          echo "✅ Cache warmed up successfully"
+          echo "Node modules: $(du -sh node_modules | cut -f1)"
+          echo "Playwright: $(du -sh ~/.cache/ms-playwright | cut -f1)"

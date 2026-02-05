@@ -5,14 +5,14 @@
 
 import { DataPoint } from '../types';
 
-interface MassagerResult {
+export interface MassagerResult {
   command: string;
   success: boolean;
   data: any;
   insights: string[];
 }
 
-interface ArbitrageResult {
+export interface ArbitrageResult {
   exists: boolean;
   profit: number;
   book1: string;
@@ -22,14 +22,14 @@ interface ArbitrageResult {
   reasoning: string[];
 }
 
-interface HedgeResult {
+export interface HedgeResult {
   hedgeAmount: number;
   breakEvenReturn: number;
   guaranteedProfit: number;
   riskFreeReturn: number;
 }
 
-interface KellyResult {
+export interface KellyResult {
   optimalFraction: number;
   recommendedStake: number;
   maxStake: number;

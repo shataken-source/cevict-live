@@ -73,3 +73,18 @@ runtime_v2/
 # Backup files
 *.backup
 backup.txt
+
+# --- Repo hygiene (large/local-only folders) ---
+NBA-Machine-Learning-Sports-Betting/
+Polymarket-Kalshi-Arbitrage-bot/
+cloud-orchestrator/
+keeks/
+
+# Old repo copies (do not deploy from here)
+old-cevict-monorepo/
+
+# Secrets vault (never commit)
+vault/secrets/
+
+# KeyVault targets (local overrides)
+config/keyvault.targets.json
