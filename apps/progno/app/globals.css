@@ -1,3 +1,22 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Force light/dark background and default text for both modes */
+html {
+  background: #f1f5f9 !important;
+  color: #0f172a;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+html.dark {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+html.dark body {
+  background: #0f172a !important;
+  color: inherit;
+}
+body {
+  min-height: 100vh;
+  background: transparent !important;
+}

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { predictionTracker } from "../../../prediction-tracker";
 
+export const runtime = 'nodejs';
+
 export async function GET() {
   const csv = predictionTracker.exportToCSV();
   return new NextResponse(csv, {

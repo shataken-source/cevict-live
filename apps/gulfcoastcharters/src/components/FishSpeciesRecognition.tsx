@@ -78,7 +78,28 @@ export default function FishSpeciesRecognition({ imageUrl, imageBase64, onSpecie
           confidence: result?.confidence
         }
       });
-      toast.success('Thank you! Your correction helps improve our AI.');
+
+      // Award points for correcting AI (gamification)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await supabase.functions.invoke('points-rewards-system', {
+            body: {
+              action: 'award_points',
+              userId: session.user.id,
+              actionType: 'ai_correction',
+              amount: 10,
+            },
+          });
+          toast.success('Thank you! Your correction helps improve our AI. +10 points');
+        } else {
+          toast.success('Thank you! Your correction helps improve our AI.');
+        }
+      } catch (pointsError) {
+        console.error('Error awarding correction points:', pointsError);
+        toast.success('Thank you! Your correction helps improve our AI.');
+      }
+
       setShowCorrection(false);
     } catch (error: any) {
       toast.error(error.message);

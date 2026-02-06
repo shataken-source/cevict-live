@@ -5,6 +5,8 @@ import { getPrimaryKey } from "../../../keys-store";
 import { getAccuracyMetrics } from "../../../prediction-tracker";
 import { fetchScheduleFromOddsApi, fetchScoresAndUpdatePredictions } from "../../../weekly-page.helpers";
 
+export const runtime = 'nodejs';
+
 const prognoDir = path.join(process.cwd(), ".progno");
 
 function saveJson(filename: string, data: any) {

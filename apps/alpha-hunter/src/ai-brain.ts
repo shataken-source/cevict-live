@@ -52,38 +52,36 @@ export class AIBrain {
   }
 
   async analyzeAllSources(): Promise<AnalysisResult> {
-    console.log('🧠 AI Brain analyzing all sources...\n');
+    // Simple mode: only Progno sports picks (set PROGNO_SPORTS_ONLY=0 to enable news/Kalshi/crypto/arb)
+    const sportsOnly = process.env.PROGNO_SPORTS_ONLY !== '0';
 
-    // Gather data from all sources in parallel
+    if (sportsOnly) {
+      console.log('🧠 AI Brain (sports only) — fetching Progno picks...\n');
+      const picks = await this.progno.getTodaysPicks();
+      const prognoOpps = this.progno.convertToOpportunities(picks);
+      console.log(`🎯 Found ${prognoOpps.length} PROGNO sports picks`);
+      const allOpportunities = prognoOpps.filter(
+        opp => opp.confidence >= this.config.minConfidence && opp.expectedValue >= this.config.minExpectedValue
+      );
+      return this.rankOpportunities(allOpportunities, []);
+    }
+
+    console.log('🧠 AI Brain analyzing all sources...\n');
     const [news, prognoPicks, kalshiOpps, arbitrageOpps, cryptoOpps] = await Promise.all([
       this.newsScanner.scanAllSources(),
-      this.progno.getTodaysPicks().then(picks => this.progno.convertToOpportunities(picks)),
+      this.progno.getTodaysPicks().then(p => this.progno.convertToOpportunities(p)),
       this.kalshi.findOpportunities(5),
       this.progno.getArbitrageOpportunities(),
       this.cryptoTrader.getOpportunities(),
     ]);
-
-    console.log(`📰 Found ${news.length} relevant news items`);
-    console.log(`🎯 Found ${prognoPicks.length} PROGNO picks`);
-    console.log(`📊 Found ${kalshiOpps.length} Kalshi opportunities`);
-    console.log(`💰 Found ${arbitrageOpps.length} arbitrage opportunities`);
-    console.log(`🪙 Found ${cryptoOpps.length} crypto opportunities`);
-
-    // Combine all opportunities
+    console.log(`📰 News: ${news.length} | 🎯 Progno: ${prognoPicks.length} | 📊 Kalshi: ${kalshiOpps.length} | 💰 Arb: ${arbitrageOpps.length} | 🪙 Crypto: ${cryptoOpps.length}`);
     const allOpportunities = [
-      ...arbitrageOpps, // Arbitrage first (lowest risk)
+      ...arbitrageOpps,
       ...prognoPicks,
       ...kalshiOpps,
-      ...cryptoOpps, // Crypto trades from exchanges
-    ].filter(opp => 
-      opp.confidence >= this.config.minConfidence &&
-      opp.expectedValue >= this.config.minExpectedValue
-    );
-
-    // Use AI to rank and analyze opportunities
-    const analysis = await this.rankOpportunities(allOpportunities, news);
-
-    return analysis;
+      ...cryptoOpps,
+    ].filter(opp => opp.confidence >= this.config.minConfidence && opp.expectedValue >= this.config.minExpectedValue);
+    return this.rankOpportunities(allOpportunities, news);
   }
 
   private async rankOpportunities(
@@ -134,9 +132,9 @@ CONSTRAINTS:
 - Risk tolerance: Conservative to Medium
 
 LEARNING HISTORY (recent outcomes):
-${this.learningHistory.slice(-10).map(l => 
-  `- ${l.opportunityType}: ${l.outcome} (expected ${l.expectedReturn}%, got ${l.actualReturn}%)`
-).join('\n') || 'No history yet'}
+${this.learningHistory.slice(-10).map(l =>
+      `- ${l.opportunityType}: ${l.outcome} (expected ${l.expectedReturn}%, got ${l.actualReturn}%)`
+    ).join('\n') || 'No history yet'}
 
 Analyze and provide:
 1. BEST_OPPORTUNITY_INDEX: (number, 0-based index of best opportunity)
@@ -155,12 +153,12 @@ Respond in JSON format.`;
     });
 
     const text = response.content[0].type === 'text' ? response.content[0].text : '';
-    
+
     try {
       // Extract JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error('No JSON found');
-      
+
       const analysis = JSON.parse(jsonMatch[0]);
       const bestIndex = analysis.BEST_OPPORTUNITY_INDEX || 0;
 
@@ -198,13 +196,13 @@ Respond in JSON format.`;
       if (opp.type === 'arbitrage') score += 25;
 
       // Bonus for news correlation
-      const newsBoost = news.some(n => 
+      const newsBoost = news.some(n =>
         opp.title.toLowerCase().includes(n.title.split(' ')[0].toLowerCase())
       );
       if (newsBoost) score += 10;
 
       // Adjust based on learning history
-      const relevantLearning = this.learningHistory.filter(l => 
+      const relevantLearning = this.learningHistory.filter(l =>
         l.opportunityType === opp.type
       );
       if (relevantLearning.length > 0) {
@@ -224,8 +222,8 @@ Respond in JSON format.`;
       topOpportunity: top,
       allOpportunities: scored,
       marketAnalysis: this.generateMarketAnalysis(news),
-      riskAssessment: top.riskLevel === 'low' 
-        ? 'Low risk opportunity identified' 
+      riskAssessment: top.riskLevel === 'low'
+        ? 'Low risk opportunity identified'
         : 'Medium risk - proceed with sized position',
       recommendedAction: this.generateAction(top),
       confidenceLevel: top.confidence,
@@ -310,7 +308,7 @@ Respond in JSON format.`;
     }
 
     // Check for confidence calibration
-    const overconfident = recentOutcomes.filter(l => 
+    const overconfident = recentOutcomes.filter(l =>
       l.confidence > 70 && l.outcome === 'failure'
     ).length;
     if (overconfident > 3) {
@@ -370,7 +368,7 @@ Respond in JSON format.`;
     // This would pull from database in production
     return {
       totalTrades: this.learningHistory.length,
-      winRate: this.learningHistory.filter(l => l.outcome === 'success').length / 
+      winRate: this.learningHistory.filter(l => l.outcome === 'success').length /
         Math.max(1, this.learningHistory.length) * 100,
       totalProfit: this.learningHistory.reduce((sum, l) => sum + l.actualReturn, 0),
       bestTrade: Math.max(0, ...this.learningHistory.map(l => l.actualReturn)),

@@ -16,9 +16,23 @@ import {
   getStrategyParams,
   saveBotPrediction,
   saveTradeRecord,
+  getOpenTradeRecords,
 } from "./lib/supabase-memory";
 import { KalshiSettlementWorker } from "./services/kalshi/settlement-worker";
 import { LearningUpdater } from "./intelligence/learning-updater";
+import {
+  preFlightTradeCheck,
+  executeTradeWithLock,
+  safeExecute,
+  recordPosition,
+  recordTradeCooldown,
+  recordEventPosition,
+  logPositionClose,
+  apiCache,
+  getKalshiEventId,
+} from "./services/trade-safety";
+import { SandboxMonitor } from "./services/kalshi/sandbox-monitor";
+import { getPrognoProbabilities, matchKalshiMarketToProgno } from "./intelligence/probability-bridge";
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -39,18 +53,58 @@ async function seedPredictionsIfEmpty(kalshi: KalshiTrader): Promise<void> {
   const existing = await getBotPredictions(undefined, "kalshi", 5);
   if (existing.length > 0) return;
 
-  const markets = await kalshi.getMarkets();
+  const prognoEvents = await getPrognoProbabilities();
+  if (prognoEvents.length > 0) {
+    console.log(`   📡 Progno: ${prognoEvents.length} picks — using for sports market seeding`);
+  }
+
+  // Use API cache to avoid redundant market fetches
+  const cacheKey = "markets:seed";
+  let markets = apiCache.get(cacheKey);
+  if (!markets) {
+    markets = await safeExecute(
+      () => kalshi.getMarkets(),
+      "Fetch markets for seeding"
+    );
+    if (markets?.result) {
+      apiCache.set(cacheKey, markets.result);
+      markets = markets.result;
+    } else {
+      return; // Failed to fetch
+    }
+  }
   const toAnalyze = markets.slice(0, 25);
 
   for (const m of toAnalyze) {
     const marketPrice = Number(m.yesPrice || 50);
-    const probability = marketPrice > 50 ? Math.max(1, marketPrice - 3) : Math.min(99, marketPrice + 3);
+    const category = categorizeMarket(m.title || "");
+    const prognoMatch = matchKalshiMarketToProgno(m.title || "", category, prognoEvents);
+
+    let probability: number;
+    let confidence: number;
+    let reasoning: string[];
+    let factors: string[];
+    let learned_from: string[];
+
+    if (prognoMatch) {
+      probability = prognoMatch.modelProbability;
+      confidence = Math.min(92, Math.max(52, probability));
+      reasoning = [`Progno: ${prognoMatch.label}`];
+      factors = ["Progno sports model", "Monte Carlo + Claude Effect"];
+      learned_from = ["progno"];
+    } else {
+      probability = marketPrice > 50 ? Math.max(1, marketPrice - 3) : Math.min(99, marketPrice + 3);
+      confidence = Math.min(80, 50 + Math.abs(marketPrice - 50));
+      reasoning = ["Bootstrap heuristic (demo sandbox)"];
+      factors = ["Market price", "Small contrarian adjustment"];
+      learned_from = ["bootstrap"];
+    }
+
     const edge = Math.abs(probability - marketPrice);
-    const confidence = Math.min(80, 50 + Math.abs(marketPrice - 50));
     const prediction = probability >= 50 ? "yes" : "no";
 
     await saveBotPrediction({
-      bot_category: categorizeMarket(m.title || ""),
+      bot_category: category,
       market_id: m.id,
       market_title: m.title,
       platform: "kalshi",
@@ -58,13 +112,47 @@ async function seedPredictionsIfEmpty(kalshi: KalshiTrader): Promise<void> {
       probability,
       confidence,
       edge,
-      reasoning: ["Bootstrap heuristic (demo sandbox)"],
-      factors: ["Market price", "Small contrarian adjustment"],
-      learned_from: ["bootstrap"],
+      reasoning,
+      factors,
+      learned_from,
       market_price: marketPrice,
       predicted_at: new Date(),
       expires_at: m.expiresAt ? new Date(m.expiresAt) : undefined,
     });
+  }
+}
+
+/**
+ * Sync existing open positions from Supabase to in-memory tracking.
+ * This ensures we don't place duplicate trades after a restart.
+ */
+async function syncExistingPositions(): Promise<void> {
+  const openTrades = await getOpenTradeRecords("kalshi", 500);
+  console.log(`📋 Syncing ${openTrades.length} existing open positions from Supabase...`);
+  
+  // DEBUG: Show what we actually got
+  if (openTrades.length > 10) {
+    console.log(`   ⚠️  WARNING: Found ${openTrades.length} open positions (expected ~2)`);
+    console.log(`   🔍 First 5 positions:`, openTrades.slice(0, 5).map(t => ({
+      market_id: t.market_id,
+      outcome: t.outcome,
+      closed_at: t.closed_at
+    })));
+  }
+  
+  for (const trade of openTrades) {
+    if (!trade.market_id) continue;
+    
+    // Record position in tracking maps
+    recordPosition(trade.market_id, trade.entry_price);
+    recordEventPosition(trade.market_id);
+    
+    // Record cooldown (assume trade was placed recently, so we're on cooldown)
+    recordTradeCooldown(trade.market_id);
+  }
+  
+  if (openTrades.length > 0) {
+    console.log(`✅ Position sync complete - ${openTrades.length} positions tracked`);
   }
 }
 
@@ -74,6 +162,30 @@ async function main() {
   const kalshi = new KalshiTrader();
   const settlement = new KalshiSettlementWorker();
   const learner = new LearningUpdater();
+  const monitor = new SandboxMonitor();
+
+  // Graceful shutdown handler
+  let shutdownRequested = false;
+  const shutdown = async (signal: string) => {
+    console.log(`\n\n🛑 Received ${signal} - Initiating graceful shutdown...`);
+    shutdownRequested = true;
+    
+    // Print final stats
+    await monitor.getStats();
+    monitor.printStats();
+    
+    const health = monitor.getHealthStatus();
+    if (health.warnings.length > 0) {
+      console.log("\n⚠️  Warnings:");
+      health.warnings.forEach(w => console.log(`   - ${w}`));
+    }
+    
+    console.log("\n✅ Shutdown complete. Goodbye!\n");
+    process.exit(0);
+  };
+
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 
   // DEMO auth preflight (do NOT hard-stop; run analysis-only until keys are ready)
   let kalshiAuthed = false;
@@ -112,23 +224,34 @@ async function main() {
 
   await ensureKalshiAuth();
 
+  // Sync existing positions on startup
+  await syncExistingPositions();
+
   let dailySpending = 0;
   let lastSettlement = 0;
   let lastLearning = 0;
+  let lastStatsPrint = 0;
+  const STATS_PRINT_INTERVAL = 10 * 60 * 1000; // Print stats every 10 minutes
+  const loggedCategories = new Set<string>(); // Track which categories we've logged limits for
 
   // Basic day rollover
   let dayKey = new Date().toDateString();
 
-  while (true) {
+  while (!shutdownRequested) {
     const now = Date.now();
     const nowDay = new Date().toDateString();
     if (nowDay !== dayKey) {
       dayKey = nowDay;
       dailySpending = 0;
+      loggedCategories.clear(); // Reset category logging for new day
+      console.log(`\n📅 New day - Daily spending reset\n`);
     }
 
     const config = await getBotConfig();
     const intervalMs = config.trading.kalshiInterval || 60000;
+
+    // Record cycle
+    monitor.recordCycle();
 
     await ensureKalshiAuth();
     if (kalshiAuthed) {
@@ -153,6 +276,15 @@ async function main() {
         const maxTrade = params?.max_trade_usd ?? config.trading.maxTradeSize;
         const dailyLimit = params?.daily_spending_limit ?? config.trading.dailySpendingLimit;
 
+        // Debug: Log which limit is being used (only once per category per day)
+        if (!loggedCategories.has(botCategory)) {
+          const limitSource = params?.daily_spending_limit ? 'strategy_params' : 'bot_config';
+          const paramValue = params?.daily_spending_limit ?? 'null';
+          const configValue = config.trading.dailySpendingLimit;
+          console.log(`   💰 Daily limit for ${botCategory}: $${dailyLimit} (params: ${paramValue}, config: ${configValue}, using: ${limitSource})`);
+          loggedCategories.add(botCategory);
+        }
+
         if (Number(pred.confidence) < minConfidence) continue;
         if (Number(pred.edge) < minEdge) continue;
         if (dailySpending >= dailyLimit) break;
@@ -162,9 +294,29 @@ async function main() {
 
         const side = (pred.prediction === "yes" ? "yes" : "no") as "yes" | "no";
 
-        // Maker pricing if possible
+        // CRITICAL: Pre-flight safety checks (BUGS #1, #2, #4, #5, #9)
+        const preFlight = await preFlightTradeCheck(pred.market_id, tradeSize, "kalshi");
+        if (!preFlight.allowed) {
+          // Log why trade was blocked
+          monitor.recordTradeBlocked();
+          continue; // Try next prediction
+        }
+
+        // Maker pricing if possible (with API cache)
         let limitPrice = Math.round(Number(pred.market_price || 50));
-        const ob = await kalshi.getOrderBook(pred.market_id);
+        const obCacheKey = `orderbook:${pred.market_id}`;
+        let ob = apiCache.get(obCacheKey);
+        if (!ob) {
+          monitor.recordAPICall();
+          const obResult = await safeExecute(
+            () => kalshi.getOrderBook(pred.market_id),
+            `Fetch orderbook for ${pred.market_id}`
+          );
+          if (obResult.success && obResult.result) {
+            ob = obResult.result;
+            apiCache.set(obCacheKey, ob);
+          }
+        }
         if (ob) {
           const calc = kalshi.calculateMakerPrice(ob, side, "buy");
           if (calc && calc.spread >= 2) {
@@ -172,35 +324,66 @@ async function main() {
           }
         }
 
-        try {
-          await kalshi.placeLimitOrderUsd(pred.market_id, side, tradeSize, limitPrice);
+        // Execute trade with lock and error handling (BUGS #6, #10)
+        const tradeResult = await executeTradeWithLock(async () => {
+          monitor.recordAPICall();
+          const orderResult = await safeExecute(
+            () => kalshi.placeLimitOrderUsd(pred.market_id, side, tradeSize, limitPrice),
+            `Place order for ${pred.market_id}`
+          );
+
+          if (!orderResult.success || !orderResult.result) {
+            return { success: false, reason: orderResult.error || "Order placement failed" };
+          }
+
           const contracts = kalshi.usdToContracts(tradeSize, limitPrice);
 
-          await saveTradeRecord({
-            platform: "kalshi",
-            trade_type: side,
-            symbol: pred.market_title,
-            market_id: pred.market_id,
-            entry_price: limitPrice,
-            amount: tradeSize,
-            contracts,
-            fees: 0,
-            opened_at: new Date(),
-            bot_category: botCategory,
-            confidence: Number(pred.confidence),
-            edge: Number(pred.edge),
-            outcome: "open",
-          });
+          // Save trade record
+          const saveResult = await safeExecute(
+            async () => {
+              const saved = await saveTradeRecord({
+                platform: "kalshi",
+                trade_type: side,
+                symbol: pred.market_title,
+                market_id: pred.market_id,
+                entry_price: limitPrice,
+                amount: tradeSize,
+                contracts,
+                fees: 0,
+                opened_at: new Date(),
+                bot_category: botCategory,
+                confidence: Number(pred.confidence),
+                edge: Number(pred.edge),
+                outcome: "open",
+              });
+              return saved;
+            },
+            `Save trade record for ${pred.market_id}`
+          );
+
+          if (!saveResult.success) {
+            console.log(`⚠️ Trade placed but record save failed for ${pred.market_id}`);
+          }
+
+          // Record position tracking (BUGS #1, #2, #4)
+          recordPosition(pred.market_id, limitPrice);
+          recordTradeCooldown(pred.market_id);
+          recordEventPosition(pred.market_id);
 
           dailySpending += tradeSize;
+          monitor.recordTradePlaced();
           console.log(
             `✅ DEMO trade placed: ${botCategory} ${side.toUpperCase()} ${pred.market_id} $${tradeSize.toFixed(2)} @ ${limitPrice}¢ (contracts=${contracts})`
           );
-        } catch (e: any) {
-          console.log(`❌ Trade failed for ${pred.market_id}: ${String(e?.message || e)}`);
+
+          return { success: true, contracts };
+        }, `Trade execution for ${pred.market_id}`);
+
+        if (!tradeResult.success) {
+          console.log(`❌ Trade blocked/failed for ${pred.market_id}: ${tradeResult.reason}`);
         }
 
-        break;
+        break; // Only one trade per cycle
       }
     }
 
@@ -214,6 +397,13 @@ async function main() {
     if (now - lastLearning > 300000) {
       lastLearning = now;
       await learner.runOnce();
+    }
+
+    // Print stats every 10 minutes
+    if (now - lastStatsPrint > STATS_PRINT_INTERVAL) {
+      lastStatsPrint = now;
+      await monitor.getStats();
+      monitor.printStats();
     }
 
     await sleep(intervalMs);

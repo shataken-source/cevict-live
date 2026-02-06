@@ -69,6 +69,44 @@ export async function POST(request: NextRequest) {
 function generateBasicResponse(message: string, context: string): string {
   const lowerMessage = message.toLowerCase()
 
+  // Questions about PopThePopcorn itself
+  if (lowerMessage.includes('what is popthepopcorn') || lowerMessage.includes('what is this') || lowerMessage.includes('how does this work')) {
+    return `PopThePopcorn is a Gen Z-focused news aggregator that scores headlines by drama level (1-10). We monitor Reddit, Twitter, and Google Trends to find the most engaging stories. The drama score tells you how "spicy" a story is - higher scores mean more engagement and controversy. Think of it as news with entertainment value! 🍿`
+  }
+
+  if (lowerMessage.includes('drama score') || lowerMessage.includes('drama scoring') || lowerMessage.includes('how is drama calculated')) {
+    return `Drama scores (1-10) are calculated using AI that analyzes:
+• Engagement metrics (upvotes, comments, shares)
+• Sentiment analysis (hype, panic, concern)
+• Source verification status
+• Trending topic boosts
+• Breaking news indicators
+
+Higher scores = more engagement and controversy. 7+ is considered "high drama" and gets special alerts! 📊`
+  }
+
+  if (lowerMessage.includes('story arc') || lowerMessage.includes('story arcs') || lowerMessage.includes('what are arcs')) {
+    return `Story Arcs are Netflix-style "seasons" of ongoing news stories. We track how stories develop over time, grouping related headlines into arcs. Each arc has episodes (individual headlines) and you can subscribe to get alerts when new episodes drop. It's like binging a TV show, but for real news! 📺`
+  }
+
+  if (lowerMessage.includes('kernels') || lowerMessage.includes('salt') || lowerMessage.includes('virtual currency') || lowerMessage.includes('currency')) {
+    return `Kernels and Salt are our virtual currency! You earn them by engaging with headlines (reacting, voting, checking in daily). You can spend Kernels to "boost" headlines (make them more visible) or unlock exclusive content. Salt is earned through streaks and special achievements. It's gamified news consumption! 💰`
+  }
+
+  if (lowerMessage.includes('filter') || lowerMessage.includes('category') || lowerMessage.includes('how do i filter')) {
+    return `Use the Filters section in the left sidebar to filter by category: All, Politics, Tech, Entertainment, or Breaking news. You can also click on trending topics to see related headlines. The middle column shows your filtered feed! 🎯`
+  }
+
+  if (lowerMessage.includes('verify') || lowerMessage.includes('verification') || lowerMessage.includes('source')) {
+    return `We verify sources using AI that checks:
+• Source credibility (verified/unverified/viral labels)
+• Cross-referencing with multiple platforms
+• Source trace receipts (see how stories spread)
+• Sentiment analysis to detect satire/misinformation
+
+Always check the verification status on headlines - we're transparent about what's verified and what's user-generated! ✅`
+  }
+
   if (lowerMessage.includes('real') || lowerMessage.includes('fake') || lowerMessage.includes('true')) {
     return `I'd need to cross-reference multiple sources to verify this. ${context ? 'Based on the source, ' : ''}I'd recommend checking the "Receipts" tab to see the source trace. Always verify breaking news from multiple independent sources! 🧐`
   }
@@ -81,7 +119,18 @@ function generateBasicResponse(message: string, context: string): string {
     return `This is trending because it's hitting multiple platforms (Reddit, X, TikTok). The source trace shows how it spread. High engagement = high drama score! 🔥`
   }
 
-  return `I'm The Kernel, your AI news expert! I can help you verify stories, understand why they matter, and trace their origins. Ask me anything about the headlines! 🍿`
+  if (lowerMessage.includes('help') || lowerMessage.includes('how to') || lowerMessage.includes('guide')) {
+    return `I'm here to help! PopThePopcorn has:
+• 3-column layout: Left (filters/trends), Middle (headlines), Right (me + alerts)
+• Drama scores: 1-10 scale showing story engagement
+• Story arcs: Netflix-style news seasons
+• Virtual currency: Kernels & Salt for gamification
+• AI verification: Source transparency and trace receipts
+
+Ask me anything specific and I'll explain! 🍿`
+  }
+
+  return `I'm The Kernel, your AI news expert! I can help you understand PopThePopcorn, verify stories, explain drama scores, and answer questions about how everything works. What would you like to know? 🍿`
 }
 
 /**

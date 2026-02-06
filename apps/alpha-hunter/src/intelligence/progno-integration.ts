@@ -26,6 +26,28 @@ interface PrognoPick {
   };
 }
 
+/** Map progno API pick shape to PrognoPick (game_id, expected_value, reasoning, etc.) */
+function mapPrognoPickToShape(p: any): PrognoPick {
+  const pickType = (p.pick_type || 'MONEYLINE').toLowerCase();
+  const normalizedType: 'spread' | 'moneyline' | 'total' =
+    pickType === 'spread' || pickType === 'total' ? pickType : 'moneyline';
+  const odds = typeof p.odds === 'number' ? p.odds : (p.odds?.price ?? 0);
+  return {
+    gameId: p.game_id || `${p.home_team}-${p.away_team}-${p.game_time || ''}`,
+    league: p.sport || 'NBA',
+    homeTeam: p.home_team || '',
+    awayTeam: p.away_team || '',
+    pick: p.pick || '',
+    pickType: normalizedType,
+    odds,
+    confidence: typeof p.confidence === 'number' ? p.confidence : 0,
+    expectedValue: typeof p.expected_value === 'number' ? p.expected_value : (p.value_bet_ev ?? 0),
+    reasoning: Array.isArray(p.reasoning) ? p.reasoning : (p.analysis ? [p.analysis] : []),
+    sharpMoney: p.sharp_money,
+    publicBetting: p.public_betting,
+  };
+}
+
 export class PrognoIntegration {
   private baseUrl: string;
   private apiKey?: string;
@@ -47,7 +69,8 @@ export class PrognoIntegration {
       }
 
       const data = await response.json();
-      return data.picks || [];
+      const raw = data.picks || [];
+      return raw.map((p: any) => mapPrognoPickToShape(p));
     } catch (error) {
       console.error('Error fetching PROGNO picks:', error);
       return this.getSamplePicks();

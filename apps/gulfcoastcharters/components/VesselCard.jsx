@@ -18,7 +18,8 @@ export default function VesselCard({ vessel }) {
   const badge = vessel.category ? String(vessel.category).replace(/_/g, ' ') : null
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+    <Link href={`/vessels/${vessel.id}`}>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
       <div className="relative h-48 bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
         {photos[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -78,12 +79,13 @@ export default function VesselCard({ vessel }) {
           <span className={`text-xs font-semibold ${vessel.available ? 'text-green-700' : 'text-gray-500'}`}>
             {vessel.available ? 'Available' : 'Unavailable'}
           </span>
-          <Link href="/captains" className="text-sm font-semibold text-blue-700 hover:text-blue-900">
+          <span className="text-sm font-semibold text-blue-700 hover:text-blue-900">
             View details →
-          </Link>
+          </span>
         </div>
       </div>
     </div>
+    </Link>
   )
 }
 

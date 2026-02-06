@@ -33,6 +33,36 @@ interface WeatherData {
   }>;
 }
 
+function mapWeatherApiToDashboard(raw: any): WeatherData {
+  const cur = raw?.current ?? {};
+  const forecastRaw = Array.isArray(raw?.forecast) ? raw.forecast : [];
+  const alertsRaw = Array.isArray(raw?.alerts) ? raw.alerts : [];
+  return {
+    current: {
+      temp: Number(cur.temperature ?? cur.temp ?? 0),
+      windSpeed: Number(cur.windSpeed ?? 0),
+      windDirection: Number(cur.windDirection ?? 0),
+      waveHeight: Number(cur.waveHeight ?? 0),
+      visibility: Number(cur.visibility ?? 10),
+      humidity: Number(cur.humidity ?? 0),
+      conditions: String(cur.description ?? cur.condition ?? ''),
+    },
+    forecast: forecastRaw.slice(0, 8).map((f: any) => ({
+      time: String(f?.date ?? f?.time ?? ''),
+      temp: Number(f?.tempHigh ?? f?.temp ?? 0),
+      windSpeed: Number(f?.windSpeed ?? 0),
+      waveHeight: Number(f?.waveHeight ?? 0),
+      conditions: String(f?.condition ?? f?.conditions ?? ''),
+    })),
+    alerts: alertsRaw.map((a: any) => ({
+      severity: String(a?.severity ?? ''),
+      event: String(a?.event ?? ''),
+      description: String(a?.description ?? a?.headline ?? ''),
+      expires: String(a?.expires ?? ''),
+    })),
+  };
+}
+
 export function CaptainWeatherDashboard({ latitude = 30.3935, longitude = -86.4958 }: { latitude?: number; longitude?: number }) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,11 +88,23 @@ export function CaptainWeatherDashboard({ latitude = 30.3935, longitude = -86.49
   const loadWeather = async () => {
     try {
       if (navigator.onLine) {
-        const { data, error } = await supabase.functions.invoke('marine-weather', {
-          body: { latitude, longitude }
+        const res = await fetch('/api/weather/current', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ latitude, longitude, alerts: true }),
         });
-        
-        if (!error && data) {
+        let data: WeatherData | null = null;
+        if (res.ok) {
+          const raw = await res.json();
+          data = mapWeatherApiToDashboard(raw);
+        }
+        if (!data) {
+          const out = await supabase.functions.invoke('marine-weather', {
+            body: { latitude, longitude },
+          });
+          if (!out.error && out.data) data = out.data;
+        }
+        if (data) {
           setWeather(data);
           cacheWeather(data);
           setLastUpdate(new Date());
@@ -199,7 +241,7 @@ export function CaptainWeatherDashboard({ latitude = 30.3935, longitude = -86.49
         </div>
       </Card>
 
-      <WeatherAlertSystem />
+      <WeatherAlertSystem latitude={latitude} longitude={longitude} />
     </div>
   );
 }

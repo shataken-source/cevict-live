@@ -37,3 +37,4 @@ dist-ssr
 /playwright/.cache/
 tests/e2e/**/*.spec.ts-snapshots/
 .vercel
+.env*.local

@@ -1,3 +1,5 @@
+<!-- Synced from progno package (gcc/cevict-monorepo node_modules). -->
+
 # 🧠 THE CLAUDE EFFECT - COMPLETE IMPLEMENTATION GUIDE
 ## All 7 Phases - From Theory to Production
 

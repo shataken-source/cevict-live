@@ -5,8 +5,10 @@ import './globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
 const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_GOOGLE_ADS_CLIENT_ID || 'ca-pub-0940073536675562'
+const SITE_VERIFY = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || ''
 
 export const metadata: Metadata = {
+  ...(SITE_VERIFY && { verification: { google: SITE_VERIFY } }),
   title: 'SmokersRights.com - The Legal Navigator for Adult Tobacco Rights',
   description: 'Know your rights. Navigate the laws. Travel with confidence. Your authoritative guide to smoking and vaping laws across all 50 states.',
   keywords: [
@@ -30,6 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {SITE_VERIFY ? <meta name="google-site-verification" content={SITE_VERIFY} /> : null}
         <meta name="google-adsense-account" content={ADSENSE_CLIENT} />
         <script
           async

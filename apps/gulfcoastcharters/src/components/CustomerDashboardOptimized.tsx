@@ -6,7 +6,7 @@ import { Calendar, DollarSign, Anchor, MessageSquare } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import EnhancedMessenger from './EnhancedMessenger';
 import { EmptyState } from './ui/empty-state';
-import BookingCardMemo from './optimized/BookingCardMemo';
+import { BookingCardMemo } from './optimized/BookingCardMemo';
 import SEO from './SEO';
 import { toast } from 'sonner';
 
@@ -106,8 +106,25 @@ export default function CustomerDashboardOptimized() {
             {loading ? <Card className="p-12 text-center"><p>Loading...</p></Card> : 
             filteredBookings.length === 0 ? <EmptyState icon={<Anchor className="w-16 h-16" />}
               title="No Bookings" description="Book your first charter!" /> :
-            filteredBookings.map(b => <BookingCardMemo key={b.id} booking={b} 
-              onContactCaptain={() => setSelectedCaptain({ id: b.captain_id, name: b.captain_name })} />)}
+            filteredBookings.map(b => {
+              const bookingDate = new Date(b.booking_date);
+              const isUpcoming = bookingDate > new Date();
+              const mappedBooking = {
+                id: b.id,
+                charterName: b.charter_name || 'Charter Booking',
+                boatType: 'Charter',
+                date: bookingDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                location: 'Gulf Coast',
+                price: b.total_price || 0,
+                status: (isUpcoming ? 'upcoming' : b.status === 'completed' ? 'completed' : 'cancelled') as 'upcoming' | 'completed' | 'cancelled',
+                imageUrl: 'https://d64gsuwffb70l.cloudfront.net/6918960e54362d714f32b6fc_1763263124588_253a38ca.webp',
+                hasReview: false,
+              };
+              return <BookingCardMemo key={b.id} booking={mappedBooking} 
+                onLeaveReview={() => {}} 
+                onDownloadReceipt={() => {}} 
+              />;
+            })}
           </TabsContent>
 
           <TabsContent value="messages">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -18,9 +18,12 @@ interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   charter: any;
+  /** Prefill from live calendar (Check availability & book) */
+  initialDate?: string;
+  initialTimeSlot?: string;
 }
 
-export default function BookingModal({ isOpen, onClose, charter }: BookingModalProps) {
+export default function BookingModal({ isOpen, onClose, charter, initialDate, initialTimeSlot }: BookingModalProps) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -37,6 +40,19 @@ export default function BookingModal({ isOpen, onClose, charter }: BookingModalP
   const [referralDiscount, setReferralDiscount] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [showCalendar, setShowCalendar] = useState(false);
+
+  // Prefill date and duration when opened from live calendar
+  useEffect(() => {
+    if (isOpen && initialDate) {
+      setFormData((prev) => ({ ...prev, date: initialDate }));
+      setSelectedDate(new Date(initialDate + 'T12:00:00'));
+      if (initialTimeSlot === 'full_day') {
+        setFormData((prev) => ({ ...prev, duration: 'Full Day' }));
+      } else if (initialTimeSlot === 'morning' || initialTimeSlot === 'afternoon') {
+        setFormData((prev) => ({ ...prev, duration: 'Half Day' }));
+      }
+    }
+  }, [isOpen, initialDate, initialTimeSlot]);
 
   const price = formData.duration === 'Half Day' ? charter.priceHalfDay : charter.priceFullDay;
   const finalPrice = Math.max(0, price - referralDiscount);
@@ -71,22 +87,28 @@ export default function BookingModal({ isOpen, onClose, charter }: BookingModalP
   const handleDateSelect = async (date: Date | undefined) => {
     if (!date) return;
 
-    // Check for conflicts before allowing selection
-    const { data, error } = await supabase.functions.invoke('availability-manager', {
-      body: { 
-        action: 'check', 
-        captainId: charter.captainId || charter.id,
-        date: date.toISOString().split('T')[0]
-      }
-    });
+    const captainId = charter.captain_id ?? charter.captainId ?? charter.id;
+    const dateStr = date.toISOString().split('T')[0];
 
-    if (error || data?.hasConflict) {
-      toast.error('This date is no longer available. Please select another date.');
+    try {
+      const res = await fetch(
+        `/api/calendar/availability?captainId=${encodeURIComponent(captainId)}&startDate=${dateStr}&endDate=${dateStr}`
+      );
+      if (!res.ok) throw new Error('Availability check failed');
+      const data = await res.json();
+      const slots = data.availability || [];
+      const hasAvailable = slots.some((s: any) => s.status === 'available');
+      if (slots.length > 0 && !hasAvailable) {
+        toast.error('This date is no longer available. Please select another date.');
+        return;
+      }
+    } catch {
+      toast.error('Could not check availability. Please try again.');
       return;
     }
 
     setSelectedDate(date);
-    setFormData({ ...formData, date: date.toISOString().split('T')[0] });
+    setFormData({ ...formData, date: dateStr });
     setShowCalendar(false);
   };
 
@@ -96,18 +118,23 @@ export default function BookingModal({ isOpen, onClose, charter }: BookingModalP
 
     try {
       // Final availability check before booking
-      const { data: availCheck } = await supabase.functions.invoke('availability-manager', {
-        body: { 
-          action: 'check', 
-          captainId: charter.captainId || charter.id,
-          date: formData.date
+      const captainId = charter.captain_id ?? charter.captainId ?? charter.id;
+      try {
+        const availRes = await fetch(
+          `/api/calendar/availability?captainId=${encodeURIComponent(captainId)}&startDate=${formData.date}&endDate=${formData.date}`
+        );
+        if (availRes.ok) {
+          const availData = await availRes.json();
+          const slots = availData.availability || [];
+          const hasAvailable = slots.some((s: any) => s.status === 'available');
+          if (slots.length > 0 && !hasAvailable) {
+            toast.error('This date was just booked by someone else. Please select another date.');
+            setLoading(false);
+            return;
+          }
         }
-      });
-
-      if (availCheck?.hasConflict) {
-        toast.error('This date was just booked by someone else. Please select another date.');
-        setLoading(false);
-        return;
+      } catch {
+        // Proceed; availability check is best-effort
       }
 
       // Store booking details for success page including email info
@@ -244,7 +271,7 @@ export default function BookingModal({ isOpen, onClose, charter }: BookingModalP
             {showCalendar && (
               <div className="mt-2">
                 <CustomerBookingCalendar
-                  captainId={charter.captainId || charter.id}
+                  captainId={charter.captain_id ?? charter.captainId ?? charter.id}
                   onDateSelect={handleDateSelect}
                   selectedDate={selectedDate}
                 />
@@ -321,7 +348,7 @@ export default function BookingModal({ isOpen, onClose, charter }: BookingModalP
               <Checkbox
                 id="emailReminder"
                 checked={formData.emailReminder}
-                onCheckedChange={(checked) => 
+                onCheckedChange={(checked: boolean) => 
                   setFormData({ ...formData, emailReminder: checked as boolean })
                 }
               />
@@ -333,7 +360,7 @@ export default function BookingModal({ isOpen, onClose, charter }: BookingModalP
               <Checkbox
                 id="smsReminder"
                 checked={formData.smsReminder}
-                onCheckedChange={(checked) => 
+                onCheckedChange={(checked: boolean) => 
                   setFormData({ ...formData, smsReminder: checked as boolean })
                 }
               />

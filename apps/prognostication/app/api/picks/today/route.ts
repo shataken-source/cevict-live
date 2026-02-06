@@ -5,8 +5,8 @@ export const runtime = 'nodejs';
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-12-15.clover',
-    })
+    apiVersion: '2025-12-15.clover',
+  })
   : null;
 
 interface EnginePick {
@@ -218,44 +218,40 @@ export async function GET(request: NextRequest) {
 
     if (baseUrl) {
       try {
-        // Use new API v2.0 endpoint
+        // Use Progno Cevict Flex engine (same as main picks/today)
         const resp = await fetch(
-          `${baseUrl.replace(/\/+$/, '')}/api/progno/v2?action=predictions&limit=50`,
+          `${baseUrl.replace(/\/+$/, '')}/api/picks/today`,
           { cache: 'no-store' }
         );
 
         if (resp.ok) {
           const json = await resp.json();
-          if (json?.success && Array.isArray(json.data) && json.data.length > 0) {
-            // Transform v2 API response to EnginePick format
-            enginePicks = json.data.map((pred: any): EnginePick => {
-              // predictedWinner is the actual team name, not 'home'/'away'
-              const predictedTeam = pred.predictedWinner || (pred.spread?.prediction === 'home' ? pred.homeTeam : pred.awayTeam);
-              
-              return {
-                gameId: pred.gameId || pred.id,
-                game: `${pred.awayTeam} @ ${pred.homeTeam}`,
-                sport: (pred.sport || 'NFL').toUpperCase(),
-                pick: predictedTeam,
-                confidencePct: pred.confidenceScore || Math.round((pred.winProbability || 0) * 100),
-                edgePct: pred.spread?.edge ? Math.round(pred.spread.edge * 100) : 0,
-                kickoff: pred.createdAt || null,
-                isKalshi: pred.isKalshi || false,
-                kalshiMarket: pred.kalshiMarket,
-                keyFactors: pred.claudeEffect?.keyFactors || pred.claudeEffect?.dimensions ? Object.keys(pred.claudeEffect.dimensions || {}) : [],
-                rationale: pred.claudeEffect?.summary || pred.claudeEffect?.reasoning?.join(' ') || '',
-                simulationResults: pred.simulationResults,
-                predictedScore: pred.predictedScore,
-                riskLevel: pred.riskLevel || 'medium',
-                stake: pred.recommendation?.primaryPick?.recommendedWager || pred.recommendation?.primaryPick?.units || 0,
-              };
-            });
+          const rawPicks = json?.picks;
+          if (Array.isArray(rawPicks) && rawPicks.length > 0) {
+            // Map Progno Cevict Flex pick shape to EnginePick
+            enginePicks = rawPicks.map((p: any): EnginePick => ({
+              gameId: p.game_id ?? p.gameId,
+              game: p.game ?? `${p.away_team ?? ''} @ ${p.home_team ?? ''}`,
+              sport: (p.sport ?? p.league ?? 'NFL').toUpperCase(),
+              pick: p.pick ?? '',
+              confidencePct: typeof p.confidence === 'number' ? p.confidence : 0,
+              edgePct: typeof p.value_bet_edge === 'number' ? Math.round(p.value_bet_edge) : 0,
+              kickoff: p.game_time ?? null,
+              keyFactors: Array.isArray(p.reasoning) ? p.reasoning.slice(0, 5) : (p.analysis ? [p.analysis] : []),
+              rationale: typeof p.analysis === 'string' ? p.analysis : (Array.isArray(p.reasoning) ? p.reasoning.join(' ') : ''),
+              simulationResults: p.mc_win_probability != null ? { winRate: p.mc_win_probability, iterations: p.mc_iterations ?? 0 } : undefined,
+              predictedScore: p.mc_predicted_score ?? undefined,
+              riskLevel: (p.confidence >= 75 ? 'low' : p.confidence >= 60 ? 'medium' : 'high') as 'low' | 'medium' | 'high',
+              stake: p.value_bet_kelly != null ? p.value_bet_kelly : undefined,
+              isKalshi: false,
+              kalshiMarket: undefined,
+            }));
             source = 'progno';
           }
         }
       } catch (err: any) {
         // PROGNO unavailable - return empty picks
-        console.warn('PROGNO v2 API fetch failed:', err?.message);
+        console.warn('PROGNO picks/today fetch failed:', err?.message);
       }
     }
 

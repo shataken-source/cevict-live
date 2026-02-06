@@ -1,5 +1,6 @@
 /**
  * News Data Collector for Phase 1 (Sentiment Field) and Phase 2 (Narrative Momentum)
+ * Hardened with timeouts, retries, validation, and graceful fallbacks
  */
 
 export interface NewsArticle {
@@ -15,133 +16,64 @@ export interface NewsArticle {
 
 export class NewsCollector {
   private apiKey: string;
-  private useNewsAPI: boolean;
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.NEWS_API_KEY || process.env.NEWSAPI_KEY || '';
-    this.useNewsAPI = !!this.apiKey;
   }
 
-  /**
-   * Collect news articles for a team
-   */
-  async collectNews(
-    teamName: string,
-    maxResults: number = 50
-  ): Promise<NewsArticle[]> {
+  async collectNews(teamName: string, maxResults = 30): Promise<NewsArticle[]> {
+    if (!teamName) return [];
 
-    if (!this.useNewsAPI) {
-      // Fallback: Use RSS feeds or web scraping
-      return this.collectFromRSS(teamName, maxResults);
+    // Prefer API if available
+    if (this.apiKey) {
+      return this.fetchFromNewsAPIWithRetry(teamName, maxResults);
     }
 
-    try {
-      // NewsAPI.org
-      const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(teamName)}&language=en&sortBy=publishedAt&pageSize=${maxResults}&apiKey=${this.apiKey}`;
-
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        console.warn(`[News Collector] API error: ${response.status}`);
-        return this.collectFromRSS(teamName, maxResults);
-      }
-
-      const data = await response.json();
-      const articles: NewsArticle[] = [];
-
-      if (data.articles) {
-        for (const article of data.articles) {
-          articles.push({
-            title: article.title || '',
-            content: article.description || article.content || '',
-            source: article.source?.name || 'unknown',
-            url: article.url || '',
-            publishedAt: new Date(article.publishedAt || Date.now()),
-            related_teams: [teamName],
-          });
-        }
-      }
-
-      return articles;
-    } catch (error: any) {
-      console.error('[News Collector] Error:', error.message);
-      return this.collectFromRSS(teamName, maxResults);
-    }
+    // Fallback to RSS (placeholder - implement real parser if needed)
+    console.warn('[NewsCollector] API key missing → RSS fallback not implemented');
+    return [];
   }
 
-  /**
-   * Fallback: Collect from RSS feeds
-   */
-  private async collectFromRSS(
-    teamName: string,
-    maxResults: number
-  ): Promise<NewsArticle[]> {
-
-    // Common sports news RSS feeds
-    const rssFeeds = [
-      'https://www.espn.com/espn/rss/news',
-      'https://www.cbssports.com/rss/headlines',
-      'https://sports.yahoo.com/rss/',
-    ];
-
-    const articles: NewsArticle[] = [];
-
-    for (const feedUrl of rssFeeds) {
-      try {
-        // Would need an RSS parser library
-        // For now, return empty array
-        console.log(`[News Collector] RSS feed parsing not yet implemented: ${feedUrl}`);
-      } catch (error) {
-        console.warn(`[News Collector] Failed to parse RSS: ${feedUrl}`);
-      }
-    }
-
-    return articles;
-  }
-
-  /**
-   * Search for specific narrative keywords
-   */
-  async searchNarratives(
-    keywords: string[],
-    maxResults: number = 30
-  ): Promise<NewsArticle[]> {
-
-    if (!this.useNewsAPI) {
-      return [];
-    }
+  async searchNarratives(keywords: string[], maxResults = 30): Promise<NewsArticle[]> {
+    if (!this.apiKey || keywords.length === 0) return [];
 
     const query = keywords.join(' OR ');
+    return this.fetchFromNewsAPIWithRetry(query, maxResults);
+  }
 
-    try {
-      const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=relevancy&pageSize=${maxResults}&apiKey=${this.apiKey}`;
+  private async fetchFromNewsAPIWithRetry(query: string, maxResults: number): Promise<NewsArticle[]> {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
 
-      const response = await fetch(url);
+      try {
+        const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=${maxResults}&apiKey=${this.apiKey}`;
 
-      if (!response.ok) {
-        return [];
-      }
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
 
-      const data = await response.json();
-      const articles: NewsArticle[] = [];
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      if (data.articles) {
-        for (const article of data.articles) {
-          articles.push({
-            title: article.title || '',
-            content: article.description || article.content || '',
-            source: article.source?.name || 'unknown',
-            url: article.url || '',
-            publishedAt: new Date(article.publishedAt || Date.now()),
-          });
+        const data = await res.json();
+        if (!data.articles || !Array.isArray(data.articles)) return [];
+
+        return data.articles.map((a: any) => ({
+          title: a.title || '',
+          content: a.description || a.content || '',
+          source: a.source?.name || 'unknown',
+          url: a.url || '',
+          publishedAt: a.publishedAt ? new Date(a.publishedAt) : new Date(),
+          related_teams: [],
+        }));
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (attempt === 2) {
+          console.warn(`[NewsCollector] Failed after 2 attempts: ${err.message}`);
+          return [];
         }
+        await new Promise(r => setTimeout(r, 1200 * attempt));
       }
-
-      return articles;
-    } catch (error: any) {
-      console.error('[News Collector] Narrative search error:', error.message);
-      return [];
     }
+    return [];
   }
 }
-

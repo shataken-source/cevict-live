@@ -46,6 +46,16 @@ type HotPost = {
   author?: { name: string }
 }
 
+type TodoItem = {
+  id: string
+  text: string
+  source: 'manual' | 'auto' | 'agent'
+  sourceRef?: string
+  createdAt: string
+  done: boolean
+  agentLabel?: string
+}
+
 function formatDate(iso: string) {
   const d = new Date(iso)
   const now = new Date()
@@ -74,13 +84,16 @@ function formatRelative(iso: string | null) {
 function PostCard({
   post,
   isNew,
+  onAddTodo,
 }: {
   post: Post
   isNew?: boolean
+  onAddTodo?: (suggestedText: string, sourceRef: string) => void
 }) {
   const submolt = post.submolt?.name ?? 'general'
   const url = `https://www.moltbook.com/post/${post.id}`
   const submoltUrl = `https://www.moltbook.com/m/${submolt}`
+  const suggestedText = `Look into: ${post.title}`
   return (
     <article
       className={`rounded-xl border bg-black/40 p-4 shadow-lg backdrop-blur ${
@@ -112,14 +125,25 @@ function PostCard({
       <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-300 line-clamp-4">
         {post.content}
       </p>
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-2 inline-block text-xs text-emerald-400 hover:text-emerald-300"
-      >
-        View on Moltbook →
-      </a>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-emerald-400 hover:text-emerald-300"
+        >
+          View on Moltbook →
+        </a>
+        {onAddTodo && (
+          <button
+            type="button"
+            onClick={() => onAddTodo(suggestedText, url)}
+            className="rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-400 hover:bg-emerald-500/20"
+          >
+            Add to agent TODO
+          </button>
+        )}
+      </div>
     </article>
   )
 }
@@ -127,15 +151,18 @@ function PostCard({
 function ReplyCard({
   comment,
   isNew,
+  onAddTodo,
 }: {
   comment: Comment
   isNew?: boolean
+  onAddTodo?: (suggestedText: string, sourceRef: string) => void
 }) {
   const post = comment.post
   const url = post ? `https://www.moltbook.com/post/${post.id}` : '#'
   const submolt = post?.submolt?.name ?? 'general'
   const submoltUrl = `https://www.moltbook.com/m/${submolt}`
   const context = post ? (post.title.length > 50 ? post.title.slice(0, 50) + '…' : post.title) : ''
+  const suggestedText = post ? `Follow up: ${context}` : 'Follow up (reply)'
   return (
     <article
       className={`rounded-xl border bg-black/30 p-4 ${
@@ -165,14 +192,25 @@ function ReplyCard({
       </div>
       <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-300">{comment.content}</p>
       {post && (
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-2 block text-xs text-amber-400/90 hover:text-amber-300"
-        >
-          Re: {context}
-        </a>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-amber-400/90 hover:text-amber-300"
+          >
+            Re: {context}
+          </a>
+          {onAddTodo && (
+            <button
+              type="button"
+              onClick={() => onAddTodo(suggestedText, url)}
+              className="rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-400 hover:bg-amber-500/20"
+            >
+              Add to agent TODO
+            </button>
+          )}
+        </div>
       )}
     </article>
   )
@@ -184,7 +222,7 @@ export default function ViewerPage() {
   const [data, setData] = useState<Activity | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'activity' | 'brief' | 'hot'>('activity')
+  const [tab, setTab] = useState<'activity' | 'brief' | 'hot' | 'todos'>('activity')
   const [brief, setBrief] = useState<{ content: string; updated: string | null }>({
     content: '',
     updated: null,
@@ -194,6 +232,8 @@ export default function ViewerPage() {
   const [submoltFilter, setSubmoltFilter] = useState<string>('all')
   const [dateFilter, setDateFilter] = useState<string>('all')
   const [lastVisit, setLastVisit] = useState<number>(0)
+  const [todos, setTodos] = useState<TodoItem[]>([])
+  const [todosLoading, setTodosLoading] = useState(false)
 
   useEffect(() => {
     const stored = typeof window !== 'undefined' ? localStorage.getItem(LAST_VISIT_KEY) : null
@@ -254,10 +294,107 @@ export default function ViewerPage() {
     if (tab === 'hot') {
       fetch('/api/moltbook/feed')
         .then((r) => r.json())
-        .then((d) => setHotPosts(d.posts ?? []))
+        .then((d) => setHotPosts(Array.isArray(d?.posts) ? d.posts : []))
         .catch(() => setHotPosts([]))
     }
   }, [tab])
+
+  useEffect(() => {
+    fetch('/api/todos')
+      .then((r) => r.json())
+      .then((d) => setTodos(d.todos ?? []))
+      .catch(() => setTodos([]))
+  }, [])
+
+  useEffect(() => {
+    if (tab === 'todos') {
+      setTodosLoading(true)
+      fetch('/api/todos')
+        .then((r) => r.json())
+        .then((d) => setTodos(d.todos ?? []))
+        .catch(() => setTodos([]))
+        .finally(() => setTodosLoading(false))
+    }
+  }, [tab])
+
+  const refreshTodos = () => {
+    fetch('/api/todos')
+      .then((r) => r.json())
+      .then((d) => setTodos(d.todos ?? []))
+      .catch(() => setTodos([]))
+  }
+
+  const addTodo = (suggestedText: string, sourceRef: string) => {
+    const text =
+      typeof window !== 'undefined'
+        ? (window.prompt('Task for your agent (edit if you like):', suggestedText) ?? '').trim()
+        : ''
+    if (!text) return
+    setTodosLoading(true)
+    fetch('/api/todos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, sourceRef, source: 'manual' }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.todos) setTodos(d.todos)
+        if (tab !== 'todos') setTab('todos')
+      })
+      .catch(() => {})
+      .finally(() => setTodosLoading(false))
+  }
+
+  const toggleTodoDone = (id: string) => {
+    fetch(`/api/todos/${id}`, { method: 'PATCH' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.todos) setTodos(d.todos)
+      })
+      .catch(() => {})
+  }
+
+  const deleteTodo = (id: string) => {
+    fetch(`/api/todos/${id}`, { method: 'DELETE' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.todos) setTodos(d.todos)
+      })
+      .catch(() => {})
+  }
+
+  const suggestTodosFromBrief = () => {
+    const lines = brief.content
+      .split(/\n/)
+      .map((l) => l.trim())
+      .filter((l) => {
+        if (!l) return false
+        return /^[-*•]\s+/.test(l) || /^TODO:?\s+/i.test(l)
+      })
+    const toAdd = lines
+      .slice(0, 20)
+      .map((l) => l.replace(/^[-*•]\s+/, '').replace(/^TODO:?\s+/i, '').trim())
+      .filter(Boolean)
+    if (toAdd.length === 0) {
+      if (typeof window !== 'undefined') window.alert('No bullet or TODO lines found in the brief.')
+      return
+    }
+    setTodosLoading(true)
+    fetch('/api/todos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: toAdd.map((text) => ({ text, sourceRef: 'brief' })),
+      }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.todos) setTodos(d.todos)
+        if (tab !== 'todos') setTab('todos')
+      })
+      .catch(() => {})
+      .finally(() => setTodosLoading(false))
+  }
 
   if (agents.length === 0 && !loading) {
     return (
@@ -403,6 +540,16 @@ export default function ViewerPage() {
             >
               What&apos;s hot
             </button>
+            <button
+              onClick={() => setTab('todos')}
+              className={`rounded px-3 py-1.5 text-sm ${
+                tab === 'todos'
+                  ? 'bg-emerald-500/30 text-emerald-300'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Agent TODO {todos.filter((t) => !t.done).length > 0 && `(${todos.filter((t) => !t.done).length})`}
+            </button>
           </nav>
         </header>
 
@@ -446,6 +593,7 @@ export default function ViewerPage() {
                       key={post.id}
                       post={post}
                       isNew={isNew(post.created_at)}
+                      onAddTodo={addTodo}
                     />
                   ))
                 )}
@@ -465,6 +613,7 @@ export default function ViewerPage() {
                       key={c.id}
                       comment={c}
                       isNew={isNew(c.created_at)}
+                      onAddTodo={addTodo}
                     />
                   ))
                 )}
@@ -482,6 +631,18 @@ export default function ViewerPage() {
                     Updated {formatRelative(brief.updated)}
                   </p>
                 )}
+                <div className="mb-4">
+                  <button
+                    type="button"
+                    onClick={suggestTodosFromBrief}
+                    className="rounded border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-sm text-emerald-400 hover:bg-emerald-500/20"
+                  >
+                    Suggest agent TODOs from brief
+                  </button>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Adds bullet and TODO lines as tasks for your agent.
+                  </p>
+                </div>
                 <div className="whitespace-pre-wrap text-sm text-gray-300">
                   {brief.content}
                 </div>
@@ -500,12 +661,15 @@ export default function ViewerPage() {
               Top of the Moltbook feed (refreshed when you open this tab).
             </p>
             <div className="space-y-3">
-              {hotPosts.length === 0 ? (
+              {!Array.isArray(hotPosts) ? (
                 <p className="text-sm text-gray-500">Loading hot feed…</p>
+              ) : hotPosts.length === 0 ? (
+                <p className="text-sm text-gray-500">No posts in hot feed.</p>
               ) : (
                 hotPosts.map((p) => {
                   const sub = p.submolt?.name ?? 'general'
                   const url = `https://www.moltbook.com/post/${p.id}`
+                  const suggestedText = `Look into: ${p.title}`
                   return (
                     <div
                       key={p.id}
@@ -523,19 +687,93 @@ export default function ViewerPage() {
                         {p.author?.name && <span>{p.author.name}</span>}
                         {p.upvotes != null && <span>↑{p.upvotes}</span>}
                       </div>
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 block font-medium text-emerald-100 hover:underline"
-                      >
-                        {p.title}
-                      </a>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-emerald-100 hover:underline"
+                        >
+                          {p.title}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => addTodo(suggestedText, url)}
+                          className="rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-400 hover:bg-emerald-500/20"
+                        >
+                          Add to agent TODO
+                        </button>
+                      </div>
                     </div>
                   )
                 })
               )}
             </div>
+          </section>
+        )}
+
+        {tab === 'todos' && (
+          <section>
+            <p className="mb-4 text-sm text-gray-500">
+              Tasks for your agent. Add from Activity or What&apos;s hot; the agent reads this file each run. The agent can also add items for you (source: agent). See MOLTBOOK_TODO_FLOW.md.
+            </p>
+            {todosLoading ? (
+              <p className="text-sm text-gray-500">Loading…</p>
+            ) : todos.length === 0 ? (
+              <p className="text-sm text-gray-500">No TODOs yet. Use &quot;Add to agent TODO&quot; on any post, or &quot;Suggest agent TODOs from brief&quot; in the Brief tab.</p>
+            ) : (
+              <ul className="space-y-2">
+                {todos.map((t) => (
+                  <li
+                    key={t.id}
+                    className={`flex flex-wrap items-start gap-2 rounded-lg border p-3 ${
+                      t.done ? 'border-gray-700 bg-gray-900/50 opacity-75' : 'border-emerald-500/20 bg-black/30'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleTodoDone(t.id)}
+                      className="mt-0.5 shrink-0 rounded border border-emerald-500/40 p-1"
+                      title={t.done ? 'Mark open' : 'Mark done'}
+                    >
+                      {t.done ? '✓' : '○'}
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <span className={t.done ? 'text-gray-500 line-through' : 'text-gray-200'}>
+                        {t.text}
+                      </span>
+                      {t.sourceRef && (
+                        <a
+                          href={t.sourceRef}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-2 text-xs text-emerald-400 hover:text-emerald-300"
+                        >
+                          Link
+                        </a>
+                      )}
+                      <span className="ml-2 text-xs text-gray-500">
+                        {t.source} · {formatDate(t.createdAt)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => deleteTodo(t.id)}
+                      className="shrink-0 rounded border border-red-500/30 px-2 py-0.5 text-xs text-red-400 hover:bg-red-500/10"
+                    >
+                      Delete
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button
+              type="button"
+              onClick={refreshTodos}
+              className="mt-4 rounded border border-gray-600 px-3 py-1.5 text-sm text-gray-400 hover:bg-gray-800"
+            >
+              Refresh
+            </button>
           </section>
         )}
 

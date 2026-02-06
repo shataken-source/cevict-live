@@ -10,6 +10,7 @@
 
 import { KalshiTrader } from "../../intelligence/kalshi-trader";
 import { closeTradeRecord, getOpenTradeRecords, markBotPredictionsResolved } from "../../lib/supabase-memory";
+import { logPositionClose } from "../trade-safety";
 
 type KalshiSettlement = {
   ticker: string;
@@ -90,6 +91,9 @@ export class KalshiSettlementWorker {
       });
 
       await markBotPredictionsResolved("kalshi", trade.market_id, outcome, pnlUsd);
+
+      // BUG #7: Exit/close logging
+      await logPositionClose(trade.market_id, pnlUsd, exitPriceCents);
     }
   }
 }

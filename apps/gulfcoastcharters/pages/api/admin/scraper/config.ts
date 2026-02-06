@@ -16,13 +16,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .limit(1)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
-    return res.status(200).json({
-      config: data || {
-        sources: { thehulltruth: true, craigslist: true },
-        filters: { states: ['AL', 'FL', 'MS', 'LA', 'TX'] },
-        schedule: { enabled: false },
-        max_boats_per_run: 10,
+    // Default config with all available sources
+    const defaultConfig = {
+      sources: {
+        thehulltruth: false,
+        craigslist: true,
+        google: true,
+        web_search: true,
+        known_sites: false,
+        facebook: false,
+        instagram: false,
       },
+      filters: { states: ['AL', 'FL', 'MS', 'LA', 'TX'] },
+      schedule: { enabled: false },
+      max_boats_per_run: 10,
+    };
+
+    // Merge database config with defaults to ensure all sources are present
+    const mergedConfig = data
+      ? {
+          ...defaultConfig,
+          ...data,
+          sources: {
+            ...defaultConfig.sources,
+            ...(data.sources || {}),
+          },
+        }
+      : defaultConfig;
+
+    return res.status(200).json({
+      config: mergedConfig,
     });
   }
 

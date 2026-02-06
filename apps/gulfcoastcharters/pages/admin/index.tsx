@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabase';
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const supabase = createPagesBrowserClient();
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalCaptains: 0,
@@ -15,21 +14,45 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    // Require login for admin pages.
+    // Require login; use same client as login page so session is shared. Always send redirect=/admin.
     supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) router.replace('/admin/login');
+      if (!data.user) router.replace('/admin/login?redirect=' + encodeURIComponent('/admin'));
     });
 
-    // TODO: Fetch real stats from API
-    // For now, placeholder data
-    setStats({
-      totalUsers: 127,
-      totalCaptains: 18,
-      totalBookings: 342,
-      totalPoints: 45600,
-      activeCampaigns: 2
-    });
-  }, [router, supabase]);
+    async function loadStats() {
+      try {
+        const [usersRes, campaignsRes] = await Promise.all([
+          fetch('/api/admin/users').catch(() => null),
+          fetch('/api/admin/campaigns').catch(() => null),
+        ]);
+        
+        let totalUsers = 0;
+        let activeCampaigns = 0;
+        
+        if (usersRes?.ok) {
+          const usersData = await usersRes.json();
+          totalUsers = usersData.users?.length || 0;
+        }
+        
+        if (campaignsRes?.ok) {
+          const campaignsData = await campaignsRes.json();
+          activeCampaigns = campaignsData.campaigns?.filter((c: any) => c.status === 'sending' || c.status === 'draft').length || 0;
+        }
+        
+        setStats({
+          totalUsers,
+          totalCaptains: 0,
+          totalBookings: 0,
+          totalPoints: 0,
+          activeCampaigns
+        });
+      } catch (err) {
+        console.error('Error loading stats:', err);
+      }
+    }
+    
+    loadStats();
+  }, [router]);
 
   return (
     <>
@@ -40,6 +63,31 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
+
+          {/* Cross-Platform Features Quick Links */}
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-8 border border-blue-200">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">🔗 Cross-Platform Features</h2>
+            <div className="flex flex-wrap gap-4">
+              <a
+                href="/test-cross-platform"
+                className="bg-white px-4 py-2 rounded-lg shadow hover:shadow-md text-sm font-medium text-gray-700 hover:text-blue-600"
+              >
+                🧪 Cross-Platform Test
+              </a>
+              <a
+                href="/test-package-booking"
+                className="bg-white px-4 py-2 rounded-lg shadow hover:shadow-md text-sm font-medium text-gray-700 hover:text-blue-600"
+              >
+                🎁 Package Booking
+              </a>
+              <a
+                href="/admin/review-moderation"
+                className="bg-white px-4 py-2 rounded-lg shadow hover:shadow-md text-sm font-medium text-gray-700 hover:text-blue-600"
+              >
+                ✍️ Review Moderation
+              </a>
+            </div>
+          </div>
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -63,6 +111,12 @@ export default function AdminDashboard() {
               description="Send T-shirt votes, announcements, and more"
               icon="📧"
               onClick={() => router.push('/admin/campaigns')}
+            />
+            <ActionCard
+              title="SMS Campaigns"
+              description="Send bulk SMS messages to subscribers"
+              icon="💬"
+              onClick={() => router.push('/admin/sms-campaigns')}
             />
             <ActionCard
               title="GPS Live Tracking"

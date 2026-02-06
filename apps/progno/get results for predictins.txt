@@ -1,0 +1,55 @@
+# Save Final Results (scores + winners) - Fixed
+$leagues = @('nhl', 'ncaab', 'nba', 'nfl', 'ncaaf', 'mlb')
+$finalResults = @()
+
+foreach ($league in $leagues) {
+  Write-Host "Fetching games for $league..." -ForegroundColor Yellow
+
+  try {
+    $gamesResponse = Invoke-RestMethod -Uri "http://localhost:3008/api/progno/v2?action=games&sport=$league" -Method Get
+
+    if ($gamesResponse.success -and $gamesResponse.data) {
+      Write-Host "Found $($gamesResponse.data.Count) games in $league" -ForegroundColor Green
+
+      foreach ($game in $gamesResponse.data) {
+        $scoreInfo = $game.scoreInfo
+        $homeScore = if ($scoreInfo) { $scoreInfo.homeScore } else { $null }
+        $awayScore = if ($scoreInfo) { $scoreInfo.awayScore } else { $null }
+        $completed = if ($scoreInfo) { $scoreInfo.completed } else { $false }
+
+        $winner = 'Unknown'
+        if ($homeScore -ne $null -and $awayScore -ne $null) {
+          if ($homeScore -gt $awayScore) {
+            $winner = $game.homeTeam
+          } elseif ($awayScore -gt $homeScore) {
+            $winner = $game.awayTeam
+          } else {
+            $winner = 'Tie'
+          }
+        }
+
+        $finalResults += [PSCustomObject]@{
+          League     = $league
+          GameId     = $game.id
+          HomeTeam   = $game.homeTeam
+          AwayTeam   = $game.awayTeam
+          HomeScore  = $homeScore
+          AwayScore  = $awayScore
+          Winner     = $winner
+          Completed  = $completed
+          Timestamp  = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        }
+      }
+    } else {
+      Write-Host "No games for $league" -ForegroundColor Gray
+    }
+  } catch {
+    Write-Host "Error fetching $league - $($_.Exception.Message)" -ForegroundColor Red
+  }
+}
+
+$fileName = "final-results-$(Get-Date -Format 'yyyy-MM-dd-HHmm').json"
+$finalResults | ConvertTo-Json -Depth 10 | Out-File -FilePath $fileName -Encoding utf8
+
+Write-Host "`nFinal results saved to $fileName" -ForegroundColor Green
+Write-Host "Total games saved: $($finalResults.Count)" -ForegroundColor Green

@@ -1,5 +1,4 @@
-"use client";
-
+'use client';
 
 interface ConfidenceGaugeProps {
   confidence: number;
@@ -14,8 +13,8 @@ export default function ConfidenceGauge({
   showLabel = true,
   color
 }: ConfidenceGaugeProps) {
-  const normalizedConfidence = Math.max(0, Math.min(1, confidence));
-  const percentage = Math.round(normalizedConfidence * 100);
+  const normalized = Math.max(0, Math.min(1, confidence));
+  const percentage = (normalized * 100).toFixed(1);
 
   const sizeConfig = {
     small: { width: 60, height: 30, fontSize: 10 },
@@ -27,64 +26,33 @@ export default function ConfidenceGauge({
 
   const getColor = (value: number) => {
     if (color) return color;
-    if (value >= 0.8) return '#10b981'; // green
-    if (value >= 0.6) return '#f59e0b'; // yellow
-    if (value >= 0.4) return '#f97316'; // orange
-    return '#ef4444'; // red
+    if (value >= 0.8) return '#059669'; // emerald
+    if (value >= 0.6) return '#0ea5e9'; // sky
+    if (value >= 0.4) return '#f59e0b'; // amber
+    return '#dc2626'; // red
   };
 
-  const gaugeColor = getColor(normalizedConfidence);
+  const gaugeColor = getColor(normalized);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+    <div className="flex flex-col items-center gap-2">
       <svg width={config.width} height={config.height} viewBox="0 0 100 50">
-        {/* Background arc */}
-        <path
-          d="M 10 40 A 40 40 0 0 1 90 40"
-          fill="none"
-          stroke="#e5e7eb"
-          strokeWidth="8"
-          strokeLinecap="round"
-        />
-
-        {/* Confidence arc */}
+        <path d="M 10 40 A 40 40 0 0 1 90 40" fill="none" stroke="#e2e8f0" strokeWidth="8" strokeLinecap="round" />
         <path
           d="M 10 40 A 40 40 0 0 1 90 40"
           fill="none"
           stroke={gaugeColor}
           strokeWidth="8"
           strokeLinecap="round"
-          strokeDasharray={`${normalizedConfidence * 126} 126`}
-          style={{
-            transition: 'stroke-dasharray 0.5s ease-in-out'
-          }}
+          strokeDasharray={`${normalized * 126} 126`}
         />
-
-        {/* Center dot */}
-        <circle
-          cx="50"
-          cy="40"
-          r="4"
-          fill={gaugeColor}
-        />
-
-        {/* Percentage text */}
-        <text
-          x="50"
-          y="25"
-          textAnchor="middle"
-          fontSize={config.fontSize}
-          fontWeight="bold"
-          fill={gaugeColor}
-        >
+        <circle cx="50" cy="40" r="4" fill={gaugeColor} />
+        <text x="50" y="25" textAnchor="middle" fontSize={config.fontSize} fontWeight="bold" fill={gaugeColor}>
           {percentage}%
         </text>
       </svg>
-
       {showLabel && (
-        <div style={{ fontSize: config.fontSize, color: '#6b7280' }}>
-          Confidence
-        </div>
+        <div className="text-xs text-slate-500 dark:text-slate-400">Confidence</div>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 /**
  * Monte Carlo Simulation Engine
  * Like Leans AI's "Remi" - runs thousands of simulations to remove human bias
- * 
+ *
  * Features:
  * - 1000-10000 simulations per game
  * - Multiple outcome distributions (normal, Poisson, beta)
@@ -32,7 +32,7 @@ export interface MonteCarloResult {
   // Win probabilities
   homeWinProbability: number;
   awayWinProbability: number;
-  
+
   // Spread analysis
   spreadProbabilities: {
     homeCovers: number;  // Probability home covers spread
@@ -41,7 +41,7 @@ export interface MonteCarloResult {
     averageMargin: number;
     marginStdDev: number;
   };
-  
+
   // Total analysis
   totalProbabilities: {
     over: number;        // Probability over hits
@@ -50,7 +50,7 @@ export interface MonteCarloResult {
     averageTotal: number;
     totalStdDev: number;
   };
-  
+
   // Score predictions
   predictedScore: {
     home: number;
@@ -58,7 +58,7 @@ export interface MonteCarloResult {
     homeRange: [number, number];  // 90% confidence interval
     awayRange: [number, number];
   };
-  
+
   // Distribution data for charts
   scoreDistribution: {
     homeScores: number[];
@@ -66,7 +66,7 @@ export interface MonteCarloResult {
     margins: number[];
     totals: number[];
   };
-  
+
   // Metadata
   iterations: number;
   confidence: number;  // Based on win probability deviation from 50%
@@ -136,12 +136,12 @@ export class MonteCarloEngine {
     const params = SPORT_PARAMS[sport] || SPORT_PARAMS.NFL;
 
     // Calculate base scoring rates
-    const { homeExpected, awayExpected, homeStdDev, awayStdDev } = 
+    const { homeExpected, awayExpected, homeStdDev, awayStdDev } =
       this.calculateBaseRates(gameData, params, mergedConfig);
 
     // Run simulations
     const outcomes: SimulationOutcome[] = [];
-    
+
     for (let i = 0; i < iterations; i++) {
       const outcome = this.simulateSingleGame(
         homeExpected,
@@ -188,17 +188,17 @@ export class MonteCarloEngine {
       const { home, away } = gameData.teamStats;
 
       // Calculate offensive/defensive ratings
-      const homeOffense = home.recentAvgPoints || 
-        (home.pointsFor / Math.max(home.wins + home.losses, 1)) || 
+      const homeOffense = home.recentAvgPoints ||
+        (home.pointsFor / Math.max(home.wins + home.losses, 1)) ||
         params.avgScore;
-      const awayOffense = away.recentAvgPoints || 
-        (away.pointsFor / Math.max(away.wins + away.losses, 1)) || 
+      const awayOffense = away.recentAvgPoints ||
+        (away.pointsFor / Math.max(away.wins + away.losses, 1)) ||
         params.avgScore;
-      const homeDefense = home.recentAvgAllowed || 
-        (home.pointsAgainst / Math.max(home.wins + home.losses, 1)) || 
+      const homeDefense = home.recentAvgAllowed ||
+        (home.pointsAgainst / Math.max(home.wins + home.losses, 1)) ||
         params.avgScore;
-      const awayDefense = away.recentAvgAllowed || 
-        (away.pointsAgainst / Math.max(away.wins + away.losses, 1)) || 
+      const awayDefense = away.recentAvgAllowed ||
+        (away.pointsAgainst / Math.max(away.wins + away.losses, 1)) ||
         params.avgScore;
 
       // Expected points = (offensive rating + opponent's defensive rating) / 2
@@ -221,7 +221,7 @@ export class MonteCarloEngine {
     if (config.includeInjuries && gameData.injuries) {
       const homeInjuryImpact = gameData.injuries.homeImpact || 0;
       const awayInjuryImpact = gameData.injuries.awayImpact || 0;
-      
+
       homeExpected *= (1 - homeInjuryImpact);
       awayExpected *= (1 - awayInjuryImpact);
     }
@@ -360,7 +360,7 @@ export class MonteCarloEngine {
     return {
       homeWinProbability: homeWinProb,
       awayWinProbability: awayWinProb,
-      
+
       spreadProbabilities: {
         homeCovers: homeCoversCount / n,
         awayCovers: awayCoversCount / n,
@@ -368,7 +368,7 @@ export class MonteCarloEngine {
         averageMargin: avgMargin,
         marginStdDev: marginStdDev,
       },
-      
+
       totalProbabilities: {
         over: overCount / n,
         under: underCount / n,
@@ -376,21 +376,21 @@ export class MonteCarloEngine {
         averageTotal: avgTotal,
         totalStdDev: totalStdDev,
       },
-      
+
       predictedScore: {
         home: Math.round(avgHome),
         away: Math.round(avgAway),
         homeRange: [sortedHome[lowIdx], sortedHome[highIdx]],
         awayRange: [sortedAway[lowIdx], sortedAway[highIdx]],
       },
-      
+
       scoreDistribution: {
         homeScores,
         awayScores,
         margins,
         totals,
       },
-      
+
       iterations,
       confidence,
       simulationTime: Date.now() - startTime,
@@ -413,7 +413,7 @@ export class MonteCarloEngine {
     // Check moneyline value
     const homeImplied = this.americanToImplied(odds.home);
     const awayImplied = this.americanToImplied(odds.away);
-    
+
     // Home moneyline
     const homeEdge = (result.homeWinProbability - homeImplied) * 100;
     if (homeEdge > 3) {  // Minimum 3% edge
@@ -486,7 +486,7 @@ export class MonteCarloEngine {
 
     // Over/Under value
     const totalLine = total ?? odds.total ?? 44;
-    
+
     // Over
     const overEdge = (result.totalProbabilities.over - spreadImplied) * 100;
     if (overEdge > 3) {
@@ -556,28 +556,46 @@ export class MonteCarloEngine {
     }
   }
 
-  private calculateEV(probability: number, odds: number): number {
-    // EV = (probability * profit) - (1 - probability) * stake
-    // For $100 bet
-    let profit: number;
+  /**
+   * Sanitize American odds: bad consensus (e.g. -2 or +2) produces absurd EV.
+   * Normal range: favorites -110 to -500+, underdogs +100 to +500+.
+   */
+  private sanitizeAmericanOdds(odds: number): number {
     if (odds > 0) {
-      profit = odds;
+      if (odds < 100) return 110;   // e.g. +2 -> +110
+      if (odds > 10000) return 10000;
+      return odds;
     } else {
-      profit = 100 / (Math.abs(odds) / 100);
+      if (odds > -100) return -110;  // e.g. -2 -> -110
+      if (odds < -10000) return -10000;
+      return odds;
     }
-    return (probability * profit) - ((1 - probability) * 100);
+  }
+
+  /**
+   * Expected value in dollars per $100 bet (American odds).
+   * EV = P(win)*profit - P(lose)*100. Profit when you win: +odds (underdog) or 100/|odds|*100 (favorite).
+   */
+  private calculateEV(probability: number, odds: number): number {
+    const o = this.sanitizeAmericanOdds(odds);
+    let profit: number;
+    if (o > 0) {
+      profit = o;
+    } else {
+      profit = (100 * 100) / Math.abs(o);
+    }
+    const ev = (probability * profit) - ((1 - probability) * 100);
+    return Math.round(ev * 100) / 100;
   }
 
   private kellyFraction(probability: number, odds: number): number {
-    // Kelly = (bp - q) / b
-    // b = decimal odds - 1
-    // p = probability of winning
-    // q = 1 - p
-    const decimalOdds = odds > 0 ? (odds / 100) + 1 : (100 / Math.abs(odds)) + 1;
+    const o = this.sanitizeAmericanOdds(odds);
+    // Kelly = (bp - q) / b; b = decimal odds - 1
+    const decimalOdds = o > 0 ? (o / 100) + 1 : (100 / Math.abs(o)) + 1;
     const b = decimalOdds - 1;
     const p = probability;
     const q = 1 - p;
-    
+
     const kelly = (b * p - q) / b;
     // Cap at 25% of bankroll (quarter Kelly for safety)
     return Math.max(0, Math.min(kelly * 0.25, 0.25));

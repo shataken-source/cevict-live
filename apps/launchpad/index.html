@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LaunchPad - Development Command Center</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #1f2937;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 300px;
+      background: white;
+      border-right: 2px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .header {
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .header p {
+      font-size: 0.875rem;
+      opacity: 0.9;
+    }
+
+    .project-list {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .project-item {
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      background: #f9fafb;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .project-item:hover {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .project-item.active {
+      border-color: #667eea;
+      background: #f0f4ff;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+
+    .project-item.running {
+      border-color: #10b981;
+      background: #d1fae5;
+    }
+
+    .project-name {
+      font-weight: bold;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #9ca3af;
+    }
+
+    .status-indicator.running {
+      background: #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .project-path {
+      font-size: 0.75rem;
+      color: #6b7280;
+      margin-bottom: 0.5rem;
+      word-break: break-all;
+    }
+
+    .project-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-small {
+      padding: 0.25rem 0.75rem;
+      font-size: 0.75rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-start {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-stop {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-folder {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      padding: 1rem 1.5rem;
+      background: white;
+      border-bottom: 2px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #1f2937;
+      border: 2px solid #e5e7eb;
+    }
+
+    .content-area {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #6b7280;
+    }
+
+    .empty-state h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: #1f2937;
+    }
+
+    .project-details {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .detail-section {
+      background: #f9fafb;
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      border: 2px solid #e5e7eb;
+    }
+
+    .detail-section h3 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      color: #1f2937;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #374151;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-header h2 {
+      font-size: 1.5rem;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #6b7280;
+    }
+
+    .notification {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      padding: 1rem 1.5rem;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      max-width: 400px;
+    }
+
+    .notification.active {
+      display: flex;
+    }
+
+    .notification.success {
+      border-left: 4px solid #10b981;
+    }
+
+    .notification.error {
+      border-left: 4px solid #ef4444;
+    }
+
+    #outputBox::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #outputBox::-webkit-scrollbar-track {
+      background: #374151;
+      border-radius: 4px;
+    }
+
+    #outputBox::-webkit-scrollbar-thumb {
+      background: #6b7280;
+      border-radius: 4px;
+    }
+
+    #outputBox::-webkit-scrollbar-thumb:hover {
+      background: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="header">
+        <h1>🚀 LaunchPad</h1>
+        <p>Development Command Center</p>
+      </div>
+      <div style="padding: 1rem; border-bottom: 2px solid #e5e7eb;">
+        <input type="text" id="searchInput" placeholder="🔍 Search projects..."
+               style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 0.875rem;"
+               oninput="filterProjects()">
+      </div>
+      <div class="project-list" id="projectList">
+        <!-- Projects will be loaded here -->
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="showAddProjectModal()">+ Add Project</button>
+        <div>
+          <button class="btn btn-secondary" onclick="refreshProjects()">🔄 Refresh</button>
+        </div>
+      </div>
+      
+      <!-- Quick Launch Stacks -->
+      <div style="padding: 1rem; background: #f3f4f6; border-bottom: 1px solid #e5e7eb;">
+        <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: #374151;">⚡ Quick Launch Stacks</h3>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn-small btn-start" onclick="launchStack('Sports Stack')">🏈 Sports Stack</button>
+          <button class="btn-small btn-start" onclick="launchStack('Gulf Coast Stack')">⛵ Gulf Coast</button>
+          <button class="btn-small btn-start" onclick="launchStack('Pet Platform')">🐾 Pet Platform</button>
+          <button class="btn-small btn-start" onclick="launchStack('Entertainment')">🍿 Entertainment</button>
+          <button class="btn-small btn-start" onclick="launchStack('AI Platform')">🤖 AI Platform</button>
+          <button class="btn-small btn-start" onclick="launchStack('All APIs')">🔌 All APIs</button>
+          <button class="btn-small btn-start" onclick="launchStack('Voice Assistants')">🎤 Voice</button>
+          <button class="btn-small btn-start" onclick="launchStack('Mobile Apps')">📱 Mobile</button>
+        </div>
+      </div>
+      <div class="content-area" id="contentArea">
+        <div class="empty-state">
+          <h2>👋 Welcome to Project Launcher</h2>
+          <p>Add your first project to get started</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Project Modal -->
+  <div class="modal" id="projectModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalTitle">Add Project</h2>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      <form id="projectForm" onsubmit="saveProject(event)">
+        <div class="form-group">
+          <label>Project Name *</label>
+          <input type="text" id="projectName" required placeholder="My Awesome Project">
+        </div>
+        <div class="form-group">
+          <label>Project Path *</label>
+          <input type="text" id="projectPath" required placeholder="C:\projects\my-project">
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="projectDescription" placeholder="What does this project do?">
+        </div>
+        <div class="form-group">
+          <label>Supabase URL (optional)</label>
+          <input type="text" id="supabaseUrl" placeholder="https://supabase.com/dashboard/project/xxx">
+        </div>
+        <div class="form-group">
+          <label>Vercel URL (optional)</label>
+          <input type="text" id="vercelUrl" placeholder="https://vercel.com/dashboard">
+        </div>
+        <div class="form-group">
+          <label>GitHub URL (optional)</label>
+          <input type="text" id="githubUrl" placeholder="https://github.com/username/repo">
+        </div>
+
+        <div class="detail-section">
+          <h3>Database Configuration</h3>
+          <div class="form-group">
+            <div class="checkbox-group">
+              <input type="checkbox" id="dbEnabled" onchange="toggleDbConfig()">
+              <label for="dbEnabled">Enable Database</label>
+            </div>
+          </div>
+          <div id="dbConfig" style="display: none;">
+            <div class="form-group">
+              <label>Database Type</label>
+              <select id="dbType" onchange="updateDbConfig()">
+                <option value="supabase">Supabase</option>
+                <option value="postgres">PostgreSQL</option>
+                <option value="mongodb">MongoDB</option>
+                <option value="custom">Custom Command</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Port</label>
+              <input type="number" id="dbPort" placeholder="5432" value="5432">
+            </div>
+            <div class="form-group" id="customCommandGroup" style="display: none;">
+              <label>Start Command</label>
+              <input type="text" id="customCommand" placeholder="npm run start:db">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Dev Server Port (optional)</label>
+          <input type="number" id="devPort" placeholder="3000" value="3000">
+          <small style="color: #6b7280; font-size: 0.875rem;">Port for dev server (default: 3000)</small>
+        </div>
+        <div class="form-group">
+          <div class="checkbox-group">
+            <input type="checkbox" id="openFolder" checked>
+            <label for="openFolder">Open folder when starting</label>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button type="submit" class="btn btn-success">Save Project</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="button" class="btn btn-danger" id="deleteBtn" onclick="deleteProject()" style="display: none;">Delete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notification -->
+  <div class="notification" id="notification">
+    <span id="notificationMessage"></span>
+  </div>
+
+  <!-- Speed Enhancements -->
+  <link rel="stylesheet" href="speed-enhancements.css">
+  <script src="speed-enhancements.js"></script>
+  
+  <script src="renderer.js"></script>
+</body>
+</html>
+

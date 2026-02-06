@@ -33,35 +33,50 @@ export default function WeatherAlertNotifier({
 
   const checkWeatherAlerts = async () => {
     try {
-      const { data } = await supabase.functions.invoke('weather-api', {
-        body: { latitude, longitude, alerts: true }
+      const res = await fetch('/api/weather/current', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude, longitude, alerts: true }),
       });
-
+      let data: any = null;
+      if (res.ok) {
+        data = await res.json();
+      } else {
+        const out = await supabase.functions.invoke('weather-api', {
+          body: { latitude, longitude, alerts: true },
+        });
+        data = out.data;
+      }
       if (data?.alerts && data.alerts.length > 0) {
         const newAlerts = data.alerts.filter((a: any) => !dismissed.includes(a.id));
         setAlerts(newAlerts);
 
-        // Send email notification to organizer
+        // Send email notification to organizer via Next.js API (no Edge Function)
         if (newAlerts.length > 0) {
-          await supabase.functions.invoke('send-email', {
-            body: {
-              to: organizerEmail,
-              subject: `Weather Alert for Your Trip`,
-              html: `
-                <h2>Weather Alert</h2>
-                <p>Dangerous weather conditions have been detected for your upcoming trip.</p>
-                ${newAlerts.map((a: any) => `
-                  <div style="background: #fee; padding: 15px; margin: 10px 0; border-left: 4px solid #f00;">
-                    <h3>${a.event}</h3>
-                    <p>${a.description}</p>
-                    <p><strong>Effective:</strong> ${new Date(a.start).toLocaleString()}</p>
-                    <p><strong>Expires:</strong> ${new Date(a.end).toLocaleString()}</p>
-                  </div>
-                `).join('')}
-              `
-            }
-          });
-
+          try {
+            await fetch('/api/weather/send-alert-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: organizerEmail,
+                subject: 'Weather Alert for Your Trip',
+                html: `
+                  <h2>Weather Alert</h2>
+                  <p>Dangerous weather conditions have been detected for your upcoming trip.</p>
+                  ${newAlerts.map((a: any) => `
+                    <div style="background: #fee; padding: 15px; margin: 10px 0; border-left: 4px solid #f00;">
+                      <h3>${a.event}</h3>
+                      <p>${a.description}</p>
+                      <p><strong>Effective:</strong> ${new Date(a.start).toLocaleString()}</p>
+                      <p><strong>Expires:</strong> ${new Date(a.end).toLocaleString()}</p>
+                    </div>
+                  `).join('')}
+                `,
+              }),
+            });
+          } catch (err) {
+            console.warn('Alert email send failed:', err);
+          }
           toast.error(`Weather Alert: ${newAlerts[0].event}`);
         }
       }

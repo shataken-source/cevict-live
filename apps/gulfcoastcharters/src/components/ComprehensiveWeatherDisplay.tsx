@@ -43,14 +43,38 @@ export default function ComprehensiveWeatherDisplay({
     return () => clearInterval(t);
   }, [latitude, longitude, location]);
 
+  const formattedSunrise = useMemo(() => {
+    const raw = String(weatherData?.sun?.sunrise || '');
+    const d = raw ? new Date(raw) : null;
+    return d && !Number.isNaN(d.getTime()) ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—';
+  }, [weatherData?.sun?.sunrise]);
+
+  const formattedSunset = useMemo(() => {
+    const raw = String(weatherData?.sun?.sunset || '');
+    const d = raw ? new Date(raw) : null;
+    return d && !Number.isNaN(d.getTime()) ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—';
+  }, [weatherData?.sun?.sunset]);
+
   const fetchWeatherData = async ({ silent }: { silent?: boolean } = {}) => {
     try {
       if (!silent) setLoading(true);
       setError(null);
-      const { data, error } = await supabase.functions.invoke('weather-api', {
-        body: { latitude, longitude, location }
+      // Prefer Next.js API (works without Edge Function)
+      const res = await fetch('/api/weather/current', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude, longitude, location }),
       });
-
+      if (res.ok) {
+        const data = await res.json();
+        setWeatherData(data);
+        setLastUpdated(new Date());
+        return;
+      }
+      // Fallback: Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('weather-api', {
+        body: { latitude, longitude, location },
+      });
       if (error) throw error;
       setWeatherData(data);
       setLastUpdated(new Date());
@@ -72,18 +96,6 @@ export default function ComprehensiveWeatherDisplay({
       </div>
     );
   }
-
-  const formattedSunrise = useMemo(() => {
-    const raw = String(weatherData?.sun?.sunrise || '');
-    const d = raw ? new Date(raw) : null;
-    return d && !Number.isNaN(d.getTime()) ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—';
-  }, [weatherData?.sun?.sunrise]);
-
-  const formattedSunset = useMemo(() => {
-    const raw = String(weatherData?.sun?.sunset || '');
-    const d = raw ? new Date(raw) : null;
-    return d && !Number.isNaN(d.getTime()) ? d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—';
-  }, [weatherData?.sun?.sunset]);
 
   if (!weatherData) {
     return (

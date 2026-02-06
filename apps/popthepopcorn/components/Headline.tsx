@@ -79,7 +79,13 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
               </div>
             )}
             <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${headline.category === 'politics' ? 'bg-blue-100 text-blue-700' : headline.category === 'tech' ? 'bg-purple-100 text-purple-700' : 'bg-pink-100 text-pink-700'}`}>
+              <span className={`text-xs font-bold uppercase px-2 py-1 rounded ${
+                headline.category === 'politics' 
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' 
+                  : headline.category === 'tech' 
+                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' 
+                  : 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300'
+              }`}>
                 {headline.category}
               </span>
               <span className="text-xs text-gray-400">•</span>
@@ -201,7 +207,7 @@ export default function Headline({ headline, isPrimary = false }: HeadlineProps)
                 href={headline.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-blue-600 hover:underline"
+                className="flex items-center gap-1 text-blue-500 hover:text-blue-400 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
               >
                 Read <ExternalLink size={16} />
               </Link>

@@ -9,7 +9,7 @@ import { OfflineDocumentManager } from '@/components/OfflineDocumentManager';
 import GPSWaypointManager from '@/components/GPSWaypointManager';
 import { EmergencyContacts } from '@/components/EmergencyContacts';
 import { SuggestionBox } from '@/components/SuggestionBox';
-import { BuoyDataDisplay } from '@/components/BuoyDataDisplay';
+import BuoyDataDisplay from '@/components/BuoyDataDisplay';
 import { TideChart } from '@/components/TideChart';
 import { WeatherEmailReport } from '@/components/WeatherEmailReport';
 import { FileText, Navigation, Phone, MessageCircle, Cloud, DollarSign, Camera, Bell } from 'lucide-react';

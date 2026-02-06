@@ -1,9 +1,11 @@
-# Schema Cache Fix - Reactions Relationship
+# Schema Cache Fix - Reactions & Crowd Drama Votes
 
 ## Problem
-The API is showing: `"Could not find a relationship between 'headlines' and 'reactions' in the schema cache"`
+The API is showing:
+- `"Could not find the table 'public.reactions' in the schema cache"`
+- `"Could not find the table 'public.crowd_drama_votes' in the schema cache"`
 
-This happens even though the foreign key is defined in the schema. Supabase's PostgREST API needs the schema cache refreshed to recognize relationships for joins.
+This happens even though the tables exist in the database. Supabase's PostgREST API needs the schema cache refreshed to recognize new tables.
 
 ## Quick Fix
 
@@ -14,7 +16,12 @@ This happens even though the foreign key is defined in the schema. Supabase's Po
 4. Wait 30-60 seconds
 5. Refresh your app
 
-### Option 2: Via SQL
+### Option 2: Run Fix Script First
+1. Go to **Supabase Dashboard → SQL Editor**
+2. Run `supabase/fix-schema-cache-reactions.sql` to ensure tables exist
+3. Then refresh schema cache (Option 1)
+
+### Option 3: Via SQL (Alternative)
 Run this in **Supabase SQL Editor**:
 ```sql
 NOTIFY pgrst, 'reload schema';

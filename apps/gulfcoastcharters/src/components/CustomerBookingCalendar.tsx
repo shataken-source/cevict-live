@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 interface CustomerBookingCalendarProps {
@@ -20,30 +19,51 @@ export default function CustomerBookingCalendar({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!captainId) {
+      setLoading(false);
+      return;
+    }
     loadAvailability();
   }, [captainId]);
 
   const loadAvailability = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('availability-manager', {
-        body: { action: 'get', captainId }
-      });
+      const today = new Date();
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      const startStr = startOfMonth.toISOString().split('T')[0];
+      const endStr = endOfMonth.toISOString().split('T')[0];
 
-      if (error) throw error;
+      const res = await fetch(
+        `/api/calendar/availability?captainId=${encodeURIComponent(captainId)}&startDate=${startStr}&endDate=${endStr}`
+      );
+      if (!res.ok) throw new Error('Failed to load availability');
 
-      // Combine booked dates and unavailable dates
-      const bookedDates = data.bookings
-        .filter((b: any) => ['confirmed', 'pending'].includes(b.status))
-        .map((b: any) => new Date(b.booking_date));
-      
-      const unavailDates = data.availability
-        .filter((a: any) => ['unavailable', 'blocked', 'booked'].includes(a.status))
-        .map((a: any) => new Date(a.date));
+      const data = await res.json();
+      const slots: Array<{ date: string; status: string }> = data.availability || [];
 
-      setDisabledDates([...bookedDates, ...unavailDates]);
+      // Disable dates that have no available slot (all booked/blocked/hold)
+      const dateStatus = new Map<string, boolean>();
+      for (const s of slots) {
+        const hadAvailable = dateStatus.get(s.date);
+        const isAvailable = s.status === 'available';
+        dateStatus.set(s.date, hadAvailable === true || isAvailable);
+      }
+      const disabled: Date[] = [];
+      const todayStr = today.toISOString().split('T')[0];
+      for (let i = 0; i < 31; i++) {
+        const d = new Date(startOfMonth);
+        d.setDate(d.getDate() + i);
+        if (d > endOfMonth) break;
+        const dateStr = d.toISOString().split('T')[0];
+        if (dateStr < todayStr) disabled.push(new Date(d));
+        else if (dateStatus.get(dateStr) === false) disabled.push(new Date(d));
+      }
+      setDisabledDates(disabled);
     } catch (error: any) {
       toast.error('Failed to load availability');
+      setDisabledDates([]);
     } finally {
       setLoading(false);
     }

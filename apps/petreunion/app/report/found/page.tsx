@@ -3,13 +3,17 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle, AlertCircle, Upload, X } from 'lucide-react'
 
 export default function ReportFoundPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   
   const [form, setForm] = useState({
     petName: '',
@@ -27,11 +31,85 @@ export default function ReportFoundPage() {
     finder_phone: '',
   })
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+    if (!allowedTypes.includes(file.type)) {
+      setError('Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image.')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File too large. Maximum size is 5MB.')
+      return
+    }
+
+    setPhotoFile(file)
+    setError(null)
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const removePhoto = () => {
+    setPhotoFile(null)
+    setPhotoPreview(null)
+    setPhotoUrl(null)
+  }
+
+  const uploadPhoto = async (): Promise<string | null> => {
+    if (!photoFile) return null
+
+    setUploadingPhoto(true)
+    try {
+      const formData = new FormData()
+      formData.append('photo', photoFile)
+
+      const response = await fetch('/api/upload-photo', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to upload photo')
+      }
+
+      return data.photo_url
+    } catch (err: any) {
+      console.error('Photo upload error:', err)
+      throw new Error(err.message || 'Failed to upload photo')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     setSuccess(false)
+
+    // Upload photo first if provided
+    let uploadedPhotoUrl = photoUrl
+    if (photoFile && !photoUrl) {
+      try {
+        uploadedPhotoUrl = await uploadPhoto()
+        if (uploadedPhotoUrl) {
+          setPhotoUrl(uploadedPhotoUrl)
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to upload photo. Please try again.')
+        setLoading(false)
+        return
+      }
+    }
 
     const errors: string[] = []
 
@@ -100,6 +178,7 @@ export default function ReportFoundPage() {
         body: JSON.stringify({
           ...form,
           status: 'found',
+          photo_url: uploadedPhotoUrl || null,
         }),
       })
 
@@ -230,6 +309,60 @@ export default function ReportFoundPage() {
               </div>
             </div>
 
+            {/* Photo Upload */}
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Pet Photo</h2>
+              <div className="space-y-4">
+                {!photoPreview ? (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors">
+                    <input
+                      type="file"
+                      id="photo-upload"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="photo-upload"
+                      className="cursor-pointer flex flex-col items-center"
+                    >
+                      <Upload className="w-12 h-12 text-gray-400 mb-2" />
+                      <p className="text-sm font-medium text-gray-700 mb-1">
+                        Click to upload a photo
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        JPEG, PNG, WebP, or GIF (max 5MB)
+                      </p>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="relative w-full max-w-md mx-auto">
+                      <img
+                        src={photoPreview}
+                        alt="Pet preview"
+                        className="w-full h-auto rounded-lg border border-gray-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={removePhoto}
+                        className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-2 hover:bg-red-700 transition-colors"
+                        aria-label="Remove photo"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      Photo ready to upload
+                    </p>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">
+                  💡 A clear photo helps match this pet with lost pet reports.
+                </p>
+              </div>
+            </div>
+
             <div>
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Contact Information</h2>
               <div className="space-y-4">
@@ -278,10 +411,10 @@ export default function ReportFoundPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || uploadingPhoto}
               className="w-full bg-green-600 text-white py-3 px-6 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
             >
-              {loading ? 'Submitting...' : 'Submit Found Pet Report'}
+              {uploadingPhoto ? 'Uploading Photo...' : loading ? 'Submitting...' : 'Submit Found Pet Report'}
             </button>
           </form>
         </div>

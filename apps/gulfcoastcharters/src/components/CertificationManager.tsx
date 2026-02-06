@@ -53,34 +53,18 @@ export function CertificationManager({ captainId }: { captainId: string }) {
   const verifyInsurance = async (cert: Certification) => {
     setVerifying(true);
     try {
-      const { data, error } = await supabase.functions.invoke('insurance-policy-verifier', {
-        body: { 
-          action: 'verify-single',
-          policyNumber: cert.cert_number,
-          provider: cert.provider,
-          captainId 
-        }
-      });
-
-      if (error) throw error;
-
+      // TODO: Create API endpoint for insurance verification
+      // For now, just show a message
+      console.log('Insurance verification requested for:', cert);
       toast({
-        title: data.verified ? 'Insurance Verified' : 'Verification Failed',
-        description: data.verified 
-          ? `Coverage: $${data.coverageAmount?.toLocaleString()}` 
-          : data.issue,
-        variant: data.verified ? 'default' : 'destructive'
+        title: 'Verification in Progress',
+        description: 'Insurance verification feature coming soon. This will verify your policy with the provider.',
       });
-
-      setCerts(certs.map(c => c.id === cert.id ? { 
-        ...c, 
-        insurance_verified: data.verified,
-        coverage_amount: data.coverageAmount 
-      } : c));
     } catch (err) {
       toast({ title: 'Error', description: 'Failed to verify insurance', variant: 'destructive' });
+    } finally {
+      setVerifying(false);
     }
-    setVerifying(false);
   };
 
   const getStatusBadge = (days: number) => {

@@ -3,14 +3,12 @@ import * as ProgressPrimitive from "@radix-ui/react-progress"
 
 import { cn } from "@/lib/utils"
 
-interface ProgressProps extends
-  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> {
-  variant?: "default" | "success" | "warning" | "error"
-}
-
 const Progress = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
-  ProgressProps
+  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & {
+    variant?: "default" | "success" | "warning" | "error"
+    value?: number
+  }
 >(({ className, value, variant = "default", ...props }, ref) => (
   <ProgressPrimitive.Root
     ref={ref}

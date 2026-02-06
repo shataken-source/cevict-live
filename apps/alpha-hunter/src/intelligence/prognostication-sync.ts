@@ -7,6 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { syncToPrognostication } from '../services/trade-safety';
 
 export interface KalshiPickForPrognostication {
   marketId: string;
@@ -95,13 +96,25 @@ export class PrognosticationSync {
         },
       };
 
-      // Write to local file for prognostication to read
-      await this.writePicksFile(update);
+      // BUG #8: Deduplication - Only sync if not recently synced
+      // Use first pick's marketId as sync key (or use a hash of all picks)
+      const syncKey = picks.length > 0 ? picks[0].marketId : 'batch';
+      const syncResult = await syncToPrognostication(
+        { ticker: syncKey, picks: picks.map(p => p.marketId) },
+        async () => {
+          // Write to local file for prognostication to read
+          await this.writePicksFile(update);
+          // POST to Prognostication API
+          await this.postToPrognosticationAPI(picks);
+          this.lastUpdate = new Date();
+        }
+      );
 
-      // POST to Prognostication API
-      await this.postToPrognosticationAPI(picks);
+      if (!syncResult.synced && syncResult.reason) {
+        console.log(`   ⏭️ Sync skipped: ${syncResult.reason}`);
+        return;
+      }
 
-      this.lastUpdate = new Date();
       console.log(`   ✅ Synced ${picks.length} picks to Prognostication (avg edge: ${update.stats.avgEdge.toFixed(1)}%)`);
     } catch (error: any) {
       console.error('   ❌ Failed to sync to Prognostication:', error.message);

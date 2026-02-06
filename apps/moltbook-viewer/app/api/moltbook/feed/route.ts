@@ -35,7 +35,8 @@ export async function GET() {
     })
     if (!res.ok) return NextResponse.json({ posts: [] }, { status: 200 })
     const data = await res.json()
-    const posts = data.posts ?? data.data?.posts ?? Array.isArray(data) ? data : []
+    const raw = data?.posts ?? data?.data?.posts ?? (Array.isArray(data) ? data : [])
+    const posts = Array.isArray(raw) ? raw : []
     return NextResponse.json({ posts })
   } catch {
     return NextResponse.json({ posts: [] }, { status: 200 })

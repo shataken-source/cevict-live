@@ -19,10 +19,11 @@ export default function CaptainEarnings({ captainId }: { captainId: string }) {
 
   const loadEarnings = async () => {
     try {
-      const { data } = await supabase.functions.invoke('captain-earnings', {
-        body: { captainId }
-      });
-      if (data) setEarnings(data);
+      const response = await fetch('/api/captain/earnings');
+      const result = await response.json();
+      if (result.success && result.earnings) {
+        setEarnings(result.earnings);
+      }
     } catch (error) {
       console.error('Error loading earnings:', error);
     }
@@ -30,11 +31,18 @@ export default function CaptainEarnings({ captainId }: { captainId: string }) {
 
   const requestPayout = async () => {
     try {
-      await supabase.functions.invoke('captain-earnings', {
-        body: { action: 'requestPayout', captainId }
+      const response = await fetch('/api/captain/earnings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'requestPayout' }),
       });
-      alert('Payout request submitted! Funds will be transferred within 3-5 business days.');
-      loadEarnings();
+      const result = await response.json();
+      if (result.success) {
+        alert(result.message || 'Payout request submitted! Funds will be transferred within 3-5 business days.');
+        loadEarnings();
+      } else {
+        alert('Failed to request payout. Please try again.');
+      }
     } catch (error) {
       alert('Failed to request payout. Please try again.');
     }

@@ -1,0 +1,451 @@
+/**
+ * Speed Enhancements CSS
+ * 
+ * Styles for enhanced project launcher features
+ */
+
+/* Quick Actions Bar */
+.quick-actions-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.quick-actions-bar .btn {
+  padding: 8px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.quick-actions-bar .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Templates Section */
+.templates-section {
+  background: #1f2937;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.templates-section h3 {
+  color: #e5e7eb;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.template-card {
+  background: #374151;
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.template-card:hover {
+  background: #4b5563;
+  border-color: #6b7280;
+  transform: translateY(-1px);
+}
+
+.template-card h4 {
+  color: #e5e7eb;
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.template-card p {
+  color: #9ca3af;
+  margin: 0 0 8px 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.template-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.template-tags .tag {
+  background: #4b5563;
+  color: #d1d5db;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Search Enhancements */
+.search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #374151;
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.search-suggestion {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #4b5563;
+  transition: background-color 0.2s ease;
+}
+
+.search-suggestion:hover {
+  background: #4b5563;
+}
+
+.search-suggestion:last-child {
+  border-bottom: none;
+}
+
+.search-suggestion .project-name {
+  color: #e5e7eb;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.search-suggestion .project-path {
+  color: #9ca3af;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+/* Notifications */
+.notification {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+}
+
+.notification-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.notification-error {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.notification-info {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.notification-warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+/* Dialog Overlay */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.dialog {
+  background: #1f2937;
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 400px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid #374151;
+}
+
+.dialog h3 {
+  color: #e5e7eb;
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  color: #d1d5db;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  background: #374151;
+  border: 1px solid #4b5563;
+  border-radius: 6px;
+  color: #e5e7eb;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+/* Keyboard Shortcuts Help */
+.shortcuts-help {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1f2937;
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 500px;
+  max-width: 600px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  border: 1px solid #374151;
+  z-index: 10001;
+}
+
+.shortcuts-help h3 {
+  color: #e5e7eb;
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.shortcut-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #374151;
+}
+
+.shortcut-item:last-child {
+  border-bottom: none;
+}
+
+.shortcut-desc {
+  color: #d1d5db;
+  font-size: 14px;
+}
+
+.shortcut-keys {
+  display: flex;
+  gap: 4px;
+}
+
+.key {
+  background: #374151;
+  border: 1px solid #4b5563;
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #e5e7eb;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: monospace;
+}
+
+/* Project Status Indicators */
+.project-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.status-running {
+  background: #10b981;
+  color: white;
+}
+
+.status-stopped {
+  background: #6b7280;
+  color: white;
+}
+
+.status-error {
+  background: #ef4444;
+  color: white;
+}
+
+/* Quick Start Numbers */
+.project-number {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #3b82f6;
+  color: white;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.project-card:hover .project-number {
+  opacity: 1;
+}
+
+/* Batch Progress */
+.batch-progress {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 300px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  z-index: 10000;
+}
+
+.batch-progress h4 {
+  color: #e5e7eb;
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.progress-bar {
+  background: #374151;
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  color: #9ca3af;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Animations */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.slide-in-up {
+  animation: slideInUp 0.3s ease-out;
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .quick-actions-bar {
+    justify-content: center;
+  }
+  
+  .templates-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .dialog {
+    min-width: 300px;
+    margin: 20px;
+  }
+  
+  .shortcuts-help {
+    min-width: 400px;
+    margin: 20px;
+  }
+  
+  .batch-progress {
+    right: 10px;
+    bottom: 10px;
+    min-width: 250px;
+  }
+}

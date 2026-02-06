@@ -88,6 +88,7 @@ interface CoinbaseTicker {
 }
 
 export class CoinbaseExchange {
+  private static priceErrorLogged?: Set<string>;
   private apiKey: string;
   private apiSecret: string;
   private baseUrl: string;
@@ -422,7 +423,13 @@ export class CoinbaseExchange {
       const ticker = await this.getTicker(productId);
       return ticker.price;
     } catch (error) {
-      console.error(`Error getting price for ${productId}:`, error);
+      if (!CoinbaseExchange.priceErrorLogged) {
+        CoinbaseExchange.priceErrorLogged = new Set<string>();
+      }
+      if (!CoinbaseExchange.priceErrorLogged.has(productId)) {
+        CoinbaseExchange.priceErrorLogged.add(productId);
+        console.error(`Error getting price for ${productId}:`, error);
+      }
       return 0;
     }
   }

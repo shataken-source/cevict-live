@@ -1,6 +1,6 @@
 import { Share2, Facebook, Twitter, Mail, Link as LinkIcon } from 'lucide-react';
 import { Button } from './ui/button';
-import { toast } from './ui/use-toast';
+import { toast } from 'sonner';
 import { useState } from 'react';
 
 interface SocialShareProps {
@@ -29,7 +29,7 @@ export default function SocialShare({
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(shareUrl);
-    toast({ title: 'Link Copied!', description: 'Link copied to clipboard' });
+    toast.success('Link Copied!', { description: 'Link copied to clipboard' });
     setShowMenu(false);
   };
 
@@ -42,8 +42,7 @@ export default function SocialShare({
   const handleShare = (platform: keyof typeof shareLinks) => {
     window.open(shareLinks[platform], '_blank', 'width=600,height=400');
     setShowMenu(false);
-    toast({ 
-      title: 'Shared!', 
+    toast.success('Shared!', { 
       description: `Shared to ${platform.charAt(0).toUpperCase() + platform.slice(1)}` 
     });
   };

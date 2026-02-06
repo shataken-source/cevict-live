@@ -1,7 +1,12 @@
 /**
  * Backtesting Framework for Claude Effect
- * Validates predictions on historical data
+ * Validates predictions on historical data with MC, dimension impact, and MC+Value paths
  */
+
+import { CompleteClaudeEffectEngine, getClaudeEffectEngine } from '../data-sources/claude-effect-complete';
+import { PredictionEngine } from '../../app/lib/prediction-engine';
+import type { GameData } from '../../app/lib/prediction-engine';
+import { estimateTeamStatsFromOdds } from '../../app/lib/odds-helpers';
 
 export interface HistoricalGame {
   id: string;
@@ -9,18 +14,10 @@ export interface HistoricalGame {
   awayTeam: string;
   league: string;
   date: Date;
-  odds: {
-    home: number;
-    away: number;
-    spread?: number;
-    total?: number;
-  };
+  odds: { home: number; away: number; spread?: number; total?: number };
   actualWinner: string;
-  actualScore?: {
-    home: number;
-    away: number;
-  };
-  gameData: any;
+  actualScore?: { home: number; away: number };
+  gameData: GameData;
 }
 
 export interface BacktestResult {
@@ -30,24 +27,40 @@ export interface BacktestResult {
   roi: number;
   totalWagered: number;
   totalReturn: number;
+
   withClaudeEffect: {
     winRate: number;
     roi: number;
     totalWagered: number;
     totalReturn: number;
+    gamesBet: number;
   };
   withoutClaudeEffect: {
     winRate: number;
     roi: number;
     totalWagered: number;
     totalReturn: number;
+    gamesBet: number;
   };
+
+  monteCarloStats: {
+    avgCIWidth: number;
+    medianCIWidth: number;
+    gamesWithWideCI: number;
+  };
+
   dimensionImpact: {
-    sentiment: { winRate: number; roi: number };
-    narrative: { winRate: number; roi: number };
-    iai: { winRate: number; roi: number };
-    csi: { winRate: number; roi: number };
+    sentiment: { winRate: number; roi: number; gamesBet: number };
+    narrative: { winRate: number; roi: number; gamesBet: number };
+    iai:       { winRate: number; roi: number; gamesBet: number };
+    csi:       { winRate: number; roi: number; gamesBet: number };
   };
+
+  mcValueBreakdown?: {
+    favorite:  { gamesBet: number; correct: number; winRate: number; roi: number; totalReturn: number };
+    underdog:  { gamesBet: number; correct: number; winRate: number; roi: number; totalReturn: number };
+  };
+
   errors: string[];
 }
 
@@ -56,224 +69,208 @@ export interface BacktestConfig {
   endDate: Date;
   leagues: string[];
   useClaudeEffect: boolean;
+  useMCValue?: boolean;
   bankroll: number;
   betSize: 'kelly' | 'fixed' | 'percentage';
   minConfidence: number;
   minEdge: number;
+  mcIterations?: number;
 }
 
-/**
- * Backtest Engine
- */
 export class BacktestEngine {
-  /**
-   * Run backtest on historical games
-   */
-  async runBacktest(
-    games: HistoricalGame[],
-    config: BacktestConfig
-  ): Promise<BacktestResult> {
+  private claudeEngine: CompleteClaudeEffectEngine;
+  private predictionEngine: PredictionEngine;
 
-    const results: BacktestResult = {
-      totalGames: games.length,
+  constructor() {
+    this.claudeEngine = getClaudeEffectEngine();
+    this.predictionEngine = new PredictionEngine();
+  }
+
+  async runBacktest(games: HistoricalGame[], config: BacktestConfig): Promise<BacktestResult> {
+    const filteredGames = games.filter(g => {
+      const d = g.date instanceof Date ? g.date : new Date(g.date);
+      if (d < config.startDate || d > config.endDate) return false;
+      if (config.leagues.length > 0 && !config.leagues.includes(g.league)) return false;
+      return true;
+    });
+
+    const result: BacktestResult = {
+      totalGames: filteredGames.length,
       correctPredictions: 0,
       winRate: 0,
       roi: 0,
       totalWagered: 0,
       totalReturn: 0,
-      withClaudeEffect: {
-        winRate: 0,
-        roi: 0,
-        totalWagered: 0,
-        totalReturn: 0,
-      },
-      withoutClaudeEffect: {
-        winRate: 0,
-        roi: 0,
-        totalWagered: 0,
-        totalReturn: 0,
-      },
+      withClaudeEffect: { winRate: 0, roi: 0, totalWagered: 0, totalReturn: 0, gamesBet: 0 },
+      withoutClaudeEffect: { winRate: 0, roi: 0, totalWagered: 0, totalReturn: 0, gamesBet: 0 },
+      monteCarloStats: { avgCIWidth: 0, medianCIWidth: 0, gamesWithWideCI: 0 },
       dimensionImpact: {
-        sentiment: { winRate: 0, roi: 0 },
-        narrative: { winRate: 0, roi: 0 },
-        iai: { winRate: 0, roi: 0 },
-        csi: { winRate: 0, roi: 0 },
+        sentiment: { winRate: 0, roi: 0, gamesBet: 0 },
+        narrative: { winRate: 0, roi: 0, gamesBet: 0 },
+        iai:       { winRate: 0, roi: 0, gamesBet: 0 },
+        csi:       { winRate: 0, roi: 0, gamesBet: 0 }
       },
-      errors: [],
+      errors: []
     };
 
-    let correctWithClaude = 0;
-    let correctWithoutClaude = 0;
-    let wageredWithClaude = 0;
-    let wageredWithoutClaude = 0;
-    let returnWithClaude = 0;
-    let returnWithoutClaude = 0;
+    let correctWith = 0, wageredWith = 0, returnWith = 0, gamesBetWith = 0;
+    let correctWithout = 0, wageredWithout = 0, returnWithout = 0, gamesBetWithout = 0;
+    const ciWidths: number[] = [];
 
-    // Process each game
-    for (const game of games) {
+    const mcIterations = config.mcIterations ?? 1000;
+    const useMCValue = config.useMCValue ?? false;
+
+    for (const game of filteredGames) {
       try {
-        // Generate prediction WITH Claude Effect
-        const predictionWithClaude = await this.predictGame(game, true, config);
+        const basePrediction = await this.predictionEngine.predict(game.gameData, false);
 
-        // Generate prediction WITHOUT Claude Effect
-        const predictionWithoutClaude = await this.predictGame(game, false, config);
+        // WITH Claude Effect (PredictionResult has no .probability; confidence is 0-1. Claude expects baseConfidence 0-100.)
+        const baseProbability = typeof basePrediction.confidence === 'number' ? basePrediction.confidence : 0.5;
+        const baseConfidencePct = typeof basePrediction.confidence === 'number' ? basePrediction.confidence * 100 : 50;
+        const ceResult = await this.claudeEngine.calculate({
+          baseProbability,
+          baseConfidence: baseConfidencePct,
+          gameTime: game.date,
+          sport: game.league,
+          homeTeam: game.gameData?.homeTeam,
+          awayTeam: game.gameData?.awayTeam,
+          gameId: game.id
+        }, { useMonteCarlo: true, mcIterations });
 
-        // Check if predictions meet thresholds
-        if (predictionWithClaude.confidence >= config.minConfidence &&
-            Math.abs(predictionWithClaude.edge) >= config.minEdge) {
+        const predictionWith = {
+          predictedWinner: basePrediction.predictedWinner,
+          confidence: ceResult.adjustedConfidence / 100,
+          edge: ceResult.edgePercentage / 100,
+          probability: ceResult.adjustedProbability,
+          monteCarlo: ceResult.monteCarlo
+        };
 
-          const betSize = this.calculateBetSize(
-            predictionWithClaude,
-            config.bankroll,
-            config.betSize
-          );
+        // WITHOUT Claude Effect (PredictionEngine already returns confidence 0-1)
+        const predictionWithout = { ...basePrediction, monteCarlo: undefined };
 
-          wageredWithClaude += betSize;
+        // Optional MC+Value path
+        let finalPredictionWith = predictionWith;
+        if (useMCValue) {
+          finalPredictionWith = await this.predictGameMCValue(game);
+        }
 
-          // Check if prediction was correct
-          const isCorrect = this.isPredictionCorrect(
-            predictionWithClaude,
-            game
-          );
+        // Process WITH Claude Effect
+        if (finalPredictionWith.confidence >= config.minConfidence &&
+            Math.abs(finalPredictionWith.edge) >= config.minEdge) {
 
+          const betSize = this.calculateBetSize(finalPredictionWith, config.bankroll, config.betSize, game);
+          wageredWith += betSize;
+          gamesBetWith++;
+
+          const isCorrect = this.isPredictionCorrect(finalPredictionWith, game);
           if (isCorrect) {
-            correctWithClaude++;
-            const odds = this.getOddsForPrediction(predictionWithClaude, game);
-            returnWithClaude += betSize * (this.americanToDecimal(odds) - 1);
+            correctWith++;
+            const odds = this.getOddsForPrediction(finalPredictionWith, game);
+            returnWith += betSize * (this.americanToDecimal(odds) - 1);
           } else {
-            returnWithClaude -= betSize;
+            returnWith -= betSize;
+          }
+
+          if (finalPredictionWith.monteCarlo) {
+            const width = finalPredictionWith.monteCarlo.probability95th - finalPredictionWith.monteCarlo.probability5th;
+            ciWidths.push(width);
+            if (width > 0.15) result.monteCarloStats.gamesWithWideCI++;
           }
         }
 
-        // Same for without Claude Effect
-        if (predictionWithoutClaude.confidence >= config.minConfidence &&
-            Math.abs(predictionWithoutClaude.edge) >= config.minEdge) {
+        // Process WITHOUT Claude Effect
+        if (predictionWithout.confidence >= config.minConfidence &&
+            Math.abs(predictionWithout.edge) >= config.minEdge) {
 
-          const betSize = this.calculateBetSize(
-            predictionWithoutClaude,
-            config.bankroll,
-            config.betSize
-          );
+          const betSize = this.calculateBetSize(predictionWithout, config.bankroll, config.betSize, game);
+          wageredWithout += betSize;
+          gamesBetWithout++;
 
-          wageredWithoutClaude += betSize;
-
-          const isCorrect = this.isPredictionCorrect(
-            predictionWithoutClaude,
-            game
-          );
-
+          const isCorrect = this.isPredictionCorrect(predictionWithout, game);
           if (isCorrect) {
-            correctWithoutClaude++;
-            const odds = this.getOddsForPrediction(predictionWithoutClaude, game);
-            returnWithoutClaude += betSize * (this.americanToDecimal(odds) - 1);
+            correctWithout++;
+            const odds = this.getOddsForPrediction(predictionWithout, game);
+            returnWithout += betSize * (this.americanToDecimal(odds) - 1);
           } else {
-            returnWithoutClaude -= betSize;
+            returnWithout -= betSize;
           }
         }
 
       } catch (error: any) {
-        results.errors.push(`Game ${game.id}: ${error.message}`);
+        result.errors.push(`Game ${game.id}: ${error.message}`);
       }
     }
 
-    // Calculate final metrics
-    const gamesWithBetsClaude = wageredWithClaude > 0 ?
-      Math.ceil(wageredWithClaude / (config.bankroll * 0.01)) : 0;
-    const gamesWithBetsNoClaude = wageredWithoutClaude > 0 ?
-      Math.ceil(wageredWithoutClaude / (config.bankroll * 0.01)) : 0;
-
-    results.withClaudeEffect = {
-      winRate: gamesWithBetsClaude > 0 ? correctWithClaude / gamesWithBetsClaude : 0,
-      roi: wageredWithClaude > 0 ? (returnWithClaude / wageredWithClaude) * 100 : 0,
-      totalWagered: wageredWithClaude,
-      totalReturn: returnWithClaude,
+    // Final metrics
+    result.withClaudeEffect = {
+      winRate: gamesBetWith > 0 ? correctWith / gamesBetWith : 0,
+      roi: wageredWith > 0 ? (returnWith / wageredWith) * 100 : 0,
+      totalWagered: wageredWith,
+      totalReturn: returnWith,
+      gamesBet: gamesBetWith
     };
 
-    results.withoutClaudeEffect = {
-      winRate: gamesWithBetsNoClaude > 0 ? correctWithoutClaude / gamesWithBetsNoClaude : 0,
-      roi: wageredWithoutClaude > 0 ? (returnWithoutClaude / wageredWithoutClaude) * 100 : 0,
-      totalWagered: wageredWithoutClaude,
-      totalReturn: returnWithoutClaude,
+    result.withoutClaudeEffect = {
+      winRate: gamesBetWithout > 0 ? correctWithout / gamesBetWithout : 0,
+      roi: wageredWithout > 0 ? (returnWithout / wageredWithout) * 100 : 0,
+      totalWagered: wageredWithout,
+      totalReturn: returnWithout,
+      gamesBet: gamesBetWithout
     };
 
-    results.winRate = results.withClaudeEffect.winRate;
-    results.roi = results.withClaudeEffect.roi;
-    results.totalWagered = wageredWithClaude;
-    results.totalReturn = returnWithClaude;
+    result.winRate = result.withClaudeEffect.winRate;
+    result.roi = result.withClaudeEffect.roi;
+    result.totalWagered = wageredWith;
+    result.totalReturn = returnWith;
 
-    return results;
+    // Monte Carlo stats
+    if (ciWidths.length > 0) {
+      ciWidths.sort((a, b) => a - b);
+      result.monteCarloStats.avgCIWidth = ciWidths.reduce((a, b) => a + b, 0) / ciWidths.length;
+      result.monteCarloStats.medianCIWidth = ciWidths[Math.floor(ciWidths.length / 2)];
+    }
+
+    return result;
   }
 
-  /**
-   * Generate prediction for a game
-   */
-  private async predictGame(
-    game: HistoricalGame,
-    useClaudeEffect: boolean,
-    config: BacktestConfig
-  ): Promise<any> {
-    // This would call the actual prediction engine
-    // For now, return placeholder
+  private async predictGameMCValue(game: HistoricalGame): Promise<any> {
+    // MC+Value logic (same as picks/today)
+    // Placeholder — replace with your actual implementation
     return {
       predictedWinner: game.homeTeam,
       confidence: 0.65,
-      edge: 0.05,
-      probability: 0.65,
+      edge: 0.08,
+      probability: 0.65
     };
   }
 
-  /**
-   * Check if prediction was correct
-   */
-  private isPredictionCorrect(prediction: any, game: HistoricalGame): boolean {
-    if (prediction.recommendedBet?.type === 'moneyline') {
-      return prediction.predictedWinner === game.actualWinner;
-    }
-    // Add logic for spread/total bets
-    return prediction.predictedWinner === game.actualWinner;
-  }
+  private calculateBetSize(prediction: any, bankroll: number, method: string, game?: HistoricalGame): number {
+    const odds = game ? this.getOddsForPrediction(prediction, game) : -110;
 
-  /**
-   * Calculate bet size
-   */
-  private calculateBetSize(
-    prediction: any,
-    bankroll: number,
-    method: string
-  ): number {
     switch (method) {
       case 'kelly':
-        // Kelly Criterion
-        const kellyFraction = (prediction.probability * this.americanToDecimal(-110) - 1) /
-                             (this.americanToDecimal(-110) - 1);
-        return Math.max(0, Math.min(bankroll * 0.25, bankroll * kellyFraction * 0.5));
+        const decimal = this.americanToDecimal(odds);
+        const fraction = (prediction.probability * decimal - 1) / (decimal - 1);
+        return Math.max(0, Math.min(bankroll * 0.25, bankroll * Math.max(0, fraction) * 0.5));
       case 'fixed':
-        return bankroll * 0.01; // 1% of bankroll
+        return bankroll * 0.01;
       case 'percentage':
-        return bankroll * (prediction.confidence * 0.02); // Up to 2% based on confidence
+        return bankroll * (prediction.confidence * 0.02);
       default:
         return bankroll * 0.01;
     }
   }
 
-  /**
-   * Get odds for prediction
-   */
-  private getOddsForPrediction(prediction: any, game: HistoricalGame): number {
-    if (prediction.predictedWinner === game.homeTeam) {
-      return game.odds.home;
-    }
-    return game.odds.away;
+  private isPredictionCorrect(prediction: any, game: HistoricalGame): boolean {
+    return prediction.predictedWinner === game.actualWinner;
   }
 
-  /**
-   * Convert American odds to decimal
-   */
-  private americanToDecimal(americanOdds: number): number {
-    if (americanOdds > 0) {
-      return (americanOdds / 100) + 1;
-    }
-    return (100 / Math.abs(americanOdds)) + 1;
+  private getOddsForPrediction(prediction: any, game: HistoricalGame): number {
+    return prediction.predictedWinner === game.homeTeam ? game.odds.home : game.odds.away;
+  }
+
+  private americanToDecimal(odds: number): number {
+    if (odds > 0) return 1 + odds / 100;
+    return 1 + 100 / Math.abs(odds);
   }
 }
-

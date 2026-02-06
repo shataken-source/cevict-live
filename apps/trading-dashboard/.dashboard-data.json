@@ -1,0 +1,37 @@
+{
+  "stats": {
+    "coinbase": {
+      "balance": 0,
+      "totalTrades": 10,
+      "wins": 0,
+      "losses": 0,
+      "buys": 0,
+      "sells": 0,
+      "totalPnL": -0.48,
+      "winRate": 0,
+      "openPositions": 8
+    },
+    "kalshi": {
+      "balance": 500,
+      "totalTrades": 2,
+      "wins": 0,
+      "losses": 0,
+      "buys": 2,
+      "sells": 0,
+      "totalPnL": 0,
+      "winRate": 0,
+      "openPositions": 2
+    },
+    "combined": {
+      "totalBalance": 500,
+      "totalTrades": 12,
+      "totalPnL": -0.48,
+      "totalWins": 0,
+      "totalLosses": 0,
+      "overallWinRate": 0
+    },
+    "lastUpdate": "2025-12-31T00:18:48.482Z"
+  },
+  "trades": [],
+  "lastUpdate": "2025-12-31T00:18:48.482Z"
+}

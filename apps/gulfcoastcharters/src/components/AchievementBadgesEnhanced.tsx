@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Star, Ship, MessageSquare, Camera, Award, Users, Anchor, Gift, Target } from 'lucide-react';
+import { Trophy, Star, Ship, MessageSquare, Camera, Award, Users, Anchor, Gift, Target, CheckCircle } from 'lucide-react';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
@@ -36,16 +36,67 @@ export default function AchievementBadgesEnhanced({ userId }: { userId: string }
   }, []);
 
   const loadAchievements = async () => {
-    const { data } = await supabase.functions.invoke('points-rewards-system', {
-      body: { action: 'get_achievements', userId }
-    });
-    if (data?.achievements) {
-      // Merge with mock progress data
-      setAchievements(prev => prev.map(a => ({
+    try {
+      // Get achievement definitions
+      const { data: achievementsData } = await supabase.functions.invoke('points-rewards-system', {
+        body: { action: 'get_achievements' },
+      });
+
+      if (!achievementsData?.achievements) return;
+
+      // Load user's achievement progress
+      const { data: progressData } = await supabase
+        .from('achievement_progress')
+        .select('*')
+        .eq('user_id', userId);
+
+      const progressMap = new Map(
+        (progressData || []).map((ap: any) => [
+          ap.achievement_id,
+          { progress: ap.progress, unlocked: ap.unlocked }
+        ])
+      );
+
+      // Map achievements with real progress
+      const mappedAchievements = (achievementsData.achievements as any[]).map((ach: any) => {
+        const progress = progressMap.get(ach.id) || { progress: 0, unlocked: false };
+        const target = ach.requirement?.count || 1000;
+        
+        return {
+          id: ach.id,
+          name: ach.name,
+          desc: ach.requirement 
+            ? `${ach.requirement.type}: ${target}`
+            : ach.description || '',
+          icon: Ship, // Default, will be mapped below
+          unlocked: progress.unlocked || false,
+          progress: progress.progress || 0,
+          total: target,
+          points: ach.rewardPoints || 150,
+        };
+      });
+
+      // Map icons
+      const iconMap: Record<string, any> = {
+        first_voyage: Ship,
+        critic: Star,
+        rising_star: Trophy,
+        legend: Award,
+        ambassador: Users,
+        photographer: Camera,
+        social_butterfly: MessageSquare,
+        seasoned_sailor: Anchor,
+        reward_hunter: Gift,
+      };
+
+      const finalAchievements = mappedAchievements.map(a => ({
         ...a,
-        progress: Math.floor(Math.random() * a.total),
-        unlocked: Math.random() > 0.7
-      })));
+        icon: iconMap[a.id] || Target,
+      }));
+
+      setAchievements(finalAchievements);
+    } catch (error) {
+      console.error('Error loading achievements:', error);
     }
   };
 

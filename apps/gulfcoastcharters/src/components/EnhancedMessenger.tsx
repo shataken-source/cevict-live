@@ -8,6 +8,13 @@ import { ScrollArea } from './ui/scroll-area';
 import { rateLimiter, RATE_LIMITS } from '@/lib/rateLimiter';
 import { toast } from 'sonner';
 import DOMPurify from 'isomorphic-dompurify';
+import { Trash2, Archive, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
 interface Message {
   id: string;
@@ -35,6 +42,7 @@ export default function EnhancedMessenger({
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [archived, setArchived] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
 
@@ -130,6 +138,52 @@ export default function EnhancedMessenger({
     });
   };
 
+  const deleteMessage = async (messageId: string) => {
+    try {
+      // Mark as deleted (one-sided deletion)
+      await supabase
+        .from('messages')
+        .update({ content: '[Message deleted]', deleted_by_sender: true })
+        .eq('id', messageId)
+        .eq('sender_id', currentUserId);
+      
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId ? { ...msg, content: '[Message deleted]' } : msg
+      ));
+      toast.success('Message deleted');
+    } catch (error) {
+      toast.error('Failed to delete message');
+    }
+  };
+
+  const clearConversation = async () => {
+    if (!confirm('Clear all messages from your view? This cannot be undone.')) return;
+    
+    try {
+      // Mark all messages as deleted for this user
+      await supabase
+        .from('messages')
+        .update({ deleted_by_sender: true, content: '[Message deleted]' })
+        .or(`and(sender_id.eq.${currentUserId},recipient_id.eq.${recipientId}),and(sender_id.eq.${recipientId},recipient_id.eq.${currentUserId})`)
+        .eq('sender_id', currentUserId);
+      
+      setMessages([]);
+      toast.success('Conversation cleared');
+    } catch (error) {
+      toast.error('Failed to clear conversation');
+    }
+  };
+
+  const archiveConversation = async () => {
+    try {
+      // In a real implementation, you'd have a conversations table with an archived flag
+      setArchived(true);
+      toast.success('Conversation archived');
+    } catch (error) {
+      toast.error('Failed to archive conversation');
+    }
+  };
+
   return (
     <Card className="h-[600px] flex flex-col">
       <div className="p-4 border-b bg-gradient-to-r from-blue-600 to-purple-600 text-white flex items-center gap-3">
@@ -149,8 +203,8 @@ export default function EnhancedMessenger({
         ) : (
           <div className="space-y-4">
             {messages.map(msg => (
-              <div key={msg.id} className={`flex ${msg.sender_id === currentUserId ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[70%] rounded-2xl p-3 ${
+              <div key={msg.id} className={`flex ${msg.sender_id === currentUserId ? 'justify-end' : 'justify-start'} group`}>
+                <div className={`max-w-[70%] rounded-2xl p-3 relative ${
                   msg.sender_id === currentUserId 
                     ? 'bg-blue-600 text-white' 
                     : 'bg-gray-200 text-gray-900'
@@ -159,6 +213,16 @@ export default function EnhancedMessenger({
                   <p className="text-xs mt-1 opacity-70">
                     {new Date(msg.created_at).toLocaleTimeString()}
                   </p>
+                  {msg.sender_id === currentUserId && msg.content !== '[Message deleted]' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute -right-8 top-2 opacity-0 group-hover:opacity-100 h-6 w-6 p-0"
+                      onClick={() => deleteMessage(msg.id)}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

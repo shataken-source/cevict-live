@@ -7,12 +7,14 @@ import CustomEmailPurchase from './CustomEmailPurchase';
 import AnalyticsChart from './AnalyticsChart';
 import { useAppStore } from '@/stores/appStore';
 import { mockCharters } from '@/data/mockCharters';
+import { supabase } from '@/lib/supabase';
 
 export default function BusinessDashboard() {
   const updateCharterAvailability = useAppStore((state) => state.updateCharterAvailability);
 
   const [loggedInCaptain, setLoggedInCaptain] = useState<string | null>(null);
   const [captainCharter, setCaptainCharter] = useState<any>(null);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -60,15 +62,8 @@ export default function BusinessDashboard() {
     }
   }, [loggedInCaptain]);
 
-  const handleCustomEmailPurchase = (customEmail: string) => {
+  const handleCustomEmailPurchase = () => {
     if (captainCharter) {
-      const updatedCharter = {
-        ...captainCharter,
-        customEmail,
-        hasCustomEmail: true,
-        useCustomEmail: true,
-      };
-      setCaptainCharter(updatedCharter);
       setSuccessMessage('Custom email purchased successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
     }
@@ -293,12 +288,14 @@ export default function BusinessDashboard() {
           </button>
         </div>
 
-        <CustomEmailPurchase
-          captainEmail={loggedInCaptain}
-          currentCustomEmail={captainCharter?.customEmail}
-          hasCustomEmail={captainCharter?.hasCustomEmail}
-          onPurchaseSuccess={handleCustomEmailPurchase}
-        />
+        {authUserId && (
+          <CustomEmailPurchase
+            userId={authUserId}
+            userType="captain"
+            currentPoints={0}
+            onPurchaseSuccess={handleCustomEmailPurchase}
+          />
+        )}
 
 
 

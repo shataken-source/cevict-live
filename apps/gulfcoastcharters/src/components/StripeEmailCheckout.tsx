@@ -12,6 +12,7 @@ interface StripeEmailCheckoutProps {
   onClose: () => void;
   emailAddress: string;
   amount: number;
+  userType: 'captain' | 'customer';
   onSuccess: () => void;
 }
 
@@ -20,6 +21,7 @@ export default function StripeEmailCheckout({
   onClose, 
   emailAddress, 
   amount,
+  userType,
   onSuccess 
 }: StripeEmailCheckoutProps) {
   const [loading, setLoading] = useState(false);
@@ -34,7 +36,9 @@ export default function StripeEmailCheckout({
         body: {
           type: 'custom_email',
           email: emailAddress,
-          amount: amount * 100,
+          amount,
+          user_id: user.id,
+          user_type: userType,
           successUrl: `${window.location.origin}/payment-success?type=email`,
           cancelUrl: window.location.href
         }

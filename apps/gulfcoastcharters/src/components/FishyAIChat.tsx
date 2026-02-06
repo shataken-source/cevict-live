@@ -88,6 +88,9 @@ export default function FishyAIChat({ userType = 'customer', context }: FishyAIC
       if (error) throw error;
 
       setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+      
+      // Log conversation for learning (async, don't block UI)
+      // The edge function handles the actual logging
     } catch (error) {
       toast({ 
         title: 'Error', 

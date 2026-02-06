@@ -1,0 +1,25 @@
+{
+  "name": "tiktok-automation-node",
+  "version": "1.0.0",
+  "description": "TikTok automation for PetReunion - Node.js implementation",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "login": "node cli/login.js",
+    "post": "node cli/post.js",
+    "reply": "node cli/reply.js",
+    "qa": "node cli/qa.js",
+    "generateVideo": "node cli/generateVideo.js",
+    "scheduler": "node cli/scheduler.js"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0",
+    "openai": "^4.20.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/fluent-ffmpeg": "^2.1.24"
+  }
+}

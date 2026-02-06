@@ -245,15 +245,25 @@ class DailyHunter {
   }
 }
 
-// Main execution
 const hunter = new DailyHunter();
 
-// Parse command line args
-const args = process.argv.slice(2);
+/** Called by scheduler (index.ts) — does not exit process. */
+export async function runDailyHunt(): Promise<void> {
+  await hunter.run();
+}
 
-if (args.includes('--settle')) {
-  hunter.settleTrades().then(() => process.exit(0));
-} else {
-  hunter.run().then(() => process.exit(0));
+/** Settle open trades only. */
+export async function runSettleTrades(): Promise<void> {
+  await hunter.settleTrades();
+}
+
+const runAsCli = process.argv[1]?.includes("daily-hunter");
+if (runAsCli) {
+  const args = process.argv.slice(2);
+  if (args.includes("--settle")) {
+    hunter.settleTrades().then(() => process.exit(0));
+  } else {
+    hunter.run().then(() => process.exit(0));
+  }
 }
 

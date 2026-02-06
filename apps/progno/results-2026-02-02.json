@@ -1,0 +1,1091 @@
+{
+  "date": "2026-02-02",
+  "gradedAt": "2026-02-04T12:21:28.542Z",
+  "results": [
+    {
+      "home_team": "Florida Panthers",
+      "away_team": "Buffalo Sabres",
+      "pick": "Florida Panthers",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "lose",
+      "actualWinner": "Buffalo Sabres",
+      "actualScore": {
+        "home": 3,
+        "away": 5
+      }
+    },
+    {
+      "home_team": "Washington Capitals",
+      "away_team": "New York Islanders",
+      "pick": "Washington Capitals",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "Washington Capitals",
+      "actualScore": {
+        "home": 4,
+        "away": 1
+      }
+    },
+    {
+      "home_team": "Pittsburgh Penguins",
+      "away_team": "Ottawa Senators",
+      "pick": "Pittsburgh Penguins",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "lose",
+      "actualWinner": "Ottawa Senators",
+      "actualScore": {
+        "home": 2,
+        "away": 3
+      }
+    },
+    {
+      "home_team": "Minnesota Wild",
+      "away_team": "Montréal Canadiens",
+      "pick": "Minnesota Wild",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "Minnesota Wild",
+      "actualScore": {
+        "home": 4,
+        "away": 3
+      }
+    },
+    {
+      "home_team": "Nashville Predators",
+      "away_team": "St Louis Blues",
+      "pick": "Nashville Predators",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "Nashville Predators",
+      "actualScore": {
+        "home": 6,
+        "away": 5
+      }
+    },
+    {
+      "home_team": "Chicago Blackhawks",
+      "away_team": "San Jose Sharks",
+      "pick": "Chicago Blackhawks",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "Chicago Blackhawks",
+      "actualScore": {
+        "home": 6,
+        "away": 3
+      }
+    },
+    {
+      "home_team": "Dallas Stars",
+      "away_team": "Winnipeg Jets",
+      "pick": "Dallas Stars",
+      "confidence": 0.7213333333333334,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "Dallas Stars",
+      "actualScore": {
+        "home": 4,
+        "away": 3
+      }
+    },
+    {
+      "home_team": "Colorado Avalanche",
+      "away_team": "Detroit Red Wings",
+      "pick": "Colorado Avalanche",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "lose",
+      "actualWinner": "Detroit Red Wings",
+      "actualScore": {
+        "home": 0,
+        "away": 2
+      }
+    },
+    {
+      "home_team": "Utah Mammoth",
+      "away_team": "Vancouver Canucks",
+      "pick": "Utah Mammoth",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "Utah Mammoth",
+      "actualScore": {
+        "home": 6,
+        "away": 2
+      }
+    },
+    {
+      "home_team": "Carolina Hurricanes",
+      "away_team": "Ottawa Senators",
+      "pick": "Carolina Hurricanes",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "Carolina Hurricanes",
+      "actualScore": {
+        "home": 4,
+        "away": 3
+      }
+    },
+    {
+      "home_team": "New Jersey Devils",
+      "away_team": "Columbus Blue Jackets",
+      "pick": "New Jersey Devils",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "lose",
+      "actualWinner": "Columbus Blue Jackets",
+      "actualScore": {
+        "home": 0,
+        "away": 3
+      }
+    },
+    {
+      "home_team": "Philadelphia Flyers",
+      "away_team": "Washington Capitals",
+      "pick": "Philadelphia Flyers",
+      "confidence": 0.7346666666666667,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "Philadelphia Flyers",
+      "actualScore": {
+        "home": 4,
+        "away": 2
+      }
+    },
+    {
+      "home_team": "Tampa Bay Lightning",
+      "away_team": "Buffalo Sabres",
+      "pick": "Tampa Bay Lightning",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "Tampa Bay Lightning",
+      "actualScore": {
+        "home": 4,
+        "away": 3
+      }
+    },
+    {
+      "home_team": "New York Islanders",
+      "away_team": "Pittsburgh Penguins",
+      "pick": "New York Islanders",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "New York Islanders",
+      "actualScore": {
+        "home": 5,
+        "away": 4
+      }
+    },
+    {
+      "home_team": "Edmonton Oilers",
+      "away_team": "Toronto Maple Leafs",
+      "pick": "Edmonton Oilers",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "lose",
+      "actualWinner": "Toronto Maple Leafs",
+      "actualScore": {
+        "home": 2,
+        "away": 5
+      }
+    },
+    {
+      "home_team": "Anaheim Ducks",
+      "away_team": "Seattle Kraken",
+      "pick": "Anaheim Ducks",
+      "confidence": 0.74,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "Anaheim Ducks",
+      "actualScore": {
+        "home": 4,
+        "away": 2
+      }
+    },
+    {
+      "home_team": "North Carolina Central Eagles",
+      "away_team": "Maryland-Eastern Shore Hawks",
+      "pick": "North Carolina Central Eagles",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "North Carolina Central Eagles",
+      "actualScore": {
+        "home": 65,
+        "away": 63
+      }
+    },
+    {
+      "home_team": "Coppin St Eagles",
+      "away_team": "Howard Bison",
+      "pick": "Coppin St Eagles",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Howard Bison",
+      "actualScore": {
+        "home": 53,
+        "away": 72
+      }
+    },
+    {
+      "home_team": "North Carolina Tar Heels",
+      "away_team": "Syracuse Orange",
+      "pick": "North Carolina Tar Heels",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "North Carolina Tar Heels",
+      "actualScore": {
+        "home": 87,
+        "away": 77
+      }
+    },
+    {
+      "home_team": "Alabama St Hornets",
+      "away_team": "Florida A&M Rattlers",
+      "pick": "Alabama St Hornets",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Alabama St Hornets",
+      "actualScore": {
+        "home": 79,
+        "away": 66
+      }
+    },
+    {
+      "home_team": "Lamar Cardinals",
+      "away_team": "SE Louisiana Lions",
+      "pick": "Lamar Cardinals",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Lamar Cardinals",
+      "actualScore": {
+        "home": 73,
+        "away": 54
+      }
+    },
+    {
+      "home_team": "Holy Cross Crusaders",
+      "away_team": "Boston Univ. Terriers",
+      "pick": "Holy Cross Crusaders",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Boston Univ. Terriers",
+      "actualScore": {
+        "home": 64,
+        "away": 72
+      }
+    },
+    {
+      "home_team": "East Texas A&M Lions",
+      "away_team": "New Orleans Privateers",
+      "pick": "East Texas A&M Lions",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "New Orleans Privateers",
+      "actualScore": {
+        "home": 85,
+        "away": 94
+      }
+    },
+    {
+      "home_team": "UT Rio Grande Valley Vaqueros",
+      "away_team": "Houston Christian Huskies",
+      "pick": "UT Rio Grande Valley Vaqueros",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "UT Rio Grande Valley Vaqueros",
+      "actualScore": {
+        "home": 74,
+        "away": 57
+      }
+    },
+    {
+      "home_team": "Stephen F. Austin Lumberjacks",
+      "away_team": "McNeese Cowboys",
+      "pick": "Stephen F. Austin Lumberjacks",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Stephen F. Austin Lumberjacks",
+      "actualScore": {
+        "home": 67,
+        "away": 60
+      }
+    },
+    {
+      "home_team": "Northwestern St Demons",
+      "away_team": "Nicholls St Colonels",
+      "pick": "Northwestern St Demons",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Nicholls St Colonels",
+      "actualScore": {
+        "home": 58,
+        "away": 61
+      }
+    },
+    {
+      "home_team": "Alabama A&M Bulldogs",
+      "away_team": "Bethune-Cookman Wildcats",
+      "pick": "Alabama A&M Bulldogs",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Bethune-Cookman Wildcats",
+      "actualScore": {
+        "home": 62,
+        "away": 80
+      }
+    },
+    {
+      "home_team": "Alcorn St Braves",
+      "away_team": "Grambling St Tigers",
+      "pick": "Alcorn St Braves",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Grambling St Tigers",
+      "actualScore": {
+        "home": 50,
+        "away": 74
+      }
+    },
+    {
+      "home_team": "Jackson St Tigers",
+      "away_team": "Southern Jaguars",
+      "pick": "Jackson St Tigers",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Southern Jaguars",
+      "actualScore": {
+        "home": 91,
+        "away": 96
+      }
+    },
+    {
+      "home_team": "Tennessee St Tigers",
+      "away_team": "Tennessee Tech Golden Eagles",
+      "pick": "Tennessee St Tigers",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Tennessee Tech Golden Eagles",
+      "actualScore": {
+        "home": 85,
+        "away": 90
+      }
+    },
+    {
+      "home_team": "Texas A&M-CC Islanders",
+      "away_team": "Incarnate Word Cardinals",
+      "pick": "Texas A&M-CC Islanders",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Incarnate Word Cardinals",
+      "actualScore": {
+        "home": 69,
+        "away": 71
+      }
+    },
+    {
+      "home_team": "Texas Tech Red Raiders",
+      "away_team": "Kansas Jayhawks",
+      "pick": "Texas Tech Red Raiders",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Kansas Jayhawks",
+      "actualScore": {
+        "home": 61,
+        "away": 64
+      }
+    },
+    {
+      "home_team": "Portland St Vikings",
+      "away_team": "Idaho State Bengals",
+      "pick": "Portland St Vikings",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Portland St Vikings",
+      "actualScore": {
+        "home": 88,
+        "away": 65
+      }
+    },
+    {
+      "home_team": "Sacramento St Hornets",
+      "away_team": "Weber State Wildcats",
+      "pick": "Sacramento St Hornets",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Sacramento St Hornets",
+      "actualScore": {
+        "home": 104,
+        "away": 90
+      }
+    },
+    {
+      "home_team": "Eastern Michigan Eagles",
+      "away_team": "Akron Zips",
+      "pick": "Eastern Michigan Eagles",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Akron Zips",
+      "actualScore": {
+        "home": 64,
+        "away": 66
+      }
+    },
+    {
+      "home_team": "Buffalo Bulls",
+      "away_team": "Miami",
+      "pick": "Buffalo Bulls",
+      "confidence": 0.74,
+      "status": "pending"
+    },
+    {
+      "home_team": "Niagara Purple Eagles",
+      "away_team": "Canisius Golden Griffins",
+      "pick": "Niagara Purple Eagles",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Niagara Purple Eagles",
+      "actualScore": {
+        "home": 65,
+        "away": 56
+      }
+    },
+    {
+      "home_team": "Bowling Green Falcons",
+      "away_team": "Ball State Cardinals",
+      "pick": "Bowling Green Falcons",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Bowling Green Falcons",
+      "actualScore": {
+        "home": 77,
+        "away": 52
+      }
+    },
+    {
+      "home_team": "Duke Blue Devils",
+      "away_team": "Boston College Eagles",
+      "pick": "Duke Blue Devils",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Duke Blue Devils",
+      "actualScore": {
+        "home": 67,
+        "away": 49
+      }
+    },
+    {
+      "home_team": "Massachusetts Minutemen",
+      "away_team": "Central Michigan Chippewas",
+      "pick": "Massachusetts Minutemen",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Massachusetts Minutemen",
+      "actualScore": {
+        "home": 95,
+        "away": 89
+      }
+    },
+    {
+      "home_team": "Dayton Flyers",
+      "away_team": "St. Bonaventure Bonnies",
+      "pick": "Dayton Flyers",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Dayton Flyers",
+      "actualScore": {
+        "home": 72,
+        "away": 70
+      }
+    },
+    {
+      "home_team": "Fordham Rams",
+      "away_team": "VCU Rams",
+      "pick": "Fordham Rams",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "VCU Rams",
+      "actualScore": {
+        "home": 59,
+        "away": 63
+      }
+    },
+    {
+      "home_team": "Illinois St Redbirds",
+      "away_team": "Southern Illinois Salukis",
+      "pick": "Illinois St Redbirds",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Southern Illinois Salukis",
+      "actualScore": {
+        "home": 50,
+        "away": 54
+      }
+    },
+    {
+      "home_team": "Toledo Rockets",
+      "away_team": "Kent State Golden Flashes",
+      "pick": "Toledo Rockets",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Kent State Golden Flashes",
+      "actualScore": {
+        "home": 72,
+        "away": 75
+      }
+    },
+    {
+      "home_team": "Ohio Bobcats",
+      "away_team": "Western Michigan Broncos",
+      "pick": "Ohio Bobcats",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Ohio Bobcats",
+      "actualScore": {
+        "home": 91,
+        "away": 71
+      }
+    },
+    {
+      "home_team": "Tennessee Volunteers",
+      "away_team": "Ole Miss Rebels",
+      "pick": "Tennessee Volunteers",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Tennessee Volunteers",
+      "actualScore": {
+        "home": 84,
+        "away": 66
+      }
+    },
+    {
+      "home_team": "Texas Longhorns",
+      "away_team": "South Carolina Gamecocks",
+      "pick": "Texas Longhorns",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Texas Longhorns",
+      "actualScore": {
+        "home": 84,
+        "away": 75
+      }
+    },
+    {
+      "home_team": "UConn Huskies",
+      "away_team": "Xavier Musketeers",
+      "pick": "UConn Huskies",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "UConn Huskies",
+      "actualScore": {
+        "home": 92,
+        "away": 60
+      }
+    },
+    {
+      "home_team": "Bradley Braves",
+      "away_team": "Valparaiso Beacons",
+      "pick": "Bradley Braves",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Bradley Braves",
+      "actualScore": {
+        "home": 72,
+        "away": 65
+      }
+    },
+    {
+      "home_team": "DePaul Blue Demons",
+      "away_team": "St. John's Red Storm",
+      "pick": "DePaul Blue Demons",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "St. John's Red Storm",
+      "actualScore": {
+        "home": 56,
+        "away": 68
+      }
+    },
+    {
+      "home_team": "Evansville Purple Aces",
+      "away_team": "Indiana St Sycamores",
+      "pick": "Evansville Purple Aces",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Indiana St Sycamores",
+      "actualScore": {
+        "home": 63,
+        "away": 84
+      }
+    },
+    {
+      "home_team": "Murray St Racers",
+      "away_team": "UIC Flames",
+      "pick": "Murray St Racers",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Murray St Racers",
+      "actualScore": {
+        "home": 81,
+        "away": 74
+      }
+    },
+    {
+      "home_team": "Tenn-Martin Skyhawks",
+      "away_team": "Arkansas-Little Rock Trojans",
+      "pick": "Tenn-Martin Skyhawks",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Tenn-Martin Skyhawks",
+      "actualScore": {
+        "home": 55,
+        "away": 52
+      }
+    },
+    {
+      "home_team": "Lindenwood Lions",
+      "away_team": "SIU-Edwardsville Cougars",
+      "pick": "Lindenwood Lions",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "SIU-Edwardsville Cougars",
+      "actualScore": {
+        "home": 72,
+        "away": 78
+      }
+    },
+    {
+      "home_team": "Grand Canyon Antelopes",
+      "away_team": "Air Force Falcons",
+      "pick": "Grand Canyon Antelopes",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Grand Canyon Antelopes",
+      "actualScore": {
+        "home": 81,
+        "away": 57
+      }
+    },
+    {
+      "home_team": "Belmont Bruins",
+      "away_team": "Drake Bulldogs",
+      "pick": "Belmont Bruins",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Belmont Bruins",
+      "actualScore": {
+        "home": 103,
+        "away": 90
+      }
+    },
+    {
+      "home_team": "Boise State Broncos",
+      "away_team": "Nevada Wolf Pack",
+      "pick": "Boise State Broncos",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Boise State Broncos",
+      "actualScore": {
+        "home": 91,
+        "away": 87
+      }
+    },
+    {
+      "home_team": "Davidson Wildcats",
+      "away_team": "Saint Louis Billikens",
+      "pick": "Davidson Wildcats",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "Saint Louis Billikens",
+      "actualScore": {
+        "home": 82,
+        "away": 91
+      }
+    },
+    {
+      "home_team": "SMU Mustangs",
+      "away_team": "NC State Wolfpack",
+      "pick": "SMU Mustangs",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "lose",
+      "actualWinner": "NC State Wolfpack",
+      "actualScore": {
+        "home": 83,
+        "away": 84
+      }
+    },
+    {
+      "home_team": "Virginia Cavaliers",
+      "away_team": "Pittsburgh Panthers",
+      "pick": "Virginia Cavaliers",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Virginia Cavaliers",
+      "actualScore": {
+        "home": 67,
+        "away": 47
+      }
+    },
+    {
+      "home_team": "UCLA Bruins",
+      "away_team": "Rutgers Scarlet Knights",
+      "pick": "UCLA Bruins",
+      "confidence": 0.7293333333333334,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "UCLA Bruins",
+      "actualScore": {
+        "home": 98,
+        "away": 66
+      }
+    },
+    {
+      "home_team": "USC Trojans",
+      "away_team": "Indiana Hoosiers",
+      "pick": "USC Trojans",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "USC Trojans",
+      "actualScore": {
+        "home": 81,
+        "away": 75
+      }
+    },
+    {
+      "home_team": "Fresno St Bulldogs",
+      "away_team": "UNLV Rebels",
+      "pick": "Fresno St Bulldogs",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "Fresno St Bulldogs",
+      "actualScore": {
+        "home": 98,
+        "away": 96
+      }
+    },
+    {
+      "home_team": "San Diego St Aztecs",
+      "away_team": "Wyoming Cowboys",
+      "pick": "San Diego St Aztecs",
+      "confidence": 0.74,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "status": "win",
+      "actualWinner": "San Diego St Aztecs",
+      "actualScore": {
+        "home": 72,
+        "away": 63
+      }
+    },
+    {
+      "home_team": "Indiana Pacers",
+      "away_team": "Houston Rockets",
+      "pick": "Indiana Pacers",
+      "confidence": 0.74,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "lose",
+      "actualWinner": "Houston Rockets",
+      "actualScore": {
+        "home": 114,
+        "away": 118
+      }
+    },
+    {
+      "home_team": "Memphis Grizzlies",
+      "away_team": "Minnesota Timberwolves",
+      "pick": "Memphis Grizzlies",
+      "confidence": 0.74,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "win",
+      "actualWinner": "Memphis Grizzlies",
+      "actualScore": {
+        "home": 137,
+        "away": 128
+      }
+    },
+    {
+      "home_team": "Los Angeles Clippers",
+      "away_team": "Philadelphia 76ers",
+      "pick": "Los Angeles Clippers",
+      "confidence": 0.74,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "lose",
+      "actualWinner": "Philadelphia 76ers",
+      "actualScore": {
+        "home": 113,
+        "away": 128
+      }
+    },
+    {
+      "home_team": "Detroit Pistons",
+      "away_team": "Denver Nuggets",
+      "pick": "Detroit Pistons",
+      "confidence": 0.74,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "win",
+      "actualWinner": "Detroit Pistons",
+      "actualScore": {
+        "home": 124,
+        "away": 121
+      }
+    },
+    {
+      "home_team": "Washington Wizards",
+      "away_team": "New York Knicks",
+      "pick": "Washington Wizards",
+      "confidence": 0.7213333333333334,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "lose",
+      "actualWinner": "New York Knicks",
+      "actualScore": {
+        "home": 101,
+        "away": 132
+      }
+    },
+    {
+      "home_team": "Miami Heat",
+      "away_team": "Atlanta Hawks",
+      "pick": "Miami Heat",
+      "confidence": 0.74,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "lose",
+      "actualWinner": "Atlanta Hawks",
+      "actualScore": {
+        "home": 115,
+        "away": 127
+      }
+    },
+    {
+      "home_team": "Brooklyn Nets",
+      "away_team": "Los Angeles Lakers",
+      "pick": "Brooklyn Nets",
+      "confidence": 0.74,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "lose",
+      "actualWinner": "Los Angeles Lakers",
+      "actualScore": {
+        "home": 109,
+        "away": 125
+      }
+    },
+    {
+      "home_team": "Dallas Mavericks",
+      "away_team": "Boston Celtics",
+      "pick": "Dallas Mavericks",
+      "confidence": 0.74,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "lose",
+      "actualWinner": "Boston Celtics",
+      "actualScore": {
+        "home": 100,
+        "away": 110
+      }
+    },
+    {
+      "home_team": "Oklahoma City Thunder",
+      "away_team": "Orlando Magic",
+      "pick": "Oklahoma City Thunder",
+      "confidence": 0.74,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "win",
+      "actualWinner": "Oklahoma City Thunder",
+      "actualScore": {
+        "home": 128,
+        "away": 92
+      }
+    },
+    {
+      "home_team": "Portland Trail Blazers",
+      "away_team": "Phoenix Suns",
+      "pick": "Portland Trail Blazers",
+      "confidence": 0.74,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "lose",
+      "actualWinner": "Phoenix Suns",
+      "actualScore": {
+        "home": 125,
+        "away": 130
+      }
+    },
+    {
+      "home_team": "New England Patriots",
+      "away_team": "Seattle Seahawks",
+      "pick": "New England Patriots",
+      "confidence": 0.74,
+      "status": "pending"
+    },
+    {
+      "home_team": "Virginia Cavaliers",
+      "away_team": "NC State Wolfpack",
+      "pick": "Virginia Cavaliers",
+      "confidence": 0.724,
+      "status": "pending"
+    },
+    {
+      "home_team": "TCU Horned Frogs",
+      "away_team": "North Carolina Tar Heels",
+      "pick": "TCU Horned Frogs",
+      "confidence": 0.74,
+      "status": "pending"
+    },
+    {
+      "home_team": "Auburn Tigers",
+      "away_team": "Baylor Bears",
+      "pick": "Auburn Tigers",
+      "confidence": 0.74,
+      "status": "pending"
+    },
+    {
+      "home_team": "LSU Tigers",
+      "away_team": "Clemson Tigers",
+      "pick": "LSU Tigers",
+      "confidence": 0.74,
+      "status": "pending"
+    },
+    {
+      "home_team": "Notre Dame Fighting Irish",
+      "away_team": "Wisconsin Badgers",
+      "pick": "Notre Dame Fighting Irish",
+      "confidence": 0.74,
+      "status": "pending"
+    },
+    {
+      "home_team": "Texas Longhorns",
+      "away_team": "Ohio State Buckeyes",
+      "pick": "Texas Longhorns",
+      "confidence": 0.74,
+      "status": "pending"
+    }
+  ],
+  "summary": {
+    "total": 81,
+    "correct": 42,
+    "pending": 8,
+    "graded": 73,
+    "winRate": 57.5
+  }
+}

@@ -46,6 +46,36 @@ export default function PaymentModal({ open, onClose, listing, amount, buyerId, 
 
       if (error) throw error;
 
+      // Award points for marketplace purchase (gamification)
+      try {
+        await supabase.functions.invoke('points-rewards-system', {
+          body: {
+            action: 'award_points',
+            userId: buyerId,
+            actionType: 'marketplace_purchase',
+            amount: 30,
+          },
+        });
+      } catch (pointsError) {
+        console.error('Error awarding purchase points:', pointsError);
+        // Don't block payment if points fail
+      }
+
+      // Award points to seller for marketplace sale
+      try {
+        await supabase.functions.invoke('points-rewards-system', {
+          body: {
+            action: 'award_points',
+            userId: listing.seller_id,
+            actionType: 'marketplace_sale',
+            amount: 50,
+          },
+        });
+      } catch (pointsError) {
+        console.error('Error awarding sale points:', pointsError);
+        // Don't block payment if points fail
+      }
+
       // Send confirmation email
       await supabase.functions.invoke('mailjet-email-service', {
         body: {
@@ -62,6 +92,7 @@ export default function PaymentModal({ open, onClose, listing, amount, buyerId, 
         }
       });
 
+      toast.success('Purchase completed! +30 points');
       onSuccess();
     } catch (error: any) {
       toast.error(error.message || 'Payment failed');

@@ -11,25 +11,50 @@ function normalizeRole(v: unknown): AppRole | null {
 async function getRoleForUser(user: User): Promise<AppRole | null> {
   try {
     const admin = getSupabaseAdmin();
-    // Prefer `profiles.user_id` (common schema). Fallback to `profiles.id` for legacy schemas.
+    // Check profiles table - supports both schemas: profiles.id = auth.users.id OR profiles.user_id = auth.users.id
+    // Also supports both role models: is_admin (boolean) OR role (text)
+    
+    // Try profiles.id = auth.users.id (production schema: profiles.id = auth.users.id)
     {
-      const { data, error } = await admin.from('profiles').select('role').eq('user_id', user.id).maybeSingle();
-      if (!error) {
-        const r = normalizeRole((data as any)?.role);
-        if (r) return r;
+      const { data, error } = await admin.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+      if (error) {
+        console.warn('[RBAC] Error checking profiles.id:', error.message);
+      } else if (data) {
+        console.log('[RBAC] Found profile by id:', { userId: user.id, is_admin: (data as any)?.is_admin });
+        // Check is_admin boolean (production schema)
+        if ((data as any)?.is_admin === true) return 'admin';
       }
     }
+    
+    // Try profiles.user_id = auth.users.id (alternative schema)
     {
+      const { data, error } = await admin.from('profiles').select('is_admin').eq('user_id', user.id).maybeSingle();
+      if (error) {
+        console.warn('[RBAC] Error checking profiles.user_id:', error.message);
+      } else if (data) {
+        console.log('[RBAC] Found profile by user_id:', { userId: user.id, is_admin: (data as any)?.is_admin });
+        // Check is_admin boolean
+        if ((data as any)?.is_admin === true) return 'admin';
+      }
+    }
+    
+    // Legacy: Try role column if it exists (for backward compatibility with old schemas)
+    // Only try this if is_admin didn't work
+    try {
       const { data, error } = await admin.from('profiles').select('role').eq('id', user.id).maybeSingle();
-      if (!error) {
+      if (!error && data && (data as any)?.role) {
+        console.log('[RBAC] Found profile with role (legacy):', { userId: user.id, role: (data as any)?.role });
         const r = normalizeRole((data as any)?.role);
         if (r) return r;
       }
+    } catch {
+      // role column doesn't exist - that's fine, we're using is_admin
     }
-  } catch {
-    // ignore, fallback below
+  } catch (err: any) {
+    console.error('[RBAC] Exception in getRoleForUser:', err?.message);
   }
 
+  // Fallback: Check environment variable for admin emails
   const allow = String(process.env.GCC_ADMIN_EMAILS || '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
@@ -59,7 +84,19 @@ export async function requireRole(req: NextApiRequest, res: NextApiResponse, rol
 
   const role = await getRoleForUser(user as any);
   if (!role || !roles.includes(role)) {
-    res.status(403).json({ error: 'Forbidden (insufficient role)', role });
+    // Debug: Log what we found
+    console.error('[RBAC] Access denied:', {
+      userId: user.id,
+      userEmail: user.email,
+      foundRole: role,
+      requiredRoles: roles,
+    });
+    res.status(403).json({ 
+      error: 'Forbidden (insufficient role)', 
+      role: role || 'none',
+      userId: user.id,
+      userEmail: user.email,
+    });
     return false;
   }
 

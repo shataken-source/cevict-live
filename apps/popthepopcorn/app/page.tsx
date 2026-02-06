@@ -8,10 +8,12 @@ import DramaMeter from '@/components/DramaMeter'
 import PopcornDramaMeter from '@/components/PopcornDramaMeter'
 import ReactionButtons from '@/components/ReactionButtons'
 import ChatBot from '@/components/ChatBot'
+import SidebarChatBot from '@/components/SidebarChatBot'
 import StoryArcCard from '@/components/StoryArcCard'
 import AgeGate from '@/components/AgeGate'
 import PopcornAnimation from '@/components/PopcornAnimation'
 import KeyboardShortcuts from '@/components/KeyboardShortcuts'
+import BingeMode from '@/components/BingeMode'
 import { Settings, Bell, Tv, Zap, Coins, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateVersusFrame } from '@/lib/brand-guide'
@@ -86,36 +88,58 @@ export default function Home() {
   const [userBalance, setUserBalance] = useState({ kernels: 0, salt: 0, streak: 0, lastActiveDate: '' })
 
   const fetchHeadlines = async () => {
+    // IMMEDIATE fallback: if fetch takes too long, show empty state
+    const immediateTimeout = setTimeout(() => {
+      console.warn('[Frontend] Immediate timeout: showing empty feed')
+      setHeadlines([])
+      setOverallDrama(5)
+      setLoading(false)
+    }, 2000) // 2 seconds max
+
     try {
-      // Add timeout to prevent hanging
+      // Aggressive timeout: 2 seconds max
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      const timeoutId = setTimeout(() => {
+        controller.abort()
+        console.warn('[Frontend] Headlines fetch aborted after 2 seconds')
+      }, 2000)
       
       const response = await fetch('/api/headlines', {
         signal: controller.signal,
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
       })
       
       clearTimeout(timeoutId)
+      clearTimeout(immediateTimeout)
       
       if (response.ok) {
         const data = await response.json()
         const fetchedHeadlines = data.headlines || []
         console.log('[Frontend] Fetched headlines:', fetchedHeadlines.length)
-        console.log('[Frontend] Sample headlines:', fetchedHeadlines.slice(0, 3))
-        console.log('[Frontend] Setting headlines state with', fetchedHeadlines.length, 'items')
+        
+        // Show warning if timeout occurred but still got data
+        if (data.warning) {
+          console.warn('[Frontend] API warning:', data.warning)
+          toast.error(data.warning, { duration: 5000 })
+        }
+        
         setHeadlines(fetchedHeadlines)
         setOverallDrama(data.overallDrama || 5)
         setLastUpdated(new Date())
-        
-        // Debug: Log after state update
-        setTimeout(() => {
-          console.log('[Frontend] Headlines state after update:', fetchedHeadlines.length)
-        }, 100)
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Network error' }))
         console.error('[Frontend] API error:', errorData)
         const errorMessage = errorData.message || errorData.error || 'Unknown error'
-        toast.error(`Failed to load headlines: ${errorMessage}`)
+        
+        // If it's a timeout, show helpful message
+        if (errorMessage.includes('timeout') || response.status === 504) {
+          toast.error('Request timed out. The database may be slow. Showing cached data if available.', { duration: 6000 })
+        } else {
+          toast.error(`Failed to load headlines: ${errorMessage}`)
+        }
         
         // Log more details for debugging
         if (errorData.details) {
@@ -123,14 +147,19 @@ export default function Home() {
         }
       }
     } catch (error: unknown) {
+      clearTimeout(immediateTimeout)
       console.error('[Frontend] Error fetching headlines:', error)
-      if (error instanceof Error && error.name === 'AbortError') {
-        toast.error('Request timed out. Please check your connection.')
-      } else {
-        toast.error('Failed to load headlines')
-      }
-    } finally {
+      // Always set empty headlines and clear loading on error
+      setHeadlines([])
+      setOverallDrama(5)
       setLoading(false)
+      
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Don't show toast for timeout - user already sees empty feed
+        console.log('[Frontend] Request timed out - showing empty feed')
+      } else {
+        toast.error('Failed to load headlines. Showing empty feed.', { duration: 2000 })
+      }
     }
   }
 
@@ -160,13 +189,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    // Safety timeout: never hang for more than 15 seconds
-    const safetyTimeout = setTimeout(() => {
-      console.warn('[Frontend] Safety timeout: forcing loading to false')
-      setLoading(false)
-    }, 15000)
-
-    // Check age verification
+    // IMMEDIATE: Clear loading if age not verified (don't wait)
     if (typeof window !== 'undefined') {
       const verified = sessionStorage.getItem('age_verified')
       if (verified === 'true') {
@@ -174,22 +197,44 @@ export default function Home() {
       } else {
         // If not verified, show age gate immediately (don't wait for API)
         setLoading(false)
-        clearTimeout(safetyTimeout)
+        return
       }
     } else {
       // Server-side: don't block on loading
       setLoading(false)
-      clearTimeout(safetyTimeout)
+      return
     }
+
+    // Safety timeout: never hang for more than 3 seconds (very aggressive)
+    const safetyTimeout = setTimeout(() => {
+      console.warn('[Frontend] Safety timeout: forcing loading to false after 3 seconds')
+      setLoading(false)
+      setHeadlines([]) // Force empty state
+      toast.error('Page load timeout. Showing empty feed.', { duration: 3000 })
+    }, 3000)
 
     return () => clearTimeout(safetyTimeout)
   }, [])
 
   useEffect(() => {
-    if (!ageVerified) return
+    if (!ageVerified) {
+      setLoading(false) // Clear loading if age not verified
+      return
+    }
 
     // Set loading to true when starting to fetch
     setLoading(true)
+
+    // Safety timeout: force loading to false after 2.5 seconds max (very aggressive)
+    const safetyTimeout = setTimeout(() => {
+      console.warn('[Frontend] Safety timeout: forcing loading to false after 2.5 seconds')
+      setLoading(false)
+      // Force empty state if still loading
+      if (headlines.length === 0) {
+        setHeadlines([])
+        setOverallDrama(5)
+      }
+    }, 2500)
 
     // Load user balance and update streak
     const loadUserData = async () => {
@@ -210,13 +255,14 @@ export default function Home() {
       }
     }
 
-    // Fetch all data in parallel
+    // Fetch headlines first (most important), then other data
     Promise.all([
-      fetchHeadlines(),
+      fetchHeadlines(), // This will set loading to false internally
       fetchTwitterTrends().catch(() => {}), // Optional, don't block
       fetchStoryArcs().catch(() => {}), // Optional, don't block
       loadUserData(),
     ]).finally(() => {
+      clearTimeout(safetyTimeout)
       // Ensure loading is false even if some requests fail
       setLoading(false)
     })
@@ -284,6 +330,16 @@ export default function Home() {
     return <AgeGate onVerified={() => setAgeVerified(true)} />
   }
 
+  // Show Binge Mode if enabled
+  if (bingeMode) {
+    return (
+      <BingeMode 
+        headlines={headlines} 
+        onClose={() => setBingeMode(false)} 
+      />
+    )
+  }
+
   return (
     <div className={`min-h-screen transition-colors ${darkMode ? 'cyber-gradient text-white' : 'bg-white text-black'}`}>
       {/* Keyboard Shortcuts */}
@@ -332,8 +388,8 @@ export default function Home() {
                 onClick={fetchHeadlines}
                 className={`px-3 py-1 text-sm border rounded transition-all ${
                   darkMode 
-                    ? 'border-[#333] hover:border-[#FFD700] hover:bg-[#FFD700] hover:bg-opacity-10' 
-                    : 'border-gray-300 hover:bg-gray-100'
+                    ? 'border-[#333] text-white hover:border-[#FFD700] hover:bg-[#FFD700] hover:bg-opacity-10 hover:text-[#FFD700]' 
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-100'
                 }`}
                 title="Refresh headlines (Ctrl/Cmd + R)"
               >
@@ -343,17 +399,25 @@ export default function Home() {
                 onClick={() => setDarkMode(!darkMode)}
                 className={`p-2 rounded transition-all ${
                   darkMode 
-                    ? 'hover:bg-[#FFD700] hover:bg-opacity-20' 
-                    : 'hover:bg-gray-100'
+                    ? 'hover:bg-[#FFD700] hover:bg-opacity-20 text-white' 
+                    : 'hover:bg-gray-100 text-gray-700'
                 }`}
                 title="Toggle dark mode (Ctrl/Cmd + D)"
               >
                 {darkMode ? '☀️' : '🌙'}
               </button>
-              <button className="p-2 hover:bg-gray-100 rounded">
+              <button className={`p-2 rounded transition-all ${
+                darkMode 
+                  ? 'hover:bg-[#FFD700] hover:bg-opacity-20 text-white' 
+                  : 'hover:bg-gray-100 text-gray-700'
+              }`}>
                 <Bell size={20} />
               </button>
-              <button className="p-2 hover:bg-gray-100 rounded">
+              <button className={`p-2 rounded transition-all ${
+                darkMode 
+                  ? 'hover:bg-[#FFD700] hover:bg-opacity-20 text-white' 
+                  : 'hover:bg-gray-100 text-gray-700'
+              }`}>
                 <Settings size={20} />
               </button>
             </div>
@@ -384,203 +448,247 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content - Vertical Feed (TikTok-style) */}
-      <main className="max-w-4xl mx-auto p-4">
-        {/* Story Arcs Section (The "Lore" System) - Netflix-style */}
-        {storyArcs.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${darkMode ? 'bg-[#FFD700] bg-opacity-20' : 'bg-[#FFD700] bg-opacity-10'}`}>
-                  <Tv size={24} className="text-[#FFD700]" />
+      {/* Main Content - 3 Column Layout */}
+      <main className="max-w-[1920px] mx-auto p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* LEFT COLUMN - Story Arcs, Filters, Trending */}
+          <aside className="lg:col-span-3 space-y-6">
+            {/* Story Arcs Section */}
+            {storyArcs.length > 0 && (
+              <div className={`${darkMode ? 'bg-[#1A1A1A] border-[#333]' : 'bg-white border-gray-200'} border rounded-2xl p-4`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`p-2 rounded-lg ${darkMode ? 'bg-[#FFD700] bg-opacity-20' : 'bg-[#FFD700] bg-opacity-10'}`}>
+                    <Tv size={20} className="text-[#FFD700]" />
+                  </div>
+                  <div>
+                    <h2 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-black'}`}>
+                      📺 Story Arcs
+                    </h2>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Netflix-style news seasons
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className={`text-2xl font-black ${darkMode ? 'text-white' : 'text-black'}`}>
-                    📺 Story Arcs
-                  </h2>
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Netflix-style news seasons • Subscribe for episode alerts
-                  </p>
+                <div className="space-y-3">
+                  {storyArcs.slice(0, showArcs ? storyArcs.length : 3).map((arc) => (
+                    <StoryArcCard key={arc.id} arc={arc} />
+                  ))}
                 </div>
-              </div>
-              <button
-                onClick={() => setShowArcs(!showArcs)}
-                className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                  darkMode 
-                    ? 'bg-[#FFD700] bg-opacity-20 text-[#FFD700] hover:bg-opacity-30 border border-[#FFD700]' 
-                    : 'bg-[#FFD700] text-black hover:bg-[#FFC700]'
-                }`}
-              >
-                {showArcs ? 'Hide' : `Show All (${storyArcs.length})`}
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {storyArcs.slice(0, showArcs ? storyArcs.length : 2).map((arc) => (
-                <StoryArcCard key={arc.id} arc={arc} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Primary Headline - The Main Event */}
-        {primaryHeadline && (
-          <div className={`mb-8 rounded-2xl overflow-hidden border-2 ${
-            primaryHeadline.drama_score >= 9 
-              ? 'border-[#FF4444] breaking-pulse cyber-glow' 
-              : primaryHeadline.drama_score >= 7
-              ? 'border-[#FF6B35]'
-              : 'border-[#FFD700]'
-          } ${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'} relative`}>
-            {/* Popcorn particles for extreme drama */}
-            {primaryHeadline.drama_score >= 9 && (
-              <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
-                {[...Array(3)].map((_, i) => (
-                  <span
-                    key={i}
-                    className="popcorn-particle"
-                    style={{
-                      left: `${20 + i * 30}%`,
-                      bottom: '10%',
-                      animationDelay: `${i * 0.3}s`,
-                    }}
+                {storyArcs.length > 3 && (
+                  <button
+                    onClick={() => setShowArcs(!showArcs)}
+                    className={`w-full mt-3 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                      darkMode 
+                        ? 'bg-[#FFD700] bg-opacity-20 text-[#FFD700] hover:bg-opacity-30 border border-[#FFD700]' 
+                        : 'bg-[#FFD700] text-black hover:bg-[#FFC700]'
+                    }`}
                   >
-                    🍿
-                  </span>
-                ))}
+                    {showArcs ? 'Show Less' : `Show All (${storyArcs.length})`}
+                  </button>
+                )}
               </div>
             )}
-            <div className={`p-1 ${primaryHeadline.drama_score >= 9 ? 'bg-gradient-to-r from-[#FF4444] to-[#FF6B35]' : 'bg-gradient-to-r from-[#FFD700] to-[#FF6B35]'}`}>
-              <div className={`${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'} rounded-xl relative z-10`}>
-                <Headline headline={primaryHeadline} isPrimary />
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Bento Grid 2.0 Layout (Optional - can toggle) */}
-        <div className="space-y-4">
-          {/* All headlines in vertical feed, sorted by drama score */}
-          {headlines.length > 0 ? (
-            feedHeadlines.map((headline) => (
-              <div
-                key={headline.id}
-                className={`bento-card ${darkMode ? 'bg-[#1A1A1A] border-[#333] cyber-glow' : 'bg-white border-gray-200'} border overflow-hidden shadow-sm hover:shadow-lg transition-all`}
-                style={{
-                  boxShadow: headline.drama_score >= 8 ? `0 4px 20px ${headline.drama_score >= 9 ? 'rgba(255, 68, 68, 0.3)' : 'rgba(255, 215, 0, 0.2)'}` : undefined,
-                }}
-              >
-                <Headline headline={headline} />
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-lg`}>No headlines yet</p>
-              <p className={`${darkMode ? 'text-gray-500' : 'text-gray-400'} text-sm mt-2`}>Run the scraper to get started</p>
-            </div>
-          )}
-        </div>
-
-        {/* Trending Topics */}
-        {trendingTopics.length > 0 && (
-          <div className="mt-8 p-4 border-t-2 border-black">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              TRENDING TOPICS
-              {twitterTrends.length > 0 && (
-                <span className="text-sm font-normal text-gray-600">
-                  ({twitterTrends.filter(t => t.source === 'both').length > 0 && '🔥 '}
-                  from {twitterTrends.some(t => t.source === 'google' || t.source === 'both') ? 'Google Trends & ' : ''}Twitter/X)
-                </span>
-              )}
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {trendingTopics.map((trend, index) => {
-                // Handle both object and string formats for backward compatibility
-                const trendObj = typeof trend === 'string' 
-                  ? { name: trend, source: 'unknown' as const, fetchedAt: new Date().toISOString() }
-                  : trend
-                const isBoth = trendObj.source === 'both'
-                const isGoogle = trendObj.source === 'google'
-                const isTwitter = trendObj.source === 'twitter'
-                
-                // Find matching trend from API for tweet count
-                const apiTrend = twitterTrends.find(t => t.name === trendObj.name)
-                
-                return (
-                  <span
-                    key={index}
-                    className={`px-3 py-1 rounded-full text-sm hover:opacity-80 cursor-pointer flex items-center gap-1 ${
-                      isBoth 
-                        ? 'bg-gradient-to-r from-blue-100 to-red-100 border border-blue-300' 
-                        : isGoogle
-                        ? 'bg-red-100 border border-red-300'
-                        : 'bg-gray-100 border border-gray-300'
-                    }`}
-                    title={
-                      apiTrend?.tweetCount 
-                        ? `${apiTrend.tweetCount.toLocaleString()} tweets` 
-                        : isBoth 
-                        ? 'Trending on both Twitter and Google'
-                        : isGoogle
-                        ? 'Trending on Google'
-                        : isTwitter
-                        ? 'Trending on Twitter'
-                        : 'Trending topic'
-                    }
-                  >
-                    {isBoth && <span className="text-orange-500">🔥</span>}
-                    {isTwitter && !isBoth && <span className="text-blue-500">𝕏</span>}
-                    {isGoogle && !isBoth && <span className="text-red-500">G</span>}
-                    #{trendObj.name}
-                    {apiTrend?.tweetCount && (
-                      <span className="text-xs text-gray-500">({apiTrend.tweetCount.toLocaleString()})</span>
-                    )}
-                  </span>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Drama Alerts - High Stakes Section */}
-        {highDramaAlerts.length > 0 && (
-          <div className={`mt-8 p-6 rounded-2xl border-2 border-[#FF4444] ${darkMode ? 'bg-gradient-to-br from-red-900/20 to-orange-900/20 cyber-glow' : 'bg-red-50'}`}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="text-3xl">🚨</div>
-              <div>
-                <h2 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-black'}`}>
-                  DRAMA DETECTED
+            {/* Trending Topics */}
+            {trendingTopics.length > 0 && (
+              <div className={`${darkMode ? 'bg-[#1A1A1A] border-[#333]' : 'bg-white border-gray-200'} border rounded-2xl p-4`}>
+                <h2 className={`text-lg font-black mb-3 ${darkMode ? 'text-white' : 'text-black'}`}>
+                  🔥 TRENDING
                 </h2>
-                <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  High-stakes stories (7+ drama)
-                </p>
+                <div className="flex flex-wrap gap-2">
+                  {trendingTopics.slice(0, 12).map((trend, index) => {
+                    const trendObj = typeof trend === 'string' 
+                      ? { name: trend, source: 'unknown' as const, fetchedAt: new Date().toISOString() }
+                      : trend
+                    const isBoth = trendObj.source === 'both'
+                    const isGoogle = trendObj.source === 'google'
+                    const isTwitter = trendObj.source === 'twitter'
+                    const apiTrend = twitterTrends.find(t => t.name === trendObj.name)
+                    
+                    return (
+                      <span
+                        key={index}
+                        className={`px-2 py-1 rounded-full text-xs hover:opacity-80 cursor-pointer flex items-center gap-1 ${
+                          darkMode
+                            ? isBoth 
+                              ? 'bg-gradient-to-r from-blue-600 to-red-600 border border-blue-400 text-white' 
+                              : isGoogle
+                              ? 'bg-red-600 border border-red-400 text-white'
+                              : 'bg-gray-700 border border-gray-600 text-white'
+                            : isBoth 
+                              ? 'bg-gradient-to-r from-blue-100 to-red-100 border border-blue-300 text-gray-800' 
+                              : isGoogle
+                              ? 'bg-red-100 border border-red-300 text-gray-800'
+                              : 'bg-gray-100 border border-gray-300 text-gray-800'
+                        }`}
+                        title={
+                          apiTrend?.tweetCount 
+                            ? `${apiTrend.tweetCount.toLocaleString()} tweets` 
+                            : 'Trending topic'
+                        }
+                      >
+                        {isBoth && <span className={darkMode ? 'text-orange-300' : 'text-orange-500'}>🔥</span>}
+                        {isTwitter && !isBoth && <span className={darkMode ? 'text-blue-300' : 'text-blue-500'}>𝕏</span>}
+                        {isGoogle && !isBoth && <span className={darkMode ? 'text-red-300' : 'text-red-500'}>G</span>}
+                        #{trendObj.name}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Filters / Categories */}
+            <div className={`${darkMode ? 'bg-[#1A1A1A] border-[#333]' : 'bg-white border-gray-200'} border rounded-2xl p-4`}>
+              <h2 className={`text-lg font-black mb-3 ${darkMode ? 'text-white' : 'text-black'}`}>
+                🎯 Filters
+              </h2>
+              <div className="space-y-2">
+                {['All', 'Politics', 'Tech', 'Entertainment', 'Breaking'].map((cat) => (
+                  <button
+                    key={cat}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                      darkMode 
+                        ? 'hover:bg-[#0A0A0A] border border-[#333]' 
+                        : 'hover:bg-gray-100 border border-gray-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
               </div>
             </div>
-            <ul className="space-y-3 mb-4">
-              {highDramaAlerts.slice(0, 5).map((headline) => (
-                <li key={headline.id} className={`flex items-start gap-3 p-3 rounded-lg ${darkMode ? 'bg-[#0A0A0A] border border-[#333]' : 'bg-white border border-red-200'}`}>
-                  <div className={`text-2xl font-black ${headline.drama_score >= 9 ? 'text-[#FF4444]' : 'text-[#FF6B35]'}`}>
-                    {headline.drama_score}/10
+          </aside>
+
+          {/* MIDDLE COLUMN - Main Headlines Feed */}
+          <div className="lg:col-span-6 space-y-6">
+            {/* Primary Headline - The Main Event */}
+            {primaryHeadline && (
+              <div className={`rounded-2xl overflow-hidden border-2 ${
+                primaryHeadline.drama_score >= 9 
+                  ? 'border-[#FF4444] breaking-pulse cyber-glow' 
+                  : primaryHeadline.drama_score >= 7
+                  ? 'border-[#FF6B35]'
+                  : 'border-[#FFD700]'
+              } ${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'} relative`}>
+                {primaryHeadline.drama_score >= 9 && (
+                  <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+                    {[...Array(3)].map((_, i) => (
+                      <span
+                        key={i}
+                        className="popcorn-particle"
+                        style={{
+                          left: `${20 + i * 30}%`,
+                          bottom: '10%',
+                          animationDelay: `${i * 0.3}s`,
+                        }}
+                      >
+                        🍿
+                      </span>
+                    ))}
                   </div>
-                  <Link 
-                    href={headline.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className={`flex-1 hover:underline ${darkMode ? 'text-white' : 'text-black'}`}
+                )}
+                <div className={`p-1 ${primaryHeadline.drama_score >= 9 ? 'bg-gradient-to-r from-[#FF4444] to-[#FF6B35]' : 'bg-gradient-to-r from-[#FFD700] to-[#FF6B35]'}`}>
+                  <div className={`${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'} rounded-xl relative z-10`}>
+                    <Headline headline={primaryHeadline} isPrimary />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Headlines Feed */}
+            <div className="space-y-4">
+              {headlines.length > 0 ? (
+                feedHeadlines.map((headline) => (
+                  <div
+                    key={headline.id}
+                    className={`bento-card ${darkMode ? 'bg-[#1A1A1A] border-[#333] cyber-glow' : 'bg-white border-gray-200'} border overflow-hidden shadow-sm hover:shadow-lg transition-all`}
+                    style={{
+                      boxShadow: headline.drama_score >= 8 ? `0 4px 20px ${headline.drama_score >= 9 ? 'rgba(255, 68, 68, 0.3)' : 'rgba(255, 215, 0, 0.2)'}` : undefined,
+                    }}
                   >
-                    {headline.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <button className={`w-full px-6 py-3 font-bold rounded-lg transition-all ${
-              darkMode 
-                ? 'bg-[#FF4444] text-white hover:bg-[#FF5555]' 
-                : 'bg-red-600 text-white hover:bg-red-700'
-            }`}>
-              🔔 Subscribe to Drama Alerts
-            </button>
+                    <Headline headline={headline} />
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-lg`}>No headlines yet</p>
+                  <p className={`${darkMode ? 'text-gray-500' : 'text-gray-400'} text-sm mt-2`}>Run the scraper to get started</p>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* RIGHT COLUMN - Chatbot, Drama Alerts, Stats */}
+          <aside className="lg:col-span-3 space-y-6">
+            {/* Chatbot - Always Visible */}
+            <div className="sticky top-24">
+              <SidebarChatBot className="h-[600px]" />
+            </div>
+
+            {/* Drama Alerts */}
+            {highDramaAlerts.length > 0 && (
+              <div className={`rounded-2xl border-2 border-[#FF4444] ${darkMode ? 'bg-gradient-to-br from-red-900/20 to-orange-900/20 cyber-glow' : 'bg-red-50'} p-4`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="text-2xl">🚨</div>
+                  <div>
+                    <h2 className={`text-lg font-black ${darkMode ? 'text-white' : 'text-black'}`}>
+                      DRAMA DETECTED
+                    </h2>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      High-stakes (7+ drama)
+                    </p>
+                  </div>
+                </div>
+                <ul className="space-y-2 mb-3">
+                  {highDramaAlerts.slice(0, 5).map((headline) => (
+                    <li key={headline.id} className={`flex items-start gap-2 p-2 rounded-lg text-sm ${darkMode ? 'bg-[#0A0A0A] border border-[#333]' : 'bg-white border border-red-200'}`}>
+                      <div className={`text-lg font-black ${headline.drama_score >= 9 ? 'text-[#FF4444]' : 'text-[#FF6B35]'}`}>
+                        {headline.drama_score}/10
+                      </div>
+                      <Link 
+                        href={headline.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className={`flex-1 hover:underline text-xs ${darkMode ? 'text-white' : 'text-black'}`}
+                      >
+                        {headline.title.substring(0, 80)}...
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <button className={`w-full px-4 py-2 text-sm font-bold rounded-lg transition-all ${
+                  darkMode 
+                    ? 'bg-[#FF4444] text-white hover:bg-[#FF5555]' 
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                }`}>
+                  🔔 Subscribe
+                </button>
+              </div>
+            )}
+
+            {/* Stats Widget */}
+            <div className={`${darkMode ? 'bg-[#1A1A1A] border-[#333]' : 'bg-white border-gray-200'} border rounded-2xl p-4`}>
+              <h2 className={`text-lg font-black mb-3 ${darkMode ? 'text-white' : 'text-black'}`}>
+                📊 Stats
+              </h2>
+              <div className="space-y-3">
+                <div>
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total Headlines</p>
+                  <p className={`text-2xl font-black ${darkMode ? 'text-white' : 'text-black'}`}>{headlines.length}</p>
+                </div>
+                <div>
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>High Drama (7+)</p>
+                  <p className={`text-2xl font-black text-[#FF6B35]`}>{highDramaAlerts.length}</p>
+                </div>
+                <div>
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Breaking News</p>
+                  <p className={`text-2xl font-black text-[#FF4444]`}>{headlines.filter(h => h.is_breaking).length}</p>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
       </main>
 
       {/* Footer */}
@@ -595,8 +703,6 @@ export default function Home() {
         </p>
       </footer>
 
-      {/* AI Chatbot - The Kernel */}
-      <ChatBot />
     </div>
   )
 }

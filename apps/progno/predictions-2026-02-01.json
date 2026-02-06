@@ -1,0 +1,1406 @@
+﻿[
+    {
+        "winner":  "Los Angeles Kings",
+        "confidence":  0.5026666666666667,
+        "score":  {
+                      "home":  74,
+                      "away":  75
+                  },
+        "edge":  "15.7",
+        "keyFactors":  [
+                           "Team strength: Carolina Hurricanes (93%) vs Los Angeles Kings (100%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs hot",
+                           "Head-to-head: even",
+                           "Injuries: healthy",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.87,
+                             "narrativeMomentum":  0.87,
+                             "informationAsymmetry":  0.88,
+                             "chaosSensitivity":  0.61,
+                             "networkInfluence":  0.87,
+                             "temporalDecay":  0.47,
+                             "emergentPattern":  0.88
+                         }
+    },
+    {
+        "winner":  "Tampa Bay Lightning",
+        "confidence":  0.5053333333333333,
+        "score":  {
+                      "home":  76,
+                      "away":  74
+                  },
+        "edge":  "19.8",
+        "keyFactors":  [
+                           "Team strength: Tampa Bay Lightning (96%) vs Boston Bruins (98%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs solid",
+                           "Head-to-head: even",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.58,
+                             "narrativeMomentum":  0.59,
+                             "informationAsymmetry":  0.57,
+                             "chaosSensitivity":  0.57,
+                             "networkInfluence":  0.59,
+                             "temporalDecay":  0.57,
+                             "emergentPattern":  0.58
+                         }
+    },
+    {
+        "winner":  "Vegas Golden Knights",
+        "confidence":  0.5026666666666667,
+        "score":  {
+                      "home":  75,
+                      "away":  76
+                  },
+        "edge":  "-0.3",
+        "keyFactors":  [
+                           "Team strength: Anaheim Ducks (95%) vs Vegas Golden Knights (101%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs slumping",
+                           "Head-to-head: favorable",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.89,
+                             "narrativeMomentum":  0.87,
+                             "informationAsymmetry":  0.92,
+                             "chaosSensitivity":  0.78,
+                             "networkInfluence":  0.84,
+                             "temporalDecay":  0.48,
+                             "emergentPattern":  0.91
+                         }
+    },
+    {
+        "winner":  "Buffalo Sabres",
+        "confidence":  0.5053333333333333,
+        "score":  {
+                      "home":  75,
+                      "away":  77
+                  },
+        "edge":  "5.4",
+        "keyFactors":  [
+                           "Team strength: Florida Panthers (95%) vs Buffalo Sabres (103%)",
+                           "Home advantage: +4 points",
+                           "Recent form: inconsistent vs strong",
+                           "Head-to-head: even",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.94,
+                             "narrativeMomentum":  0.92,
+                             "informationAsymmetry":  0.95,
+                             "chaosSensitivity":  0.69,
+                             "networkInfluence":  0.91,
+                             "temporalDecay":  0.49,
+                             "emergentPattern":  0.95
+                         }
+    },
+    {
+        "winner":  "New York Islanders",
+        "confidence":  0.508,
+        "score":  {
+                      "home":  74,
+                      "away":  77
+                  },
+        "edge":  "4.0",
+        "keyFactors":  [
+                           "Team strength: Washington Capitals (94%) vs New York Islanders (102%)",
+                           "Home advantage: +4 points",
+                           "Recent form: inconsistent vs hot",
+                           "Head-to-head: struggled against",
+                           "Injuries: healthy",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.86,
+                             "narrativeMomentum":  0.84,
+                             "informationAsymmetry":  0.89,
+                             "chaosSensitivity":  0.68,
+                             "networkInfluence":  0.81,
+                             "temporalDecay":  0.48,
+                             "emergentPattern":  0.87
+                         }
+    },
+    {
+        "winner":  "Pittsburgh Penguins",
+        "confidence":  0.508,
+        "score":  {
+                      "home":  80,
+                      "away":  77
+                  },
+        "edge":  "4.9",
+        "keyFactors":  [
+                           "Team strength: Pittsburgh Penguins (101%) vs Ottawa Senators (103%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs strong",
+                           "Head-to-head: struggled against",
+                           "Injuries: healthy",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.88,
+                             "narrativeMomentum":  0.87,
+                             "informationAsymmetry":  0.9,
+                             "chaosSensitivity":  0.62,
+                             "networkInfluence":  0.85,
+                             "temporalDecay":  0.5,
+                             "emergentPattern":  0.89
+                         }
+    },
+    {
+        "winner":  "Minnesota Wild",
+        "confidence":  0.5293333333333333,
+        "score":  {
+                      "home":  83,
+                      "away":  72
+                  },
+        "edge":  "15.5",
+        "keyFactors":  [
+                           "Team strength: Minnesota Wild (105%) vs MontrÃ©al Canadiens (95%)",
+                           "Home advantage: +4 points",
+                           "Recent form: inconsistent vs slumping",
+                           "Head-to-head: struggled against",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.87,
+                             "narrativeMomentum":  0.86,
+                             "informationAsymmetry":  0.88,
+                             "chaosSensitivity":  0.65,
+                             "networkInfluence":  0.86,
+                             "temporalDecay":  0.57,
+                             "emergentPattern":  0.87
+                         }
+    },
+    {
+        "winner":  "Nashville Predators",
+        "confidence":  0.524,
+        "score":  {
+                      "home":  80,
+                      "away":  71
+                  },
+        "edge":  "13.5",
+        "keyFactors":  [
+                           "Team strength: Nashville Predators (101%) vs St Louis Blues (94%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs hot",
+                           "Head-to-head: favorable",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.84,
+                             "narrativeMomentum":  0.82,
+                             "informationAsymmetry":  0.85,
+                             "chaosSensitivity":  0.59,
+                             "networkInfluence":  0.8,
+                             "temporalDecay":  0.48,
+                             "emergentPattern":  0.85
+                         }
+    },
+    {
+        "winner":  "Chicago Blackhawks",
+        "confidence":  0.5026666666666667,
+        "score":  {
+                      "home":  77,
+                      "away":  76
+                  },
+        "edge":  "2.4",
+        "keyFactors":  [
+                           "Team strength: Chicago Blackhawks (97%) vs San Jose Sharks (102%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs hot",
+                           "Head-to-head: dominated",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.71,
+                             "narrativeMomentum":  0.71,
+                             "informationAsymmetry":  0.7,
+                             "chaosSensitivity":  0.6,
+                             "networkInfluence":  0.71,
+                             "temporalDecay":  0.51,
+                             "emergentPattern":  0.7
+                         }
+    },
+    {
+        "winner":  "Winnipeg Jets",
+        "confidence":  0.5053333333333333,
+        "score":  {
+                      "home":  74,
+                      "away":  76
+                  },
+        "edge":  "16.1",
+        "keyFactors":  [
+                           "Team strength: Dallas Stars (94%) vs Winnipeg Jets (102%)",
+                           "Home advantage: +4 points",
+                           "Recent form: inconsistent vs slumping",
+                           "Head-to-head: even",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.87,
+                             "narrativeMomentum":  0.86,
+                             "informationAsymmetry":  0.87,
+                             "chaosSensitivity":  0.72,
+                             "networkInfluence":  0.86,
+                             "temporalDecay":  0.52,
+                             "emergentPattern":  0.87
+                         }
+    },
+    {
+        "winner":  "Detroit Red Wings",
+        "confidence":  0.5133333333333333,
+        "score":  {
+                      "home":  74,
+                      "away":  79
+                  },
+        "edge":  "20.1",
+        "keyFactors":  [
+                           "Team strength: Colorado Avalanche (93%) vs Detroit Red Wings (106%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs strong",
+                           "Head-to-head: even",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.72,
+                             "narrativeMomentum":  0.72,
+                             "informationAsymmetry":  0.72,
+                             "chaosSensitivity":  0.57,
+                             "networkInfluence":  0.71,
+                             "temporalDecay":  0.4,
+                             "emergentPattern":  0.72
+                         }
+    },
+    {
+        "winner":  "Vancouver Canucks",
+        "confidence":  0.5133333333333333,
+        "score":  {
+                      "home":  75,
+                      "away":  80
+                  },
+        "edge":  "17.9",
+        "keyFactors":  [
+                           "Team strength: Utah Mammoth (95%) vs Vancouver Canucks (106%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs inconsistent",
+                           "Head-to-head: dominated",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.7,
+                             "narrativeMomentum":  0.69,
+                             "informationAsymmetry":  0.72,
+                             "chaosSensitivity":  0.67,
+                             "networkInfluence":  0.67,
+                             "temporalDecay":  0.51,
+                             "emergentPattern":  0.71
+                         }
+    },
+    {
+        "winner":  "Calgary Flames",
+        "confidence":  0.532,
+        "score":  {
+                      "home":  84,
+                      "away":  72
+                  },
+        "edge":  "3.9",
+        "keyFactors":  [
+                           "Team strength: Calgary Flames (107%) vs Toronto Maple Leafs (96%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs solid",
+                           "Head-to-head: struggled against",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  1,
+                             "narrativeMomentum":  0.97,
+                             "informationAsymmetry":  1.03,
+                             "chaosSensitivity":  0.71,
+                             "networkInfluence":  0.94,
+                             "temporalDecay":  0.52,
+                             "emergentPattern":  1.02
+                         }
+    },
+    {
+        "winner":  "Duquesne Dukes",
+        "confidence":  0.5186666666666667,
+        "score":  {
+                      "home":  81,
+                      "away":  74
+                  },
+        "edge":  "9.8",
+        "keyFactors":  [
+                           "Team strength: Duquesne Dukes (103%) vs Rhode Island Rams (99%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs inconsistent",
+                           "Head-to-head: even",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.9,
+                             "narrativeMomentum":  0.87,
+                             "informationAsymmetry":  0.93,
+                             "chaosSensitivity":  0.67,
+                             "networkInfluence":  0.85,
+                             "temporalDecay":  0.41,
+                             "emergentPattern":  0.92
+                         }
+    },
+    {
+        "winner":  "Western Carolina Catamounts",
+        "confidence":  0.5213333333333333,
+        "score":  {
+                      "home":  82,
+                      "away":  74
+                  },
+        "edge":  "6.3",
+        "keyFactors":  [
+                           "Team strength: Western Carolina Catamounts (104%) vs Samford Bulldogs (99%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs inconsistent",
+                           "Head-to-head: even",
+                           "Injuries: no major injuries",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.6,
+                             "narrativeMomentum":  0.61,
+                             "informationAsymmetry":  0.59,
+                             "chaosSensitivity":  0.74,
+                             "networkInfluence":  0.61,
+                             "temporalDecay":  0.42,
+                             "emergentPattern":  0.6
+                         }
+    },
+    {
+        "winner":  "Canisius Golden Griffins",
+        "confidence":  0.5266666666666666,
+        "score":  {
+                      "home":  81,
+                      "away":  71
+                  },
+        "edge":  "28.6",
+        "keyFactors":  [
+                           "Team strength: Canisius Golden Griffins (103%) vs Siena Saints (94%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs hot",
+                           "Head-to-head: even",
+                           "Injuries: no major injuries",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.93,
+                             "narrativeMomentum":  0.92,
+                             "informationAsymmetry":  0.94,
+                             "chaosSensitivity":  0.73,
+                             "networkInfluence":  0.91,
+                             "temporalDecay":  0.45,
+                             "emergentPattern":  0.94
+                         }
+    },
+    {
+        "winner":  "Furman Paladins",
+        "confidence":  0.5133333333333333,
+        "score":  {
+                      "home":  75,
+                      "away":  70
+                  },
+        "edge":  "29.6",
+        "keyFactors":  [
+                           "Team strength: Furman Paladins (95%) vs Chattanooga Mocs (93%)",
+                           "Home advantage: +4 points",
+                           "Recent form: slumping vs strong",
+                           "Head-to-head: even",
+                           "Injuries: no major injuries",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.71,
+                             "narrativeMomentum":  0.69,
+                             "informationAsymmetry":  0.72,
+                             "chaosSensitivity":  0.74,
+                             "networkInfluence":  0.68,
+                             "temporalDecay":  0.48,
+                             "emergentPattern":  0.71
+                         }
+    },
+    {
+        "winner":  "Maryland Terrapins",
+        "confidence":  0.5053333333333333,
+        "score":  {
+                      "home":  78,
+                      "away":  76
+                  },
+        "edge":  "39.8",
+        "keyFactors":  [
+                           "Team strength: Maryland Terrapins (99%) vs Purdue Boilermakers (101%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs inconsistent",
+                           "Head-to-head: favorable",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.61,
+                             "narrativeMomentum":  0.61,
+                             "informationAsymmetry":  0.61,
+                             "chaosSensitivity":  0.73,
+                             "networkInfluence":  0.61,
+                             "temporalDecay":  0.51,
+                             "emergentPattern":  0.61
+                         }
+    },
+    {
+        "winner":  "Merrimack Warriors",
+        "confidence":  0.5053333333333333,
+        "score":  {
+                      "home":  77,
+                      "away":  75
+                  },
+        "edge":  "22.4",
+        "keyFactors":  [
+                           "Team strength: Merrimack Warriors (97%) vs Sacred Heart Pioneers (100%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs hot",
+                           "Head-to-head: favorable",
+                           "Injuries: healthy",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.85,
+                             "narrativeMomentum":  0.85,
+                             "informationAsymmetry":  0.86,
+                             "chaosSensitivity":  0.7,
+                             "networkInfluence":  0.84,
+                             "temporalDecay":  0.46,
+                             "emergentPattern":  0.86
+                         }
+    },
+    {
+        "winner":  "Florida Gators",
+        "confidence":  0.5346666666666666,
+        "score":  {
+                      "home":  84,
+                      "away":  71
+                  },
+        "edge":  "33.9",
+        "keyFactors":  [
+                           "Team strength: Florida Gators (106%) vs Alabama Crimson Tide (95%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs hot",
+                           "Head-to-head: dominated",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.55,
+                             "narrativeMomentum":  0.57,
+                             "informationAsymmetry":  0.53,
+                             "chaosSensitivity":  0.6,
+                             "networkInfluence":  0.59,
+                             "temporalDecay":  0.4,
+                             "emergentPattern":  0.54
+                         }
+    },
+    {
+        "winner":  "UL Monroe Warhawks",
+        "confidence":  0.5266666666666666,
+        "score":  {
+                      "home":  84,
+                      "away":  74
+                  },
+        "edge":  "32.0",
+        "keyFactors":  [
+                           "Team strength: UL Monroe Warhawks (106%) vs Coastal Carolina Chanticleers (99%)",
+                           "Home advantage: +4 points",
+                           "Recent form: slumping vs inconsistent",
+                           "Head-to-head: favorable",
+                           "Injuries: no major injuries",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.94,
+                             "narrativeMomentum":  0.92,
+                             "informationAsymmetry":  0.96,
+                             "chaosSensitivity":  0.74,
+                             "networkInfluence":  0.89,
+                             "temporalDecay":  0.42,
+                             "emergentPattern":  0.95
+                         }
+    },
+    {
+        "winner":  "Colorado Buffaloes",
+        "confidence":  0.5293333333333333,
+        "score":  {
+                      "home":  84,
+                      "away":  73
+                  },
+        "edge":  "2.9",
+        "keyFactors":  [
+                           "Team strength: Colorado Buffaloes (106%) vs TCU Horned Frogs (97%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs solid",
+                           "Head-to-head: even",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.86,
+                             "narrativeMomentum":  0.85,
+                             "informationAsymmetry":  0.86,
+                             "chaosSensitivity":  0.55,
+                             "networkInfluence":  0.84,
+                             "temporalDecay":  0.57,
+                             "emergentPattern":  0.86
+                         }
+    },
+    {
+        "winner":  "Florida Atlantic Owls",
+        "confidence":  0.5293333333333333,
+        "score":  {
+                      "home":  81,
+                      "away":  70
+                  },
+        "edge":  "41.2",
+        "keyFactors":  [
+                           "Team strength: Florida Atlantic Owls (103%) vs East Carolina Pirates (93%)",
+                           "Home advantage: +4 points",
+                           "Recent form: inconsistent vs hot",
+                           "Head-to-head: even",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.8,
+                             "narrativeMomentum":  0.82,
+                             "informationAsymmetry":  0.78,
+                             "chaosSensitivity":  0.64,
+                             "networkInfluence":  0.83,
+                             "temporalDecay":  0.48,
+                             "emergentPattern":  0.79
+                         }
+    },
+    {
+        "winner":  "Quinnipiac Bobcats",
+        "confidence":  0.5,
+        "score":  {
+                      "home":  77,
+                      "away":  77
+                  },
+        "edge":  "0.0",
+        "keyFactors":  [
+                           "Team strength: Fairfield Stags (98%) vs Quinnipiac Bobcats (103%)",
+                           "Home advantage: +4 points",
+                           "Recent form: slumping vs slumping",
+                           "Head-to-head: even",
+                           "Injuries: healthy",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.61,
+                             "narrativeMomentum":  0.6,
+                             "informationAsymmetry":  0.61,
+                             "chaosSensitivity":  0.62,
+                             "networkInfluence":  0.6,
+                             "temporalDecay":  0.41,
+                             "emergentPattern":  0.61
+                         }
+    },
+    {
+        "winner":  "Green Bay Phoenix",
+        "confidence":  0.5266666666666666,
+        "score":  {
+                      "home":  83,
+                      "away":  73
+                  },
+        "edge":  "13.1",
+        "keyFactors":  [
+                           "Team strength: Green Bay Phoenix (106%) vs Wright St Raiders (98%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs slumping",
+                           "Head-to-head: even",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.65,
+                             "narrativeMomentum":  0.66,
+                             "informationAsymmetry":  0.65,
+                             "chaosSensitivity":  0.59,
+                             "networkInfluence":  0.67,
+                             "temporalDecay":  0.54,
+                             "emergentPattern":  0.65
+                         }
+    },
+    {
+        "winner":  "Kansas St Wildcats",
+        "confidence":  0.5053333333333333,
+        "score":  {
+                      "home":  74,
+                      "away":  72
+                  },
+        "edge":  "36.5",
+        "keyFactors":  [
+                           "Team strength: Kansas St Wildcats (93%) vs Iowa State Cyclones (96%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs inconsistent",
+                           "Head-to-head: struggled against",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.88,
+                             "narrativeMomentum":  0.85,
+                             "informationAsymmetry":  0.9,
+                             "chaosSensitivity":  0.6,
+                             "networkInfluence":  0.83,
+                             "temporalDecay":  0.49,
+                             "emergentPattern":  0.89
+                         }
+    },
+    {
+        "winner":  "Manhattan Jaspers",
+        "confidence":  0.508,
+        "score":  {
+                      "home":  76,
+                      "away":  79
+                  },
+        "edge":  "21.4",
+        "keyFactors":  [
+                           "Team strength: Mt. St. Mary\u0027s Mountaineers (96%) vs Manhattan Jaspers (105%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs inconsistent",
+                           "Head-to-head: even",
+                           "Injuries: no major injuries",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.87,
+                             "narrativeMomentum":  0.84,
+                             "informationAsymmetry":  0.89,
+                             "chaosSensitivity":  0.52,
+                             "networkInfluence":  0.81,
+                             "temporalDecay":  0.52,
+                             "emergentPattern":  0.88
+                         }
+    },
+    {
+        "winner":  "Niagara Purple Eagles",
+        "confidence":  0.508,
+        "score":  {
+                      "home":  74,
+                      "away":  71
+                  },
+        "edge":  "30.1",
+        "keyFactors":  [
+                           "Team strength: Niagara Purple Eagles (94%) vs Marist Red Foxes (94%)",
+                           "Home advantage: +4 points",
+                           "Recent form: slumping vs hot",
+                           "Head-to-head: even",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.85,
+                             "narrativeMomentum":  0.83,
+                             "informationAsymmetry":  0.88,
+                             "chaosSensitivity":  0.6,
+                             "networkInfluence":  0.81,
+                             "temporalDecay":  0.47,
+                             "emergentPattern":  0.87
+                         }
+    },
+    {
+        "winner":  "Minnesota Golden Gophers",
+        "confidence":  0.5133333333333333,
+        "score":  {
+                      "home":  73,
+                      "away":  78
+                  },
+        "edge":  "-0.1",
+        "keyFactors":  [
+                           "Team strength: Penn State Nittany Lions (93%) vs Minnesota Golden Gophers (104%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs inconsistent",
+                           "Head-to-head: even",
+                           "Injuries: no major injuries",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.63,
+                             "narrativeMomentum":  0.65,
+                             "informationAsymmetry":  0.61,
+                             "chaosSensitivity":  0.71,
+                             "networkInfluence":  0.67,
+                             "temporalDecay":  0.56,
+                             "emergentPattern":  0.62
+                         }
+    },
+    {
+        "winner":  "Saint Peter\u0027s Peacocks",
+        "confidence":  0.5026666666666667,
+        "score":  {
+                      "home":  74,
+                      "away":  75
+                  },
+        "edge":  "22.2",
+        "keyFactors":  [
+                           "Team strength: Rider Broncs (93%) vs Saint Peter\u0027s Peacocks (100%)",
+                           "Home advantage: +4 points",
+                           "Recent form: slumping vs slumping",
+                           "Head-to-head: struggled against",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.73,
+                             "narrativeMomentum":  0.75,
+                             "informationAsymmetry":  0.71,
+                             "chaosSensitivity":  0.58,
+                             "networkInfluence":  0.77,
+                             "temporalDecay":  0.44,
+                             "emergentPattern":  0.72
+                         }
+    },
+    {
+        "winner":  "St. Thomas (MN) Tommies",
+        "confidence":  0.5053333333333333,
+        "score":  {
+                      "home":  75,
+                      "away":  73
+                  },
+        "edge":  "46.8",
+        "keyFactors":  [
+                           "Team strength: St. Thomas (MN) Tommies (95%) vs UMKC Kangaroos (97%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs hot",
+                           "Head-to-head: dominated",
+                           "Injuries: healthy",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.72,
+                             "narrativeMomentum":  0.72,
+                             "informationAsymmetry":  0.73,
+                             "chaosSensitivity":  0.5,
+                             "networkInfluence":  0.72,
+                             "temporalDecay":  0.46,
+                             "emergentPattern":  0.73
+                         }
+    },
+    {
+        "winner":  "Tulsa Golden Hurricane",
+        "confidence":  0.5266666666666666,
+        "score":  {
+                      "home":  80,
+                      "away":  70
+                  },
+        "edge":  "26.4",
+        "keyFactors":  [
+                           "Team strength: Tulsa Golden Hurricane (101%) vs Wichita St Shockers (93%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs strong",
+                           "Head-to-head: even",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.61,
+                             "narrativeMomentum":  0.63,
+                             "informationAsymmetry":  0.59,
+                             "chaosSensitivity":  0.53,
+                             "networkInfluence":  0.66,
+                             "temporalDecay":  0.59,
+                             "emergentPattern":  0.6
+                         }
+    },
+    {
+        "winner":  "Milwaukee Panthers",
+        "confidence":  0.5186666666666667,
+        "score":  {
+                      "home":  78,
+                      "away":  71
+                  },
+        "edge":  "30.1",
+        "keyFactors":  [
+                           "Team strength: Milwaukee Panthers (99%) vs Cleveland St Vikings (94%)",
+                           "Home advantage: +4 points",
+                           "Recent form: inconsistent vs inconsistent",
+                           "Head-to-head: dominated",
+                           "Injuries: no major injuries",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.79,
+                             "narrativeMomentum":  0.76,
+                             "informationAsymmetry":  0.81,
+                             "chaosSensitivity":  0.73,
+                             "networkInfluence":  0.73,
+                             "temporalDecay":  0.53,
+                             "emergentPattern":  0.8
+                         }
+    },
+    {
+        "winner":  "Tulane Green Wave",
+        "confidence":  0.5053333333333333,
+        "score":  {
+                      "home":  77,
+                      "away":  79
+                  },
+        "edge":  "33.5",
+        "keyFactors":  [
+                           "Team strength: Memphis Tigers (98%) vs Tulane Green Wave (105%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs strong",
+                           "Head-to-head: favorable",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.68,
+                             "narrativeMomentum":  0.67,
+                             "informationAsymmetry":  0.69,
+                             "chaosSensitivity":  0.59,
+                             "networkInfluence":  0.67,
+                             "temporalDecay":  0.55,
+                             "emergentPattern":  0.68
+                         }
+    },
+    {
+        "winner":  "Northern Kentucky Norse",
+        "confidence":  0.5106666666666667,
+        "score":  {
+                      "home":  76,
+                      "away":  80
+                  },
+        "edge":  "19.5",
+        "keyFactors":  [
+                           "Team strength: Oakland Golden Grizzlies (96%) vs Northern Kentucky Norse (107%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs hot",
+                           "Head-to-head: dominated",
+                           "Injuries: healthy",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.69,
+                             "narrativeMomentum":  0.69,
+                             "informationAsymmetry":  0.69,
+                             "chaosSensitivity":  0.8,
+                             "networkInfluence":  0.7,
+                             "temporalDecay":  0.44,
+                             "emergentPattern":  0.69
+                         }
+    },
+    {
+        "winner":  "Nebraska Cornhuskers",
+        "confidence":  0.524,
+        "score":  {
+                      "home":  79,
+                      "away":  70
+                  },
+        "edge":  "8.9",
+        "keyFactors":  [
+                           "Team strength: Nebraska Cornhuskers (101%) vs Illinois Fighting Illini (93%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs inconsistent",
+                           "Head-to-head: dominated",
+                           "Injuries: healthy",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.75,
+                             "narrativeMomentum":  0.72,
+                             "informationAsymmetry":  0.78,
+                             "chaosSensitivity":  0.62,
+                             "networkInfluence":  0.7,
+                             "temporalDecay":  0.43,
+                             "emergentPattern":  0.76
+                         }
+    },
+    {
+        "winner":  "East Tennessee St Buccaneers",
+        "confidence":  0.5,
+        "score":  {
+                      "home":  80,
+                      "away":  80
+                  },
+        "edge":  "6.5",
+        "keyFactors":  [
+                           "Team strength: Wofford Terriers (101%) vs East Tennessee St Buccaneers (106%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs strong",
+                           "Head-to-head: favorable",
+                           "Injuries: healthy",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.88,
+                             "narrativeMomentum":  0.87,
+                             "informationAsymmetry":  0.89,
+                             "chaosSensitivity":  0.53,
+                             "networkInfluence":  0.85,
+                             "temporalDecay":  0.45,
+                             "emergentPattern":  0.89
+                         }
+    },
+    {
+        "winner":  "Oregon Ducks",
+        "confidence":  0.5213333333333333,
+        "score":  {
+                      "home":  79,
+                      "away":  71
+                  },
+        "edge":  "31.4",
+        "keyFactors":  [
+                           "Team strength: Oregon Ducks (99%) vs Iowa Hawkeyes (95%)",
+                           "Home advantage: +4 points",
+                           "Recent form: inconsistent vs slumping",
+                           "Head-to-head: dominated",
+                           "Injuries: no major injuries",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.68,
+                             "narrativeMomentum":  0.67,
+                             "informationAsymmetry":  0.69,
+                             "chaosSensitivity":  0.63,
+                             "networkInfluence":  0.66,
+                             "temporalDecay":  0.57,
+                             "emergentPattern":  0.68
+                         }
+    },
+    {
+        "winner":  "Detroit Pistons",
+        "confidence":  0.516,
+        "score":  {
+                      "home":  83,
+                      "away":  77
+                  },
+        "edge":  "39.1",
+        "keyFactors":  [
+                           "Team strength: Detroit Pistons (105%) vs Brooklyn Nets (103%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs inconsistent",
+                           "Head-to-head: dominated",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.51,
+                             "narrativeMomentum":  0.54,
+                             "informationAsymmetry":  0.48,
+                             "chaosSensitivity":  0.72,
+                             "networkInfluence":  0.57,
+                             "temporalDecay":  0.49,
+                             "emergentPattern":  0.5
+                         }
+    },
+    {
+        "winner":  "Miami Heat",
+        "confidence":  0.5026666666666667,
+        "score":  {
+                      "home":  75,
+                      "away":  74
+                  },
+        "edge":  "13.0",
+        "keyFactors":  [
+                           "Team strength: Miami Heat (94%) vs Chicago Bulls (99%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs hot",
+                           "Head-to-head: dominated",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.77,
+                             "narrativeMomentum":  0.76,
+                             "informationAsymmetry":  0.77,
+                             "chaosSensitivity":  0.65,
+                             "networkInfluence":  0.76,
+                             "temporalDecay":  0.48,
+                             "emergentPattern":  0.77
+                         }
+    },
+    {
+        "winner":  "Sacramento Kings",
+        "confidence":  0.5053333333333333,
+        "score":  {
+                      "home":  78,
+                      "away":  80
+                  },
+        "edge":  "4.0",
+        "keyFactors":  [
+                           "Team strength: Washington Wizards (99%) vs Sacramento Kings (107%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs hot",
+                           "Head-to-head: even",
+                           "Injuries: healthy",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.72,
+                             "narrativeMomentum":  0.74,
+                             "informationAsymmetry":  0.71,
+                             "chaosSensitivity":  0.74,
+                             "networkInfluence":  0.76,
+                             "temporalDecay":  0.4,
+                             "emergentPattern":  0.72
+                         }
+    },
+    {
+        "winner":  "Utah Jazz",
+        "confidence":  0.5,
+        "score":  {
+                      "home":  79,
+                      "away":  79
+                  },
+        "edge":  "34.6",
+        "keyFactors":  [
+                           "Team strength: Toronto Raptors (100%) vs Utah Jazz (106%)",
+                           "Home advantage: +4 points",
+                           "Recent form: strong vs inconsistent",
+                           "Head-to-head: struggled against",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.55,
+                             "narrativeMomentum":  0.57,
+                             "informationAsymmetry":  0.54,
+                             "chaosSensitivity":  0.51,
+                             "networkInfluence":  0.58,
+                             "temporalDecay":  0.52,
+                             "emergentPattern":  0.54
+                         }
+    },
+    {
+        "winner":  "New York Knicks",
+        "confidence":  0.5213333333333333,
+        "score":  {
+                      "home":  82,
+                      "away":  74
+                  },
+        "edge":  "18.8",
+        "keyFactors":  [
+                           "Team strength: New York Knicks (104%) vs Los Angeles Lakers (99%)",
+                           "Home advantage: +4 points",
+                           "Recent form: slumping vs solid",
+                           "Head-to-head: favorable",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.64,
+                             "narrativeMomentum":  0.66,
+                             "informationAsymmetry":  0.62,
+                             "chaosSensitivity":  0.54,
+                             "networkInfluence":  0.67,
+                             "temporalDecay":  0.49,
+                             "emergentPattern":  0.63
+                         }
+    },
+    {
+        "winner":  "San Antonio Spurs",
+        "confidence":  0.524,
+        "score":  {
+                      "home":  79,
+                      "away":  70
+                  },
+        "edge":  "19.6",
+        "keyFactors":  [
+                           "Team strength: San Antonio Spurs (100%) vs Orlando Magic (94%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs hot",
+                           "Head-to-head: dominated",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.74,
+                             "narrativeMomentum":  0.72,
+                             "informationAsymmetry":  0.76,
+                             "chaosSensitivity":  0.67,
+                             "networkInfluence":  0.7,
+                             "temporalDecay":  0.46,
+                             "emergentPattern":  0.75
+                         }
+    },
+    {
+        "winner":  "Phoenix Suns",
+        "confidence":  0.5053333333333333,
+        "score":  {
+                      "home":  74,
+                      "away":  72
+                  },
+        "edge":  "1.0",
+        "keyFactors":  [
+                           "Team strength: Phoenix Suns (93%) vs Los Angeles Clippers (96%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs inconsistent",
+                           "Head-to-head: favorable",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.77,
+                             "narrativeMomentum":  0.74,
+                             "informationAsymmetry":  0.79,
+                             "chaosSensitivity":  0.73,
+                             "networkInfluence":  0.72,
+                             "temporalDecay":  0.57,
+                             "emergentPattern":  0.78
+                         }
+    },
+    {
+        "winner":  "Cleveland Cavaliers",
+        "confidence":  0.5026666666666667,
+        "score":  {
+                      "home":  79,
+                      "away":  80
+                  },
+        "edge":  "5.1",
+        "keyFactors":  [
+                           "Team strength: Portland Trail Blazers (99%) vs Cleveland Cavaliers (107%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs solid",
+                           "Head-to-head: struggled against",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.82,
+                             "narrativeMomentum":  0.82,
+                             "informationAsymmetry":  0.82,
+                             "chaosSensitivity":  0.69,
+                             "networkInfluence":  0.82,
+                             "temporalDecay":  0.57,
+                             "emergentPattern":  0.82
+                         }
+    },
+    {
+        "winner":  "Denver Nuggets",
+        "confidence":  0.5106666666666667,
+        "score":  {
+                      "home":  77,
+                      "away":  73
+                  },
+        "edge":  "14.8",
+        "keyFactors":  [
+                           "Team strength: Denver Nuggets (97%) vs Oklahoma City Thunder (98%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs hot",
+                           "Head-to-head: dominated",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.7,
+                             "narrativeMomentum":  0.72,
+                             "informationAsymmetry":  0.68,
+                             "chaosSensitivity":  0.74,
+                             "networkInfluence":  0.74,
+                             "temporalDecay":  0.47,
+                             "emergentPattern":  0.69
+                         }
+    },
+    {
+        "winner":  "New England Patriots",
+        "confidence":  0.5293333333333333,
+        "score":  {
+                      "home":  84,
+                      "away":  73
+                  },
+        "edge":  "18.5",
+        "keyFactors":  [
+                           "Team strength: New England Patriots (107%) vs Seattle Seahawks (98%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs solid",
+                           "Head-to-head: even",
+                           "Injuries: depth tested",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.83,
+                             "narrativeMomentum":  0.81,
+                             "informationAsymmetry":  0.86,
+                             "chaosSensitivity":  0.59,
+                             "networkInfluence":  0.78,
+                             "temporalDecay":  0.41,
+                             "emergentPattern":  0.85
+                         }
+    },
+    {
+        "winner":  "Virginia Cavaliers",
+        "confidence":  0.5133333333333333,
+        "score":  {
+                      "home":  84,
+                      "away":  79
+                  },
+        "edge":  "14.3",
+        "keyFactors":  [
+                           "Team strength: Virginia Cavaliers (107%) vs NC State Wolfpack (106%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs slumping",
+                           "Head-to-head: struggled against",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.63,
+                             "narrativeMomentum":  0.66,
+                             "informationAsymmetry":  0.6,
+                             "chaosSensitivity":  0.6,
+                             "networkInfluence":  0.69,
+                             "temporalDecay":  0.52,
+                             "emergentPattern":  0.62
+                         }
+    },
+    {
+        "winner":  "TCU Horned Frogs",
+        "confidence":  0.5026666666666667,
+        "score":  {
+                      "home":  79,
+                      "away":  78
+                  },
+        "edge":  "26.5",
+        "keyFactors":  [
+                           "Team strength: TCU Horned Frogs (100%) vs North Carolina Tar Heels (103%)",
+                           "Home advantage: +4 points",
+                           "Recent form: hot vs strong",
+                           "Head-to-head: struggled against",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  1,
+                             "narrativeMomentum":  0.97,
+                             "informationAsymmetry":  1.03,
+                             "chaosSensitivity":  0.58,
+                             "networkInfluence":  0.94,
+                             "temporalDecay":  0.6,
+                             "emergentPattern":  1.01
+                         }
+    },
+    {
+        "winner":  "Auburn Tigers",
+        "confidence":  0.5026666666666667,
+        "score":  {
+                      "home":  78,
+                      "away":  77
+                  },
+        "edge":  "25.0",
+        "keyFactors":  [
+                           "Team strength: Auburn Tigers (99%) vs Baylor Bears (102%)",
+                           "Home advantage: +4 points",
+                           "Recent form: slumping vs slumping",
+                           "Head-to-head: even",
+                           "Injuries: no major injuries",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.83,
+                             "narrativeMomentum":  0.83,
+                             "informationAsymmetry":  0.83,
+                             "chaosSensitivity":  0.75,
+                             "networkInfluence":  0.82,
+                             "temporalDecay":  0.47,
+                             "emergentPattern":  0.83
+                         }
+    },
+    {
+        "winner":  "Clemson Tigers",
+        "confidence":  0.5,
+        "score":  {
+                      "home":  79,
+                      "away":  79
+                  },
+        "edge":  "31.1",
+        "keyFactors":  [
+                           "Team strength: LSU Tigers (100%) vs Clemson Tigers (106%)",
+                           "Home advantage: +4 points",
+                           "Recent form: slumping vs solid",
+                           "Head-to-head: dominated",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.89,
+                             "narrativeMomentum":  0.87,
+                             "informationAsymmetry":  0.91,
+                             "chaosSensitivity":  0.6,
+                             "networkInfluence":  0.85,
+                             "temporalDecay":  0.48,
+                             "emergentPattern":  0.9
+                         }
+    },
+    {
+        "winner":  "Wisconsin Badgers",
+        "confidence":  0.5026666666666667,
+        "score":  {
+                      "home":  76,
+                      "away":  77
+                  },
+        "edge":  "41.0",
+        "keyFactors":  [
+                           "Team strength: Notre Dame Fighting Irish (96%) vs Wisconsin Badgers (103%)",
+                           "Home advantage: +4 points",
+                           "Recent form: solid vs inconsistent",
+                           "Head-to-head: struggled against",
+                           "Injuries: key players out",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.75,
+                             "narrativeMomentum":  0.73,
+                             "informationAsymmetry":  0.77,
+                             "chaosSensitivity":  0.67,
+                             "networkInfluence":  0.72,
+                             "temporalDecay":  0.41,
+                             "emergentPattern":  0.76
+                         }
+    },
+    {
+        "winner":  "Texas Longhorns",
+        "confidence":  0.516,
+        "score":  {
+                      "home":  78,
+                      "away":  72
+                  },
+        "edge":  "9.4",
+        "keyFactors":  [
+                           "Team strength: Texas Longhorns (99%) vs Ohio State Buckeyes (96%)",
+                           "Home advantage: +4 points",
+                           "Recent form: inconsistent vs strong",
+                           "Head-to-head: favorable",
+                           "Injuries: healthy",
+                           "Claude Effect momentum high"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.82,
+                             "narrativeMomentum":  0.82,
+                             "informationAsymmetry":  0.82,
+                             "chaosSensitivity":  0.75,
+                             "networkInfluence":  0.82,
+                             "temporalDecay":  0.57,
+                             "emergentPattern":  0.82
+                         }
+    }
+]

@@ -1,10 +1,27 @@
 import Link from 'next/link'
+import Head from 'next/head'
+import React from 'react'
 import Layout from '../components/Layout'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
+import { generateReferralMetaTags, generateReferralStructuredData, injectReferralMetaTags, injectReferralStructuredData } from '../src/utils/referralMetaTags'
 
 export default function Home({ session }) {
+  const router = useRouter()
   const [boats, setBoats] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Detect referral code and inject meta tags
+  useEffect(() => {
+    if (typeof window !== 'undefined' && router.isReady) {
+      const { ref } = router.query
+      if (ref && typeof ref === 'string') {
+        const metaTags = generateReferralMetaTags(ref)
+        injectReferralMetaTags(metaTags)
+        injectReferralStructuredData(ref)
+      }
+    }
+  }, [router.isReady, router.query])
 
   useEffect(() => {
     let cancelled = false
@@ -27,8 +44,38 @@ export default function Home({ session }) {
     }
   }, [])
 
+  const metaTags = router.isReady && router.query.ref && typeof router.query.ref === 'string' 
+    ? generateReferralMetaTags(router.query.ref)
+    : null
+
   return (
-    <Layout session={session}>
+    <React.Fragment>
+      <Head>
+        {metaTags && (
+          <React.Fragment>
+            <meta property="og:title" content={metaTags.title} />
+            <meta property="og:description" content={metaTags.description} />
+            <meta property="og:image" content={metaTags.image} />
+            <meta property="og:url" content={metaTags.url} />
+            <meta property="og:type" content={metaTags.type} />
+            <meta property="og:site_name" content={metaTags.siteName} />
+            <meta name="twitter:card" content={metaTags.twitterCard} />
+            <meta name="twitter:site" content={metaTags.twitterSite} />
+            <meta name="twitter:title" content={metaTags.title} />
+            <meta name="twitter:description" content={metaTags.description} />
+            <meta name="twitter:image" content={metaTags.image} />
+            {router.query.ref && typeof router.query.ref === 'string' && (
+              <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                  __html: JSON.stringify(generateReferralStructuredData(router.query.ref))
+                }}
+              />
+            )}
+          </React.Fragment>
+        )}
+      </Head>
+      <Layout session={session}>
       <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white py-24 text-center">
         <h1 className="text-6xl font-bold mb-6">Gulf Coast Charters</h1>
         <p className="text-lg text-blue-100 max-w-2xl mx-auto mb-8">
@@ -95,6 +142,7 @@ export default function Home({ session }) {
           </div>
         )}
       </div>
-    </Layout>
+      </Layout>
+    </React.Fragment>
   )
 }

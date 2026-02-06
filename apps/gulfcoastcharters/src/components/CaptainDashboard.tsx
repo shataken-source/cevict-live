@@ -81,13 +81,30 @@ export default function CaptainDashboard() {
   const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  const captainId = 'captain1'; // In production, get from auth context
+  const [captainId, setCaptainId] = useState<string | null>(null);
 
   useEffect(() => {
     const hasSeenOnboarding = localStorage.getItem('hasSeen CaptainOnboarding');
     if (!hasSeenOnboarding) {
       setShowOnboarding(true);
     }
+
+    // Get captain ID from auth
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        // Get captain profile
+        supabase
+          .from('captain_profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile) {
+              setCaptainId(profile.id);
+            }
+          });
+      }
+    });
   }, []);
 
   const handleOnboardingComplete = () => {
@@ -118,10 +135,12 @@ export default function CaptainDashboard() {
   };
 
   useEffect(() => {
-    loadBookings();
-    loadAnalytics();
-    loadDocuments();
-  }, [statusFilter, startDate, endDate]);
+    if (captainId) {
+      loadBookings();
+      loadAnalytics();
+      loadDocuments();
+    }
+  }, [captainId, statusFilter, startDate, endDate]);
 
   const loadDocuments = async () => {
     try {
@@ -142,16 +161,23 @@ export default function CaptainDashboard() {
 
 
   const loadBookings = async () => {
+    if (!captainId) return;
+    
     setLoading(true);
     try {
-      const { data } = await supabase.functions.invoke('captain-bookings', {
-        body: {
-          action: 'getBookings',
-          captainId,
-          data: { status: statusFilter, startDate, endDate }
-        }
-      });
-      setBookings(data?.bookings || []);
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.append('status', statusFilter);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const response = await fetch(`/api/captain/bookings?${params.toString()}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setBookings(result.bookings || []);
+      } else {
+        console.error('Error loading bookings:', result.error);
+      }
     } catch (error) {
       console.error('Error loading bookings:', error);
     }
@@ -159,38 +185,75 @@ export default function CaptainDashboard() {
   };
 
   const loadAnalytics = async () => {
+    if (!captainId) return;
+    
     try {
-      const { data } = await supabase.functions.invoke('captain-bookings', {
-        body: { action: 'getAnalytics', captainId }
-      });
-      setAnalytics(data);
+      const response = await fetch('/api/captain/analytics');
+      const result = await response.json();
+      
+      if (result.success) {
+        // Format analytics to match expected structure
+        setAnalytics({
+          totalRevenue: result.analytics.totalRevenue,
+          totalBookings: result.analytics.totalBookings,
+          completedBookings: result.analytics.completedBookings,
+          upcomingBookings: result.analytics.upcomingBookings,
+        });
+      } else {
+        console.error('Error loading analytics:', result.error);
+      }
     } catch (error) {
       console.error('Error loading analytics:', error);
     }
   };
 
   const updateStatus = async (bookingId: string, status: string) => {
-    await supabase.functions.invoke('captain-bookings', {
-      body: { action: 'updateStatus', bookingId, data: { status } }
-    });
-    loadBookings();
-    loadAnalytics();
+    try {
+      const response = await fetch('/api/captain/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'updateStatus',
+          bookingId,
+          data: { status },
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        loadBookings();
+        loadAnalytics();
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   };
 
   const saveNotes = async () => {
     if (!selectedBooking) return;
-    await supabase.functions.invoke('captain-bookings', {
-      body: { action: 'addNotes', bookingId: selectedBooking.id, data: { notes } }
-    });
-    setSelectedBooking(null);
-    loadBookings();
+    try {
+      const response = await fetch('/api/captain/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'addNotes',
+          bookingId: selectedBooking.id,
+          data: { notes },
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setSelectedBooking(null);
+        loadBookings();
+      }
+    } catch (error) {
+      console.error('Error saving notes:', error);
+    }
   };
 
   const sendReminder = async (bookingId: string) => {
-    await supabase.functions.invoke('captain-bookings', {
-      body: { action: 'triggerReminder', bookingId }
-    });
-    alert('Reminder sent successfully!');
+    // TODO: Implement reminder sending via email/SMS
+    console.log('Send reminder for booking:', bookingId);
+    alert('Reminder functionality coming soon!');
     loadBookings();
   };
 
@@ -202,6 +265,11 @@ export default function CaptainDashboard() {
         description="Manage your charter bookings, view analytics, and communicate with customers on Gulf Charter Finder."
       />
       <div className="max-w-7xl mx-auto">
+        {!captainId && (
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800">Loading captain profile...</p>
+          </div>
+        )}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Captain Dashboard</h1>
           <CertificationBadges 
@@ -467,7 +535,13 @@ export default function CaptainDashboard() {
           </TabsContent>
           
           <TabsContent value="reviews">
-            <ReviewModeration captainId={captainId} />
+            {captainId ? (
+              <ReviewModeration captainId={captainId} />
+            ) : (
+              <Card className="p-12 text-center">
+                <p className="text-gray-600">Loading captain profile...</p>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="alerts" className="space-y-6">

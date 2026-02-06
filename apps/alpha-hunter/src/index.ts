@@ -1,7 +1,7 @@
 /**
  * Alpha Hunter - Main Entry Point
  * Autonomous profit-hunting bot with fund management
- * 
+ *
  * Commands:
  *   npm run dev        - Start with file watching
  *   npm run daily      - Run daily hunter
@@ -67,13 +67,13 @@ class AlphaHunter {
 
     // Check integrations
     console.log('\n🔌 Checking integrations...');
-    
+
     const kalshiBalance = await this.kalshi.getBalance();
     console.log(`   ├─ Kalshi: ${kalshiBalance > 0 ? '✅ Connected' : '⚠️ Demo mode'} ($${kalshiBalance})`);
-    
+
     const prognoStatus = process.env.PROGNO_BASE_URL ? '✅ Connected' : '⚠️ Using defaults';
     console.log(`   ├─ PROGNO: ${prognoStatus}`);
-    
+
     const smsStatus = this.sms.isConfigured() ? '✅ Configured' : '⚠️ Disabled';
     console.log(`   └─ SMS: ${smsStatus}`);
 
@@ -148,7 +148,7 @@ class AlphaHunter {
 
   async runDailyScan(): Promise<void> {
     const analysis = await this.brain.analyzeAllSources();
-    
+
     if (analysis.topOpportunity) {
       const account = await this.funds.getAccount();
       const suggestion = await this.brain.generateDailySuggestion(account.balance);
@@ -157,14 +157,13 @@ class AlphaHunter {
   }
 
   async runDailyHunt(): Promise<void> {
-    // Import and run daily hunter
-    await import('./daily-hunter.js');
-    // The daily-hunter module runs on import when executed directly
+    const { runDailyHunt: run } = await import('./daily-hunter');
+    await run();
   }
 
   async runSportsScan(): Promise<void> {
     console.log('🏈 Scanning sports opportunities...');
-    
+
     const picks = await this.progno.getTodaysPicks();
     const opportunities = await this.progno.convertToOpportunities(picks);
     const arbitrage = await this.progno.getArbitrageOpportunities();
@@ -222,7 +221,7 @@ class AlphaHunter {
   async sendDailySummary(): Promise<void> {
     const account = await this.funds.getAccount();
     const trades = await this.funds.getOpenTrades();
-    
+
     // In production, this would calculate actual wins/losses
     const wins = 0;
     const losses = 0;

@@ -15,23 +15,46 @@ let isInitialized = false;
 let hasWarnedAboutMissingKeys = false;
 let hasWarnedAboutInvalidKey = false;
 let hasWarnedAboutAuthError = false;
+let networkErrorCount = 0;
+let lastNetworkErrorTime = 0;
+const NETWORK_ERROR_THROTTLE_MS = 30000; // Only log network errors every 30 seconds
 
 // Helper to check if error is an auth error and log only once
 function handleSupabaseError(error: any, context: string): void {
   const errorMessage = error?.message || String(error);
+  const errorDetails = error?.details || String(error);
+  
+  // Detect network/DNS failures
+  const isNetworkError = errorMessage.includes('ENOTFOUND') || 
+                        errorMessage.includes('getaddrinfo') ||
+                        errorMessage.includes('fetch failed') ||
+                        errorMessage.includes('ECONNREFUSED') ||
+                        errorMessage.includes('ETIMEDOUT') ||
+                        errorDetails.includes('ENOTFOUND') ||
+                        errorDetails.includes('getaddrinfo');
+  
   const isAuthError = errorMessage.includes('Invalid API key') || 
                       errorMessage.includes('JWT') || 
                       errorMessage.includes('authentication') ||
                       errorMessage.includes('401');
   
-  if (isAuthError && !hasWarnedAboutAuthError) {
+  if (isNetworkError) {
+    networkErrorCount++;
+    const now = Date.now();
+    // Only log network errors every 30 seconds to reduce spam
+    if (now - lastNetworkErrorTime > NETWORK_ERROR_THROTTLE_MS) {
+      console.error(`🌐 Network connectivity issue (${context}): Cannot reach Supabase`);
+      console.error(`   Error: ${errorMessage}`);
+      console.error(`   Total network errors: ${networkErrorCount} (checking internet connection, DNS, firewall)`);
+      lastNetworkErrorTime = now;
+    }
+  } else if (isAuthError && !hasWarnedAboutAuthError) {
     console.warn(`⚠️ Supabase authentication error (${context}) - check SUPABASE_SERVICE_ROLE_KEY in .env.local`);
     hasWarnedAboutAuthError = true;
-  } else if (!isAuthError) {
-    // Only log non-auth errors (and only once per type)
+  } else if (!isAuthError && !isNetworkError) {
+    // Only log non-auth, non-network errors
     console.error(`Error in ${context}:`, error);
   }
-  // Auth errors are silently ignored after first warning
 }
 
 function getClient(): SupabaseClient | null {
@@ -55,7 +78,9 @@ function getClient(): SupabaseClient | null {
 
   try {
     supabaseClient = createClient(url, key);
-    console.log('✅ Supabase memory system connected');
+    // Show which Supabase project we're connected to (for debugging)
+    const projectId = url.match(/https?:\/\/([^.]+)\.supabase\.co/)?.[1] || 'unknown';
+    console.log(`✅ Supabase memory system connected (project: ${projectId})`);
     return supabaseClient;
   } catch (error) {
     if (!hasWarnedAboutInvalidKey) {
@@ -345,6 +370,16 @@ export async function getOpenTradeRecords(
       handleSupabaseError(error, 'getOpenTradeRecords');
       return [];
     }
+    
+    // DEBUG: Log if we get unexpected results
+    if (data && data.length > 10) {
+      console.log(`   ⚠️  getOpenTradeRecords: Found ${data.length} open positions (unexpectedly high)`);
+      // Check for positions that might have closed_at but still marked open
+      const shouldBeClosed = data.filter((d: any) => d.closed_at && d.outcome === 'open');
+      if (shouldBeClosed.length > 0) {
+        console.log(`   ⚠️  Found ${shouldBeClosed.length} positions with closed_at but outcome='open'`);
+      }
+    }
 
     return (data || []).map(d => ({
       ...d,
@@ -444,8 +479,21 @@ export async function getStrategyParams(
       .eq('bot_category', botCategory)
       .single();
 
-    if (error) return null;
-    if (!data) return null;
+    if (error) {
+      // DEBUG: Log why query failed
+      if (error.code === 'PGRST116') {
+        // No rows returned - category doesn't exist
+        console.log(`   ⚠️  getStrategyParams: Category '${botCategory}' not found for platform '${platform}'`);
+      } else {
+        console.error(`   ❌ getStrategyParams error for ${platform}/${botCategory}:`, error);
+        handleSupabaseError(error, `getStrategyParams(${platform}, ${botCategory})`);
+      }
+      return null;
+    }
+    if (!data) {
+      console.log(`   ⚠️  getStrategyParams: No data returned for ${platform}/${botCategory}`);
+      return null;
+    }
 
     return {
       platform: data.platform,
@@ -838,12 +886,22 @@ export async function getBotConfig(): Promise<{
       .eq('config_key', 'trading')
       .single();
 
+    if (tradingError) {
+      console.error(`❌ getBotConfig error:`, tradingError);
+      handleSupabaseError(tradingError, 'getBotConfig(trading)');
+    }
+
     // Fetch picks config
     const { data: picksConfig, error: picksError } = await client
       .from('bot_config')
       .select('config_value')
       .eq('config_key', 'picks')
       .single();
+
+    if (picksError && picksError.code !== 'PGRST116') {
+      // PGRST116 = no rows, which is OK for picks
+      console.error(`❌ getBotConfig(picks) error:`, picksError);
+    }
 
     // Merge with defaults
     const trading = tradingConfig?.config_value || {
@@ -857,6 +915,16 @@ export async function getBotConfig(): Promise<{
       kalshiInterval: 60000,
     };
 
+    // DEBUG: Log what we actually got
+    if (!tradingConfig) {
+      console.warn(`⚠️  getBotConfig: No trading config found in database, using defaults (dailySpendingLimit: ${trading.dailySpendingLimit})`);
+    } else {
+      const dbLimit = tradingConfig.config_value?.dailySpendingLimit;
+      if (dbLimit && dbLimit !== trading.dailySpendingLimit) {
+        console.log(`   ✅ getBotConfig: Using database value dailySpendingLimit: ${dbLimit}`);
+      }
+    }
+
     const picks = picksConfig?.config_value || {
       maxPicksDisplay: 20,
       minConfidenceDisplay: 50,
@@ -865,7 +933,7 @@ export async function getBotConfig(): Promise<{
     return { trading, picks };
   } catch (error: any) {
     // Return defaults on error
-    console.warn('⚠️ Failed to fetch bot config from Supabase, using defaults:', error.message);
+    console.error('❌ getBotConfig exception:', error);
     return {
       trading: {
         maxTradeSize: 5,

@@ -1,39 +1,11 @@
 /**
  * Historical Results Data Loader
  * Loads and provides access to 2024 game results for fine-tuning
- *
- * NOTE: This file uses Node.js fs module which is only available server-side.
- * Functions will return empty data when called from client-side code.
+ * Hardened with safe fs handling, caching, validation, and client-side guard
  */
 
-// Lazy-load fs and path only on server-side using a function
-// This prevents Next.js from trying to bundle fs in client code
-function getNodeModules() {
-  if (typeof window !== 'undefined') {
-    return { fs: null, path: null };
-  }
-
-  try {
-    // Use indirect require to prevent webpack/Next.js from bundling fs
-    // Access require through global or process to avoid static analysis
-    const nodeRequire = typeof require !== 'undefined'
-      ? require
-      : (typeof global !== 'undefined' && (global as any).require)
-      ? (global as any).require
-      : null;
-
-    if (!nodeRequire) {
-      return { fs: null, path: null };
-    }
-
-    return {
-      fs: nodeRequire('fs'),
-      path: nodeRequire('path')
-    };
-  } catch (e) {
-    return { fs: null, path: null };
-  }
-}
+import fs from 'fs';
+import path from 'path';
 
 export interface GameResult {
   id: string;
@@ -55,43 +27,76 @@ interface ResultsData {
 }
 
 let cachedResults: ResultsData | null = null;
+let lastLoadTime = 0;
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 /**
- * Load all historical results
+ * Safe way to access Node.js modules (prevents client-side bundling issues)
  */
-export function loadHistoricalResults(): ResultsData {
-  if (cachedResults) {
-    return cachedResults;
-  }
-
-  // Only load from filesystem on server-side
+function getNodeModules() {
   if (typeof window !== 'undefined') {
-    // Client-side - return empty data
-    return cachedResults || {};
-  }
-
-  // Lazy-load Node modules
-  const { fs, path } = getNodeModules();
-
-  if (!fs || !path) {
-    // fs not available - return empty data
-    return cachedResults || {};
+    return { fs: null, path: null };
   }
 
   try {
-    const prognoDir = path.join(process.cwd(), '.progno');
-    const file = path.join(prognoDir, '2024-results-all-sports.json');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const nodeFs = require('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const nodePath = require('path');
+    return { fs: nodeFs, path: nodePath };
+  } catch (e) {
+    return { fs: null, path: null };
+  }
+}
 
-    if (!fs.existsSync(file)) {
-      console.warn(`Historical results file not found: ${file}. Run fetch-2024-python.py first.`);
+/**
+ * Load all historical results (server-side only)
+ */
+export function loadHistoricalResults(): ResultsData {
+  if (cachedResults && (Date.now() - lastLoadTime < CACHE_DURATION)) {
+    return cachedResults;
+  }
+
+  if (typeof window !== 'undefined') {
+    // Client-side guard
+    return {};
+  }
+
+  const modules = getNodeModules();
+  if (!modules.fs || !modules.path) {
+    console.warn('[HistoricalResults] fs/path not available (client-side)');
+    return {};
+  }
+
+  const { fs, path } = modules;
+
+  try {
+    const prognoDir = path.join(process.cwd(), '.progno');
+    const filePath = path.join(prognoDir, '2024-results-all-sports.json');
+
+    if (!fs.existsSync(filePath)) {
+      console.warn(`[HistoricalResults] File not found: ${filePath}`);
+      cachedResults = {};
+      lastLoadTime = Date.now();
       return {};
     }
 
-    const data = fs.readFileSync(file, 'utf8');
-    cachedResults = JSON.parse(data);
-    return cachedResults || {};
-  } catch (error) {
-    console.error('Failed to load historical results:', error);
+    const rawData = fs.readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(rawData);
+
+    // Basic validation
+    if (typeof parsed !== 'object' || parsed === null) {
+      console.error('[HistoricalResults] Invalid JSON structure');
+      cachedResults = {};
+      return {};
+    }
+
+    cachedResults = parsed;
+    lastLoadTime = Date.now();
+    return cachedResults;
+  } catch (error: any) {
+    console.error('[HistoricalResults] Failed to load file:', error.message);
+    cachedResults = {};
     return {};
   }
 }
@@ -100,14 +105,17 @@ export function loadHistoricalResults(): ResultsData {
  * Get results for a specific sport
  */
 export function getSportResults(sport: string): GameResult[] {
+  if (!sport) return [];
   const data = loadHistoricalResults();
-  return data[sport] || [];
+  return data[sport.toUpperCase()] || data[sport] || [];
 }
 
 /**
- * Get results for a specific team
+ * Get results for a specific team (home or away)
  */
 export function getTeamResults(sport: string, teamName: string): GameResult[] {
+  if (!sport || !teamName) return [];
+
   const results = getSportResults(sport);
   const normalizedTeam = normalizeTeamName(teamName);
 
@@ -119,26 +127,31 @@ export function getTeamResults(sport: string, teamName: string): GameResult[] {
 }
 
 /**
- * Get head-to-head history between two teams
+ * Get head-to-head results between two teams
  */
 export function getH2HResults(sport: string, team1: string, team2: string): GameResult[] {
+  if (!sport || !team1 || !team2) return [];
+
   const results = getSportResults(sport);
-  const normalized1 = normalizeTeamName(team1);
-  const normalized2 = normalizeTeamName(team2);
+  const norm1 = normalizeTeamName(team1);
+  const norm2 = normalizeTeamName(team2);
 
   return results.filter(result => {
-    const normalizedHome = normalizeTeamName(result.homeTeam);
-    const normalizedAway = normalizeTeamName(result.awayTeam);
-
-    return (normalizedHome === normalized1 && normalizedAway === normalized2) ||
-           (normalizedHome === normalized2 && normalizedAway === normalized1);
+    const normHome = normalizeTeamName(result.homeTeam);
+    const normAway = normalizeTeamName(result.awayTeam);
+    return (normHome === norm1 && normAway === norm2) ||
+           (normHome === norm2 && normAway === norm1);
   });
 }
 
 /**
- * Get recent team performance (last N games)
+ * Get recent performance for a team (last N games)
  */
-export function getRecentTeamPerformance(sport: string, teamName: string, lastNGames: number = 5): {
+export function getRecentTeamPerformance(
+  sport: string,
+  teamName: string,
+  lastNGames = 5
+): {
   wins: number;
   losses: number;
   avgPointsFor: number;
@@ -158,12 +171,12 @@ export function getRecentTeamPerformance(sport: string, teamName: string, lastNG
   let totalPointsFor = 0;
   let totalPointsAgainst = 0;
 
-  for (const result of recent) {
-    const isHome = normalizeTeamName(result.homeTeam) === normalizeTeamName(teamName);
-    const pointsFor = isHome ? result.homeScore : result.awayScore;
-    const pointsAgainst = isHome ? result.awayScore : result.homeScore;
+  for (const r of recent) {
+    const isHome = normalizeTeamName(r.homeTeam) === normalizeTeamName(teamName);
+    const pointsFor = isHome ? r.homeScore : r.awayScore;
+    const pointsAgainst = isHome ? r.awayScore : r.homeScore;
 
-    if (result.winner === teamName) wins++;
+    if (r.winner === teamName) wins++;
     totalPointsFor += pointsFor;
     totalPointsAgainst += pointsAgainst;
   }
@@ -175,28 +188,23 @@ export function getRecentTeamPerformance(sport: string, teamName: string, lastNG
   return {
     wins,
     losses: recent.length - wins,
-    avgPointsFor,
-    avgPointsAgainst,
-    avgMargin
+    avgPointsFor: Math.round(avgPointsFor * 10) / 10,
+    avgPointsAgainst: Math.round(avgPointsAgainst * 10) / 10,
+    avgMargin: Math.round(avgMargin * 10) / 10
   };
 }
 
-/**
- * Normalize team name for matching
- */
 function normalizeTeamName(name: string): string {
+  if (!name) return '';
   return name
     .toLowerCase()
     .replace(/\s+/g, '')
     .replace(/[^a-z0-9]/g, '')
-    .replace(/^(the|a|an)\s+/i, '');
+    .replace(/^(the|a|an)/i, '');
 }
 
-/**
- * Refresh results cache
- */
 export function refreshResultsCache(): void {
   cachedResults = null;
+  lastLoadTime = 0;
   loadHistoricalResults();
 }
-

@@ -57,20 +57,40 @@ export default function WeatherAlertSystem({ latitude, longitude }: WeatherAlert
         setAlerts([]);
         return;
       }
-      const { data, error } = await supabase.functions.invoke('weather-alerts', {
-        body: { action: 'list', latitude, longitude }
+      let list: WeatherAlert[] = [];
+      const res = await fetch('/api/weather/current', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude, longitude, alerts: true }),
       });
-      
-      if (!error && data?.alerts) {
-        setAlerts(data.alerts);
-        
-        // Check for new severe alerts
-        data.alerts.forEach((alert: WeatherAlert) => {
-          if ((alert.severity === 'Severe' || alert.severity === 'Extreme') && notificationsEnabled) {
-            showNotification(alert);
-          }
-        });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data?.alerts) && data.alerts.length > 0) {
+          list = data.alerts.map((a: { id?: string; event?: string; severity?: string; description?: string; expires?: string }) => ({
+            id: String(a?.id ?? ''),
+            severity: String(a?.severity ?? ''),
+            event: String(a?.event ?? ''),
+            description: String(a?.description ?? a?.event ?? ''),
+            expires: String(a?.expires ?? ''),
+          }));
+        }
+      } else {
+        // Only fall back to Edge Function when the API request failed
+        try {
+          const { data, error } = await supabase.functions.invoke('weather-alerts', {
+            body: { action: 'list', latitude, longitude },
+          });
+          if (!error && data?.alerts) list = data.alerts;
+        } catch {
+          // Edge Function not deployed or CORS; leave list empty
+        }
       }
+      setAlerts(list);
+      list.forEach((alert: WeatherAlert) => {
+        if ((alert.severity === 'Severe' || alert.severity === 'Extreme') && notificationsEnabled) {
+          showNotification(alert);
+        }
+      });
     } catch (error) {
       console.error('Failed to load alerts:', error);
     }

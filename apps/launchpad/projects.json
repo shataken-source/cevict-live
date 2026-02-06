@@ -1,0 +1,497 @@
+[
+  {
+    "id": "1766277010978",
+    "name": "CEVICT - AI Platform",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\cevict",
+    "description": "The Forge - Triple AI Power (Claude + GPT-4 + Gemini). AI Creation Engine with multi-agent system.",
+    "openFolder": true,
+    "devPort": 3000,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://cevict.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/cevict",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54321
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build",
+      "deploy": ".\\DEPLOY_CEVICT.ps1",
+      "deploy-complete": ".\\DEPLOY_CEVICT_COMPLETE.ps1"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010982",
+    "name": "Gulf Coast Charters",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\gcc",
+    "description": "Charter boat booking platform for Gulf Coast fishing trips and tours",
+    "openFolder": true,
+    "devPort": 3004,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://gulfcoastcharters.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/gcc",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54322
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010983",
+    "name": "Progno - Sports Prediction",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\progno",
+    "description": "Sports prediction platform with AI-powered analytics",
+    "openFolder": true,
+    "devPort": 3002,
+    "supabaseUrl": "https://nqkbqtiramecvmmpaxzk.supabase.co",
+    "vercelUrl": "https://progno.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/progno",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54323
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010984",
+    "name": "Prognostication - Advanced Sports AI",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\prognostication",
+    "description": "Advanced sports prediction engine with multiple API integrations",
+    "openFolder": true,
+    "devPort": 3005,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://prognostication.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/prognostication",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54324
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010985",
+    "name": "PetReunion",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\petreunion",
+    "description": "Pet lost and found platform with community features",
+    "openFolder": true,
+    "devPort": 3006,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://petreunion.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/petreunion",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54325
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010986",
+    "name": "Where To Vacation",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\wheretovacation",
+    "description": "Vacation planning platform with destination recommendations",
+    "openFolder": true,
+    "devPort": 3001,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://wheretovacation.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/wheretovacation",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54326
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010987",
+    "name": "Pop The Popcorn",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\popthepopcorn",
+    "description": "Movie and entertainment platform",
+    "openFolder": true,
+    "devPort": 3007,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://popthepopcorn.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/popthepopcorn",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54327
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010988",
+    "name": "LaunchPad",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\launchpad",
+    "description": "Development command center for managing and launching projects",
+    "openFolder": true,
+    "devPort": null,
+    "supabaseUrl": "",
+    "vercelUrl": "",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/launchpad",
+    "database": {
+      "enabled": false
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010989",
+    "name": "Brain API",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\brain",
+    "description": "Backend API and brain monitoring system",
+    "openFolder": true,
+    "devPort": 3008,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://brain-api.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/brain",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54328
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010990",
+    "name": "Gateway API",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\gateway",
+    "description": "API gateway for microservices architecture",
+    "openFolder": true,
+    "devPort": 3009,
+    "supabaseUrl": "",
+    "vercelUrl": "https://gateway-api.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/gateway",
+    "database": {
+      "enabled": false
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010991",
+    "name": "Calmcast",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\calmcast",
+    "description": "Meditation and wellness platform",
+    "openFolder": true,
+    "devPort": 3010,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://calmcast.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/calmcast",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54329
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010992",
+    "name": "Solar Weather",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\solar-weather",
+    "description": "Solar activity and weather monitoring platform",
+    "openFolder": true,
+    "devPort": 3011,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://solar-weather.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/solar-weather",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54330
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010993",
+    "name": "Smokers Rights",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\smokersrights",
+    "description": "Advocacy platform for smokers' rights",
+    "openFolder": true,
+    "devPort": 3012,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://smokersrights.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/smokersrights",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54331
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010994",
+    "name": "Auspicio",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\auspicio",
+    "description": "Fortune telling and astrology platform",
+    "openFolder": true,
+    "devPort": 3013,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://auspicio.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/auspicio",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54332
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010995",
+    "name": "Fishy AI",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\Fishy",
+    "description": "AI assistant and chatbot interface",
+    "openFolder": true,
+    "devPort": 3014,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://fishy-ai.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/Fishy",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54333
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010996",
+    "name": "Alexa Skill",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\alexa-skill",
+    "description": "Amazon Alexa skill for voice interactions",
+    "openFolder": true,
+    "devPort": null,
+    "supabaseUrl": "",
+    "vercelUrl": "",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/alexa-skill",
+    "database": {
+      "enabled": false
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010997",
+    "name": "Google Assistant",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\google-assistant",
+    "description": "Google Assistant action for voice interactions",
+    "openFolder": true,
+    "devPort": null,
+    "supabaseUrl": "",
+    "vercelUrl": "",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/google-assistant",
+    "database": {
+      "enabled": false
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010998",
+    "name": "Pet Rescue Mobile",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\petrescue-mobile",
+    "description": "Mobile app for pet rescue operations",
+    "openFolder": true,
+    "devPort": null,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/petrescue-mobile",
+    "database": {
+      "enabled": false
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build",
+      "android": "npm run android",
+      "ios": "npm run ios"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277010999",
+    "name": "Mobile Apps",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\mobile-apps",
+    "description": "Collection of mobile applications",
+    "openFolder": true,
+    "devPort": null,
+    "supabaseUrl": "",
+    "vercelUrl": "",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/mobile-apps",
+    "database": {
+      "enabled": false
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277011000",
+    "name": "Auto Deployer",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\deployer",
+    "description": "One-click deployment: keys → commit → deploy",
+    "openFolder": true,
+    "devPort": 3015,
+    "supabaseUrl": "",
+    "vercelUrl": "https://deployer.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/deployer",
+    "database": {
+      "enabled": false
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277011001",
+    "name": "Banner Generator",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\banner-generator",
+    "description": "Generate banners and ads for all products",
+    "openFolder": true,
+    "devPort": 3016,
+    "supabaseUrl": "",
+    "vercelUrl": "https://banner-generator.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/banner-generator",
+    "database": {
+      "enabled": false
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "running": false,
+    "devRunning": false
+  },
+  {
+    "id": "1766277011002",
+    "name": "Website Monitor",
+    "path": "C:\\gcc\\cevict-app\\cevict-monorepo\\apps\\monitor",
+    "description": "Multi-website monitoring dashboard with uptime, visitors, bot status, and AI chat",
+    "openFolder": true,
+    "devPort": 3010,
+    "supabaseUrl": "https://rdbuwyefbgnbuhmjrizo.supabase.co",
+    "vercelUrl": "https://monitor.vercel.app",
+    "githubUrl": "https://github.com/shata/cevict-monorepo/tree/main/apps/monitor",
+    "database": {
+      "enabled": true,
+      "type": "supabase",
+      "port": 54334
+    },
+    "commands": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build",
+      "worker": "tsx scripts/monitor-worker.ts"
+    },
+    "running": false,
+    "devRunning": false
+  }
+]

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Waves, Wind, Thermometer, Eye } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
 
 interface BuoyData {
   stationId: string;
@@ -23,6 +22,7 @@ export default function BuoyDataDisplay({ stationId, buoyId }: Props) {
   const id = String(stationId || buoyId || '').trim();
   const [data, setData] = useState<BuoyData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
     fetchBuoyData();
@@ -31,37 +31,46 @@ export default function BuoyDataDisplay({ stationId, buoyId }: Props) {
   const fetchBuoyData = async () => {
     try {
       if (!id) return;
+      setUnavailable(false);
       const cached = localStorage.getItem(`buoy_${id}`);
       if (cached) {
-        const { data: cachedData, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp < 1800000) {
-          setData(cachedData);
-          setLoading(false);
-          return;
-        }
+        try {
+          const { data: cachedData, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < 300000) {
+            setData(cachedData);
+            setLoading(false);
+            return;
+          }
+        } catch (_) {}
       }
 
-      const { data: resp, error } = await supabase.functions.invoke('noaa-buoy-data', {
-        body: { action: 'get', stationId: id },
-      });
-      if (error) throw error;
+      // Next.js API only (noaa-buoy-data Edge Function is not deployed)
+      const apiRes = await fetch(`/api/noaa-buoy?action=get&stationId=${encodeURIComponent(id)}`);
+      let resp: any = null;
+      if (apiRes.ok) {
+        resp = await apiRes.json();
+      }
 
-      const obs = resp?.observation || {};
-      const buoyData: BuoyData = {
-        stationId: String(resp?.stationId || id),
-        station: String(resp?.station || id),
-        waveHeightFt: typeof obs.waveHeightFt === 'number' ? obs.waveHeightFt : null,
-        wavePeriodS: typeof obs.wavePeriodS === 'number' ? obs.wavePeriodS : null,
-        windSpeedMph: typeof obs.windSpeedMph === 'number' ? obs.windSpeedMph : null,
-        windDirectionDeg: typeof obs.windDirectionDeg === 'number' ? obs.windDirectionDeg : null,
-        waterTempF: typeof obs.waterTempF === 'number' ? obs.waterTempF : null,
-        visibilityMi: typeof obs.visibilityMi === 'number' ? obs.visibilityMi : null,
-        timestamp: String(obs.timestamp || new Date().toISOString()),
-        alerts: Array.isArray(resp?.alerts) ? resp.alerts : [],
-      };
-
-      setData(buoyData);
-      localStorage.setItem(`buoy_${id}`, JSON.stringify({ data: buoyData, timestamp: Date.now() }));
+      if (!resp) {
+        setData(null);
+      } else {
+        const obs = resp?.observation || {};
+        const buoyData: BuoyData = {
+          stationId: String(resp?.stationId || id),
+          station: String(resp?.station || id),
+          waveHeightFt: typeof obs.waveHeightFt === 'number' ? obs.waveHeightFt : null,
+          wavePeriodS: typeof obs.wavePeriodS === 'number' ? obs.wavePeriodS : null,
+          windSpeedMph: typeof obs.windSpeedMph === 'number' ? obs.windSpeedMph : null,
+          windDirectionDeg: typeof obs.windDirectionDeg === 'number' ? obs.windDirectionDeg : null,
+          waterTempF: typeof obs.waterTempF === 'number' ? obs.waterTempF : null,
+          visibilityMi: typeof obs.visibilityMi === 'number' ? obs.visibilityMi : null,
+          timestamp: String(obs.timestamp || new Date().toISOString()),
+          alerts: Array.isArray(resp?.alerts) ? resp.alerts : [],
+        };
+        setData(buoyData);
+        setUnavailable(Boolean(resp?.unavailable));
+        localStorage.setItem(`buoy_${id}`, JSON.stringify({ data: buoyData, timestamp: Date.now() }));
+      }
     } catch (error) {
       toast.error('Failed to load buoy data');
     }
@@ -74,6 +83,11 @@ export default function BuoyDataDisplay({ stationId, buoyId }: Props) {
   return (
     <Card className="p-4">
       <h3 className="font-bold mb-3">NOAA Buoy {data.stationId}</h3>
+      {unavailable && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-3">
+          Data temporarily unavailable from NOAA for this station. Try another buoy or refresh later.
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="flex items-center gap-2">
           <Waves className="w-4 h-4 text-blue-600" />

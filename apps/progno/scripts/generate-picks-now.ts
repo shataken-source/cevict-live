@@ -84,17 +84,15 @@ async function generatePickForGame(
     // Calculate base probability from standings
     const baseProbability = homeWinPct / (homeWinPct + awayWinPct) || 0.5
 
-    // Prepare Claude Effect input
+    // Prepare Claude Effect input (engine uses team names + gameId for real data)
     const input: ClaudeEffectInput = {
-      gameId: game.id.toString(),
-      sport,
-      homeTeamId: homeTeam.id,
-      awayTeamId: awayTeam.id,
-      homeTeamApiId: game.teams.home.id,
-      awayTeamApiId: game.teams.away.id,
       baseProbability,
       baseConfidence: 65,
-      gameTime: new Date(game.date)
+      gameTime: new Date(game.date),
+      sport,
+      homeTeam: homeTeam?.name ?? game.teams?.home?.name,
+      awayTeam: awayTeam?.name ?? game.teams?.away?.name,
+      gameId: game.id?.toString()
     }
 
     // Calculate Claude Effect

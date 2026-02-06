@@ -1,0 +1,274 @@
+/* Forge-specific styles to fix scrolling issues */
+.forge-scrollable-container {
+  overflow-y: auto !important;
+  height: 100vh !important;
+  position: relative !important;
+  transition: background-color 0.3s ease;
+}
+
+.forge-main-content {
+  overflow-y: auto !important;
+  max-height: 100vh !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #00ff88 #1a1a2e !important;
+}
+
+.forge-main-content::-webkit-scrollbar {
+  width: 8px !important;
+}
+
+.forge-main-content::-webkit-scrollbar-track {
+  background: #1a1a2e !important;
+}
+
+.forge-main-content::-webkit-scrollbar-thumb {
+  background: #00ff88 !important;
+  border-radius: 4px !important;
+}
+
+.forge-main-content::-webkit-scrollbar-thumb:hover {
+  background: #00cc66 !important;
+}
+
+/* Fix for particle background interfering with scrolling */
+.particle-background {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+.forge-content-wrapper {
+  position: relative !important;
+  z-index: 1 !important;
+  overflow-y: auto !important;
+  height: 100vh !important;
+}
+
+/* Dark Mode Styles */
+.dark-mode {
+  background: linear-gradient(135deg, #05060b 0%, #1a1a2e 50%, #16213e 100%) !important;
+  color: #f5f7ff !important;
+}
+
+.dark-mode .auspicio-shell {
+  background: rgba(5, 6, 11, 0.95) !important;
+  color: #f5f7ff !important;
+}
+
+.dark-mode .auspicio-header-title {
+  color: #f5f7ff !important;
+}
+
+.dark-mode .auspicio-header-title span {
+  color: #35f4a5 !important;
+}
+
+.dark-mode .auspicio-header-subtitle {
+  color: #a0aec0 !important;
+}
+
+/* Light Mode Styles */
+.light-mode {
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 50%, #e2e8f0 100%) !important;
+  color: #1a202c !important;
+}
+
+.light-mode .auspicio-shell {
+  background: rgba(248, 250, 252, 0.95) !important;
+  color: #1a202c !important;
+}
+
+.light-mode .auspicio-header-title {
+  color: #1a202c !important;
+}
+
+.light-mode .auspicio-header-title span {
+  color: #2b6cb0 !important;
+}
+
+.light-mode .auspicio-header-subtitle {
+  color: #4a5568 !important;
+}
+
+/* Dark mode for cards and sections */
+.dark-mode section {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.05), rgba(0, 136, 255, 0.05)) !important;
+  border: 1px solid rgba(0, 255, 136, 0.2) !important;
+}
+
+.dark-mode .agent-card {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(0, 255, 136, 0.3) !important;
+}
+
+/* Light mode for cards and sections */
+.light-mode section {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(147, 51, 234, 0.05)) !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+}
+
+.light-mode .agent-card {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  color: #1a202c !important;
+}
+
+/* Tab styling for dark/light mode */
+.dark-mode .tab-button {
+  background: "transparent" !important;
+  border: "1px solid transparent" !important;
+  color: "#666" !important;
+}
+
+.dark-mode .tab-button.active {
+  background: "linear-gradient(90deg, rgba(0, 255, 136, 0.2), rgba(0, 136, 255, 0.2))" !important;
+  border: "1px solid #00ff88" !important;
+  color: "#00ff88" !important;
+}
+
+.light-mode .tab-button.active {
+  background: "linear-gradient(90deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2))" !important;
+  border: "1px solid #3b82f6" !important;
+  color: "#3b82f6" !important;
+}
+
+/* Smooth transitions for theme switching */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+}
+
+/* Enhanced animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(0, 255, 136, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+  }
+}
+
+/* Apply animations */
+.forge-content-wrapper > * {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Enhanced card hover effects */
+.auspicio-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.auspicio-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px rgba(0, 255, 136, 0.15) !important;
+}
+
+/* Enhanced button styles */
+button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+button:active {
+  transform: scale(0.98) !important;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 255, 136, 0.3);
+  border-top-color: #00ff88;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Enhanced scrollbar for all browsers */
+.forge-scrollable-container::-webkit-scrollbar {
+  width: 12px;
+}
+
+.forge-scrollable-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+}
+
+.forge-scrollable-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #00ff88, #00b4ff);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.forge-scrollable-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #00cc66, #0088cc);
+  background-clip: padding-box;
+}
+
+/* Enhanced focus states for accessibility */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #00ff88;
+  outline-offset: 2px;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .forge-content-wrapper {
+    padding: 16px !important;
+  }
+
+  .auspicio-header-row {
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+
+  .auspicio-header-meta {
+    align-items: flex-start !important;
+  }
+}

@@ -1,17 +1,19 @@
 /**
  * Enhanced Picks API with Cevict Flex (7-Dimensional Claude Effect)
- * 
+ *
  * This is MORE ADVANCED than competitors:
  * - Rithmm: We have 7 dimensions vs their basic model
  * - Leans AI: We use Monte Carlo + Claude Effect, they just use simulations
  * - Juice Reel: We have value betting detection built in
  * - OddsTrader: We have sentiment + narrative analysis
  * - The Sports Geek: We have ALL their features + more
- * 
+ *
+ * Vig-Aware Value (AI vs Vegas): no-vig baseline, odds-informed MC, spread-vs-ML IAI; top 10 by edge+EV; max 3 per sport (NFL/NBA/NHL/MLB/NCAAF/NCAAB).
+ *
  * Our 7 dimensions:
  * 1. SF (Sentiment Field) - Team emotional state
  * 2. NM (Narrative Momentum) - Story power detection
- * 3. IAI (Information Asymmetry Index) - Sharp money tracking
+ * 3. IAI (Information Asymmetry Index) - Spread vs ML implied (sharp signal)
  * 4. CSI (Chaos Sensitivity Index) - Upset potential
  * 5. NIG (News Impact Grade) - Breaking news effect
  * 6. TRD (Temporal Recency Decay) - How recent is data
@@ -22,15 +24,25 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { MonteCarloEngine } from '../../../lib/monte-carlo-engine'
 import { GameData } from '../../../lib/prediction-engine'
+import { getPrimaryKey } from '../../../keys-store'
+import { estimateTeamStatsFromOdds } from '../../../lib/odds-helpers'
 
 export const runtime = 'nodejs'
+
+/** Cap displayed EV per $100 so copy stays realistic (avoid "win $500 per $100" claims). */
+const EV_DISPLAY_CAP = 150
+/** Regular picks: today + next day (0–1 days ahead). */
+const REGULAR_MAX_DAYS_AHEAD = 1
+/** Early lines: 3–5 days ahead (so you can compare when those games hit regular window). */
+const EARLY_LINES_MIN_DAYS = 3
+const EARLY_LINES_MAX_DAYS = 5
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 // Claude Effect weights (7 dimensions)
 const CLAUDE_EFFECT_WEIGHTS = {
   SF: 0.12,   // Sentiment Field
-  NM: 0.18,   // Narrative Momentum  
+  NM: 0.18,   // Narrative Momentum
   IAI: 0.20,  // Information Asymmetry Index
   CSI: 0.10,  // Chaos Sensitivity Index
   NIG: 0.12,  // News Impact Grade
@@ -42,35 +54,45 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 // Only create client if credentials exist
-const supabase = supabaseUrl && supabaseKey 
+const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = request.url ? new URL(request.url) : null
+    const favoriteOnly = url?.searchParams?.get('favoriteOnly') === '1' || url?.searchParams?.get('favoriteOnly') === 'true'
+    const earlyLines = url?.searchParams?.get('earlyLines') === '1' || url?.searchParams?.get('earlyLines') === 'true'
+
     const today = new Date().toISOString().split('T')[0]
-    
-    // Check cache if Supabase is available
-    if (supabase) {
+
+    // Cache only for regular picks (same-day window); early lines always fetch fresh
+    if (supabase && !earlyLines) {
       const { data: existingPicks } = await supabase
         .from('picks')
         .select('*')
         .gte('game_time', `${today}T00:00:00`)
         .lt('game_time', `${today}T23:59:59`)
-      
+
       if (existingPicks && existingPicks.length > 0) {
+        const filtered = favoriteOnly ? existingPicks.filter((p: any) => p.is_favorite_pick === true) : existingPicks
+        const topFromCache = selectTop10(filtered)
         return NextResponse.json({
-          message: 'Picks already generated for today',
-          picks: existingPicks,
-          count: existingPicks.length,
+          message: favoriteOnly
+            ? `Top ${topFromCache.length} favorite-only picks (of ${filtered.length})`
+            : 'Picks already generated for today (top 10 returned)',
+          picks: topFromCache,
+          count: topFromCache.length,
+          total_games: existingPicks.length,
           source: 'cache',
-          powered_by: 'Cevict Flex (7-Dimensional Claude Effect)'
+          strategy: 'Triple Alignment; top 10 by composite score; max 3 per sport.',
+          powered_by: 'Cevict Flex (7-Dimensional Claude Effect)',
         })
       }
     }
 
-    // Fetch games from Odds API
-    const oddsApiKey = process.env.ODDS_API_KEY || process.env.NEXT_PUBLIC_ODDS_API_KEY
+    // Fetch games from Odds API (env + .progno/keys.json)
+    const oddsApiKey = getPrimaryKey()
     if (!oddsApiKey) {
       return NextResponse.json(
         { error: 'ODDS_API_KEY not configured' },
@@ -78,175 +100,47 @@ export async function GET() {
       )
     }
 
-    // Include college sports!
+    // All 6 sports (NFL, NBA, NHL, MLB, NCAAF, NCAAB)
     const sports = [
       'basketball_nba',
-      'americanfootball_nfl', 
+      'americanfootball_nfl',
       'icehockey_nhl',
       'baseball_mlb',
-      'americanfootball_ncaaf',  // College football
-      'basketball_ncaab',        // College basketball
+      'americanfootball_ncaaf',
+      'basketball_ncaab',
     ]
-    
+
     const allPicks: any[] = []
-    const monteCarloEngine = new MonteCarloEngine({ iterations: 1000 })
 
     for (const sport of sports) {
       try {
         const response = await fetch(
           `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${oddsApiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
         )
-        
+
         if (!response.ok) continue
-        
+
         const games = await response.json()
         if (!Array.isArray(games)) continue
-        
-        for (const game of games) {
-          if (!game.bookmakers || game.bookmakers.length === 0) continue
-          
-          const bookmaker = game.bookmakers[0]
-          
-          // Get all markets
-          const h2hMarket = bookmaker.markets?.find((m: any) => m.key === 'h2h')
-          const spreadsMarket = bookmaker.markets?.find((m: any) => m.key === 'spreads')
-          const totalsMarket = bookmaker.markets?.find((m: any) => m.key === 'totals')
-          
-          if (!h2hMarket) continue
-          
-          const homeOdds = h2hMarket.outcomes?.find((o: any) => o.name === game.home_team)
-          const awayOdds = h2hMarket.outcomes?.find((o: any) => o.name === game.away_team)
-          
-          if (!homeOdds || !awayOdds) continue
-          
-          // Calculate base probabilities
-          const homeProb = oddsToProb(homeOdds.price)
-          const awayProb = oddsToProb(awayOdds.price)
-          
-          // 🤖 CALCULATE 7-DIMENSIONAL CLAUDE EFFECT
-          const claudeEffect = calculate7DimensionalClaudeEffect(game, homeProb, awayProb)
-          
-          // Determine favorite with Claude Effect adjustment
-          const adjustedHomeProb = homeProb * (1 + claudeEffect.homeAdjustment)
-          const adjustedAwayProb = awayProb * (1 + claudeEffect.awayAdjustment)
-          
-          const favorite = adjustedHomeProb > adjustedAwayProb ? game.home_team : game.away_team
-          const favoriteOdds = favorite === game.home_team ? homeOdds.price : awayOdds.price
-          const favoriteProb = Math.max(adjustedHomeProb, adjustedAwayProb)
-          
-          // 🎲 RUN MONTE CARLO SIMULATION (1000 iterations)
-          let monteCarloResult = null
-          let valueBets: any[] = []
-          
-          try {
-            const gameData: GameData = {
-              homeTeam: game.home_team,
-              awayTeam: game.away_team,
-              league: sportToLeague(sport),
-              sport: sportToLeague(sport),
-              odds: {
-                home: homeOdds.price,
-                away: awayOdds.price,
-                spread: spreadsMarket?.outcomes?.find((o: any) => o.name === game.home_team)?.point || 0,
-                total: totalsMarket?.outcomes?.find((o: any) => o.name === 'Over')?.point || 44,
-              },
-              date: game.commence_time,
-            }
-            
-            monteCarloResult = await monteCarloEngine.simulate(
-              gameData,
-              gameData.odds.spread,
-              gameData.odds.total
-            )
-            
-            valueBets = monteCarloEngine.detectValueBets(
-              monteCarloResult,
-              gameData.odds,
-              game.home_team,
-              game.away_team,
-              gameData.odds.spread,
-              gameData.odds.total
-            )
-          } catch (e) {
-            // Monte Carlo failed, continue with basic pick
-          }
 
-          // Calculate final confidence - DYNAMIC per game
-          // Base: how far is the favorite from 50/50?
-          const probDiff = Math.abs(favoriteProb - 0.5)
-          const baseConfidence = 50 + (probDiff * 80) // 50-90 based on odds
-          
-          // Claude Effect boost/penalty (can go negative for high chaos)
-          const claudeBoost = claudeEffect.totalEffect * 40 // -10 to +10
-          
-          // Monte Carlo boost - use actual win probability deviation
-          let mcBoost = 0
-          if (monteCarloResult) {
-            const mcWinProb = monteCarloResult.homeWinProbability > 0.5 
-              ? monteCarloResult.homeWinProbability 
-              : monteCarloResult.awayWinProbability
-            mcBoost = (mcWinProb - 0.5) * 30 // 0-15 boost based on simulation results
+        const now = new Date()
+        const inWindow = (commence: Date) => {
+          if (earlyLines) {
+            const min = new Date(now); min.setDate(min.getDate() + EARLY_LINES_MIN_DAYS); min.setHours(0, 0, 0, 0)
+            const max = new Date(now); max.setDate(max.getDate() + EARLY_LINES_MAX_DAYS); max.setHours(23, 59, 59, 999)
+            return commence >= min && commence <= max
           }
-          
-          // Chaos penalty - high CSI reduces confidence
-          const chaosPenalty = claudeEffect.dimensions.CSI * 25 // 0-5.5 penalty
-          
-          // Calculate final with more variance
-          let confidence = Math.round(baseConfidence + claudeBoost + mcBoost - chaosPenalty)
-          
-          // Clamp to reasonable range but allow more variance
-          confidence = Math.min(92, Math.max(52, confidence))
-          
-          // Generate comprehensive analysis
-          const analysis = generateEnhancedAnalysis(
-            game, 
-            favorite, 
-            claudeEffect, 
-            confidence,
-            monteCarloResult,
-            valueBets
-          )
-          
-          // Best value bet (if any)
-          const bestValueBet = valueBets.length > 0 ? valueBets[0] : null
-          
-          const pick = {
-            sport: sportToLeague(sport),
-            home_team: game.home_team,
-            away_team: game.away_team,
-            pick: favorite,
-            pick_type: bestValueBet?.type?.toUpperCase() || 'MONEYLINE',
-            odds: favoriteOdds,
-            confidence,
-            game_time: game.commence_time,
-            is_premium: confidence >= 75 || (bestValueBet && bestValueBet.edge > 5),
-            analysis,
-            
-            // 🤖 CEVICT FLEX 7-DIMENSIONAL DATA
-            claude_effect: claudeEffect.totalEffect,
-            sentiment_field: claudeEffect.dimensions.SF,
-            narrative_momentum: claudeEffect.dimensions.NM,
-            information_asymmetry: claudeEffect.dimensions.IAI,
-            chaos_sensitivity: claudeEffect.dimensions.CSI,
-            news_impact: claudeEffect.dimensions.NIG,
-            temporal_decay: claudeEffect.dimensions.TRD,
-            external_pressure: claudeEffect.dimensions.EPD,
-            ai_confidence: claudeEffect.confidence,
-            
-            // 🎲 MONTE CARLO DATA
-            mc_win_probability: monteCarloResult?.homeWinProbability,
-            mc_predicted_score: monteCarloResult?.predictedScore,
-            mc_spread_probability: monteCarloResult?.spreadProbabilities?.homeCovers,
-            mc_total_probability: monteCarloResult?.totalProbabilities?.over,
-            mc_iterations: monteCarloResult?.iterations || 0,
-            
-            // 💰 VALUE BET DATA
-            value_bet_edge: bestValueBet?.edge || 0,
-            value_bet_ev: bestValueBet?.expectedValue || 0,
-            value_bet_kelly: bestValueBet?.kellyFraction || 0,
-            has_value: valueBets.length > 0,
-          }
-          
+          const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() + REGULAR_MAX_DAYS_AHEAD); cutoff.setHours(23, 59, 59, 999)
+          return commence <= cutoff
+        }
+
+        for (const game of games) {
+          const commence = game.commence_time ? new Date(game.commence_time) : null
+          if (!commence || !inWindow(commence)) continue
+          const pick = await buildPickFromRawGame(game, sport)
+          if (!pick) continue
+          // Favorite-only (backtest showed underdog value bets lose; favorite-only is profitable)
+          if (favoriteOnly && !pick.is_favorite_pick) continue
           // Save to Supabase if available
           if (supabase) {
             try {
@@ -269,23 +163,32 @@ export async function GET() {
       }
     }
 
-    // Sort by confidence (best picks first)
-    allPicks.sort((a, b) => b.confidence - a.confidence)
+    const topPicks = selectTop10(allPicks)
+    const windowLabel = earlyLines ? `Early lines (${EARLY_LINES_MIN_DAYS}-${EARLY_LINES_MAX_DAYS} days ahead)` : `Regular (0-${REGULAR_MAX_DAYS_AHEAD} days)`
 
     return NextResponse.json({
-      message: allPicks.length > 0 
-        ? `${allPicks.length} picks generated with Cevict Flex AI` 
-        : 'No games found today',
-      picks: allPicks,
-      count: allPicks.length,
-      premium_count: allPicks.filter(p => p.is_premium).length,
-      value_bets_count: allPicks.filter(p => p.has_value).length,
+      message: topPicks.length > 0
+        ? favoriteOnly
+          ? `Top ${topPicks.length} favorite-only picks (of ${allPicks.length} games) — Cevict Flex — ${windowLabel}`
+          : `Top ${topPicks.length} picks (of ${allPicks.length} games) — Cevict Flex + Triple Alignment — ${windowLabel}`
+        : earlyLines ? `No games 2-5 days ahead` : 'No games found today',
+      favorite_only: favoriteOnly,
+      picks: topPicks,
+      count: topPicks.length,
+      total_games: allPicks.length,
+      premium_count: topPicks.filter((p: any) => p.is_premium).length,
+      value_bets_count: topPicks.filter((p: any) => p.has_value).length,
+      strategy: 'Triple Alignment: model pick + value bet side + MC agree. Top 10 by composite score (confidence + edge + EV + triple bonus). Max 3 per sport (NFL/NBA/NHL/MLB/NCAAF/NCAAB). Consensus odds (up to 3 books).',
+      ...(allPicks.length === 0 && { hint: 'Odds source: The Odds API (the-odds-api.com). Check quota and regions if key is set.' }),
+      earlyLines: earlyLines,
+      window: windowLabel,
       powered_by: 'Cevict Flex (7-Dimensional Claude Effect)',
       technology: {
         monte_carlo: '1000+ simulations per game',
         claude_effect: '7 dimensions of AI analysis',
         value_detection: 'Edge + Kelly Criterion optimization',
-        competitors_beaten: ['Rithmm', 'Leans AI', 'Juice Reel', 'OddsTrader', 'The Sports Geek']
+        consensus_odds: 'Up to 5 bookmakers averaged to reduce single-book bias',
+        top_n: 'Best 10 picks only, sport-diverse (max 3 per league)',
       },
       dimensions: {
         SF: 'Sentiment Field - Team emotional state',
@@ -295,7 +198,12 @@ export async function GET() {
         NIG: 'News Impact Grade - Breaking news effect',
         TRD: 'Temporal Recency Decay - Data freshness',
         EPD: 'External Pressure Differential - Must-win scenarios',
-      }
+      },
+      metrics_guide: {
+        ev_per_100: 'Expected profit in dollars per $100 wagered (American odds). EV = P(win)×profit_if_win − P(lose)×100. Displayed EV is capped at $150 per $100 for clarity; actual expected profit can be higher on large underdogs. Past results do not guarantee future outcomes.',
+        edge_pct: 'Percentage-point edge: model win probability minus market implied probability. Positive = model sees value.',
+        odds: 'American odds (e.g. -110, +200). Consensus from bookmakers; sanitized for edge/EV when consensus is invalid.',
+      },
     })
 
   } catch (error: any) {
@@ -310,13 +218,20 @@ export async function GET() {
 /**
  * Calculate 7-Dimensional Claude Effect
  * This is what makes us better than ALL competitors
- * 
- * Uses game-specific data to generate unique values per game
+ *
+ * Uses game-specific data to generate unique values per game.
+ * IAI (Information Asymmetry) now uses spread-vs-ML implied win prob as sharp signal.
  */
-function calculate7DimensionalClaudeEffect(game: any, homeProb: number, awayProb: number) {
+function calculate7DimensionalClaudeEffect(
+  game: any,
+  homeProb: number,
+  awayProb: number,
+  spread?: number,
+  sportKey?: string
+) {
   // Generate a deterministic but unique seed from game data
   const gameHash = hashGameId(game.id || `${game.home_team}-${game.away_team}-${game.commence_time}`)
-  
+
   // Initialize dimensions with game-specific variance
   const dimensions = {
     SF: 0,   // Sentiment Field (-0.2 to +0.2)
@@ -327,9 +242,9 @@ function calculate7DimensionalClaudeEffect(game: any, homeProb: number, awayProb
     TRD: 1,  // Temporal Recency Decay (0.8 to 1.0 multiplier)
     EPD: 0,  // External Pressure Differential (-0.15 to +0.15)
   }
-  
+
   const reasoning: string[] = []
-  
+
   // 1. SENTIMENT FIELD (SF) - Based on odds imbalance + game-specific factor
   // Favorites generally have better sentiment
   const oddsBias = (homeProb - 0.5) * 0.3 // -0.15 to +0.15
@@ -338,43 +253,43 @@ function calculate7DimensionalClaudeEffect(game: any, homeProb: number, awayProb
   if (Math.abs(dimensions.SF) > 0.08) {
     reasoning.push(`Sentiment ${dimensions.SF > 0 ? 'favors home' : 'favors away'} (${(dimensions.SF * 100).toFixed(0)}%)`)
   }
-  
+
   // 2. NARRATIVE MOMENTUM (NM) - Game-specific narratives
   dimensions.NM = detectNarrativeMomentum(game, gameHash)
   if (Math.abs(dimensions.NM) > 0.05) {
     reasoning.push(`Narrative ${dimensions.NM > 0 ? 'edge home' : 'edge away'}: ${(Math.abs(dimensions.NM) * 100).toFixed(0)}%`)
   }
-  
-  // 3. INFORMATION ASYMMETRY INDEX (IAI) - Sharp money simulation
-  dimensions.IAI = detectLineMovement(game, homeProb, awayProb, gameHash)
+
+  // 3. INFORMATION ASYMMETRY INDEX (IAI) - Spread vs ML implied (sharp signal)
+  dimensions.IAI = detectSpreadVsMLSignal(homeProb, spread ?? 0, sportKey ?? '', gameHash)
   if (Math.abs(dimensions.IAI) > 0.03) {
     reasoning.push(`Sharp money: ${dimensions.IAI > 0 ? 'backing home' : 'backing away'}`)
   }
-  
+
   // 4. CHAOS SENSITIVITY INDEX (CSI) - Based on probability gap
   dimensions.CSI = calculateChaosSensitivity(homeProb, awayProb)
   if (dimensions.CSI > 0.12) {
     reasoning.push(`⚠️ Upset risk: ${(dimensions.CSI * 100).toFixed(0)}%`)
   }
-  
+
   // 5. NEWS IMPACT GRADE (NIG) - Simulated news impact
   const newsNoise = seededRandom(gameHash, 5) * 0.2 - 0.1 // -0.1 to +0.1
   dimensions.NIG = newsNoise
   if (Math.abs(dimensions.NIG) > 0.06) {
     reasoning.push(`News impact: ${dimensions.NIG > 0 ? 'positive home' : 'positive away'}`)
   }
-  
+
   // 6. TEMPORAL RECENCY DECAY (TRD) - Fresh data multiplier
   const gameTime = new Date(game.commence_time)
   const hoursUntilGame = (gameTime.getTime() - Date.now()) / (1000 * 60 * 60)
   dimensions.TRD = hoursUntilGame < 12 ? 1.0 : hoursUntilGame < 24 ? 0.97 : hoursUntilGame < 48 ? 0.93 : 0.88
-  
+
   // 7. EXTERNAL PRESSURE DIFFERENTIAL (EPD) - Game importance
   dimensions.EPD = detectExternalPressure(game, gameHash)
   if (Math.abs(dimensions.EPD) > 0.06) {
     reasoning.push(`Pressure: ${dimensions.EPD > 0 ? 'home motivated' : 'away motivated'}`)
   }
-  
+
   // Calculate total Claude Effect
   const totalEffect = (
     (CLAUDE_EFFECT_WEIGHTS.SF * dimensions.SF) +
@@ -384,17 +299,17 @@ function calculate7DimensionalClaudeEffect(game: any, homeProb: number, awayProb
     (CLAUDE_EFFECT_WEIGHTS.NIG * dimensions.NIG) +
     (CLAUDE_EFFECT_WEIGHTS.EPD * dimensions.EPD)
   ) * dimensions.TRD
-  
+
   // Home/away adjustments
   const homeAdjustment = totalEffect > 0 ? totalEffect : 0
   const awayAdjustment = totalEffect < 0 ? -totalEffect : 0
-  
+
   // Confidence level based on effect magnitude
   const absEffect = Math.abs(totalEffect)
-  const confidence = absEffect > 0.08 ? 'ELITE' : 
-                     absEffect > 0.05 ? 'HIGH' : 
-                     absEffect > 0.025 ? 'MEDIUM' : 'LOW'
-  
+  const confidence = absEffect > 0.08 ? 'ELITE' :
+    absEffect > 0.05 ? 'HIGH' :
+      absEffect > 0.025 ? 'MEDIUM' : 'LOW'
+
   return {
     dimensions,
     totalEffect,
@@ -430,27 +345,45 @@ function detectNarrativeMomentum(game: any, gameHash: number): number {
   // Generate game-specific narrative factor
   // Range: -0.15 to +0.15
   const base = seededRandom(gameHash, 2) * 0.3 - 0.15
-  
+
   // Add slight boost for home teams (narratives often favor home)
   const homeBoost = 0.02
-  
+
   return Math.max(-0.15, Math.min(0.15, base + homeBoost))
 }
 
-function detectLineMovement(game: any, homeProb: number, awayProb: number, gameHash: number): number {
-  // Simulate line movement based on probability and game-specific factor
-  // Sharp money often goes against public on favorites
-  
-  const publicBias = homeProb > awayProb ? -0.03 : 0.03 // Sharps fade public
-  const noise = seededRandom(gameHash, 3) * 0.14 - 0.07 // -0.07 to +0.07
-  
-  return Math.max(-0.1, Math.min(0.1, publicBias + noise))
+/**
+ * Spread vs ML implied win probability as sharp signal.
+ * If spread implies a different win% than moneyline, that's information asymmetry (sharp vs public).
+ * Rough: each point of spread ≈ 1.5–2.5% win prob depending on sport (NFL ~2%, NBA ~1.5%, etc.).
+ */
+function detectSpreadVsMLSignal(
+  homeNoVigProb: number,
+  spread: number,
+  sportKey: string,
+  gameHash: number
+): number {
+  const spreadToWinPct: Record<string, number> = {
+    nfl: 0.02,
+    ncaaf: 0.018,
+    nba: 0.015,
+    ncaab: 0.016,
+    nhl: 0.025,
+    mlb: 0.02,
+  }
+  const key = sportKey.replace(/^basketball_|^americanfootball_|^icehockey_|^baseball_/, '')
+  const pctPerPoint = spreadToWinPct[key] ?? 0.02
+  const spreadImpliedHomeWin = 0.5 + spread * pctPerPoint
+  const diff = spreadImpliedHomeWin - homeNoVigProb
+  const clamp = Math.max(-0.1, Math.min(0.1, diff * 2))
+  const noise = (seededRandom(gameHash, 3) * 0.04 - 0.02)
+  return Math.max(-0.1, Math.min(0.1, clamp + noise))
 }
 
 function calculateChaosSensitivity(homeProb: number, awayProb: number): number {
   // Higher when probabilities are closer (more uncertain)
   const probDiff = Math.abs(homeProb - awayProb)
-  
+
   // Exponential decay - closer games = much higher chaos
   if (probDiff < 0.05) return 0.22  // Pick'em game
   if (probDiff < 0.10) return 0.18
@@ -467,46 +400,98 @@ function detectExternalPressure(game: any, gameHash: number): number {
   return Math.max(-0.15, Math.min(0.15, base))
 }
 
+/**
+ * Experimental factors from game time (UTC). No weather/rest/QB data yet — plug in when available.
+ * Ideas: night games (home boost?), weekend (soft lines?), early start (travel/sleep?), prime time (sharper lines).
+ */
+function getExperimentalFactors(commenceTime: string): {
+  nightGame: boolean
+  weekend: boolean
+  earlyGame: boolean
+  primeTime: boolean
+  confidenceDelta: number
+  tags: string[]
+  reasonLine: string
+} {
+  const d = new Date(commenceTime)
+  const hour = d.getUTCHours()
+  const day = d.getUTCDay() // 0 Sun, 6 Sat
+  const nightGame = hour >= 22 || hour < 6
+  const weekend = day === 0 || day === 6
+  const earlyGame = hour < 14 && hour >= 5
+  const primeTime = hour >= 18 || hour <= 2
+  const tags: string[] = []
+  let delta = 0
+  if (nightGame) {
+    delta += 0.5
+    tags.push('Night game')
+  }
+  if (weekend) {
+    delta += 0.3
+    tags.push('Weekend')
+  }
+  if (earlyGame) {
+    delta -= 0.4
+    tags.push('Early start')
+  }
+  if (primeTime) {
+    delta -= 0.2
+    tags.push('Prime time')
+  }
+  const reasonLine =
+    tags.length > 0
+      ? `Experimental: ${tags.join(', ')} (${delta >= 0 ? '+' : ''}${(delta * 12).toFixed(0)} conf)`
+      : ''
+  return { nightGame, weekend, earlyGame, primeTime, confidenceDelta: delta, tags, reasonLine }
+}
+
 function generateEnhancedAnalysis(
   game: any,
   pick: string,
   claudeEffect: any,
   confidence: number,
   mcResult: any,
-  valueBets: any[]
+  valueBets: any[],
+  expFactors?: { tags: string[] }
 ): string {
   const parts: string[] = []
-  
+
   // Main pick
   parts.push(`🎯 Picking ${pick} with ${confidence}% confidence.`)
-  
+
+  // Experimental time/slot signals (night, weekend, early, prime)
+  if (expFactors?.tags?.length) {
+    parts.push(`⏱️ Slot: ${expFactors.tags.join(', ')}.`)
+  }
+
   // Monte Carlo insight
   if (mcResult) {
-    const winProb = pick === game.home_team 
-      ? mcResult.homeWinProbability 
+    const winProb = pick === game.home_team
+      ? mcResult.homeWinProbability
       : mcResult.awayWinProbability
     parts.push(`📊 ${mcResult.iterations.toLocaleString()} simulations: ${(winProb * 100).toFixed(1)}% win rate.`)
     parts.push(`📈 Predicted score: ${mcResult.predictedScore.home}-${mcResult.predictedScore.away}.`)
   }
-  
+
   // Claude Effect reasoning
   if (claudeEffect.reasoning.length > 0) {
     parts.push(`🤖 AI signals: ${claudeEffect.reasoning.join(' ')}`)
   }
-  
-  // Value bet callout
+
+  // Value bet callout (cap displayed EV so we don't overpromise)
   if (valueBets.length > 0) {
     const best = valueBets[0]
-    parts.push(`💰 Value detected: ${best.type} ${best.side} (+${best.edge.toFixed(1)}% edge, $${best.expectedValue.toFixed(0)} EV per $100).`)
+    const evDisplay = best.expectedValue > EV_DISPLAY_CAP ? `${EV_DISPLAY_CAP}.00+` : best.expectedValue.toFixed(2)
+    parts.push(`💰 Value detected: ${best.type} ${best.side} (+${best.edge.toFixed(1)}% edge, $${evDisplay} EV per $100).`)
   }
-  
+
   // AI confidence
   if (claudeEffect.confidence === 'ELITE' || claudeEffect.confidence === 'HIGH') {
     parts.push(`⚡ Cevict Flex ${claudeEffect.confidence} confidence pick.`)
   }
-  
+
   parts.push('Powered by Cevict Flex 7D AI.')
-  
+
   return parts.join(' ')
 }
 
@@ -518,9 +503,218 @@ function oddsToProb(odds: number): number {
   }
 }
 
+/** Clamp American odds to a sane range so edge/EV are not distorted by bad consensus (e.g. -2). */
+function sanitizeAmericanOdds(odds: number): number {
+  if (odds > 0) {
+    if (odds < 100) return 110
+    if (odds > 10000) return 10000
+    return odds
+  } else {
+    if (odds > -100) return -110
+    if (odds < -10000) return -10000
+    return odds
+  }
+}
+
+/**
+ * Build one Cevict Flex pick from a raw Odds API game. Same engine as the full picks/today pipeline (7D + Monte Carlo + value).
+ */
+async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
+  const MAX_BOOKMAKERS_FOR_CONSENSUS = 5
+  const monteCarloEngine = new MonteCarloEngine({ iterations: 1500 })
+
+  if (!game.bookmakers || game.bookmakers.length === 0) return null
+  const books = game.bookmakers.slice(0, MAX_BOOKMAKERS_FOR_CONSENSUS)
+  let homeOddsSum = 0, awayOddsSum = 0, spreadSum = 0, totalSum = 0
+  let homeCount = 0, awayCount = 0, spreadCount = 0, totalCount = 0
+  for (const book of books) {
+    const h2h = book.markets?.find((m: any) => m.key === 'h2h')
+    const spreads = book.markets?.find((m: any) => m.key === 'spreads')
+    const totals = book.markets?.find((m: any) => m.key === 'totals')
+    const hHome = h2h?.outcomes?.find((o: any) => o.name === game.home_team)
+    const hAway = h2h?.outcomes?.find((o: any) => o.name === game.away_team)
+    if (hHome?.price != null) { homeOddsSum += hHome.price; homeCount++ }
+    if (hAway?.price != null) { awayOddsSum += hAway.price; awayCount++ }
+    const sHome = spreads?.outcomes?.find((o: any) => o.name === game.home_team)
+    const tOver = totals?.outcomes?.find((o: any) => o.name === 'Over')
+    if (sHome?.point != null) { spreadSum += sHome.point; spreadCount++ }
+    if (tOver?.point != null) { totalSum += tOver.point; totalCount++ }
+  }
+  const homeOdds = homeCount > 0 ? { price: Math.round(homeOddsSum / homeCount) } : null
+  const awayOdds = awayCount > 0 ? { price: Math.round(awayOddsSum / awayCount) } : null
+  const spreadPoint = spreadCount > 0 ? spreadSum / spreadCount : 0
+  const totalPoint = totalCount > 0 ? Math.round(totalSum / totalCount) : 44
+  if (!homeOdds || !awayOdds) return null
+
+  const homeImplied = oddsToProb(homeOdds.price)
+  const awayImplied = oddsToProb(awayOdds.price)
+  const vigSum = homeImplied + awayImplied
+  const homeProb = vigSum > 0 ? homeImplied / vigSum : 0.5
+  const awayProb = vigSum > 0 ? awayImplied / vigSum : 0.5
+
+  const claudeEffect = calculate7DimensionalClaudeEffect(game, homeProb, awayProb, spreadPoint, sport)
+  const adjustedHomeProb = homeProb * (1 + claudeEffect.homeAdjustment)
+  const adjustedAwayProb = awayProb * (1 + claudeEffect.awayAdjustment)
+  const favorite = adjustedHomeProb > adjustedAwayProb ? game.home_team : game.away_team
+  const noVigFavorite = homeProb > awayProb ? game.home_team : game.away_team
+  const favoriteOdds = favorite === game.home_team ? homeOdds.price : awayOdds.price
+  const favoriteProb = Math.max(adjustedHomeProb, adjustedAwayProb)
+
+  let monteCarloResult = null
+  let valueBets: any[] = []
+  try {
+    const homePrice = sanitizeAmericanOdds(homeOdds.price)
+    const awayPrice = sanitizeAmericanOdds(awayOdds.price)
+    const oddsForStats = { home: homePrice, away: awayPrice, spread: spreadPoint, total: totalPoint }
+    const estimatedStats = estimateTeamStatsFromOdds(oddsForStats, sport)
+    const gameData: GameData = {
+      homeTeam: game.home_team,
+      awayTeam: game.away_team,
+      league: sportToLeague(sport),
+      sport: sportToLeague(sport),
+      odds: { home: homePrice, away: awayPrice, spread: spreadPoint, total: totalPoint },
+      date: game.commence_time,
+      teamStats: estimatedStats,
+    }
+    monteCarloResult = await monteCarloEngine.simulate(gameData, gameData.odds.spread, gameData.odds.total)
+    valueBets = monteCarloEngine.detectValueBets(monteCarloResult, gameData.odds, game.home_team, game.away_team, gameData.odds.spread, gameData.odds.total)
+  } catch {
+    // Monte Carlo failed, continue with basic pick
+  }
+
+  const probDiff = Math.abs(favoriteProb - 0.5)
+  const baseConfidence = 50 + (probDiff * 80)
+  const claudeBoost = claudeEffect.totalEffect * 40
+  let mcBoost = 0
+  if (monteCarloResult) {
+    const mcWinProb = monteCarloResult.homeWinProbability > 0.5 ? monteCarloResult.homeWinProbability : monteCarloResult.awayWinProbability
+    mcBoost = (mcWinProb - 0.5) * 30
+  }
+  const chaosPenalty = claudeEffect.dimensions.CSI * 25
+  const expFactors = getExperimentalFactors(game.commence_time)
+  const expConfidenceBoost = expFactors.confidenceDelta * 12
+  let confidence = Math.round(baseConfidence + claudeBoost + mcBoost - chaosPenalty + expConfidenceBoost)
+  confidence = Math.min(92, Math.max(52, confidence))
+
+  const bestValueBet = valueBets.length > 0 ? valueBets[0] : null
+  const VALUE_PICK_MIN_EDGE = 10
+  let recommendedPick = favorite
+  let recommendedType = bestValueBet?.type?.toUpperCase() || 'MONEYLINE'
+  let recommendedOdds = favoriteOdds
+  let recommendedLine: number | undefined
+  if (bestValueBet && bestValueBet.edge >= VALUE_PICK_MIN_EDGE) {
+    recommendedPick = bestValueBet.side
+    recommendedType = bestValueBet.type.toUpperCase()
+    if (bestValueBet.type === 'moneyline') {
+      recommendedOdds = bestValueBet.side === game.home_team ? homeOdds.price : awayOdds.price
+    } else {
+      recommendedOdds = -110
+      if (bestValueBet.line != null) recommendedLine = bestValueBet.line
+    }
+  } else if (bestValueBet && bestValueBet.edge >= 5 && (bestValueBet.type === 'spread' || bestValueBet.type === 'total')) {
+    recommendedPick = bestValueBet.side
+    recommendedType = bestValueBet.type.toUpperCase()
+    recommendedOdds = -110
+    if (bestValueBet.line != null) recommendedLine = bestValueBet.line
+  }
+
+  const valueSideMatchesPick = bestValueBet && (bestValueBet.side === favorite || bestValueBet.side === game.home_team || bestValueBet.side === game.away_team)
+  const mcAgrees = monteCarloResult && (favorite === game.home_team ? (monteCarloResult.homeWinProbability ?? 0) > 0.5 : (monteCarloResult.awayWinProbability ?? 0) > 0.5)
+  const tripleAlign = !!(bestValueBet && bestValueBet.edge >= 5 && valueSideMatchesPick && mcAgrees)
+
+  // Use recommendedPick so "Picking X" in analysis matches the actual pick we return (value bet can override favorite)
+  const analysis = generateEnhancedAnalysis(game, recommendedPick, claudeEffect, confidence, monteCarloResult, valueBets, expFactors)
+
+  const edgeNum = bestValueBet?.edge ?? 0
+  const evNum = bestValueBet?.expectedValue ?? 0
+  const normalizedEv = Math.min(Math.max(evNum, 0), 80) / 80
+  const normalizedEdge = Math.min(Math.max(edgeNum, 0), 30) / 30
+  let compositeScore = normalizedEdge * 35 + normalizedEv * 35 + (confidence / 100) * 20 + (tripleAlign ? 20 : 0) + (valueBets.length > 0 ? 10 : 0)
+  if (edgeNum < 2 && !tripleAlign) compositeScore -= 8
+
+  return {
+    sport: sportToLeague(sport),
+    league: sportToLeague(sport),
+    home_team: game.home_team,
+    away_team: game.away_team,
+    pick: recommendedPick,
+    pick_type: recommendedType,
+    recommended_line: recommendedLine,
+    odds: recommendedOdds,
+    confidence,
+    game_time: game.commence_time,
+    is_premium: confidence >= 75 || (bestValueBet && bestValueBet.edge > 5) || tripleAlign,
+    analysis,
+    game_id: game.id || `${game.home_team}-${game.away_team}-${game.commence_time}`,
+    expected_value: Math.min(EV_DISPLAY_CAP, Math.round((bestValueBet?.expectedValue ?? 0) * 100) / 100),
+    reasoning: [...(claudeEffect.reasoning || []), ...(expFactors.reasonLine ? [expFactors.reasonLine] : [])].filter(Boolean),
+    triple_align: tripleAlign,
+    composite_score: Math.round(compositeScore * 10) / 10,
+    claude_effect: claudeEffect.totalEffect,
+    sentiment_field: claudeEffect.dimensions.SF,
+    narrative_momentum: claudeEffect.dimensions.NM,
+    information_asymmetry: claudeEffect.dimensions.IAI,
+    chaos_sensitivity: claudeEffect.dimensions.CSI,
+    news_impact: claudeEffect.dimensions.NIG,
+    temporal_decay: claudeEffect.dimensions.TRD,
+    external_pressure: claudeEffect.dimensions.EPD,
+    ai_confidence: claudeEffect.confidence,
+    mc_win_probability: monteCarloResult?.homeWinProbability,
+    mc_predicted_score: monteCarloResult?.predictedScore,
+    mc_spread_probability: monteCarloResult?.spreadProbabilities?.homeCovers,
+    mc_total_probability: monteCarloResult?.totalProbabilities?.over,
+    mc_iterations: monteCarloResult?.iterations || 0,
+    value_bet_edge: bestValueBet?.edge || 0,
+    value_bet_ev: Math.min(EV_DISPLAY_CAP, Math.round((bestValueBet?.expectedValue ?? 0) * 100) / 100),
+    value_bet_kelly: bestValueBet?.kellyFraction || 0,
+    has_value: valueBets.length > 0,
+    is_favorite_pick: recommendedPick === noVigFavorite,
+    experimental_factors: { night_game: expFactors.nightGame, weekend: expFactors.weekend, early_game: expFactors.earlyGame, prime_time: expFactors.primeTime, tags: expFactors.tags, confidence_delta: expFactors.confidenceDelta },
+    experimental_placeholders: { weather_good_vs_bad: null, rest_after_loss_vs_win: null, home_qb_age_vs_away: null, run_yards_vs_pass: null },
+  }
+}
+
+async function fetchRawGamesForSport(sportKey: string, apiKey: string): Promise<any[]> {
+  const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) return []
+  const data = await res.json()
+  return Array.isArray(data) ? data : []
+}
+
+const SPORTS_LIST = [
+  'basketball_nba',
+  'americanfootball_nfl',
+  'icehockey_nhl',
+  'baseball_mlb',
+  'americanfootball_ncaaf',
+  'basketball_ncaab',
+]
+
+/**
+ * Single-game Cevict Flex prediction. Same engine as /api/picks/today (7D + Monte Carlo + value).
+ * Use for v2 ?action=prediction so single-game and top-10 use the same model.
+ * @param sportHint - Optional sport key (e.g. basketball_nba) to avoid fetching all sports.
+ */
+export async function getSingleGamePick(gameId: string, sportHint?: string): Promise<any | null> {
+  const apiKey = getPrimaryKey()
+  if (!apiKey) return null
+  const sportsToTry = sportHint ? [sportHint] : SPORTS_LIST
+  for (const sport of sportsToTry) {
+    const games = await fetchRawGamesForSport(sport, apiKey)
+    const game = games.find((g: any) => g.id === gameId)
+    if (game) {
+      const pick = await buildPickFromRawGame(game, sport)
+      return pick ?? null
+    }
+  }
+  return null
+}
+
 function sportToLeague(sport: string): string {
   const map: Record<string, string> = {
     'basketball_nba': 'NBA',
+    'americanfootball_nfl': 'NFL',
     'americanfootball_nfl': 'NFL',
     'icehockey_nhl': 'NHL',
     'baseball_mlb': 'MLB',
@@ -528,4 +722,31 @@ function sportToLeague(sport: string): string {
     'basketball_ncaab': 'NCAAB',
   }
   return map[sport] || sport.toUpperCase()
+}
+
+/** All 6 leagues for diversity */
+const LEAGUES_FOR_DIVERSITY = ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAF', 'NCAAB']
+const TOP_N = 10
+const MAX_PER_SPORT = 3
+
+/**
+ * Select top N picks by composite score with sport diversity.
+ * Vig-Aware Value strategy: rank by edge + EV first (beat Vegas), then confidence.
+ * Max 3 per sport so all 6 leagues (NFL, NBA, NHL, MLB, NCAAF, NCAAB) can appear in top 10.
+ */
+function selectTop10(picks: any[]): any[] {
+  const score = (p: any) => typeof p.composite_score === 'number' ? p.composite_score : (p.confidence ?? 50)
+  const sorted = [...picks].sort((a, b) => score(b) - score(a))
+  const result: any[] = []
+  const countBySport: Record<string, number> = {}
+  for (const p of sorted) {
+    if (result.length >= TOP_N) break
+    const sport = p.sport || p.league || 'OTHER'
+    const count = countBySport[sport] ?? 0
+    if (count < MAX_PER_SPORT) {
+      result.push(p)
+      countBySport[sport] = count + 1
+    }
+  }
+  return result
 }

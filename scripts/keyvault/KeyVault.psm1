@@ -18,6 +18,23 @@ function Get-KeyVaultRepoRoot {
 }
 
 function Get-KeyVaultStorePath {
+  # Allow overriding the store location (recommended if you keep secrets in C:\Cevict_Vault).
+  $override = [string]$env:KEYVAULT_STORE_PATH
+  if ($override) { return $override }
+
+  # Auto-detect common external vault locations (Windows hides extensions sometimes).
+  $candidates = @(
+    'C:\Cevict_Vault\env-store.json',
+    'C:\Cevict_Vault\env-store.json.txt',
+    'C:\Cevict_Vault\vault\secrets\env-store.json',
+    'C:\Cevict_Vault\vault\secrets\env-store.json.txt',
+    'C:\Cevict_Vault\secrets\env-store.json',
+    'C:\Cevict_Vault\secrets\env-store.json.txt'
+  )
+  foreach ($p in $candidates) {
+    if (Test-Path -LiteralPath $p) { return $p }
+  }
+
   $root = Get-KeyVaultRepoRoot
   return (Join-Path $root 'vault\secrets\env-store.json')
 }
@@ -245,6 +262,7 @@ Export-ModuleMember -Function `
   Get-KeyVaultStore, `
   Get-KeyVaultSecret, `
   Set-KeyVaultSecret, `
+  Save-KeyVaultStore, `
   Resolve-KeyVaultVarValue, `
   Sync-KeyVaultEnvFromManifest, `
   Sync-KeyVaultAllApps

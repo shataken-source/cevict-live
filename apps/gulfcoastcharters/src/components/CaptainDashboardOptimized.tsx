@@ -8,8 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, DollarSign, Users, CheckCircle, Clock, Mail, Shield, Anchor } from 'lucide-react';
+import { Calendar, DollarSign, Users, CheckCircle, Clock, Mail, Shield, Anchor, Briefcase } from 'lucide-react';
 import { ReviewModeration } from './ReviewModeration';
+import CustomEmailPurchase from './CustomEmailPurchase';
 import { supabase } from '@/lib/supabase';
 import CaptainEarnings from './CaptainEarnings';
 import CaptainAvailabilityCalendar from './CaptainAvailabilityCalendar';
@@ -46,11 +47,13 @@ export default function CaptainDashboardOptimized() {
   const [activeTab, setActiveTab] = useState('bookings');
 
   const [captainId, setCaptainId] = useState<string | null>(null);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get captain ID from auth
+    // Get captain ID and auth user ID
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
+        setAuthUserId(user.id);
         supabase
           .from('captain_profiles')
           .select('id')
@@ -215,9 +218,10 @@ export default function CaptainDashboardOptimized() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="bookings">Bookings</TabsTrigger>
             <TabsTrigger value="operations">Operations</TabsTrigger>
+            <TabsTrigger value="business">Business</TabsTrigger>
             <TabsTrigger value="compliance">Compliance</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="reviews">Reviews</TabsTrigger>
@@ -323,6 +327,25 @@ export default function CaptainDashboardOptimized() {
               </Card>
             )}
             <CaptainAlertPreferences />
+          </TabsContent>
+
+          <TabsContent value="business" className="space-y-6">
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <Briefcase className="w-5 h-5" />
+                Business &amp; Email
+              </h3>
+              {authUserId ? (
+                <CustomEmailPurchase
+                  userId={authUserId}
+                  userType="captain"
+                  currentPoints={0}
+                  onPurchaseSuccess={() => {}}
+                />
+              ) : (
+                <p className="text-gray-600">Loading...</p>
+              )}
+            </Card>
           </TabsContent>
 
           <TabsContent value="compliance" className="space-y-6">

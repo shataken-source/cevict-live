@@ -30,7 +30,7 @@ interface KalshiPick {
 // GET handler - fetch picks
 export async function GET(request: Request) {
   const startTime = Date.now();
-  
+
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category') || 'all';
@@ -41,27 +41,28 @@ export async function GET(request: Request) {
     // CRITICAL: ONLY USE LIVE DATA - NO FALLBACKS
     // Add timeout wrapper
     const fetchPromise = fetchLiveKalshiPicks(category === 'all' ? undefined : category);
-    const timeoutPromise = new Promise((_, reject) => 
+    const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('fetchLiveKalshiPicks timed out after 5 seconds')), 5000)
     );
-    
+
     const livePicks = await Promise.race([fetchPromise, timeoutPromise]) as any[];
-    
+
     const elapsed = Date.now() - startTime;
     console.log(`[${new Date().toISOString()}] Fetched ${livePicks?.length || 0} picks in ${elapsed}ms`);
-    
-    if (!livePicks || livePicks.length === 0) {
-      console.error('❌ NO LIVE DATA AVAILABLE - Alpha-Hunter may not be running');
-      return NextResponse.json({
-        success: false,
-        error: 'NO_LIVE_DATA',
-        message: 'No live predictions available. Alpha-Hunter bot may not be running or no high-confidence picks found.',
-        timestamp: new Date().toISOString(),
-        elapsed: `${elapsed}ms`,
-      }, { status: 503 });
-    }
 
-    console.log(`✅ Using LIVE data from alpha-hunter: ${livePicks.length} picks`);
+    if (!livePicks || livePicks.length === 0) {
+      console.log(`[Kalshi picks] No live data (Supabase bot_predictions empty or not configured). Elapsed: ${elapsed}ms`);
+      return NextResponse.json({
+        success: true,
+        timestamp: new Date().toISOString(),
+        category,
+        count: 0,
+        picks: [],
+        isLiveData: false,
+        stats: { avgEdge: 0, avgConfidence: 0, yesPicks: 0, noPicks: 0 },
+        message: 'No Kalshi predictions yet. Add Supabase credentials and populate bot_predictions (e.g. Alpha-Hunter) for live picks.',
+      });
+    }
 
     // Sort by edge (highest first) and limit
     const sortedPicks = livePicks
@@ -74,10 +75,10 @@ export async function GET(request: Request) {
       category,
       count: sortedPicks.length,
       picks: sortedPicks,
-      isLiveData: true, // ALWAYS true - we removed fallback logic
+      isLiveData: true,
       stats: {
-        avgEdge: sortedPicks.reduce((sum, p) => sum + p.edge, 0) / sortedPicks.length,
-        avgConfidence: sortedPicks.reduce((sum, p) => sum + p.confidence, 0) / sortedPicks.length,
+        avgEdge: sortedPicks.length ? sortedPicks.reduce((sum, p) => sum + p.edge, 0) / sortedPicks.length : 0,
+        avgConfidence: sortedPicks.length ? sortedPicks.reduce((sum, p) => sum + p.confidence, 0) / sortedPicks.length : 0,
         yesPicks: sortedPicks.filter(p => p.pick === 'YES').length,
         noPicks: sortedPicks.filter(p => p.pick === 'NO').length,
       },
@@ -85,8 +86,8 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error('❌ Error fetching Kalshi picks:', error);
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'FETCH_ERROR',
         message: error.message,
         timestamp: new Date().toISOString(),
@@ -108,16 +109,16 @@ export async function POST(request: Request) {
     // NOTE: This endpoint is now optional since the landing page reads from trade_history directly
     const apiKey = request.headers.get('x-api-key');
     const expectedKey = process.env.PROGNO_INTERNAL_API_KEY;
-    
+
     // Allow if:
     // 1. API key matches expected key
     // 2. No expected key is set (development mode) - allow any key or no key
     // 3. Request is from localhost (internal use)
     // 4. API key is the default dev key (for backward compatibility)
-    const isLocalhost = request.headers.get('host')?.includes('localhost') || 
-                       request.headers.get('host')?.includes('127.0.0.1');
+    const isLocalhost = request.headers.get('host')?.includes('localhost') ||
+      request.headers.get('host')?.includes('127.0.0.1');
     const isDevKey = apiKey === 'dev-key-12345';
-    
+
     if (expectedKey && apiKey !== expectedKey && !isLocalhost && !isDevKey) {
       // Only reject if we have an expected key AND it doesn't match AND it's not localhost AND it's not the dev key
       return NextResponse.json(

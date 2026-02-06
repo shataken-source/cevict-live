@@ -10,8 +10,7 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-
-
+import { Calendar as CalendarIcon } from 'lucide-react';
 
 interface CharterDetailsProps {
   charterId: string;
@@ -22,6 +21,9 @@ export default function CharterDetails({ charterId }: CharterDetailsProps) {
   const { getReviewsByCharter, addReview } = useAppContext();
   const charterReviews = getReviewsByCharter(charterId);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showCalendarDialog, setShowCalendarDialog] = useState(false);
+  const [prefilledDate, setPrefilledDate] = useState<string | undefined>();
+  const [prefilledTimeSlot, setPrefilledTimeSlot] = useState<string | undefined>();
 
   if (!charter) {
     return (
@@ -123,8 +125,15 @@ export default function CharterDetails({ charterId }: CharterDetailsProps) {
             </div>
 
             <button
+              onClick={() => setShowCalendarDialog(true)}
+              className="w-full bg-blue-900 hover:bg-blue-800 text-white py-4 px-6 rounded-lg text-xl font-semibold transition mb-4 flex items-center justify-center gap-2"
+            >
+              <CalendarIcon className="h-5 w-5" />
+              Check availability & book
+            </button>
+            <button
               onClick={handleBooking}
-              className="w-full bg-blue-900 hover:bg-blue-800 text-white py-4 px-6 rounded-lg text-xl font-semibold transition mb-4"
+              className="w-full border border-blue-900 text-blue-900 hover:bg-blue-50 py-3 px-6 rounded-lg font-semibold transition"
             >
               Contact Captain
             </button>
@@ -202,11 +211,31 @@ export default function CharterDetails({ charterId }: CharterDetailsProps) {
         </div>
 
 
+        {/* Live booking calendar (availability, holds, waitlist) */}
+        <BookingCalendar
+          open={showCalendarDialog}
+          onOpenChange={setShowCalendarDialog}
+          charter={charter}
+          captainId={(charter as any).captain_id ?? charter.id}
+          onTimeSlotSelect={(date, slot) => {
+            setShowCalendarDialog(false);
+            setPrefilledDate(date.toISOString().split('T')[0]);
+            setPrefilledTimeSlot(slot?.time_slot ?? undefined);
+            setShowBookingModal(true);
+          }}
+        />
+
         {/* Booking Modal */}
-        <BookingModal 
-          isOpen={showBookingModal} 
-          onClose={() => setShowBookingModal(false)} 
-          charter={charter} 
+        <BookingModal
+          isOpen={showBookingModal}
+          onClose={() => {
+            setShowBookingModal(false);
+            setPrefilledDate(undefined);
+            setPrefilledTimeSlot(undefined);
+          }}
+          charter={charter}
+          initialDate={prefilledDate}
+          initialTimeSlot={prefilledTimeSlot}
         />
 
         {/* Chat Widget */}

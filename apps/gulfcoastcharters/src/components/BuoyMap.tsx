@@ -27,14 +27,21 @@ export default function BuoyMap({ onBuoySelect }: BuoyMapProps) {
 
   const fetchBuoys = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('noaa-buoy-data', {
-        body: { action: 'list' }
-      });
-
-      if (error) throw error;
-      if (data.buoys) {
-        setBuoys(data.buoys);
+      // Prefer Next.js API (works without Edge Function)
+      const apiRes = await fetch('/api/noaa-buoy?action=list');
+      if (apiRes.ok) {
+        const data = await apiRes.json();
+        if (data.buoys) {
+          setBuoys(data.buoys);
+          return;
+        }
       }
+      // Fallback: Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('noaa-buoy-data', {
+        body: { action: 'list' },
+      });
+      if (error) throw error;
+      if (data?.buoys) setBuoys(data.buoys);
     } catch (err) {
       console.error('Error fetching buoys:', err);
     }

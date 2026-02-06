@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 
 const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_GOOGLE_ADS_CLIENT_ID || 'ca-pub-0940073536675562'
+const SITE_VERIFY = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || ''
 import { validateStartup } from '@/lib/startup-validation'
 
 // Validate environment on startup (non-blocking)
@@ -63,10 +64,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    // Add your verification codes here when available
-    // google: 'your-google-verification-code',
-    // yandex: 'your-yandex-verification-code',
-    // yahoo: 'your-yahoo-verification-code',
+    ...(SITE_VERIFY && { google: SITE_VERIFY }),
   },
 }
 
@@ -78,6 +76,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {SITE_VERIFY ? <meta name="google-site-verification" content={SITE_VERIFY} /> : null}
         <meta name="google-adsense-account" content={ADSENSE_CLIENT} />
         <script
           async

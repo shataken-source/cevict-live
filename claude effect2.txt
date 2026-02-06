@@ -1,0 +1,409 @@
+# Claude Effect Data Sources Audit
+
+**Date:** January 28, 2026  
+**Scope:** `apps/progno` Claude Effect implementation (Sentiment Field, Narrative Momentum, and related data collection)  
+**Purpose:** Document all data bots, sources, and collection methods; audit for surveillance/vulnerability-profiling risk; provide trim recommendations to stay in "public reporting only" territory.
+
+---
+
+## Executive Summary
+
+The Claude Effect is a structured sports prediction system that uses **7 dimensions** (sentiment, narrative, chaos, information asymmetry, network influence, emergent patterns, temporal decay) to adjust game probabilities. **Phase 1 (Sentiment Field) is the most mature spec**, with collectors and schema defined for press conferences, social media (Twitter/Instagram), news, and injury data.
+
+**Current state:**
+- ✅ **Specified:** Twitter/X, Instagram, News, Press conferences, Weather, Injuries, Line movement.
+- ⏳ **Implemented/Live:** Twitter API v2 (partial), News RSS (partial), Weather API (OpenWeatherMap), Injury scraper (placeholder).
+- ❌ **TODO:** Instagram live scraper, Press conference transcript API, Odds API integration, Social interaction tracking.
+
+**Risk assessment:**
+- **Low risk:** Press conference tone/confidence, news headlines, injury reports, weather, line movement.
+- **High risk:** Instagram emotional inference signals ("sad music story", "cryptic story", "went silent"), personal/family/off-field sentiment keywords, undefined `external_personal` narrative type.
+- **Recommendation:** Remove or narrow Instagram inference signals; remove `personal`/`family`/`off-field` as explicit sentiment keywords; define or do not implement `external_personal` narrative.
+
+---
+
+## 1. Data Collection Bots & Sources
+
+### Phase 1: Sentiment Field (SF) – Primary Collectors
+
+| **Bot/Collector** | **Data Source** | **Method** | **Scope** | **Status** | **Schema** | **Risk Level** |
+|---|---|---|---|---|---|---|
+| **Twitter Collector** | Twitter/X (public posts) | Twitter API v2 (search by team/hashtag) | Players, coaches, beat reporters, team officials, fans. Game week: 15 min intervals; game day: 5 min; post-game: 10 min for 24 hrs. Lookback: 7 days. | ⏳ **Specified, API keys config ready** | `social_posts` table: author_id, author_type, content, engagement (likes, retweets, replies), timestamp, sentiment_score | **Low** |
+| **Instagram Collector** | Instagram (public posts & stories) | Native scraper or Instagram Graph API (config toggle in spec) | Same cadence as Twitter. Captures posts, stories, follows/unfollows. | ❌ **Placeholder, not live** | `social_posts` table: same as Twitter + story metadata | **HIGH** ⚠️ |
+| **News Collector** | News aggregators (ESPN, The Athletic, Yahoo, CBS, Bleacher Report, local outlets, fan sites) | NewsAPI.org + RSS feeds | Headline sentiment, injury mentions, narrative keywords. Tiered weights (ESPN 1.0, Yahoo 0.8, Bleacher Report 0.3–0.5). | ⏳ **RSS feeds live, API partial** | `news_articles` table: source, headline, body (preview), sentiment_signal (negative/positive/injury), timestamp, source_weight | **Low** |
+| **Press Conference Collector** | Press conferences (coaches, players, team officials) | Manual transcript entry (Phase 1); API integration planned for Phase 2 (transcript APIs like Rev.com, AWS Transcribe) | Sentiment, confidence score, deflection count ("we'll see", "no comment"), injury mentions, narrative keywords, deviation from speaker baseline. | ❌ **Manual only, Phase 2 TBD** | `press_conferences` table: speaker_id, speaker_role, transcript, sentiment_score, deflection_count, deviation_from_norm, timestamp | **Low** |
+| **Injury Collector** | Injury reports (team announcements, beat reporters, ESPN injury tracker) | Web scraper + API integration | Current injury status, severity, return timeline. | ⏳ **Scraper placeholder, logic exists** | `injuries` table: player_id, status, severity, return_date | **Low** |
+| **Weather Collector** | Weather data | OpenWeatherMap API | Temperature, wind, precipitation for game location. Used by CSI (Chaos dimension). | ✅ **Live** | `weather_readings` table: game_id, temp, wind, precip, timestamp | **Low** |
+| **Line Movement Tracker** | Odds/sportsbook APIs | Odds API, bet splits (placeholder) | Opening line, current line, movement, bet distribution by side. Used by IAI (Information Asymmetry dimension). | ⏳ **Spec exists, implementation partial** | `line_movements` table: game_id, sport, opening_line, current_line, movement, timestamp | **Low** |
+
+### Phase 2–7: Additional Collectors (Future)
+
+| **Phase** | **Collector** | **Data Source** | **Status** |
+|---|---|---|---|
+| **Phase 2** | Schedule / Roster / Rivalry Mapper | Team schedule, roster, historical rivalry data | Spec only |
+| **Phase 3** | Odds API (expanded) | Full odds history, sharp/public bet splits | Placeholder config |
+| **Phase 4** | Referee Database | Referee assignments, historical bias data | Config placeholder |
+| **Phase 5** | Social Interaction Tracker | Follows, unfollows, mentions, interactions between players/coaches | **Not yet implemented** (see Section 4) |
+| **Phase 6** | Recent Events Timeline | Game results, announcements, milestones | Spec only |
+| **Phase 7** | Historical Pattern Detector | Game outcomes, ML training data | Spec only |
+
+---
+
+## 2. Data Sources & Scoring Weights
+
+### Sentiment Field: Input Sources & Weights
+
+**From spec: `01-SENTIMENT-FIELD-SPEC.md`**
+
+#### Social Media Sources
+
+| **Source** | **Author Type** | **Weight** | **Signals** | **Collection Cadence** |
+|---|---|---|---|---|
+| **Twitter/X** | Players | 0.25 | Posts, retweets, replies, engagement (likes, retweets, replies) | Game week: 15 min; Game day: 5 min; Post-game: 10 min for 24 hrs; Lookback: 7 days |
+| **Twitter/X** | Coaches | 0.10 | Posts, engagement | Same as players |
+| **Twitter/X** | Beat reporters / Journalists | 0.20 | Analysis, commentary, breaking news | Same as players |
+| **Twitter/X** | Team officials | 0.05 | Announcements, roster moves, injury updates | Same as players |
+| **Twitter/X** | Fans | 0.05 | Sentiment, hype, concern | Same as players |
+| **Instagram** | Players & coaches | Varies (0.20–0.25 for players) | Posts, stories, engagement, follows/unfollows, mood signals | Same cadence as Twitter |
+| **News** | ESPN, The Athletic, Yahoo, CBS, Bleacher Report, local outlets, fan sites | 1.0 (ESPN), 0.8 (Yahoo/CBS), 0.5 (Bleacher Report), 0.3–0.5 (local/fan sites) | Headlines (negative/positive/injury), article text, narrative keywords | Continuous; indexed by timestamp |
+
+#### Press Conference Sources
+
+| **Source** | **Author** | **Weight** | **Signals** |
+|---|---|---|---|
+| **Press conferences** | Head coach | 0.15 | Transcript, sentiment, deflection count, deviation from norm |
+| **Press conferences** | Coordinators (OC, DC) | 0.05 | Same signals |
+| **Press conferences** | Key players | 0.10 | Same signals |
+
+#### Injury & External Data
+
+| **Source** | **Weight** | **Signals** |
+|---|---|---|
+| **Injury reports** | Scoring-engine-specific (CSI dimension) | Injury status, severity, return timeline |
+| **Weather** | CSI (Chaos) | Temperature, wind, precipitation |
+| **Line movement** | IAI (Information Asymmetry) | Opening line, current line, movement, bet distribution |
+
+---
+
+## 3. Database Schema & Sentiment Aspects
+
+### Core Tables (from spec & code)
+
+```sql
+-- Sentiment Field core tables
+team_baselines (team_id, speaker_id, baseline_sentiment, baseline_deflection, updated_at)
+sentiment_readings (game_id, source_type, sentiment_score, timestamp, metadata)
+social_posts (id, author_id, author_type, platform, content, engagement, timestamp, sentiment_score)
+press_conferences (id, game_id, speaker_id, speaker_role, transcript, sentiment_score, deflection_count, deviation_from_norm, timestamp)
+injuries (id, game_id, player_id, status, severity, return_date, timestamp)
+weather_readings (id, game_id, temp, wind, precipitation, timestamp)
+line_movements (id, game_id, sport, opening_line, current_line, movement, timestamp)
+news_articles (id, source, headline, body, sentiment_signal, source_weight, timestamp)
+```
+
+### Sentiment Aspects (NLP Keywords) – From `app/lib/sentiment/aspects.ts`
+
+**Aspect categories used for NLP extraction and scoring:**
+
+| **Aspect** | **Category** | **Keywords** | **Risk Level** |
+|---|---|---|---|
+| Confidence | Internal | confident, assured, ready, poised, composed | Low |
+| Deflection | Internal | "we'll see", "no comment", "one game at a time", vague, evasive | Low |
+| Injury | Internal | injury, out, doubtful, questionable, return | Low |
+| **Personal** | **External** | **personal, private, individual, private life** | **HIGH ⚠️** |
+| **Family** | **External** | **family, wife, children, mother, father, parent, son, daughter** | **HIGH ⚠️** |
+| **Off-field** | **External** | **off-field, off the field, personal life, home, relationship** | **HIGH ⚠️** |
+| Contract | External | contract, holdout, trade, extension, negotiation | Medium |
+| Legal | External | arrest, lawsuit, investigation, charged, legal | Medium |
+| Media | External | media attention, spotlight, headlines, press | Low |
+| Trade/Rumor | External | trade, rumor, speculation, free agent | Low |
+| Distraction | External | distraction, focus, preoccupied, scattered | Medium |
+
+**⚠️ Flag:** `personal`, `family`, `off-field` are **explicit NLP keywords** designed to tag and extract mentions of personal/family/off-field matters from news, social posts, and press conferences. Even though the *source* is public, the *system* is systematically identifying and scoring personal distress signals. This is the primary boundary-case risk.
+
+---
+
+## 4. Narrative Types & Catalogs
+
+### Narrative Catalog – From `app/lib/narrative/catalog.ts`
+
+| **Narrative Type** | **Category** | **Keywords** | **Patterns** | **Source Requirement** | **Risk Level** | **Status** |
+|---|---|---|---|---|---|---|
+| **emotional_tragedy** | Emotional (External) | tragedy, death, passed away, loss, honor, memory, tribute, memorial | "Playing after/following death/tragedy/loss", "honor memory", "tribute/memorial game" | ✅ News/press (public report) | **Medium** | Implemented |
+| **emotional_homecoming** | Emotional (External) | hometown, family, friends, college town, homecoming | Playing in front of family/friends, returning to hometown/college | News/press | Low | Implemented |
+| **external_legal** | External | arrested, charged, lawsuit, investigation, legal issue | Legal issues affecting team/player | News/press | Medium | Implemented |
+| **external_contract_dispute** | External | holdout, contract, trade, wants out, standoff, demands | Holdout, contract standoff, wants trade | News/press | Low | Implemented |
+| **external_personal** | External | **UNDEFINED** | **UNDEFINED** | **UNDEFINED** | **HIGH ⚠️** | ❌ Placeholder only |
+
+**⚠️ Flag:** `external_personal` is referenced in the detector (`app/lib/narrative/detector.ts`) as a sensitive type but is **not yet defined in the catalog**. Until it's defined, it's ambiguous what this narrative type will capture. Given the context of other external narratives, there's risk it will expand to include inferred personal problems beyond what's explicitly reported.
+
+**Recommendation:** Do not implement `external_personal` unless it has a strict, narrow definition (e.g., "publicly reported legal or contractual issues only"). If left undefined, document that it is intentionally not used.
+
+---
+
+## 5. Instagram Signals – Detailed Risk Assessment
+
+### Current Spec (from `01-SENTIMENT-FIELD-SPEC.md`)
+
+Instagram signals are explicitly scored for emotional/behavioral inference:
+
+#### Negative Signals
+
+| **Signal** | **Score** | **Interpretation** | **Risk** |
+|---|---|---|---|
+| Unfollowed teammate | -0.15 | Relationship/conflict inference | **HIGH** |
+| Unfollowed coach | -0.20 | Authority conflict / distress | **HIGH** |
+| Deleted team photos | -0.25 | Team disengagement or personal distress | **HIGH** |
+| Cryptic story | -0.10 | Emotional distress / vague threat | **HIGH** |
+| Sad music story | -0.08 | Depression/sadness inference | **HIGH** |
+| Went silent 5+ days | -0.12 | Withdrawal / mental health concern | **HIGH** |
+
+#### Positive Signals
+
+| **Signal** | **Score** | **Interpretation** | **Risk** |
+|---|---|---|---|
+| Team bonding post | +0.10 | Team cohesion | Low |
+| Practice hype | +0.08 | Engagement/confidence | Low |
+| Family support post | +0.05 | Personal life (positive) | Medium |
+| Upbeat stories | +0.04 | Mood/confidence | Medium |
+
+**⚠️ Critical issue:** These signals are **designed to infer emotional state and behavioral changes from social media patterns**, even though the source (public Instagram) is technically public. The system is capturing:
+
+- **Mental health signals:** "Went silent 5+ days" (withdrawal), "sad music story" (depression).
+- **Relationship inference:** "Unfollowed teammate", "unfollowed coach", "deleted team photos".
+- **Personal distress:** "Cryptic story" (ambiguous but distressed language).
+
+**This is where "public signal analysis" becomes "personal vulnerability profiling,"** even if no private data is accessed. A player's Instagram story choice is public, but systematically scoring it for sadness, relationship conflict, and withdrawal is exploitative of vulnerability—regardless of intent.
+
+**Recommendation:** 
+- **Remove or do not implement** Instagram emotional inference signals (`sad music story`, `cryptic story`, `went silent 5+ days`, `deleted team photos`, `unfollowed teammate/coach`).
+- **Keep only**: Post/story *frequency* (as a confidence/engagement signal), team-related posts (team bonding, practice hype).
+- **Alternative**: If you want to capture "team morale", use *engagement* on team posts (likes, comments, shares) rather than inferring emotional state from individual behavior.
+
+---
+
+## 6. Implementation Status & Checklist
+
+### Phase 1: Sentiment Field – WEEK 1 (from spec)
+
+| **Item** | **Status** | **Notes** |
+|---|---|---|
+| Twitter API v2 setup | ⏳ Ready but partial | Config in place, live collection partial |
+| Instagram scraper/API config | ❌ TODO | Spec exists, not yet live |
+| News RSS + NewsAPI | ⏳ Partial | RSS live, full API integration TBD |
+| Press conference collector | ❌ Manual only | Phase 1: manual entry; Phase 2: transcript API planned |
+| PostgreSQL schema | ✅ Ready | Tables defined in spec |
+| Cron jobs / collection scheduler | ⏳ Partial | Cadence defined, full automation TBD |
+| NLP sentiment analyzer | ✅ Ready | Aspects defined, scoring logic exists |
+| Baseline calculation | ✅ Ready | Speaker/team baseline logic exists |
+
+### Phases 2–7: Schedule, Narrative, CSI, IAI, NIG, TRD, EPD
+
+**From NEXT-STEPS.md:**
+
+| **Phase** | **Dimension** | **Key TODOs** | **Status** |
+|---|---|---|---|
+| Phase 2 | Narrative Momentum | Schedule, roster, rivalry DB; news headline scraper | Spec only |
+| Phase 3 | IAI (Information Asymmetry) | Odds API, line movement, bet splits | Config placeholder |
+| Phase 4 | CSI (Chaos) | OpenWeatherMap (✅ live), injury scraper, referee DB, travel | Partial |
+| Phase 5 | NIG (Network Influence) | Social interaction tracking, roster relationships, team chemistry DB | NOT YET IMPLEMENTED |
+| Phase 6 | TRD (Temporal) | Recent events timeline, event categorization | Spec only |
+| Phase 7 | EPD (Emergent Pattern Detector) | Historical game data, ML pattern detection | Spec only |
+
+---
+
+## 7. Flagged Boundary Issues & Risk Assessment
+
+### Issue #1: Personal/Family/Off-Field as Explicit NLP Keywords ⚠️ HIGH
+
+**Location:** `app/lib/sentiment/aspects.ts`
+
+**What it does:** The sentiment analyzer has explicit keyword extraction for `personal`, `family`, and `off-field`. These keywords are designed to identify and score mentions of personal/family/off-field matters in:
+- News articles ("Player dealing with personal issues")
+- Social media posts ("Family stuff going on")
+- Press conferences ("Personal situation to deal with")
+
+**Why it's risky:**
+- Systematically tagging mentions of personal/family problems in public sources is different from broadcast analysts naturally noticing a throwaway comment in one press conference.
+- It enables consistent scoring of personal distress across all games, players, and teams.
+- Combined with other signals (Instagram inference), it creates a vulnerability profile.
+
+**Trim recommendation:**
+- **Remove** `personal`, `family`, `off-field` as explicit NLP keywords.
+- **Alternative:** If a news article or press conference mentions personal/family issues, that's already in the text and context. Let the headline sentiment ("negative"/"positive") capture it; don't extract the personal element separately.
+- **Keep:** Keywords like `injury`, `contract`, `legal`, `trade`, `media` (these describe *status changes*, not vulnerability).
+
+---
+
+### Issue #2: Instagram Emotional Inference Signals ⚠️ CRITICAL
+
+**Location:** `01-SENTIMENT-FIELD-SPEC.md` (Instagram signals section)
+
+**What it does:** Spec defines signals like "sad music story", "cryptic story", "went silent 5+ days", "deleted team photos", "unfollowed teammate" with negative scores (-0.08 to -0.25).
+
+**Why it's risky:**
+- These are **behavioral inferences**, not public reporting. A player posting a sad song is public data, but interpreting it as a distress signal and scoring it into your model is equivalent to profiling emotional state.
+- "Went silent 5+ days" is explicitly monitoring absence, which borders on tracking withdrawal / mental health status.
+- "Unfollowed teammate/coach" is relationship inference without context (normal unfollows, account cleanups, etc. get mixed with actual conflicts).
+
+**Trim recommendation:**
+- **Remove entirely** or **mark as not implemented**: `sad music story`, `cryptic story`, `went silent 5+ days`, `deleted team photos`, `unfollowed teammate/coach`.
+- **Keep:** Post/story frequency (volume of content), team-related engagement (likes/comments on team posts).
+- **Rationale:** You lose nothing in predictive power by not inferring sadness or withdrawal; you gain clarity that you're not profiling vulnerability.
+
+---
+
+### Issue #3: Undefined `external_personal` Narrative Type ⚠️ HIGH
+
+**Location:** `app/lib/narrative/detector.ts` (referenced), `app/lib/narrative/catalog.ts` (not defined)
+
+**What it is:** The detector code treats `external_personal` as a valid narrative type, but it's not defined in the catalog. This is a placeholder for something.
+
+**Why it's risky:**
+- Without a definition, it's ambiguous what this narrative will capture (personal problems inferred from social media? Legal issues? Relationship changes?).
+- Given the context of `external_legal` and `external_contract_dispute`, there's risk this becomes "inferred personal problems from social signals".
+
+**Trim recommendation:**
+- **Do not implement** `external_personal` unless you have a strict, narrow definition in writing.
+- **If you must define it:** Limit it to publicly reported, non-inferred cases (e.g., "player publicly announced personal/family circumstances in media interview or statement"). Even then, consider whether this is necessary.
+- **Alternative:** Keep only `emotional_tragedy` (death in organization, public report) and `emotional_homecoming` (family/hometown context, already reported). Don't add a general "external_personal" catch-all.
+
+---
+
+## 8. Recommendations for Trim & Clarification
+
+### High Priority (Remove or Do Not Implement)
+
+| **Item** | **Location** | **Action** | **Rationale** |
+|---|---|---|---|
+| `personal`, `family`, `off-field` NLP keywords | `sentiment/aspects.ts` | Remove from explicit extraction | Systematic personal distress profiling across games; broadcast analysts don't do this systematically |
+| Instagram emotional inference signals | `01-SENTIMENT-FIELD-SPEC.md` (Instagram section) | Remove: `sad music story`, `cryptic story`, `went silent 5+ days`, `deleted team photos`, `unfollowed teammate/coach` | These are behavioral inferences about emotional/relationship state, not public reporting. Risk of mental health / relationship profiling. |
+| `external_personal` narrative type | `narrative/detector.ts`, `narrative/catalog.ts` | Do not implement. If needed, define strictly and narrowly in catalog. | Currently undefined placeholder with high risk of scope creep. |
+| Social interaction tracking (Phase 5, NIG) | `NEXT-STEPS.md` (Phase 5) | Do not implement or severely limit. | "Set up social media interaction tracking" + "roster relationship DB" is relationship/network inference on top of already-problematic Instagram signals. |
+
+### Medium Priority (Narrow or Clarify)
+
+| **Item** | **Location** | **Action** | **Rationale** |
+|---|---|---|---|
+| `emotional_tragedy` narrative | `narrative/catalog.ts` | Clarify: **Only use when death/tragedy is explicitly reported by ESPN, The Athletic, beat reporters, or team official announcements.** Do not infer from social media mood or post absence. | Keep the narrative (it's legitimate), but narrow the source requirement to avoid inference. |
+| Instagram `family support post` (+0.05) | `01-SENTIMENT-FIELD-SPEC.md` | Keep only if it's a *team-related* family post (family members at game, etc.). Remove if it's general family life positivity. | Avoid scoring general personal life sentiment. |
+| Press conference `deviation_from_norm` | `sentiment/aspects.ts`, `press_conferences` schema | Clarify baseline: calculate baseline from game/team/speaker history of *tone/confidence/deflection only*. Do not include personal/family/distress baseline. | Ensure baseline is isolated to coaching/confidence signals, not personal vulnerability. |
+
+### Low Priority (Clarify Intent)
+
+| **Item** | **Location** | **Action** | **Rationale** |
+|---|---|---|---|
+| Instagram `unfollowed teammate` | `01-SENTIMENT-FIELD-SPEC.md` | If kept: source from news/beat reporter reports only (not from direct scraping). | Avoids relationship inference on noisy social media data. |
+| Contract/Legal narratives | `narrative/catalog.ts` | Keep as-is. | These are status changes with public reporting; low risk. |
+
+---
+
+## 9. Implementation Audit Checklist
+
+Use this to audit the codebase and confirm trim recommendations are applied:
+
+```markdown
+### Phase 1 Implementation Audit (Sentiment Field)
+
+- [ ] **NLP Aspects:**
+  - [ ] `personal` keyword **removed** from `sentiment/aspects.ts`
+  - [ ] `family` keyword **removed** from `sentiment/aspects.ts`
+  - [ ] `off-field` keyword **removed** from `sentiment/aspects.ts`
+  - [ ] Remaining aspects isolated to: confidence, deflection, injury, contract, legal, media, trade/rumor, distraction
+
+- [ ] **Narrative Catalog:**
+  - [ ] `emotional_tragedy` defined with strict source requirement (news/press only, no inference)
+  - [ ] `external_personal` **not implemented** or strictly defined in writing
+  - [ ] `external_legal` and `external_contract_dispute` kept as-is
+
+- [ ] **Instagram Collector (if implemented):**
+  - [ ] Negative signals removed: `sad music story`, `cryptic story`, `went silent 5+ days`, `deleted team photos`, `unfollowed teammate/coach`
+  - [ ] Positive signals narrowed: keep `team bonding post`, `practice hype`; review `family support post` and `upbeat stories` (remove if general life sentiment)
+  - [ ] Collection limited to: post frequency, engagement on team posts
+
+- [ ] **Press Conference Baseline:**
+  - [ ] `team_baselines` table includes only: baseline_sentiment (tone/confidence), baseline_deflection
+  - [ ] `team_baselines` does **not** include baselines for personal/family/distress signals
+
+- [ ] **Phase 5 (NIG):**
+  - [ ] Social interaction tracking **not implemented** unless explicitly defined to exclude relationship/network inference
+
+- [ ] **Documentation:**
+  - [ ] `NEXT-STEPS.md` updated to reflect removed / not-implemented items
+  - [ ] `01-SENTIMENT-FIELD-SPEC.md` updated to remove Instagram emotional signals (or mark as not implemented)
+  - [ ] `INTEGRATION-GUIDE.md` updated to clarify source requirements for narratives
+
+- [ ] **Testing:**
+  - [ ] Run sentiment analyzer on test press conference transcripts; confirm no personal/family/off-field extraction
+  - [ ] Review sample Instagram posts; confirm no emotional inference signals in scoring
+  - [ ] Backtest with and without removed signals to assess impact on prediction accuracy
+
+```
+
+---
+
+## 10. Summary: What to Keep, What to Remove
+
+### KEEP (Low Risk, Public Reporting Only)
+
+✅ **Press conference tone/confidence/deflection** – This is what broadcast analysts do.  
+✅ **News headlines and tiered source weighting** – Already reported, standard sports coverage.  
+✅ **Injury reports** – Public information, necessary for prediction.  
+✅ **Weather and line movement** – Objective, non-personal signals.  
+✅ **emotional_tragedy (narrative)** – Legitimate: death/loss in organization is newsworthy and affects team. Restrict source to news/press.  
+✅ **emotional_homecoming (narrative)** – Playing in hometown/in front of family; already reported.  
+✅ **external_legal and external_contract_dispute** – Public status changes.  
+✅ **Twitter/X posts (by players, coaches, beat reporters)** – Public, standard social media monitoring.  
+
+### REMOVE or DO NOT IMPLEMENT (High Risk)
+
+❌ **`personal`, `family`, `off-field` NLP keywords** – Systematic personal distress profiling.  
+❌ **Instagram emotional inference signals** – Mental health / relationship profiling from behavior.  
+❌ **`external_personal` narrative type** – Undefined, high risk of scope creep.  
+❌ **Social interaction tracking (Phase 5, NIG)** – Relationship/network inference on top of already-problematic data.  
+
+### KEEP WITH CLARIFICATION (Medium Risk)
+
+⚠️ **Instagram post/story frequency** – Engagement signal, not emotional inference. Keep only post *volume*, not mood.  
+⚠️ **Press conference baseline deviation** – Only compare tone/confidence/deflection to prior baseline; don't baseline personal/distress signals.  
+
+---
+
+## 11. Conclusion
+
+The Claude Effect is a **well-designed sports prediction system using legitimate public signals** (press conferences, news, social media engagement). However, the current spec includes **three high-risk areas** that cross from "public reporting" into "personal vulnerability profiling":
+
+1. **Explicit personal/family/off-field NLP keywords** that systematically tag and score mentions of personal distress.
+2. **Instagram emotional inference signals** that interpret post content and behavior for sadness, withdrawal, and relationship conflict.
+3. **Undefined `external_personal` narrative type** with unclear scope.
+
+**Removing these three items will:**
+- Eliminate the surveillance/vulnerability-profiling risk.
+- Simplify the system (fewer noisy signals = cleaner prediction).
+- Keep all the legitimate public signal analysis that broadcast analysts already do.
+- Still provide excellent data for prediction (press tone, news, injuries, line movement, weather, engagement).
+
+**Recommended next step:** Audit the codebase against the checklist in Section 9, remove the flagged items, update documentation, and re-test prediction accuracy. You'll likely find that the removed signals were noise anyway.
+
+---
+
+## Appendix: File References
+
+| **File** | **Location** | **Key Contents** |
+|---|---|---|
+| `00-CLAUDE-EFFECT-OVERVIEW.md` | `apps/progno/Claude effect/` | System overview, 7 dimensions, design rationale |
+| `01-SENTIMENT-FIELD-SPEC.md` | `apps/progno/Claude effect/` | Phase 1 spec: sources, weights, Instagram signals, scoring, schema, checklist |
+| `02-NARRATIVE-MOMENTUM-SPEC.md` | `apps/progno/Claude effect/` | Phase 2: narrative types, patterns, integration |
+| `INTEGRATION-GUIDE.md` | `apps/progno/Claude effect/` | Data collection requirements per phase |
+| `NEXT-STEPS.md` | `apps/progno/Claude effect/` | TODOs for phases 1–7 |
+| `IMPLEMENTATION-CHECKLIST.md` | `apps/progno/Claude effect/` | Week-by-week implementation tasks |
+| `collectors.ts` | `apps/progno/lib/data-collection/` | DataCollectionManager, phase1/phase2 sources, API config |
+| `README.md` | `apps/progno/lib/data-collection/` | Phase 1–4 config, API keys, source setup |
+| `claude-effect.ts` | `apps/progno/app/lib/` | Main 7-dimension engine |
+| `sentiment/aspects.ts` | `apps/progno/app/lib/sentiment/` | NLP aspects (confidence, deflection, **personal, family, off-field**, etc.) |
+| `narrative/catalog.ts` | `apps/progno/app/lib/narrative/` | Narrative types (emotional_tragedy, external_legal, **external_personal**, etc.) |
+| `narrative/detector.ts` | `apps/progno/app/lib/narrative/` | Narrative detection logic, sensitive type references |
+
+---
+
+**Audit completed:** January 28, 2026

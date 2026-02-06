@@ -53,7 +53,7 @@ export default function PicksPage() {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     let isMounted = true;
-    
+
     async function loadPicks(isInitial = false) {
       if (isInitial) {
         setLoading(true);
@@ -61,7 +61,7 @@ export default function PicksPage() {
       } else {
         setIsRefreshing(true);
       }
-      
+
       // Set a timeout to prevent infinite loading
       timeoutId = setTimeout(() => {
         if (isMounted) {
@@ -73,22 +73,22 @@ export default function PicksPage() {
           setStats(null);
         }
       }, 10000); // 10 second timeout
-      
+
       try {
         console.log('Fetching picks from API...');
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 8000); // 8 second abort
-        
+
         const res = await fetch(`/api/kalshi/picks?category=${activeCategory}&limit=20`, {
           signal: controller.signal,
           cache: 'no-store',
         });
-        
+
         clearTimeout(timeout);
         clearTimeout(timeoutId);
-        
+
         console.log('API response status:', res.status);
-        
+
         let data;
         try {
           const text = await res.text();
@@ -98,61 +98,58 @@ export default function PicksPage() {
           console.error('JSON parse error:', jsonError);
           data = { success: false, error: 'Invalid response from server', message: 'Server returned invalid data' };
         }
-        
+
         if (!isMounted) return;
-        
+
         // Always stop loading
         setLoading(false);
         setIsRefreshing(false);
-        
-        // Check if we got successful data
-        if (res.ok && data.success && data.picks && Array.isArray(data.picks) && data.picks.length > 0) {
-          console.log('Successfully loaded picks:', data.picks.length);
+
+        // Success: accept any valid picks array (empty or not)
+        if (res.ok && data.success && Array.isArray(data.picks)) {
           setPicks(data.picks);
           setStats(data.stats || null);
           setLastUpdated(new Date());
           setError(null);
         } else {
-          // Handle API errors - API returns 503 when no data available
           const errorMsg = data.message || data.error || 'No picks available';
-          console.log('API error response:', { status: res.status, success: data.success, error: errorMsg, hasPicks: data.picks?.length || 0 });
           setError(errorMsg);
           setPicks([]);
           setStats(null);
         }
       } catch (e: any) {
         clearTimeout(timeoutId);
-        
+
         if (!isMounted) return;
-        
+
         // Always stop loading on error
         setLoading(false);
         setIsRefreshing(false);
-        
+
         let errorMsg = 'Network error loading picks';
         if (e.name === 'AbortError') {
           errorMsg = 'Request timed out. Please try again.';
         } else if (e.message) {
           errorMsg = e.message;
         }
-        
+
         console.error('Failed to load picks:', e);
         setError(errorMsg);
         setPicks([]);
         setStats(null);
       }
     }
-    
+
     // Load immediately (initial load)
     loadPicks(true);
-    
+
     // Then refresh every 60 seconds (matching bot update frequency)
     const interval = setInterval(() => {
       if (isMounted) {
         loadPicks(false);
       }
     }, 60000);
-    
+
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -235,11 +232,10 @@ export default function PicksPage() {
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`px-4 py-2 rounded-xl font-semibold transition-all flex items-center gap-2 ${
-                activeCategory === cat.id
+              className={`px-4 py-2 rounded-xl font-semibold transition-all flex items-center gap-2 ${activeCategory === cat.id
                   ? `bg-gradient-to-r ${cat.color} text-white shadow-lg`
                   : 'bg-white/5 text-white hover:bg-white/10 border border-white/10'
-              }`}
+                }`}
             >
               <span>{cat.icon}</span>
               <span className="hidden sm:inline">{cat.name}</span>
@@ -388,11 +384,10 @@ export default function PicksPage() {
                     {/* Row 3: The Actual Pick */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className={`px-3 py-1.5 rounded-md font-bold text-sm ${
-                          pick.pick === 'YES'
+                        <div className={`px-3 py-1.5 rounded-md font-bold text-sm ${pick.pick === 'YES'
                             ? 'bg-green-500/20 text-green-300 border border-green-500/40'
                             : 'bg-red-500/20 text-red-300 border border-red-500/40'
-                        }`}>
+                          }`}>
                           {pick.pick}
                         </div>
                         <div className="text-xs text-gray-400">

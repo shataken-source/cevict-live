@@ -18,6 +18,11 @@ out/
 .env.*.local
 .env.production
 
+# Scheduled Moltbook check output (regenerated every 6h)
+MOLTBOOK_CHECK_LATEST.md
+MOLTBOOK_TRIGGER.txt
+moltbook-scheduled-run.log
+
 # Logs
 logs/
 *.log

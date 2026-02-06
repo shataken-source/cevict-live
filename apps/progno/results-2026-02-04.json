@@ -1,0 +1,138 @@
+{
+  "date": "2026-02-04",
+  "gradedAt": "2026-02-05T17:59:08.943Z",
+  "results": [
+    {
+      "home_team": "Vegas Golden Knights",
+      "away_team": "Vancouver Canucks",
+      "pick": "Vegas Golden Knights",
+      "confidence": 77,
+      "sport": "NHL",
+      "league": "NHL",
+      "game_id": "37c7531dd50a2c77c2d230b9cc6bcbef",
+      "status": "win",
+      "actualWinner": "Vegas Golden Knights",
+      "actualScore": {
+        "home": 5,
+        "away": 2
+      }
+    },
+    {
+      "home_team": "Washington Capitals",
+      "away_team": "Nashville Predators",
+      "pick": "Washington Capitals",
+      "confidence": 66,
+      "sport": "NHL",
+      "league": "NHL",
+      "game_id": "86fca7ece2fa447cf3abdc17fa3ba00b",
+      "status": "pending"
+    },
+    {
+      "home_team": "Colorado Avalanche",
+      "away_team": "San Jose Sharks",
+      "pick": "Colorado Avalanche",
+      "confidence": 73,
+      "sport": "NHL",
+      "league": "NHL",
+      "game_id": "79b11e09a4c9f85d482737be719e603a",
+      "status": "win",
+      "actualWinner": "Colorado Avalanche",
+      "actualScore": {
+        "home": 4,
+        "away": 2
+      }
+    },
+    {
+      "home_team": "Notre Dame Fighting Irish",
+      "away_team": "Wisconsin Badgers",
+      "pick": "Wisconsin Badgers",
+      "confidence": 92,
+      "sport": "NCAAF",
+      "league": "NCAAF",
+      "game_id": "b460f3aa4235ec2485f25182755304d6",
+      "status": "pending"
+    },
+    {
+      "home_team": "Delaware Blue Hens",
+      "away_team": "Liberty Flames",
+      "pick": "Delaware Blue Hens",
+      "confidence": 92,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "game_id": "5cc0efe1d01a9fdabd1eb89f134ad0d2",
+      "status": "lose",
+      "actualWinner": "Liberty Flames",
+      "actualScore": {
+        "home": 69,
+        "away": 75
+      }
+    },
+    {
+      "home_team": "Gardner-Webb Bulldogs",
+      "away_team": "Longwood Lancers",
+      "pick": "Gardner-Webb Bulldogs",
+      "confidence": 92,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "game_id": "9cc6d941655cadfab877956af9a88e08",
+      "status": "lose",
+      "actualWinner": "Longwood Lancers",
+      "actualScore": {
+        "home": 66,
+        "away": 86
+      }
+    },
+    {
+      "home_team": "Houston Cougars",
+      "away_team": "UCF Knights",
+      "pick": "UCF Knights",
+      "confidence": 92,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "game_id": "58f4b89182e9921e13ce2b812c8cffc0",
+      "status": "lose",
+      "actualWinner": "Houston Cougars",
+      "actualScore": {
+        "home": 79,
+        "away": 55
+      }
+    },
+    {
+      "home_team": "LSU Tigers",
+      "away_team": "Clemson Tigers",
+      "pick": "Clemson Tigers",
+      "confidence": 79,
+      "sport": "NCAAF",
+      "league": "NCAAF",
+      "game_id": "073bba47dc105fcd66913e74f281ae96",
+      "status": "pending"
+    },
+    {
+      "home_team": "New England Patriots",
+      "away_team": "Seattle Seahawks",
+      "pick": "New England Patriots",
+      "confidence": 76,
+      "sport": "NFL",
+      "league": "NFL",
+      "game_id": "b64e3587d7a4cf01a568e7150a2a1aec",
+      "status": "pending"
+    },
+    {
+      "home_team": "TCU Horned Frogs",
+      "away_team": "North Carolina Tar Heels",
+      "pick": "North Carolina Tar Heels",
+      "confidence": 75,
+      "sport": "NCAAF",
+      "league": "NCAAF",
+      "game_id": "2c288580da16e12d35355f2548721be6",
+      "status": "pending"
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "correct": 2,
+    "pending": 5,
+    "graded": 5,
+    "winRate": 40
+  }
+}

@@ -8,6 +8,11 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { assertKalshiDemoOnly, assertKalshiRequestUrlIsDemo, getKalshiDemoBaseUrl } from '../services/kalshi/execution-gate';
 import { loadAlphaHunterSecrets } from '../lib/secret-store';
+import {
+  getPrognoProbabilities,
+  matchKalshiMarketToProgno,
+  getCryptoModelProbability,
+} from './probability-bridge';
 
 /**
  * Environment loading policy (alpha-hunter):
@@ -35,6 +40,11 @@ export class KalshiTrader {
   private privateKeyPathExists: boolean = false;
   private privateKeyPathLooksPartialDownload: boolean = false;
   private privateKeyPathBytes: number | null = null;
+  
+  // Network error throttling
+  private networkErrorCount = 0;
+  private lastNetworkErrorTime = 0;
+  private static readonly NETWORK_ERROR_THROTTLE_MS = 30000; // Log every 30 seconds
 
   // Rate limiting state (Kalshi Basic tier: 10 req/sec)
   private rateLimitState: {
@@ -142,15 +152,21 @@ export class KalshiTrader {
   private async signRequestWithTimestamp(method: string, path: string, body?: any): Promise<{ signature: string; timestamp: string }> {
     if (!this.privateKey) return { signature: '', timestamp: '' };
     const timestamp = Date.now().toString();
+    // CRITICAL: Strip query params from path
     const pathWithoutQuery = path.split('?')[0];
-    const message = `${timestamp}${method}${pathWithoutQuery}`;
+    // CRITICAL: Method must be uppercase, message format: timestamp + METHOD + path
+    const message = timestamp + method.toUpperCase() + pathWithoutQuery;
     try {
-      const signature = crypto.sign('sha256', Buffer.from(message) as any, {
+      // RSA-PSS signing (REQUIRED by Kalshi)
+      const sign = crypto.createSign('RSA-SHA256');
+      sign.update(message);
+      sign.end();
+      const signature = sign.sign({
         key: this.privateKey,
         padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
-        saltLength: crypto.constants.RSA_PSS_SALTLEN_DIGEST,
-      });
-      return { signature: signature.toString('base64'), timestamp };
+        saltLength: crypto.constants.RSA_PSS_SALTLEN_DIGEST
+      }).toString('base64');
+      return { signature, timestamp };
     } catch (err) {
       return { signature: '', timestamp: '' };
     }
@@ -187,8 +203,27 @@ export class KalshiTrader {
       if (!response.ok) return [];
       const data = await response.json();
       return this.transformMarkets(data.markets || []);
-    } catch (error) {
-      console.error('Error fetching markets:', error);
+    } catch (error: any) {
+      // Detect and throttle network errors
+      const errorMessage = error?.message || String(error);
+      const isNetworkError = errorMessage.includes('ENOTFOUND') || 
+                            errorMessage.includes('getaddrinfo') ||
+                            errorMessage.includes('fetch failed') ||
+                            errorMessage.includes('ECONNREFUSED') ||
+                            errorMessage.includes('ETIMEDOUT');
+      
+      if (isNetworkError) {
+        this.networkErrorCount++;
+        const now = Date.now();
+        if (now - this.lastNetworkErrorTime > KalshiTrader.NETWORK_ERROR_THROTTLE_MS) {
+          console.error(`🌐 Network connectivity issue: Cannot reach Kalshi API (demo-api.kalshi.co)`);
+          console.error(`   Error: ${errorMessage}`);
+          console.error(`   Total network errors: ${this.networkErrorCount} (checking internet connection, DNS, firewall)`);
+          this.lastNetworkErrorTime = now;
+        }
+      } else {
+        console.error('Error fetching markets:', error);
+      }
       return [];
     }
   }
@@ -516,6 +551,102 @@ export class KalshiTrader {
     }
 
     // Best first
+    opps.sort((a, b) => b.expectedValue - a.expectedValue);
+    return opps;
+  }
+
+  /**
+   * Find opportunities using Progno (sports) and optional crypto model probabilities.
+   * When a Kalshi market matches a Progno pick or crypto rule, uses that model probability
+   * instead of the synthetic ±5 heuristic for edge detection.
+   */
+  async findOpportunitiesWithExternalProbs(
+    minEdgePct: number,
+    options?: { getCoinbasePrice?: (productId: string) => Promise<number> }
+  ): Promise<Opportunity[]> {
+    const markets = await this.getMarkets();
+    const minEdge = Number(minEdgePct) || 0;
+    const nowIso = new Date().toISOString();
+
+    const prognoEvents = await getPrognoProbabilities();
+    const getCbPrice = options?.getCoinbasePrice;
+
+    const opps: Opportunity[] = [];
+    for (const m of markets) {
+      const yesPrice = Number(m.yesPrice || 50);
+      const noPrice = Number(m.noPrice || 50);
+      const title = m.title || '';
+      const category = m.category || '';
+
+      let modelProbability: number | null = null;
+      let source = 'Kalshi';
+      let reasoning: string[] = ['Heuristic contrarian edge'];
+
+      const prognoMatch = matchKalshiMarketToProgno(title, category, prognoEvents);
+      if (prognoMatch) {
+        modelProbability = prognoMatch.modelProbability;
+        source = 'PROGNO';
+        const leaguePart = prognoMatch.league ? ` (${prognoMatch.league})` : '';
+        reasoning = [`Progno model${leaguePart}: ${prognoMatch.label} → ${modelProbability}%`];
+      }
+
+      if (modelProbability == null && getCbPrice) {
+        const cryptoProb = await getCryptoModelProbability(title, getCbPrice);
+        if (cryptoProb) {
+          modelProbability = cryptoProb.modelProbability;
+          source = 'Coinbase';
+          reasoning = [`Crypto rule: ${cryptoProb.label} → ${modelProbability}%`];
+        }
+      }
+
+      if (modelProbability == null) {
+        modelProbability = yesPrice > 50 ? Math.max(1, yesPrice - 5) : Math.min(99, yesPrice + 5);
+      }
+
+      const yesEdge = modelProbability - yesPrice;
+      const noEdge = (100 - modelProbability) - noPrice;
+
+      let side: 'yes' | 'no' | null = null;
+      let edge = 0;
+      if (yesEdge >= minEdge) {
+        side = 'yes';
+        edge = yesEdge;
+      } else if (noEdge >= minEdge) {
+        side = 'no';
+        edge = noEdge;
+      }
+      if (!side) continue;
+
+      const confidence = Math.min(92, Math.max(52, modelProbability));
+      opps.push({
+        id: `kalshi_${m.id}_${side}_${Date.now()}`,
+        type: 'prediction_market',
+        source,
+        title: `${side.toUpperCase()}: ${title}`,
+        description: `${source} edge ${edge.toFixed(1)}% at ${side === 'yes' ? yesPrice : noPrice}¢`,
+        confidence,
+        expectedValue: edge,
+        riskLevel: source === 'PROGNO' ? 'low' : 'medium',
+        timeframe: '48h',
+        requiredCapital: 5,
+        potentialReturn: 5 * (edge / 100),
+        reasoning,
+        dataPoints: (m.volume != null && m.volume > 0)
+          ? [{ source: 'Kalshi', metric: 'Volume', value: m.volume, relevance: 80, timestamp: nowIso }]
+          : [],
+        action: {
+          platform: 'kalshi',
+          actionType: 'bet',
+          amount: 5,
+          target: `${m.id} ${side.toUpperCase()}`,
+          instructions: [`Place ${side.toUpperCase()} on ${m.id} at ≤${side === 'yes' ? yesPrice : noPrice}¢`],
+          autoExecute: source === 'PROGNO',
+        },
+        expiresAt: m.expiresAt || nowIso,
+        createdAt: nowIso,
+      });
+    }
+
     opps.sort((a, b) => b.expectedValue - a.expectedValue);
     return opps;
   }

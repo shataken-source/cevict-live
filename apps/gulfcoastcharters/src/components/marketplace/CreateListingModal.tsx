@@ -69,7 +69,23 @@ export default function CreateListingModal({ open, onClose, onSuccess, userId }:
 
       if (error) throw error;
 
-      toast.success('Listing created successfully!');
+      // Award points for creating listing (gamification)
+      try {
+        await supabase.functions.invoke('points-rewards-system', {
+          body: {
+            action: 'award_points',
+            userId,
+            actionType: 'marketplace_listing',
+            amount: 20,
+          },
+        });
+        toast.success('Listing created successfully! +20 points');
+      } catch (pointsError) {
+        console.error('Error awarding listing points:', pointsError);
+        toast.success('Listing created successfully!');
+        // Don't block listing creation if points fail
+      }
+
       onSuccess();
       onClose();
     } catch (error: any) {

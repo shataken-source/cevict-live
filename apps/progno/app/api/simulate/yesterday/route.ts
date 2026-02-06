@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchScoresAndUpdatePredictions } from '../../../weekly-page.helpers';
 import { analyzeWeeklyGames } from '../../../weekly-analyzer';
 
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   try {
     // Get yesterday's date

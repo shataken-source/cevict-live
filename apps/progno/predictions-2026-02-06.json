@@ -1,0 +1,428 @@
+{
+  "date": "2026-02-06",
+  "generatedAt": "2026-02-06T06:59:06.884Z",
+  "count": 6,
+  "message": "Top 6 picks (of 22 games) — Cevict Flex + Triple Alignment — Regular (0-1 days)",
+  "earlyLines": false,
+  "picks": [
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Yale Bulldogs",
+      "away_team": "Brown Bears",
+      "pick": "Brown Bears",
+      "pick_type": "MONEYLINE",
+      "odds": 1060,
+      "confidence": 92,
+      "game_time": "2026-02-07T00:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Brown Bears with 92% confidence. ⏱️ Slot: Night game, Weekend, Prime time. 📊 1,500 simulations: 78.7% win rate. 📈 Predicted score: 65-77. 🤖 AI signals: Sentiment favors home (17%) Sharp money: backing away News impact: positive home Pressure: away motivated 💰 Value detected: moneyline Brown Bears (+70.1% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "a681699939192074ed6c2b1adc315c93",
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (17%)",
+        "Sharp money: backing away",
+        "News impact: positive home",
+        "Pressure: away motivated",
+        "Experimental: Night game, Weekend, Prime time (+7 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.0067,
+      "sentiment_field": 0.173,
+      "narrative_momentum": 0.0179,
+      "information_asymmetry": -0.0978,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0.0807,
+      "temporal_decay": 0.97,
+      "external_pressure": -0.0947,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.2127,
+      "mc_predicted_score": {
+        "home": 65,
+        "away": 77,
+        "homeRange": [
+          48,
+          83
+        ],
+        "awayRange": [
+          58,
+          97
+        ]
+      },
+      "mc_spread_probability": 0.5707,
+      "mc_total_probability": 0.5407,
+      "mc_iterations": 1500,
+      "value_bet_edge": 70.11,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.1918,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Weekend",
+          "Prime time"
+        ],
+        "confidence_delta": 0.6
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Arizona Wildcats",
+      "away_team": "Oklahoma St Cowboys",
+      "pick": "Oklahoma St Cowboys",
+      "pick_type": "MONEYLINE",
+      "odds": 2500,
+      "confidence": 92,
+      "game_time": "2026-02-07T21:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Oklahoma St Cowboys with 92% confidence. ⏱️ Slot: Weekend, Prime time. 📊 1,500 simulations: 88.9% win rate. 📈 Predicted score: 77-95. 🤖 AI signals: Sentiment favors home (11%) Sharp money: backing away 💰 Value detected: moneyline Oklahoma St Cowboys (+85.0% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "b795d839679eb0e990970c168c74ecea",
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (11%)",
+        "Sharp money: backing away",
+        "Experimental: Weekend, Prime time (+1 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": 0.0009,
+      "sentiment_field": 0.111,
+      "narrative_momentum": -0.001,
+      "information_asymmetry": -0.081,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0.0146,
+      "temporal_decay": 0.93,
+      "external_pressure": 0.0351,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.1113,
+      "mc_predicted_score": {
+        "home": 77,
+        "away": 95,
+        "homeRange": [
+          59,
+          96
+        ],
+        "awayRange": [
+          77,
+          110
+        ]
+      },
+      "mc_spread_probability": 0.566,
+      "mc_total_probability": 0.5553,
+      "mc_iterations": 1500,
+      "value_bet_edge": 85.02,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.2211,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": false,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Weekend",
+          "Prime time"
+        ],
+        "confidence_delta": 0.1
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Illinois St Redbirds",
+      "away_team": "Drake Bulldogs",
+      "pick": "Drake Bulldogs",
+      "pick_type": "MONEYLINE",
+      "odds": 428,
+      "confidence": 86,
+      "game_time": "2026-02-07T01:00:40Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Drake Bulldogs with 86% confidence. ⏱️ Slot: Night game, Weekend, Prime time. 📊 1,500 simulations: 66.9% win rate. 📈 Predicted score: 71-77. 🤖 AI signals: Narrative edge home: 11% Sharp money: backing away Pressure: away motivated 💰 Value detected: moneyline Drake Bulldogs (+48.0% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "dbe064881741a8368f71a8a612ac15a2",
+      "expected_value": 150,
+      "reasoning": [
+        "Narrative edge home: 11%",
+        "Sharp money: backing away",
+        "Pressure: away motivated",
+        "Experimental: Night game, Weekend, Prime time (+7 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 97.2,
+      "claude_effect": -0.0168,
+      "sentiment_field": 0.0621,
+      "narrative_momentum": 0.1113,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": -0.0339,
+      "temporal_decay": 0.97,
+      "external_pressure": -0.0931,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.3307,
+      "mc_predicted_score": {
+        "home": 71,
+        "away": 77,
+        "homeRange": [
+          53,
+          89
+        ],
+        "awayRange": [
+          59,
+          94
+        ]
+      },
+      "mc_spread_probability": 0.5907,
+      "mc_total_probability": 0.5753,
+      "mc_iterations": 1500,
+      "value_bet_edge": 47.99,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.148,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Weekend",
+          "Prime time"
+        ],
+        "confidence_delta": 0.6
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NBA",
+      "league": "NBA",
+      "home_team": "Minnesota Timberwolves",
+      "away_team": "New Orleans Pelicans",
+      "pick": "New Orleans Pelicans",
+      "pick_type": "MONEYLINE",
+      "odds": 362,
+      "confidence": 85,
+      "game_time": "2026-02-07T01:10:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking New Orleans Pelicans with 85% confidence. ⏱️ Slot: Night game, Weekend, Prime time. 📊 1,500 simulations: 66.9% win rate. 📈 Predicted score: 117-124. 🤖 AI signals: Sentiment favors home (12%) Sharp money: backing away 💰 Value detected: moneyline New Orleans Pelicans (+45.2% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "ca2f6578b0d06d2a06e2eb5cee12fd8e",
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (12%)",
+        "Sharp money: backing away",
+        "Experimental: Night game, Weekend, Prime time (+7 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 97,
+      "claude_effect": -0.0038,
+      "sentiment_field": 0.1234,
+      "narrative_momentum": 0.0375,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0.0023,
+      "temporal_decay": 0.97,
+      "external_pressure": -0.01,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.3313,
+      "mc_predicted_score": {
+        "home": 117,
+        "away": 124,
+        "homeRange": [
+          97,
+          136
+        ],
+        "awayRange": [
+          104,
+          144
+        ]
+      },
+      "mc_spread_probability": 0.5733,
+      "mc_total_probability": 0.5627,
+      "mc_iterations": 1500,
+      "value_bet_edge": 45.22,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.1443,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Weekend",
+          "Prime time"
+        ],
+        "confidence_delta": 0.6
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NBA",
+      "league": "NBA",
+      "home_team": "Portland Trail Blazers",
+      "away_team": "Memphis Grizzlies",
+      "pick": "Memphis Grizzlies",
+      "pick_type": "MONEYLINE",
+      "odds": 219,
+      "confidence": 76,
+      "game_time": "2026-02-07T03:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Memphis Grizzlies with 76% confidence. ⏱️ Slot: Night game, Weekend. 📊 1,500 simulations: 60.1% win rate. 📈 Predicted score: 116-120. 🤖 AI signals: Sharp money: backing away 💰 Value detected: moneyline Memphis Grizzlies (+28.8% edge, $91.83 EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "ef8ae24fd705cab52010cac25b6abbba",
+      "expected_value": 91.83,
+      "reasoning": [
+        "Sharp money: backing away",
+        "Experimental: Night game, Weekend (+10 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 93.8,
+      "claude_effect": -0.0277,
+      "sentiment_field": 0.015,
+      "narrative_momentum": 0.0299,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": -0.0568,
+      "temporal_decay": 0.97,
+      "external_pressure": -0.0274,
+      "ai_confidence": "MEDIUM",
+      "mc_win_probability": 0.3987,
+      "mc_predicted_score": {
+        "home": 116,
+        "away": 120,
+        "homeRange": [
+          97,
+          135
+        ],
+        "awayRange": [
+          99,
+          140
+        ]
+      },
+      "mc_spread_probability": 0.548,
+      "mc_total_probability": 0.5613,
+      "mc_iterations": 1500,
+      "value_bet_edge": 28.79,
+      "value_bet_ev": 91.83,
+      "value_bet_kelly": 0.1048,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": false,
+        "tags": [
+          "Night game",
+          "Weekend"
+        ],
+        "confidence_delta": 0.8
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NBA",
+      "league": "NBA",
+      "home_team": "Boston Celtics",
+      "away_team": "Miami Heat",
+      "pick": "Miami Heat",
+      "pick_type": "MONEYLINE",
+      "odds": 207,
+      "confidence": 74,
+      "game_time": "2026-02-07T00:40:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Miami Heat with 74% confidence. ⏱️ Slot: Night game, Weekend, Prime time. 📊 1,500 simulations: 59.4% win rate. 📈 Predicted score: 115-118. 🤖 AI signals: Sharp money: backing away 💰 Value detected: moneyline Miami Heat (+26.8% edge, $82.36 EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "8ddd2769a5ffd8dccf14da6c31f1fc1c",
+      "expected_value": 82.36,
+      "reasoning": [
+        "Sharp money: backing away",
+        "Experimental: Night game, Weekend, Prime time (+7 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 91.1,
+      "claude_effect": -0.0096,
+      "sentiment_field": 0.0412,
+      "narrative_momentum": -0.0156,
+      "information_asymmetry": -0.0892,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0.0278,
+      "temporal_decay": 0.97,
+      "external_pressure": 0.0359,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.406,
+      "mc_predicted_score": {
+        "home": 115,
+        "away": 118,
+        "homeRange": [
+          95,
+          134
+        ],
+        "awayRange": [
+          97,
+          139
+        ]
+      },
+      "mc_spread_probability": 0.566,
+      "mc_total_probability": 0.568,
+      "mc_iterations": 1500,
+      "value_bet_edge": 26.83,
+      "value_bet_ev": 82.36,
+      "value_bet_kelly": 0.0995,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Weekend",
+          "Prime time"
+        ],
+        "confidence_delta": 0.6
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    }
+  ]
+}

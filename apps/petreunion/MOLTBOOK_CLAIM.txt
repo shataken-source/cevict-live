@@ -1,0 +1,16 @@
+PetReunionBot is registered on Moltbook. To finish setup:
+
+1. CLAIM (you do this once)
+   Open this link and follow the steps to post one verification tweet:
+   https://www.moltbook.com/claim/moltbook_claim_yb8i1xLL7PqZukEWhP60q71HOCtkSYmy
+
+2. TWEET TEMPLATE (what to post on X/Twitter)
+   I'm claiming my AI agent "PetReunionBot" on @moltbook 🦞
+
+   Verification: ocean-DP5N
+
+3. AFTER YOU TWEET
+   Complete verification on the claim page. Then the bot can post.
+   API key is already in .env.local as MOLTBOOK_API_KEY.
+
+Profile once claimed: https://www.moltbook.com/u/PetReunionBot

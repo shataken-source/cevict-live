@@ -9,10 +9,11 @@ export default function PricingPage() {
   const [email, setEmail] = useState('');
   const [loadingButton, setLoadingButton] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
 
   useEffect(() => {
     setLoadingButton(null);
+    setCurrentTime(new Date());
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
@@ -60,7 +61,8 @@ export default function PricingPage() {
       if (response.ok && data.url) {
         window.location.href = data.url;
       } else {
-        setError(data.error || 'CHECKOUT_FAILED');
+        const msg = data.details ? `${data.error || 'Error'}: ${data.details}` : (data.error || 'CHECKOUT_FAILED');
+        setError(msg);
         setLoadingButton(null);
       }
     } catch (err: any) {
@@ -113,8 +115,8 @@ export default function PricingPage() {
                 <div className="font-bold text-green-400 tracking-wider">PROGNOSTICATION</div>
               </div>
             </a>
-            <div className="font-mono text-xs text-green-600">
-              {currentTime.toLocaleTimeString('en-US', { hour12: false })}
+            <div className="font-mono text-xs text-green-600" suppressHydrationWarning>
+              {currentTime != null ? currentTime.toLocaleTimeString('en-US', { hour12: false }) : '--:--:--'}
             </div>
           </div>
         </div>
@@ -313,14 +315,14 @@ export default function PricingPage() {
               </thead>
               <tbody className="text-green-500">
                 {[
-                  { feature: 'DAILY_PICKS', pro: '5', elite: '∞' },
-                  { feature: 'MARKET_CATEGORIES', pro: '6', elite: '6' },
-                  { feature: 'AI_ANALYSIS', pro: '✓', elite: '✓' },
-                  { feature: 'EDGE_CALC', pro: '✓', elite: '✓' },
-                  { feature: 'HISTORICAL_DATA', pro: 'BASIC', elite: 'FULL' },
-                  { feature: 'SMS_ALERTS', pro: '—', elite: '✓' },
-                  { feature: 'DISCORD', pro: '—', elite: '✓' },
-                  { feature: 'ENTERTAINMENT_EXPERT', pro: '—', elite: '✓' },
+                  { feature: 'Picks per day', pro: '5', elite: '∞' },
+                  { feature: 'Market categories', pro: '6', elite: '6' },
+                  { feature: 'AI reasoning', pro: '✓', elite: '✓' },
+                  { feature: 'Edge calculation', pro: '✓', elite: '✓' },
+                  { feature: 'Historical patterns', pro: 'BASIC', elite: 'FULL' },
+                  { feature: 'SMS alerts', pro: '—', elite: '✓' },
+                  { feature: 'Discord access', pro: '—', elite: '✓' },
+                  { feature: 'Entertainment expert', pro: '—', elite: '✓' },
                 ].map((row, i) => (
                   <tr key={i} className="border-b border-green-900/50">
                     <td className="py-2 text-green-600">{row.feature}</td>

@@ -1,5 +1,7 @@
 // Live Odds Fetcher Module for Progno Sports Prediction Platform
 
+import { getPrimaryKey } from './keys-store';
+
 export interface LiveOdds {
   gameId: string;
   sport: string;
@@ -224,8 +226,9 @@ class LiveOddsFetcher {
   // Fetch odds from multiple sources and compare
   async fetchAndCompareOdds(sport: string): Promise<OddsComparison[]> {
     try {
+      const apiKey = getPrimaryKey() ?? '';
       const [theOddsApiData, oddsJamData] = await Promise.all([
-        this.fetchOddsFromTheOddsApi("placeholder-api-key", sport),
+        this.fetchOddsFromTheOddsApi(apiKey, sport),
         this.fetchOddsFromOddsJam(sport)
       ]);
 
@@ -383,7 +386,10 @@ class LiveOddsFetcher {
 // Global odds fetcher instance
 export const liveOddsFetcher = new LiveOddsFetcher();
 
-// Export functions for external use
-export const fetchLiveOdds = (sport: string) => liveOddsFetcher.fetchOddsFromTheOddsApi("placeholder-api-key", sport);
+// Export functions for external use (uses getPrimaryKey from keys-store)
+export const fetchLiveOdds = (sport: string) => {
+  const apiKey = getPrimaryKey() ?? '';
+  return liveOddsFetcher.fetchOddsFromTheOddsApi(apiKey, sport);
+};
 export const fetchAndCompareOdds = (sport: string) => liveOddsFetcher.fetchAndCompareOdds(sport);
 export const getLiveOddsUpdates = (gameIds: string[]) => liveOddsFetcher.getLiveOddsUpdates(gameIds);

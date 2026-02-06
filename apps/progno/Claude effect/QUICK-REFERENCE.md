@@ -1,5 +1,7 @@
 # 🧠 CLAUDE EFFECT - QUICK REFERENCE CARD
 
+**Runtime formula and weights:** `app/lib/claude-effect.ts` (code is source of truth; this card is SF+NM simplified view).
+
 ## THE FORMULA
 ```
 FINAL_PROB = BASE_PROB × (1 + CLAUDE_EFFECT)
@@ -15,7 +17,7 @@ MAX IMPACT: ±8%
 |---|-----|-----|--------|------------------|
 | 1 | SF | ±5% | ✅ | Emotional state |
 | 2 | NM | ±8% | ✅ | Story power |
-| 3 | IAI | ±6% | 📋 | Sharp money edge |
+| 3 | IAI | ±6% | ✅ | Spread-vs-ML sharp signal |
 | 4 | CSI | Conf | 🔜 | Chaos/volatility |
 | 5 | NIG | ±4% | 🔜 | Team chemistry |
 | 6 | TRD | Mod | 🔜 | Recency weight |

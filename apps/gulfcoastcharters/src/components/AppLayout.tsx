@@ -20,6 +20,7 @@ import Footer from './Footer';
 import PWAEnhancedInstallPrompt from './PWAEnhancedInstallPrompt';
 import OfflineIndicator from './OfflineIndicator';
 import FishyAIChat from './FishyAIChat';
+import FinnConcierge from './FinnConcierge';
 import ConversationalAIAssistant from './personalization/ConversationalAIAssistant';
 import { useUser } from '@/contexts/UserContext';
 
@@ -56,6 +57,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
       
       {/* Fishy AI assistant - context-aware based on user role */}
       <FishyAIChat userType={user?.role === 'captain' ? 'captain' : 'customer'} />
+      
+      {/* Finn Concierge - Personal vacation concierge with memory */}
+      <FinnConcierge userId={user?.id} />
       
       {/* Conversational AI Shopping Assistant (Rufus-style) */}
       <ConversationalAIAssistant />

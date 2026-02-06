@@ -18,6 +18,7 @@
     "test:unit": "tsx src/tests/test-runner.ts",
     "report": "tsx src/report.ts",
     "metrics": "tsx src/report.ts",
+    "health": "tsx src/daily-health-check.ts",
     "setup-kalshi": "tsx setup-kalshi-via-agent.ts",
     "setup-kalshi-key": "tsx src/setup-kalshi.ts",
     "debug-key": "tsx src/debug-kalshi-key.ts",
@@ -46,6 +47,8 @@
     "bots": "tsx src/bot-manager.ts",
     "best-kalshi": "tsx src/find-best-kalshi.ts",
     "find-best": "tsx src/find-best-kalshi.ts",
+    "progno-picks": "tsx src/fetch-progno-picks.ts",
+    "backtest-progno": "tsx src/backtest-progno-vs-results.ts",
     "cevict-flex": "tsx src/cevict-flex-kalshi-bot.ts",
     "flex": "tsx src/cevict-flex-kalshi-bot.ts"
   },

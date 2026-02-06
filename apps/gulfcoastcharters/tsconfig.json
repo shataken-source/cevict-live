@@ -21,16 +21,14 @@
     "incremental": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve"
+    "jsx": "react-jsx"
   },
   "include": [
     "next-env.d.ts",
     "pages/**/*.ts",
     "pages/**/*.tsx",
-    "src/lib/supabase.ts",
-    "src/lib/utils.ts",
-    "src/lib/marineProducts.ts",
-    "src/types/marineProduct.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
     "lib/**/*.ts",
     "lib/**/*.tsx",
     "middleware/**/*.ts",

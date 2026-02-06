@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import Layout from '../../components/Layout'
 import VesselCard from '../../components/VesselCard'
 

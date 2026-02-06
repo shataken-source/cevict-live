@@ -47,6 +47,8 @@ export default function App({ Component, pageProps }) {
     <>
       <Head>
         <meta name="google-adsense-account" content={ADSENSE_CLIENT} />
+        <link rel="icon" href="/icon-192.png" type="image/png" />
+        <link rel="shortcut icon" href="/icon-192.png" type="image/png" />
       </Head>
 
       {loadAds ? (

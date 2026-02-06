@@ -50,10 +50,19 @@ export default function WeatherWidget({ latitude, longitude, location }: Weather
 
   const fetchWeather = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('weather-api', {
-        body: { latitude, longitude, location }
+      const res = await fetch('/api/weather/current', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude, longitude, location }),
       });
-
+      if (res.ok) {
+        const data = await res.json();
+        setWeather(data);
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke('weather-api', {
+        body: { latitude, longitude, location },
+      });
       if (error) throw error;
       setWeather(data);
     } catch (err) {

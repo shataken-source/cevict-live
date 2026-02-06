@@ -11,17 +11,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { id } = req.query;
+  const campaignId = Array.isArray(id) ? id[0] : id;
 
   try {
     const authed = await requireRole(req, res, ['admin']);
-    if (!authed) return;
+    if (!authed) {
+      if (campaignId) {
+        try {
+          const supabase = getSupabaseAdmin();
+          await supabase.from('email_campaigns').update({ status: 'failed' }).eq('id', campaignId);
+        } catch (_) {}
+      }
+      return;
+    }
 
     const supabase = getSupabaseAdmin();
     // Get campaign
     const { data: campaign, error: campaignError } = await supabase
       .from('email_campaigns')
       .select('*')
-      .eq('id', id)
+      .eq('id', campaignId)
       .single();
 
     if (campaignError || !campaign) {
@@ -32,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: recipients, error: recipientsError } = await supabase
       .from('email_campaign_recipients')
       .select('*')
-      .eq('campaign_id', id)
+      .eq('campaign_id', campaignId)
       .eq('status', 'pending');
 
     if (recipientsError) throw recipientsError;
@@ -107,7 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status: finalStatus,
         sent_at: new Date().toISOString()
       })
-      .eq('id', id);
+      .eq('id', campaignId);
 
     return res.status(200).json({
       success: true,
@@ -117,6 +126,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   } catch (error: any) {
     console.error('Error sending campaign:', error);
+    if (campaignId) {
+      try {
+        const supabase = getSupabaseAdmin();
+        await supabase
+          .from('email_campaigns')
+          .update({ status: 'failed', sent_at: new Date().toISOString() })
+          .eq('id', campaignId);
+      } catch (e) {
+        console.error('Failed to update campaign status to failed:', e);
+      }
+    }
     return res.status(500).json({ error: error.message });
   }
 }

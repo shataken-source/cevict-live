@@ -1,41 +1,45 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 // Force dynamic rendering (can't be statically generated due to DB queries)
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 export async function GET() {
+  // IMMEDIATE response if we can't connect - don't even try
   const startTime = Date.now()
   
   try {
-    // Validate Supabase configuration
+    // Validate Supabase configuration FIRST - return immediately if missing
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
     if (!supabaseUrl || !supabaseKey) {
-      console.error('[API] Missing Supabase environment variables')
-      // During build, return empty array instead of error
-      if (process.env.NEXT_PHASE === 'phase-production-build') {
-        return NextResponse.json({
-          headlines: [],
-          overallDrama: 5,
-        })
-      }
-      return NextResponse.json({ 
-        error: 'Server configuration error', 
-        message: 'Supabase credentials not configured. Please check environment variables.',
-        details: {
-          hasUrl: !!supabaseUrl,
-          hasKey: !!supabaseKey
-        }
-      }, { status: 500 })
+      console.error('[API] Missing Supabase environment variables - returning empty array immediately')
+      // Always return empty array instead of error to prevent hanging
+      return NextResponse.json({
+        headlines: [],
+        overallDrama: 5,
+        warning: 'Supabase not configured',
+      })
     }
 
-    // Add timeout wrapper for database queries (8 seconds)
-    const queryTimeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database query timeout')), 8000)
-    )
+    // Create Supabase client inside the handler to avoid module-level issues
+    // Add timeout to client creation itself
+    let supabase
+    try {
+      supabase = createClient(supabaseUrl, supabaseKey, {
+        db: { schema: 'public' },
+        auth: { persistSession: false },
+      })
+    } catch (clientError) {
+      console.error('[API] Failed to create Supabase client:', clientError)
+      return NextResponse.json({
+        headlines: [],
+        overallDrama: 5,
+        warning: 'Database connection failed',
+      })
+    }
 
     // Fetch headlines ordered by drama score and recency
     // Try with reactions join first, fallback to simple query if it fails
@@ -54,80 +58,55 @@ export async function GET() {
     }> = []
     let error: Error | { code?: string; message: string } | null = null
 
+    // Aggressive timeout: 2 seconds max for first query
+    const QUERY_TIMEOUT_MS = 2000
+    let timeoutHandle: NodeJS.Timeout | null = null
+    
     try {
       const queryPromise = supabase
         .from('headlines')
-        .select(`
-          *,
-          reactions:reactions(reaction_type)
-        `)
+        .select('*') // Skip reactions join initially - too slow
         .order('drama_score', { ascending: false })
         .order('posted_at', { ascending: false })
-        .limit(100)
+        .limit(50) // Reduced limit for faster query
 
-      const result = await Promise.race([queryPromise, queryTimeout]) as {
+      // Race between query and timeout
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error('Database query timeout after 2 seconds'))
+        }, QUERY_TIMEOUT_MS)
+      })
+
+      const result = await Promise.race([queryPromise, timeoutPromise]) as {
         data: typeof headlines | null
         error: { code?: string; message: string } | null
       }
+      
+      if (timeoutHandle) clearTimeout(timeoutHandle)
+      
       headlines = result.data || []
       error = result.error
     } catch (timeoutError: unknown) {
-      console.error('[API] Query timeout, trying simple query')
-      error = timeoutError instanceof Error 
-        ? timeoutError 
-        : { message: timeoutError ? String(timeoutError) : 'Unknown timeout error' }
+      if (timeoutHandle) clearTimeout(timeoutHandle)
+      console.error('[API] Query timeout:', timeoutError)
+      // Return empty array immediately on timeout
+      return NextResponse.json({ 
+        headlines: [],
+        overallDrama: 5,
+        warning: 'Database query timed out. Please check connection.',
+      })
     }
 
-    // If join fails (e.g., RLS issue or timeout), try without reactions
+    // If query failed, return empty array immediately (no retries to prevent hanging)
     if (error) {
       const errorMessage = error instanceof Error ? error.message : error?.message || 'Unknown error'
-      console.warn('[API] Headlines query with reactions failed, trying without:', errorMessage)
-      try {
-        // Create new timeout for simple query
-        const simpleQueryTimeout = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Simple query timeout')), 8000)
-        )
-
-        const simpleQueryPromise = supabase
-          .from('headlines')
-          .select('*')
-          .order('drama_score', { ascending: false })
-          .order('posted_at', { ascending: false })
-          .limit(100)
-
-        const simpleResult = await Promise.race([simpleQueryPromise, simpleQueryTimeout]) as {
-          data: Array<Record<string, unknown>> | null
-          error: { code?: string; message: string } | null
-        }
-        
-        if (simpleResult.error) {
-          console.error('[API] Error fetching headlines (simple query):', simpleResult.error)
-          // During build or schema cache issues, return empty array
-          if (process.env.NEXT_PHASE === 'phase-production-build' || simpleResult.error.code === 'PGRST205') {
-            console.warn('[API] Schema cache issue during build, returning empty headlines')
-            return NextResponse.json({
-              headlines: [],
-              overallDrama: 5,
-            })
-          }
-          return NextResponse.json({ 
-            error: 'Failed to fetch headlines', 
-            message: simpleResult.error.message,
-            code: simpleResult.error.code,
-            details: simpleResult.error,
-            hint: 'Check RLS policies and schema cache'
-          }, { status: 500 })
-        }
-        
-        headlines = (simpleResult.data || []) as typeof headlines
-        error = null
-      } catch (simpleTimeoutError) {
-        console.error('[API] Simple query also timed out')
-        return NextResponse.json({ 
-          error: 'Request timeout', 
-          message: 'Database query took too long. Please try again.',
-        }, { status: 504 })
-      }
+      console.warn('[API] Headlines query failed:', errorMessage)
+      // Always return empty array instead of error to prevent hanging
+      return NextResponse.json({ 
+        headlines: [],
+        overallDrama: 5,
+        warning: `Database error: ${errorMessage}`,
+      })
     }
 
     // Log for debugging

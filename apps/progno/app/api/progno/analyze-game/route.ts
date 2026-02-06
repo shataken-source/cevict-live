@@ -7,6 +7,8 @@ import { validateClaudeEffectInput, sanitizeString } from '../../../lib/claude-e
 import { gatherClaudeEffectData, applyClaudeEffect } from '../../../lib/claude-effect-integration';
 import { americanToDecimal, extractAveragedOdds, estimateTeamStatsFromOdds, estimateRecentForm } from '../../../lib/odds-helpers';
 
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

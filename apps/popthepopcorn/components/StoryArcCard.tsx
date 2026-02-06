@@ -66,7 +66,7 @@ export default function StoryArcCard({ arc }: StoryArcCardProps) {
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded uppercase">
+            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded uppercase">
               Season {arc.season_number}
             </span>
             <span className="text-xs text-gray-500">{arc.category}</span>

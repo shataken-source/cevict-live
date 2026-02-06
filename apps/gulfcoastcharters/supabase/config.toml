@@ -1,0 +1,13 @@
+# Supabase Configuration
+# This file configures Supabase Edge Functions and cron jobs
+
+[functions.weather-alert-monitor]
+# Weather alert monitoring function
+# Runs every 15 minutes to check for severe weather alerts
+
+[pgbouncer]
+enabled = true
+
+# Cron jobs (if Supabase supports them)
+# Note: Supabase cron jobs are configured via Supabase Dashboard
+# or via pg_cron extension in PostgreSQL

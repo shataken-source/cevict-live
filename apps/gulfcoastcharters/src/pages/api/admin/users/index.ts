@@ -12,15 +12,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Get all users with their profiles
-    const { data: users, error } = await supabase
+    const { data: rows, error } = await supabase
       .from('profiles')
-      .select('id, email, name, role, created_at')
+      .select('id, email, created_at')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    return res.status(200).json({ users: users || [] });
+    const users = (rows || []).map((r: any) => ({
+      id: r.id,
+      email: r.email ?? '',
+      name: r.full_name ?? r.email ?? 'N/A',
+      role: r.is_admin === true ? 'admin' : (r.role ?? r.user_type ?? 'user'),
+      created_at: r.created_at,
+    }));
+
+    return res.status(200).json({ users });
   } catch (error: any) {
     console.error('Error fetching users:', error);
     return res.status(500).json({ error: error.message });

@@ -4,13 +4,15 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { CheckCircle, XCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 interface QuizModalProps {
   onClose: () => void;
   onComplete: (score: number) => void;
 }
 
-export default function QuizModal({ onClose, onComplete }: QuizModalProps) {
+export default function QuizModal({ onClose, onComplete, userId, lessonId }: QuizModalProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string>('');
   const [score, setScore] = useState(0);
@@ -65,7 +67,29 @@ export default function QuizModal({ onClose, onComplete }: QuizModalProps) {
             <p className="text-gray-600 mb-6">
               {finalScore >= 70 ? 'Great job! You passed!' : 'Keep studying and try again.'}
             </p>
-            <Button onClick={() => onComplete(finalScore)} className="w-full">
+            <Button 
+              onClick={async () => {
+                // Award points for passing quiz (gamification)
+                if (finalScore >= 70 && userId) {
+                  try {
+                    await supabase.functions.invoke('points-rewards-system', {
+                      body: {
+                        action: 'award_points',
+                        userId,
+                        actionType: 'quiz_passed',
+                        amount: 20,
+                      },
+                    });
+                    toast.success(`Quiz passed! +20 points`);
+                  } catch (pointsError) {
+                    console.error('Error awarding quiz points:', pointsError);
+                    // Don't block quiz completion if points fail
+                  }
+                }
+                onComplete(finalScore);
+              }} 
+              className="w-full"
+            >
               {finalScore >= 70 ? 'Continue to Next Lesson' : 'Retry Quiz'}
             </Button>
           </div>

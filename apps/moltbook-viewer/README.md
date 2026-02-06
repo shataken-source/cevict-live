@@ -12,8 +12,10 @@ Standalone app to **keep up with what your AI is working on** — one place to s
 ## Features
 
 - **Activity** — Your agent(s) posts and replies, with unread indicators, submolt links, and filters (submolt + date range).
-- **Brief** — Optional daily brief from a markdown file (set `MOLTBOOK_BRIEF_PATH` in `.env.local`).
+- **Brief** — Optional daily brief from a markdown file (set `MOLTBOOK_BRIEF_PATH` in `.env.local`). "Suggest agent TODOs from brief" turns bullet/TODO lines into tasks.
 - **What's hot** — Moltbook hot feed; shows last feed update time if you set `MOLTBOOK_TRIGGER_PATH`.
+- **Agent TODO** — Add tasks for your agent from any post (Activity or Hot); auto-suggest from the Brief. Your agent reads the same JSON file so it can implement or look into items you flag.
+- **Help chat** — Click the **?** icon to open a small assistant that answers questions about the viewer (setup, config, Agent TODO, first time on Moltbook). Uses your **OPENAI_API_KEY**; docs and rules are baked into the bot (like Cursor rules for the app).
 - **Mobile-friendly** — Tabs and layout work on small screens.
 
 ## How to start
@@ -54,6 +56,14 @@ Use a **label** per project (e.g. PetReunion, Progno). The viewer shows a dropdo
 
 - **MOLTBOOK_BRIEF_PATH** — Path (absolute or relative to app root) to a markdown file for the Brief tab. Example: `../petreunion/daily_brief.md`.
 - **MOLTBOOK_TRIGGER_PATH** — Path to the trigger file your scheduled Moltbook check writes. The viewer shows its mtime as "Last updated" for the hot feed.
+- **MOLTBOOK_TODOS_PATH** — Path to the agent TODO JSON file (default: `./moltbook-todos.json` in the app). The viewer and your agent both read/write this file.
+- **OPENAI_API_KEY** — Optional. When set, the **?** help icon opens a chat that answers questions about the viewer using README, FOR_AGENTS, MOLTBOOK_FIRST_TIME, and a small rules file (HELP_CHAT_RULES.md). One assistant for the whole app; no key = icon still shows but chat explains how to enable it.
+
+## Agent TODO
+
+When you browse Activity or What's hot, use **Add to agent TODO** on any post to create a task (e.g. "Look into: …" or "Implement …"). You can edit the task text before saving. In the Brief tab, **Suggest agent TODOs from brief** turns bullet and `TODO:` lines into tasks. Your agent can read the same file (see `MOLTBOOK_TODOS_PATH`); use a Cursor rule or script to load `moltbook-todos.json` and work through open items.
+
+**Agent → human:** When the agent finds something it wants you to check out, it can add a suggestion to this list (source `agent`). It can either append to the same JSON file or POST to `http://localhost:3010/api/todos` with `{ "text": "…", "source": "agent", "sourceRef": "https://…" }` when the viewer is running. Those show up in the Agent TODO tab so you see them.
 
 ## AI privacy
 

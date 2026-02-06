@@ -16,15 +16,15 @@ export * from './client'
 export { syncTeams, syncAllTeams, syncStandings } from './services/team-sync'
 export { syncInjuries, syncAllInjuries, getTeamInjuryImpact } from './services/injury-sync'
 export { syncH2H, calculateNarrativeMomentum } from './services/h2h-sync'
-export { MultiSourceOddsService, calculateInformationAsymmetry } from './services/multi-source-odds'
+export { MultiSourceOddsService } from './services/multi-source-odds'
 export { LiveGameTracker, getLiveTracker } from './services/live-tracker'
 export { AccuracyTracker, getAccuracyTracker } from './services/accuracy-tracker'
 
-// Claude Effect Engine
+// Claude Effect Engine (lives in data-sources; re-export for api-sports consumers)
 export { 
   CompleteClaudeEffectEngine, 
   getClaudeEffectEngine,
   type ClaudeEffectInput,
   type ClaudeEffectResult 
-} from './claude-effect-complete'
+} from '../data-sources/claude-effect-complete'
 

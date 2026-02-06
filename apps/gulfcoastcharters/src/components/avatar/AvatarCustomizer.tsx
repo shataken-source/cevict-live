@@ -36,11 +36,40 @@ export default function AvatarCustomizer({ userId, initialData, onSave, onCancel
         hair_color: hairColor 
       };
 
+      const isNewAvatar = !initialData;
       const { error } = initialData
         ? await supabase.from('user_avatars').update(avatarData).eq('user_id', userId)
         : await supabase.from('user_avatars').insert(avatarData);
 
       if (error) throw error;
+
+      // Award points for avatar creation/customization (gamification)
+      try {
+        if (isNewAvatar) {
+          // First time creating avatar
+          await supabase.functions.invoke('points-rewards-system', {
+            body: {
+              action: 'award_points',
+              userId,
+              actionType: 'avatar_created',
+              amount: 15,
+            },
+          });
+        } else {
+          // Updating/customizing avatar
+          await supabase.functions.invoke('points-rewards-system', {
+            body: {
+              action: 'award_points',
+              userId,
+              actionType: 'avatar_customized',
+              amount: 10,
+            },
+          });
+        }
+      } catch (pointsError) {
+        console.error('Error awarding avatar points:', pointsError);
+        // Don't block avatar save if points fail
+      }
 
       // Log analytics
       await supabase.from('avatar_analytics').insert({
@@ -49,7 +78,12 @@ export default function AvatarCustomizer({ userId, initialData, onSave, onCancel
         metadata: { sex, skin_color: skinColor, hair_style: hairStyle }
       });
 
-      toast({ title: 'Avatar saved!', description: 'Your avatar has been updated.' });
+      toast({ 
+        title: 'Avatar saved!', 
+        description: isNewAvatar 
+          ? 'Your avatar has been created! +15 points' 
+          : 'Your avatar has been updated! +10 points' 
+      });
       if (onSave) onSave(avatarData);
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });

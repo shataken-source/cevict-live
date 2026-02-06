@@ -49,25 +49,33 @@ export default function CaptainAlertPreferences() {
   }, []);
 
   const loadPreferences = async () => {
-    const { data } = await supabase.functions.invoke('captain-weather-alerts', {
-      body: { action: 'getPreferences', captainId: 'current-captain' }
-    });
-    if (data?.preferences) setPreferences(data.preferences);
+    // TODO: Create API endpoint for weather alert preferences
+    // For now, return empty array (no preferences loaded)
+    setPreferences([]);
   };
 
   const savePreference = async () => {
-    await supabase.functions.invoke('captain-weather-alerts', {
-      body: { action: 'savePreference', preference: newPref }
-    });
+    // TODO: Create API endpoint for saving weather alert preferences
+    // For now, just add to local state
+    const newId = Date.now().toString();
+    setPreferences([...preferences, { ...newPref, id: newId, buoyName: GULF_COAST_BUOYS.find(b => b.id === newPref.buoyId)?.name }]);
     setShowAddForm(false);
-    loadPreferences();
+    setNewPref({
+      vesselType: '',
+      buoyId: '',
+      maxWaveHeight: '',
+      maxWindSpeed: '',
+      minWaterTemp: '',
+      maxWaterTemp: '',
+      alertViaEmail: true,
+      alertViaSms: true
+    });
   };
 
   const deletePreference = async (id: string) => {
-    await supabase.functions.invoke('captain-weather-alerts', {
-      body: { action: 'deletePreference', preferenceId: id }
-    });
-    loadPreferences();
+    // TODO: Create API endpoint for deleting weather alert preferences
+    // For now, just remove from local state
+    setPreferences(preferences.filter(p => p.id !== id));
   };
 
   return (
@@ -136,12 +144,12 @@ export default function CaptainAlertPreferences() {
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
                     <Switch checked={newPref.alertViaEmail} 
-                      onCheckedChange={(c) => setNewPref({...newPref, alertViaEmail: c})} />
+                      onCheckedChange={(c: boolean) => setNewPref({...newPref, alertViaEmail: c})} />
                     <Label>Email Alerts</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch checked={newPref.alertViaSms}
-                      onCheckedChange={(c) => setNewPref({...newPref, alertViaSms: c})} />
+                      onCheckedChange={(c: boolean) => setNewPref({...newPref, alertViaSms: c})} />
                     <Label>SMS Alerts</Label>
                   </div>
                 </div>

@@ -1,0 +1,21 @@
+{
+  "system": {
+    "batteryType": "lead-acid",
+    "batteryCapacity": 200,
+    "solarPanelRating": 300,
+    "inverterRating": 2000
+  },
+  "monitoring": {
+    "updateInterval": 2000,
+    "alertThresholds": {
+      "lowVoltage": 11.5,
+      "highTemperature": 45,
+      "lowBattery": 20
+    }
+  },
+  "hardware": {
+    "batterySensor": "/dev/i2c-1",
+    "solarSensor": "/dev/i2c-2",
+    "inverterPort": "/dev/ttyUSB0"
+  }
+}

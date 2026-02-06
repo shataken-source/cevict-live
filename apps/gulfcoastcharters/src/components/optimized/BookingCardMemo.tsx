@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookingHistoryCard } from '../BookingHistoryCard';
+import BookingHistoryCard from '../BookingHistoryCard';
 
 /**
  * Memoized BookingHistoryCard for performance

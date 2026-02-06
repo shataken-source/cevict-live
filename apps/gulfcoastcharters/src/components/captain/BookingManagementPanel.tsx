@@ -24,11 +24,18 @@ export function BookingManagementPanel({ bookings, onUpdate }: { bookings: Booki
   const handleAccept = async (bookingId: string) => {
     setProcessing(bookingId);
     try {
-      await supabase.functions.invoke('captain-bookings', {
-        body: { action: 'acceptBooking', bookingId }
+      const response = await fetch('/api/captain/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'acceptBooking', bookingId }),
       });
-      toast.success('Booking accepted!');
-      onUpdate();
+      const result = await response.json();
+      if (result.success) {
+        toast.success('Booking accepted!');
+        onUpdate();
+      } else {
+        toast.error('Failed to accept booking');
+      }
     } catch (error) {
       toast.error('Failed to accept booking');
     }
@@ -38,11 +45,18 @@ export function BookingManagementPanel({ bookings, onUpdate }: { bookings: Booki
   const handleDecline = async (bookingId: string) => {
     setProcessing(bookingId);
     try {
-      await supabase.functions.invoke('captain-bookings', {
-        body: { action: 'declineBooking', bookingId }
+      const response = await fetch('/api/captain/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'declineBooking', bookingId }),
       });
-      toast.success('Booking declined');
-      onUpdate();
+      const result = await response.json();
+      if (result.success) {
+        toast.success('Booking declined');
+        onUpdate();
+      } else {
+        toast.error('Failed to decline booking');
+      }
     } catch (error) {
       toast.error('Failed to decline booking');
     }

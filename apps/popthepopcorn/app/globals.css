@@ -132,3 +132,22 @@ a:visited {
 .breaking-pulse {
   animation: pulse-red 1s infinite;
 }
+
+/* 3-Column Layout Responsive */
+@media (max-width: 1024px) {
+  .grid-cols-1.lg\\:grid-cols-12 {
+    grid-template-columns: 1fr;
+  }
+  
+  .lg\\:col-span-3,
+  .lg\\:col-span-6 {
+    grid-column: span 1;
+  }
+}
+
+/* Sticky sidebar on desktop */
+@media (min-width: 1024px) {
+  .sticky {
+    position: sticky;
+  }
+}

@@ -1,4 +1,7 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const { password } = await request.json()

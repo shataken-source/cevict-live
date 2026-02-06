@@ -90,7 +90,7 @@ export default function CatchLogger({ onSuccess }: { onSuccess?: () => void }) {
     toast.success('Photo captured with location data!');
   };
 
-  const handleAISpeciesSelect = (speciesName: string, weight: number, length: number) => {
+  const handleAISpeciesSelect = async (speciesName: string, weight: number, length: number) => {
     // Find matching species ID from database
     const matchedSpecies = species.find(s => 
       s.name.toLowerCase().includes(speciesName.toLowerCase()) ||
@@ -103,6 +103,25 @@ export default function CatchLogger({ onSuccess }: { onSuccess?: () => void }) {
       weight: weight.toString(),
       length: length.toString()
     }));
+
+    // Award points for using AI recognition (gamification)
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await supabase.functions.invoke('points-rewards-system', {
+          body: {
+            action: 'award_points',
+            userId: session.user.id,
+            actionType: 'ai_recognition_use',
+            amount: 5,
+          },
+        });
+        toast.success('AI recognition used! +5 points');
+      }
+    } catch (pointsError) {
+      console.error('Error awarding AI recognition points:', pointsError);
+      // Don't block AI usage if points fail
+    }
 
     if (!matchedSpecies) {
       toast.info(`Species "${speciesName}" not found in database. Please select manually.`);
@@ -129,7 +148,25 @@ export default function CatchLogger({ onSuccess }: { onSuccess?: () => void }) {
 
       if (error) throw error;
 
-      toast.success('Catch logged successfully!');
+      // Award points for logging catch (gamification)
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await supabase.functions.invoke('points-rewards-system', {
+            body: {
+              action: 'award_points',
+              userId: session.user.id,
+              actionType: 'catch_logged',
+              amount: 25,
+            },
+          });
+        }
+      } catch (pointsError) {
+        console.error('Error awarding catch points:', pointsError);
+        // Don't block catch logging if points fail
+      }
+
+      toast.success('Catch logged successfully! +25 points');
       setFormData({
         species_id: '',
         weight: '',

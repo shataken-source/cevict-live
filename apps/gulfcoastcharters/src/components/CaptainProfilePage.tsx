@@ -229,11 +229,14 @@ export default function CaptainProfilePage({ captainId }: CaptainProfilePageProp
             {[1, 2, 3].map((i) => (
               <ReviewCard
                 key={i}
-                userName={`Customer ${i}`}
-                rating={5}
-                date="2 weeks ago"
-                comment="Excellent captain! Very knowledgeable and professional."
-                tripType="Deep Sea Fishing"
+                review={{
+                  id: `review-${i}`,
+                  customerName: `Customer ${i}`,
+                  rating: 5,
+                  reviewText: "Excellent captain! Very knowledgeable and professional.",
+                  createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+                  charterName: "Deep Sea Fishing",
+                }}
               />
             ))}
           </div>

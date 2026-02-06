@@ -1,11 +1,14 @@
 import { Html, Head, Main, NextScript } from 'next/document'
 
 const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_GOOGLE_ADS_CLIENT_ID || 'ca-pub-0940073536675562'
+const SITE_VERIFY = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || ''
 
 export default function Document() {
   return (
     <Html lang="en">
       <Head>
+        {/* Google site ownership (AdSense / Search Console): set NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION per site */}
+        {SITE_VERIFY ? <meta name="google-site-verification" content={SITE_VERIFY} /> : null}
         {/* AdSense: in head on every page so Google can verify and serve ads */}
         <script
           async

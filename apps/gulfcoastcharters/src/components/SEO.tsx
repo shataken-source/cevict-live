@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useRouter } from 'next/router';
 
 interface SEOProps {
   title?: string;
@@ -26,8 +26,12 @@ export default function SEO({
   twitterSite = '@GulfCharters'
 }: SEOProps) {
 
-  const location = useLocation();
-  const currentUrl = `https://gulfcoastcharters.com${location.pathname}`;
+  const router = useRouter();
+  // Use router.asPath for the current path, or fallback to window.location if not available
+  const pathname = typeof window !== 'undefined' 
+    ? (router.asPath || window.location.pathname)
+    : router.asPath || '/';
+  const currentUrl = `https://gulfcoastcharters.com${pathname}`;
   const canonical = canonicalUrl || currentUrl;
 
   useEffect(() => {

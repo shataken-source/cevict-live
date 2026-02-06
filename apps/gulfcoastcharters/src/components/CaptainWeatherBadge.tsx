@@ -32,21 +32,23 @@ export default function CaptainWeatherBadge({
 
   const loadWeatherAlert = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('captain-weather-alerts', {
-        body: { 
-          action: 'check_captain_weather',
-          captain_id: captainId,
-          location: location
-        }
+      const res = await fetch('/api/captain-weather', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ captain_id: captainId, location }),
       });
-      
-      if (!error && data?.alert) {
-        setAlert(data.alert);
-      } else {
-        setAlert(null);
+      if (res.ok) {
+        const data = await res.json();
+        setAlert(data?.alert ?? null);
+        return;
       }
+      const out = await supabase.functions.invoke('captain-weather-alerts', {
+        body: { action: 'check_captain_weather', captain_id: captainId, location },
+      });
+      setAlert(!out.error && out.data?.alert ? out.data.alert : null);
     } catch (error) {
       console.error('Failed to load weather alert:', error);
+      setAlert(null);
     } finally {
       setLoading(false);
     }

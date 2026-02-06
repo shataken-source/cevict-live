@@ -1,3 +1,5 @@
+<!-- Synced from progno package (gcc/cevict-monorepo node_modules). -->
+
 # 🎭 THE CLAUDE EFFECT - PHASE 1 IMPLEMENTATION
 
 ## ✅ Completed Components
@@ -166,4 +168,3 @@ console.log('Flags:', data.flags);
 **Phase 1 Status: Core Infrastructure Complete ✅**
 
 **Ready for data collection integration and testing!**
-

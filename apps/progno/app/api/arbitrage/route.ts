@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
 interface BookmakerOdds {
   bookmaker: string;
   home: number;

@@ -15,13 +15,19 @@ export default function HomePage() {
           <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-4">
             Together We Bring Them Home
           </p>
-          <p className="text-lg text-gray-500 max-w-3xl mx-auto mb-6">
-            A free community-powered platform to help reunite lost pets with their families
+          <p className="text-lg font-medium text-gray-700 max-w-3xl mx-auto mb-2">
+            Completely free — report lost, report found, search. No sign-up to search.
+          </p>
+          <p className="text-base text-gray-500 max-w-3xl mx-auto mb-6">
+            Community-powered. Real reports only. One place to reunite pets with their families.
           </p>
           <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
             <HelpCircle className="w-4 h-4" />
             <span>Need help? Check our guide below or use the search feature to find answers</span>
           </div>
+          <p className="text-xs text-gray-400 mt-4">
+            AI-written, AI-maintained. This site was built and is maintained by AI.
+          </p>
         </div>
 
         {/* Action Cards with More Detail */}
@@ -214,6 +220,9 @@ export default function HomePage() {
                 <Info className="w-5 h-5 text-blue-600" />
                 Reporting a Lost Pet?
               </h3>
+              <p className="text-sm text-blue-600 mb-2">
+                <Link href="/first-24-hours" className="font-medium hover:underline">First 24 hours checklist →</Link>
+              </p>
               <ul className="space-y-2 text-sm text-gray-600">
                 <li className="flex items-start gap-2">
                   <span className="text-blue-600 font-bold">•</span>

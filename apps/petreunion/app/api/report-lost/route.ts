@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabaseClient } from '@/lib/supabase-client';
 import { parseLocationInput } from '@/lib/location-parser';
 import { 
   validateLostPetForm, 
@@ -9,19 +9,37 @@ import {
   normalizePhone,
   MAX_LENGTHS 
 } from '@/lib/validation';
+import { reportRateLimiter, getClientId } from '@/lib/rate-limit';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
-  try {
-    if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json(
-        { error: 'Database not configured' },
-        { status: 500 }
-      );
-    }
+  // Rate limiting
+  const clientId = getClientId(req);
+  const rateLimit = reportRateLimiter.check(clientId);
+  
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        error: 'Too many requests',
+        message: 'Rate limit exceeded. Please try again later.',
+        retryAfter: Math.ceil((rateLimit.resetAt - Date.now()) / 1000),
+      },
+      {
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': '10',
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': rateLimit.resetAt.toString(),
+          'Retry-After': Math.ceil((rateLimit.resetAt - Date.now()) / 1000).toString(),
+        },
+      }
+    );
+  }
 
+  try {
+    const supabase = getSupabaseClient();
     const body = await req.json();
     
     // Sanitize all string inputs first
@@ -106,8 +124,6 @@ export async function POST(req: NextRequest) {
     parsedLocation.zip = parsedLocation.zip ? sanitizeString(parsedLocation.zip, 10) : null;
     parsedLocation.detail = parsedLocation.detail ? sanitizeString(parsedLocation.detail, MAX_LENGTHS.location) : null;
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     // Insert the lost pet report
     const { data, error } = await supabase
       .from('lost_pets')
@@ -151,6 +167,12 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Pet report created successfully',
       pet: data,
+    }, {
+      headers: {
+        'X-RateLimit-Limit': '10',
+        'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+        'X-RateLimit-Reset': rateLimit.resetAt.toString(),
+      },
     });
   } catch (error: any) {
     console.error('Report lost pet error:', error);

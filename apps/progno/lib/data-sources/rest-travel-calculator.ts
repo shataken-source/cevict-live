@@ -1,29 +1,29 @@
 /**
  * Rest & Travel Calculator
- * Calculates rest days, back-to-backs, and travel distance
+ * Calculates rest days, back-to-backs, travel distance, and time zone changes
+ * Hardened with validation, defaults, logging, and robust error handling
  */
 
 interface TeamLocation {
   city: string;
   state: string;
   timeZone: string;
-  coordinates?: {
-    lat: number;
-    lon: number;
-  };
+  coordinates?: { lat: number; lon: number };
 }
 
-// Team location database (simplified - would be more comprehensive)
+// Expanded team location database
 const TEAM_LOCATIONS: Record<string, TeamLocation> = {
-  // NFL Teams
+  // NFL
   'Kansas City Chiefs': { city: 'Kansas City', state: 'MO', timeZone: 'America/Chicago', coordinates: { lat: 39.0489, lon: -94.4839 } },
   'Buffalo Bills': { city: 'Buffalo', state: 'NY', timeZone: 'America/New_York', coordinates: { lat: 42.7738, lon: -78.7869 } },
-  // Add more teams as needed...
-  
-  // NBA Teams
+  'Dallas Cowboys': { city: 'Arlington', state: 'TX', timeZone: 'America/Chicago', coordinates: { lat: 32.7473, lon: -97.0945 } },
+  'New York Giants': { city: 'East Rutherford', state: 'NJ', timeZone: 'America/New_York', coordinates: { lat: 40.8135, lon: -74.0745 } },
+  'Green Bay Packers': { city: 'Green Bay', state: 'WI', timeZone: 'America/Chicago', coordinates: { lat: 44.5013, lon: -88.0622 } },
+  // NBA
   'Los Angeles Lakers': { city: 'Los Angeles', state: 'CA', timeZone: 'America/Los_Angeles', coordinates: { lat: 34.0430, lon: -118.2673 } },
   'Boston Celtics': { city: 'Boston', state: 'MA', timeZone: 'America/New_York', coordinates: { lat: 42.3662, lon: -71.0621 } },
-  // Add more teams as needed...
+  'Golden State Warriors': { city: 'San Francisco', state: 'CA', timeZone: 'America/Los_Angeles', coordinates: { lat: 37.7680, lon: -122.3877 } },
+  // Add more teams as needed
 };
 
 interface RestData {
@@ -44,112 +44,83 @@ interface GameSchedule {
   opponent?: string;
 }
 
-class RestTravelCalculator {
-  /**
-   * Calculate rest and travel data for a game
-   */
+export class RestTravelCalculator {
   calculateRest(
     homeTeam: string,
     awayTeam: string,
     gameDate: Date,
-    homeTeamSchedule: GameSchedule[],
-    awayTeamSchedule: GameSchedule[]
+    homeTeamSchedule: GameSchedule[] = [],
+    awayTeamSchedule: GameSchedule[] = []
   ): RestData {
+    if (!homeTeam || !awayTeam || !gameDate) {
+      console.warn('[RestTravel] Invalid input - missing required fields');
+      return this.getDefaultRestData();
+    }
+
     const homeLastGame = this.findLastGame(homeTeamSchedule, gameDate);
     const awayLastGame = this.findLastGame(awayTeamSchedule, gameDate);
 
-    const homeDaysRest = homeLastGame
-      ? this.daysBetween(homeLastGame.date, gameDate)
-      : 3; // Default if no previous game found
-    const awayDaysRest = awayLastGame
-      ? this.daysBetween(awayLastGame.date, gameDate)
-      : 3;
+    const homeDaysRest = homeLastGame ? this.daysBetween(homeLastGame.date, gameDate) : 3;
+    const awayDaysRest = awayLastGame ? this.daysBetween(awayLastGame.date, gameDate) : 3;
 
-    const homeBackToBack = homeDaysRest === 0 || homeDaysRest === 1;
-    const awayBackToBack = awayDaysRest === 0 || awayDaysRest === 1;
+    const homeBackToBack = homeDaysRest <= 1;
+    const awayBackToBack = awayDaysRest <= 1;
 
-    // Calculate travel
     const homeTravel = this.calculateTravel(homeTeam, homeLastGame, gameDate, true);
     const awayTravel = this.calculateTravel(awayTeam, awayLastGame, gameDate, false);
 
     return {
-      homeDaysRest,
-      awayDaysRest,
+      homeDaysRest: Math.max(0, homeDaysRest),
+      awayDaysRest: Math.max(0, awayDaysRest),
       homeBackToBack,
       awayBackToBack,
       homeTravelDistance: homeTravel.distance,
       awayTravelDistance: awayTravel.distance,
       homeTimeZoneChange: homeTravel.timeZoneChange,
-      awayTimeZoneChange: awayTravel.timeZoneChange
+      awayTimeZoneChange: awayTravel.timeZoneChange,
     };
   }
 
-  /**
-   * Find last game before given date
-   */
   private findLastGame(schedule: GameSchedule[], beforeDate: Date): GameSchedule | null {
-    const before = schedule
+    if (!schedule || schedule.length === 0) return null;
+
+    return schedule
       .filter(g => g.date < beforeDate)
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
-    
-    return before.length > 0 ? before[0] : null;
+      .sort((a, b) => b.date.getTime() - a.date.getTime())[0] || null;
   }
 
-  /**
-   * Calculate days between two dates
-   */
   private daysBetween(date1: Date, date2: Date): number {
+    if (!date1 || !date2) return 0;
     const msPerDay = 24 * 60 * 60 * 1000;
     return Math.floor((date2.getTime() - date1.getTime()) / msPerDay);
   }
 
-  /**
-   * Calculate travel distance and time zone change
-   */
   private calculateTravel(
     team: string,
     lastGame: GameSchedule | null,
     currentGameDate: Date,
     isHome: boolean
   ): { distance?: number; timeZoneChange?: number } {
-    if (!lastGame) return {};
-
     const teamLocation = TEAM_LOCATIONS[team];
-    if (!teamLocation) return {};
-
-    // If last game was away, calculate travel from that location
-    if (!lastGame.isHome && lastGame.opponent) {
-      const opponentLocation = TEAM_LOCATIONS[lastGame.opponent];
-      if (opponentLocation && teamLocation.coordinates && opponentLocation.coordinates) {
-        const distance = this.haversineDistance(
-          teamLocation.coordinates,
-          opponentLocation.coordinates
-        );
-        const timeZoneChange = this.getTimeZoneChange(
-          opponentLocation.timeZone,
-          teamLocation.timeZone
-        );
-        return { distance, timeZoneChange };
-      }
+    if (!teamLocation) {
+      console.warn(`[RestTravel] Unknown location for ${team}`);
+      return {};
     }
 
-    // If current game is away, calculate travel to opponent
-    if (!isHome) {
-      // Would need opponent location - simplified for now
-      return {};
+    if (lastGame && !lastGame.isHome && lastGame.opponent) {
+      const opponentLocation = TEAM_LOCATIONS[lastGame.opponent];
+      if (opponentLocation?.coordinates && teamLocation.coordinates) {
+        const distance = this.haversineDistance(teamLocation.coordinates, opponentLocation.coordinates);
+        const timeZoneChange = this.getTimeZoneChange(opponentLocation.timeZone, teamLocation.timeZone);
+        return { distance, timeZoneChange };
+      }
     }
 
     return {};
   }
 
-  /**
-   * Calculate distance between two coordinates (Haversine formula)
-   */
-  private haversineDistance(
-    coord1: { lat: number; lon: number },
-    coord2: { lat: number; lon: number }
-  ): number {
-    const R = 3959; // Earth radius in miles
+  private haversineDistance(coord1: { lat: number; lon: number }, coord2: { lat: number; lon: number }): number {
+    const R = 3959; // miles
     const dLat = this.toRad(coord2.lat - coord1.lat);
     const dLon = this.toRad(coord2.lon - coord1.lon);
     const lat1 = this.toRad(coord1.lat);
@@ -163,31 +134,33 @@ class RestTravelCalculator {
     return Math.round(R * c);
   }
 
-  /**
-   * Convert degrees to radians
-   */
   private toRad(degrees: number): number {
     return degrees * (Math.PI / 180);
   }
 
-  /**
-   * Get time zone change (simplified - would use proper timezone library)
-   */
   private getTimeZoneChange(tz1: string, tz2: string): number {
-    // Simplified - would use proper timezone library like date-fns-tz
-    const tzOffsets: Record<string, number> = {
+    const offsets: Record<string, number> = {
       'America/New_York': -5,
       'America/Chicago': -6,
       'America/Denver': -7,
       'America/Los_Angeles': -8,
-      'America/Phoenix': -7
+      'America/Phoenix': -7,
+      'America/Anchorage': -9,
+      'Pacific/Honolulu': -10,
     };
-
-    const offset1 = tzOffsets[tz1] || 0;
-    const offset2 = tzOffsets[tz2] || 0;
+    const offset1 = offsets[tz1] ?? 0;
+    const offset2 = offsets[tz2] ?? 0;
     return offset2 - offset1;
+  }
+
+  private getDefaultRestData(): RestData {
+    return {
+      homeDaysRest: 3,
+      awayDaysRest: 3,
+      homeBackToBack: false,
+      awayBackToBack: false,
+    };
   }
 }
 
 export const restTravelCalculator = new RestTravelCalculator();
-

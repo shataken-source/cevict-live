@@ -227,11 +227,19 @@ export default function SEOHead({
       <meta name="msapplication-config" content="/browserconfig.xml" />
       <meta name="theme-color" content="#0891b2" />
       
-      {/* VERIFICATION TAGS - Add these ASAP! */}
-      <meta name="google-site-verification" content="YOUR_GOOGLE_CODE" />
-      <meta name="msvalidate.01" content="YOUR_BING_CODE" />
-      <meta name="yandex-verification" content="YOUR_YANDEX_CODE" />
-      <meta name="p:domain_verify" content="YOUR_PINTEREST_CODE" />
+      {/* VERIFICATION TAGS - Set NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION in env (see ADSENSE_VERIFICATION_SETUP.md) */}
+      {typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && (
+        <meta name="google-site-verification" content={process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION} />
+      )}
+      {typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_BING_VERIFICATION && (
+        <meta name="msvalidate.01" content={process.env.NEXT_PUBLIC_BING_VERIFICATION} />
+      )}
+      {typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_YANDEX_VERIFICATION && (
+        <meta name="yandex-verification" content={process.env.NEXT_PUBLIC_YANDEX_VERIFICATION} />
+      )}
+      {typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_PINTEREST_VERIFICATION && (
+        <meta name="p:domain_verify" content={process.env.NEXT_PUBLIC_PINTEREST_VERIFICATION} />
+      )}
       
       {/* FAVICONS */}
       <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />

@@ -10,6 +10,8 @@
  * CONFIDENCE = BASE_CONFIDENCE × (1 - |CSI|) × (1 + |IAI|)
  */
 
+import { getWeightsForLeague } from './claude-effect-weights';
+
 export interface ClaudeEffectScores {
   sentimentField: number;        // SF: -0.2 to +0.2
   narrativeMomentum: number;     // NM: -0.15 to +0.15
@@ -75,16 +77,14 @@ export interface ChaosFactors {
  * Implements the 7-dimensional probability modifier
  */
 export class ClaudeEffectEngine {
-  // Learned weights from backtesting (per complete guide spec)
+  // Base weights (fallback when getWeightsForLeague returns default)
   // NOTE: CSI and TRD are NOT in the main formula - they're applied separately
   private weights = {
-    sentiment: 0.15,        // w₁ - SF: 15%
-    narrative: 0.12,        // w₂ - NM: 12%
-    information: 0.20,      // w₃ - IAI: 20% (highest!)
-    network: 0.13,          // w₅ - NIG: 13%
-    emergent: 0.20,         // w₇ - EPD: 20% (highest!)
-    // Total: 0.80 (remaining 0.20 is buffer)
-    // CSI and TRD are applied separately, not in main formula
+    sentiment: 0.15,        // w₁ - SF
+    narrative: 0.12,        // w₂ - NM
+    information: 0.20,      // w₃ - IAI
+    network: 0.13,          // w₅ - NIG
+    emergent: 0.20,         // w₇ - EPD
   };
 
   // Sport-specific decay constants for temporal relevance
@@ -96,6 +96,19 @@ export class ClaudeEffectEngine {
     ncaa: 0.20,
     default: 0.20,
   };
+
+  /** League-specific weights from simulation (NHL Momentum, NFL Efficiency). Maps 7D to engine 5D; applies optional overrides. */
+  private getEffectiveWeights(league?: string): { sentiment: number; narrative: number; information: number; network: number; emergent: number } {
+    const W = getWeightsForLeague(league || '');
+    const base = {
+      sentiment: W.SF,
+      narrative: W.NM,
+      information: W.IAI,
+      network: W.NIG,
+      emergent: W.EPD,
+    };
+    return { ...base, ...this.weightOverrides };
+  }
 
   /**
    * Calculate the complete Claude Effect for a game
@@ -223,12 +236,14 @@ export class ClaudeEffectEngine {
     // Calculate combined Claude Effect (per complete guide spec)
     // Formula: CLAUDE_EFFECT = (w₁ × SF) + (w₂ × NM) + (w₃ × IAI) + (w₅ × NIG) + (w₇ × EPD)
     // NOTE: CSI and TRD are NOT in this formula - they're applied separately
+    // Use league-specific weights when available (NHL: NM; NFL: IAI from simulation)
+    const w = this.getEffectiveWeights(gameData.league);
     const claudeEffect =
-      (this.weights.sentiment * scores.sentimentField) +
-      (this.weights.narrative * scores.narrativeMomentum) +
-      (this.weights.information * scores.informationAsymmetry) +
-      (this.weights.network * scores.networkInfluence) +
-      (this.weights.emergent * scores.emergentPattern);
+      (w.sentiment * scores.sentimentField) +
+      (w.narrative * scores.narrativeMomentum) +
+      (w.information * scores.informationAsymmetry) +
+      (w.network * scores.networkInfluence) +
+      (w.emergent * scores.emergentPattern);
 
     // Clamp Claude Effect to reasonable bounds (±15% max impact per guide)
     const clampedEffect = Math.max(-0.15, Math.min(0.15, claudeEffect));
@@ -823,15 +838,15 @@ export class ClaudeEffectEngine {
   /**
    * Update weights based on backtesting results
    */
-  updateWeights(newWeights: Partial<typeof this.weights>): void {
-    this.weights = { ...this.weights, ...newWeights };
+  updateWeights(newWeights: Partial<{ sentiment: number; narrative: number; information: number; network: number; emergent: number }>): void {
+    this.weightOverrides = { ...this.weightOverrides, ...newWeights };
   }
 
   /**
-   * Get current weights (for fine-tuning UI)
+   * Get current effective weights (default league + overrides; for fine-tuning UI)
    */
-  getWeights(): typeof this.weights {
-    return { ...this.weights };
+  getWeights(): { sentiment: number; narrative: number; information: number; network: number; emergent: number } {
+    return this.getEffectiveWeights('');
   }
 }
 

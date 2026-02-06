@@ -1,0 +1,709 @@
+{
+  "date": "2026-02-04",
+  "generatedAt": "2026-02-04T16:48:51.649Z",
+  "count": 10,
+  "message": "Top 10 picks (of 94 games) — Cevict Flex + Triple Alignment",
+  "picks": [
+    {
+      "sport": "NHL",
+      "league": "NHL",
+      "home_team": "Vegas Golden Knights",
+      "away_team": "Vancouver Canucks",
+      "pick": "Vegas Golden Knights",
+      "pick_type": "SPREAD",
+      "recommended_line": -1.5,
+      "odds": -110,
+      "confidence": 77,
+      "game_time": "2026-02-05T03:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Vegas Golden Knights with 77% confidence. ⏱️ Slot: Night game. 📊 1,500 simulations: 67.0% win rate. 📈 Predicted score: 6-4. 🤖 AI signals: Narrative edge home: 10% Sharp money: backing away Pressure: away motivated 💰 Value detected: spread Vegas Golden Knights (+39.6% edge, $75.51 EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "37c7531dd50a2c77c2d230b9cc6bcbef",
+      "expected_value": 75.51,
+      "reasoning": [
+        "Narrative edge home: 10%",
+        "Sharp money: backing away",
+        "Pressure: away motivated",
+        "Experimental: Night game (+6 conf)"
+      ],
+      "triple_align": true,
+      "composite_score": 113.4,
+      "claude_effect": -0.0189,
+      "sentiment_field": 0.0391,
+      "narrative_momentum": 0.0976,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0.0153,
+      "temporal_decay": 1,
+      "external_pressure": -0.1053,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.67,
+      "mc_predicted_score": {
+        "home": 6,
+        "away": 4,
+        "homeRange": [
+          3,
+          8
+        ],
+        "awayRange": [
+          2,
+          7
+        ]
+      },
+      "mc_spread_probability": 0.9193,
+      "mc_total_probability": 0.872,
+      "mc_iterations": 1500,
+      "value_bet_edge": 39.55,
+      "value_bet_ev": 75.51,
+      "value_bet_kelly": 0.2077,
+      "has_value": true,
+      "is_favorite_pick": true,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": false,
+        "tags": [
+          "Night game"
+        ],
+        "confidence_delta": 0.5
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NHL",
+      "league": "NHL",
+      "home_team": "Washington Capitals",
+      "away_team": "Nashville Predators",
+      "pick": "Washington Capitals",
+      "pick_type": "SPREAD",
+      "recommended_line": -1.5,
+      "odds": -110,
+      "confidence": 66,
+      "game_time": "2026-02-06T00:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Washington Capitals with 66% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 67.3% win rate. 📈 Predicted score: 6-4. 🤖 AI signals: Narrative edge away: 11% Sharp money: backing away Pressure: home motivated 💰 Value detected: spread Washington Capitals (+40.9% edge, $78.05 EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "86fca7ece2fa447cf3abdc17fa3ba00b",
+      "expected_value": 78.05,
+      "reasoning": [
+        "Narrative edge away: 11%",
+        "Sharp money: backing away",
+        "Pressure: home motivated",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": true,
+      "composite_score": 112.3,
+      "claude_effect": -0.0166,
+      "sentiment_field": 0.0494,
+      "narrative_momentum": -0.1137,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.07,
+      "news_impact": 0.022,
+      "temporal_decay": 0.93,
+      "external_pressure": 0.1168,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.6727,
+      "mc_predicted_score": {
+        "home": 6,
+        "away": 4,
+        "homeRange": [
+          3,
+          8
+        ],
+        "awayRange": [
+          2,
+          7
+        ]
+      },
+      "mc_spread_probability": 0.9327,
+      "mc_total_probability": 0.88,
+      "mc_iterations": 1500,
+      "value_bet_edge": 40.89,
+      "value_bet_ev": 78.05,
+      "value_bet_kelly": 0.2147,
+      "has_value": true,
+      "is_favorite_pick": true,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NHL",
+      "league": "NHL",
+      "home_team": "Colorado Avalanche",
+      "away_team": "San Jose Sharks",
+      "pick": "Colorado Avalanche",
+      "pick_type": "SPREAD",
+      "recommended_line": -1.5,
+      "odds": -110,
+      "confidence": 73,
+      "game_time": "2026-02-05T02:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Colorado Avalanche with 73% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 66.9% win rate. 📈 Predicted score: 6-4. 🤖 AI signals: Narrative edge away: 6% Sharp money: backing away News impact: positive away 💰 Value detected: spread Colorado Avalanche (+39.0% edge, $74.36 EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "79b11e09a4c9f85d482737be719e603a",
+      "expected_value": 74.36,
+      "reasoning": [
+        "Narrative edge away: 6%",
+        "Sharp money: backing away",
+        "News impact: positive away",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": true,
+      "composite_score": 112.1,
+      "claude_effect": -0.0319,
+      "sentiment_field": 0.0649,
+      "narrative_momentum": -0.0609,
+      "information_asymmetry": -0.0814,
+      "chaos_sensitivity": 0.04,
+      "news_impact": -0.0795,
+      "temporal_decay": 1,
+      "external_pressure": 0.0063,
+      "ai_confidence": "MEDIUM",
+      "mc_win_probability": 0.6687,
+      "mc_predicted_score": {
+        "home": 6,
+        "away": 4,
+        "homeRange": [
+          3,
+          8
+        ],
+        "awayRange": [
+          2,
+          7
+        ]
+      },
+      "mc_spread_probability": 0.9133,
+      "mc_total_probability": 0.8853,
+      "mc_iterations": 1500,
+      "value_bet_edge": 38.95,
+      "value_bet_ev": 74.36,
+      "value_bet_kelly": 0.2045,
+      "has_value": true,
+      "is_favorite_pick": true,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NCAAF",
+      "league": "NCAAF",
+      "home_team": "Notre Dame Fighting Irish",
+      "away_team": "Wisconsin Badgers",
+      "pick": "Wisconsin Badgers",
+      "pick_type": "MONEYLINE",
+      "odds": 660,
+      "confidence": 92,
+      "game_time": "2026-09-06T16:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Wisconsin Badgers with 92% confidence. ⏱️ Slot: Weekend. 📊 1,500 simulations: 77.2% win rate. 📈 Predicted score: 19-32. 🤖 AI signals: Sentiment favors home (11%) Narrative edge home: 14% Sharp money: backing away Pressure: home motivated 💰 Value detected: moneyline Wisconsin Badgers (+64.0% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "b460f3aa4235ec2485f25182755304d6",
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (11%)",
+        "Narrative edge home: 14%",
+        "Sharp money: backing away",
+        "Pressure: home motivated",
+        "Experimental: Weekend (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": 0.0366,
+      "sentiment_field": 0.1053,
+      "narrative_momentum": 0.1414,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0.0465,
+      "temporal_decay": 0.88,
+      "external_pressure": 0.1218,
+      "ai_confidence": "MEDIUM",
+      "mc_win_probability": 0.228,
+      "mc_predicted_score": {
+        "home": 19,
+        "away": 32,
+        "homeRange": [
+          0,
+          41
+        ],
+        "awayRange": [
+          9,
+          56
+        ]
+      },
+      "mc_spread_probability": 0.5687,
+      "mc_total_probability": 0.5447,
+      "mc_iterations": 1500,
+      "value_bet_edge": 64.04,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.1844,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": false,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": false,
+        "tags": [
+          "Weekend"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Delaware Blue Hens",
+      "away_team": "Liberty Flames",
+      "pick": "Delaware Blue Hens",
+      "pick_type": "MONEYLINE",
+      "odds": 579,
+      "confidence": 92,
+      "game_time": "2026-02-05T00:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Delaware Blue Hens with 92% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 84.1% win rate. 📈 Predicted score: 75-60. 🤖 AI signals: Sentiment favors away (-13%) Sharp money: backing home 💰 Value detected: moneyline Delaware Blue Hens (+69.3% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "5cc0efe1d01a9fdabd1eb89f134ad0d2",
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors away (-13%)",
+        "Sharp money: backing home",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.0053,
+      "sentiment_field": -0.1289,
+      "narrative_momentum": -0.0111,
+      "information_asymmetry": 0.0982,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0.0184,
+      "temporal_decay": 1,
+      "external_pressure": -0.0316,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.8407,
+      "mc_predicted_score": {
+        "home": 75,
+        "away": 60,
+        "homeRange": [
+          58,
+          94
+        ],
+        "awayRange": [
+          42,
+          77
+        ]
+      },
+      "mc_spread_probability": 0.5767,
+      "mc_total_probability": 0.57,
+      "mc_iterations": 1500,
+      "value_bet_edge": 69.34,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.2033,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Gardner-Webb Bulldogs",
+      "away_team": "Longwood Lancers",
+      "pick": "Gardner-Webb Bulldogs",
+      "pick_type": "MONEYLINE",
+      "odds": 600,
+      "confidence": 92,
+      "game_time": "2026-02-05T00:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Gardner-Webb Bulldogs with 92% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 82.7% win rate. 📈 Predicted score: 83-68. 🤖 AI signals: Sentiment favors away (-15%) Narrative edge home: 6% Sharp money: backing home Pressure: away motivated 💰 Value detected: moneyline Gardner-Webb Bulldogs (+68.4% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "9cc6d941655cadfab877956af9a88e08",
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors away (-15%)",
+        "Narrative edge home: 6%",
+        "Sharp money: backing home",
+        "Pressure: away motivated",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.0161,
+      "sentiment_field": -0.151,
+      "narrative_momentum": 0.0614,
+      "information_asymmetry": 0.0864,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0.0333,
+      "temporal_decay": 1,
+      "external_pressure": -0.1462,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.8273,
+      "mc_predicted_score": {
+        "home": 83,
+        "away": 68,
+        "homeRange": [
+          66,
+          102
+        ],
+        "awayRange": [
+          49,
+          87
+        ]
+      },
+      "mc_spread_probability": 0.5773,
+      "mc_total_probability": 0.5613,
+      "mc_iterations": 1500,
+      "value_bet_edge": 68.45,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.1996,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Houston Cougars",
+      "away_team": "UCF Knights",
+      "pick": "UCF Knights",
+      "pick_type": "MONEYLINE",
+      "odds": 966,
+      "confidence": 92,
+      "game_time": "2026-02-05T00:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking UCF Knights with 92% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 81.4% win rate. 📈 Predicted score: 69-83. 🤖 AI signals: Sentiment favors home (17%) Narrative edge home: 7% Sharp money: backing away Pressure: home motivated 💰 Value detected: moneyline UCF Knights (+72.0% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "58f4b89182e9921e13ce2b812c8cffc0",
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (17%)",
+        "Narrative edge home: 7%",
+        "Sharp money: backing away",
+        "Pressure: home motivated",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": 0.0393,
+      "sentiment_field": 0.1654,
+      "narrative_momentum": 0.0682,
+      "information_asymmetry": -0.0919,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0.0479,
+      "temporal_decay": 1,
+      "external_pressure": 0.1324,
+      "ai_confidence": "MEDIUM",
+      "mc_win_probability": 0.186,
+      "mc_predicted_score": {
+        "home": 69,
+        "away": 83,
+        "homeRange": [
+          50,
+          87
+        ],
+        "awayRange": [
+          64,
+          101
+        ]
+      },
+      "mc_spread_probability": 0.5793,
+      "mc_total_probability": 0.59,
+      "mc_iterations": 1500,
+      "value_bet_edge": 72.02,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.1987,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NCAAF",
+      "league": "NCAAF",
+      "home_team": "LSU Tigers",
+      "away_team": "Clemson Tigers",
+      "pick": "Clemson Tigers",
+      "pick_type": "MONEYLINE",
+      "odds": 330,
+      "confidence": 79,
+      "game_time": "2026-09-05T16:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Clemson Tigers with 79% confidence. ⏱️ Slot: Weekend. 📊 1,500 simulations: 67.3% win rate. 📈 Predicted score: 24-32. 🤖 AI signals: Sharp money: backing away 💰 Value detected: moneyline Clemson Tigers (+44.0% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "073bba47dc105fcd66913e74f281ae96",
+      "expected_value": 150,
+      "reasoning": [
+        "Sharp money: backing away",
+        "Experimental: Weekend (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 95.8,
+      "claude_effect": -0.0152,
+      "sentiment_field": 0.0747,
+      "narrative_momentum": -0.0463,
+      "information_asymmetry": -0.0858,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0.0573,
+      "temporal_decay": 0.88,
+      "external_pressure": -0.0198,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.3273,
+      "mc_predicted_score": {
+        "home": 24,
+        "away": 32,
+        "homeRange": [
+          0,
+          47
+        ],
+        "awayRange": [
+          8,
+          56
+        ]
+      },
+      "mc_spread_probability": 0.5527,
+      "mc_total_probability": 0.558,
+      "mc_iterations": 1500,
+      "value_bet_edge": 44.01,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.1434,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": false,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": false,
+        "tags": [
+          "Weekend"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NFL",
+      "league": "NFL",
+      "home_team": "New England Patriots",
+      "away_team": "Seattle Seahawks",
+      "pick": "New England Patriots",
+      "pick_type": "MONEYLINE",
+      "odds": 193,
+      "confidence": 76,
+      "game_time": "2026-02-08T23:30:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking New England Patriots with 76% confidence. ⏱️ Slot: Night game, Weekend, Prime time. 📊 1,500 simulations: 67.7% win rate. 📈 Predicted score: 28-21. 🤖 AI signals: Sentiment favors away (-9%) Sharp money: backing home 💰 Value detected: moneyline New England Patriots (+33.5% edge, $98.26 EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "b64e3587d7a4cf01a568e7150a2a1aec",
+      "expected_value": 98.26,
+      "reasoning": [
+        "Sentiment favors away (-9%)",
+        "Sharp money: backing home",
+        "Experimental: Night game, Weekend, Prime time (+7 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 95.2,
+      "claude_effect": 0.0136,
+      "sentiment_field": -0.0892,
+      "narrative_momentum": 0.0045,
+      "information_asymmetry": 0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": -0.0053,
+      "temporal_decay": 0.88,
+      "external_pressure": 0.0555,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.6767,
+      "mc_predicted_score": {
+        "home": 28,
+        "away": 21,
+        "homeRange": [
+          12,
+          45
+        ],
+        "awayRange": [
+          5,
+          38
+        ]
+      },
+      "mc_spread_probability": 0.5813,
+      "mc_total_probability": 0.5847,
+      "mc_iterations": 1500,
+      "value_bet_edge": 33.54,
+      "value_bet_ev": 98.26,
+      "value_bet_kelly": 0.1273,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Weekend",
+          "Prime time"
+        ],
+        "confidence_delta": 0.6
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NCAAF",
+      "league": "NCAAF",
+      "home_team": "TCU Horned Frogs",
+      "away_team": "North Carolina Tar Heels",
+      "pick": "North Carolina Tar Heels",
+      "pick_type": "MONEYLINE",
+      "odds": 255,
+      "confidence": 75,
+      "game_time": "2026-08-29T16:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking North Carolina Tar Heels with 75% confidence. ⏱️ Slot: Weekend. 📊 1,500 simulations: 59.9% win rate. 📈 Predicted score: 25-30. 🤖 AI signals: Sentiment favors home (8%) Narrative edge home: 12% Sharp money: backing away News impact: positive home Pressure: away motivated 💰 Value detected: moneyline North Carolina Tar Heels (+31.7% edge, $112.53 EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "2c288580da16e12d35355f2548721be6",
+      "expected_value": 112.53,
+      "reasoning": [
+        "Sentiment favors home (8%)",
+        "Narrative edge home: 12%",
+        "Sharp money: backing away",
+        "News impact: positive home",
+        "Pressure: away motivated",
+        "Experimental: Weekend (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 95,
+      "claude_effect": 0.0063,
+      "sentiment_field": 0.0819,
+      "narrative_momentum": 0.1171,
+      "information_asymmetry": -0.0903,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0.0872,
+      "temporal_decay": 0.88,
+      "external_pressure": -0.0674,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.4013,
+      "mc_predicted_score": {
+        "home": 25,
+        "away": 30,
+        "homeRange": [
+          1,
+          47
+        ],
+        "awayRange": [
+          7,
+          52
+        ]
+      },
+      "mc_spread_probability": 0.556,
+      "mc_total_probability": 0.5587,
+      "mc_iterations": 1500,
+      "value_bet_edge": 31.7,
+      "value_bet_ev": 112.53,
+      "value_bet_kelly": 0.1103,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": false,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": false,
+        "tags": [
+          "Weekend"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    }
+  ]
+}

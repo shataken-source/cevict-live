@@ -33,13 +33,14 @@ function SearchLostPetsContent() {
     date_range: 'all'
   });
 
-  useEffect(() => {
-    if (initialQuery) {
-      performSearch(initialQuery);
-    } else {
-      loadRecentPets();
-    }
-  }, []);
+  // Don't auto-load on page load - wait for user to search
+  // useEffect(() => {
+  //   if (initialQuery) {
+  //     performSearch(initialQuery);
+  //   } else {
+  //     loadRecentPets();
+  //   }
+  // }, []);
 
   const loadRecentPets = async () => {
     setLoading(true);
@@ -89,8 +90,10 @@ function SearchLostPetsContent() {
 
       if (response.ok && data.success) {
         setPets(data.pets || []);
+        console.log(`Search for "${query}": Found ${data.pets?.length || 0} pets`);
       } else {
         console.error('Search error:', data.error);
+        console.error('Response status:', response.status);
         setPets([]);
       }
     } catch (error) {
@@ -116,11 +119,8 @@ function SearchLostPetsContent() {
 
   const clearFilters = () => {
     setFilters({ pet_type: 'all', location_state: 'all', location_city: '', status: 'all', date_range: 'all' });
-    if (searchQuery.trim()) {
-      performSearch(searchQuery);
-    } else {
-      loadRecentPets();
-    }
+    // Don't auto-search after clearing filters - user must click search
+    setPets([]);
   };
 
   const hasActiveFilters = filters.pet_type !== 'all' || filters.location_state !== 'all' || filters.location_city || filters.status !== 'all' || filters.date_range !== 'all';
@@ -171,7 +171,7 @@ function SearchLostPetsContent() {
               Search Lost Pets
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Together We Bring Them Home - Search our database to reunite pets with their families
+              Together We Bring Them Home — search our database. Completely free, no sign-up required.
             </p>
           </div>
         </div>
@@ -189,7 +189,8 @@ function SearchLostPetsContent() {
                   placeholder="Search by breed, color, city, description, or name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 text-lg border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full pl-12 pr-4 py-4 text-lg border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-blue-500 text-gray-900 bg-white"
+                  style={{ color: '#111827' }}
                 />
               </div>
               <button
@@ -239,10 +240,10 @@ function SearchLostPetsContent() {
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {pet.pet_name || 'Unknown Pet'}
+                      {pet.pet_name || ''}
                     </h3>
                     <p className="text-sm text-gray-600">
-                      {pet.breed || 'Unknown breed'} • {pet.pet_type || 'Unknown'}
+                      {pet.breed ? `${pet.breed} • ` : ''}{pet.pet_type || ''}
                     </p>
                   </div>
                   {getStatusBadge(pet.status)}
@@ -250,11 +251,17 @@ function SearchLostPetsContent() {
                 <div className="space-y-2 text-sm text-gray-600 mb-4">
                   <div className="flex items-center">
                     <MapPin className="w-4 h-4 mr-2" />
-                    {pet.location || 'Unknown location'}
+                    {pet.location_city && pet.location_state 
+                      ? `${pet.location_city}, ${pet.location_state}`
+                      : pet.location_city 
+                        ? pet.location_city
+                        : pet.location_state
+                          ? pet.location_state
+                          : pet.location || ''}
                   </div>
                   <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-2" />
-                    {pet.date_lost || pet.date_found ? formatDate(pet.date_lost || pet.date_found) : 'Unknown date'}
+                    {pet.date_lost ? formatDate(pet.date_lost) : pet.date_found ? formatDate(pet.date_found) : ''}
                   </div>
                 </div>
                 {pet.description && (
@@ -273,23 +280,27 @@ function SearchLostPetsContent() {
           </div>
         )}
 
-        {/* No Results */}
+        {/* No Results / Initial State */}
         {!loading && pets.length === 0 && (
           <div className="text-center py-12 bg-white rounded-lg shadow-lg">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-10 h-10 text-gray-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No pets found</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              {searchQuery ? 'No pets found' : 'Search for Lost Pets'}
+            </h3>
             <p className="text-gray-600 mb-6">
               {searchQuery
-                ? `No pets found matching "${searchQuery}". Try adjusting your search terms.`
-                : 'No pets found. Try adjusting your filters or check back later.'
+                ? `No pets found matching "${searchQuery}". Try adjusting your search terms or clearing filters.`
+                : 'Enter a search term above to find lost pets. You can search by breed, color, city, description, or pet name.'
               }
             </p>
             <div className="flex gap-3 justify-center">
-              <button onClick={clearFilters} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
-                Clear Filters
-              </button>
+              {searchQuery && (
+                <button onClick={clearFilters} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                  Clear Filters
+                </button>
+              )}
               <Link href="/report/lost">
                 <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                   Report Lost Pet

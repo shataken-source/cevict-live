@@ -45,19 +45,20 @@ export default function CustomEmailPurchase({
     try {
       const { data, error } = await supabase
         .from('custom_emails')
-        .select('id, email_address, subscription_tier')
+        .select('id, email_address')
         .eq('user_id', userId)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
+      if (error) throw error;
       if (data) {
         setHasCustomEmail(true);
         setCurrentEmail(data.email_address);
         setCustomEmailId(data.id);
-        setSubscriptionTier(data.subscription_tier || 'basic');
+        setSubscriptionTier('basic');
       }
     } catch (err) {
-      // No custom email found
+      // No custom email found or table/RLS issue
     } finally {
       setChecking(false);
     }
@@ -261,8 +262,8 @@ export default function CustomEmailPurchase({
         onClose={() => setShowStripeCheckout(false)}
         emailAddress={`${customEmailPrefix}@gulfcoastcharters.com`}
         amount={CASH_COST}
+        userType={userType}
         onSuccess={handleStripeSuccess}
-
       />
     </>
   );

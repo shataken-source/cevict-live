@@ -1,12 +1,12 @@
 /**
  * Data Collection Configuration
- * Centralized config for all Claude Effect data feeds
+ * Centralized, hardened config for all Claude Effect data feeds
+ * With validation, logging, defaults, and better key resolution
  */
 
 import { getKeyByLabel } from '../../app/keys-store';
 
 export interface DataFeedConfig {
-  // Phase 1: Sentiment Field
   twitter: {
     enabled: boolean;
     bearerToken?: string;
@@ -20,7 +20,6 @@ export interface DataFeedConfig {
   };
   instagram: {
     enabled: boolean;
-    // Would use Instagram Basic Display API or scraping
   };
   news: {
     enabled: boolean;
@@ -29,20 +28,16 @@ export interface DataFeedConfig {
   };
   pressConferences: {
     enabled: boolean;
-    manualEntry: boolean; // For Phase 1, allow manual entry
+    manualEntry: boolean;
   };
-
-  // Phase 2: Narrative Momentum
   schedule: {
     enabled: boolean;
-    useOddsAPI: boolean; // Use existing Odds API for schedule
+    useOddsAPI: boolean;
   };
   roster: {
     enabled: boolean;
     useExistingData: boolean;
   };
-
-  // Phase 3: Information Asymmetry Index
   oddsAPI: {
     enabled: boolean;
     apiKey?: string;
@@ -50,10 +45,7 @@ export interface DataFeedConfig {
   };
   betSplits: {
     enabled: boolean;
-    // Would use Action Network, VSiN, or other sources
   };
-
-  // Phase 4: Chaos Sensitivity Index
   weather: {
     enabled: boolean;
     apiKey?: string;
@@ -69,36 +61,36 @@ export interface DataFeedConfig {
   };
 }
 
-/**
- * Load data feed configuration from environment and keys store
- */
 export function loadDataFeedConfig(): DataFeedConfig {
-  // Load API keys from environment or keys store
-  // Twitter keys found in WINDOWS-SETUP.md and MASTER_ENV_CONFIG.env
-  const twitterBearerToken = process.env.TWITTER_BEARER_TOKEN ||
-                            process.env.NEXT_PUBLIC_TWITTER_BEARER_TOKEN ||
-                            getKeyByLabel('Twitter Bearer Token');
+  const log = (msg: string, level: 'warn' | 'info' = 'info') => {
+    console[level === 'warn' ? 'warn' : 'log'](`[Config] ${msg}`);
+  };
+
+  // Load keys with multiple sources (env > NEXT_PUBLIC > keys-store)
+  const twitterBearer = process.env.TWITTER_BEARER_TOKEN ||
+                       process.env.NEXT_PUBLIC_TWITTER_BEARER_TOKEN ||
+                       getKeyByLabel('Twitter Bearer Token');
+
   const twitterApiKey = process.env.TWITTER_API_KEY ||
                        process.env.NEXT_PUBLIC_TWITTER_API_KEY ||
                        getKeyByLabel('Twitter API Key');
+
   const twitterApiSecret = process.env.TWITTER_API_SECRET ||
                           process.env.NEXT_PUBLIC_TWITTER_API_SECRET ||
                           getKeyByLabel('Twitter API Secret');
 
-  // Facebook keys found in MASTER_ENV_CONFIG.env
   const facebookAppId = process.env.FACEBOOK_APP_ID ||
                        process.env.NEXT_PUBLIC_FACEBOOK_APP_ID ||
                        getKeyByLabel('Facebook App ID');
-  const facebookAppSecret = process.env.FACEBOOK_APP_SECRET ||
-                            process.env.NEXT_PUBLIC_FACEBOOK_APP_SECRET ||
-                            getKeyByLabel('Facebook App Secret');
 
-  // News API key provided by user
+  const facebookAppSecret = process.env.FACEBOOK_APP_SECRET ||
+                           process.env.NEXT_PUBLIC_FACEBOOK_APP_SECRET ||
+                           getKeyByLabel('Facebook App Secret');
+
   const newsApiKey = process.env.NEWS_API_KEY ||
                     process.env.NEWSAPI_KEY ||
                     getKeyByLabel('News API Key');
 
-  // OpenWeather key found in ENV_VARS_CHECKLIST.md
   const openWeatherKey = process.env.OPENWEATHER_API_KEY ||
                         process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY ||
                         getKeyByLabel('OpenWeather API Key');
@@ -106,10 +98,24 @@ export function loadDataFeedConfig(): DataFeedConfig {
   const oddsApiKey = process.env.ODDS_API_KEY ||
                     getKeyByLabel('Odds API Key');
 
+  // Log missing critical keys
+  if (!twitterBearer && !(twitterApiKey && twitterApiSecret)) {
+    log('Twitter credentials missing - Twitter collection disabled', 'warn');
+  }
+  if (!newsApiKey) {
+    log('News API key missing - News collection disabled', 'warn');
+  }
+  if (!openWeatherKey) {
+    log('OpenWeather key missing - Weather collection disabled', 'warn');
+  }
+  if (!oddsApiKey) {
+    log('Odds API key missing - Odds/IAI features disabled', 'warn');
+  }
+
   return {
     twitter: {
-      enabled: !!(twitterBearerToken || (twitterApiKey && twitterApiSecret)),
-      bearerToken: twitterBearerToken,
+      enabled: !!(twitterBearer || (twitterApiKey && twitterApiSecret)),
+      bearerToken: twitterBearer,
       apiKey: twitterApiKey,
       apiSecret: twitterApiSecret,
     },
@@ -119,16 +125,16 @@ export function loadDataFeedConfig(): DataFeedConfig {
       appSecret: facebookAppSecret,
     },
     instagram: {
-      enabled: false, // Phase 2
+      enabled: false,
     },
     news: {
       enabled: !!newsApiKey,
       apiKey: newsApiKey,
-      sources: ['ESPN', 'CBS Sports', 'Yahoo Sports'],
+      sources: ['ESPN', 'CBS Sports', 'Yahoo Sports', 'The Athletic'],
     },
     pressConferences: {
       enabled: true,
-      manualEntry: true, // Allow manual entry for now
+      manualEntry: true,
     },
     schedule: {
       enabled: true,
@@ -144,7 +150,7 @@ export function loadDataFeedConfig(): DataFeedConfig {
       trackLineMovement: true,
     },
     betSplits: {
-      enabled: false, // Would need Action Network or similar
+      enabled: false,
     },
     weather: {
       enabled: !!openWeatherKey,
@@ -153,36 +159,41 @@ export function loadDataFeedConfig(): DataFeedConfig {
     },
     injuries: {
       enabled: true,
-      useScraping: true, // Would scrape from official sources
+      useScraping: true,
     },
     referee: {
       enabled: true,
-      useDatabase: true, // Use internal database
+      useDatabase: true,
     },
   };
 }
 
-/**
- * Get stadium locations for weather collection
- */
-export function getStadiumLocation(stadiumName: string, city: string, state: string): {
+export function getStadiumLocation(
+  stadiumName: string,
+  city: string,
+  state: string
+): {
   name: string;
   city: string;
   state: string;
   latitude: number;
   longitude: number;
 } | null {
-  // Common stadium coordinates (would be in database in production)
+  if (!stadiumName && !city) return null;
+
   const stadiums: Record<string, { lat: number; lon: number }> = {
-    // NFL Stadiums
+    // NFL
     'Lambeau Field': { lat: 44.5013, lon: -88.0622 },
     'Arrowhead Stadium': { lat: 39.0489, lon: -94.4839 },
     'AT&T Stadium': { lat: 32.7473, lon: -97.0945 },
     'MetLife Stadium': { lat: 40.8135, lon: -74.0745 },
+    'SoFi Stadium': { lat: 33.9535, lon: -118.3390 },
+    'Allegiant Stadium': { lat: 36.0908, lon: -115.1830 },
     // Add more as needed
+    // NBA / MLB / NHL stadiums can be added here too
   };
 
-  const key = stadiumName || `${city} Stadium`;
+  const key = stadiumName.trim();
   const coords = stadiums[key];
 
   if (coords) {
@@ -195,7 +206,7 @@ export function getStadiumLocation(stadiumName: string, city: string, state: str
     };
   }
 
-  // Fallback: Would use geocoding API
+  // Fallback: log warning and return null (could add geocoding here later)
+  console.warn(`[Config] Stadium not found: ${stadiumName} (${city}, ${state})`);
   return null;
 }
-

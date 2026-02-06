@@ -4,9 +4,14 @@ import { createPagesServerClient } from '@supabase/auth-helpers-nextjs';
 
 export type AppRole = 'admin' | 'captain' | 'user';
 
+function trimEnv(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return value.trim().replace(/\r\n$/, '').replace(/\n$/, '').replace(/\r$/, '');
+}
+
 export function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = trimEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const key = trimEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
   if (!url || !key) {
     throw new Error('Missing SUPABASE env (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)');
   }

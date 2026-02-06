@@ -15,26 +15,23 @@ Target: **$250/day** through intelligent trading, prediction markets, and opport
 - 🔄 **Learning System** - Improves from outcomes
 - 🏢 **Project Scanner** - Finds monetization opportunities in your projects
 
-## Quick Start
+## Quick Start (simple: Progno sports only)
+
+By default the bot only uses **Progno sports picks** (no news/Kalshi/crypto). See **RUNNING-SIMPLE.md** for full steps.
+
+1. Run migration `apps/prognostication/supabase/migrations/002_alpha_hunter_and_bot_config.sql` in your Supabase project.
+2. Set `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `PROGNO_BASE_URL` in `.env.local`.
+3. Start Progno (`cd apps/progno && npm run dev`), then alpha-hunter:
 
 ```bash
-# Install dependencies
 cd apps/alpha-hunter
-pnpm install
-
-# Copy environment file
-cp .env.example .env.local
-# Edit .env.local with your API keys
-
-# Test the system
-pnpm test
-
-# Run daily scan
-pnpm run daily
-
-# Start scheduler (runs continuously)
-pnpm start run
+npm install
+npm run health        # Check Supabase
+npm start scan        # One-off: Progno picks → suggest
+# or: npm start run   # Scheduler
 ```
+
+Set `PROGNO_SPORTS_ONLY=0` to re-enable news, Kalshi scan, crypto, and arbitrage in the main flow.
 
 ## Commands
 
@@ -49,10 +46,22 @@ pnpm start status     # Show account status
 pnpm start deposit 100    # Add $100 to account
 pnpm start withdraw 50    # Withdraw $50
 
+# Kalshi + Progno (best picks)
+npm run best-kalshi   # Match Progno /api/picks/today to Kalshi markets, show top EV (see below)
+npm run find-best     # Same as best-kalshi
+
 # Development
 pnpm run dev          # Watch mode
 pnpm run test         # Test all systems
+pnpm run health       # Supabase + Kalshi connectivity check (exit 0/1)
 ```
+(Use `npm run` if you don't use pnpm.)
+
+### Find Best Kalshi (Progno picks → Kalshi)
+
+1. Start Progno so picks are available: `cd apps/progno && npm run dev` (serves `http://localhost:3008/api/picks/today`).
+2. From alpha-hunter: `npm run best-kalshi` or `npx tsx src/find-best-kalshi.ts`.
+3. Script loads today’s picks from Progno, matches them to Kalshi sports (and optionally crypto) markets, and prints the top 20 opportunities by edge. Optional: set `MIN_VOLUME=10000` to filter by volume; set `PROGNO_BASE_URL` if Progno runs elsewhere.
 
 ## Schedule
 

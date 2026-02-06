@@ -6,14 +6,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 
-export function ReviewModeration({ captainId }: { captainId: string }) {
+export function ReviewModeration({ captainId }: { captainId: string | null }) {
   const [reviews, setReviews] = useState<any[]>([]);
   const [selectedReview, setSelectedReview] = useState<any>(null);
   const [response, setResponse] = useState('');
 
   useEffect(() => {
-    loadReviews();
-  }, []);
+    if (captainId) {
+      loadReviews();
+    }
+  }, [captainId]);
 
   const loadReviews = async () => {
     // Mock reviews for now
@@ -33,20 +35,26 @@ export function ReviewModeration({ captainId }: { captainId: string }) {
   const respondToReview = async () => {
     if (!selectedReview) return;
     
-    await supabase.functions.invoke('review-system', {
-      body: { action: 'respond', reviewId: selectedReview.id, response }
-    });
+    // TODO: Create API endpoint for responding to reviews
+    // For now, just update local state
+    setReviews(reviews.map(r => 
+      r.id === selectedReview.id 
+        ? { ...r, response, respondedAt: new Date().toISOString() }
+        : r
+    ));
     
     setSelectedReview(null);
     setResponse('');
-    loadReviews();
   };
 
   const moderateReview = async (reviewId: string, status: string) => {
-    await supabase.functions.invoke('review-system', {
-      body: { action: 'moderate', reviewId, status }
-    });
-    loadReviews();
+    // TODO: Create API endpoint for moderating reviews
+    // For now, just update local state
+    setReviews(reviews.map(r => 
+      r.id === reviewId 
+        ? { ...r, status }
+        : r
+    ));
   };
 
   return (

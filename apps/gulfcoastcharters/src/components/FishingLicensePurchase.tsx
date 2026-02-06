@@ -1,59 +1,78 @@
+/**
+ * Fishing License Purchase Component
+ * 
+ * Allows users to purchase fishing licenses for Gulf Coast states
+ * - State selection
+ * - License type and duration
+ * - Personal information form
+ * - Stripe payment integration
+ */
+
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Fish, MapPin, Calendar, DollarSign, CheckCircle, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Loader2, CreditCard, CheckCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { toast } from 'sonner';
 
-const states = [
-  { name: 'Texas', code: 'TX' },
-  { name: 'Louisiana', code: 'LA' },
-  { name: 'Mississippi', code: 'MS' },
-  { name: 'Alabama', code: 'AL' },
-  { name: 'Florida', code: 'FL' }
+interface FishingLicensePurchaseProps {
+  userId: string;
+  bookingId?: string;
+  onSuccess?: () => void;
+}
+
+const STATES = [
+  { code: 'TX', name: 'Texas' },
+  { code: 'LA', name: 'Louisiana' },
+  { code: 'MS', name: 'Mississippi' },
+  { code: 'AL', name: 'Alabama' },
+  { code: 'FL', name: 'Florida' },
 ];
 
-const licenseTypes = [
-  { value: 'saltwater', label: 'Saltwater Fishing' },
-  { value: 'freshwater', label: 'Freshwater Fishing' },
-  { value: 'allwater', label: 'All Water Fishing' }
+const LICENSE_TYPES = [
+  { value: 'saltwater', label: 'Saltwater' },
+  { value: 'freshwater', label: 'Freshwater' },
+  { value: 'all_water', label: 'All Water' },
 ];
 
-const durations = [
+const DURATIONS = [
   { value: 'day', label: '1 Day' },
-  { value: '3day', label: '3 Days' },
-  { value: '7day', label: '7 Days' },
-  { value: 'annual', label: 'Annual' }
+  { value: '3day', label: '3 Day' },
+  { value: '7day', label: '7 Day' },
+  { value: 'annual', label: 'Annual' },
 ];
 
-export default function FishingLicensePurchase({ bookingId }: { bookingId?: string }) {
-  const [step, setStep] = useState(1);
+export default function FishingLicensePurchase({ userId, bookingId, onSuccess }: FishingLicensePurchaseProps) {
+  const [step, setStep] = useState<'select' | 'info' | 'payment'>('select');
   const [loading, setLoading] = useState(false);
-  const [purchasedLicense, setPurchasedLicense] = useState<any>(null);
-  const { toast } = useToast();
+  const [calculatingPrice, setCalculatingPrice] = useState(false);
+  const [price, setPrice] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
-    stateCode: 'TX',
-    licenseType: 'saltwater',
+    stateCode: '',
+    licenseType: '',
     residentStatus: 'nonResident',
-    duration: 'day',
+    duration: '',
     guestName: '',
     guestEmail: '',
     guestPhone: '',
     dateOfBirth: '',
-    address: '',
-    city: '',
-    zipCode: ''
+    addressStreet: '',
+    addressCity: '',
+    addressState: '',
+    addressZip: '',
   });
 
-  const [calculatedPrice, setCalculatedPrice] = useState<number | null>(null);
-
   const handleCalculatePrice = async () => {
-    setLoading(true);
+    if (!formData.stateCode || !formData.licenseType || !formData.duration) {
+      toast.error('Please select state, license type, and duration');
+      return;
+    }
+
+    setCalculatingPrice(true);
     try {
       const { data, error } = await supabase.functions.invoke('fishing-license-manager', {
         body: {
@@ -61,115 +80,160 @@ export default function FishingLicensePurchase({ bookingId }: { bookingId?: stri
           stateCode: formData.stateCode,
           licenseType: formData.licenseType,
           residentStatus: formData.residentStatus,
-          duration: formData.duration
-        }
+          duration: formData.duration,
+        },
       });
 
       if (error) throw error;
-      setCalculatedPrice(data.price);
-      setStep(2);
+      if (data?.error) throw new Error(data.error);
+
+      setPrice(data.price);
+      toast.success(`Price: $${data.price}`);
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      });
+      console.error('Error calculating price:', error);
+      toast.error(error.message || 'Failed to calculate price');
     } finally {
-      setLoading(false);
+      setCalculatingPrice(false);
     }
   };
 
   const handlePurchase = async () => {
+    if (!formData.guestName || !formData.guestEmail || !formData.dateOfBirth) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (!price) {
+      toast.error('Please calculate price first');
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-
       const { data, error } = await supabase.functions.invoke('fishing-license-manager', {
         body: {
           action: 'purchase_license',
-          userId: user?.id,
+          userId,
           bookingId,
-          ...formData,
-          price: calculatedPrice,
+          stateCode: formData.stateCode,
+          licenseType: formData.licenseType,
+          residentStatus: formData.residentStatus,
+          duration: formData.duration,
+          guestName: formData.guestName,
+          guestEmail: formData.guestEmail,
+          guestPhone: formData.guestPhone,
+          dateOfBirth: formData.dateOfBirth,
           address: {
-            street: formData.address,
-            city: formData.city,
-            state: formData.stateCode,
-            zipCode: formData.zipCode
-          }
-        }
+            street: formData.addressStreet,
+            city: formData.addressCity,
+            state: formData.addressState,
+            zipCode: formData.addressZip,
+          },
+          price,
+        },
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      setPurchasedLicense(data.license);
-      setStep(3);
-
-      toast({
-        title: 'License Purchased!',
-        description: 'Your fishing license has been emailed to you.'
+      // Use existing Stripe checkout flow for payment
+      const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('stripe-checkout', {
+        body: {
+          type: 'custom_email',
+          amount: price,
+          email: formData.guestEmail,
+          customerName: formData.guestName,
+          successUrl: `${window.location.origin}/payment-success?license_id=${data.license.id}`,
+          cancelUrl: window.location.href,
+          metadata: {
+            license_id: data.license.id,
+            license_number: data.license.licenseNumber,
+            state_code: formData.stateCode,
+            license_type: formData.licenseType,
+            user_id: userId,
+            booking_id: bookingId || '',
+          },
+        },
       });
+
+      if (checkoutError) throw checkoutError;
+      if (checkoutData?.error) throw new Error(checkoutData.error);
+
+      // Redirect to Stripe Checkout
+      if (checkoutData?.url) {
+        window.location.href = checkoutData.url;
+      } else {
+        toast.success('License purchase initiated! Complete payment to receive your license.');
+        if (onSuccess) {
+          onSuccess();
+        }
+      }
     } catch (error: any) {
-      toast({
-        title: 'Purchase Failed',
-        description: error.message,
-        variant: 'destructive'
-      });
+      console.error('Error purchasing license:', error);
+      toast.error(error.message || 'Failed to purchase license');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold flex items-center justify-center gap-2">
-          <Fish className="w-8 h-8" />
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CreditCard className="w-5 h-5" />
           Purchase Fishing License
-        </h2>
-        <p className="text-muted-foreground">
-          Get your state fishing license instantly
-        </p>
-      </div>
-
-      {step === 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>License Information</CardTitle>
-            <CardDescription>Select your license type and duration</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>State</Label>
-              <Select value={formData.stateCode} onValueChange={(v) => setFormData({...formData, stateCode: v})}>
+        </CardTitle>
+        <CardDescription>
+          Buy a fishing license for your charter trip
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {step === 'select' && (
+          <>
+            <div>
+              <Label htmlFor="state">State</Label>
+              <Select
+                value={formData.stateCode}
+                onValueChange={(value) => setFormData({ ...formData, stateCode: value })}
+              >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select state" />
                 </SelectTrigger>
                 <SelectContent>
-                  {states.map(s => (
-                    <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>
+                  {STATES.map((state) => (
+                    <SelectItem key={state.code} value={state.code}>
+                      {state.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>License Type</Label>
-              <Select value={formData.licenseType} onValueChange={(v) => setFormData({...formData, licenseType: v})}>
+            <div>
+              <Label htmlFor="licenseType">License Type</Label>
+              <Select
+                value={formData.licenseType}
+                onValueChange={(value) => setFormData({ ...formData, licenseType: value })}
+              >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select license type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {licenseTypes.map(t => (
-                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  {LICENSE_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Resident Status</Label>
-              <Select value={formData.residentStatus} onValueChange={(v) => setFormData({...formData, residentStatus: v})}>
+            <div>
+              <Label htmlFor="residentStatus">Resident Status</Label>
+              <Select
+                value={formData.residentStatus}
+                onValueChange={(value) => setFormData({ ...formData, residentStatus: value })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -180,103 +244,152 @@ export default function FishingLicensePurchase({ bookingId }: { bookingId?: stri
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Duration</Label>
-              <Select value={formData.duration} onValueChange={(v) => setFormData({...formData, duration: v})}>
+            <div>
+              <Label htmlFor="duration">Duration</Label>
+              <Select
+                value={formData.duration}
+                onValueChange={(value) => setFormData({ ...formData, duration: value })}
+              >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select duration" />
                 </SelectTrigger>
                 <SelectContent>
-                  {durations.map(d => (
-                    <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                  {DURATIONS.map((dur) => (
+                    <SelectItem key={dur.value} value={dur.value}>
+                      {dur.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <Button onClick={handleCalculatePrice} className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Continue to Personal Information
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+            <div className="flex gap-2">
+              <Button
+                onClick={handleCalculatePrice}
+                disabled={calculatingPrice || !formData.stateCode || !formData.licenseType || !formData.duration}
+                className="flex-1"
+              >
+                {calculatingPrice ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Calculating...
+                  </>
+                ) : (
+                  'Calculate Price'
+                )}
+              </Button>
+              {price && (
+                <Button onClick={() => setStep('info')} className="flex-1">
+                  Continue (${price})
+                </Button>
+              )}
+            </div>
+          </>
+        )}
 
-      {step === 2 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
-            <CardDescription>
-              Price: ${calculatedPrice?.toFixed(2)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        {step === 'info' && (
+          <>
             <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 space-y-2">
-                <Label>Full Name</Label>
-                <Input value={formData.guestName} onChange={(e) => setFormData({...formData, guestName: e.target.value})} />
+              <div>
+                <Label htmlFor="guestName">Full Name *</Label>
+                <Input
+                  id="guestName"
+                  value={formData.guestName}
+                  onChange={(e) => setFormData({ ...formData, guestName: e.target.value })}
+                  required
+                />
               </div>
-              
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input type="email" value={formData.guestEmail} onChange={(e) => setFormData({...formData, guestEmail: e.target.value})} />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Phone</Label>
-                <Input value={formData.guestPhone} onChange={(e) => setFormData({...formData, guestPhone: e.target.value})} />
-              </div>
-
-              <div className="col-span-2 space-y-2">
-                <Label>Date of Birth</Label>
-                <Input type="date" value={formData.dateOfBirth} onChange={(e) => setFormData({...formData, dateOfBirth: e.target.value})} />
-              </div>
-
-              <div className="col-span-2 space-y-2">
-                <Label>Address</Label>
-                <Input value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>City</Label>
-                <Input value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>ZIP Code</Label>
-                <Input value={formData.zipCode} onChange={(e) => setFormData({...formData, zipCode: e.target.value})} />
+              <div>
+                <Label htmlFor="guestEmail">Email *</Label>
+                <Input
+                  id="guestEmail"
+                  type="email"
+                  value={formData.guestEmail}
+                  onChange={(e) => setFormData({ ...formData, guestEmail: e.target.value })}
+                  required
+                />
               </div>
             </div>
 
-            <Button onClick={handlePurchase} className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Purchase License - ${calculatedPrice?.toFixed(2)}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === 3 && purchasedLicense && (
-        <Card className="border-green-500">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-600">
-              <CheckCircle className="w-6 h-6" />
-              License Issued Successfully!
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-muted p-4 rounded-lg space-y-2">
-              <p><strong>License Number:</strong> {purchasedLicense.licenseNumber}</p>
-              <p><strong>State:</strong> {purchasedLicense.stateCode}</p>
-              <p><strong>Type:</strong> {purchasedLicense.licenseType}</p>
-              <p><strong>Expires:</strong> {new Date(purchasedLicense.expirationDate).toLocaleDateString()}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="guestPhone">Phone</Label>
+                <Input
+                  id="guestPhone"
+                  type="tel"
+                  value={formData.guestPhone}
+                  onChange={(e) => setFormData({ ...formData, guestPhone: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                <Input
+                  id="dateOfBirth"
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                  required
+                />
+              </div>
             </div>
-            <p className="text-sm text-muted-foreground">
-              A copy of your license has been emailed to {purchasedLicense.guestEmail}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+
+            <div>
+              <Label htmlFor="addressStreet">Street Address</Label>
+              <Input
+                id="addressStreet"
+                value={formData.addressStreet}
+                onChange={(e) => setFormData({ ...formData, addressStreet: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="addressCity">City</Label>
+                <Input
+                  id="addressCity"
+                  value={formData.addressCity}
+                  onChange={(e) => setFormData({ ...formData, addressCity: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="addressState">State</Label>
+                <Input
+                  id="addressState"
+                  value={formData.addressState}
+                  onChange={(e) => setFormData({ ...formData, addressState: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="addressZip">ZIP</Label>
+                <Input
+                  id="addressZip"
+                  value={formData.addressZip}
+                  onChange={(e) => setFormData({ ...formData, addressZip: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setStep('select')} className="flex-1">
+                Back
+              </Button>
+              <Button onClick={handlePurchase} disabled={loading} className="flex-1">
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Purchase (${price})
+                  </>
+                )}
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

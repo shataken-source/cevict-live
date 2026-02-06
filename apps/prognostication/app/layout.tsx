@@ -58,6 +58,9 @@ export const metadata: Metadata = {
   other: {
     'google-adsense-account': 'ca-pub-0940073536675562',
   },
+  ...(typeof process !== 'undefined' && process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && {
+    verification: { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION },
+  }),
 }
 
 export default function RootLayout({
@@ -68,6 +71,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <head>
+        {process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ? (
+          <meta name="google-site-verification" content={process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION} />
+        ) : null}
         <meta name="google-adsense-account" content="ca-pub-0940073536675562" />
         {/* AdSense: in head on every page so Google can verify (crawler sees initial HTML) */}
         <script

@@ -61,9 +61,9 @@ export default function EnhancedNavbar({ userTier = 'free' }: NavbarProps) {
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1">
             {[
-              { href: '/picks', label: 'Today\'s Picks', icon: '🎯' },
+              { href: '/picks', label: 'Kalshi Picks', icon: '🎯' },
               { href: '/free-picks', label: 'Free Pick', icon: '🎁' },
-              { href: '/accuracy', label: 'Accuracy', icon: '📊' },
+              { href: '/my-picks', label: 'My Picks', icon: '📋' },
               { href: '/pricing', label: 'Upgrade', icon: '⚡' },
             ].map(item => (
               <Link
@@ -126,9 +126,9 @@ export default function EnhancedNavbar({ userTier = 'free' }: NavbarProps) {
         <div className="md:hidden bg-slate-900/95 backdrop-blur-lg border-t border-white/10">
           <div className="px-4 py-4 space-y-2">
             {[
-              { href: '/picks', label: 'Today\'s Picks', icon: '🎯' },
+              { href: '/picks', label: 'Kalshi Picks', icon: '🎯' },
               { href: '/free-picks', label: 'Free Pick', icon: '🎁' },
-              { href: '/accuracy', label: 'Accuracy', icon: '📊' },
+              { href: '/my-picks', label: 'My Picks', icon: '📋' },
               { href: '/pricing', label: 'Upgrade', icon: '⚡' },
             ].map(item => (
               <Link

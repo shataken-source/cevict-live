@@ -42,6 +42,21 @@ export default function CoursePlayer({ courseId, captainId, onBack }: CoursePlay
       }
     });
 
+    // Award points for completing lesson (gamification)
+    try {
+      await supabase.functions.invoke('points-rewards-system', {
+        body: {
+          action: 'award_points',
+          userId: captainId,
+          actionType: 'lesson_complete',
+          amount: 10,
+        },
+      });
+    } catch (pointsError) {
+      console.error('Error awarding lesson completion points:', pointsError);
+      // Don't block lesson completion if points fail
+    }
+
     setCompletedLessons(prev => new Set([...prev, lessonId]));
     setShowQuiz(false);
 
@@ -56,7 +71,33 @@ export default function CoursePlayer({ courseId, captainId, onBack }: CoursePlay
       await supabase.functions.invoke('training-academy', {
         body: { action: 'awardCertification', captainId, courseId }
       });
-      alert('Congratulations! You have completed the course and earned your certification!');
+
+      // Award points for completing course (gamification)
+      try {
+        await supabase.functions.invoke('points-rewards-system', {
+          body: {
+            action: 'award_points',
+            userId: captainId,
+            actionType: 'course_complete',
+            amount: 100,
+          },
+        });
+
+        // Award certification points
+        await supabase.functions.invoke('points-rewards-system', {
+          body: {
+            action: 'award_points',
+            userId: captainId,
+            actionType: 'certification_earned',
+            amount: 150,
+          },
+        });
+      } catch (pointsError) {
+        console.error('Error awarding course completion points:', pointsError);
+        // Don't block course completion if points fail
+      }
+
+      alert('Congratulations! You have completed the course and earned your certification! +250 points');
       onBack();
     }
   };
@@ -150,6 +191,8 @@ export default function CoursePlayer({ courseId, captainId, onBack }: CoursePlay
         <QuizModal 
           onClose={() => setShowQuiz(false)}
           onComplete={handleCompleteLesson}
+          userId={captainId}
+          lessonId={`${courseId}-m${currentModule}-l${currentLesson}`}
         />
       )}
     </div>

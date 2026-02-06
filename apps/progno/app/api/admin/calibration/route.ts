@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { getAccuracyMetrics } from "../../../prediction-tracker";
 
+export const runtime = 'nodejs';
+
 const prognoDir = path.join(process.cwd(), ".progno");
 
 interface CalibrationData {

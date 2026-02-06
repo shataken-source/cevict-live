@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { createPagesBrowserClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabase';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const supabase = createPagesBrowserClient();
 
   const [mode, setMode] = useState<'sign_in' | 'sign_up'>('sign_in');
   const [email, setEmail] = useState('');
@@ -13,29 +12,63 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) router.replace('/admin');
-    });
-  }, [router, supabase]);
+  // Removed auto-redirect on mount - let user always see login form
+  // Redirect only happens after successful login in submit()
 
   async function submit() {
     setError(null);
     setLoading(true);
     try {
+      // Get redirect from URL query (same as router.query but reliable at submit time)
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const redirectParam = params?.get('redirect');
+      const redirect = (redirectParam && redirectParam.startsWith('/')) ? redirectParam : '/admin';
+      console.log('Login redirect target:', redirect);
+      
       if (mode === 'sign_in') {
         const res = await supabase.auth.signInWithPassword({ email, password });
         if (res.error) throw res.error;
-        router.replace('/admin');
+        
+        console.log('Login successful, waiting for session...');
+        
+        // Wait a bit for session to be established and persisted
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Verify session exists
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('Session check:', { hasSession: !!session, error: sessionError });
+        
+        if (session) {
+          console.log('Session confirmed, redirecting to:', redirect);
+          // Use window.location for full page reload to ensure session is available
+          window.location.href = redirect;
+        } else {
+          console.warn('No session after login, but redirecting anyway (session may be in storage)');
+          // Still redirect - session might be in localStorage but not yet in memory
+          window.location.href = redirect;
+        }
       } else {
         const res = await supabase.auth.signUp({ email, password });
         if (res.error) throw res.error;
-        // If email confirmation is enabled, user may need to confirm.
-        router.replace('/admin');
+        console.log('Signup successful, waiting for session...');
+        
+        // Wait a bit for session to be established
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Verify session exists
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log('Session confirmed, redirecting to:', redirect);
+          window.location.href = redirect;
+        } else {
+          // Signup might require email confirmation
+          console.log('No session after signup (may need email confirmation), redirecting anyway');
+          window.location.href = redirect;
+        }
       }
     } catch (e: any) {
+      console.error('Login error:', e);
       setError(e?.message || 'Failed');
-    } finally {
       setLoading(false);
     }
   }

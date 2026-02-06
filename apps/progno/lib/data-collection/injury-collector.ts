@@ -94,7 +94,7 @@ export class InjuryCollector {
           injuries.push({
             playerName: playerMatch[1],
             position: positionMatch?.[1] || 'Unknown',
-            status: statusMatch[1].toLowerCase() as any,
+            status: statusMatch[1].toLowerCase() as 'out' | 'questionable' | 'doubtful' | 'probable',
             injuryType: 'Unknown',
             impact: this.estimateImpact(positionMatch?.[1] || 'Unknown', statusMatch[1].toLowerCase()),
             reportedAt: new Date(),
@@ -136,4 +136,3 @@ export class InjuryCollector {
     return (positionImpact[position] || 0.3) * (statusMultiplier[status] || 0.5);
   }
 }
-

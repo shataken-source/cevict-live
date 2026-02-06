@@ -1,0 +1,18 @@
+{
+  "name": "nba-predictor",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "predict": "tsx src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

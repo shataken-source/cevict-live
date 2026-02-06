@@ -34,10 +34,20 @@ export default function TripWeatherForecast({
 
   const fetchWeatherAndTides = async () => {
     try {
-      const { data: weather } = await supabase.functions.invoke('weather-api', {
-        body: { latitude, longitude, days }
+      const res = await fetch('/api/weather/current', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ latitude, longitude, location: '' }),
       });
-
+      let weather: any = null;
+      if (res.ok) {
+        weather = await res.json();
+      } else {
+        const { data } = await supabase.functions.invoke('weather-api', {
+          body: { latitude, longitude, days },
+        });
+        weather = data;
+      }
       setWeatherData(weather);
 
       if (weather?.alerts) {
@@ -45,16 +55,17 @@ export default function TripWeatherForecast({
       }
 
       for (const spot of fishingSpots) {
-        const { data: tides } = await supabase.functions.invoke('noaa-buoy-data', {
-          body: { 
-            action: 'tides',
-            latitude: spot.latitude,
-            longitude: spot.longitude,
-            date: new Date(startDate.getTime() + spot.day * 24 * 60 * 60 * 1000)
-          }
-        });
-        
-        setTideData(prev => ({ ...prev, [spot.day]: tides }));
+        const date = new Date(startDate.getTime() + spot.day * 24 * 60 * 60 * 1000);
+        const dateStr = date.toISOString().slice(0, 10);
+        try {
+          const tideRes = await fetch(
+            `/api/weather/tides?latitude=${spot.latitude}&longitude=${spot.longitude}&date=${dateStr}`
+          );
+          const tides = tideRes.ok ? await tideRes.json() : null;
+          setTideData(prev => ({ ...prev, [spot.day]: tides }));
+        } catch {
+          setTideData(prev => ({ ...prev, [spot.day]: null }));
+        }
       }
     } catch (error) {
       console.error('Failed to fetch weather:', error);

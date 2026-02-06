@@ -82,12 +82,16 @@ export default function BookingModificationModal({ isOpen, onClose, booking }: B
             <div>
               <Label className="text-lg mb-3 block">Select New Date</Label>
               <Calendar mode="single" selected={newDate} onSelect={setNewDate} 
-                disabled={(date) => date < new Date()} className="border rounded-lg" />
+                disabled={(date: Date) => date < new Date()} className="border rounded-lg" />
             </div>
             <div>
               <Label className="text-lg mb-3 block">Select New Time</Label>
-              <TimeSlotSelector date={newDate} selectedTime={newTime} 
-                onTimeSelect={setNewTime} charterId={booking.charterId} />
+              <TimeSlotSelector 
+                date={newDate} 
+                selectedTime={newTime} 
+                onTimeSelect={setNewTime} 
+                captainId={booking.charterId || booking.captainId || booking.id} 
+              />
             </div>
             <Card className="p-4 border-blue-300 bg-blue-50">
               <p className="text-sm text-gray-700">

@@ -42,12 +42,18 @@ export function resolveAlphaHunterSecretsPath(): string | null {
   const explicit = (process.env.ALPHA_HUNTER_SECRETS_PATH || "").trim();
   if (explicit) return explicit;
 
-  // repo vault (preferred if present)
-  const repoVault = path.resolve("C:\\cevict-live\\vault\\secrets\\alpha-hunter.secrets.json");
+  // alpha-hunter app root (src/lib -> .. -> .. = alpha-hunter/)
+  const appRoot = path.resolve(__dirname, "..", "..");
+  // repo vault: alpha-hunter/../../vault/secrets (works from monorepo root)
+  const repoVault = path.resolve(appRoot, "..", "..", "vault", "secrets", "alpha-hunter.secrets.json");
   if (fs.existsSync(repoVault)) return repoVault;
 
-  // external vault (fallback)
-  const externalVault = path.resolve("C:\\Cevict_Vault\\alpha-hunter.secrets.json");
+  // same repo vault when run from repo root (cwd = cevict-live)
+  const cwdVault = path.resolve(process.cwd(), "vault", "secrets", "alpha-hunter.secrets.json");
+  if (fs.existsSync(cwdVault)) return cwdVault;
+
+  // external vault (Windows fallback; Linux can set ALPHA_HUNTER_SECRETS_PATH)
+  const externalVault = path.resolve("/opt/cevict/vault/alpha-hunter.secrets.json");
   if (fs.existsSync(externalVault)) return externalVault;
 
   return null;

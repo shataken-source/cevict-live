@@ -1,279 +1,419 @@
 'use client';
-import { useRouter } from 'next/navigation';
+
 import { useState, useEffect } from 'react';
-import AdBanner from '../components/AdBanner';
+import EnhancedPicksCard from '../components/EnhancedPicksCard';
+import ClaudeEffectCard from '../components/ClaudeEffectCard';
+import SharpMoneyIndicator from '../components/SharpMoneyIndicator';
+import ConfidenceGauge from '../components/ConfidenceGauge';
 
-interface SystemStatus {
-  claude_effect: boolean;
-  odds_api: boolean;
-  cursor_bot: boolean;
-  database: boolean;
-}
+export default function PrognoDashboard() {
+  const [mounted, setMounted] = useState(false);
+  const [sport, setSport] = useState('nhl');
+  const [games, setGames] = useState<any[]>([]);
+  const [scores, setScores] = useState<any[]>([]);
+  const [predictions, setPredictions] = useState<Record<string, any>>({});
+  const [watchlist, setWatchlist] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      return JSON.parse(localStorage.getItem('prognoWatchlist') || '[]');
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [todayBets, setTodayBets] = useState<any[]>([]);
 
-export default function PrognoHome() {
-  const router = useRouter();
-  const [status, setStatus] = useState<SystemStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const predictionCache = new Map<string, any>();
 
   useEffect(() => {
-    async function checkStatus() {
-      try {
-        const res = await fetch('/api/progno/v2?action=health');
-        if (res.ok) {
-          const data = await res.json();
-          setStatus({
-            claude_effect: data.status === 'healthy',
-            odds_api: data.status === 'healthy',
-            cursor_bot: true,
-            database: true,
-          });
-        }
-      } catch (e) {
-        console.warn('Status check failed:', e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    checkStatus();
+    setMounted(true);
   }, []);
 
-  const navItems = [
-    {
-      title: 'Vegas Analysis',
-      desc: 'Weekly game analysis with Claude Effect',
-      icon: '📊',
-      href: '/vegas-analysis',
-      gradient: 'from-purple-600 to-pink-600',
-      glow: 'shadow-purple-500/30',
-    },
-    {
-      title: 'Create Prediction',
-      desc: 'Generate AI predictions for any game',
-      icon: '🎯',
-      href: '/create-prediction',
-      gradient: 'from-blue-600 to-cyan-500',
-      glow: 'shadow-blue-500/30',
-    },
-    {
-      title: 'Arbitrage Finder',
-      desc: 'Find guaranteed profit opportunities',
-      icon: '💰',
-      href: '/arbitrage',
-      gradient: 'from-emerald-600 to-green-500',
-      glow: 'shadow-emerald-500/30',
-    },
-    {
-      title: 'Single Game',
-      desc: 'Deep analysis of one specific game',
-      icon: '🎮',
-      href: '/single-game',
-      gradient: 'from-red-600 to-orange-500',
-      glow: 'shadow-red-500/30',
-    },
-    {
-      title: 'Elite Fine-Tuner',
-      desc: 'Advanced prediction customization',
-      icon: '⚡',
-      href: '/elite-fine-tuner',
-      gradient: 'from-violet-600 to-purple-500',
-      glow: 'shadow-violet-500/30',
-    },
-    {
-      title: 'Accuracy Dashboard',
-      desc: 'Track prediction performance',
-      icon: '📈',
-      href: '/accuracy',
-      gradient: 'from-amber-600 to-yellow-500',
-      glow: 'shadow-amber-500/30',
-    },
-    {
-      title: 'Cursor Bot Dashboard',
-      desc: 'Monitor the autonomous AI bot',
-      icon: '🤖',
-      href: '/cursor-bot-dashboard',
-      gradient: 'from-cyan-600 to-blue-500',
-      glow: 'shadow-cyan-500/30',
-    },
-    {
-      title: 'Enhanced Picks',
-      desc: 'Premium picks with full analysis',
-      icon: '🏆',
-      href: '/picks',
-      gradient: 'from-pink-600 to-rose-500',
-      glow: 'shadow-pink-500/30',
-    },
-  ];
+  const fetchData = async (forceSport = sport) => {
+    setLoading(true);
+    setError(null);
+    setGames([]);
+    setScores([]);
+    setTodayBets([]);
+
+    if (forceSport === 'today') {
+      loadTodayBestBets();
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const gamesRes = await fetch(`/api/progno/v2?action=games&sport=${forceSport}`);
+      const gamesData = await gamesRes.json();
+      if (!gamesData.success) throw new Error(gamesData.error?.message || 'Failed to load games');
+      setGames(gamesData.data || []);
+
+      const scoresRes = await fetch(`/api/progno/v2?action=live-scores&sport=${forceSport}`);
+      const scoresData = await scoresRes.json();
+      if (!scoresData.success) throw new Error(scoresData.error?.message || 'Failed to load scores');
+      setScores(scoresData.data || []);
+    } catch (err: any) {
+      setError(err.message || 'Error loading data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTodayBestBets = () => {
+    // Manual only — uses cached predictions
+    const withEdge = games.filter(g => {
+      const pred = predictionCache.get(g.id);
+      return pred && pred.edge > 0;
+    });
+
+    withEdge.sort((a, b) => {
+      const aEdge = predictionCache.get(a.id)?.edge || 0;
+      const bEdge = predictionCache.get(b.id)?.edge || 0;
+      return bEdge - aEdge;
+    });
+
+    setTodayBets(withEdge.slice(0, 10));
+  };
+
+  const predictGame = async (gameId: string) => {
+    try {
+      const res = await fetch(`/api/progno/v2?action=prediction&gameId=${gameId}`);
+      const data = await res.json();
+      if (data.success) {
+        setPredictions(prev => ({ ...prev, [gameId]: data.data }));
+        predictionCache.set(gameId, data.data);
+        if (sport === 'today') loadTodayBestBets();
+      }
+    } catch (err) {
+      alert('Error running prediction');
+    }
+  };
+
+  const saveToWatchlist = (gameId: string) => {
+    setWatchlist(prev => {
+      if (prev.includes(gameId)) return prev;
+      const updated = [...prev, gameId];
+      localStorage.setItem('prognoWatchlist', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const removeFromWatchlist = (gameId: string) => {
+    setWatchlist(prev => {
+      const updated = prev.filter(id => id !== gameId);
+      localStorage.setItem('prognoWatchlist', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const printBestBets = () => {
+    window.print();
+  };
+
+  const clearPredictions = () => setPredictions({});
+
+  useEffect(() => {
+    if (mounted) {
+      fetchData();
+    }
+  }, [sport, mounted]);
+
+  const mergedGames = games.map(game => {
+    const scoreInfo = scores.find(s => s.id === game.id);
+    const isLive = scoreInfo && !scoreInfo.completed;
+    const isCompleted = scoreInfo?.completed;
+
+    return {
+      ...game,
+      scoreInfo,
+      prediction: predictions[game.id],
+      isSaved: watchlist.includes(game.id),
+      hasPotentialArb: Math.abs((game.odds?.moneyline?.home ?? 0) - (game.odds?.moneyline?.away ?? 0)) > 20,
+      isLive,
+      isCompleted
+    };
+  });
+
+  if (!mounted) return null;
+
+  const isTodayMode = sport === 'today';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 -left-1/4 w-1/2 h-1/2 bg-purple-600/10 rounded-full blur-[100px] animate-pulse" />
-        <div className="absolute bottom-0 -right-1/4 w-1/2 h-1/2 bg-blue-600/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/3 h-1/3 bg-pink-600/5 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '2s' }} />
-      </div>
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <div className="max-w-none mx-auto p-6">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <h1 className="text-4xl font-bold">PROGNO — Live Sports Dashboard</h1>
+        </header>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
-        {/* Header Ad */}
-        <div className="text-center mb-8">
-          <div className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Advertisement</div>
-          <div className="inline-block">
-            <AdBanner
-              adSlot="progno-header"
-              adFormat="leaderboard"
-              width={728}
-              height={90}
-            />
-          </div>
+        <div className="flex flex-wrap items-center gap-4 mb-6">
+          <label className="font-medium">View:</label>
+          <select
+            value={sport}
+            onChange={e => {
+              setSport(e.target.value);
+              fetchData(e.target.value);
+            }}
+            className="p-2 rounded-lg border bg-white border-gray-300"
+          >
+            <option value="nhl">NHL</option>
+            <option value="ncaab">NCAAB</option>
+            <option value="nba">NBA</option>
+            <option value="nfl">NFL</option>
+            <option value="ncaaf">NCAAF</option>
+            <option value="mlb">MLB</option>
+            <option value="today">Today’s Best Bets</option>
+          </select>
+
+          <button
+            onClick={() => fetchData()}
+            disabled={loading}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${loading ? 'bg-gray-500 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+          >
+            {loading ? 'Refreshing...' : 'Refresh Now'}
+          </button>
+
+          <button
+            onClick={clearPredictions}
+            className="px-4 py-2 rounded-lg font-medium bg-red-600 hover:bg-red-700 text-white transition-colors"
+          >
+            Clear Predictions
+          </button>
         </div>
 
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-4 mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl flex items-center justify-center text-4xl shadow-2xl shadow-purple-500/40 transform rotate-6">
-              🎲
-            </div>
-            <div className="text-left">
-              <h1 className="text-5xl md:text-6xl font-black text-white tracking-tight">
-                PROGNO
-              </h1>
-              <p className="text-purple-400 font-semibold text-lg">
-                AI Sports Prediction Engine
-              </p>
-            </div>
-          </div>
-          
-          <p className="text-gray-400 max-w-2xl mx-auto text-lg">
-            Powered by the 7-Dimensional Claude Effect™ with Monte Carlo simulations,
-            sentiment analysis, and autonomous machine learning.
-          </p>
-        </div>
-
-        {/* System Status */}
-        <div className="flex justify-center gap-4 mb-12 flex-wrap">
-          {[
-            { key: 'claude_effect', label: 'Claude Effect', icon: '🧠' },
-            { key: 'odds_api', label: 'Odds API', icon: '📡' },
-            { key: 'cursor_bot', label: 'Cursor Bot', icon: '🤖' },
-            { key: 'database', label: 'Database', icon: '💾' },
-          ].map((sys) => (
-            <div
-              key={sys.key}
-              className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2 flex items-center gap-2"
+        {isTodayMode && todayBets.length > 0 && (
+          <div className="mb-6">
+            <button
+              onClick={printBestBets}
+              className="px-6 py-3 rounded-lg font-medium bg-green-600 hover:bg-green-700 text-white transition-colors"
             >
-              <span className="text-xl">{sys.icon}</span>
-              <span className="text-sm text-gray-300">{sys.label}</span>
-              {loading ? (
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse" />
+              Print Best Bets
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500/30 rounded-lg text-yellow-300 text-center">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {loading && <p className="text-gray-500 mb-6">Loading...</p>}
+
+        {isTodayMode ? (
+          <div>
+            <h2 className="text-2xl font-bold mb-6">Today’s Best Bets (True Positive Edge Picks)</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {todayBets.length === 0 ? (
+                <p className="col-span-full text-center text-gray-500 py-10">
+                  No positive edge picks yet. Run predictions in league views to populate the true best bets.
+                </p>
               ) : (
-                <div className={`w-2 h-2 rounded-full ${
-                  status?.[sys.key as keyof SystemStatus] ? 'bg-green-500' : 'bg-red-500'
-                }`} />
+                todayBets.map(bet => {
+                  const prediction = bet.prediction || {};
+
+                  return (
+                    <div key={bet.id} className="space-y-6">
+                      <div className="text-xl font-bold text-center mb-2">
+                        {bet.homeTeam} vs {bet.awayTeam}
+                        <div className="text-base font-semibold text-blue-600 mt-1">
+                          Predicted Winner: <span className="font-bold">{prediction.winner || 'Loading...'}</span>
+                        </div>
+                      </div>
+
+                      <EnhancedPicksCard
+                        pick={{
+                          sport: bet.league.toUpperCase(),
+                          home_team: bet.homeTeam,
+                          away_team: bet.awayTeam,
+                          game_time: bet.startTime,
+                          confidence: prediction.confidence * 100 || 0,
+                          analysis: prediction.keyFactors?.join('\n') || '',
+                          pick: prediction.winner || 'Unknown',
+                          odds: bet.odds?.moneyline?.home || -150,
+                          mc_win_probability: prediction.confidence || 0,
+                          mc_predicted_score: prediction.score || { home: 0, away: 0 },
+                          value_bet_edge: prediction.edge || 0,
+                          value_bet_ev: (prediction.edge || 0) * 10,
+                          has_value: (prediction.edge || 0) > 0
+                        }}
+                        showDetails={true}
+                      />
+
+                      <ClaudeEffectCard
+                        scores={prediction.claudeEffect || {
+                          sentimentField: 0.8,
+                          narrativeMomentum: 0.7,
+                          informationAsymmetry: 0.65,
+                          chaosSensitivity: 0.6,
+                          networkInfluence: 0.65,
+                          temporalDecay: 0.5,
+                          emergentPattern: 0.7
+                        }}
+                        adjustedProbability={prediction.confidence || 0}
+                        adjustedConfidence={prediction.confidence || 0}
+                        reasoning={prediction.keyFactors || []}
+                        recommendations={{ betSize: 'large', reason: `+${prediction.edge || 0}% edge detected` }}
+                      />
+
+                      <SharpMoneyIndicator gameId={bet.id} homeTeam={bet.homeTeam} awayTeam={bet.awayTeam} />
+
+                      <div className="flex justify-center">
+                        <ConfidenceGauge confidence={prediction.confidence || 0} size="large" showLabel={true} />
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
-          ))}
-        </div>
-
-        {/* Navigation Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-          {navItems.map((item, i) => (
-            <button
-              key={i}
-              onClick={() => router.push(item.href)}
-              className={`
-                group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 text-left
-                hover:bg-white/10 transition-all duration-300 hover:scale-[1.02] hover:border-white/20
-                shadow-xl ${item.glow}
-              `}
-            >
-              <div className={`
-                w-14 h-14 bg-gradient-to-br ${item.gradient} rounded-xl flex items-center justify-center text-3xl mb-4
-                shadow-lg group-hover:scale-110 transition-transform duration-300
-              `}>
-                {item.icon}
-              </div>
-              <h3 className="text-xl font-bold text-white mb-1 group-hover:text-purple-300 transition-colors">
-                {item.title}
-              </h3>
-              <p className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">
-                {item.desc}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {mergedGames.length === 0 && !loading && (
+              <p className="col-span-full text-center text-gray-500 py-10">
+                No games or odds available for {sport.toUpperCase()} right now.
               </p>
-              <div className="absolute top-4 right-4 text-gray-600 group-hover:text-purple-400 transition-colors">
-                →
-              </div>
-            </button>
-          ))}
-        </div>
+            )}
 
-        {/* Quick Actions */}
-        <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 backdrop-blur-xl rounded-3xl border border-white/10 p-8 mb-12">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-2">Ready to get started?</h2>
-              <p className="text-purple-300">Run a full analysis on today's games with one click.</p>
-            </div>
-            <button
-              onClick={() => router.push('/vegas-analysis')}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold px-8 py-4 rounded-xl transition-all transform hover:scale-105 shadow-xl shadow-purple-500/30 whitespace-nowrap"
-            >
-              🚀 Run Vegas Analysis
-            </button>
-          </div>
-        </div>
+            {mergedGames.map(game => {
+              const isLive = game.scoreInfo && !game.scoreInfo.completed;
+              const isCompleted = game.scoreInfo?.completed;
 
-        {/* API Info Card */}
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 mb-12">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
-              🔌
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white mb-2">API Access</h3>
-              <p className="text-gray-400 text-sm mb-3">
-                Access the Progno API programmatically. Full Claude Effect integration, 
-                real-time predictions, and comprehensive documentation.
-              </p>
-              <div className="flex gap-3">
-                <a
-                  href="/api/progno/v2?action=info"
-                  target="_blank"
-                  className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
+              return (
+                <div
+                  key={game.id}
+                  className="rounded-xl shadow-lg p-6 transition-all border bg-white border-gray-200"
                 >
-                  API Info →
-                </a>
-                <a
-                  href="/api/test/claude-effect"
-                  target="_blank"
-                  className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
-                >
-                  Test Claude Effect →
-                </a>
-              </div>
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-bold">
+                        {game.homeTeam} vs {game.awayTeam}
+                      </h3>
+                      {game.hasPotentialArb && (
+                        <span className="text-green-500 font-bold" title="Potential arbitrage opportunity">
+                          ⚡
+                        </span>
+                      )}
+                    </div>
+                    {game.isSaved ? (
+                      <button
+                        onClick={() => removeFromWatchlist(game.id)}
+                        className="text-yellow-500 hover:text-yellow-400 font-medium"
+                      >
+                        ★ Saved
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => saveToWatchlist(game.id)}
+                        className="text-gray-400 hover:text-yellow-500 font-medium"
+                      >
+                        ☆ Save
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-gray-600 mb-3">
+                    {new Date(game.startTime).toLocaleString()} • {game.venue || 'Unknown'}
+                  </p>
+
+                  {isLive && game.scoreInfo && (
+                    <p className="text-2xl font-bold text-green-500 mb-4">
+                      LIVE: {game.scoreInfo.homeScore} - {game.scoreInfo.awayScore}
+                    </p>
+                  )}
+                  {isCompleted && game.scoreInfo && (
+                    <p className="text-2xl font-bold mb-4">
+                      FINAL: {game.scoreInfo.homeScore} - {game.scoreInfo.awayScore}
+                    </p>
+                  )}
+
+                  <div className="space-y-2 text-sm mb-5">
+                    <div>
+                      <strong>Moneyline:</strong><br />
+                      {game.homeTeam}: {game.odds?.moneyline?.home ?? 'N/A'}<br />
+                      {game.awayTeam}: {game.odds?.moneyline?.away ?? 'N/A'}
+                    </div>
+                    <div>
+                      <strong>Spread:</strong> {game.homeTeam} {game.odds?.spread?.home ?? 'N/A'} • Total: {game.odds?.total?.line ?? 'N/A'}
+                    </div>
+                  </div>
+
+                  {game.prediction ? (
+                    <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                      <strong className="block mb-2 text-lg">Prediction:</strong>
+                      <span className="font-bold text-blue-700">{game.prediction.winner}</span> wins<br />
+                      <strong>Confidence:</strong> <ConfidenceGauge confidence={game.prediction.confidence} size="medium" showLabel={false} />
+                      <strong>Projected:</strong> {game.prediction.score.home} - {game.prediction.score.away}
+                      {game.prediction.edge > 0 && (
+                        <div className="mt-2 text-green-600 font-bold">
+                          +{game.prediction.edge}% Edge
+                        </div>
+                      )}
+
+                      {game.prediction.keyFactors && game.prediction.keyFactors.length > 0 && (
+                        <div className="mt-4">
+                          <strong>Key Factors:</strong>
+                          <ul className="list-disc ml-5 mt-2 space-y-1 text-sm">
+                            {game.prediction.keyFactors.map((factor: string, i: number) => (
+                              <li key={i}>{factor}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => predictGame(game.id)}
+                      disabled={loading}
+                      className={`w-full py-3 rounded-lg font-medium text-white transition-colors ${loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                        }`}
+                    >
+                      Run Prediction
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {watchlist.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold mb-4">
+              Watchlist ({watchlist.length})
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {mergedGames
+                .filter(game => watchlist.includes(game.id))
+                .map(game => (
+                  <div
+                    key={game.id}
+                    className="p-4 rounded-lg border bg-white border-gray-200"
+                  >
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-semibold">
+                        {game.homeTeam} vs {game.awayTeam}
+                      </h4>
+                      <button
+                        onClick={() => removeFromWatchlist(game.id)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    {game.prediction && (
+                      <p className="mt-2 text-sm">
+                        Prediction: <span className="font-bold text-blue-700">{game.prediction.winner}</span> (<ConfidenceGauge confidence={game.prediction.confidence} size="small" showLabel={false} />)
+                      </p>
+                    )}
+                  </div>
+                ))}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Footer Ad */}
-        <div className="text-center">
-          <div className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">Advertisement</div>
-          <div className="inline-block">
-            <AdBanner
-              adSlot="progno-footer"
-              adFormat="banner"
-              width={468}
-              height={60}
-            />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="mt-12 pt-8 border-t border-white/10 text-center">
-          <p className="text-sm text-gray-500">
-            © {new Date().getFullYear()} PROGNO • Cevict Flux v2.0 • Claude Effect Engine
-          </p>
-          <p className="text-xs text-gray-600 mt-2">
-            For entertainment purposes only. Gamble responsibly.
-          </p>
+        <footer className="mt-16 text-center text-sm text-gray-500">
+          © 2026 PROGNO • Cevict Flux v2.0 • Claude Effect Engine<br />
+          For entertainment purposes only. Gamble responsibly.
         </footer>
       </div>
     </div>

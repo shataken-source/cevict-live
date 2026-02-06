@@ -42,7 +42,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
 
-    if (error) return res.status(502).json({ error: error.message || 'Scraper function failed' });
+    if (error) {
+      // Try to read the response body for more details
+      let errorBody = null;
+      try {
+        if (error.context && error.context instanceof Response) {
+          errorBody = await error.context.text();
+          try {
+            errorBody = JSON.parse(errorBody);
+          } catch {
+            // Keep as text if not JSON
+          }
+        }
+      } catch (e) {
+        // Ignore errors reading body
+      }
+
+      console.error('[Scraper] Edge Function error:', {
+        message: error.message,
+        status: error.context?.status,
+        statusText: error.context?.statusText,
+        errorBody: errorBody,
+        context: error.context,
+      });
+      
+      return res.status(502).json({ 
+        error: error.message || 'Scraper function failed',
+        details: errorBody || error.context || error,
+        status: error.context?.status,
+      });
+    }
 
     // Update status totals (best-effort)
     await admin

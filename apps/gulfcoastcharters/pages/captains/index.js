@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Layout from '../../components/Layout';
 
 export default function Captains({ session }) {
@@ -40,10 +41,14 @@ export default function Captains({ session }) {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {boats.map((b) => (
-              <div key={b.id} className="bg-white p-6 rounded shadow border border-gray-100">
+              <Link 
+                key={b.id} 
+                href={`/captains/${b.id}`}
+                className="bg-white p-6 rounded shadow border border-gray-100 hover:shadow-lg transition-shadow cursor-pointer block"
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="font-bold text-lg">{b.name}</h3>
+                    <h3 className="font-bold text-lg hover:text-blue-600">{b.name}</h3>
                     <p className="text-sm text-gray-600">
                       {b.type}
                       {b.capacity ? ` • up to ${b.capacity}` : ''}
@@ -71,7 +76,7 @@ export default function Captains({ session }) {
                     ))}
                   </div>
                 ) : null}
-              </div>
+              </Link>
             ))}
           </div>
         )}

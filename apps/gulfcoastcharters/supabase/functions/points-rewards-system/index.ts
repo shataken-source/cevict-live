@@ -166,6 +166,7 @@ serve(async (req) => {
     // ---------------------------
     if (action === 'get_achievements') {
       const achievements = [
+        // Core achievements
         { id: 'first_voyage', name: 'First Voyage', requirement: { type: 'booking', count: 1 }, rewardPoints: 100 },
         { id: 'critic', name: 'Critic', requirement: { type: 'review', count: 10 }, rewardPoints: 500 },
         { id: 'rising_star', name: 'Rising Star', requirement: { type: 'points', count: 1000 }, rewardPoints: 150 },
@@ -175,6 +176,30 @@ serve(async (req) => {
         { id: 'social_butterfly', name: 'Social Butterfly', requirement: { type: 'message', count: 50 }, rewardPoints: 150 },
         { id: 'seasoned_sailor', name: 'Seasoned Sailor', requirement: { type: 'booking', count: 10 }, rewardPoints: 300 },
         { id: 'reward_hunter', name: 'Reward Hunter', requirement: { type: 'redeem', count: 1 }, rewardPoints: 100 },
+        
+        // Avatar achievements
+        { id: 'avatar_enthusiast', name: 'Avatar Enthusiast', requirement: { type: 'avatar_purchase', count: 10 }, rewardPoints: 200 },
+        { id: 'fashion_forward', name: 'Fashion Forward', requirement: { type: 'avatar_purchase', count: 25 }, rewardPoints: 500 },
+        
+        // Marketplace achievements
+        { id: 'marketplace_seller', name: 'Marketplace Seller', requirement: { type: 'marketplace_listing', count: 5 }, rewardPoints: 150 },
+        { id: 'top_seller', name: 'Top Seller', requirement: { type: 'marketplace_sale', count: 10 }, rewardPoints: 500 },
+        { id: 'trusted_buyer', name: 'Trusted Buyer', requirement: { type: 'marketplace_purchase', count: 5 }, rewardPoints: 300 },
+        
+        // AI & Catching achievements
+        { id: 'angler', name: 'Angler', requirement: { type: 'catch_logged', count: 10 }, rewardPoints: 200 },
+        { id: 'master_angler', name: 'Master Angler', requirement: { type: 'catch_logged', count: 50 }, rewardPoints: 500 },
+        { id: 'ai_helper', name: 'AI Helper', requirement: { type: 'ai_correction', count: 10 }, rewardPoints: 150 },
+        { id: 'species_collector', name: 'Species Collector', requirement: { type: 'catch_species', count: 10 }, rewardPoints: 300 },
+        
+        // Training achievements
+        { id: 'student', name: 'Student', requirement: { type: 'course_complete', count: 1 }, rewardPoints: 150 },
+        { id: 'scholar', name: 'Scholar', requirement: { type: 'course_complete', count: 3 }, rewardPoints: 300 },
+        { id: 'expert', name: 'Expert', requirement: { type: 'course_complete', count: 8 }, rewardPoints: 1000 },
+        
+        // License achievements
+        { id: 'licensed_angler', name: 'Licensed Angler', requirement: { type: 'license_purchase', count: 1 }, rewardPoints: 100 },
+        { id: 'multi_state', name: 'Multi-State Angler', requirement: { type: 'license_purchase', count: 3 }, rewardPoints: 200 },
       ];
       return new Response(JSON.stringify({ achievements }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -262,6 +287,8 @@ serve(async (req) => {
     if (action === 'award_points') {
       const userId = String(body.userId || '');
       const actionType = String(body.actionType || '');
+      const customAmount = body.amount ? Number(body.amount) : null;
+      
       if (!userId || !actionType) {
         return new Response(JSON.stringify({ error: 'Missing userId/actionType' }), {
           status: 400,
@@ -270,21 +297,73 @@ serve(async (req) => {
       }
 
       const pointsByAction: Record<string, number> = {
+        // Core actions
         booking: 100,
         review: 50,
         photo_upload: 25,
         message: 10,
+        message_post: 10,
         thread: 10,
         referral: 200,
         profile_complete: 75,
         video_upload: 50,
         event_attend: 30,
         daily_login: 5,
+        streak_bonus: 0, // Calculated dynamically based on streak
         achievement_unlock: 150,
+        quest_complete: 0, // Set by quest system
+        
+        // Avatar System
+        avatar_created: 15,
+        avatar_customized: 10,
+        avatar_first_purchase: 25,
+        
+        // Marketplace
+        marketplace_listing: 20,
+        marketplace_sale: 50,
+        marketplace_purchase: 30,
+        marketplace_review: 10,
+        marketplace_offer_accepted: 15,
+        
+        // Affiliate
+        affiliate_code_generated: 10,
+        affiliate_tier_upgrade: 100,
+        
+        // AI Fish Recognition
+        ai_recognition_use: 5,
+        catch_logged: 25,
+        ai_correction: 10,
+        
+        // Training Academy
+        lesson_complete: 10,
+        quiz_passed: 20,
+        course_complete: 100,
+        certification_earned: 150,
+        
+        // Fishing License
+        license_purchase: 15,
+        license_verification: 5,
+        license_annual: 25, // Bonus for annual licenses
       };
-      const amount = pointsByAction[actionType] ?? 0;
-      if (amount <= 0) {
-        return new Response(JSON.stringify({ success: false, error: 'Unknown actionType' }), {
+      
+      // Use custom amount if provided, otherwise use mapping
+      let amount = customAmount !== null ? customAmount : (pointsByAction[actionType] ?? 0);
+      
+      // Calculate streak bonus for daily_login
+      if (actionType === 'daily_login') {
+        const { data: checkInData } = await supabase
+          .from('daily_check_ins')
+          .select('current_streak')
+          .eq('user_id', userId)
+          .single();
+        
+        const streak = checkInData?.current_streak || 0;
+        const streakBonus = Math.min(streak * 2, 50); // Max 50 bonus points
+        amount = amount + streakBonus;
+      }
+      
+      if (amount <= 0 && customAmount === null) {
+        return new Response(JSON.stringify({ success: false, error: 'Unknown actionType or invalid amount' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -294,13 +373,61 @@ serve(async (req) => {
         user_uuid: userId,
         points_amount: amount,
         trans_type: actionType,
-        reference_id: null,
-        description: null,
+        reference_id: body.referenceId || null,
+        description: body.description || null,
       });
       if (error) throw error;
 
       const { data: balance } = await supabase.rpc('get_user_points', { user_uuid: userId });
       return new Response(JSON.stringify({ success: true, points: amount, actionType, balance: Number(balance || 0) || 0 }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ---------------------------
+    // Get daily check-in status
+    // ---------------------------
+    if (action === 'get_daily_checkin') {
+      const userId = String(body.userId || '');
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'Missing userId' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: checkIn, error } = await supabase
+        .from('daily_check_ins')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        // Return default if no record exists
+        return new Response(JSON.stringify({
+          currentStreak: 0,
+          longestStreak: 0,
+          totalCheckIns: 0,
+          todayCheckedIn: false,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+      const lastCheckIn = checkIn?.last_check_in 
+        ? new Date(checkIn.last_check_in).toISOString().split('T')[0]
+        : null;
+
+      return new Response(JSON.stringify({
+        currentStreak: checkIn?.current_streak || 0,
+        longestStreak: checkIn?.longest_streak || 0,
+        totalCheckIns: checkIn?.total_check_ins || 0,
+        todayCheckedIn: lastCheckIn === todayStr,
+        lastCheckIn: lastCheckIn,
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
