@@ -12,6 +12,7 @@
   "dependencies": {
     "@clerk/nextjs": "^6.36.8",
     "@stripe/stripe-js": "^8.6.1",
+    "@supabase/supabase-js": "^2.95.3",
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.400.0",
