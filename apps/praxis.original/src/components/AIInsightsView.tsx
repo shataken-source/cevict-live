@@ -12,6 +12,7 @@ interface AIInsightsViewProps {
   trades: Trade[];
   stats: PortfolioStats;
   apiKey?: string;
+  isProOrHigher?: boolean;
 }
 
 interface Message {
@@ -124,16 +125,21 @@ ${openPositions.slice(0, 5).map(t =>
 function AIChat({ 
   trades, 
   stats,
-  apiKey 
+  apiKey,
+  promptToSend,
+  onPromptSent,
 }: { 
   trades: Trade[]; 
   stats: PortfolioStats;
   apiKey?: string;
+  promptToSend?: string | null;
+  onPromptSent?: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastSentPromptRef = useRef<string | null>(null);
   
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -142,7 +148,20 @@ function AIChat({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-  
+
+  // When parent sets a prompt (e.g. quick-prompt button), send it
+  useEffect(() => {
+    if (!promptToSend) {
+      lastSentPromptRef.current = null;
+      return;
+    }
+    if (promptToSend !== lastSentPromptRef.current && !isLoading) {
+      lastSentPromptRef.current = promptToSend;
+      sendMessage(promptToSend);
+      onPromptSent?.();
+    }
+  }, [promptToSend, isLoading]);
+
   const sendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return;
     
@@ -416,11 +435,16 @@ function QuickInsights({ stats, trades }: { stats: PortfolioStats; trades: Trade
 }
 
 // Main AI Insights View
-export default function AIInsightsView({ trades, stats, apiKey }: AIInsightsViewProps) {
+export default function AIInsightsView({ trades, stats, apiKey, isProOrHigher = false }: AIInsightsViewProps) {
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
   
   return (
     <div className="space-y-6">
+      {!isProOrHigher && (
+        <a href="/pricing" className="block p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition text-sm">
+          <span className="font-medium">Upgrade to Pro</span> for full AI insights (50 analyses/month). Free tier includes limited preview.
+        </a>
+      )}
       <div>
         <h2 className="text-2xl font-bold">AI Insights</h2>
         <p className="text-zinc-500">Get personalized analysis of your trading performance</p>
@@ -446,6 +470,8 @@ export default function AIInsightsView({ trades, stats, apiKey }: AIInsightsView
             trades={trades} 
             stats={stats} 
             apiKey={apiKey}
+            promptToSend={selectedPrompt}
+            onPromptSent={() => setSelectedPrompt(null)}
           />
         </div>
         

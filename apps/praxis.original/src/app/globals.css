@@ -2,17 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* Dark theme (default) - also set on :root for initial paint */
+:root,
+.praxis-theme-dark {
   --background: #0a0a0f;
   --foreground: #fafafa;
   --card: #111118;
   --card-hover: #1a1a24;
   --border: #27272a;
+  --neutral: #71717a;
   --profit: #22c55e;
   --loss: #ef4444;
-  --neutral: #71717a;
   --accent: #6366f1;
   --accent-hover: #818cf8;
+  --sidebar-bg: #0d0d12;
+  --sidebar-border: #27272a;
+}
+
+/* Light theme - applied by ThemeWrapper */
+.praxis-theme-light {
+  --background: #f4f4f5;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-hover: #f4f4f5;
+  --border: #e4e4e7;
+  --neutral: #71717a;
+  --profit: #16a34a;
+  --loss: #dc2626;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --sidebar-bg: #e4e4e7;
+  --sidebar-border: #d4d4d8;
+}
+
+.praxis-sidebar {
+  background: var(--sidebar-bg);
+  border-color: var(--sidebar-border);
+}
+
+/* Theme wrapper - fills viewport and applies CSS variables to descendants */
+.praxis-theme-dark,
+.praxis-theme-light {
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 * {
@@ -25,8 +58,6 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background: var(--background);
-  color: var(--foreground);
 }
 
 body {
@@ -55,11 +86,20 @@ body {
 /* Custom classes */
 @layer components {
   .card {
-    @apply bg-[#111118] border border-[#27272a] rounded-xl p-4;
+    background: var(--card);
+    border: 1px solid var(--border);
+    @apply rounded-xl p-4 transition-colors;
+  }
+
+  .praxis-theme-light .card {
+    @apply shadow-sm;
   }
   
   .card-hover {
-    @apply hover:bg-[#1a1a24] transition-colors duration-200;
+    transition: background-color 0.2s;
+  }
+  .card-hover:hover {
+    background: var(--card-hover);
   }
   
   .btn-primary {
@@ -67,11 +107,25 @@ body {
   }
   
   .btn-secondary {
-    @apply bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg font-medium transition-colors;
+    background: var(--card);
+    border: 1px solid var(--border);
+    @apply rounded-lg font-medium transition-colors;
+  }
+  .praxis-theme-light .btn-secondary:hover {
+    @apply bg-zinc-100;
+  }
+  .praxis-theme-dark .btn-secondary:hover {
+    @apply bg-zinc-700;
   }
   
   .input {
-    @apply bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--foreground);
+    @apply rounded-lg px-3 py-2 transition-colors focus:outline-none focus:border-indigo-500;
+  }
+  .input::placeholder {
+    color: var(--neutral);
   }
   
   .stat-up {
@@ -108,4 +162,33 @@ body {
 
 .animate-pulse-loss {
   animation: pulse-loss 2s ease-in-out infinite;
+}
+
+/* Compact mode: tighter spacing so more content fits on screen */
+.praxis-compact .card {
+  padding: 0.5rem 0.75rem;
+}
+.praxis-compact .space-y-6 > * + * {
+  margin-top: 0.75rem;
+}
+.praxis-compact .space-y-4 > * + * {
+  margin-top: 0.5rem;
+}
+.praxis-compact .gap-6 {
+  gap: 0.75rem;
+}
+.praxis-compact .gap-4 {
+  gap: 0.5rem;
+}
+.praxis-compact .gap-3 {
+  gap: 0.375rem;
+}
+.praxis-compact h2 {
+  font-size: 1.25rem;
+}
+.praxis-compact h3 {
+  font-size: 1rem;
+}
+.praxis-compact .text-2xl {
+  font-size: 1.25rem;
 }

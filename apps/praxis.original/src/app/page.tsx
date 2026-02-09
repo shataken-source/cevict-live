@@ -5,7 +5,7 @@ import {
   TrendingUp, TrendingDown, Upload, BarChart3, Wallet,
   Target, Brain, Settings, Bell, ChevronDown,
   ArrowUpRight, ArrowDownRight, Zap, Shield, Clock, Trophy,
-  Download, X, Menu
+  Download, X, Menu, Crown
 } from 'lucide-react';
 import {
   AreaChart, Area,
@@ -14,13 +14,17 @@ import {
 } from 'recharts';
 import { useTradingStore, useFilteredTrades } from '@/lib/store';
 import { parseGenericCSV, exportTradesToCSV } from '@/lib/csv-parser';
+import { SAMPLE_TRADES } from '@/lib/sample-trades';
 import {
   formatCurrency, formatPnL, formatDate, formatDateTime,
   calculatePortfolioStats, calculateDailyStats, filterTradesByTimeRange, cn
 } from '@/lib/utils';
 import type { Trade, ViewMode, TimeRange } from '@/types';
-import { SignedIn, SignedOut, useAuth } from '@clerk/nextjs';
+import { SignedIn, SignedOut, useAuth, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useSubscription } from '@/lib/use-subscription';
 
 import AnalyticsView from '@/components/AnalyticsView';
 import AIInsightsView from '@/components/AIInsightsView';
@@ -206,17 +210,21 @@ function DashboardView({
   filteredTrades,
   addTrades,
   clearTrades,
+  loadDemoData,
   handleExport,
   selectedTimeRange,
   setTimeRange,
   onViewAllTrades,
+  userDisplayName,
 }: {
   trades: Trade[];
   stats: ReturnType<typeof calculatePortfolioStats>;
   dailyStats: ReturnType<typeof calculateDailyStats>;
+  userDisplayName?: string | null;
   filteredTrades: Trade[];
   addTrades: (trades: Trade[]) => void;
   clearTrades: () => void;
+  loadDemoData: () => void;
   handleExport: () => void;
   selectedTimeRange: TimeRange;
   setTimeRange: (range: TimeRange) => void;
@@ -227,7 +235,7 @@ function DashboardView({
       <header className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold">Dashboard</h2>
-          <p className="text-zinc-500">Welcome back, trader</p>
+          <p className="text-zinc-500">Welcome back, {userDisplayName || 'trader'}</p>
         </div>
         <div className="flex items-center gap-3">
           <button onClick={handleExport} className="btn-secondary flex items-center gap-2">
@@ -282,6 +290,15 @@ function DashboardView({
         <div className="card">
           <h3 className="font-semibold mb-4">Import Trades</h3>
           <CSVUpload onUpload={addTrades} />
+          <p className="text-zinc-500 text-xs mt-3 mb-2">Screenshots</p>
+          <button
+            type="button"
+            onClick={loadDemoData}
+            className="w-full py-2 rounded-lg border border-amber-500/40 text-amber-400 hover:bg-amber-500/10 text-sm font-medium transition"
+          >
+            Load screenshot demo
+          </button>
+          <p className="text-zinc-500 text-xs mt-2">Temporary data for homepage screenshots. Use Clear above when done.</p>
         </div>
 
         <div className="lg:col-span-2 card">
@@ -387,11 +404,14 @@ function PositionsView({ trades }: { trades: Trade[] }) {
 }
 
 export default function Dashboard() {
+  const { user } = useUser();
+  const userDisplayName = user?.firstName ?? user?.fullName ?? null;
   const {
     trades,
     viewMode,
     setViewMode,
     addTrades,
+    setTrades,
     clearTrades,
     alerts,
     selectedTimeRange,
@@ -401,7 +421,15 @@ export default function Dashboard() {
   } = useTradingStore();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [settingsDirty, setSettingsDirty] = useState(false);
   const drawdownAlertSent = useRef(false);
+
+  const navigateTo = (mode: typeof viewMode) => {
+    if (viewMode === 'settings' && settingsDirty) {
+      if (!window.confirm('You have unsaved changes in Settings. Leave anyway?')) return;
+    }
+    setViewMode(mode);
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem('praxis-settings');
@@ -431,6 +459,7 @@ export default function Dashboard() {
   }, [timeFilteredTrades, filterState]);
 
   const unacknowledgedAlerts = alerts.filter((a) => !a.acknowledged).length;
+  const { plan, isLoading: subscriptionLoading, isProOrHigher, isTrialExpired, postTrialDiscountEligible } = useSubscription();
 
   useEffect(() => {
     const thresholdPct = settings?.alertThresholds?.drawdownPct ?? 10;
@@ -477,11 +506,14 @@ export default function Dashboard() {
             dailyStats={dailyStats}
             filteredTrades={filteredTradesForDashboard}
             addTrades={addTrades}
+            setTrades={setTrades}
             clearTrades={clearTrades}
+            loadDemoData={() => setTrades(SAMPLE_TRADES)}
             handleExport={handleExport}
             selectedTimeRange={selectedTimeRange}
             setTimeRange={setTimeRange}
             onViewAllTrades={() => setViewMode('trades')}
+            userDisplayName={userDisplayName}
           />
         );
       case 'trades':
@@ -495,6 +527,7 @@ export default function Dashboard() {
           <ArbitrageView
             kalshiApiKey={settings?.kalshiApiKey}
             polymarketConnected={!!settings?.polymarketWallet}
+            isProOrHigher={isProOrHigher}
           />
         );
       case 'ai':
@@ -503,6 +536,7 @@ export default function Dashboard() {
             trades={trades}
             stats={stats}
             apiKey={settings?.anthropicApiKey}
+            isProOrHigher={isProOrHigher}
           />
         );
       case 'alerts':
@@ -512,6 +546,7 @@ export default function Dashboard() {
           <SettingsView
             onSave={setSettings}
             initialSettings={settings || undefined}
+            onDirtyChange={setSettingsDirty}
           />
         );
       default:
@@ -519,113 +554,146 @@ export default function Dashboard() {
     }
   };
 
+  const router = useRouter();
+  const { isLoaded, userId } = useAuth();
+  useEffect(() => {
+    if (isLoaded && !userId) router.replace('/landing');
+  }, [isLoaded, userId, router]);
+
   return (
     <>
       <SignedOut>
-        <div className="min-h-screen flex items-center justify-center bg-[#0a0a0f] p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 max-w-md w-full text-center">
-            <h1 className="text-2xl font-bold mb-2">Welcome to PRAXIS</h1>
-            <p className="text-zinc-400 mb-6">
-              Sign in to access your trading dashboard, arbitrage scanner, and AI insights.
-            </p>
-            <Link
-              href="/sign-in"
-              className="block w-full bg-indigo-600 hover:bg-indigo-700 text-center py-3 rounded-lg font-medium transition"
-            >
-              Sign in
+        <div className="min-h-screen flex items-center justify-center bg-[var(--background)] p-4">
+          <div className="text-center">
+            <p className="text-zinc-400 mb-4">Redirecting to PRAXIS…</p>
+            <Link href="/landing" className="text-indigo-400 hover:text-indigo-300 underline">
+              Go to landing page
             </Link>
-            <p className="text-sm text-zinc-500 mt-4">
-              Don&apos;t have an account?{' '}
-              <Link href="/sign-up" className="text-indigo-400 hover:text-indigo-300">
-                Sign up
-              </Link>
-            </p>
           </div>
         </div>
       </SignedOut>
       <SignedIn>
-        <div className="min-h-screen flex">
-          <button
-            className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-zinc-800 rounded-lg"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            <Menu size={20} />
-          </button>
-
-          <aside
-            className={cn(
-              'w-64 bg-[#0d0d12] border-r border-zinc-800 p-4 flex flex-col fixed h-full z-40 transition-transform lg:translate-x-0',
-              sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-            )}
-          >
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <Zap size={20} className="text-white" />
-              </div>
-              <div>
-                <h1 className="font-bold text-lg">PRAXIS</h1>
-                <p className="text-xs text-zinc-500">cevict.ai</p>
-              </div>
+        <div className="min-h-screen flex flex-col">
+          {isTrialExpired && plan === 'free' && (
+            <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+              <p className="text-amber-200 text-sm">
+                Your free trial has ended. Upgrade to Pro and get <strong>15% off</strong> — you&apos;ll keep your setup and get live data and arbitrage.
+              </p>
+              <Link
+                href="/pricing?post_trial=1"
+                className="shrink-0 text-sm font-medium text-amber-400 hover:text-amber-300 underline"
+              >
+                Upgrade with 15% off →
+              </Link>
             </div>
+          )}
+          <div className="min-h-screen flex flex-1">
+            <button
+              className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-zinc-800 rounded-lg"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              <Menu size={20} />
+            </button>
 
-            <nav className="space-y-1 flex-1">
-              <NavItem
-                icon={BarChart3}
-                label="Dashboard"
-                active={viewMode === 'dashboard'}
-                onClick={() => setViewMode('dashboard')}
-              />
-              <NavItem
-                icon={TrendingUp}
-                label="Trades"
-                active={viewMode === 'trades'}
-                onClick={() => setViewMode('trades')}
-              />
-              <NavItem
-                icon={Wallet}
-                label="Positions"
-                active={viewMode === 'positions'}
-                onClick={() => setViewMode('positions')}
-              />
-              <NavItem
-                icon={Target}
-                label="Analytics"
-                active={viewMode === 'analytics'}
-                onClick={() => setViewMode('analytics')}
-              />
-              <NavItem
-                icon={Zap}
-                label="Arbitrage"
-                active={viewMode === 'arbitrage'}
-                onClick={() => setViewMode('arbitrage')}
-              />
-              <NavItem
-                icon={Brain}
-                label="AI Insights"
-                active={viewMode === 'ai'}
-                onClick={() => setViewMode('ai')}
-              />
-              <NavItem
-                icon={Bell}
-                label="Alerts"
-                active={viewMode === 'alerts'}
-                onClick={() => setViewMode('alerts')}
-                badge={unacknowledgedAlerts}
-              />
-              <NavItem
-                icon={Settings}
-                label="Settings"
-                active={viewMode === 'settings'}
-                onClick={() => setViewMode('settings')}
-              />
-            </nav>
+            <aside
+              className={cn(
+                'praxis-sidebar w-64 border-r p-4 flex flex-col fixed h-full z-40 transition-transform lg:translate-x-0',
+                sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+              )}
+            >
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 relative">
+                  <Image
+                    src="/icon.png"
+                    alt="PRAXIS"
+                    width={40}
+                    height={40}
+                    className="object-cover"
+                  />
+                </div>
+                <div>
+                  <h1 className="font-bold text-lg">PRAXIS</h1>
+                  <p className="text-xs text-zinc-500">cevict.ai</p>
+                </div>
+              </div>
 
-            <div className="pt-4 border-t border-zinc-800">
-              <p className="text-xs text-zinc-600 text-center">v0.1.0 • Your Trading Edge</p>
-            </div>
-          </aside>
+              <nav className="space-y-1 flex-1">
+                <NavItem
+                  icon={BarChart3}
+                  label="Dashboard"
+                  active={viewMode === 'dashboard'}
+                  onClick={() => navigateTo('dashboard')}
+                />
+                <NavItem
+                  icon={TrendingUp}
+                  label="Trades"
+                  active={viewMode === 'trades'}
+                  onClick={() => navigateTo('trades')}
+                />
+                <NavItem
+                  icon={Wallet}
+                  label="Positions"
+                  active={viewMode === 'positions'}
+                  onClick={() => navigateTo('positions')}
+                />
+                <NavItem
+                  icon={Target}
+                  label="Analytics"
+                  active={viewMode === 'analytics'}
+                  onClick={() => navigateTo('analytics')}
+                />
+                <NavItem
+                  icon={Zap}
+                  label="Arbitrage"
+                  active={viewMode === 'arbitrage'}
+                  onClick={() => navigateTo('arbitrage')}
+                />
+                <NavItem
+                  icon={Brain}
+                  label="AI Insights"
+                  active={viewMode === 'ai'}
+                  onClick={() => navigateTo('ai')}
+                />
+                <NavItem
+                  icon={Bell}
+                  label="Alerts"
+                  active={viewMode === 'alerts'}
+                  onClick={() => navigateTo('alerts')}
+                  badge={unacknowledgedAlerts}
+                />
+                <NavItem
+                  icon={Settings}
+                  label="Settings"
+                  active={viewMode === 'settings'}
+                  onClick={() => setViewMode('settings')}
+                />
+                <NavItem
+                  icon={Crown}
+                  label="Upgrade plan"
+                  active={false}
+                  onClick={() => router.push('/pricing')}
+                />
+              </nav>
 
-          <main className="flex-1 p-6 overflow-auto lg:ml-64">{renderView()}</main>
+              <div className="pt-4 border-t border-zinc-800 space-y-2">
+                {!subscriptionLoading && (
+                  <Link href="/pricing" className="block text-center">
+                    <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-300 capitalize">{plan}</span>
+                  </Link>
+                )}
+                <p className="text-xs text-zinc-600 text-center">v0.1.0 • Your Trading Edge</p>
+              </div>
+            </aside>
+
+            <main
+              className={cn(
+                'flex-1 overflow-auto lg:ml-64',
+                settings?.display?.compactMode ? 'p-3 praxis-compact' : 'p-6'
+              )}
+            >
+              {renderView()}
+            </main>
+          </div>
         </div>
       </SignedIn>
     </>

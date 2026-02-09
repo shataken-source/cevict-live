@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   Settings, Key, Bell, Palette, Database, Shield, 
   ExternalLink, Check, AlertTriangle, Loader2, 
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 interface SettingsViewProps {
   onSave: (settings: AppSettings) => void;
   initialSettings?: AppSettings;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 export interface AppSettings {
@@ -172,21 +173,28 @@ function SettingsSection({
 function Toggle({ 
   enabled, 
   onChange, 
-  label 
+  label,
+  description 
 }: { 
   enabled: boolean; 
   onChange: (v: boolean) => void;
   label: string;
+  description?: string;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-zinc-400">{label}</span>
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <span className="text-sm text-zinc-400">{label}</span>
+        {description && <p className="text-xs text-zinc-500 mt-0.5">{description}</p>}
+      </div>
       <button
+        type="button"
         onClick={() => onChange(!enabled)}
         className={cn(
-          'w-12 h-6 rounded-full transition-all p-0.5',
+          'shrink-0 w-12 h-6 rounded-full transition-all p-0.5',
           enabled ? 'bg-indigo-600' : 'bg-zinc-700'
         )}
+        aria-label={label}
       >
         <div className={cn(
           'w-5 h-5 rounded-full bg-white transition-transform',
@@ -197,10 +205,32 @@ function Toggle({
   );
 }
 
-export default function SettingsView({ onSave, initialSettings }: SettingsViewProps) {
+export default function SettingsView({ onSave, initialSettings, onDirtyChange }: SettingsViewProps) {
   const [settings, setSettings] = useState<AppSettings>(initialSettings || DEFAULT_SETTINGS);
   const [isSaving, setIsSaving] = useState(false);
-  
+  const lastSavedRef = useRef<string>(JSON.stringify(initialSettings || DEFAULT_SETTINGS));
+  const isDirty = JSON.stringify(settings) !== lastSavedRef.current;
+
+  useEffect(() => {
+    if (initialSettings) {
+      setSettings(initialSettings);
+      lastSavedRef.current = JSON.stringify(initialSettings);
+    }
+  }, [initialSettings]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
   const updateSettings = <K extends keyof AppSettings>(
     key: K, 
     value: AppSettings[K]
@@ -210,9 +240,10 @@ export default function SettingsView({ onSave, initialSettings }: SettingsViewPr
   
   const handleSave = async () => {
     setIsSaving(true);
-    // Save to localStorage
     localStorage.setItem('praxis-settings', JSON.stringify(settings));
     onSave(settings);
+    lastSavedRef.current = JSON.stringify(settings);
+    window.dispatchEvent(new Event('praxis-settings-saved'));
     await new Promise(r => setTimeout(r, 500));
     setIsSaving(false);
   };
@@ -247,7 +278,9 @@ export default function SettingsView({ onSave, initialSettings }: SettingsViewPr
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-2xl font-bold">Settings</h2>
-          <p className="text-zinc-500">Configure your trading platform</p>
+          <p className="text-zinc-500">
+            Configure your trading platform. {isDirty && <span className="text-amber-400">You have unsaved changes — click Save Settings before leaving.</span>}
+          </p>
         </div>
         <div className="flex gap-2">
           <button onClick={handleExport} className="btn-secondary flex items-center gap-2">
@@ -367,7 +400,7 @@ export default function SettingsView({ onSave, initialSettings }: SettingsViewPr
               />
             </div>
             <a 
-              href="https://console.anthropic.com/keys" 
+              href="https://console.anthropic.com/settings/keys" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-xs text-indigo-400 hover:underline flex items-center gap-1"
@@ -475,6 +508,7 @@ export default function SettingsView({ onSave, initialSettings }: SettingsViewPr
             </div>
             <Toggle
               label="Compact mode"
+              description="Tighter spacing and smaller padding so more content fits on screen"
               enabled={settings.display.compactMode}
               onChange={(v) => updateSettings('display', { ...settings.display, compactMode: v })}
             />

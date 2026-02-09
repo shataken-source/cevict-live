@@ -44,6 +44,7 @@ interface ArbitrageOpportunity {
 interface ArbitrageScannerProps {
   kalshiApiKey?: string;
   polymarketConnected?: boolean;
+  isProOrHigher?: boolean;
 }
 
 // Platform colors
@@ -324,7 +325,7 @@ interface ScannerSettingsType {
 }
 
 // Main Arbitrage View
-export default function ArbitrageView({ kalshiApiKey, polymarketConnected }: ArbitrageScannerProps) {
+export default function ArbitrageView({ kalshiApiKey, polymarketConnected, isProOrHigher = false }: ArbitrageScannerProps) {
   const [opportunities, setOpportunities] = useState<ArbitrageOpportunity[]>([]);
   const [isScanning, setIsScanning] = useState(true);
   const [lastScan, setLastScan] = useState<Date | null>(null);
@@ -421,13 +422,20 @@ export default function ArbitrageView({ kalshiApiKey, polymarketConnected }: Arb
       );
       setOpportunities(valid);
       setLastScan(new Date());
-      if (valid.length > 0) {
+      // Only alert for opportunities that match current filters (so alert and main view agree)
+      const matchingFilters = valid.filter(
+        (o) =>
+          o.profit >= settings.minSpread &&
+          (o.volume1 + o.volume2) >= settings.minLiquidity &&
+          settings.categories.includes(o.category)
+      );
+      if (matchingFilters.length > 0) {
         useTradingStore.getState().addAlert({
           id: `arb-${Date.now()}`,
           type: 'arbitrage',
           priority: 'medium',
           title: 'New arbitrage opportunities',
-          message: `Scanner found ${valid.length} opportunity(ies). Check the Arbitrage view.`,
+          message: `Scanner found ${matchingFilters.length} opportunity(ies) matching your filters. Check the Arbitrage view.`,
           triggered_at: new Date(),
           acknowledged: false,
         });
@@ -479,6 +487,11 @@ export default function ArbitrageView({ kalshiApiKey, polymarketConnected }: Arb
 
   return (
     <div className="space-y-6">
+      {!isProOrHigher && (
+        <a href="/pricing" className="block p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition text-sm">
+          <span className="font-medium">Upgrade to Pro</span> for real-time market data, Kalshi & Polymarket integration, and arbitrage alerts.
+        </a>
+      )}
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -535,9 +548,15 @@ export default function ArbitrageView({ kalshiApiKey, polymarketConnected }: Arb
             <div className="card text-center py-12">
               <AlertTriangle className="mx-auto mb-3 text-yellow-400" size={32} />
               <p className="text-zinc-400">No arbitrage opportunities match your criteria</p>
-              <p className="text-sm text-zinc-500 mt-1">Try adjusting your filters or wait for new opportunities</p>
+              {opportunities.length > 0 ? (
+                <p className="text-sm text-zinc-500 mt-1">
+                  {opportunities.length} from the last scan were filtered out. Loosen spread/liquidity or categories in the sidebar to see them.
+                </p>
+              ) : (
+                <p className="text-sm text-zinc-500 mt-1">Try adjusting your filters or wait for new opportunities</p>
+              )}
               {!kalshiApiKey && (
-                <p className="text-sm text-zinc-500 mt-2">Add your <strong>Kalshi API key</strong> in Settings for live market data.</p>
+                <p className="text-sm text-zinc-500 mt-2">Add your <strong>Kalshi API key</strong> in Settings for live market data. After entering it, click <strong>Save Settings</strong> so Arbitrage can use it.</p>
               )}
             </div>
           ) : (

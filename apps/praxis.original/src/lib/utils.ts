@@ -92,7 +92,11 @@ export function calculatePortfolioStats(trades: Trade[]): PortfolioStats {
   // Average hold time
   const holdTimes = closedTrades
     .filter(t => t.exit_time)
-    .map(t => (t.exit_time!.getTime() - t.entry_time.getTime()) / (1000 * 60 * 60));
+    .map(t => {
+      const exit = toDate(t.exit_time)!;
+      const entry = toDate(t.entry_time as Date | string)!;
+      return (exit.getTime() - entry.getTime()) / (1000 * 60 * 60);
+    });
   const avgHoldTime = holdTimes.length > 0 ? holdTimes.reduce((a, b) => a + b, 0) / holdTimes.length : 0;
 
   return {
@@ -122,11 +126,17 @@ export function calculatePortfolioStats(trades: Trade[]): PortfolioStats {
   };
 }
 
+function toDate(d: Date | string | undefined): Date | undefined {
+  if (d == null) return undefined;
+  return d instanceof Date ? d : new Date(d as string);
+}
+
 export function calculateDailyStats(trades: Trade[]): DailyStats[] {
   const byDate = new Map<string, Trade[]>();
 
   trades.forEach(trade => {
-    const exitDate = trade.exit_time || trade.entry_time;
+    const exitDate = toDate(trade.exit_time) || toDate(trade.entry_time as Date | string);
+    if (!exitDate) return;
     const dateKey = exitDate.toISOString().split('T')[0];
     const existing = byDate.get(dateKey) || [];
     byDate.set(dateKey, [...existing, trade]);

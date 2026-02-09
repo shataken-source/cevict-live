@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@clerk/nextjs';
+import { useSubscription } from '@/lib/use-subscription';
 
 interface PlanFeature {
   name: string;
@@ -22,6 +23,7 @@ interface PlanFeature {
 }
 
 const features: PlanFeature[] = [
+  { name: 'Free tier duration', free: '1 month full', pro: '—', enterprise: '—' },
   { name: 'CSV Import/Export', free: true, pro: true, enterprise: true },
   { name: 'Basic P&L Analytics', free: true, pro: true, enterprise: true },
   { name: 'Trade History', free: '30 days', pro: 'Unlimited', enterprise: 'Unlimited' },
@@ -47,7 +49,7 @@ const plans = [
     name: 'Free',
     price: 0,
     plan: null as string | null,
-    description: 'Perfect for getting started',
+    description: 'Free for 1 month, then limited (CSV only) or upgrade to Pro',
     icon: BarChart3,
     popular: false,
   },
@@ -72,6 +74,7 @@ const plans = [
 export default function PricingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const { userId } = useAuth();
+  const { postTrialDiscountEligible } = useSubscription();
 
   const handleSubscribe = async (plan: string | null, planName: string) => {
     if (!plan) {
@@ -85,7 +88,11 @@ export default function PricingPage() {
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, userId: userId ?? undefined }),
+        body: JSON.stringify({
+          plan,
+          userId: userId ?? undefined,
+          postTrialDiscount: postTrialDiscountEligible,
+        }),
       });
 
       const data = await response.json();
@@ -140,8 +147,13 @@ export default function PricingPage() {
           Simple, Transparent Pricing
         </h1>
         <p className="text-xl text-zinc-400 max-w-2xl mx-auto">
-          Start free and scale as you grow. No hidden fees, cancel anytime.
+          Free for 1 month. Then Pro or limited free (CSV only). No hidden fees, cancel anytime.
         </p>
+        {postTrialDiscountEligible && (
+          <p className="mt-4 text-amber-400 font-medium">
+            Your trial ended — get <strong>15% off</strong> Pro when you upgrade below.
+          </p>
+        )}
       </section>
 
       <section className="max-w-6xl mx-auto px-4 pb-16">
@@ -224,6 +236,7 @@ export default function PricingPage() {
       <section className="max-w-3xl mx-auto px-4 pb-16">
         <h2 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
         <div className="space-y-4">
+          <FaqItem question="What does 'Free for 1 month' mean?" answer="You get full free access for your first month (CSV import, P&L, 30-day history, win rate). After that, you can upgrade to Pro for live data and arbitrage, or continue on a limited free tier (CSV only). No credit card required to start." />
           <FaqItem question="Can I cancel anytime?" answer="Yes! You can cancel your subscription at any time. You'll retain access until the end of your billing period." />
           <FaqItem question="Do you offer refunds?" answer="We offer a 7-day money-back guarantee for Pro subscriptions. Enterprise plans have custom terms." />
           <FaqItem question="What payment methods do you accept?" answer="We accept all major credit cards through Stripe. Enterprise customers can also pay via invoice." />

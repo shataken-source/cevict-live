@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { headers } from 'next/headers';
-import { upsertSubscription, deleteSubscription } from '@/lib/subscription-store';
+import { getSubscription, upsertSubscription, deleteSubscription } from '@/lib/subscription-store';
 
 function getStripe() {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -50,6 +50,7 @@ export async function POST(request: Request) {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string);
           const priceId = sub.items.data[0]?.price?.id;
           const plan = getPlanFromPriceId(priceId);
+          const existing = await getSubscription(userId);
           await upsertSubscription({
             user_id: userId,
             status: sub.status,
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
             current_period_end: sub.current_period_end
               ? new Date(sub.current_period_end * 1000).toISOString()
               : null,
+            free_trial_ends_at: existing?.free_trial_ends_at ?? undefined,
           });
           console.log(`User ${userId} subscribed to ${plan}`);
         }
@@ -69,6 +71,7 @@ export async function POST(request: Request) {
         if (userId) {
           const priceId = sub.items.data[0]?.price?.id;
           const plan = getPlanFromPriceId(priceId);
+          const existing = await getSubscription(userId);
           await upsertSubscription({
             user_id: userId,
             status: sub.status,
@@ -76,6 +79,7 @@ export async function POST(request: Request) {
             current_period_end: sub.current_period_end
               ? new Date(sub.current_period_end * 1000).toISOString()
               : null,
+            free_trial_ends_at: existing?.free_trial_ends_at ?? undefined,
           });
           console.log(`User ${userId} subscription updated: ${plan} (${sub.status})`);
         }

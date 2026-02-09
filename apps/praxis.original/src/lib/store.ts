@@ -5,6 +5,18 @@ import type {
   FilterState, ViewMode, TimeRange, Platform, UserSettings 
 } from '@/types';
 
+/** Revive trades from localStorage: entry_time/exit_time are stored as ISO strings. */
+function reviveTrades(trades: Trade[]): Trade[] {
+  if (!Array.isArray(trades)) return [];
+  return trades.map((t) => ({
+    ...t,
+    entry_time: t.entry_time instanceof Date ? t.entry_time : new Date(t.entry_time as unknown as string),
+    exit_time: t.exit_time != null
+      ? (t.exit_time instanceof Date ? t.exit_time : new Date(t.exit_time as unknown as string))
+      : undefined,
+  }));
+}
+
 interface TradingStore {
   // Data
   trades: Trade[];
@@ -160,6 +172,25 @@ export const useTradingStore = create<TradingStore>()(
         trades: state.trades,
         settings: state.settings,
       }),
+      storage: {
+        getItem: (name) => {
+          const str = typeof localStorage !== 'undefined' ? localStorage.getItem(name) : null;
+          if (!str) return null;
+          try {
+            const parsed = JSON.parse(str);
+            if (parsed?.state?.trades) parsed.state.trades = reviveTrades(parsed.state.trades);
+            return parsed;
+          } catch {
+            return null;
+          }
+        },
+        setItem: (name, value) => {
+          if (typeof localStorage !== 'undefined') localStorage.setItem(name, value);
+        },
+        removeItem: (name) => {
+          if (typeof localStorage !== 'undefined') localStorage.removeItem(name);
+        },
+      },
     }
   )
 );
