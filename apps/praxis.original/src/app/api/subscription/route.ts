@@ -4,7 +4,7 @@ import { getSubscription, ensureFreeTrialRow } from '@/lib/subscription-store';
 
 /** GET /api/subscription – current user's plan. Returns free when not signed in (avoids 401 on hard refresh before Clerk hydrates). */
 export async function GET() {
-  const { userId } = auth();
+  const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({
       plan: 'free',

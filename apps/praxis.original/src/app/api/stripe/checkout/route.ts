@@ -31,7 +31,8 @@ export async function POST(request: Request) {
     };
 
     const priceId = bodyPriceId || (plan ? getPriceIdForPlan(plan) : null);
-    const clerkUserId = auth()?.userId ?? null;
+    const authSession = await auth();
+    const clerkUserId = authSession?.userId ?? null;
     const userId = (bodyUserId && typeof bodyUserId === 'string' ? bodyUserId : clerkUserId) ?? null;
 
     // Paid plans require sign-in (Clerk)
