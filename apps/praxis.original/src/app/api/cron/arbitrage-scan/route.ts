@@ -4,11 +4,7 @@ import { scanForArbitrage } from '@/lib/api';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-/**
- * Cron: runs the same arbitrage scan as GET /api/arbitrage.
- * Configure in vercel.json to run on a schedule (e.g. */5 * * * *).
- * Optionally protect with CRON_SECRET or Vercel cron auth.
- */
+/** Cron: runs same arbitrage scan as GET /api/arbitrage. Protect with CRON_SECRET. */
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   const isVercelCron = request.headers.get('x-vercel-cron') === '1';
