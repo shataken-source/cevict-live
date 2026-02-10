@@ -46,7 +46,7 @@ npm install
 npm run android
 \`\`\`
 
-> **TV Features:** Remote control support (D-pad, Select/Enter for previous channel) works on physical Android TV devices. For testing on phones/tablets, use touch or keyboard controls.
+> **TV:** Back button returns to the list. Use the on-screen **Previous** button for previous channel; D-pad Select is not wired. See [FEATURES.md](./FEATURES.md) for what's implemented vs placeholder.
 
 ## Project Structure
 
@@ -87,10 +87,9 @@ src/
 
 ### Keyboard/Remote Shortcuts
 
-- **Select/Enter**: Return to previous channel
-- **Back**: Return to channel list
-- **Volume +/-**: Adjust volume
-- **D-pad**: Navigate controls
+- **Back** (hardware or on-screen): Return to channel list
+- **Previous** (on-screen button): Return to previous channel
+- **Tap screen**: Show/hide controls; **Vol +/- / Mute**: On-screen when controls visible
 
 ## Module System
 

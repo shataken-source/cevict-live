@@ -81,20 +81,30 @@ export class AdDetectionService {
   startMonitoring(currentVolume: number): void {
     if (!this.config.enabled) return;
 
+    // ⚠️ DISCLAIMER: This is skeleton code - no real audio analysis happens!
+    console.warn('⚠️ Ad detection monitoring "started" but does nothing (no audio access)');
     this.isMonitoring = true;
     this.currentVolume = currentVolume;
-    console.log('Ad detection monitoring started');
+    console.log('[FAKE AD DETECTION] Monitoring started (skeleton only)');
   }
 
   stopMonitoring(): void {
     this.isMonitoring = false;
-    console.log('Ad detection monitoring stopped');
+    console.log('[FAKE AD DETECTION] Monitoring stopped');
   }
 
   async analyzeAudio(audioLevel: number, frequency?: number): Promise<AdDetectionResult> {
     if (!this.config.enabled || !this.isMonitoring) {
       return {isAd: false, confidence: 0, action: 'none'};
     }
+
+    // ⚠️ This method receives fake parameters and returns fake results
+    // Real implementation would need:
+    // - Actual audio stream data (PCM samples, not just a single "level")
+    // - FFT for frequency analysis
+    // - Pattern matching against known commercial fingerprints
+    // - ML model for classification
+    console.log('[FAKE AD DETECTION] analyzeAudio called with fake params');
 
     for (const pattern of this.config.patterns) {
       const match = this.checkPattern(pattern, audioLevel, frequency);

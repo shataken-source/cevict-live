@@ -6,10 +6,10 @@ export interface IPTVCredentials {
 }
 
 export const DEFAULT_CREDENTIALS: IPTVCredentials = {
-  username: 'COCHJNAR01',
-  password: 'VYa7uMUeFT',
-  server: 'http://link4tv.me:80',
-  altServer: 'http://ky-iptv.com:80',
+  username: '',
+  password: '',
+  server: '',
+  altServer: '',
 };
 
 export class IPTVService {

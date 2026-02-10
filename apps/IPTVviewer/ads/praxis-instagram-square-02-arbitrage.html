@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Praxis - Instagram Square - Arbitrage</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            padding: 20px;
+        }
+        
+        .ad-container {
+            width: 1080px;
+            height: 1080px;
+            background: #0a0a0f;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+        }
+        
+        .headline {
+            font-size: 56px;
+            font-weight: 800;
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 60px;
+            line-height: 1.2;
+        }
+        
+        .emoji {
+            font-size: 64px;
+        }
+        
+        .comparison-container {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            margin-bottom: 60px;
+            width: 100%;
+        }
+        
+        .platform-row {
+            background: rgba(26, 26, 46, 0.8);
+            border-radius: 20px;
+            padding: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid rgba(99, 102, 241, 0.3);
+        }
+        
+        .platform-name {
+            font-size: 32px;
+            color: #9ca3af;
+            font-weight: 600;
+        }
+        
+        .price {
+            font-size: 72px;
+            color: #ffffff;
+            font-weight: 800;
+        }
+        
+        .vs {
+            font-size: 48px;
+            color: #6366f1;
+            font-weight: 800;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .opportunity-banner {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 60px;
+            box-shadow: 0 20px 60px rgba(16, 185, 129, 0.4);
+        }
+        
+        .opportunity-label {
+            font-size: 28px;
+            color: #ffffff;
+            margin-bottom: 15px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .opportunity-value {
+            font-size: 96px;
+            color: #ffffff;
+            font-weight: 800;
+            line-height: 1;
+        }
+        
+        .cta-button {
+            padding: 28px 70px;
+            font-size: 30px;
+            font-weight: 800;
+            border-radius: 16px;
+            border: none;
+            background: #6366f1;
+            color: #ffffff;
+            cursor: pointer;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.5);
+            text-transform: uppercase;
+        }
+        
+        .branding {
+            font-size: 26px;
+            color: #6366f1;
+            font-weight: 700;
+        }
+        
+        /* Decorative sparkles */
+        .sparkle {
+            position: absolute;
+            color: #ffd700;
+            font-size: 32px;
+            animation: twinkle 2s ease-in-out infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        .sparkle-1 { top: 100px; left: 150px; animation-delay: 0s; }
+        .sparkle-2 { top: 200px; right: 180px; animation-delay: 0.5s; }
+        .sparkle-3 { bottom: 150px; left: 120px; animation-delay: 1s; }
+        .sparkle-4 { bottom: 250px; right: 200px; animation-delay: 1.5s; }
+    </style>
+</head>
+<body>
+    <div class="ad-container">
+        <div class="sparkle sparkle-1">✨</div>
+        <div class="sparkle sparkle-2">✨</div>
+        <div class="sparkle sparkle-3">✨</div>
+        <div class="sparkle sparkle-4">✨</div>
+        
+        <h1 class="headline">
+            <span class="emoji">💰</span> SPOT THE EDGE <span class="emoji">💰</span>
+        </h1>
+        
+        <div class="comparison-container">
+            <div class="platform-row">
+                <div class="platform-name">Kalshi</div>
+                <div class="price">62¢</div>
+            </div>
+            
+            <div class="vs">VS</div>
+            
+            <div class="platform-row">
+                <div class="platform-name">Polymarket</div>
+                <div class="price">54¢</div>
+            </div>
+        </div>
+        
+        <div class="opportunity-banner">
+            <div class="opportunity-label">ARBITRAGE</div>
+            <div class="opportunity-value">8¢</div>
+            <div class="opportunity-label">OPPORTUNITY!</div>
+        </div>
+        
+        <button class="cta-button">Find More →</button>
+        
+        <div class="branding">praxis.cevict.ai</div>
+    </div>
+</body>
+</html>

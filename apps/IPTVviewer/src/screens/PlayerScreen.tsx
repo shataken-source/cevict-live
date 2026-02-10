@@ -1,16 +1,17 @@
-import React, {useRef, useState, useEffect} from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   Text,
-  TVEventHandler,
-  Platform,
+  BackHandler,
 } from 'react-native';
 import Video from 'react-native-video';
-import {useStore} from '@/store/useStore';
-import {Channel} from '@/types';
-import {AdDetectionService, AdDetectionResult} from '@/services/AdDetectionService';
+import { useStore } from '@/store/useStore';
+import { Channel } from '@/types';
+import { AdDetectionService, AdDetectionResult } from '@/services/AdDetectionService';
+import { EPGService } from '@/services/EPGService';
+import type { EPGProgram } from '@/types';
 
 interface PlayerScreenProps {
   route: {
@@ -21,40 +22,54 @@ interface PlayerScreenProps {
   navigation: any;
 }
 
-export default function PlayerScreen({route, navigation}: PlayerScreenProps) {
-  const {channel} = route.params;
+export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
+  const { channel } = route.params;
   const videoRef = useRef<Video>(null);
-  
+  const adTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const {
     setCurrentChannel,
-    goToPreviousChannel,
     setPlaying,
     setVolume,
     toggleMute,
     volume,
     isMuted,
     previousChannel,
+    adConfig,
+    epgUrl,
   } = useStore();
 
   const [showControls, setShowControls] = useState(true);
-  const [controlsTimeout, setControlsTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [controlsTimeout, setControlsTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [adDetection, setAdDetection] = useState(true);
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [originalVolume, setOriginalVolume] = useState(volume);
+  const [currentProgram, setCurrentProgram] = useState<EPGProgram | null>(null);
   const adDetectionService = useRef(new AdDetectionService()).current;
+
+  const handlePreviousChannel = useCallback(() => {
+    if (previousChannel) {
+      navigation.replace('Player', { channel: previousChannel });
+    }
+  }, [previousChannel, navigation]);
 
   useEffect(() => {
     setCurrentChannel(channel);
     setPlaying(true);
-    
+
+    const cfg = adDetectionService.getConfig();
+    adDetectionService.setConfig({
+      ...cfg,
+      enabled: adConfig.enabled,
+      volumeReductionPercent: adConfig.volumeReductionPercent,
+    });
     adDetectionService.setCallbacks(handleAdDetected, handleAdEnded);
     adDetectionService.startMonitoring(volume);
-    
-    const tvEventHandler = new TVEventHandler();
-    tvEventHandler.enable(this, (cmp, evt) => {
-      if (evt && evt.eventType === 'select') {
-        handlePreviousChannel();
-      }
+
+    // Back button: return to channel list. (TVEventHandler with "this" is undefined in function components and was removed.)
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      navigation.goBack();
+      return true;
     });
 
     const adCheckInterval = setInterval(() => {
@@ -64,18 +79,44 @@ export default function PlayerScreen({route, navigation}: PlayerScreenProps) {
     }, 3000);
 
     return () => {
-      tvEventHandler.disable();
+      sub.remove();
       setPlaying(false);
       adDetectionService.stopMonitoring();
       clearInterval(adCheckInterval);
+      if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
     };
-  }, [channel]);
+  }, [channel, adConfig.enabled, adConfig.volumeReductionPercent]);
+
+  // Auto-hide controls after 5s when they're shown (tap screen to show again)
+  useEffect(() => {
+    if (!showControls) return;
+    const t = setTimeout(() => setShowControls(false), 5000);
+    return () => clearTimeout(t);
+  }, [showControls]);
+
+  // EPG: fetch and show current program when epgUrl is set (match by tvgId or channel id)
+  useEffect(() => {
+    if (!epgUrl?.trim()) {
+      setCurrentProgram(null);
+      return;
+    }
+    const channelId = channel.tvgId || channel.id;
+    let cancelled = false;
+    EPGService.fetchEPG(epgUrl.trim()).then((programs) => {
+      if (cancelled) return;
+      const program = EPGService.getCurrentProgram(programs, channelId);
+      setCurrentProgram(program ?? null);
+    }).catch(() => {
+      if (!cancelled) setCurrentProgram(null);
+    });
+    return () => { cancelled = true; };
+  }, [epgUrl, channel.id, channel.tvgId]);
 
   const handleAdDetected = (result: AdDetectionResult) => {
     console.log('Ad detected:', result);
     setIsAdPlaying(true);
     setOriginalVolume(volume);
-    
+
     if (result.action === 'mute') {
       setVolume(0);
     } else if (result.action === 'reduce') {
@@ -93,30 +134,23 @@ export default function PlayerScreen({route, navigation}: PlayerScreenProps) {
   const simulateAdCheck = () => {
     const randomLevel = Math.random() * 2;
     const result = adDetectionService.simulateAdDetection(randomLevel);
-    
+
     if (result.isAd && !isAdPlaying) {
       handleAdDetected(result);
-      setTimeout(() => handleAdEnded(), 10000);
+      if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
+      adTimeoutRef.current = setTimeout(() => handleAdEnded(), 10000);
     }
   };
 
   const toggleAdDetection = () => {
     setAdDetection(!adDetection);
     const config = adDetectionService.getConfig();
-    adDetectionService.setConfig({...config, enabled: !adDetection});
-  };
-
-  const handlePreviousChannel = () => {
-    if (previousChannel) {
-      navigation.replace('Player', {channel: previousChannel});
-    }
+    adDetectionService.setConfig({ ...config, enabled: !adDetection });
   };
 
   const showControlsTemporarily = () => {
     setShowControls(true);
-    if (controlsTimeout) {
-      clearTimeout(controlsTimeout);
-    }
+    if (controlsTimeout) clearTimeout(controlsTimeout);
     const timeout = setTimeout(() => setShowControls(false), 5000);
     setControlsTimeout(timeout);
   };
@@ -137,7 +171,7 @@ export default function PlayerScreen({route, navigation}: PlayerScreenProps) {
     <View style={styles.container}>
       <Video
         ref={videoRef}
-        source={{uri: channel.url}}
+        source={{ uri: channel.url }}
         style={styles.video}
         resizeMode="contain"
         volume={isMuted ? 0 : volume / 100}
@@ -153,8 +187,13 @@ export default function PlayerScreen({route, navigation}: PlayerScreenProps) {
               {channel.group && (
                 <Text style={styles.channelGroup}>{channel.group}</Text>
               )}
+              {currentProgram && (
+                <Text style={styles.epgNow} numberOfLines={1}>
+                  Now: {currentProgram.title}
+                </Text>
+              )}
             </View>
-            
+
             {isAdPlaying && (
               <View style={styles.adBadge}>
                 <Text style={styles.adBadgeText}>AD MUTED</Text>
@@ -247,6 +286,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#ccc',
     marginTop: 5,
+  },
+  epgNow: {
+    fontSize: 14,
+    color: '#aaa',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   adBadge: {
     backgroundColor: '#FF3B30',

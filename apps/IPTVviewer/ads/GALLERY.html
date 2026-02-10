@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEVICT Ads Gallery - All Variations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 40px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .header h1 {
+            font-size: 48px;
+            color: #1a1a2e;
+            margin-bottom: 15px;
+        }
+        
+        .header p {
+            font-size: 20px;
+            color: #6b7280;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 60px;
+        }
+        
+        .stat {
+            background: #ffffff;
+            padding: 20px 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 36px;
+            font-weight: 800;
+            color: #6366f1;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .section {
+            margin-bottom: 80px;
+        }
+        
+        .section-header {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px 12px 0 0;
+            border-bottom: 3px solid #6366f1;
+        }
+        
+        .section-title {
+            font-size: 32px;
+            color: #1a1a2e;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .section-subtitle {
+            font-size: 16px;
+            color: #6b7280;
+        }
+        
+        .ads-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+            padding: 30px;
+            background: #ffffff;
+            border-radius: 0 0 12px 12px;
+        }
+        
+        .ad-card {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #e5e7eb;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .ad-card:hover {
+            border-color: #6366f1;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);
+            transform: translateY(-5px);
+        }
+        
+        .ad-thumbnail {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ad-thumbnail::after {
+            content: 'Click to Open';
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(99, 102, 241, 0.9);
+            color: #ffffff;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .ad-card:hover .ad-thumbnail::after {
+            opacity: 1;
+        }
+        
+        .ad-info {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .ad-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        
+        .ad-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .ad-dimensions {
+            font-size: 14px;
+            color: #6b7280;
+            background: #e5e7eb;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+        
+        .ad-platform {
+            font-size: 14px;
+            color: #ffffff;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        
+        .platform-twitter {
+            background: #1da1f2;
+        }
+        
+        .platform-facebook {
+            background: #1877f2;
+        }
+        
+        .platform-instagram {
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+        }
+        
+        .platform-display {
+            background: #10b981;
+        }
+        
+        .quick-actions {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .quick-actions h2 {
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 20px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .action-button {
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .action-button.primary {
+            background: #6366f1;
+            color: #ffffff;
+        }
+        
+        .action-button.secondary {
+            background: #10b981;
+            color: #ffffff;
+        }
+        
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎨 CEVICT Ads Gallery</h1>
+        <p>Complete ad collection for Praxis & Website Monitor</p>
+    </div>
+    
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-number">14</div>
+            <div class="stat-label">Total Ads</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">4</div>
+            <div class="stat-label">Platforms</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">8</div>
+            <div class="stat-label">Sizes</div>
+        </div>
+    </div>
+    
+    <div class="quick-actions">
+        <h2>🚀 Quick Actions</h2>
+        <div class="action-buttons">
+            <button class="action-button primary" onclick="window.open('README.md')">View Setup Guide</button>
+            <button class="action-button primary" onclick="window.open('EXPORT_INSTRUCTIONS.md')">Export Instructions</button>
+            <button class="action-button secondary" onclick="alert('Run: npm install && npm run export')">Export All as PNG</button>
+        </div>
+    </div>
+    
+    <!-- TWITTER/X ADS -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">🐦 Twitter/X Ads</div>
+            <div class="section-subtitle">1200×675 - Optimized for Twitter feed</div>
+        </div>
+        <div class="ads-grid">
+            <div class="ad-card" onclick="window.open('praxis-twitter-01-one-place.html')">
+                <div class="ad-thumbnail">📊</div>
+                <div class="ad-info">
+                    <div class="ad-name">Praxis - One Place</div>
+                    <div class="ad-meta">
+                        <div class="ad-dimensions">1200×675</div>
+                        <div class="ad-platform platform-twitter">Twitter</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ad-card" onclick="window.open('praxis-twitter-02-arbitrage.html')">
+                <div class="ad-thumbnail">💰</div>
+                <div class="ad-info">
+                    <div class="ad-name">Praxis - Arbitrage Scanner</div>
+                    <div class="ad-meta">
+                        <div class="ad-dimensions">1200×675</div>
+                        <div class="ad-platform platform-twitter">Twitter</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ad-card" onclick="window.open('monitor-twitter-01-dashboard.html')">
+                <div class="ad-thumbnail">🌐</div>
+                <div class="ad-info">
+                    <div class="ad-name">Monitor - Dashboard</div>
+                    <div class="ad-meta">
+                        <div class="ad-dimensions">1200×675</div>
+                        <div class="ad-platform platform-twitter">Twitter</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- INSTAGRAM SQUARE -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">📸 Instagram Square</div>
+            <div class="section-subtitle">1080×1080 - Optimized for Instagram feed</div>
+        </div>
+        <div class="ads-grid">
+            <div class="ad-card" onclick="window.open('praxis-instagram-square-01-one-place.html')">
+                <div class="ad-thumbnail">📊</div>
+                <div class="ad-info">
+                    <div class="ad-name">Praxis - One Place</div>
+                    <div class="ad-meta">
+                        <div class="ad-dimensions">1080×1080</div>
+                        <div class="ad-platform platform-instagram">Instagram</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ad-card" onclick="window.open('praxis-instagram-square-02-arbitrage.html')">
+                <div class="ad-thumbnail">💰</div>
+                <div class="ad-info">
+                    <div class="ad-name">Praxis - Arbitrage</div>
+                    <div class="ad-meta">
+                        <div class="ad-dimensions">1080×1080</div>
+                        <div class="ad-platform platform-instagram">Instagram</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ad-card" onclick="window.open('monitor-instagram-square-01-dashboard.html')">
+                <div class="ad-thumbnail">🌐</div>
+                <div class="ad-info">
+                    <div class="ad-name">Monitor - Dashboard</div>
+                    <div class="ad-meta">
+                        <div class="ad-dimensions">1080×1080</div>
+                        <div class="ad-platform platform-instagram">Instagram</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- INSTAGRAM PORTRAIT -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">📱 Instagram Portrait (Stories)</div>
+            <div class="section-subtitle">1080×1350 - Optimized for Instagram Stories</div>
+        </div>
+        <div class="ads-grid">
+            <div class="ad-card" onclick="window.open('praxis-instagram-portrait-01-ai.html')">
+                <div class="ad-thumbnail">🤖</div>
+                <div class="ad-info">
+                    <div class="ad-name">Praxis - AI Insights</div>
+                    <div class="ad-meta">
+                        <div class="ad-dimensions">1080×1350</div>
+                        <div class="ad-platform platform-instagram">Instagram</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ad-card" onclick="window.open('monitor-instagram-portrait-01-alerts.html')">
+                <div class="ad-thumbnail">🚨</div>
+                <div class="ad-info">
+                    <div class="ad-name">Monitor - SMS Alerts</div>
+                    <div class="ad-meta">
+                        <div class="ad-dimensions">1080×1350</div>
+                        <div class="ad-platform platform-instagram">Instagram</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- FACEBOOK ADS -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">📘 Facebook Ads</div>
+            <div class="section-subtitle">1200×628 - Optimized for Facebook feed</div>
+        </div>
+        <div class="ads-grid">
+            <div class="ad-card" onclick="window.open('praxis-facebook-01-launch.html')">
+                <div class="ad-thumbnail">🎉</div>
+                <div class="ad-info">
+                    <div class="ad-name">Praxis - Launch Offer</div>
+                    <div class="ad-meta">
+                        <div class="ad-dimensions">1200×628</div>
+                        <div class="ad-platform platform-facebook">Facebook</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ad-card" onclick="window.open('monitor-facebook-01-pricing.html')">
+                <div class="ad-thumbnail">💼</div>
+                <div class="ad-info">
+                    <div class="ad-name">Monitor - Pricing</div>
+                    <div class="ad-meta">
+                        <div class="ad-dimensions">1200×628</div>
+                        <div class="ad-platform platform-facebook">Facebook</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- DISPLAY BANNERS -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-title">🖼️ Display Banners</div>
+            <div class="section-subtitle">Multiple IAB standard sizes</div>
+        </div>
+        <div class="ads-grid">
+            <div class="ad-card" onclick="window.open('display-banners-all-sizes.html')">
+                <div class="ad-thumbnail">📐</div>
+                <div class="ad-info">
+                    <div class="ad-name">All Display Sizes (6 total)</div>
+                    <div class="ad-meta">
+                        <div class="ad-dimensions">Multiple</div>
+                        <div class="ad-platform platform-display">Display</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

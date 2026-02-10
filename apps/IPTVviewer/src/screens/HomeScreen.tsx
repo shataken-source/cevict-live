@@ -27,6 +27,8 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
     favorites,
     addPlaylist,
     setCurrentPlaylist,
+    setFavorites,
+    setEpgUrl,
     toggleFavorite,
   } = useStore();
 
@@ -41,11 +43,20 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
 
   const loadSavedData = async () => {
     try {
-      const savedPlaylists = await PlaylistManager.loadPlaylists();
-      const savedFavorites = await PlaylistManager.loadFavorites();
-      
+      const [savedPlaylists, savedFavorites, settings] = await Promise.all([
+        PlaylistManager.loadPlaylists(),
+        PlaylistManager.loadFavorites(),
+        PlaylistManager.loadSettings(),
+      ]);
+
       savedPlaylists.forEach(p => addPlaylist(p));
-      
+      if (savedFavorites.length > 0) {
+        setFavorites(savedFavorites);
+      }
+      if (settings.epgUrl) {
+        setEpgUrl(settings.epgUrl);
+      }
+
       if (savedPlaylists.length > 0) {
         setCurrentPlaylist(savedPlaylists[0]);
       } else {
@@ -70,14 +81,13 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
         'sample-playlist',
         'Sample Channels'
       );
-      
+
       addPlaylist(playlist);
       if (!currentPlaylist) {
         setCurrentPlaylist(playlist);
       }
-      
-      const updatedPlaylists = [...playlists, playlist];
-      await PlaylistManager.savePlaylists(updatedPlaylists);
+
+      await PlaylistManager.savePlaylists(useStore.getState().playlists);
     } catch (error) {
       console.error('Error loading sample playlist:', error);
     }
@@ -87,18 +97,17 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
     try {
       const iptvService = new IPTVService();
       const playlistUrl = iptvService.getPlaylistUrl();
-      
+
       const playlist = await M3UParser.fetchAndParse(
         playlistUrl,
         'link4tv-playlist',
         'Link4TV Channels'
       );
-      
+
       addPlaylist(playlist);
       setCurrentPlaylist(playlist);
-      
-      const updatedPlaylists = [...playlists, playlist];
-      await PlaylistManager.savePlaylists(updatedPlaylists);
+
+      await PlaylistManager.savePlaylists(useStore.getState().playlists);
     } catch (error) {
       console.error('Error loading Link4TV playlist:', error);
       await tryAltServer();
@@ -109,18 +118,17 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
     try {
       const iptvService = new IPTVService();
       const altUrl = iptvService.getAltPlaylistUrl();
-      
+
       const playlist = await M3UParser.fetchAndParse(
         altUrl,
         'link4tv-playlist',
         'Link4TV Channels (Alt Server)'
       );
-      
+
       addPlaylist(playlist);
       setCurrentPlaylist(playlist);
-      
-      const updatedPlaylists = [...playlists, playlist];
-      await PlaylistManager.savePlaylists(updatedPlaylists);
+
+      await PlaylistManager.savePlaylists(useStore.getState().playlists);
     } catch (error) {
       console.error('Error loading from alt server:', error);
     }
@@ -128,19 +136,19 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
 
   const loadDezorPlaylist = async () => {
     try {
-      const dezorUrl = 'http://cf.like-cdn.com/get.php?username=jascodezoripty&password=19e993b7f5&type=m3u_plus&output=ts';
-      
+      const dezorUrl = ''; // Credentials removed for security
+      if (!dezorUrl) return;
+
       const playlist = await M3UParser.fetchAndParse(
         dezorUrl,
         'dezor-playlist',
         'Dezor IPTV Channels'
       );
-      
+
       addPlaylist(playlist);
       setCurrentPlaylist(playlist);
-      
-      const updatedPlaylists = [...playlists, playlist];
-      await PlaylistManager.savePlaylists(updatedPlaylists);
+
+      await PlaylistManager.savePlaylists(useStore.getState().playlists);
     } catch (error) {
       console.error('Error loading Dezor playlist:', error);
     }
@@ -170,9 +178,9 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
       
       addPlaylist(playlist);
       setCurrentPlaylist(playlist);
-      
-      await PlaylistManager.savePlaylists([...playlists, playlist]);
-      
+
+      await PlaylistManager.savePlaylists(useStore.getState().playlists);
+
       setPlaylistUrl('');
     } catch (error) {
       console.error('Error adding playlist:', error);

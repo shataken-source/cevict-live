@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Praxis - Facebook Ad - Launch Offer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            padding: 20px;
+        }
+        
+        .ad-container {
+            width: 1200px;
+            height: 628px;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            padding: 60px 80px;
+            gap: 60px;
+        }
+        
+        /* Left side - Content */
+        .content-side {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .announcement {
+            display: inline-block;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #0a0a0f;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            align-self: flex-start;
+        }
+        
+        .headline {
+            font-size: 52px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 20px;
+            line-height: 1.1;
+        }
+        
+        .subheadline {
+            font-size: 26px;
+            color: #6366f1;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .feature {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            color: #e5e5e5;
+        }
+        
+        .check {
+            color: #10b981;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .offer-box {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            padding: 20px 30px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        .offer-text {
+            font-size: 24px;
+            color: #ffffff;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        
+        .cta-button {
+            padding: 20px 50px;
+            font-size: 22px;
+            font-weight: 700;
+            border-radius: 12px;
+            border: none;
+            background: #10b981;
+            color: #ffffff;
+            cursor: pointer;
+            display: inline-block;
+        }
+        
+        /* Right side - Visual */
+        .visual-side {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        
+        .dashboard-preview {
+            width: 100%;
+            background: rgba(26, 26, 46, 0.6);
+            border-radius: 16px;
+            padding: 25px;
+            border: 2px solid rgba(99, 102, 241, 0.3);
+        }
+        
+        .preview-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .preview-label {
+            font-size: 16px;
+            color: #9ca3af;
+        }
+        
+        .preview-value {
+            font-size: 24px;
+            color: #10b981;
+            font-weight: 700;
+        }
+        
+        .preview-chart {
+            width: 100%;
+            height: 80px;
+            background: linear-gradient(90deg, #6366f1 0%, #10b981 100%);
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .branding {
+            position: absolute;
+            bottom: 30px;
+            right: 80px;
+            font-size: 20px;
+            color: #6366f1;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <div class="ad-container">
+        <div class="content-side">
+            <div class="announcement">🎉 NEW: PRAXIS 🎉</div>
+            
+            <h1 class="headline">
+                Kalshi + Polymarket<br>
+                in One Dashboard
+            </h1>
+            
+            <h2 class="subheadline">
+                Trading Analytics for Prediction Markets
+            </h2>
+            
+            <div class="features">
+                <div class="feature">
+                    <span class="check">✓</span>
+                    <span>Real-time P&L</span>
+                </div>
+                <div class="feature">
+                    <span class="check">✓</span>
+                    <span>Arbitrage scanner</span>
+                </div>
+                <div class="feature">
+                    <span class="check">✓</span>
+                    <span>AI insights (Claude)</span>
+                </div>
+                <div class="feature">
+                    <span class="check">✓</span>
+                    <span>Alerts & opportunities</span>
+                </div>
+            </div>
+            
+            <div class="offer-box">
+                <div class="offer-text">1 Month Free + 15% Off Pro</div>
+            </div>
+            
+            <button class="cta-button">GET STARTED FREE →</button>
+        </div>
+        
+        <div class="visual-side">
+            <div class="dashboard-preview">
+                <div class="preview-row">
+                    <span class="preview-label">Total P&L</span>
+                    <span class="preview-value">+$2,847</span>
+                </div>
+                <div class="preview-row">
+                    <span class="preview-label">Arbitrage Found</span>
+                    <span class="preview-value">3 today</span>
+                </div>
+                <div class="preview-row">
+                    <span class="preview-label">Win Rate</span>
+                    <span class="preview-value">68%</span>
+                </div>
+                <div class="preview-chart"></div>
+            </div>
+        </div>
+        
+        <div class="branding">praxis.cevict.ai</div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEVICT.AI – Praxis, Monitor, Launchpad (3 panels)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            padding: 40px;
+            min-height: 100vh;
+        }
+        .intro {
+            color: #9ca3af;
+            font-size: 14px;
+            margin-bottom: 24px;
+            max-width: 900px;
+        }
+        .three-panels {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .panel {
+            width: 380px;
+            background: linear-gradient(180deg, #0f0f1a 0%, #0a0a0f 100%);
+            border-radius: 20px;
+            padding: 32px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(34, 211, 238, 0.06) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        .panel.monitor::before {
+            background: radial-gradient(circle at 30% 20%, rgba(34, 211, 238, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 50%);
+        }
+        .panel-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #ffffff;
+            text-align: center;
+            margin-bottom: 20px;
+            line-height: 1.25;
+            position: relative;
+        }
+        .features {
+            list-style: none;
+            margin-bottom: 24px;
+            position: relative;
+        }
+        .features li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            color: #e5e5e5;
+            margin-bottom: 10px;
+        }
+        .features .check { color: #10b981; font-weight: 700; }
+        .mockup-wrap {
+            width: 100%;
+            min-height: 160px;
+            background: rgba(26, 26, 46, 0.9);
+            border-radius: 12px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 16px;
+            margin-bottom: 24px;
+            position: relative;
+        }
+        .mockup-blur {
+            filter: blur(4px);
+            pointer-events: none;
+            font-size: 13px;
+            color: #9ca3af;
+            line-height: 1.6;
+        }
+        .mockup-blur strong { color: #e5e5e5; }
+        .mockup-visible {
+            font-size: 14px;
+            color: #9ca3af;
+            margin-bottom: 8px;
+            position: relative;
+        }
+        .mockup-visible.big {
+            font-size: 28px;
+            font-weight: 800;
+            color: #10b981;
+        }
+        .cta {
+            display: inline-block;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            margin-bottom: 16px;
+            position: relative;
+        }
+        .cta.praxis, .cta.launchpad { background: #6366f1; color: #fff; }
+        .cta.monitor { background: #06b6d4; color: #fff; }
+        .brand {
+            font-size: 14px;
+            color: #9ca3af;
+            font-weight: 600;
+            position: relative;
+        }
+        .brand span { color: #6366f1; }
+    </style>
+</head>
+<body>
+    <p class="intro">Use these three panels as your main creatives. Small print in the mockup areas is blurred so it reads as “data” without being legible. Open in browser and screenshot each panel, or use your export script. Fixes: correct spelling (Arbitrage), consistent CEVICT.AI branding.</p>
+
+    <div class="three-panels">
+        <!-- PRAXIS -->
+        <div class="panel">
+            <h2 class="panel-title">Kalshi + Polymarket.<br>One Dashboard.</h2>
+            <ul class="features">
+                <li><span class="check">✓</span> AI Trading Analytics</li>
+                <li><span class="check">✓</span> Cross-Market Arbitrage</li>
+                <li><span class="check">✓</span> Live P&L Tracking</li>
+            </ul>
+            <div class="mockup-wrap">
+                <div class="mockup-visible">Praxis</div>
+                <div class="mockup-blur">
+                    <strong>Metric A</strong> 83.3% &nbsp; <strong>Metric B</strong> 15.4%<br>
+                    Chart: 1.24 / 1.18 / 1.09 / 0.98 / 1.02<br>
+                    Win rate · Sharpe · Drawdown · Volume
+                </div>
+            </div>
+            <a href="#" class="cta praxis">Try Praxis Free</a>
+            <div class="brand"><span>CEVICT.AI</span></div>
+        </div>
+
+        <!-- MONITOR -->
+        <div class="panel monitor">
+            <h2 class="panel-title">One Dashboard for All Your Websites</h2>
+            <ul class="features">
+                <li><span class="check">✓</span> Uptime Monitoring</li>
+                <li><span class="check">✓</span> Visitor Stats</li>
+                <li><span class="check">✓</span> Bot Health</li>
+            </ul>
+            <div class="mockup-wrap">
+                <div class="mockup-visible big">99.99%</div>
+                <div class="mockup-visible">Website Monitor</div>
+                <div class="mockup-blur">
+                    example.com · 200ms · 1.2K<br>
+                    clientsite.com · 150ms · 890<br>
+                    staging.app · 450ms · Waiting
+                </div>
+            </div>
+            <a href="#" class="cta monitor">Try Monitor Free</a>
+            <div class="brand"><span>CEVICT.AI</span></div>
+        </div>
+
+        <!-- LAUNCHPAD -->
+        <div class="panel">
+            <h2 class="panel-title">Run 10+ Apps Without the Chaos</h2>
+            <ul class="features">
+                <li><span class="check">✓</span> Health & Status Grid</li>
+                <li><span class="check">✓</span> Per-Project AI Messaging</li>
+                <li><span class="check">✓</span> One Command Center</li>
+            </ul>
+            <div class="mockup-wrap">
+                <div class="mockup-visible">Launchpad</div>
+                <div class="mockup-blur">
+                    App A · Online · 12:34<br>
+                    App B · Idle · 56.7%<br>
+                    App C · Running · 3 tasks
+                </div>
+            </div>
+            <a href="#" class="cta launchpad">Try Launchpad</a>
+            <div class="brand"><span>CEVICT.AI</span></div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,50 +10,73 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import {useStore} from '@/store/useStore';
-import {PlaylistManager} from '@/services/PlaylistManager';
-import {IPTVService, IPTVCredentials} from '@/services/IPTVService';
-import {M3UParser} from '@/services/M3UParser';
-import {VPNService, VPNConfig} from '@/services/VPNService';
-import {AdDetectionService} from '@/services/AdDetectionService';
+import { useStore } from '@/store/useStore';
+import { PlaylistManager } from '@/services/PlaylistManager';
+import { IPTVService, IPTVCredentials } from '@/services/IPTVService';
+import { M3UParser } from '@/services/M3UParser';
+import { VPNService, VPNConfig } from '@/services/VPNService';
+import { fetchSurfsharkClusters, groupClustersByRegion } from '@/services/SurfsharkService';
+import type { SurfsharkCluster } from '@/services/SurfsharkService';
+import { ModuleManager } from '@/modules/ModuleManager';
+import type { ModuleManifest } from '@/modules/ModuleInterface';
 
 interface SettingsScreenProps {
   navigation: any;
 }
 
-export default function SettingsScreen({navigation}: SettingsScreenProps) {
-  const {playlists, currentPlaylist, setCurrentPlaylist, addPlaylist} = useStore();
-  const [epgUrl, setEpgUrl] = useState('');
+export default function SettingsScreen({ navigation }: SettingsScreenProps) {
+  const { playlists, currentPlaylist, setCurrentPlaylist, addPlaylist, adConfig, setAdConfig, epgUrl, setEpgUrl } = useStore();
   const [autoPlay, setAutoPlay] = useState(true);
-  
+
   const [showCredentials, setShowCredentials] = useState(false);
-  const [username, setUsername] = useState('COCHJNAR01');
-  const [password, setPassword] = useState('VYa7uMUeFT');
-  const [server, setServer] = useState('http://link4tv.me:80');
-  const [altServer, setAltServer] = useState('http://ky-iptv.com:80');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [server, setServer] = useState('');
+  const [altServer, setAltServer] = useState('');
 
   const [showDezorCredentials, setShowDezorCredentials] = useState(false);
-  const [dezorUsername, setDezorUsername] = useState('jascodezoripty');
-  const [dezorPassword, setDezorPassword] = useState('19e993b7f5');
-  const [dezorServer, setDezorServer] = useState('http://cf.like-cdn.com');
+  const [dezorUsername, setDezorUsername] = useState('');
+  const [dezorPassword, setDezorPassword] = useState('');
+  const [dezorServer, setDezorServer] = useState('');
 
   const [vpnEnabled, setVpnEnabled] = useState(false);
   const [vpnConnecting, setVpnConnecting] = useState(false);
   const [vpnConnected, setVpnConnected] = useState(false);
   const [vpnServer, setVpnServer] = useState('vpn.example.com');
+  const [vpnServerPublicKey, setVpnServerPublicKey] = useState('');
+  const [vpnServerPort, setVpnServerPort] = useState('51820');
+  const [wireguardPrivateKey, setWireguardPrivateKey] = useState('');
   const [vpnUsername, setVpnUsername] = useState('');
   const [vpnPassword, setVpnPassword] = useState('');
   const [currentIP, setCurrentIP] = useState('Checking...');
-  
-  const [adBlockEnabled, setAdBlockEnabled] = useState(true);
-  const [adVolumeReduction, setAdVolumeReduction] = useState(90);
-  
+
+  const [showSurfsharkServers, setShowSurfsharkServers] = useState(false);
+  const [surfsharkClusters, setSurfsharkClusters] = useState<SurfsharkCluster[]>([]);
+  const [surfsharkLoading, setSurfsharkLoading] = useState(false);
+
+  const adBlockEnabled = adConfig.enabled;
+  const adVolumeReduction = adConfig.volumeReductionPercent;
+
   const vpnService = new VPNService();
-  const adService = new AdDetectionService();
+
+  const [installedModules, setInstalledModules] = useState<ModuleManifest[]>([]);
+  const [modulesRefresh, setModulesRefresh] = useState(0);
+  const [moduleZipPath, setModuleZipPath] = useState('');
+  const [moduleInstalling, setModuleInstalling] = useState(false);
 
   useEffect(() => {
     checkPublicIP();
   }, []);
+
+  useEffect(() => {
+    const mgr = ModuleManager.getInstance();
+    mgr.setContext({
+      navigation,
+      store: useStore.getState(),
+      services: { m3u: M3UParser, epg: null, playlist: PlaylistManager },
+    });
+    mgr.listInstalledModules().then(setInstalledModules);
+  }, [navigation, modulesRefresh]);
 
   const checkPublicIP = async () => {
     const ip = await vpnService.getPublicIP();
@@ -70,7 +93,7 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
   const handleDeletePlaylist = async (playlistId: string) => {
     const updatedPlaylists = playlists.filter(p => p.id !== playlistId);
     await PlaylistManager.savePlaylists(updatedPlaylists);
-    
+
     if (currentPlaylist?.id === playlistId && updatedPlaylists.length > 0) {
       setCurrentPlaylist(updatedPlaylists[0]);
     }
@@ -83,10 +106,10 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
       server,
       altServer,
     };
-    
+
     const iptvService = new IPTVService(credentials);
     const mainOk = await iptvService.testConnection();
-    
+
     if (mainOk) {
       Alert.alert('Success', 'Main server connection successful!');
     } else {
@@ -106,23 +129,23 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
       server,
       altServer,
     };
-    
+
     const iptvService = new IPTVService(credentials);
     const playlistUrl = iptvService.getPlaylistUrl();
-    
+
     try {
       const playlist = await M3UParser.fetchAndParse(
         playlistUrl,
         'updated-playlist',
         `${username}'s Channels`
       );
-      
+
       addPlaylist(playlist);
       setCurrentPlaylist(playlist);
-      
+
       const updatedPlaylists = [...playlists, playlist];
       await PlaylistManager.savePlaylists(updatedPlaylists);
-      
+
       Alert.alert('Success', 'Playlist loaded with new credentials!');
     } catch (error) {
       Alert.alert('Error', 'Failed to load playlist. Check credentials and try again.');
@@ -137,13 +160,21 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
       await checkPublicIP();
     } else {
       setVpnConnecting(true);
+      const useWireGuard = !!(
+        vpnServer.trim() &&
+        vpnServerPublicKey.trim() &&
+        wireguardPrivateKey.trim()
+      );
       const config: VPNConfig = {
         enabled: true,
-        provider: 'openvpn',
-        serverAddress: vpnServer,
+        provider: useWireGuard ? 'wireguard' : 'openvpn',
+        serverAddress: vpnServer.trim(),
+        serverPort: parseInt(vpnServerPort, 10) || 51820,
         username: vpnUsername,
         password: vpnPassword,
         autoConnect: false,
+        wireguardServerPublicKey: vpnServerPublicKey.trim() || undefined,
+        wireguardPrivateKey: wireguardPrivateKey.trim() || undefined,
       };
       vpnService.setConfig(config);
       const success = await vpnService.connect();
@@ -152,36 +183,33 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
         setVpnConnected(true);
         setVpnEnabled(true);
         await checkPublicIP();
-        Alert.alert('VPN Connected', 'Your connection is now secured.');
+        Alert.alert('VPN Connected', useWireGuard ? 'WireGuard tunnel is up.' : 'Simulated connection.');
       } else {
-        Alert.alert('VPN Failed', 'Could not connect to VPN server.');
+        Alert.alert('VPN Failed', 'Could not connect. Check server, keys, and permission.');
       }
     }
   };
 
   const handleAdBlockToggle = () => {
-    const newEnabled = !adBlockEnabled;
-    setAdBlockEnabled(newEnabled);
-    const config = adService.getConfig();
-    adService.setConfig({...config, enabled: newEnabled});
+    setAdConfig({ enabled: !adBlockEnabled });
   };
 
   const handleLoadDezorPlaylist = async () => {
     try {
       const dezorUrl = `${dezorServer}/get.php?username=${dezorUsername}&password=${dezorPassword}&type=m3u_plus&output=ts`;
-      
+
       const playlist = await M3UParser.fetchAndParse(
         dezorUrl,
         'dezor-playlist-updated',
         `${dezorUsername}'s Dezor Channels`
       );
-      
+
       addPlaylist(playlist);
       setCurrentPlaylist(playlist);
-      
+
       const updatedPlaylists = [...playlists, playlist];
       await PlaylistManager.savePlaylists(updatedPlaylists);
-      
+
       Alert.alert('Success', 'Dezor playlist loaded successfully!');
     } catch (error) {
       Alert.alert('Error', 'Failed to load Dezor playlist. Check credentials and try again.');
@@ -231,7 +259,7 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
             </Text>
           </TouchableOpacity>
         </View>
-        
+
         {showCredentials && (
           <>
             <Text style={styles.label}>Username</Text>
@@ -301,7 +329,7 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
             </Text>
           </TouchableOpacity>
         </View>
-        
+
         {showDezorCredentials && (
           <>
             <Text style={styles.label}>Username</Text>
@@ -336,7 +364,7 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
             />
 
             <TouchableOpacity
-              style={[styles.updateButton, {marginTop: 15}]}
+              style={[styles.updateButton, { marginTop: 15 }]}
               onPress={handleLoadDezorPlaylist}>
               <Text style={styles.buttonText}>Load Dezor Playlist</Text>
             </TouchableOpacity>
@@ -370,11 +398,108 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
         <Text style={styles.label}>VPN Server</Text>
         <TextInput
           style={styles.input}
-          placeholder="vpn.example.com or IP address"
+          placeholder="vpn.example.com or Surfshark server"
           placeholderTextColor="#666"
           value={vpnServer}
           onChangeText={setVpnServer}
           autoCapitalize="none"
+          editable={!vpnConnected}
+        />
+
+        <View style={[styles.sectionHeader, { marginTop: 16 }]}>
+          <Text style={styles.label}>Surfshark servers</Text>
+          <TouchableOpacity
+            onPress={async () => {
+              if (showSurfsharkServers) {
+                setShowSurfsharkServers(false);
+                return;
+              }
+              setShowSurfsharkServers(true);
+              if (surfsharkClusters.length === 0) {
+                setSurfsharkLoading(true);
+                try {
+                  const list = await fetchSurfsharkClusters();
+                  setSurfsharkClusters(list);
+                } catch (e) {
+                  Alert.alert('Error', 'Could not load Surfshark servers. Check network.');
+                } finally {
+                  setSurfsharkLoading(false);
+                }
+              }
+            }}>
+            <Text style={styles.toggleText}>
+              {showSurfsharkServers ? 'Hide' : 'Show'} (from api.surfshark.com)
+            </Text>
+          </TouchableOpacity>
+        </View>
+        {showSurfsharkServers && (
+          <>
+            {surfsharkLoading ? (
+              <ActivityIndicator color="#007AFF" style={{ marginVertical: 10 }} />
+            ) : (
+              <View style={{ maxHeight: 280, marginTop: 8 }}>
+                <ScrollView nestedScrollEnabled style={{ flexGrow: 0 }}>
+                  {Array.from(groupClustersByRegion(surfsharkClusters).entries()).map(([region, byCountry]) => (
+                    <View key={region} style={{ marginBottom: 8 }}>
+                      <Text style={[styles.label, { fontSize: 14, color: '#888' }]}>{region}</Text>
+                      {Array.from(byCountry.entries()).flatMap(([countryKey, list]) =>
+                        list.map((c) => (
+                          <TouchableOpacity
+                            key={c.id}
+                            style={[styles.playlistItem, { paddingVertical: 10 }]}
+                            onPress={() => {
+                              setVpnServer(c.connectionName);
+                              setVpnServerPublicKey(c.pubKey);
+                            }}>
+                            <Text style={styles.playlistName}>
+                              {c.country} – {c.location}
+                            </Text>
+                            <Text style={styles.playlistDetails}>
+                              {c.connectionName} · load {c.load}%
+                            </Text>
+                          </TouchableOpacity>
+                        ))
+                      )}
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            <Text style={styles.hint}>
+              Tap a server to set Server + Public key. Then add your WireGuard private key below and tap Connect.
+            </Text>
+          </>
+        )}
+
+        <Text style={styles.label}>WireGuard – Server public key</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Set by Surfshark list above, or paste"
+          placeholderTextColor="#666"
+          value={vpnServerPublicKey}
+          onChangeText={setVpnServerPublicKey}
+          autoCapitalize="none"
+          editable={!vpnConnected}
+        />
+        <Text style={styles.label}>WireGuard – Your private key</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="From Surfshark dashboard / WireGuard config"
+          placeholderTextColor="#666"
+          value={wireguardPrivateKey}
+          onChangeText={setWireguardPrivateKey}
+          secureTextEntry
+          autoCapitalize="none"
+          editable={!vpnConnected}
+        />
+        <Text style={styles.label}>WireGuard – Server port</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="51820"
+          placeholderTextColor="#666"
+          value={vpnServerPort}
+          onChangeText={setVpnServerPort}
+          keyboardType="number-pad"
           editable={!vpnConnected}
         />
 
@@ -402,8 +527,8 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
         />
 
         <Text style={styles.hint}>
-          Note: VPN integration requires OpenVPN or WireGuard configuration files.
-          This is a simplified interface for demonstration.
+          Uses react-native-wireguard-vpn-connect when server + both keys are set. Otherwise simulated. Server list above uses
+          Surfshark’s API (api.surfshark.com). Get your private key from Surfshark app or dashboard (WireGuard key).
         </Text>
       </View>
 
@@ -414,7 +539,7 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
           <Switch
             value={adBlockEnabled}
             onValueChange={handleAdBlockToggle}
-            trackColor={{false: '#767577', true: '#34C759'}}
+            trackColor={{ false: '#767577', true: '#34C759' }}
           />
         </View>
 
@@ -422,40 +547,108 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
         <View style={styles.sliderRow}>
           <TouchableOpacity
             style={styles.sliderButton}
-            onPress={() => setAdVolumeReduction(Math.max(0, adVolumeReduction - 10))}>
+            onPress={() => setAdConfig({ volumeReductionPercent: Math.max(0, adVolumeReduction - 10) })}>
             <Text style={styles.buttonText}>-</Text>
           </TouchableOpacity>
           <View style={styles.sliderBar}>
-            <View style={[styles.sliderFill, {width: `${adVolumeReduction}%`}]} />
+            <View style={[styles.sliderFill, { width: `${adVolumeReduction}%` }]} />
           </View>
           <TouchableOpacity
             style={styles.sliderButton}
-            onPress={() => setAdVolumeReduction(Math.min(100, adVolumeReduction + 10))}>
+            onPress={() => setAdConfig({ volumeReductionPercent: Math.min(100, adVolumeReduction + 10) })}>
             <Text style={styles.buttonText}>+</Text>
           </TouchableOpacity>
         </View>
 
         <Text style={styles.hint}>
-          Automatically detects commercials by analyzing audio patterns:
-          • Sudden volume increases
-          • Extended silence periods
-          • Repetitive background music
+          When enabled, reduces volume during detected ads (simulation; no real audio analysis on device):
+          • Uses store setting for reduction %. Real ad detection would need native audio access.
         </Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>EPG Settings</Text>
-        <Text style={styles.label}>XMLTV URL (Optional)</Text>
+        <Text style={styles.sectionTitle}>EPG (Program Guide)</Text>
+        <Text style={styles.label}>XMLTV URL</Text>
         <TextInput
           style={styles.input}
           placeholder="https://example.com/epg.xml"
           placeholderTextColor="#999"
           value={epgUrl}
-          onChangeText={setEpgUrl}
+          onChangeText={(text) => {
+            setEpgUrl(text);
+            PlaylistManager.saveSettings({ epgUrl: text }).catch(() => {});
+          }}
         />
         <Text style={styles.hint}>
-          Leave empty to use server EPG: {`${server}/xmltv.php?username=${username}&password=${password}`}
+          When set, the player shows "Now playing" for the current channel (match by tvg-id). Cached 1 hour.
         </Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Modules</Text>
+        <Text style={styles.hint}>
+          Load/Unload run or stop a module. Install from a .zip that contains manifest.json (and entry file) at root or in a single folder.
+        </Text>
+        <Text style={styles.label}>Install from ZIP (full path to .zip file)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. /data/user/0/.../files/module.zip"
+          placeholderTextColor="#666"
+          value={moduleZipPath}
+          onChangeText={setModuleZipPath}
+          autoCapitalize="none"
+        />
+        <TouchableOpacity
+          style={[styles.updateButton, { marginTop: 10 }]}
+          disabled={moduleInstalling || !moduleZipPath.trim()}
+          onPress={async () => {
+            setModuleInstalling(true);
+            try {
+              const mgr = ModuleManager.getInstance();
+              const id = await mgr.installModule(moduleZipPath.trim());
+              setModuleZipPath('');
+              setModulesRefresh((r) => r + 1);
+              Alert.alert('Installed', `Module "${id}" installed. You can Load it below.`);
+            } catch (e) {
+              Alert.alert('Install failed', String(e));
+            } finally {
+              setModuleInstalling(false);
+            }
+          }}>
+          <Text style={styles.buttonText}>{moduleInstalling ? 'Installing…' : 'Install from ZIP'}</Text>
+        </TouchableOpacity>
+        {installedModules.length === 0 ? (
+          <Text style={styles.hint}>No modules installed. Add a folder with manifest.json under the app documents/modules path.</Text>
+        ) : (
+          installedModules.map((m) => {
+            const mgr = ModuleManager.getInstance();
+            const isLoaded = !!mgr.getModule(m.id);
+            return (
+              <View key={m.id} style={styles.playlistItem}>
+                <View style={styles.playlistInfo}>
+                  <Text style={styles.playlistName}>{m.name}</Text>
+                  <Text style={styles.playlistDetails}>{m.id} v{m.version}</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.testButton, { paddingHorizontal: 12, paddingVertical: 8 }]}
+                  onPress={async () => {
+                    try {
+                      if (isLoaded) {
+                        await mgr.unloadModule(m.id);
+                      } else {
+                        await mgr.loadModule(m.id);
+                      }
+                      setModulesRefresh((r) => r + 1);
+                    } catch (e) {
+                      Alert.alert('Module error', String(e));
+                    }
+                  }}>
+                  <Text style={styles.buttonText}>{isLoaded ? 'Unload' : 'Load'}</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })
+        )}
       </View>
 
       <View style={styles.section}>
@@ -465,7 +658,7 @@ export default function SettingsScreen({navigation}: SettingsScreenProps) {
           <Switch
             value={autoPlay}
             onValueChange={setAutoPlay}
-            trackColor={{false: '#767577', true: '#007AFF'}}
+            trackColor={{ false: '#767577', true: '#007AFF' }}
           />
         </View>
       </View>

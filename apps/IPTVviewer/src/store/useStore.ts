@@ -1,21 +1,31 @@
-import {create} from 'zustand';
-import {Channel, Playlist, PlayerState, ChannelHistory} from '@/types';
+import { create } from 'zustand';
+import { Channel, Playlist, PlayerState, ChannelHistory } from '@/types';
+
+export interface AdConfig {
+  enabled: boolean;
+  volumeReductionPercent: number;
+}
 
 interface AppState extends PlayerState {
   playlists: Playlist[];
   currentPlaylist: Playlist | null;
   favorites: string[];
-  
+  adConfig: AdConfig;
+  epgUrl: string;
+
   setCurrentChannel: (channel: Channel) => void;
   goToPreviousChannel: () => void;
   addToHistory: (channelId: string) => void;
   setPlaying: (playing: boolean) => void;
   setVolume: (volume: number) => void;
   toggleMute: () => void;
-  
+
   addPlaylist: (playlist: Playlist) => void;
   setCurrentPlaylist: (playlist: Playlist) => void;
   toggleFavorite: (channelId: string) => void;
+  setFavorites: (favorites: string[]) => void;
+  setAdConfig: (config: Partial<AdConfig>) => void;
+  setEpgUrl: (url: string) => void;
 }
 
 const MAX_HISTORY = 50;
@@ -30,21 +40,23 @@ export const useStore = create<AppState>((set, get) => ({
   playlists: [],
   currentPlaylist: null,
   favorites: [],
+  adConfig: { enabled: true, volumeReductionPercent: 90 },
+  epgUrl: '',
 
   setCurrentChannel: (channel: Channel) => {
     const state = get();
     const previous = state.currentChannel;
-    
+
     set({
       currentChannel: channel,
       previousChannel: previous,
     });
-    
+
     get().addToHistory(channel.id);
   },
 
   goToPreviousChannel: () => {
-    const {previousChannel} = get();
+    const { previousChannel } = get();
     if (previousChannel) {
       get().setCurrentChannel(previousChannel);
     }
@@ -53,19 +65,19 @@ export const useStore = create<AppState>((set, get) => ({
   addToHistory: (channelId: string) => {
     set((state) => {
       const newHistory: ChannelHistory[] = [
-        {channelId, timestamp: new Date()},
+        { channelId, timestamp: new Date() },
         ...state.channelHistory.filter(h => h.channelId !== channelId),
       ].slice(0, MAX_HISTORY);
-      
-      return {channelHistory: newHistory};
+
+      return { channelHistory: newHistory };
     });
   },
 
-  setPlaying: (playing: boolean) => set({isPlaying: playing}),
-  
-  setVolume: (volume: number) => set({volume, isMuted: volume === 0}),
-  
-  toggleMute: () => set((state) => ({isMuted: !state.isMuted})),
+  setPlaying: (playing: boolean) => set({ isPlaying: playing }),
+
+  setVolume: (volume: number) => set({ volume, isMuted: volume === 0 }),
+
+  toggleMute: () => set((state) => ({ isMuted: !state.isMuted })),
 
   addPlaylist: (playlist: Playlist) => {
     set((state) => ({
@@ -73,7 +85,7 @@ export const useStore = create<AppState>((set, get) => ({
     }));
   },
 
-  setCurrentPlaylist: (playlist: Playlist) => set({currentPlaylist: playlist}),
+  setCurrentPlaylist: (playlist: Playlist) => set({ currentPlaylist: playlist }),
 
   toggleFavorite: (channelId: string) => {
     set((state) => {
@@ -85,4 +97,13 @@ export const useStore = create<AppState>((set, get) => ({
       };
     });
   },
+
+  setFavorites: (favorites: string[]) => set({ favorites }),
+
+  setAdConfig: (config: Partial<AdConfig>) =>
+    set((state) => ({
+      adConfig: { ...state.adConfig, ...config },
+    })),
+
+  setEpgUrl: (url: string) => set({ epgUrl: url }),
 }));

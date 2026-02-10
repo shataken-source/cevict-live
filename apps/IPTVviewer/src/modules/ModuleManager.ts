@@ -1,5 +1,6 @@
 import {TVModule, ModuleManifest, ModuleContext} from './ModuleInterface';
 import RNFS from 'react-native-fs';
+import { unzip } from 'react-native-zip-archive';
 
 export class ModuleManager {
   private static instance: ModuleManager;
@@ -68,26 +69,53 @@ export class ModuleManager {
   }
 
   async installModule(moduleZipPath: string): Promise<string> {
+    const tempDir = `${RNFS.CachesDirectoryPath}/temp-module-${Date.now()}`;
     try {
-      const tempDir = `${RNFS.CachesDirectoryPath}/temp-module`;
-      
+      await RNFS.mkdir(tempDir);
       await this.extractZip(moduleZipPath, tempDir);
-      
-      const manifestPath = `${tempDir}/manifest.json`;
+
+      const manifestPath = await this.findManifestPath(tempDir);
       const manifestContent = await RNFS.readFile(manifestPath, 'utf8');
       const manifest: ModuleManifest = JSON.parse(manifestContent);
+      const contentRoot = manifestPath.replace(/\/manifest\.json$/i, '');
 
       const targetPath = `${this.modulesPath}/${manifest.id}`;
+      const exists = await RNFS.exists(this.modulesPath);
+      if (!exists) await RNFS.mkdir(this.modulesPath);
       await RNFS.mkdir(targetPath);
-      
-      await RNFS.copyFolder(tempDir, targetPath);
+      await this.copyFolderRecursive(contentRoot, targetPath);
 
       await RNFS.unlink(tempDir);
-
       return manifest.id;
     } catch (error) {
+      try { await RNFS.unlink(tempDir); } catch (_) {}
       console.error('Failed to install module:', error);
       throw error;
+    }
+  }
+
+  private async findManifestPath(tempDir: string): Promise<string> {
+    const flat = `${tempDir}/manifest.json`;
+    if (await RNFS.exists(flat)) return flat;
+    const dirs = await RNFS.readDir(tempDir);
+    const subdir = dirs.find((d) => d.isDirectory());
+    if (subdir) {
+      const inSub = `${subdir.path}/manifest.json`;
+      if (await RNFS.exists(inSub)) return inSub;
+    }
+    throw new Error('ZIP must contain manifest.json at root or in a single folder');
+  }
+
+  private async copyFolderRecursive(src: string, dest: string): Promise<void> {
+    const items = await RNFS.readDir(src);
+    for (const item of items) {
+      const destPath = `${dest}/${item.name}`;
+      if (item.isDirectory()) {
+        await RNFS.mkdir(destPath);
+        await this.copyFolderRecursive(item.path, destPath);
+      } else {
+        await RNFS.copyFile(item.path, destPath);
+      }
     }
   }
 
@@ -134,13 +162,15 @@ export class ModuleManager {
   }
 
   private evaluateModule(code: string): typeof TVModule {
-    const func = new Function('exports', 'require', 'module', code);
-    const module = {exports: {}};
-    func(module.exports, require, module);
-    return module.exports as typeof TVModule;
+    // SECURITY: Dynamic code execution is currently disabled.
+    // const func = new Function('exports', 'require', 'module', code);
+    // const module = {exports: {}};
+    // func(module.exports, require, module);
+    // return module.exports as typeof TVModule;
+    throw new Error('Module execution is disabled in this build (security hardening).');
   }
 
   private async extractZip(zipPath: string, destPath: string): Promise<void> {
-    console.log('Extracting module from:', zipPath, 'to:', destPath);
+    await unzip(zipPath, destPath);
   }
 }

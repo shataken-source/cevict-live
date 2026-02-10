@@ -1,15 +1,15 @@
-import {Channel, Playlist} from '@/types';
+import { Channel, Playlist } from '@/types';
 
 export class M3UParser {
   static async parse(content: string, playlistId: string, playlistName: string): Promise<Playlist> {
     const lines = content.split('\n').map(line => line.trim());
     const channels: Channel[] = [];
-    
+
     let currentChannel: Partial<Channel> = {};
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      
+
       if (line.startsWith('#EXTINF:')) {
         const info = this.parseExtInf(line);
         currentChannel = {
@@ -25,7 +25,7 @@ export class M3UParser {
         currentChannel = {};
       }
     }
-    
+
     return {
       id: playlistId,
       name: playlistName,
@@ -34,7 +34,7 @@ export class M3UParser {
       lastUpdated: new Date(),
     };
   }
-  
+
   private static parseExtInf(line: string): {
     name: string;
     logo?: string;
@@ -43,19 +43,19 @@ export class M3UParser {
   } {
     const nameMatch = line.match(/,(.+)$/);
     const name = nameMatch ? nameMatch[1].trim() : 'Unknown';
-    
+
     const logoMatch = line.match(/tvg-logo="([^"]+)"/);
     const logo = logoMatch ? logoMatch[1] : undefined;
-    
+
     const groupMatch = line.match(/group-title="([^"]+)"/);
     const group = groupMatch ? groupMatch[1] : undefined;
-    
+
     const tvgIdMatch = line.match(/tvg-id="([^"]+)"/);
     const tvgId = tvgIdMatch ? tvgIdMatch[1] : undefined;
-    
-    return {name, logo, group, tvgId};
+
+    return { name, logo, group, tvgId };
   }
-  
+
   static async fetchAndParse(url: string, playlistId: string, playlistName: string): Promise<Playlist> {
     const response = await fetch(url);
     const content = await response.text();
