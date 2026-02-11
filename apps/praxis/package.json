@@ -1,0 +1,39 @@
+{
+  "name": "cevict-praxis",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3002",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "verify-twitter": "node scripts/verify-twitter-keys.mjs"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^6.36.8",
+    "@stripe/stripe-js": "^8.6.1",
+    "@supabase/supabase-js": "^2.95.3",
+    "clsx": "^2.1.0",
+    "date-fns": "^3.6.0",
+    "lucide-react": "^0.400.0",
+    "next": "^16.1.6",
+    "papaparse": "^5.4.1",
+    "react": "^18",
+    "react-dom": "^18",
+    "recharts": "^2.12.0",
+    "stripe": "^20.2.0",
+    "tailwind-merge": "^2.2.0",
+    "twitter-api-v2": "^1.29.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/papaparse": "^5.3.14",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5"
+  }
+}

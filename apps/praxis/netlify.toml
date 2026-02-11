@@ -1,0 +1,27 @@
+# Deploy Praxis (Next.js 14) to Netlify
+# When connecting repo: set Base directory to "apps/praxis" in Netlify UI.
+
+[build]
+  command = "npm run build"
+  # Do not set publish — @netlify/plugin-nextjs sets it
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Next.js runtime (Netlify auto-detects; plugin handles serverless for API routes)
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Redirects (mirror vercel.json)
+[[redirects]]
+  from = "/dashboard"
+  to = "/"
+  status = 200
+
+# API CORS headers
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
