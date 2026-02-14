@@ -41,19 +41,33 @@ export async function POST(request: NextRequest) {
     // Format game time
     const formattedTime = gameTime
       ? new Date(gameTime).toLocaleString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          timeZoneName: 'short',
-        })
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'short',
+      })
       : gameDate || 'TBD';
+
+    // Sport emoji mapping
+    const sportEmoji: Record<string, string> = {
+      'NFL': '🏈',
+      'NCAAF': '🏈',
+      'NBA': '🏀',
+      'NCAAB': '🏀',
+      'NHL': '🏒',
+      'MLB': '⚾',
+      'Soccer': '⚽',
+      'MLS': '⚽'
+    };
+    const displaySport = sport || league || 'NFL';
+    const emoji = sportEmoji[displaySport] || '🏈';
 
     // Build comprehensive SMS message
     let message = `🎯 NEW PROGNO PICK\n\n`;
     message += `📊 ${game || `${awayTeam} @ ${homeTeam}`}\n`;
-    message += `🏈 ${sport || league || 'NFL'}\n\n`;
+    message += `${emoji} ${displaySport}\n\n`;
 
     message += `✅ PICK: ${pick}\n`;
     message += `📈 Confidence: ${confidence}%\n`;

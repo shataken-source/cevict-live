@@ -4,10 +4,6 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 let supabase: SupabaseClient | null = null;
 
@@ -202,7 +198,7 @@ export async function getPortfolio(portfolioId: string): Promise<Portfolio | nul
   try {
     const client = getClient();
 
-    const { data, error} = await client
+    const { data, error } = await client
       .from('pick_portfolios')
       .select('*')
       .eq('id', portfolioId)

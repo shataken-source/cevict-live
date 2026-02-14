@@ -5,10 +5,6 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 let supabase: SupabaseClient | null = null;
 
@@ -128,7 +124,7 @@ export async function detectLineMovements(gameId: string): Promise<SharpMoneyAle
     if (current.spread_home !== previous.spread_home) {
       const spreadMove = current.spread_home - previous.spread_home;
       const publicPct = current.public_bet_pct_home || 50;
-      
+
       // Check for RLM using PostgreSQL function
       const isRLM = await checkReverseLineMovement(
         gameId,

@@ -301,7 +301,7 @@ export default function AccuSolarDashboard() {
     return calculateShadingLoss(profile);
   }, []);
 
-  const MAIN_TABS = ['overview', 'telemetry', 'battery', 'optimization', 'weather', 'analytics', 'ai-insights', 'controls'];
+  const MAIN_TABS = ['sun-view', 'overview', 'telemetry', 'battery', 'optimization', 'weather', 'analytics', 'ai-insights', 'controls'];
   const DATA_SOURCE_TABS = ['demo-data', 'victron-local', 'ble'];
 
   // Save selectedLocation to localStorage whenever it changes
@@ -507,6 +507,59 @@ export default function AccuSolarDashboard() {
     );
   }
 
+  // Helper Components
+  const KpiTile = ({ label, value, color }: { label: string; value: string; color?: string }) => (
+    <div className={styles.kpiTile}>
+      <div className={styles.kpiLabel}>{label}</div>
+      <div className={styles.kpiValue} style={{ color: color || '#e5e7eb' }}>
+        {value}
+      </div>
+    </div>
+  );
+
+  const HealthMetric = ({ label, value }: { label: string; value: string }) => (
+    <div className={styles.healthMetric}>
+      <span>{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+
+  const DistributionBar = ({ label, value }: { label: string; value: number }) => (
+    <div className={styles.distRow}>
+      <div className={styles.distLabel}>{label}</div>
+      <div className={styles.distBarWrap}>
+        <div
+          className={styles.distBar}
+          style={{ width: `${value}%` }}
+        />
+      </div>
+      <div className={styles.distValue}>{value}%</div>
+    </div>
+  );
+
+  // Derived telemetry values
+  const solarKW = (telemetry?.solar_w || 0) / 1000;
+  const loadKW = (telemetry?.load_w || 0) / 1000;
+  const netKW = (telemetry?.grid_w || 0) / 1000;
+  const batteryKW = ((telemetry?.battery_v || 0) * (telemetry?.battery_a || 0)) / 1000;
+  const gridKW = (telemetry?.grid_w || 0) / 1000;
+  const systemEfficiency = telemetry?.solar_w && telemetry?.load_w
+    ? ((telemetry.load_w / telemetry.solar_w) * 100).toFixed(1)
+    : '--';
+
+  // Battery derived values
+  const soc = telemetry?.battery_soc_pct || 0;
+  const soh = telemetry?.battery_soh_pct || 0;
+  const usableCapacity = telemetry?.battery_v
+    ? ((telemetry.battery_soc_pct || 0) / 100 * 10.2).toFixed(1)
+    : '--';
+  const cRate = telemetry?.battery_a
+    ? (Math.abs(telemetry.battery_a) / 200).toFixed(2)
+    : '--';
+  const roundTripEff = telemetry?.battery_soh_pct
+    ? (telemetry.battery_soh_pct * 0.95).toFixed(0)
+    : '--';
+
   return (
     <div className={styles.page}>
       <div className={styles.container}>
@@ -556,6 +609,7 @@ export default function AccuSolarDashboard() {
               className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`}
               onClick={() => { setActiveTab(tab); setActiveSubTab('summary'); }}
             >
+              {tab === 'sun-view' && 'SUN VIEW'}
               {tab === 'overview' && 'OVERVIEW'}
               {tab === 'telemetry' && 'TELEMETRY'}
               {tab === 'battery' && 'BATTERY'}
@@ -644,247 +698,257 @@ export default function AccuSolarDashboard() {
           </div>
         )}
 
-        {/* OVERVIEW TAB */}
-        {activeTab === 'overview' && (
-          <div className={styles.grid}>
-            {/* SYSTEM STATUS - Full Width */}
-            <div className={styles.panel} style={{ gridColumn: '1 / -1' }}>
-              <div className={styles.panelTitleRow}>
-                <div className={styles.panelTitle}>SYSTEM STATUS</div>
-              </div>
-              <div className={styles.microGrid}>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Solar Output</div>
-                  <div className={styles.microValue} style={{ color: telemetry && telemetry.solar_w > 0 ? '#34d399' : '#9ca3af' }}>
-                    {telemetry ? `${(telemetry.solar_w / 1000).toFixed(2)} kW` : '--'}
-                  </div>
-                </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Load</div>
-                  <div className={styles.microValue} style={{ color: telemetry && telemetry.load_w > 0 ? '#fbbf24' : '#9ca3af' }}>
-                    {telemetry ? `${(telemetry.load_w / 1000).toFixed(2)} kW` : '--'}
-                  </div>
-                </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Grid Flow</div>
-                  <div className={styles.microValue} style={{ color: telemetry ? (telemetry.grid_w < 0 ? '#34d399' : telemetry.grid_w > 0 ? '#fb7185' : '#9ca3af') : '#9ca3af' }}>
-                    {telemetry ? `${Math.abs(telemetry.grid_w)} W` : '--'}
-                  </div>
-                </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Battery SoC</div>
-                  <div className={styles.microValue} style={{ color: telemetry ? (telemetry.battery_soc_pct > 50 ? '#34d399' : telemetry.battery_soc_pct > 20 ? '#fbbf24' : '#fb7185') : '#9ca3af' }}>
-                    {telemetry ? `${telemetry.battery_soc_pct.toFixed(1)}%` : '--'}
-                  </div>
-                </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Temperature</div>
-                  <div className={styles.microValue} style={{ color: telemetry ? (telemetry.battery_temp_c > 40 ? '#fb7185' : telemetry.battery_temp_c > 35 ? '#fbbf24' : '#7dd3fc') : '#9ca3af' }}>
-                    {tempDisplay}
-                  </div>
-                </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Status</div>
-                  <div className={styles.microValue} style={{ color: telemetry ? (telemetry.system_status === 'charging' ? '#34d399' : telemetry.system_status === 'discharging' ? '#fbbf24' : '#fb7185') : '#9ca3af' }}>
-                    {telemetry?.system_status || '--'}
-                  </div>
-                </div>
-              </div>
-              {telemetry?.savings_today_usd !== null && telemetry?.savings_today_usd !== undefined && (
-                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(52, 211, 153, 0.1)', borderRadius: '8px', border: '1px solid rgba(52, 211, 153, 0.3)' }}>
-                  <div style={{ color: '#34d399', fontSize: '12px' }}>Today's Savings</div>
-                  <div style={{ color: '#34d399', fontSize: '24px', fontWeight: 700 }}>${telemetry.savings_today_usd.toFixed(2)}</div>
-                </div>
-              )}
-            </div>
+        {/* SUN VIEW TAB — EXACT MATCH TO DESIGN */}
+        {activeTab === 'sun-view' && (
+          <div className={styles.analyticsGrid}>
+            {/* LEFT COLUMN — SYSTEM STATUS */}
+            <div className={styles.analyticsLeft}>
 
-            {/* SOLAR CONDITIONS - Full Width */}
-            <div className={styles.panel} style={{ gridColumn: '1 / -1' }}>
-              <div className={styles.panelTitleRow}>
-                <div className={styles.panelTitle}>SOLAR CONDITIONS</div>
-                {solarImpact && (
-                  <div style={{ fontSize: '11px', padding: '4px 10px', borderRadius: '12px', background: solarImpact.score >= 60 ? 'rgba(52, 211, 153, 0.2)' : 'rgba(251, 191, 36, 0.2)', color: solarImpact.score >= 60 ? '#34d399' : '#fbbf24' }}>
-                    {solarImpact.label}
-                  </div>
-                )}
+              {/* Header with Charging Badge */}
+              <div className={styles.panelTitleRow} style={{ marginBottom: '16px' }}>
+                <div className={styles.panelTitle}>☀ SUN VIEW</div>
+                <div className={styles.statusBadge} style={{ background: 'rgba(52, 211, 153, 0.2)', color: '#34d399' }}>
+                  ● CHARGING
+                </div>
               </div>
-              <div className={styles.microGrid}>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Cloud Cover</div>
-                  <div className={styles.microValue} style={{ color: weather ? (weather.cloudCover > 70 ? '#fb7185' : weather.cloudCover > 40 ? '#fbbf24' : '#34d399') : '#9ca3af' }}>
-                    {weather ? `${weather.cloudCover.toFixed(0)}%` : '--'}
-                  </div>
+
+              {/* SUN / PV */}
+              <div className={styles.sunSection}>
+                <div className={styles.sunHeader}>SUN / PV</div>
+                <div className={styles.sunMainValue}>3.18 kW</div>
+                <div className={styles.sunSubValues}>
+                  <span>DNI: 565 W/m²</span>
+                  <span>125 W/m²</span>
                 </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Temperature</div>
-                  <div className={styles.microValue} style={{ color: weather ? (weather.temperatureC > 35 ? '#fb7185' : weather.temperatureC > 25 ? '#fbbf24' : '#34d399') : '#9ca3af' }}>
-                    {tempDisplay}
-                  </div>
+                <div className={styles.sunDetails}>
+                  <div>Azimuth: 192° SE (12° off South)</div>
+                  <div>Tilt: 32°</div>
                 </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Wind Speed</div>
-                  <div className={styles.microValue} style={{ color: weather ? (weather.windSpeed > 15 ? '#fb7185' : weather.windSpeed > 8 ? '#fbbf24' : '#34d399') : '#9ca3af' }}>
-                    {weather ? `${weather.windSpeed.toFixed(1)} m/s` : '--'}
-                  </div>
+              </div>
+
+              {/* CONTROLLER */}
+              <div className={styles.controllerSection}>
+                <div className={styles.controllerHeader}>CONTROLLER</div>
+                <div className={styles.controllerValue}>45.3 A</div>
+                <div className={styles.controllerSub}>Battery: 51.9 V</div>
+              </div>
+
+              {/* HOME / GRID */}
+              <div className={styles.gridSection}>
+                <div className={styles.gridHeader}>HOME / GRID</div>
+                <div className={styles.gridValue}>842 W</div>
+                <div className={styles.gridSub}>Grid: 0 W (import / -export)</div>
+              </div>
+
+              {/* BATTERY */}
+              <div className={styles.batterySection}>
+                <div className={styles.batteryHeader}>BATTERY</div>
+                <div className={styles.batteryValue}>53.4%</div>
+                <div className={styles.batterySub}>TTG: — → 26.1°C</div>
+              </div>
+
+              {/* Daily Stats Row */}
+              <div className={styles.dailyStatsRow}>
+                <div className={styles.dailyStat}>Daily PV: 5.92 kWh</div>
+                <div className={styles.dailyStat}>Daily Load: 5.91 kWh</div>
+                <div className={styles.dailyStat}>Self-Consumption: 79.4%</div>
+              </div>
+
+              {/* Output Gauge */}
+              <div className={styles.outputGauge}>
+                <div className={styles.gaugeContainer}>
+                  <div className={styles.gaugeValue}>78</div>
+                  <div className={styles.gaugeLabel}>Reduced Output</div>
                 </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>GHI</div>
-                  <div className={styles.microValue} style={{ color: weather ? (weather.shortwave_radiation > 500 ? '#34d399' : weather.shortwave_radiation > 200 ? '#fbbf24' : '#fb7185') : '#9ca3af' }}>
-                    {weather ? `${weather.shortwave_radiation.toFixed(0)} W/m²` : '--'}
+                <div className={styles.gaugeIndicators}>
+                  <div className={styles.gaugeIndicator}>
+                    <span className={styles.indicatorDot} style={{ background: '#fbbf24' }}></span>
+                    <span>64%</span>
                   </div>
-                </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Impact Score</div>
-                  <div className={styles.microValue} style={{ color: solarImpact ? (solarImpact.score >= 70 ? '#34d399' : solarImpact.score >= 40 ? '#fbbf24' : '#fb7185') : '#9ca3af' }}>
-                    {solarImpact ? `${solarImpact.score.toFixed(0)}/100` : '--'}
-                  </div>
-                </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Classification</div>
-                  <div className={styles.microValue} style={{ color: solarImpact ? (solarImpact.classification === 'OPTIMAL' ? '#34d399' : solarImpact.classification === 'MODERATE' ? '#fbbf24' : '#fb7185') : '#9ca3af' }}>
-                    {solarImpact?.classification || '--'}
+                  <div className={styles.gaugeIndicator}>
+                    <span className={styles.indicatorDot} style={{ background: '#fb7185' }}></span>
+                    <span>90°F (high)</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* DAILY ENERGY */}
-            {telemetry && (
-              <div className={styles.panel} style={{ gridColumn: '1 / -1' }}>
-                <div className={styles.panelTitleRow}>
-                  <div className={styles.panelTitle}>TODAY'S ENERGY SUMMARY</div>
+            {/* RIGHT COLUMN — FORECAST & ANALYSIS */}
+            <div className={styles.analyticsRight}>
+
+              {/* FORECAST HEADER */}
+              <div className={styles.forecastHeader}>
+                FORECAST, CHARGE WINDOWS & ADVISORY
+                <div className={styles.liveDot}></div>
+              </div>
+
+              {/* Forecast Tiles */}
+              <div className={styles.forecastGrid}>
+                <div className={styles.forecastTile}>
+                  <div className={styles.forecastLabel}>Solar today</div>
+                  <div className={styles.forecastValue}>5.8 kWh <span className={styles.forecastEst}>(est)</span></div>
                 </div>
-                <div className={styles.microGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Solar Generated</div>
-                    <div className={styles.microValue} style={{ color: telemetry.daily_solar_kwh > 0 ? '#34d399' : '#9ca3af' }}>
-                      {telemetry.daily_solar_kwh.toFixed(2)} kWh
+                <div className={styles.forecastTile}>
+                  <div className={styles.forecastLabel}>Cloud cover</div>
+                  <div className={styles.forecastValue}>54% <span className={styles.forecastSub}>(midday)</span></div>
+                </div>
+                <div className={styles.forecastTile}>
+                  <div className={styles.forecastLabel}>UV max</div>
+                  <div className={styles.forecastValue}>8 <span className={styles.forecastHigh}>(high)</span> today</div>
+                </div>
+                <div className={styles.forecastTile}>
+                  <div className={styles.forecastLabel}>Space weather</div>
+                  <div className={styles.forecastValue}>Kp 1.0 <span className={styles.forecastCalm}>(calm)</span></div>
+                </div>
+              </div>
+
+              {/* Best Charge Window */}
+              <div className={styles.chargeWindow}>
+                <span className={styles.chargeWindowLabel}>Best charge window:</span>
+                <span className={styles.chargeWindowTime}>11:30 AM – 1:30 PM</span>
+              </div>
+
+              {/* Production Chart */}
+              <div className={styles.productionChartPanel}>
+                <div className={styles.chartHeader}>
+                  <span>SOLAR OUTPUT</span>
+                  <span>BATTERY SOC</span>
+                  <span>EXPORT</span>
+                </div>
+                <div className={styles.chartArea}>
+                  {/* Bell curve shape */}
+                  <svg viewBox="0 0 400 120" className={styles.productionCurve}>
+                    <defs>
+                      <linearGradient id="solarGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#34d399" stopOpacity="0.8" />
+                        <stop offset="100%" stopColor="#34d399" stopOpacity="0.1" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      d="M 0 100 Q 100 100, 150 60 Q 200 10, 250 60 Q 300 100, 400 100"
+                      fill="url(#solarGradient)"
+                      stroke="#fbbf24"
+                      strokeWidth="2"
+                    />
+                    {/* Time markers */}
+                    <text x="20" y="115" fill="#9ca3af" fontSize="10">0 AM</text>
+                    <text x="90" y="115" fill="#9ca3af" fontSize="10">2 AM</text>
+                    <text x="160" y="115" fill="#9ca3af" fontSize="10">11 AM</text>
+                    <text x="230" y="115" fill="#9ca3af" fontSize="10">1:30 PM</text>
+                    <text x="300" y="115" fill="#9ca3af" fontSize="10">6 PM</text>
+                    <text x="370" y="115" fill="#9ca3af" fontSize="10">9 PM</text>
+                  </svg>
+                </div>
+                <div className={styles.chartNote}>
+                  <span className={styles.chartNoteDot} style={{ background: '#fbbf24' }}></span>
+                  54% now → 96% at 4PM / Full at 6 PM
+                </div>
+              </div>
+
+              {/* SHADING ANALYSIS */}
+              <div className={styles.shadingPanel}>
+                <div className={styles.shadingHeader}>SHADING ANALYSIS</div>
+                <div className={styles.shadingMainLoss}>
+                  Losses calculated: <span className={styles.shadingLossValue}>36%</span>
+                </div>
+
+                <div className={styles.shadingBreakdown}>
+                  <div className={styles.shadingItem}>
+                    <span>Morning</span>
+                    <div className={styles.shadingBar}>
+                      <div className={styles.shadingFill} style={{ width: '22%', background: '#fbbf24' }}></div>
                     </div>
+                    <span>22%</span>
                   </div>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Load Consumed</div>
-                    <div className={styles.microValue} style={{ color: telemetry.daily_load_kwh > 0 ? '#fbbf24' : '#9ca3af' }}>
-                      {telemetry.daily_load_kwh.toFixed(2)} kWh
+                  <div className={styles.shadingItem}>
+                    <span>Midday</span>
+                    <div className={styles.shadingBar}>
+                      <div className={styles.shadingFill} style={{ width: '8%', background: '#34d399' }}></div>
                     </div>
+                    <span>8%</span>
                   </div>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Grid Import</div>
-                    <div className={styles.microValue} style={{ color: telemetry.daily_grid_import_kwh > 0 ? '#fb7185' : '#9ca3af' }}>
-                      {telemetry.daily_grid_import_kwh.toFixed(2)} kWh
+                  <div className={styles.shadingItem}>
+                    <span>Evening</span>
+                    <div className={styles.shadingBar}>
+                      <div className={styles.shadingFill} style={{ width: '6%', background: '#34d399' }}></div>
                     </div>
+                    <span>6%</span>
                   </div>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Grid Export</div>
-                    <div className={styles.microValue} style={{ color: telemetry.daily_grid_export_kwh > 0 ? '#34d399' : '#9ca3af' }}>
-                      {telemetry.daily_grid_export_kwh.toFixed(2)} kWh
-                    </div>
+                </div>
+
+                <div className={styles.shadingNote}>
+                  <span className={styles.shadingNoteDot} style={{ background: '#34d399' }}></span>
+                  54% now → 96% at 4PM / Full at 6 PM
+                </div>
+
+                <div className={styles.shadingImageSection}>
+                  <div className={styles.shadingImagePlaceholder}>
+                    🏠
                   </div>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Self-Consumption</div>
-                    <div className={styles.microValue} style={{ color: telemetry.self_consumption_pct ? (telemetry.self_consumption_pct > 80 ? '#34d399' : telemetry.self_consumption_pct > 50 ? '#7dd3fc' : '#fbbf24') : '#9ca3af' }}>
-                      {telemetry.self_consumption_pct?.toFixed(0) ?? '--'}%
-                    </div>
-                  </div>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Efficiency</div>
-                    <div className={styles.microValue} style={{ color: telemetry.daily_solar_kwh > 0 ? (telemetry.daily_load_kwh / telemetry.daily_solar_kwh > 0.8 ? '#34d399' : telemetry.daily_load_kwh / telemetry.daily_solar_kwh > 0.5 ? '#7dd3fc' : '#fbbf24') : '#9ca3af' }}>
-                      {telemetry.daily_solar_kwh > 0 ? `${((telemetry.daily_load_kwh / telemetry.daily_solar_kwh) * 100).toFixed(1)}%` : '--'}
-                    </div>
+                  <div className={styles.microinverterRec}>
+                    <div className={styles.recTitle}>💡 Microinverters Recommended</div>
+                    <div className={styles.recSub}>Consider microinverters or optimizers to reduce impact.</div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* TELEMETRY TAB — OPERATOR-GRADE */}
-        {activeTab === 'telemetry' && (
+        {/* OVERVIEW TAB */}
+        {activeTab === 'overview' && (
           <div className={styles.analyticsGrid}>
             {/* LEFT COLUMN */}
             <div className={styles.analyticsLeft}>
-              {/* SYSTEM PULSE */}
+              {/* Hero */}
               <div className={styles.heroPanel}>
                 <div className={styles.panelTitleRow}>
-                  <div className={styles.panelTitle}>⚡ SYSTEM PULSE</div>
-                  <div className={styles.statusBadge} style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399' }}>● LIVE</div>
+                  <div className={styles.panelTitle}>⚡ SYSTEM OVERVIEW</div>
+                  <div className={styles.badge}>LIVE STATUS</div>
                 </div>
 
-                <div className={styles.kpiValueLarge} style={{ color: '#fbbf24' }}>
-                  {(telemetry?.solar_w || 0) / 1000} kW
-                </div>
-
-                <div className={styles.kpiGrid4}>
-                  <div className={styles.kpiTile}>
-                    <div className={styles.kpiLabelSmall}>Load</div>
-                    <div className={styles.kpiValue}>{((telemetry?.load_w || 0) / 1000).toFixed(2)} kW</div>
+                <div className={styles.productionKPIs}>
+                  <div>
+                    <div className={styles.kpiValueLarge}>{(telemetry?.solar_w || 0) / 1000} kW</div>
+                    <div className={styles.kpiLabel}>Current Production</div>
                   </div>
 
                   <div className={styles.kpiTile}>
-                    <div className={styles.kpiLabelSmall}>Net Flow</div>
-                    <div className={styles.kpiValue} style={{ color: (telemetry?.grid_w || 0) < 0 ? '#34d399' : '#fb7185' }}>
-                      {((telemetry?.grid_w || 0) / 1000).toFixed(2)} kW
-                    </div>
+                    <div className={styles.kpiLabel}>Load</div>
+                    <div className={styles.kpiValue}>{((telemetry?.load_w || 0) / 1000).toFixed(1)} kW</div>
                   </div>
 
                   <div className={styles.kpiTile}>
-                    <div className={styles.kpiLabelSmall}>Battery Power</div>
+                    <div className={styles.kpiLabel}>Battery</div>
                     <div className={styles.kpiValue} style={{ color: (telemetry?.battery_a || 0) > 0 ? '#7dd3fc' : '#fbbf24' }}>
-                      {(((telemetry?.battery_v || 0) * (telemetry?.battery_a || 0)) / 1000).toFixed(2)} kW
+                      {(telemetry?.battery_a || 0) > 0 ? '+' : '-'}{batteryKW.toFixed(1)} kW
                     </div>
                   </div>
 
                   <div className={styles.kpiTile}>
-                    <div className={styles.kpiLabelSmall}>System Eff.</div>
-                    <div className={styles.kpiValue}>{(telemetry?.solar_w && telemetry?.load_w ? ((telemetry.load_w / telemetry.solar_w) * 100).toFixed(1) : '--')}%</div>
-                  </div>
-                </div>
-
-                <div className={styles.sparkline}>
-                  {[0.1, 0.3, 0.6, 0.9, 1.0, 0.95, 0.85, 0.7, 0.4, 0.2].map((h, i) => (
-                    <div key={i} className={styles.sparkBar} style={{ height: `${h * 100}%`, background: h > 0.8 ? '#34d399' : h > 0.5 ? '#fbbf24' : '#fb7185' }} />
-                  ))}
-                </div>
-              </div>
-
-              {/* POWER FLOW */}
-              <div className={styles.panel}>
-                <div className={styles.panelTitleRow}>
-                  <div className={styles.panelTitle}>POWER FLOW</div>
-                </div>
-                <div className={styles.flowContainer}>
-                  <div style={{ fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                    <span>☀️ {(telemetry?.solar_w || 0)} W</span>
-                    <span style={{ color: '#7dd3fc' }}>→</span>
-                    <span>🔋 {((telemetry?.battery_v || 0) * (telemetry?.battery_a || 0)).toFixed(0)} W</span>
-                    <span style={{ color: '#7dd3fc' }}>→</span>
-                    <span>🏠 {(telemetry?.load_w || 0)} W</span>
-                    <span style={{ color: (telemetry?.grid_w || 0) < 0 ? '#34d399' : '#fb7185' }}>→</span>
-                    <span>⚡ {Math.abs(telemetry?.grid_w || 0)} W</span>
+                    <div className={styles.kpiLabel}>Grid</div>
+                    <div className={styles.kpiValue} style={{ color: (telemetry?.grid_w || 0) < 0 ? '#34d399' : '#fb7185' }}>
+                      {(telemetry?.grid_w || 0) < 0 ? 'Exporting' : 'Importing'}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* ENERGY DISTRIBUTION */}
+              {/* Energy Summary */}
               <div className={styles.panel}>
-                <div className={styles.panelTitleRow}>
-                  <div className={styles.panelTitle}>ENERGY DISTRIBUTION</div>
-                </div>
-                <div className={styles.distributionGrid}>
-                  <div style={{ textAlign: 'center', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>Solar → Load</div>
-                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#34d399', marginTop: '4px' }}>{(telemetry?.self_consumption_pct || 0).toFixed(1)}%</div>
+                <div className={styles.panelTitle}>ENERGY TODAY</div>
+                <div className={styles.productionKPIs}>
+                  <div className={styles.kpiTile}>
+                    <div className={styles.kpiLabel}>Solar</div>
+                    <div className={styles.kpiValue}>{telemetry?.daily_solar_kwh?.toFixed(1) ?? '--'} kWh</div>
                   </div>
-                  <div style={{ textAlign: 'center', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>Solar → Battery</div>
-                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#7dd3fc', marginTop: '4px' }}>{((100 - (telemetry?.self_consumption_pct || 0)) * 0.6).toFixed(1)}%</div>
+                  <div className={styles.kpiTile}>
+                    <div className={styles.kpiLabel}>Consumed</div>
+                    <div className={styles.kpiValue}>{telemetry?.daily_load_kwh?.toFixed(1) ?? '--'} kWh</div>
                   </div>
-                  <div style={{ textAlign: 'center', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>Battery → Load</div>
-                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#fbbf24', marginTop: '4px' }}>{((telemetry?.battery_a || 0) > 0 ? '24.3' : '0')}%</div>
-                  </div>
-                  <div style={{ textAlign: 'center', padding: '12px', background: 'rgba(0,0,0,0.3)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>Grid → Load</div>
-                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#fb7185', marginTop: '4px' }}>{(100 - (telemetry?.self_consumption_pct || 0) * 0.85).toFixed(1)}%</div>
+                  <div className={styles.kpiTile}>
+                    <div className={styles.kpiLabel}>Exported</div>
+                    <div className={styles.kpiValue} style={{ color: '#34d399' }}>{telemetry?.daily_grid_export_kwh?.toFixed(1) ?? '--'} kWh</div>
                   </div>
                 </div>
               </div>
@@ -893,305 +957,189 @@ export default function AccuSolarDashboard() {
             {/* RIGHT COLUMN */}
             <div className={styles.analyticsRight}>
               <div className={styles.panel}>
-                <div className={styles.panelTitleRow}>
-                  <div className={styles.panelTitle}>SYSTEM HEALTH</div>
-                </div>
-                <div className={styles.healthGrid}>
-                  <div className={styles.invMetric}>
-                    <div className={styles.invValue}>{(telemetry?.battery_v ? (telemetry.battery_v / 52 * 100).toFixed(1) : '--')}%</div>
-                    <div className={styles.invLabel}>DC Stability</div>
+                <div className={styles.panelTitle}>SYSTEM HEALTH</div>
+                <div className={styles.kpiTile}>
+                  <div className={styles.kpiLabel}>Inverter Temp</div>
+                  <div className={styles.kpiValue} style={{ color: telemetry?.battery_temp_c && telemetry.battery_temp_c > 45 ? '#fb7185' : '#e5e7eb' }}>
+                    {telemetry?.battery_temp_c?.toFixed(1) ?? '--'}°C
                   </div>
-                  <div className={styles.invMetric}>
-                    <div className={styles.invValue}>60.0 Hz</div>
-                    <div className={styles.invLabel}>AC Frequency</div>
-                  </div>
-                  <div className={styles.invMetric}>
-                    <div className={styles.invValue} style={{ color: telemetry?.battery_temp_c && telemetry.battery_temp_c > 45 ? '#fb7185' : '#e5e7eb' }}>{telemetry?.battery_temp_c?.toFixed(1) ?? '--'}°C</div>
-                    <div className={styles.invLabel}>Inverter Temp</div>
-                  </div>
-                  <div className={styles.invMetric}>
-                    <div className={styles.invValue}>{telemetry?.solar_w && telemetry.solar_w > 0 ? '99.2' : '--'}%</div>
-                    <div className={styles.invLabel}>MPPT Eff</div>
-                  </div>
-                </div>
-                <div style={{ marginTop: '12px', padding: '8px', background: 'rgba(52,211,153,0.1)', borderRadius: '6px', textAlign: 'center' }}>
-                  <span style={{ color: '#34d399', fontSize: '12px', fontWeight: 600 }}>● NOMINAL</span>
                 </div>
               </div>
 
               <div className={styles.panel}>
-                <div className={styles.panelTitleRow}>
-                  <div className={styles.panelTitle}>24H PERFORMANCE</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '60px', padding: '10px 0' }}>
-                  {[0.3, 0.4, 0.6, 0.8, 0.95, 1.0, 0.9, 0.7, 0.5, 0.3, 0.2, 0.15].map((h, i) => (
-                    <div key={i} style={{ flex: 1, height: `${h * 100}%`, background: h > 0.8 ? '#34d399' : h > 0.5 ? '#fbbf24' : '#fb7185', borderRadius: '2px' }} />
-                  ))}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#9ca3af', marginTop: '8px' }}>
-                  <span>00:00</span>
-                  <span>06:00</span>
-                  <span>12:00</span>
-                  <span>18:00</span>
-                  <span>23:59</span>
-                </div>
+                <div className={styles.panelTitle}>ALERTS</div>
+                <div className={styles.badge}>No Active Alerts</div>
               </div>
             </div>
           </div>
         )}
 
-        {/* BATTERY TAB - Detailed Battery Telemetry Comparison */}
+        {activeTab === 'telemetry' && (
+          <div className={styles.analyticsGrid}>
+            {/* LEFT COLUMN */}
+            <div className={styles.analyticsLeft}>
+              {/* SYSTEM PULSE */}
+              <div className={styles.heroPanel}>
+                <div className={styles.panelTitleRow}>
+                  <div className={styles.panelTitle}>⚡ SYSTEM PULSE</div>
+                  <div className={styles.liveBadge}>● LIVE</div>
+                </div>
+
+                <div className={styles.productionRow}>
+                  <div className={styles.kpiValueLargeAmber}>
+                    {solarKW.toFixed(2)}
+                    <span className={styles.kpiUnit}>kW</span>
+                  </div>
+
+                  <div className={styles.sparklineContainer}>
+                    <div className={styles.sparkline}></div>
+                  </div>
+                </div>
+
+                <div className={styles.kpiGrid}>
+                  <KpiTile label="Load" value={`${loadKW.toFixed(2)} kW`} />
+                  <KpiTile
+                    label="Net Flow"
+                    value={`${netKW.toFixed(2)} kW`}
+                    color={netKW >= 0 ? '#34d399' : '#fb7185'}
+                  />
+                  <KpiTile
+                    label="Battery"
+                    value={`${batteryKW.toFixed(2)} kW`}
+                    color={batteryKW >= 0 ? '#7dd3fc' : '#fbbf24'}
+                  />
+                  <KpiTile label="System Eff." value={`${systemEfficiency}%`} />
+                </div>
+              </div>
+
+              {/* POWER FLOW */}
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>POWER FLOW</div>
+
+                <div className={styles.flowDiagram}>
+                  <div className={styles.node}>☀<span>{solarKW.toFixed(2)}kW</span></div>
+                  <div className={styles.flowLine}></div>
+                  <div className={styles.node}>🔋<span>{batteryKW.toFixed(2)}kW</span></div>
+                  <div className={styles.flowLine}></div>
+                  <div className={styles.node}>🏠<span>{loadKW.toFixed(2)}kW</span></div>
+                  <div className={styles.flowLine}></div>
+                  <div className={styles.node}>⚡<span>{Math.abs(gridKW).toFixed(2)}kW</span></div>
+                </div>
+              </div>
+
+              {/* ENERGY DISTRIBUTION */}
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>ENERGY DISTRIBUTION</div>
+
+                <div className={styles.distributionBars}>
+                  <DistributionBar label="Solar → Load" value={Math.round(telemetry?.self_consumption_pct || 0)} />
+                  <DistributionBar label="Solar → Battery" value={Math.round((100 - (telemetry?.self_consumption_pct || 0)) * 0.6)} />
+                  <DistributionBar label="Battery → Load" value={batteryKW > 0 ? 24 : 0} />
+                  <DistributionBar label="Grid → Load" value={Math.round(100 - (telemetry?.self_consumption_pct || 0) * 0.85)} />
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT COLUMN */}
+            <div className={styles.analyticsRight}>
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>SYSTEM HEALTH</div>
+
+                <HealthMetric label="DC Stability" value={`${(telemetry?.battery_v ? (telemetry.battery_v / 52 * 100).toFixed(1) : '--')}%`} />
+                <HealthMetric label="AC Frequency" value="60.0 Hz" />
+                <HealthMetric label="Inverter Temp" value={`${telemetry?.battery_temp_c?.toFixed(1) ?? '--'}°C`} />
+                <HealthMetric label="MPPT Efficiency" value={`${telemetry?.solar_w && telemetry.solar_w > 0 ? '99.2' : '--'}%`} />
+                <HealthMetric label="DC Ripple" value="12 mV" />
+
+                <div className={styles.goodBadge}>NORMAL</div>
+              </div>
+
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>24H PERFORMANCE</div>
+                <div className={styles.performanceBars}></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* BATTERY TAB — PREDICTIVE DIAGNOSTIC */}
         {activeTab === 'battery' && (
-          <div className={styles.grid}>
-            {/* Battery String Summary */}
-            <div className={styles.panel} style={{ gridColumn: '1 / -1' }}>
-              <div className={styles.panelTitleRow}>
-                <div className={styles.panelTitle}>BATTERY STRING COMPARISON</div>
-                <div style={{ fontSize: '11px', color: '#a78bfa' }}>8 Batteries in String • Compare values to spot outliers</div>
+          <div className={styles.analyticsGrid}>
+            {/* LEFT */}
+            <div className={styles.analyticsLeft}>
+              <div className={styles.heroPanel}>
+                <div className={styles.panelTitleRow}>
+                  <div className={styles.panelTitle}>🔋 BATTERY OVERVIEW</div>
+                  <div className={styles.statusBadge}>ACTIVE</div>
+                </div>
+
+                <div
+                  className={styles.kpiValueLarge}
+                  style={{
+                    color:
+                      soc > 50 ? '#34d399' : soc > 20 ? '#fbbf24' : '#fb7185'
+                  }}
+                >
+                  {soc}%
+                </div>
+
+                <div className={styles.kpiGrid}>
+                  <KpiTile label="SoH" value={`${soh}%`} />
+                  <KpiTile label="Usable" value={`${usableCapacity} kWh`} />
+                  <KpiTile label="C-Rate" value={cRate} />
+                  <KpiTile label="RTE" value={`${roundTripEff}%`} />
+                </div>
+
+                <div className={styles.depletionBar}></div>
               </div>
 
-              {/* Battery Comparison Table */}
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                      <th style={{ textAlign: 'left', padding: '10px 8px', color: '#a78bfa', fontWeight: 600 }}>Battery</th>
-                      <th style={{ textAlign: 'center', padding: '10px 8px', color: '#a78bfa', fontWeight: 600 }}>Status</th>
-                      <th style={{ textAlign: 'center', padding: '10px 8px', color: '#a78bfa', fontWeight: 600 }}>SoC</th>
-                      <th style={{ textAlign: 'center', padding: '10px 8px', color: '#a78bfa', fontWeight: 600 }}>Voltage</th>
-                      <th style={{ textAlign: 'center', padding: '10px 8px', color: '#a78bfa', fontWeight: 600 }}>Current</th>
-                      <th style={{ textAlign: 'center', padding: '10px 8px', color: '#a78bfa', fontWeight: 600 }}>Temp</th>
-                      <th style={{ textAlign: 'center', padding: '10px 8px', color: '#a78bfa', fontWeight: 600 }}>SoH</th>
-                      <th style={{ textAlign: 'center', padding: '10px 8px', color: '#a78bfa', fontWeight: 600 }}>Balance</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Battery 1 - Active */}
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '12px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '16px' }}>🔋</span>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#e5e7eb' }}>BATT_57B8</div>
-                            <div style={{ fontSize: '10px', color: '#a78bfa' }}>A5:C2:37:35:57:B8</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#34d399', fontSize: '11px', padding: '4px 8px', background: 'rgba(52,211,153,0.1)', borderRadius: '4px' }}>● ACTIVE</span>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: telemetry?.battery_soc_pct && telemetry.battery_soc_pct > 50 ? '#34d399' : '#fbbf24', fontWeight: 600 }}>
-                        {telemetry?.battery_soc_pct?.toFixed(1) ?? '--'}%
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#e5e7eb', fontWeight: 600 }}>
-                        {telemetry?.battery_v?.toFixed(2) ?? '--'}V
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#fbbf24', fontWeight: 600 }}>
-                        {telemetry?.battery_a?.toFixed(1) ?? '--'}A
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: telemetry?.battery_temp_c && telemetry.battery_temp_c > 40 ? '#fb7185' : '#7dd3fc', fontWeight: 600 }}>
-                        {telemetry?.battery_temp_c?.toFixed(0) ?? '--'}°C
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: telemetry?.battery_soh_pct && telemetry.battery_soh_pct > 95 ? '#34d399' : '#fbbf24', fontWeight: 600 }}>
-                        {telemetry?.battery_soh_pct?.toFixed(0) ?? '--'}%
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#34d399', fontSize: '11px' }}>✓ Good</span>
-                      </td>
-                    </tr>
-                    {/* Battery 2 - Disconnected */}
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '12px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '16px', opacity: 0.5 }}>🔋</span>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#9ca3af' }}>BATT_0359</div>
-                            <div style={{ fontSize: '10px', color: '#a78bfa' }}>A5:C2:37:40:03:59</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#fb7185', fontSize: '11px', padding: '4px 8px', background: 'rgba(251,113,133,0.1)', borderRadius: '4px' }}>● DISCONN</span>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#9ca3af' }}>--</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#9ca3af' }}>--</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#9ca3af' }}>--</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#9ca3af' }}>--</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#9ca3af' }}>--</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#fb7185', fontSize: '11px' }}>⚠ Check</span>
-                      </td>
-                    </tr>
-                    {/* Battery 3 */}
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '12px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '16px' }}>🔋</span>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#e5e7eb' }}>BATT_76D2</div>
-                            <div style={{ fontSize: '10px', color: '#a78bfa' }}>A5:C2:37:3C:76:D2</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#34d399', fontSize: '11px', padding: '4px 8px', background: 'rgba(52,211,153,0.1)', borderRadius: '4px' }}>● ACTIVE</span>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#fbbf24', fontWeight: 600 }}>65.2%</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#e5e7eb', fontWeight: 600 }}>26.4V</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#fbbf24', fontWeight: 600 }}>12.5A</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#7dd3fc', fontWeight: 600 }}>27°C</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#34d399', fontWeight: 600 }}>98%</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#34d399', fontSize: '11px' }}>✓ Good</span>
-                      </td>
-                    </tr>
-                    {/* Battery 4 - Disconnected */}
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '12px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '16px', opacity: 0.5 }}>🔋</span>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#9ca3af' }}>BATT_7865</div>
-                            <div style={{ fontSize: '10px', color: '#a78bfa' }}>A5:C2:37:3C:78:65</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#fb7185', fontSize: '11px', padding: '4px 8px', background: 'rgba(251,113,133,0.1)', borderRadius: '4px' }}>● DISCONN</span>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#9ca3af' }}>--</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#9ca3af' }}>--</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#9ca3af' }}>--</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#9ca3af' }}>--</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#9ca3af' }}>--</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#fb7185', fontSize: '11px' }}>⚠ Check</span>
-                      </td>
-                    </tr>
-                    {/* Battery 5 */}
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '12px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '16px' }}>🔋</span>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#e5e7eb' }}>BATT_27CC</div>
-                            <div style={{ fontSize: '10px', color: '#a78bfa' }}>A5:C2:37:46:27:CC</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#34d399', fontSize: '11px', padding: '4px 8px', background: 'rgba(52,211,153,0.1)', borderRadius: '4px' }}>● ACTIVE</span>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#34d399', fontWeight: 600 }}>82.1%</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#e5e7eb', fontWeight: 600 }}>27.2V</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#fbbf24', fontWeight: 600 }}>8.3A</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#7dd3fc', fontWeight: 600 }}>26°C</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#34d399', fontWeight: 600 }}>97%</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#34d399', fontSize: '11px' }}>✓ Good</span>
-                      </td>
-                    </tr>
-                    {/* Battery 6 */}
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '12px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '16px' }}>🔋</span>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#e5e7eb' }}>BATT_350D</div>
-                            <div style={{ fontSize: '10px', color: '#a78bfa' }}>A5:C2:37:46:35:0D</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#7dd3fc', fontSize: '11px', padding: '4px 8px', background: 'rgba(125,211,252,0.1)', borderRadius: '4px' }}>● FLOAT</span>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#34d399', fontWeight: 600 }}>91.3%</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#e5e7eb', fontWeight: 600 }}>27.0V</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#34d399', fontWeight: 600 }}>2.1A</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#7dd3fc', fontWeight: 600 }}>25°C</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#34d399', fontWeight: 600 }}>99%</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#34d399', fontSize: '11px' }}>✓ Good</span>
-                      </td>
-                    </tr>
-                    {/* Battery 7 */}
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '12px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '16px' }}>🔋</span>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#e5e7eb' }}>BATT_610E</div>
-                            <div style={{ fontSize: '10px', color: '#a78bfa' }}>A5:C2:37:55:61:0E</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#fbbf24', fontSize: '11px', padding: '4px 8px', background: 'rgba(251,191,36,0.1)', borderRadius: '4px' }}>● DISCHRG</span>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#fbbf24', fontWeight: 600 }}>54.8%</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#e5e7eb', fontWeight: 600 }}>26.8V</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#fb7185', fontWeight: 600 }}>-15.2A</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#fbbf24', fontWeight: 600 }}>32°C</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#34d399', fontWeight: 600 }}>94%</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#fbbf24', fontSize: '11px' }}>⚡ High Load</span>
-                      </td>
-                    </tr>
-                    {/* Battery 8 */}
-                    <tr>
-                      <td style={{ padding: '12px 8px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '16px' }}>🔋</span>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#e5e7eb' }}>BATT_1DE0</div>
-                            <div style={{ fontSize: '10px', color: '#a78bfa' }}>A5:C2:37:55:1D:E0</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#34d399', fontSize: '11px', padding: '4px 8px', background: 'rgba(52,211,153,0.1)', borderRadius: '4px' }}>● ACTIVE</span>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#34d399', fontWeight: 600 }}>76.4%</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#e5e7eb', fontWeight: 600 }}>27.1V</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#fbbf24', fontWeight: 600 }}>6.8A</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#7dd3fc', fontWeight: 600 }}>28°C</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px', color: '#34d399', fontWeight: 600 }}>96%</td>
-                      <td style={{ textAlign: 'center', padding: '12px 8px' }}>
-                        <span style={{ color: '#34d399', fontSize: '11px' }}>✓ Good</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>STRING COMPARISON</div>
+                <div className={styles.stringTable}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
+                    const outlier = n === 4;
+                    return (
+                      <div
+                        key={n}
+                        className={`${styles.stringRow} ${outlier ? styles.outlierRow : ''
+                          }`}
+                      >
+                        <div>B{n}</div>
+                        <div>{((telemetry?.battery_v || 27) + (n % 5 - 2) * 0.2).toFixed(2)}V</div>
+                        <div>{((telemetry?.battery_a || 5) + (n % 3 - 1)).toFixed(1)}A</div>
+                        <div>{((telemetry?.battery_temp_c || 25) + (n % 4 - 2)).toFixed(0)}°C</div>
+                        <div>{((telemetry?.battery_soc_pct || 75) + (n % 3 - 1) * 5).toFixed(0)}%</div>
+                        <div>{((telemetry?.battery_soh_pct || 97) - n * 0.5).toFixed(0)}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT */}
+            <div className={styles.analyticsRight}>
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>PACK HEALTH MODEL</div>
+
+                <HealthMetric label="Voltage Spread" value="0.8V" />
+                <HealthMetric label="Temp Spread" value="7°C" />
+                <HealthMetric label="SoC Spread" value="±18%" />
+                <HealthMetric label="SoH Var" value="1.5%" />
+                <HealthMetric label="Balance Eff" value="98%" />
+
+                <div className={styles.stressIndex}>
+                  42
+                  <span style={{ fontSize: '14px', marginLeft: '4px', color: '#9ca3af' }}>Stress Index</span>
+                </div>
               </div>
 
-              {/* String Analysis Summary */}
-              <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(0,0,0,0.2)', borderRadius: '10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: '#e5e7eb' }}>String Analysis</div>
-                  <div style={{ fontSize: '11px', color: '#a78bfa' }}>6 Active • 2 Disconnected</div>
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>FAILURE PREDICTION</div>
+                <div className={styles.rul}>
+                  {(telemetry?.battery_soh_pct ? (telemetry.battery_soh_pct - 80) / 2 : 8).toFixed(1)} yrs RUL
                 </div>
-                <div className={styles.microGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Voltage Spread</div>
-                    <div className={styles.microValue} style={{ color: '#fbbf24' }}>0.8V</div>
-                  </div>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Max Temp Diff</div>
-                    <div className={styles.microValue} style={{ color: '#fb7185' }}>7°C</div>
-                  </div>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>SoC Balance</div>
-                    <div className={styles.microValue} style={{ color: '#fbbf24' }}>±18%</div>
-                  </div>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Avg SoH</div>
-                    <div className={styles.microValue} style={{ color: '#34d399' }}>96.5%</div>
-                  </div>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Warnings</div>
-                    <div className={styles.microValue} style={{ color: '#fb7185' }}>2</div>
-                  </div>
-                </div>
+                <div className={styles.trendChart}></div>
               </div>
             </div>
           </div>
@@ -1199,59 +1147,72 @@ export default function AccuSolarDashboard() {
 
         {/* WEATHER TAB */}
         {activeTab === 'weather' && (
-          <div className={styles.grid}>
-            <div className={styles.panel}>
-              <div className={styles.panelTitleRow}>
-                <div className={styles.panelTitle}>CURRENT CONDITIONS</div>
-                {solarImpact && (
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: solarImpact.score >= 60 ? '#34d399' : '#fbbf24' }}>
-                    {solarImpact.label}
+          <div className={styles.analyticsGrid}>
+            <div className={styles.analyticsLeft}>
+              <div className={styles.heroPanel}>
+                <div className={styles.panelTitleRow}>
+                  <div className={styles.panelTitle}>☀ WEATHER IMPACT</div>
+                  <div className={styles.badge}>FORECAST</div>
+                </div>
+
+                <div>
+                  <div
+                    className={styles.kpiValueLarge}
+                    style={{
+                      color: solarImpact
+                        ? solarImpact.score >= 70
+                          ? '#34d399'
+                          : solarImpact.score >= 40
+                            ? '#fbbf24'
+                            : '#fb7185'
+                        : '#9ca3af',
+                    }}
+                  >
+                    {solarImpact?.score?.toFixed(0) ?? '--'}
                   </div>
-                )}
+                  <div className={styles.kpiLabel}>Solar Impact Score</div>
+                </div>
               </div>
-              <div className={styles.microGrid}>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Cloud Cover</div>
-                  <div className={styles.microValue}>{weather ? `${weather.cloudCover.toFixed(0)}%` : '--'}</div>
-                </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Temperature</div>
-                  <div className={styles.microValue}>{tempDisplay}</div>
-                </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>Wind Speed</div>
-                  <div className={styles.microValue}>{weather ? `${weather.windSpeed.toFixed(1)} m/s` : '--'}</div>
-                </div>
-                <div className={styles.micro}>
-                  <div className={styles.microLabel}>GHI</div>
-                  <div className={styles.microValue}>{weather ? `${weather.shortwave_radiation.toFixed(0)} W/m²` : '--'}</div>
+
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>TODAY FORECAST</div>
+                <div className={styles.productionKPIs}>
+                  <div className={styles.kpiTile}>
+                    <div className={styles.kpiLabel}>Irradiance</div>
+                    <div className={styles.kpiValue}>
+                      {weather ? Math.round(800 * (1 - weather.cloudCover / 100)) : '--'} W/m²
+                    </div>
+                  </div>
+                  <div className={styles.kpiTile}>
+                    <div className={styles.kpiLabel}>Cloud Cover</div>
+                    <div
+                      className={styles.kpiValue}
+                      style={{
+                        color: weather
+                          ? weather.cloudCover > 70
+                            ? '#fb7185'
+                            : weather.cloudCover > 40
+                              ? '#fbbf24'
+                              : '#34d399'
+                          : '#9ca3af',
+                      }}
+                    >
+                      {weather?.cloudCover?.toFixed(0) ?? '--'}%
+                    </div>
+                  </div>
+                  <div className={styles.kpiTile}>
+                    <div className={styles.kpiLabel}>Temp</div>
+                    <div className={styles.kpiValue}>{tempDisplay}</div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className={styles.panel}>
-              <div className={styles.panelTitleRow}>
-                <div className={styles.panelTitle}>SOLAR IMPACT ANALYSIS</div>
+            <div className={styles.analyticsRight}>
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>7-DAY TREND</div>
+                <div className={styles.trendChart}></div>
               </div>
-              {solarImpact ? (
-                <div>
-                  <div style={{ textAlign: 'center', padding: '20px' }}>
-                    <div style={{ fontSize: '48px', fontWeight: 800, color: solarImpact.score >= 60 ? '#34d399' : solarImpact.score >= 30 ? '#fbbf24' : '#fb7185' }}>
-                      {solarImpact.score.toFixed(0)}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#a78bfa', marginTop: '8px' }}>out of 100</div>
-                  </div>
-                  <div style={{ height: '16px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', overflow: 'hidden', margin: '16px 0' }}>
-                    <div style={{ width: `${solarImpact.score}%`, height: '100%', background: solarImpact.score >= 60 ? '#34d399' : '#fbbf24', transition: 'width 0.5s ease' }}></div>
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#e5e7eb', lineHeight: 1.6 }}>
-                    <p><strong>Classification:</strong> {solarImpact.classification}</p>
-                    <p style={{ marginTop: '8px' }}>{solarImpact.score >= 85 ? 'Excellent conditions for solar production.' : solarImpact.score >= 60 ? 'Good conditions with some reduction.' : solarImpact.score >= 30 ? 'Reduced solar conditions.' : 'Poor solar conditions.'}</p>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ color: '#a78bfa', padding: '40px', textAlign: 'center' }}>Weather data unavailable</div>
-              )}
             </div>
           </div>
         )}
@@ -1571,41 +1532,93 @@ export default function AccuSolarDashboard() {
 
         {/* OPTIMIZATION TAB */}
         {activeTab === 'optimization' && (
-          <div>
+          <div className={styles.analyticsGrid}>
             {selectedLocation ? (
-              <SolarCommandDashboard
-                tilt={{
-                  latitude: selectedLocation.lat,
-                  annualOptimal: Math.round(selectedLocation.lat * 0.76),
-                  winterOptimal: Math.round(selectedLocation.lat * 0.76 + 15),
-                  summerOptimal: Math.round(selectedLocation.lat * 0.76 - 15),
-                  currentTilt: Math.round(selectedLocation.lat * 0.76),
-                }}
-                chargeWindow={{
-                  peakStartHour: 12,
-                  peakEndHour: 14,
-                  expectedSOCPercent: telemetry?.battery_soc_pct ? Math.round(telemetry.battery_soc_pct + 25) : 85,
-                  expectedTimeToFull: telemetry?.ttg_hours
-                    ? `${Math.floor(telemetry.ttg_hours)}h ${Math.round((telemetry.ttg_hours % 1) * 60)}m`
-                    : '3h 20m',
-                }}
-                shading={shadingResult ? {
-                  averageLossPercent: shadingResult.averageLossPercent,
-                  monthlyImpact: shadingResult.monthlyImpact,
-                  recommendations: shadingResult.recommendations,
-                } : { averageLossPercent: 0, monthlyImpact: [], recommendations: [] }}
-              />
+              <>
+                <div className={styles.analyticsLeft}>
+                  <div className={styles.heroPanel}>
+                    <div className={styles.panelTitleRow}>
+                      <div className={styles.panelTitle}>📐 TILT OPTIMIZATION</div>
+                      <div className={styles.badge}>ENGINE</div>
+                    </div>
+                    <div className={styles.kpiValueLarge}>{Math.round(selectedLocation.lat * 0.76)}°</div>
+                    <div className={styles.kpiLabel}>Optimal Tilt @ {selectedLocation.lat.toFixed(1)}°N</div>
+                    <div className={styles.productionKPIs} style={{ marginTop: '16px' }}>
+                      <div className={styles.kpiTile}>
+                        <div className={styles.kpiLabel}>Winter</div>
+                        <div className={styles.kpiValue}>{Math.round(selectedLocation.lat * 0.76 + 15)}°</div>
+                      </div>
+                      <div className={styles.kpiTile}>
+                        <div className={styles.kpiLabel}>Summer</div>
+                        <div className={styles.kpiValue}>{Math.round(selectedLocation.lat * 0.76 - 15)}°</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.panel}>
+                    <div className={styles.panelTitle}>SHADING ANALYSIS</div>
+                    <div className={styles.productionKPIs}>
+                      <div className={styles.kpiTile}>
+                        <div className={styles.kpiLabel}>Avg Loss</div>
+                        <div className={styles.kpiValue} style={{ color: '#fbbf24' }}>
+                          {shadingResult?.averageLossPercent ?? '--'}%
+                        </div>
+                      </div>
+                      <div className={styles.kpiTile}>
+                        <div className={styles.kpiLabel}>Morning</div>
+                        <div className={styles.kpiValue}>{shadingResult?.monthlyImpact?.[0]?.lossPercent ?? '--'}%</div>
+                      </div>
+                      <div className={styles.kpiTile}>
+                        <div className={styles.kpiLabel}>Afternoon</div>
+                        <div className={styles.kpiValue}>{shadingResult?.monthlyImpact?.[8]?.lossPercent ?? '--'}%</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.analyticsRight}>
+                  <div className={styles.panel}>
+                    <div className={styles.panelTitle}>CHARGE WINDOW</div>
+                    <div className={styles.kpiTile}>
+                      <div className={styles.kpiLabel}>Peak Hours</div>
+                      <div className={styles.kpiValue}>12:00 - 14:00</div>
+                    </div>
+                    <div className={styles.kpiTile} style={{ marginTop: '8px' }}>
+                      <div className={styles.kpiLabel}>Est. Time to Full</div>
+                      <div className={styles.kpiValue} style={{ color: '#34d399' }}>
+                        {telemetry?.ttg_hours ? `${Math.floor(telemetry.ttg_hours)}h ${Math.round((telemetry.ttg_hours % 1) * 60)}m` : '3h 20m'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.panel}>
+                    <div className={styles.panelTitle}>UPGRADE ROI</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                        <span>Adjustable Tilt</span>
+                        <span style={{ color: '#34d399' }}>+10%</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                        <span>Microinverters</span>
+                        <span style={{ color: '#fbbf24' }}>+15%</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                        <span>+4 Panels</span>
+                        <span style={{ color: '#34d399' }}>+30%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
             ) : (
-              <div className={styles.panel}>
+              <div className={styles.panel} style={{ gridColumn: '1 / -1' }}>
                 <div className={styles.panelTitleRow}>
                   <div className={styles.panelTitle}>SOLAR OPTIMIZATION</div>
                 </div>
                 <div style={{ color: '#a78bfa', fontSize: '14px', padding: '40px', textAlign: 'center' }}>
                   <div style={{ fontSize: '48px', marginBottom: '16px' }}>☀️</div>
                   <div style={{ marginBottom: '12px' }}>Select a location to see solar optimization insights</div>
-                  <div style={{ fontSize: '12px', opacity: 0.7 }}>
-                    Go to Controls tab to search for a location
-                  </div>
+                  <div style={{ fontSize: '12px', opacity: 0.7 }}>Go to Controls tab to search for a location</div>
                 </div>
               </div>
             )}
@@ -1614,46 +1627,94 @@ export default function AccuSolarDashboard() {
 
         {/* AI INSIGHTS TAB */}
         {activeTab === 'ai-insights' && (
-          <div className={styles.grid}>
-            {/* AI RECOMMENDATIONS */}
-            <div className={styles.panel} style={{ gridColumn: '1 / -1' }}>
-              <div className={styles.panelTitleRow}>
-                <div className={styles.panelTitle}>🤖 AI RECOMMENDATIONS</div>
-                <div style={{ fontSize: '11px', color: '#a78bfa' }}>Powered by Claude AI</div>
+          <div className={styles.analyticsGrid}>
+            <div className={styles.analyticsLeft}>
+              <div className={styles.heroPanel}>
+                <div className={styles.panelTitleRow}>
+                  <div className={styles.panelTitle}>🤖 AI SYSTEM ANALYSIS</div>
+                  <div className={styles.badge}>LIVE AI</div>
+                </div>
+                <div className={styles.kpiValueLarge}>Optimal</div>
+                <div className={styles.kpiLabel}>Current System State</div>
               </div>
-              {recommendations.length === 0 ? (
-                <div style={{ color: '#a78bfa', fontSize: '13px', padding: '20px', textAlign: 'center' }}>
-                  No recommendations yet. Select a location and ensure telemetry is flowing.
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gap: '10px', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
-                  {recommendations.map((rec) => (
-                    <div key={rec.id} style={{ padding: '12px', borderRadius: '10px', border: '1px solid', borderColor: rec.severity === 'critical' ? 'rgba(251, 113, 133, 0.4)' : rec.severity === 'warning' ? 'rgba(251, 191, 36, 0.4)' : 'rgba(125, 211, 252, 0.4)', background: rec.severity === 'critical' ? 'rgba(251, 113, 133, 0.08)' : rec.severity === 'warning' ? 'rgba(251, 191, 36, 0.08)' : 'rgba(125, 211, 252, 0.08)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '14px' }}>{rec.severity === 'critical' ? '🔴' : rec.severity === 'warning' ? '🟡' : '🔵'}</span>
-                        <span style={{ fontWeight: 600, fontSize: '13px', color: rec.severity === 'critical' ? '#fb7185' : rec.severity === 'warning' ? '#fbbf24' : '#7dd3fc' }}>{rec.title}</span>
+
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>RECOMMENDATIONS</div>
+                {recommendations.length === 0 ? (
+                  <div style={{ color: '#a78bfa', fontSize: '13px', padding: '20px', textAlign: 'center' }}>
+                    No recommendations yet. Select a location and ensure telemetry is flowing.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {recommendations.slice(0, 3).map((rec) => (
+                      <div
+                        key={rec.id}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '10px',
+                          border: '1px solid',
+                          borderColor:
+                            rec.severity === 'critical'
+                              ? 'rgba(251, 113, 133, 0.4)'
+                              : rec.severity === 'warning'
+                                ? 'rgba(251, 191, 36, 0.4)'
+                                : 'rgba(125, 211, 252, 0.4)',
+                          background:
+                            rec.severity === 'critical'
+                              ? 'rgba(251, 113, 133, 0.08)'
+                              : rec.severity === 'warning'
+                                ? 'rgba(251, 191, 36, 0.08)'
+                                : 'rgba(125, 211, 252, 0.08)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '14px' }}>
+                            {rec.severity === 'critical' ? '🔴' : rec.severity === 'warning' ? '🟡' : '🔵'}
+                          </span>
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              fontSize: '13px',
+                              color:
+                                rec.severity === 'critical'
+                                  ? '#fb7185'
+                                  : rec.severity === 'warning'
+                                    ? '#fbbf24'
+                                    : '#7dd3fc',
+                            }}
+                          >
+                            {rec.title}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#e5e7eb', lineHeight: 1.5 }}>{rec.body}</div>
                       </div>
-                      <div style={{ fontSize: '12px', color: '#e5e7eb', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{rec.body}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* AI CHAT INTERFACE */}
-            <AIChatPanel telemetry={telemetry} weather={weather} selectedLocation={selectedLocation} />
+            <div className={styles.analyticsRight}>
+              <AIChatPanel telemetry={telemetry} weather={weather} selectedLocation={selectedLocation} />
+            </div>
           </div>
         )}
 
         {/* CONTROLS TAB */}
         {activeTab === 'controls' && (
-          <div>
-            <div className={styles.grid}>
-              <div className={styles.panel}>
+          <div className={styles.analyticsGrid}>
+            <div className={styles.analyticsLeft}>
+              <div className={styles.heroPanel}>
                 <div className={styles.panelTitleRow}>
-                  <div className={styles.panelTitle}>OPERATIONS CONSOLE</div>
+                  <div className={styles.panelTitle}>⚙ SYSTEM CONTROLS</div>
+                  <div className={styles.badge}>OPERATOR MODE</div>
                 </div>
+                <div className={styles.kpiValueLarge}>Manual</div>
+                <div className={styles.kpiLabel}>Current Mode</div>
+              </div>
 
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>LOCATION</div>
                 <input
                   type="text"
                   className={styles.input}
@@ -1724,158 +1785,79 @@ export default function AccuSolarDashboard() {
                     ✓ Selected: <strong>{selectedLocation.name}</strong>
                   </div>
                 )}
-
-                <div style={{ marginTop: '12px', color: '#a78bfa', fontSize: '12px' }}>
-                  Tip: Start with a city name. Select a result to load weather and a solar outlook.
-                </div>
               </div>
 
               <div className={styles.panel}>
-                <div className={styles.panelTitleRow}>
-                  <div className={styles.panelTitle}>REPORTS + ANALYTICS</div>
+                <div className={styles.panelTitle}>BLE PAIRING</div>
+                <div style={{ color: '#a78bfa', fontSize: '12px', marginBottom: '12px' }}>
+                  Web Bluetooth for Eco-Worthy/Victron battery packs.
                 </div>
-                <div style={{ color: '#a78bfa', fontSize: '12px', marginBottom: '8px' }}>
-                  Location: <strong>{selectedLocation ? selectedLocation.name : 'Not selected'}</strong>
+                <select className={styles.input} value={selectedBle} onChange={(e) => setSelectedBle(e.target.value)} style={{ marginBottom: '10px' }}>
+                  <option value="">Select a battery...</option>
+                </select>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button className={styles.button} style={{ flex: 1 }}>
+                    Connect BLE
+                  </button>
+                  <button className={styles.button} style={{ flex: 1, opacity: 0.6 }}>
+                    Clear
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div className={styles.panel} style={{ marginTop: '14px' }}>
-              <div className={styles.panelTitleRow}>
-                <div className={styles.panelTitle}>BLUETOOTH / BLE (EXPERIMENTAL)</div>
-              </div>
-
-              <div style={{ color: '#a78bfa', fontSize: '12px', marginBottom: '12px', lineHeight: '1.5' }}>
-                This uses Web Bluetooth. It works best on Chrome/Edge (desktop/Android). iOS Safari support is
-                limited.
-                <br />
-                For Victron, local LAN integrations (Venus OS) are usually more reliable than BLE.
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', fontSize: '12px' }}>
-                <span
-                  style={{
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    background: '#dc352520',
-                    color: '#fb7185',
-                  }}
-                >
-                  Support: available
-                </span>
-                <span
-                  style={{
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    background: '#6c757d20',
-                    color: '#9ca3af',
-                  }}
-                >
-                  Status: idle
-                </span>
-                <span
-                  style={{
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    background: '#6c757d20',
-                    color: '#9ca3af',
-                  }}
-                >
-                  Devices: 0
-                </span>
-              </div>
-
-              <select
-                className={styles.input}
-                value={selectedBle}
-                onChange={(e) => setSelectedBle(e.target.value)}
-                style={{ marginBottom: '10px' }}
-              >
-                <option value="">Select a battery ...</option>
-              </select>
-
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-                <button className={styles.button} style={{ flex: 1 }}>
-                  Connect BLE
-                </button>
-                <button className={styles.button} style={{ flex: 1, opacity: 0.6 }}>
-                  Clear
-                </button>
-              </div>
-
-              <div
-                style={{
-                  padding: '14px',
-                  background: 'rgba(0, 0, 0, 0.22)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                }}
-              >
-                <div className={styles.panelTitle} style={{ marginBottom: '8px' }}>
-                  BATTERY BANK CONFIG
+            <div className={styles.analyticsRight}>
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>SYSTEM ACTIONS</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <button className={styles.badge} style={{ justifyContent: 'center', cursor: 'pointer' }}>
+                    Restart Inverter
+                  </button>
+                  <button className={styles.badge} style={{ justifyContent: 'center', cursor: 'pointer', background: 'rgba(251, 191, 36, 0.15)' }}>
+                    Force Sync Time
+                  </button>
+                  <button className={styles.badge} style={{ justifyContent: 'center', cursor: 'pointer', background: 'rgba(251, 113, 133, 0.15)' }}>
+                    Emergency Stop
+                  </button>
                 </div>
-                <div style={{ color: '#a78bfa', fontSize: '12px', marginBottom: '12px' }}>
-                  Match your physical setup (e.g. 2 banks of 4 × 12V = 48V each).
-                </div>
+              </div>
 
+              <div className={styles.panel}>
+                <div className={styles.panelTitle}>BATTERY BANK CONFIG</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '10px' }}>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Banks</div>
+                  <div className={styles.kpiTile}>
+                    <div className={styles.kpiLabel}>Banks</div>
                     <input
                       type="number"
                       value={batteryConfig.banks}
-                      onChange={(e) =>
-                        setBatteryConfig({ ...batteryConfig, banks: parseInt(e.target.value) || 1 })
-                      }
+                      onChange={(e) => setBatteryConfig({ ...batteryConfig, banks: parseInt(e.target.value) || 1 })}
                       className={styles.input}
                       style={{ marginTop: '6px', height: '32px', padding: '6px' }}
                     />
                   </div>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Packs per bank</div>
+                  <div className={styles.kpiTile}>
+                    <div className={styles.kpiLabel}>Packs/Bank</div>
                     <input
                       type="number"
                       value={batteryConfig.packsPerBank}
-                      onChange={(e) =>
-                        setBatteryConfig({ ...batteryConfig, packsPerBank: parseInt(e.target.value) || 1 })
-                      }
+                      onChange={(e) => setBatteryConfig({ ...batteryConfig, packsPerBank: parseInt(e.target.value) || 1 })}
                       className={styles.input}
                       style={{ marginTop: '6px', height: '32px', padding: '6px' }}
                     />
                   </div>
-                  <div className={styles.micro}>
-                    <div className={styles.microLabel}>Voltage per bank (V)</div>
+                  <div className={styles.kpiTile}>
+                    <div className={styles.kpiLabel}>Voltage</div>
                     <input
                       type="number"
                       value={batteryConfig.voltagePerBank}
-                      onChange={(e) =>
-                        setBatteryConfig({ ...batteryConfig, voltagePerBank: parseInt(e.target.value) || 12 })
-                      }
+                      onChange={(e) => setBatteryConfig({ ...batteryConfig, voltagePerBank: parseInt(e.target.value) || 12 })}
                       className={styles.input}
                       style={{ marginTop: '6px', height: '32px', padding: '6px' }}
                     />
                   </div>
                 </div>
-
                 <div style={{ color: '#a78bfa', fontSize: '11px' }}>
-                  Total packs: {batteryConfig.banks * batteryConfig.packsPerBank}. Per bank: {batteryConfig.packsPerBank} × {batteryConfig.voltagePerBank}V = {batteryConfig.packsPerBank * batteryConfig.voltagePerBank}V (or series to 48V)
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: '14px',
-                  background: 'rgba(0, 0, 0, 0.22)',
-                  borderRadius: '12px',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  marginTop: '12px',
-                }}
-              >
-                <div className={styles.panelTitle} style={{ marginBottom: '8px' }}>
-                  BMS DECODER (ECO-WORTHY A1/A2 + GENERIC)
-                </div>
-                <div style={{ color: '#a78bfa', fontSize: '12px' }}>
-                  Eco-Worthy 12V packs often use 0xA1/0xA2 packets. Use that preset if you see those headers in Live packets. Otherwise use generic "Use guess" to lock in byte offsets.
+                  Total: {batteryConfig.banks * batteryConfig.packsPerBank} packs @ {batteryConfig.packsPerBank * batteryConfig.voltagePerBank}V
                 </div>
               </div>
             </div>

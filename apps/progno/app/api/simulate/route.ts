@@ -1,7 +1,7 @@
 /**
  * Monte Carlo Simulation API
  * POST /api/simulate - Run game simulations
- * 
+ *
  * Like Leans AI's "Remi" - runs 1000+ simulations per game
  * to provide probability-based picks free from human bias
  */
@@ -13,7 +13,7 @@ import { GameData } from '../../lib/prediction-engine';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { 
+    const {
       gameData,
       spread,
       total,
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Fetch game data from odds service
-    const { OddsService } = await import('../../lib/odds-service');
+    const { OddsService } = await import('../../../lib/odds-service');
     const game = await OddsService.getGame(gameId);
 
     if (!game) {
@@ -182,7 +182,7 @@ function generatePicks(
   const mlWinner = result.homeWinProbability > 0.5 ? gameData.homeTeam : gameData.awayTeam;
   const mlProb = Math.max(result.homeWinProbability, result.awayWinProbability);
   const mlValueBet = valueBets?.find(v => v.type === 'moneyline' && v.side === mlWinner);
-  
+
   picks.push({
     type: 'Moneyline',
     pick: mlWinner,
@@ -195,7 +195,7 @@ function generatePicks(
   // Spread pick
   const spreadHomeCovers = result.spreadProbabilities.homeCovers;
   const spreadAwayCovers = result.spreadProbabilities.awayCovers;
-  const spreadPick = spreadHomeCovers > spreadAwayCovers 
+  const spreadPick = spreadHomeCovers > spreadAwayCovers
     ? { team: gameData.homeTeam, prob: spreadHomeCovers, line: gameData.odds.spread }
     : { team: gameData.awayTeam, prob: spreadAwayCovers, line: -(gameData.odds.spread || 0) };
   const spreadValueBet = valueBets?.find(v => v.type === 'spread');

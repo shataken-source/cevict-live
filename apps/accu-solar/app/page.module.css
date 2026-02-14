@@ -1954,3 +1954,573 @@
     height: 32px;
   }
 }
+
+/* Production Telemetry & Battery Tab Styles */
+.kpiValueLargeAmber {
+  font-size: 48px;
+  font-weight: 800;
+  color: #fbbf24;
+  text-shadow: 0 0 25px rgba(251, 191, 36, 0.5);
+}
+
+.kpiUnit {
+  font-size: 18px;
+  margin-left: 6px;
+  color: #9ca3af;
+}
+
+.productionRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sparklineContainer {
+  width: 180px;
+  height: 50px;
+}
+
+.flowDiagram {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 0;
+}
+
+.node {
+  text-align: center;
+  font-size: 20px;
+}
+
+.node span {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.flowLine {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(to right, #34d399, #fbbf24);
+  margin: 0 10px;
+}
+
+.distributionBars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.distRow {
+  display: grid;
+  grid-template-columns: 1fr 2fr 40px;
+  align-items: center;
+  gap: 10px;
+}
+
+.distLabel {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.distBarWrap {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.distBar {
+  height: 100%;
+  background: #34d399;
+  border-radius: 4px;
+}
+
+.distValue {
+  font-size: 11px;
+  color: #e5e7eb;
+  text-align: right;
+}
+
+.healthMetric {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.goodBadge {
+  margin-top: 10px;
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+  padding: 6px 12px;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+.performanceBars {
+  height: 60px;
+  background: linear-gradient(to right, #34d399, #fbbf24, #fb7185);
+  border-radius: 8px;
+}
+
+.stringRow {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.outlierRow {
+  background: rgba(251, 113, 133, 0.1);
+}
+
+.stressIndex {
+  font-size: 36px;
+  font-weight: 800;
+  color: #fbbf24;
+  margin-top: 12px;
+}
+
+.rul {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.trendChart {
+  height: 80px;
+  background: rgba(167, 139, 250, 0.15);
+  border-radius: 8px;
+}
+
+.kpiTile {
+  text-align: center;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+.kpiLabel {
+  font-size: 11px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kpiValue {
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.liveBadge {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.depletionBar {
+  margin-top: 16px;
+}
+
+/* ========================================
+   SUN VIEW TAB — EXACT MATCH TO DESIGN
+   ======================================== */
+
+/* Left Column Sections */
+.sunSection,
+.controllerSection,
+.gridSection,
+.batterySection {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.6) 0%, rgba(30, 41, 59, 0.4) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.sunHeader,
+.controllerHeader,
+.gridHeader,
+.batteryHeader {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  margin-bottom: 8px;
+}
+
+.sunMainValue {
+  font-size: 36px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+.sunSubValues {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #7dd3fc;
+}
+
+.sunDetails {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+.controllerValue {
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.controllerSub {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+.gridValue {
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.gridSub {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+.batteryValue {
+  font-size: 36px;
+  font-weight: 800;
+  color: #34d399;
+}
+
+.batterySub {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+/* Daily Stats Row */
+.dailyStatsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.dailyStat {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 12px;
+  color: #e5e7eb;
+  text-align: center;
+}
+
+/* Output Gauge */
+.outputGauge {
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 50%;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.gaugeContainer {
+  text-align: center;
+}
+
+.gaugeValue {
+  font-size: 64px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+.gaugeLabel {
+  font-size: 13px;
+  color: #fbbf24;
+  margin-top: 4px;
+}
+
+.gaugeIndicators {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.gaugeIndicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.indicatorDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Right Column - Forecast */
+.forecastHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  margin-bottom: 12px;
+}
+
+.liveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 10px #34d399;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.forecastGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.forecastTile {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.forecastLabel {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-bottom: 6px;
+}
+
+.forecastValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.forecastEst {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.forecastSub {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.forecastHigh {
+  color: #fbbf24;
+}
+
+.forecastCalm {
+  color: #34d399;
+}
+
+/* Charge Window */
+.chargeWindow {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.chargeWindowLabel {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.chargeWindowTime {
+  font-size: 14px;
+  font-weight: 700;
+  color: #34d399;
+  margin-left: 8px;
+}
+
+/* Production Chart Panel */
+.productionChartPanel {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.chartHeader {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.chartArea {
+  height: 140px;
+}
+
+.productionCurve {
+  width: 100%;
+  height: 100%;
+}
+
+.chartNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.chartNoteDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* Shading Panel */
+.shadingPanel {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.shadingHeader {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #9ca3af;
+  margin-bottom: 12px;
+}
+
+.shadingMainLoss {
+  font-size: 14px;
+  color: #e5e7eb;
+  margin-bottom: 12px;
+}
+
+.shadingLossValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.shadingBreakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.shadingItem {
+  display: grid;
+  grid-template-columns: 70px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #e5e7eb;
+}
+
+.shadingBar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.shadingFill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.shadingNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 12px 0;
+}
+
+.shadingNoteDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.shadingImageSection {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.shadingImagePlaceholder {
+  width: 80px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.microinverterRec {
+  flex: 1;
+}
+
+.recTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #34d399;
+  margin-bottom: 4px;
+}
+
+.recSub {
+  font-size: 11px;
+  color: #9ca3af;
+}

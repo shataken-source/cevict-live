@@ -820,10 +820,14 @@ export class PredictionEngine {
     // Adjust based on win probability
     const homeScore = homeExpected + (homeWinProb - 0.5) * 4;
     const awayScore = awayExpected - (homeWinProb - 0.5) * 4;
-  * Displayed edge is capped and vig - adjusted to avoid showing unrealistic edges.
-   *
-   * EDGE_CAP increased from 25 % to 35 % based on audit findings - allows showing
-      * true value in extreme mismatches while still capping unrealistic outliers.
+
+    return { homeScore, awayScore };
+  }
+
+  /**
+   * Displayed edge is capped and vig-adjusted to avoid showing unrealistic edges.
+   * EDGE_CAP increased from 25% to 35% based on audit findings - allows showing
+   * true value in extreme mismatches while still capping unrealistic outliers.
    */
   private calculateEdge(gameData: GameData, result: { winner: string; confidence: number }): number {
     const { odds } = gameData;

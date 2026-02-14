@@ -98,7 +98,7 @@ export default function AccuracyPage() {
                 </div>
               ))
             ) : (
-              ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAF'].map((sport) => (
+              ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAF', 'NCAAB'].map((sport) => (
                 <div key={sport} className="bg-slate-700/50 rounded-lg p-4">
                   <p className="text-lg font-semibold text-white">{sport}</p>
                   <div className="flex justify-between mt-2">
@@ -120,7 +120,7 @@ export default function AccuracyPage() {
                 <div key={range} className="flex items-center gap-4">
                   <span className="w-24 text-slate-400">{range}</span>
                   <div className="flex-1 bg-slate-700 rounded-full h-4 overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-emerald-500 rounded-full"
                       style={{ width: `${Math.max(0, Math.min(100, data.roi + 50))}%` }}
                     ></div>

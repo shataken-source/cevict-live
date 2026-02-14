@@ -19,7 +19,7 @@ export class PrognosticationSMSService {
 
   private initialize() {
     if (this.config !== null) return; // Already initialized
-    
+
     const servicePlanId = process.env.SINCH_SERVICE_PLAN_ID;
     const apiToken = process.env.SINCH_API_TOKEN;
     const fromNumber = process.env.SINCH_FROM_NUMBER || process.env.SINCH_FROM;
@@ -87,9 +87,10 @@ export class PrognosticationSMSService {
   /**
    * Send daily picks alert to subscriber
    */
-  async sendDailyPicksAlert(phoneNumber: string, picks: Array<{ game: string; pick: string; confidence: number }>, tier: 'pro' | 'elite'): Promise<{ success: boolean; error?: string }> {
+  async sendDailyPicksAlert(phoneNumber: string, picks: Array<{ game: string; pick: string; confidence: number; sport?: string }>, tier: 'pro' | 'elite'): Promise<{ success: boolean; error?: string }> {
     const tierLabel = tier === 'elite' ? 'Elite' : 'Pro';
-    let message = `🏈 ${tierLabel} Daily Picks:\n\n`;
+    // Use target emoji for mixed sport picks
+    let message = `� ${tierLabel} Daily Picks:\n\n`;
 
     picks.slice(0, tier === 'elite' ? 5 : 3).forEach((pick, i) => {
       message += `${i + 1}. ${pick.game}\n   Pick: ${pick.pick}\n   Confidence: ${pick.confidence}%\n\n`;

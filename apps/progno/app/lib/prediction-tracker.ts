@@ -216,8 +216,8 @@ class PredictionTracker {
     const stake = prediction.prediction.stake;
     const profit = winnerCorrect
       ? (odds != null
-          ? stake * (odds > 0 ? odds / 100 : 100 / Math.abs(odds)) - stake
-          : stake * 0.91)
+        ? stake * (odds > 0 ? odds / 100 : 100 / Math.abs(odds)) - stake
+        : stake * 0.91)
       : -stake;
 
     return {
@@ -263,21 +263,6 @@ class PredictionTracker {
     this.predictions = [];
     this.savePredictions();
   }
-
-  // Global prediction tracker instance
-  export const predictionTracker = new PredictionTracker();
-
-  // Export functions for external use
-  export const addPrediction = (gameId: string, prediction: any, sport: string) =>
-    predictionTracker.addPrediction(gameId, prediction, sport);
-
-  export const updatePredictionResult = (predictionId: string, actualResult: { winner: string; finalScore: { home: number; away: number } }) =>
-    predictionTracker.updatePredictionResult(predictionId, actualResult);
-
-  export const getAccuracyMetrics = () => predictionTracker.getAccuracyMetrics();
-
-  export const updatePredictionsFromLiveGames = (games: any[]) =>
-    predictionTracker.updatePredictionsFromLiveGames(games);
 
   // Get comprehensive accuracy metrics
   getAccuracyMetrics(): AccuracyMetrics {
@@ -370,3 +355,18 @@ class PredictionTracker {
     return updated;
   }
 }
+
+// Global prediction tracker instance
+export const predictionTracker = new PredictionTracker();
+
+// Export functions for external use
+export const addPrediction = (gameId: string, prediction: any, sport: string) =>
+  predictionTracker.addPrediction(gameId, prediction, sport);
+
+export const updatePredictionResult = (predictionId: string, actualResult: { winner: string; finalScore: { home: number; away: number } }) =>
+  predictionTracker.updatePredictionResult(predictionId, actualResult);
+
+export const getAccuracyMetrics = () => predictionTracker.getAccuracyMetrics();
+
+export const updatePredictionsFromLiveGames = (games: any[]) =>
+  predictionTracker.updatePredictionsFromLiveGames(games);

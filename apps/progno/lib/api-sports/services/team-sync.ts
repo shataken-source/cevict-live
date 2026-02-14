@@ -52,7 +52,7 @@ export async function syncTeams(sport: 'nba' | 'nfl' | 'nhl'): Promise<SyncResul
     console.log(`[TeamSync] Starting sync for ${sport.toUpperCase()}...`);
 
     // Fetch teams with timeout + retry
-    const teams = await this.fetchWithRetry(
+    const teams = await fetchWithRetry(
       () => client.getTeams(league, currentSeason),
       10000,
       2
@@ -111,7 +111,7 @@ export async function syncTeams(sport: 'nba' | 'nfl' | 'nhl'): Promise<SyncResul
   }
 }
 
-private async fetchWithRetry<T>(
+async function fetchWithRetry<T>(
   fn: () => Promise<T>,
   timeoutMs: number,
   maxRetries: number
@@ -168,7 +168,7 @@ export async function syncStandings(sport: 'nba' | 'nfl' | 'nhl'): Promise<SyncR
   const errors: string[] = [];
 
   try {
-    const standings = await this.fetchWithRetry(
+    const standings = await fetchWithRetry(
       () => client.getStandings(league, currentSeason),
       12000,
       2
@@ -202,8 +202,8 @@ export async function syncStandings(sport: 'nba' | 'nfl' | 'nhl'): Promise<SyncR
           league,
           wins: standing.won || 0,
           losses: standing.lost || 0,
-          win_pct: standing.won && (standing.won + standing.lost) > 0 
-            ? (standing.won / (standing.won + standing.lost)) * 100 
+          win_pct: standing.won && (standing.won + standing.lost) > 0
+            ? (standing.won / (standing.won + standing.lost)) * 100
             : 0,
           points_for: standing.points?.for || 0,
           points_against: standing.points?.against || 0,

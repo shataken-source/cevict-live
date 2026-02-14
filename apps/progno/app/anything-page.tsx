@@ -38,7 +38,7 @@ export default function AnythingPredictionPage() {
     // Use sanitized question
     const questionText = sanitizeInput(question.trim());
     const hasMultipleQuestions = (questionText.match(/["']/g) || []).length >= 2 ||
-                                 questionText.split('?').filter(q => q.trim().length > 10).length > 1;
+      questionText.split('?').filter(q => q.trim().length > 10).length > 1;
 
     if (hasMultipleQuestions) {
       const proceed = confirm("I detected multiple questions. I'll analyze the first one. Would you like to continue, or would you prefer to enter one question at a time?");
@@ -62,15 +62,15 @@ export default function AnythingPredictionPage() {
 
       // AI-powered prediction (now async)
       const result = await predictAnything(input);
-      const detectedType = analyzeQuestionType(questionText); // Use the processed question
-      setQuestionType(detectedType.type);
+      const detectedType = analyzeQuestionType(input); // Pass the input object
+      setQuestionType(detectedType);
 
       setPrediction(result);
 
       // If it's a recommendation question, perform web search
-      if (detectedType.type === 'advice' && (questionText.toLowerCase().includes('best') ||
-          questionText.toLowerCase().includes('lawfirm') || questionText.toLowerCase().includes('law firm') ||
-          questionText.toLowerCase().includes('lawyer') || questionText.toLowerCase().includes('attorney'))) {
+      if (detectedType === 'advice' && (questionText.toLowerCase().includes('best') ||
+        questionText.toLowerCase().includes('lawfirm') || questionText.toLowerCase().includes('law firm') ||
+        questionText.toLowerCase().includes('lawyer') || questionText.toLowerCase().includes('attorney'))) {
         setSearching(true);
         try {
           const searchQuery = questionText.replace(/["']/g, '').trim();
@@ -91,7 +91,7 @@ export default function AnythingPredictionPage() {
             // Update prediction with search results
             setPrediction({
               ...result,
-              prediction: webResults.recommendation
+              answer: webResults.recommendation
             });
           } else {
             setError('No search results found. Try rephrasing your question.');
@@ -119,9 +119,8 @@ export default function AnythingPredictionPage() {
     if (!prediction || !questionType || outcomeMarked) return;
 
     learnFromAnythingResult(
-      question,
-      prediction.prediction,
-      prediction.confidence,
+      { question },
+      prediction,
       wasCorrect ? 'correct' : 'incorrect'
     );
     setOutcomeMarked(true);
@@ -391,7 +390,7 @@ export default function AnythingPredictionPage() {
               {prediction && (
                 <>
                   <h3 style={{ fontSize: "24px", marginBottom: "15px", color: "#00ffaa" }}>Prediction</h3>
-                  <p style={{ fontSize: "20px", marginBottom: "15px", lineHeight: "1.6" }}>{prediction.prediction}</p>
+                  <p style={{ fontSize: "20px", marginBottom: "15px", lineHeight: "1.6" }}>{prediction.answer}</p>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "20px", marginTop: "20px" }}>
                     <div style={{ padding: "15px", background: "#0a0a0a", borderRadius: "6px" }}>
@@ -400,7 +399,7 @@ export default function AnythingPredictionPage() {
                     </div>
                     <div style={{ padding: "15px", background: "#0a0a0a", borderRadius: "6px" }}>
                       <p style={{ color: "#888", fontSize: "12px", marginBottom: "5px" }}>Risk Level</p>
-                      <p style={{ fontSize: "28px", fontWeight: "bold", color: "#ff6b6b" }}>{prediction.riskLevel}</p>
+                      <p style={{ fontSize: "28px", fontWeight: "bold", color: "#ff6b6b" }}>{riskProfile}</p>
                     </div>
                   </div>
 
@@ -447,15 +446,15 @@ export default function AnythingPredictionPage() {
                 <p style={{ color: "#888", fontSize: "12px" }}>Total Predictions</p>
               </div>
               <div style={{ textAlign: "center" }}>
-                <p style={{ fontSize: "24px", fontWeight: "bold", color: "#00b4ff" }}>{learningStats.successfulPredictions}</p>
+                <p style={{ fontSize: "24px", fontWeight: "bold", color: "#00b4ff" }}>{learningStats.correctPredictions}</p>
                 <p style={{ color: "#888", fontSize: "12px" }}>Correct</p>
               </div>
               <div style={{ textAlign: "center" }}>
-                <p style={{ fontSize: "24px", fontWeight: "bold", color: "#ff6b6b" }}>{learningStats.totalPredictions - learningStats.successfulPredictions}</p>
+                <p style={{ fontSize: "24px", fontWeight: "bold", color: "#ff6b6b" }}>{learningStats.totalPredictions - learningStats.correctPredictions}</p>
                 <p style={{ color: "#888", fontSize: "12px" }}>Incorrect</p>
               </div>
               <div style={{ textAlign: "center" }}>
-                <p style={{ fontSize: "24px", fontWeight: "bold", color: "#ffd93d" }}>{Math.round(learningStats.accuracyRate * 100)}%</p>
+                <p style={{ fontSize: "24px", fontWeight: "bold", color: "#ffd93d" }}>{Math.round(learningStats.accuracy * 100)}%</p>
                 <p style={{ color: "#888", fontSize: "12px" }}>Accuracy</p>
               </div>
             </div>
