@@ -1,9 +1,18 @@
-# 🚀 Project Launcher
+# 🚀 Launchpad
 
-A desktop application to manage and launch all your projects with database support.
+CEVICT ops dashboard: project grid, health, start/stop, and **Command Center** (per-project tabs, AI messaging, logs, risk factors). User-facing at **cevict.ai** with sign-in.
+
+## Setup
+
+1. **Install:** `pnpm install`
+2. **Env:** Create `.env.local` with Clerk keys (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`). Optional: `LAUNCHPAD_APPS_PATH` or `PROJECTS_BASE_PATH` for start-project/clear-cache (defaults to `process.cwd()/apps`).
+3. **Run:** `pnpm dev` (port 3001) or `pnpm build` then `pnpm start`
+
+Signed-out users hitting `/` are redirected to `/landing`. Sign in to access dashboard, Command Center, and Affiliates.
 
 ## Features
 
+- ✅ **Command Center** (`/command-center`) – Per-project tabs, health, Start/Stop/Restart, AI message to Claude/Gemini/Cursor inboxes, logs, Alpha Hunter metrics & risk factors
 - ✅ **Project Management** - Add, edit, delete projects
 - ✅ **Database Control** - Start/stop databases per project (Supabase, PostgreSQL, MongoDB, Custom)
 - ✅ **Port Management** - Check port availability before starting

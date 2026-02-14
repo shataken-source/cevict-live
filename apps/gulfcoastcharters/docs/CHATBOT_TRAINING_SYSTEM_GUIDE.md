@@ -1,193 +1,79 @@
-# AI Chatbot Training & Analytics System Guide
+# AI Chatbot Training & Analytics (No-BS)
 
-## Overview
-Gulf Coast Charters now features an advanced AI chatbot with machine learning capabilities, conversation tracking, sentiment analysis, and comprehensive admin tools.
-
-## Features Implemented
-
-### 1. **Enhanced AI Chatbot** (`SmartChatbot.tsx`)
-- **Conversation Tracking**: Each session is tracked with unique session IDs
-- **Sentiment Analysis**: AI analyzes user sentiment (positive/neutral/negative)
-- **Automatic Escalation**: Complex issues are flagged for human support
-- **User Feedback**: Thumbs up/down on each bot response
-- **Knowledge Base Integration**: Checks custom Q&A before using AI
-
-### 2. **Admin Interface** (`ChatbotAdmin.tsx`)
-Three main tabs:
-- **Analytics**: Overview of total conversations, helpful rate, resolution rate, escalations
-- **Conversations**: Review all chatbot interactions with sentiment badges
-- **Knowledge Base**: Add custom Q&A pairs with keywords for instant answers
-
-### 3. **Analytics Dashboard** (`ChatbotAnalyticsDashboard.tsx`)
-- Total conversation count
-- Helpful response rate percentage
-- Escalation rate tracking
-- Average response time
-- Top 10 most common questions
-
-### 4. **Enhanced Edge Function** (`ai-support-bot`)
-- Knowledge base lookup before AI query (saves API costs)
-- Sentiment analysis using Google Gemini
-- Automatic escalation detection for keywords: urgent, emergency, complaint, refund, etc.
-- Conversation logging to database
-- Confidence scoring
-
-## Database Schema
-
-### Tables Required
-```sql
--- Chatbot conversations
-CREATE TABLE chatbot_conversations (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id),
-  session_id TEXT NOT NULL,
-  message TEXT NOT NULL,
-  response TEXT NOT NULL,
-  sentiment TEXT CHECK (sentiment IN ('positive', 'neutral', 'negative')),
-  confidence_score DECIMAL(3,2),
-  was_helpful BOOLEAN,
-  escalated BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Knowledge base
-CREATE TABLE chatbot_knowledge_base (
-  id UUID PRIMARY KEY,
-  question TEXT NOT NULL,
-  answer TEXT NOT NULL,
-  category TEXT,
-  keywords TEXT[],
-  usage_count INTEGER DEFAULT 0,
-  effectiveness_score DECIMAL(3,2) DEFAULT 0.5,
-  created_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Feedback tracking
-CREATE TABLE chatbot_feedback (
-  id UUID PRIMARY KEY,
-  conversation_id UUID REFERENCES chatbot_conversations(id),
-  admin_notes TEXT,
-  marked_helpful BOOLEAN,
-  reviewed_by UUID REFERENCES auth.users(id),
-  reviewed_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Daily analytics
-CREATE TABLE chatbot_analytics (
-  id UUID PRIMARY KEY,
-  date DATE NOT NULL UNIQUE,
-  total_conversations INTEGER DEFAULT 0,
-  helpful_responses INTEGER DEFAULT 0,
-  unhelpful_responses INTEGER DEFAULT 0,
-  escalations INTEGER DEFAULT 0,
-  avg_sentiment_score DECIMAL(3,2),
-  common_questions JSONB,
-  resolution_rate DECIMAL(5,2)
-);
-```
-
-## How to Use
-
-### For End Users
-1. Click the blue chat bubble in bottom-right corner
-2. Ask any question about bookings, certifications, features
-3. Rate responses with thumbs up/down
-4. If escalated, you'll get a prompt to contact support
-
-### For Admins
-1. Navigate to Admin Panel → Chatbot Management
-2. **View Analytics**: See performance metrics and trends
-3. **Review Conversations**: Read all interactions, mark helpful/unhelpful
-4. **Manage Knowledge Base**: Add custom Q&A pairs for instant responses
-
-### Adding Knowledge Base Entries
-1. Go to "Knowledge Base" tab in admin
-2. Enter question (e.g., "How do I book a charter?")
-3. Enter answer (detailed response)
-4. Add keywords (comma-separated: "book, booking, reserve, charter")
-5. Click "Add Entry"
-
-The bot will now check this entry first before using AI!
-
-## Automatic Escalation
-
-The bot automatically escalates to human support when it detects:
-- Keywords: urgent, emergency, complaint, refund, cancel booking, speak to manager, human
-- Negative sentiment with low confidence
-- Repeated unhelpful responses in same session
-
-## Training the Model
-
-### Current Approach
-- Knowledge base entries are prioritized over AI responses
-- User feedback (thumbs up/down) is tracked
-- Admin can review and mark conversations as helpful/unhelpful
-- Common questions are identified for knowledge base additions
-
-### Future Enhancements
-- Implement fine-tuning based on feedback data
-- Auto-suggest knowledge base entries from common questions
-- A/B testing different response styles
-- Integration with support ticket system
-
-## API Integration
-
-The chatbot uses:
-- **Google Gemini 2.5 Flash** for AI responses (via API Gateway)
-- **Sentiment Analysis** using Gemini
-- **Knowledge Base** stored in Supabase
-- **Conversation Logging** to Supabase tables
-
-## Performance Metrics
-
-Track these KPIs:
-- **Resolution Rate**: % of conversations marked helpful
-- **Escalation Rate**: % requiring human intervention
-- **Response Time**: Average time to generate response
-- **Knowledge Base Hit Rate**: % answered from KB vs AI
-- **User Satisfaction**: Thumbs up vs thumbs down ratio
-
-## Best Practices
-
-1. **Regularly Review Conversations**: Check for patterns in unhelpful responses
-2. **Update Knowledge Base**: Add entries for frequently asked questions
-3. **Monitor Escalations**: Identify topics that need better documentation
-4. **Analyze Sentiment**: Track user frustration and improve responses
-5. **Test Responses**: Periodically test the bot with common questions
-
-## Troubleshooting
-
-### Bot Not Responding
-- Check GATEWAY_API_KEY is configured
-- Verify Supabase connection
-- Check browser console for errors
-
-### Knowledge Base Not Working
-- Ensure keywords are relevant and lowercase
-- Check table exists and has data
-- Verify RLS policies allow reads
-
-### Analytics Not Loading
-- Confirm tables exist in database
-- Check user has admin role
-- Verify RLS policies for admin access
-
-## Next Steps
-
-1. **Create Database Tables**: Run the SQL schema above in Supabase SQL editor
-2. **Add Initial Knowledge Base**: Populate with 20-30 common Q&A pairs
-3. **Test Thoroughly**: Try various questions and edge cases
-4. **Monitor Performance**: Check analytics daily for first week
-5. **Iterate**: Add more knowledge base entries based on common questions
-
-## Support
-
-For issues with the chatbot system:
-- Check logs in Supabase Edge Functions dashboard
-- Review conversation history in admin panel
-- Contact development team with specific error messages
+Support chatbot with knowledge base, conversation logging, sentiment/escalation, and admin review. This doc reflects what’s in the repo and what you need to run it.
 
 ---
 
-**Note**: The database tables may need to be created manually in Supabase SQL editor if automatic migration fails due to row size limits. Copy the SQL schema above and execute it directly.
+## What’s in the repo
+
+| Piece | Location | Notes |
+|-------|----------|--------|
+| **SmartChatbot** | `src/components/SmartChatbot.tsx` | Floating chat bubble; calls `ai-support-bot` with question, sessionId, userId, checkKnowledgeBase. Shows answer, sentiment, escalation prompt. Thumbs up/down persist to `chatbot_conversations.was_helpful` and `chatbot_feedback`. |
+| **ChatbotAdmin** | `src/components/admin/ChatbotAdmin.tsx` | Route: `/admin/chatbot`. Tabs: Analytics (totals, helpful, resolution %, escalations), Conversations (list + mark helpful/unhelpful), Knowledge Base (add Q&A + keywords). |
+| **ChatbotAnalyticsDashboard** | `src/components/admin/ChatbotAnalyticsDashboard.tsx` | Reads `chatbot_conversations`, computes helpful/escalation rate and top questions client-side. Avg response time is hardcoded (1.2s). |
+| **ai-support-bot** | `supabase/functions/ai-support-bot/index.ts` | KB lookup (keyword match) → else Gateway chat (GATEWAY_API_KEY). Logs to `chatbot_conversations`, returns answer, sentiment, needsEscalation, conversationId. |
+| **fishy-ai-assistant** | `supabase/functions/fishy-ai-assistant/index.ts` | Different flow: Fishy concierge, learning patterns, different request/response shape. Used by FishyAIChat / TroubleshootingChatbot, not by SmartChatbot. |
+| **DB migration** | `supabase/migrations/20260210_chatbot_tables.sql` | Creates `chatbot_conversations`, `chatbot_knowledge_base`, `chatbot_feedback`, `chatbot_analytics` and RLS. |
+
+---
+
+## Database
+
+Run the migration so the tables exist:
+
+- Apply `supabase/migrations/20260210_chatbot_tables.sql`.
+
+Tables:
+
+- **chatbot_conversations** – user_id, session_id, message, response, sentiment, confidence_score, was_helpful, escalated, created_at.
+- **chatbot_knowledge_base** – question, answer, category, keywords (TEXT[]), usage_count, effectiveness_score, created_by.
+- **chatbot_feedback** – conversation_id, admin_notes, marked_helpful, reviewed_by, reviewed_at.
+- **chatbot_analytics** – date, total_conversations, helpful_responses, unhelpful_responses, escalations, avg_sentiment_score, common_questions (JSONB), resolution_rate. Optional; admin can also aggregate from conversations.
+
+---
+
+## Edge function: ai-support-bot
+
+- **Deploy:** `supabase functions deploy ai-support-bot`
+- **Env:** `GATEWAY_API_KEY` (for AI when no KB match). Uses `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+- **Contract:** Body `{ question, sessionId?, userId?, checkKnowledgeBase? }`. Response `{ answer, sentiment, needsEscalation, conversationId }`.
+- **KB:** Matches by keyword overlap and question substring; first match wins. Increments `usage_count` on hit.
+- **Escalation:** Keyword check (e.g. urgent, emergency, complaint, refund, cancel booking, human, etc.). Sets `escalated` and `needsEscalation`.
+- **Sentiment:** Simple keyword-based (positive/neutral/negative). Not Gemini-based in this implementation.
+
+---
+
+## How it’s used
+
+- **User:** Open chat bubble → ask question → get answer; optional thumbs up/down (persisted if `conversationId` is present). Escalation shows toast to contact support.
+- **Admin:** `/admin/chatbot` → Analytics (from conversations + optional chatbot_analytics), Conversations (review, mark helpful/unhelpful), Knowledge Base (add Q&A and keywords). KB entries are checked before calling AI.
+
+---
+
+## Training / “model” (no-BS)
+
+- **Current:** KB first (saves API cost); thumbs up/down and admin “helpful” stored; common questions derived in analytics. No fine-tuning or auto-suggest in code.
+- **Future (doc only):** Fine-tuning from feedback, A/B tests, support-ticket integration – not implemented.
+
+---
+
+## API / performance
+
+- **AI:** Gateway chat (e.g. Claude) when KB doesn’t match; requires `GATEWAY_API_KEY`.
+- **Metrics:** Resolution rate and escalation rate come from `chatbot_conversations` (was_helpful, escalated). Response time in the dashboard is a placeholder unless you add timing in the function and store it.
+
+---
+
+## Troubleshooting
+
+| Issue | Check |
+|-------|--------|
+| Bot not responding | `GATEWAY_API_KEY` set for edge function; Supabase logs for ai-support-bot. |
+| KB not used | Table exists; keywords populated and relevant; question wording may not match keyword logic (keyword overlap / substring). |
+| Analytics empty | Tables created; RLS allows read; admin has access to `/admin/chatbot`. |
+| Ratings not saving | ai-support-bot returns `conversationId`; SmartChatbot sends it; `chatbot_conversations` and `chatbot_feedback` exist and RLS allows insert/update. |
+
+---
+
+**Last updated:** February 2026 (no-BS pass).  
+**Cross-check:** `COMPREHENSIVE_PLATFORM_GUIDE.md` (no-BS), `FEATURE_IMPLEMENTATION_STATUS.md`.

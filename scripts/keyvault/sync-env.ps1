@@ -12,6 +12,9 @@ Set-StrictMode -Version Latest
 $modulePath = Join-Path $PSScriptRoot 'KeyVault.psm1'
 Import-Module $modulePath -Force
 
+$storePath = Get-KeyVaultStorePath
+Write-Host "Using store: $storePath"
+
 if ($All) {
   Sync-KeyVaultAllApps -DryRun:$DryRun -IncludeMissingOptional:$IncludeMissingOptional
   exit 0

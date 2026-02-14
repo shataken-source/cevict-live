@@ -3,6 +3,7 @@
 import { Send, Sparkles, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import FINNAI from '../lib/finnAI';
+import { t } from '@/lib/translations';
 
 interface Message {
   id: string;
@@ -12,26 +13,31 @@ interface Message {
   type?: 'booking' | 'weather' | 'activity' | 'general';
 }
 
-export default function FinnConcierge({ userId }: { userId?: string }) {
+export default function FinnConcierge({ userId, language = 'en' }: { userId?: string; language?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const finnAI = FINNAI.getInstance();
+  const [sessionId] = useState(() =>
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `finn-${Date.now()}`
+  );
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const greeting: Message = {
         id: '1',
         role: 'finn',
-        content: "Hi! I'm Finn, your personal vacation concierge! 🏖️ I can help you plan your entire Gulf Coast vacation - from rentals to activities to charters. What would you like to do today?",
+        content: t(language, 'finn.greeting'),
         timestamp: new Date(),
         type: 'general',
       };
       setMessages([greeting]);
     }
-  }, [isOpen]);
+  }, [isOpen, language]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -109,6 +115,28 @@ export default function FinnConcierge({ userId }: { userId?: string }) {
     };
 
     setMessages((prev) => [...prev, finnMessageWithReminder]);
+
+    // Log to backend for cross-platform memory
+    try {
+      await fetch('/api/chat/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          bot: 'finn',
+          platform: 'wtv',
+          session_id: sessionId,
+          message: userInput,
+          response: finnMessageWithReminder.content,
+          sentiment: null,
+          confidence_score: null,
+          escalated: false,
+          metadata: { type: response.type },
+        }),
+      });
+    } catch {
+      // best-effort; ignore
+    }
 
     // Log conversation for learning - EVERY interaction is logged
     if (userId || true) { // Log even for anonymous users
@@ -205,7 +233,7 @@ export default function FinnConcierge({ userId }: { userId?: string }) {
   }> => {
     try {
       // Try GCC weather API first, then progno
-      const gccUrl = process.env.NEXT_PUBLIC_GCC_BASE_URL || 'http://localhost:3006';
+      const gccUrl = process.env.NEXT_PUBLIC_GCC_BASE_URL || 'http://localhost:3009';
       const response = await fetch(`${gccUrl}/api/weather/current`);
 
       if (response.ok) {
@@ -239,7 +267,7 @@ export default function FinnConcierge({ userId }: { userId?: string }) {
     type: 'activity';
   }> => {
     try {
-      const gccUrl = process.env.NEXT_PUBLIC_GCC_BASE_URL || 'http://localhost:3006';
+      const gccUrl = process.env.NEXT_PUBLIC_GCC_BASE_URL || 'http://localhost:3009';
 
       // Get activities, boats, and rentals
       const [activitiesRes, boatsRes, rentalsRes] = await Promise.all([
@@ -302,9 +330,10 @@ export default function FinnConcierge({ userId }: { userId?: string }) {
         <button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all z-50 flex items-center gap-2"
+          aria-label={t(language, 'finn.openLabel')}
         >
           <Sparkles className="w-6 h-6" />
-          <span className="font-medium">Chat with Finn</span>
+          <span className="font-medium">{t(language, 'finn.openLabel')}</span>
         </button>
       )}
 
@@ -369,7 +398,7 @@ export default function FinnConcierge({ userId }: { userId?: string }) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Ask Finn anything..."
+                placeholder={t(language, 'finn.placeholder')}
                 className="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button

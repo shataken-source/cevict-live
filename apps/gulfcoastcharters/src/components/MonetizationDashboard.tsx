@@ -33,20 +33,23 @@ export default function MonetizationDashboard() {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {strategies.map((strategy, idx) => (
-          <Card key={idx}>
-            <CardContent className="pt-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">{strategy.title}</p>
-                  <p className="text-2xl font-bold">{strategy.revenue}</p>
-                  <p className="text-sm text-green-600 font-semibold mt-1">{strategy.growth}</p>
+        {strategies.map((strategy, idx) => {
+          const Icon = strategy.icon;
+          return (
+            <Card key={idx}>
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">{strategy.title}</p>
+                    <p className="text-2xl font-bold">{strategy.revenue}</p>
+                    <p className="text-sm text-green-600 font-semibold mt-1">{strategy.growth}</p>
+                  </div>
+                  <Icon className={`w-10 h-10 ${strategy.color}`} />
                 </div>
-                <strategy.icon className={`w-10 h-10 ${strategy.color}`} />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

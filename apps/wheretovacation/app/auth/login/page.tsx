@@ -12,6 +12,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [oauthLoading, setOauthLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [ssoHint, setSsoHint] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -21,6 +22,17 @@ function LoginForm() {
     const errorParam = searchParams.get('error')
     if (errorParam) {
       setError(decodeURIComponent(errorParam))
+    }
+
+    const emailParam = searchParams.get('email')
+    const fromSso = searchParams.get('sso') === '1'
+
+    if (emailParam && !formData.email) {
+      setFormData((prev) => ({ ...prev, email: emailParam }))
+    }
+
+    if (fromSso && emailParam) {
+      setSsoHint(`SSO validated. Continue as ${emailParam}.`)
     }
   }, [searchParams])
 
@@ -34,7 +46,11 @@ function LoginForm() {
     setError(null)
 
     try {
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent('/')}`
+      const next =
+        searchParams.get('redirect') ||
+        searchParams.get('next') ||
+        '/'
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
 
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
@@ -79,7 +95,11 @@ function LoginForm() {
       if (signInError) throw signInError
 
       if (data?.user) {
-        router.push('/')
+        const next =
+          searchParams.get('redirect') ||
+          searchParams.get('next') ||
+          '/'
+        router.push(next)
         router.refresh()
       }
     } catch (err: any) {
@@ -102,6 +122,12 @@ function LoginForm() {
 
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
         <p className="text-gray-600 mb-6">Sign in to your account</p>
+
+        {ssoHint && !error && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <p className="text-blue-800 text-sm">{ssoHint}</p>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">

@@ -67,6 +67,14 @@ Required:
 
 Optional:
 - `SUPABASE_SERVICE_ROLE_KEY` - For admin operations
+- Sinch: `SINCH_SERVICE_PLAN_ID`, `SINCH_API_TOKEN`, `SINCH_FROM` / `NEXT_PUBLIC_SINCH_FROM` (SMS)
+- Resend: `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (email)
+- Stripe: `STRIPE_SECRET_KEY` (payments if used)
+- Moltbook: `MOLTBOOK_API_KEY` (feed/replies)
+- GNews/Perigon: `GNEWS_API_KEY`, `PERIGON_API_KEY` (optional features)
+- `NEXT_PUBLIC_SITE_URL`, `PETREUNION_ADMIN_PASSWORD`, `NEXT_PUBLIC_GOOGLE_*` (site/config)
+
+All of these are declared in `env.manifest.json`; use KeyVault to sync: `.\scripts\keyvault\sync-env.ps1 -AppPath .\apps\petreunion`.
 
 ### Database Setup
 

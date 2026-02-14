@@ -16,6 +16,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
+import ImageSearchWidget from '../components/ImageSearchWidget';
 
 function SearchLostPetsContent() {
   const searchParams = useSearchParams();
@@ -173,11 +174,17 @@ function SearchLostPetsContent() {
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Together We Bring Them Home — search our database. Completely free, no sign-up required.
             </p>
+            <p className="text-sm text-gray-500 mt-2 max-w-2xl mx-auto">
+              Tip: Add city or zip for better results. Try a photo search above for visual matches. New to searching? See our <Link href="/first-24-hours" className="text-blue-600 hover:underline">First 24 hours guide</Link>.
+            </p>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Image Search Widget */}
+        <ImageSearchWidget />
+
         {/* Search Bar */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <form onSubmit={handleSearch} className="space-y-4">

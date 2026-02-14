@@ -133,6 +133,14 @@ export default function VesselDetailsPage() {
   const photos = Array.isArray(vessel.photos) ? vessel.photos : vessel.image ? [vessel.image] : [];
   const mainPhoto = photos[0] || null;
 
+  // Deep link into WhereToVacation search with this vessel's home port when available
+  const wtvBase =
+    process.env.NEXT_PUBLIC_WTV_URL || 'https://wheretovacation.cevict.ai';
+  const wtvDestinationQuery = vessel.home_port
+    ? `?destination=${encodeURIComponent(String(vessel.home_port))}`
+    : '';
+  const wtvUrl = `${wtvBase}${wtvDestinationQuery}`;
+
   return (
     <Layout session={null}>
       <div className="max-w-6xl mx-auto p-4 sm:p-8">
@@ -270,6 +278,26 @@ export default function VesselDetailsPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Nearby Places to Stay (WhereToVacation) */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Need a place to stay?</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-3">
+              Plan your full trip by finding vacation rentals near this charter.
+            </p>
+            <a
+              href={wtvUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+            >
+              Browse nearby rentals on Where To Vacation
+            </a>
+          </CardContent>
+        </Card>
 
         {/* Description */}
         {vessel.description && (

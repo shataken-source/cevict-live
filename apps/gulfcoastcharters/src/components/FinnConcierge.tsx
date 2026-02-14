@@ -42,6 +42,11 @@ export default function FinnConcierge({ userId }: { userId?: string }) {
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const finnAI = FINNAI.getInstance();
+  const [packageRec, setPackageRec] = useState<{
+    discount_amount: number;
+    final_price: number;
+    finn_reasoning: string[];
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -60,6 +65,36 @@ export default function FinnConcierge({ userId }: { userId?: string }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Finn package recommendation: "Book charter + rental, save 15%"
+  useEffect(() => {
+    if (!isOpen || packageRec) return;
+    const start = new Date();
+    const end = new Date();
+    start.setDate(start.getDate() + 7);
+    end.setDate(end.getDate() + 9);
+    fetch('/api/gcc/packages/recommend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerId: userId || 'anonymous',
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+        location: 'Gulf Coast',
+      }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.success && data?.data) {
+          setPackageRec({
+            discount_amount: data.data.discount_amount ?? 0,
+            final_price: data.data.final_price ?? 0,
+            finn_reasoning: data.data.finn_reasoning ?? [],
+          });
+        }
+      })
+      .catch(() => {});
+  }, [isOpen, userId]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -623,6 +658,25 @@ export default function FinnConcierge({ userId }: { userId?: string }) {
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Package CTA: Book charter + rental, save 15% */}
+          {packageRec && (
+            <div className="mx-4 mt-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+              <p className="text-sm font-medium text-emerald-800">Save 15% — Book charter + rental together</p>
+              {packageRec.discount_amount > 0 && (
+                <p className="text-xs text-emerald-700 mt-0.5">Save ${packageRec.discount_amount.toFixed(0)} • Package from ${packageRec.final_price.toFixed(0)}</p>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setInput("I'd like to see my vacation package and book charter + rental");
+                }}
+                className="mt-2 w-full text-sm font-medium text-emerald-800 bg-emerald-200 hover:bg-emerald-300 rounded-md py-1.5"
+              >
+                Get my package
+              </button>
+            </div>
+          )}
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">

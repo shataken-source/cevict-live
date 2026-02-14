@@ -41,6 +41,16 @@ export default function PrognoDashboard() {
       return;
     }
 
+    if (forceSport === 'picks-display') {
+      window.location.href = '/progno/picks-display';
+      return;
+    }
+
+    if (forceSport === 'trading-dashboard') {
+      window.location.href = '/progno/trading-dashboard';
+      return;
+    }
+
     try {
       const gamesRes = await fetch(`/api/progno/v2?action=games&sport=${forceSport}`);
       const gamesData = await gamesRes.json();
@@ -160,7 +170,9 @@ export default function PrognoDashboard() {
             <option value="nfl">NFL</option>
             <option value="ncaaf">NCAAF</option>
             <option value="mlb">MLB</option>
-            <option value="today">Today’s Best Bets</option>
+            <option value="today">Today's Best Bets</option>
+            <option value="picks-display">📊 Picks Display</option>
+            <option value="trading-dashboard">🚀 Trading Dashboard</option>
           </select>
 
           <button

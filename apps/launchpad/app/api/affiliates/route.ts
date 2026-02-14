@@ -1,12 +1,15 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { createSupabaseServiceClient } from '@/lib/supabase';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+function getSupabaseAdmin() {
+  try {
+    return createSupabaseServiceClient();
+  } catch {
+    return null;
+  }
+}
 
-const supabaseAdmin = supabaseUrl && supabaseKey
-  ? createClient(supabaseUrl, supabaseKey)
-  : null;
+const supabaseAdmin = getSupabaseAdmin();
 
 // GET - List all affiliates
 export async function GET(request: NextRequest) {

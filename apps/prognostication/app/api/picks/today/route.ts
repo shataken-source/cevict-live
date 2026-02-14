@@ -4,9 +4,7 @@ import Stripe from 'stripe';
 export const runtime = 'nodejs';
 
 const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: '2025-12-15.clover',
-  })
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
 interface EnginePick {
@@ -49,12 +47,12 @@ interface TieredPicks {
 }
 
 /**
- * Smart tier allocation based on confidence and edge
+ * Smart tier allocation based on new Progno syndication system
  *
  * Strategy:
- * - Free: 1 decent pick (60-70% confidence, good value but not premium)
- * - Pro: 3 great picks (70-85% confidence range, different from Elite)
- * - Elite: ALL picks (gets everything, including the absolute best)
+ * - Elite: 5 picks (target: 5) - uses premium/free if needed
+ * - Premium: 3 picks (target: 3) - uses free if needed
+ * - Free: 2 picks (max: 2) - gets leftovers
  *
  * Pro and Elite get DIFFERENT picks - no overlap
  * Elite gets all remaining picks after Free and Pro are allocated
@@ -72,78 +70,41 @@ function allocateTiers(all: EnginePick[]): TieredPicks {
     return scoreB - scoreA;
   });
 
-  // FREE: 1 decent pick (60-70% confidence range)
-  // Give them a solid pick but not premium quality
-  let free: EnginePick[] = [];
-  const freeCandidates = sorted.filter(p => p.confidencePct >= 60 && p.confidencePct <= 70);
-  if (freeCandidates.length > 0) {
-    // Pick the best one from this range
-    free = [freeCandidates[0]];
-  } else if (sorted.length > 0) {
-    // Fallback: give them a mid-range pick (not the absolute best)
-    const midIndex = Math.min(Math.floor(sorted.length * 0.6), sorted.length - 1);
-    free = [sorted[midIndex]];
+  // Apply new tier allocation with fallback logic
+  const eliteAllocation = [];
+  const premiumAllocation = [];
+  const freeAllocation = [];
+  const usedPicks = new Set<string>();
+
+  // ELITE: Top 5 picks, uses premium/free if needed
+  let elitePicksToTake = sorted.filter(p => p.confidencePct >= 80);
+  if (elitePicksToTake.length < 5) {
+    const needed = 5 - elitePicksToTake.length;
+    const premiumPicks = sorted.filter(p => p.confidencePct >= 65 && p.confidencePct < 80 && !usedPicks.has(p.gameId));
+    elitePicksToTake = [...elitePicksToTake, ...premiumPicks.slice(0, needed)];
   }
+  elitePicksToTake.slice(0, 5).forEach(pick => usedPicks.add(p.gameId));
+  eliteAllocation.push(...elitePicksToTake);
 
-  // PRO: 3 great picks (70-85% confidence, excluding Free pick)
-  // Pro gets excellent picks but not the absolute elite tier
-  // Prioritize Kalshi bets for Pro tier
-  const proCandidates = sorted.filter(p =>
-    p.confidencePct >= 70 &&
-    p.confidencePct < 85 &&
-    !free.some(f => f.gameId === p.gameId) // Exclude Free pick
+  // PREMIUM: Top 3 picks (excluding elite picks), uses free if needed
+  const availablePremium = sorted.filter(p =>
+    p.confidencePct >= 65 && p.confidencePct < 80 &&
+    !usedPicks.has(p.gameId)
   );
-
-  // Separate Kalshi and regular picks
-  const kalshiCandidates = proCandidates.filter(p => p.isKalshi);
-  const regularCandidates = proCandidates.filter(p => !p.isKalshi);
-
-  // Take top picks: prioritize Kalshi bets, then regular picks
-  const pro = [
-    ...kalshiCandidates.sort((a, b) => {
-      const scoreA = (a.edgePct * 2.5) + a.confidencePct;
-      const scoreB = (b.edgePct * 2.5) + b.confidencePct;
-      return scoreB - scoreA;
-    }).slice(0, Math.min(2, kalshiCandidates.length)), // Up to 2 Kalshi bets
-    ...regularCandidates.sort((a, b) => {
-      const scoreA = (a.edgePct * 2.5) + a.confidencePct;
-      const scoreB = (b.edgePct * 2.5) + b.confidencePct;
-      return scoreB - scoreA;
-    }).slice(0, 3 - Math.min(2, kalshiCandidates.length)) // Fill remaining slots
-  ].slice(0, 3);
-
-  // If we don't have enough Pro picks, expand range slightly
-  if (pro.length < 3) {
-    const additionalPro = sorted
-      .filter(p =>
-        p.confidencePct >= 68 &&
-        p.confidencePct < 70 &&
-        !pro.some(pr => pr.gameId === p.gameId) &&
-        !free.some(f => f.gameId === p.gameId)
-      )
-      .slice(0, 3 - pro.length);
-    pro.push(...additionalPro);
+  let premiumPicksToTake = availablePremium.slice(0, 3);
+  if (premiumPicksToTake.length < 3) {
+    const needed = 3 - premiumPicksToTake.length;
+    const freePicks = sorted.filter(p => p.confidencePct < 65 && !usedPicks.has(p.gameId));
+    premiumPicksToTake = [...premiumPicksToTake, ...freePicks.slice(0, needed)];
   }
+  premiumPicksToTake.slice(0, 3).forEach(pick => usedPicks.add(p.gameId));
+  premiumAllocation.push(...premiumPicksToTake);
 
-  // ELITE: Gets EVERYTHING (all remaining picks)
-  // Elite gets all picks that aren't in Free or Pro
-  // Prioritize Kalshi bets at the top
-  const elite = sorted.filter(p =>
-    !free.some(f => f.gameId === p.gameId) &&
-    !pro.some(pr => pr.gameId === p.gameId)
-  );
+  // FREE: Gets leftovers (max 2 picks)
+  const availableFree = sorted.filter(p => !usedPicks.has(p.gameId));
+  freeAllocation.push(...availableFree.slice(0, 2));
 
-  // Sort Elite by quality (best first), but prioritize Kalshi bets
-  elite.sort((a, b) => {
-    // Kalshi bets get priority boost
-    const kalshiBoostA = a.isKalshi ? 50 : 0;
-    const kalshiBoostB = b.isKalshi ? 50 : 0;
-    const scoreA = (a.edgePct * 2.5) + a.confidencePct + kalshiBoostA;
-    const scoreB = (b.edgePct * 2.5) + b.confidencePct + kalshiBoostB;
-    return scoreB - scoreA;
-  });
-
-  return { free, pro, elite };
+  return { free: freeAllocation, pro: premiumAllocation, elite: eliteAllocation };
 }
 
 export async function GET(request: NextRequest) {
@@ -211,43 +172,54 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const baseUrl = process.env.PROGNO_BASE_URL;
+    const baseUrl = process.env.PROGNO_BASE_URL || 'http://localhost:3008';
 
     let enginePicks: EnginePick[] = [];
     let source: 'progno' | 'unavailable' = 'unavailable';
 
     if (baseUrl) {
       try {
-        // Use Progno Cevict Flex engine (same as main picks/today)
-        const resp = await fetch(
-          `${baseUrl.replace(/\/+$/, '')}/api/picks/today`,
-          { cache: 'no-store' }
-        );
+        // Try to get real predictions from Progno API
+        let realPicks = [];
+        try {
+          const prognoUrl = process.env.PROGNO_BASE_URL || 'http://localhost:3008';
+          const resp = await fetch(`${prognoUrl}/api/picks/today`, {
+            cache: 'no-store'
+          });
 
-        if (resp.ok) {
-          const json = await resp.json();
-          const rawPicks = json?.picks;
-          if (Array.isArray(rawPicks) && rawPicks.length > 0) {
-            // Map Progno Cevict Flex pick shape to EnginePick
-            enginePicks = rawPicks.map((p: any): EnginePick => ({
-              gameId: p.game_id ?? p.gameId,
-              game: p.game ?? `${p.away_team ?? ''} @ ${p.home_team ?? ''}`,
-              sport: (p.sport ?? p.league ?? 'NFL').toUpperCase(),
-              pick: p.pick ?? '',
-              confidencePct: typeof p.confidence === 'number' ? p.confidence : 0,
-              edgePct: typeof p.value_bet_edge === 'number' ? Math.round(p.value_bet_edge) : 0,
-              kickoff: p.game_time ?? null,
-              keyFactors: Array.isArray(p.reasoning) ? p.reasoning.slice(0, 5) : (p.analysis ? [p.analysis] : []),
-              rationale: typeof p.analysis === 'string' ? p.analysis : (Array.isArray(p.reasoning) ? p.reasoning.join(' ') : ''),
-              simulationResults: p.mc_win_probability != null ? { winRate: p.mc_win_probability, iterations: p.mc_iterations ?? 0 } : undefined,
-              predictedScore: p.mc_predicted_score ?? undefined,
-              riskLevel: (p.confidence >= 75 ? 'low' : p.confidence >= 60 ? 'medium' : 'high') as 'low' | 'medium' | 'high',
-              stake: p.value_bet_kelly != null ? p.value_bet_kelly : undefined,
-              isKalshi: false,
-              kalshiMarket: undefined,
-            }));
-            source = 'progno';
+          if (resp.ok) {
+            const picksData = await resp.json();
+            if (picksData.picks && Array.isArray(picksData.picks)) {
+              realPicks = picksData.picks.map(pick => ({
+                id: pick.game_id ?? pick.gameId,
+                game: pick.game ?? `${pick.away_team ?? ''} @ ${pick.home_team ?? ''}`,
+                league: pick.league?.toUpperCase() || 'UNKNOWN',
+                sport: pick.sport?.toUpperCase() || 'UNKNOWN',
+                homeTeam: pick.home_team || 'Unknown',
+                awayTeam: pick.away_team || 'Unknown',
+                gameTime: pick.game_time || new Date().toISOString(),
+                venue: pick.venue,
+                prediction: {
+                  winner: pick.pick || 'Unknown',
+                  confidence: (pick.confidence || 0) / 100,
+                  score: pick.mc_predicted_score || { home: 0, away: 0 },
+                  edge: pick.value_bet_edge || 0,
+                  keyFactors: pick.analysis ? pick.analysis.split('\n').filter(f => f.trim()) : []
+                },
+                odds: {
+                  moneyline: pick.odds ? { home: pick.odds, away: 0 } : undefined,
+                  spread: pick.odds ? { home: pick.odds, away: 0 } : undefined,
+                  total: pick.odds ? pick.odds : undefined
+                },
+                isLive: false,
+                isCompleted: false
+              }));
+              source = 'progno';
+            }
           }
+        } catch (innerErr) {
+          // Inner try failed
+          console.warn('Inner fetch failed:', innerErr?.message);
         }
       } catch (err: any) {
         // PROGNO unavailable - return empty picks

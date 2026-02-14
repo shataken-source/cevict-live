@@ -276,12 +276,12 @@ export interface TradeRecord {
   outcome?: 'win' | 'loss' | 'open';
 }
 
-export async function saveTradeRecord(trade: TradeRecord): Promise<boolean> {
+export async function saveTradeRecord(trade: TradeRecord): Promise<string | null> {
   const client = getClient();
-  if (!client) return false;
+  if (!client) return null;
 
   try {
-    const { error } = await client
+    const { data, error } = await client
       .from('trade_history')
       .insert({
         platform: trade.platform,
@@ -300,17 +300,19 @@ export async function saveTradeRecord(trade: TradeRecord): Promise<boolean> {
         confidence: trade.confidence,
         edge: trade.edge,
         outcome: trade.outcome,
-      });
+      })
+      .select('id')
+      .single();
 
     if (error) {
       handleSupabaseError(error, 'saveTradeRecord');
-      return false;
+      return null;
     }
 
-    return true;
+    return data?.id ?? null;
   } catch (e) {
     console.error('Exception saving trade record:', e);
-    return false;
+    return null;
   }
 }
 

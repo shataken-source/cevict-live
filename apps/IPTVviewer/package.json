@@ -1,7 +1,7 @@
 {
-  "name": "nexttv-viewer",
+  "name": "switchback-tv",
   "version": "1.0.0",
-  "description": "IPTV viewer with previous-channel support and extensible architecture",
+  "description": "Switchback TV - IPTV viewer with previous-channel support and extensible architecture",
   "main": "index.js",
   "scripts": {
     "android": "react-native run-android",
@@ -20,9 +20,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@react-native-voice/voice": "^3.1.5",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",
-    "@react-native-voice/voice": "^3.2.4",
     "react": "18.2.0",
     "react-native": "^0.73.11",
     "react-native-fs": "^2.20.0",
@@ -32,8 +32,8 @@
     "react-native-safe-area-context": "^4.8.2",
     "react-native-screens": "^3.29.0",
     "react-native-sensors": "^7.3.6",
-    "react-native-video": "^6.0.0",
     "react-native-share": "^10.0.0",
+    "react-native-video": "^6.0.0",
     "react-native-wireguard-vpn-connect": "^1.0.15",
     "react-native-zip-archive": "^6.0.0",
     "zustand": "^4.4.7"
@@ -43,6 +43,7 @@
     "@babel/preset-env": "^7.23.6",
     "@babel/runtime": "^7.23.6",
     "@react-native/eslint-config": "^0.73.1",
+    "@react-native/gradle-plugin": "^0.84.0",
     "@react-native/metro-config": "^0.73.2",
     "@react-native/typescript-config": "^0.73.1",
     "@types/react": "^18.2.45",

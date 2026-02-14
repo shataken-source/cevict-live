@@ -19,6 +19,11 @@ import { fetchSurfsharkClusters, groupClustersByRegion } from '@/services/Surfsh
 import type { SurfsharkCluster } from '@/services/SurfsharkService';
 import { ModuleManager } from '@/modules/ModuleManager';
 import type { ModuleManifest } from '@/modules/ModuleInterface';
+import { TMDBService } from '@/services/TMDBService';
+import { TVMazeService } from '@/services/TVMazeService';
+import { NewsService } from '@/services/NewsService';
+import { WeatherService } from '@/services/WeatherService';
+import { WatchmodeService } from '@/services/WatchmodeService';
 
 interface SettingsScreenProps {
   navigation: any;
@@ -64,6 +69,19 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [moduleZipPath, setModuleZipPath] = useState('');
   const [moduleInstalling, setModuleInstalling] = useState(false);
 
+  // TMDB API
+  const [tmdbApiKey, setTmdbApiKey] = useState('');
+
+  // News API
+  const [newsApiKey, setNewsApiKey] = useState('');
+  const [gnewsApiKey, setGnewsApiKey] = useState('');
+
+  // Weather API
+  const [weatherApiKey, setWeatherApiKey] = useState('');
+
+  // Watchmode API
+  const [watchmodeApiKey, setWatchmodeApiKey] = useState('');
+
   useEffect(() => {
     checkPublicIP();
   }, []);
@@ -72,7 +90,13 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     const mgr = ModuleManager.getInstance();
     mgr.setContext({
       navigation,
-      store: useStore.getState(),
+      // Use store values directly from useStore hook, not getState()
+      store: {
+        playlists: useStore.getState().playlists,
+        currentPlaylist: useStore.getState().currentPlaylist,
+        adConfig: useStore.getState().adConfig,
+        epgUrl: useStore.getState().epgUrl,
+      },
       services: { m3u: M3UParser, epg: null, playlist: PlaylistManager },
     });
     mgr.listInstalledModules().then(setInstalledModules);
@@ -265,7 +289,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <Text style={styles.label}>Username</Text>
             <TextInput
               style={styles.input}
-              placeholder="COCHJNAR01"
+              placeholder="Enter your username"
               placeholderTextColor="#666"
               value={username}
               onChangeText={setUsername}
@@ -275,7 +299,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <Text style={styles.label}>Password</Text>
             <TextInput
               style={styles.input}
-              placeholder="VYa7uMUeFT"
+              placeholder="Enter your password"
               placeholderTextColor="#666"
               value={password}
               onChangeText={setPassword}
@@ -335,7 +359,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <Text style={styles.label}>Username</Text>
             <TextInput
               style={styles.input}
-              placeholder="jascodezoripty"
+              placeholder="Enter Dezor username"
               placeholderTextColor="#666"
               value={dezorUsername}
               onChangeText={setDezorUsername}
@@ -345,7 +369,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             <Text style={styles.label}>Password</Text>
             <TextInput
               style={styles.input}
-              placeholder="19e993b7f5"
+              placeholder="Enter Dezor password"
               placeholderTextColor="#666"
               value={dezorPassword}
               onChangeText={setDezorPassword}
@@ -576,11 +600,153 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           value={epgUrl}
           onChangeText={(text) => {
             setEpgUrl(text);
-            PlaylistManager.saveSettings({ epgUrl: text }).catch(() => {});
+            PlaylistManager.saveSettings({ epgUrl: text }).catch(() => { });
           }}
         />
         <Text style={styles.hint}>
           When set, the player shows "Now playing" for the current channel (match by tvg-id). Cached 1 hour.
+        </Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Movie & TV Data APIs</Text>
+        <Text style={styles.label}>TMDb API Key</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your TMDb API key"
+          placeholderTextColor="#666"
+          value={tmdbApiKey}
+          onChangeText={setTmdbApiKey}
+          autoCapitalize="none"
+        />
+        <TouchableOpacity
+          style={[styles.testButton, { marginTop: 10 }]}
+          onPress={() => {
+            if (tmdbApiKey.trim()) {
+              TMDBService.setApiKey(tmdbApiKey.trim());
+              Alert.alert('TMDb', 'API key configured! TV show data will now be enhanced with posters, ratings, and descriptions.');
+            } else {
+              Alert.alert('TMDb', 'Please enter a valid API key.');
+            }
+          }}>
+          <Text style={styles.buttonText}>Save TMDb Key</Text>
+        </TouchableOpacity>
+        <Text style={styles.hint}>
+          Get a free API key at themoviedb.org. Enables enhanced channel info with posters, ratings, and descriptions.
+        </Text>
+
+        <Text style={[styles.label, { marginTop: 16 }]}>TVMaze (No API Key Required)</Text>
+        <TouchableOpacity
+          style={[styles.testButton, { marginTop: 10 }]}
+          onPress={async () => {
+            try {
+              const shows = await TVMazeService.getPopularShows();
+              Alert.alert('TVMaze', `Connected! ${shows.length} popular shows available.`);
+            } catch (e) {
+              Alert.alert('TVMaze', 'Failed to connect. Check your internet connection.');
+            }
+          }}>
+          <Text style={styles.buttonText}>Test TVMaze</Text>
+        </TouchableOpacity>
+        <Text style={styles.hint}>
+          TVMaze provides free TV show data without an API key. Use it for show info and episode schedules.
+        </Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>News API</Text>
+        <Text style={styles.label}>NewsAPI Key (Optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your NewsAPI key"
+          placeholderTextColor="#666"
+          value={newsApiKey}
+          onChangeText={setNewsApiKey}
+          autoCapitalize="none"
+        />
+        <TouchableOpacity
+          style={[styles.testButton, { marginTop: 10 }]}
+          onPress={() => {
+            if (newsApiKey.trim()) {
+              NewsService.setNewsApiKey(newsApiKey.trim());
+              Alert.alert('News', 'API key configured! News ticker will now show headlines.');
+            }
+          }}>
+          <Text style={styles.buttonText}>Save NewsAPI Key</Text>
+        </TouchableOpacity>
+        <Text style={[styles.label, { marginTop: 16 }]}>GNews API Key (Free Alternative)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your GNews API key"
+          placeholderTextColor="#666"
+          value={gnewsApiKey}
+          onChangeText={setGnewsApiKey}
+          autoCapitalize="none"
+        />
+        <TouchableOpacity
+          style={[styles.testButton, { marginTop: 10 }]}
+          onPress={() => {
+            if (gnewsApiKey.trim()) {
+              NewsService.setGnewsApiKey(gnewsApiKey.trim());
+              Alert.alert('News', 'GNews API key configured! Free news data enabled.');
+            }
+          }}>
+          <Text style={styles.buttonText}>Save GNews Key</Text>
+        </TouchableOpacity>
+        <Text style={styles.hint}>
+          Get free keys at newsapi.org or gnews.io. Enables news ticker overlay on channels.
+        </Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Weather Widget</Text>
+        <Text style={styles.label}>OpenWeatherMap API Key</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your OpenWeatherMap API key"
+          placeholderTextColor="#666"
+          value={weatherApiKey}
+          onChangeText={setWeatherApiKey}
+          autoCapitalize="none"
+        />
+        <TouchableOpacity
+          style={[styles.testButton, { marginTop: 10 }]}
+          onPress={() => {
+            if (weatherApiKey.trim()) {
+              WeatherService.setApiKey(weatherApiKey.trim());
+              Alert.alert('Weather', 'API key configured! Weather widget will now show current conditions.');
+            }
+          }}>
+          <Text style={styles.buttonText}>Save Weather Key</Text>
+        </TouchableOpacity>
+        <Text style={styles.hint}>
+          Get a free API key at openweathermap.org. Displays weather overlay on the player.
+        </Text>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Streaming Availability</Text>
+        <Text style={styles.label}>Watchmode API Key</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your Watchmode API key"
+          placeholderTextColor="#666"
+          value={watchmodeApiKey}
+          onChangeText={setWatchmodeApiKey}
+          autoCapitalize="none"
+        />
+        <TouchableOpacity
+          style={[styles.testButton, { marginTop: 10 }]}
+          onPress={() => {
+            if (watchmodeApiKey.trim()) {
+              WatchmodeService.setApiKey(watchmodeApiKey.trim());
+              Alert.alert('Watchmode', 'API key configured! Shows where content is streaming.');
+            }
+          }}>
+          <Text style={styles.buttonText}>Save Watchmode Key</Text>
+        </TouchableOpacity>
+        <Text style={styles.hint}>
+          Get a free API key at watchmode.com. Shows streaming availability for shows/movies.
         </Text>
       </View>
 

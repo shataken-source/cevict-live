@@ -54,7 +54,8 @@ export default function SmartChatbot() {
         role: 'bot',
         text: data.answer,
         sentiment: data.sentiment,
-        needsEscalation: data.needsEscalation
+        needsEscalation: data.needsEscalation,
+        conversationId: data.conversationId
       };
 
       setMessages(prev => [...prev, botMessage]);
@@ -81,17 +82,24 @@ export default function SmartChatbot() {
   const rateSatisfaction = async (messageIndex: number, helpful: boolean) => {
     const message = messages[messageIndex];
     if (message.role !== 'bot') return;
-
-    try {
-      // Update local state
-      const updatedMessages = [...messages];
-      updatedMessages[messageIndex] = { ...message, conversationId: 'rated' };
-      setMessages(updatedMessages);
-
-      toast.success(helpful ? 'Thanks for your feedback!' : 'We\'ll work on improving our responses');
-    } catch (error) {
-      console.error('Rating error:', error);
+    const convId = message.conversationId;
+    if (convId && convId !== 'rated') {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from('chatbot_conversations').update({ was_helpful: helpful }).eq('id', convId);
+        await supabase.from('chatbot_feedback').insert({
+          conversation_id: convId,
+          marked_helpful: helpful,
+          reviewed_by: user?.id
+        });
+      } catch (e) {
+        console.error('Rating error:', e);
+      }
     }
+    const updatedMessages = [...messages];
+    updatedMessages[messageIndex] = { ...message, conversationId: 'rated' };
+    setMessages(updatedMessages);
+    toast.success(helpful ? 'Thanks for your feedback!' : 'We\'ll work on improving our responses');
   };
 
   if (!isOpen) {

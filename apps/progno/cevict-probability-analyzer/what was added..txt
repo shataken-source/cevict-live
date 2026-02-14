@@ -1,0 +1,29 @@
+Cevict Probability Analyzer - Final Summary
+Features Implemented:
+
+✅ Load Picks - File dialog to select predictions JSON from C:\cevict-live\apps\progno
+✅ Paste JSON - Manual paste option as backup
+✅ Pick Sidebar - Shows all picks with EV + Edge displayed
+✅ 16-Model Ensemble - Bayesian, XGBoost, Neural Network, Random Forest, Poisson, Elo, SVM, LSTM, Attention, etc.
+✅ Event Analysis - Add multiple data points with custom weights
+✅ Value Metrics - EV%, Kelly %, Stake calculation
+✅ BET Signal - Shows team name @ odds with full reasoning
+✅ Team Name Extraction - Auto-parses from Event Name field
+How to Use:
+
+Click "Load Picks" → Select a predictions-YYYY-MM-DD.json file
+Click a pick from sidebar → Auto-fills form with pick details
+Add custom data points (optional) → Click "+ Add Data Point"
+Click "Analyze with 16 Models" → See ensemble verdict
+Result shows BET/PASS with team, odds, stake, and edge
+File Location: C:\cevict-live\apps\progno\cevict-probability-analyzer\index.html
+
+No backend needed — everything runs client-side in the browser. Enjoy! 🚀
+
+
+Add to Chat
+Ctrl U
+
+Create New Task
+Editing queued message
+Cancel

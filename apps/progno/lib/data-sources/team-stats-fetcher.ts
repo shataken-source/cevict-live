@@ -1,4 +1,9 @@
 // lib/data-sources/team-stats-fetcher.ts
+/**
+ * MOCK ONLY — Do not use for production picks (Gemini audit).
+ * Live picks use estimateTeamStatsFromOdds (odds-derived). This fetcher is for dev/game-enricher;
+ * replace with real API (e.g. API-Sports) or fail when real data is required.
+ */
 
 const teamStatsFetcher = {
   async getTeamStats(teamName: string, sport: string = 'nfl') {

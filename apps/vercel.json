@@ -1,0 +1,25 @@
+{
+    "rewrites": [
+        {
+            "source": "/",
+            "destination": "/index.html"
+        }
+    ],
+    "redirects": [
+        {
+            "source": "/app",
+            "destination": "/switchback-tv.apk",
+            "permanent": false
+        },
+        {
+            "source": "/download",
+            "destination": "/switchback-tv.apk",
+            "permanent": false
+        },
+        {
+            "source": "/install",
+            "destination": "/switchback-tv.apk",
+            "permanent": false
+        }
+    ]
+}

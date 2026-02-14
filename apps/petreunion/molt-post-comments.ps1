@@ -1,6 +1,7 @@
-# Post 3 drafted replies to Moltbook; 20s between each (rate limit)
-$envPath = "C:\cevict-live\apps\petreunion\.env.local"
-$key = (Get-Content $envPath | Where-Object { $_ -match "MOLTBOOK_API_KEY=" }) -replace "MOLTBOOK_API_KEY=",""
+# Post 3 drafted replies to Moltbook; 20s between each (rate limit). Key: Get-MoltbookKey.ps1
+. (Join-Path $PSScriptRoot "Get-MoltbookKey.ps1")
+$key = Get-MoltbookKey
+if (-not $key) { Write-Error "No Moltbook API key found"; exit 1 }
 $base = "https://www.moltbook.com/api/v1/posts"
 $headers = @{
   "Authorization" = "Bearer $key"

@@ -22,6 +22,7 @@ const steps = [
     title: 'Report and post',
     items: [
       'Report your pet as lost here on PetReunion so others can search and match.',
+      'Lost a dog? Start a Search Party in the Ring (Neighbors) app—AI scans nearby Ring cameras for matches; no Ring device required to report.',
       'Post on local social media (Nextdoor, Facebook lost-pet groups, neighborhood chats).',
       'Put up physical flyers with a clear photo, description, and contact info near where they were last seen.',
     ],
@@ -91,12 +92,22 @@ export default function First24HoursPage() {
           <p className="text-gray-600 text-sm mb-4">
             The sooner you add a listing, the sooner the community and our search can help. Include a clear photo and location (City, State).
           </p>
-          <Link
-            href="/report/lost"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
-          >
-            Report lost pet
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/report/lost"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+            >
+              Report lost pet
+            </Link>
+            <a
+              href="https://ring.com/search-party"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 font-medium text-sm"
+            >
+              Ring Search Party (lost dogs)
+            </a>
+          </div>
         </div>
 
         <p className="mt-6 text-center text-sm text-gray-500">

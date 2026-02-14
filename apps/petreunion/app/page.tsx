@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Search, Heart, AlertCircle, MapPin, HelpCircle, CheckCircle, Info, ArrowRight } from 'lucide-react'
+import { Search, Heart, AlertCircle, MapPin, HelpCircle, CheckCircle, Info, ArrowRight, Shield } from 'lucide-react'
 import HelpBot from '@/components/HelpBot'
 
 export default function HomePage() {
@@ -32,6 +32,36 @@ export default function HomePage() {
 
         {/* Action Cards with More Detail */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          {/* Reunion Ready - NEW FEATURE */}
+          <Link
+            href="/reunion-ready"
+            className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-lg shadow-lg p-6 hover:shadow-xl transition-all hover:scale-105 text-center group relative"
+          >
+            <div className="absolute top-2 right-2 bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              NEW
+            </div>
+            <Shield className="w-12 h-12 text-emerald-600 mx-auto mb-4 group-hover:scale-110 transition-transform" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Reunion Ready 🛡️</h2>
+            <p className="text-gray-600 mb-3">Pre-register your pet before they go missing</p>
+            <div className="text-left text-sm text-gray-500 space-y-1 mt-4 pt-4 border-t">
+              <p className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                <span>Instant activation when needed</span>
+              </p>
+              <p className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                <span>Auto-notify shelters & community</span>
+              </p>
+              <p className="flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                <span>Save precious time in crisis</span>
+              </p>
+            </div>
+            <div className="mt-4 text-emerald-600 font-medium flex items-center justify-center gap-1">
+              Learn More <ArrowRight className="w-4 h-4" />
+            </div>
+          </Link>
+
           <Link
             href="/search"
             className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-all hover:scale-105 text-center group"
@@ -267,6 +297,24 @@ export default function HomePage() {
               </ul>
             </div>
           </div>
+        </div>
+
+        {/* Other tools - Ring Search Party */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8 border border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900 mb-3 text-center">Also try: Ring Search Party (lost dogs)</h2>
+          <p className="text-center text-gray-600 text-sm max-w-2xl mx-auto mb-3">
+            If your lost pet is a dog, you can start a <strong>Search Party</strong> in the Ring app’s Neighbors section. Ring uses AI to scan nearby outdoor Ring cameras for matching dogs. You don’t need a Ring device to report—anyone in the U.S. can use it. Great to use alongside PetReunion.
+          </p>
+          <p className="text-center">
+            <a
+              href="https://ring.com/search-party"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline font-medium"
+            >
+              Ring Search Party (ring.com) →
+            </a>
+          </p>
         </div>
 
         {/* Tips Section */}

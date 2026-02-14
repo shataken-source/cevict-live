@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,24 +9,26 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import {useStore} from '@/store/useStore';
-import {Channel} from '@/types';
-import {M3UParser} from '@/services/M3UParser';
-import {PlaylistManager} from '@/services/PlaylistManager';
-import {SAMPLE_PLAYLIST} from '@/data/sampleData';
-import {IPTVService} from '@/services/IPTVService';
+import { useStore } from '@/store/useStore';
+import { Channel } from '@/types';
+import { M3UParser } from '@/services/M3UParser';
+import { PlaylistManager } from '@/services/PlaylistManager';
+import { SAMPLE_PLAYLIST } from '@/data/sampleData';
+import { IPTVService } from '@/services/IPTVService';
 
 interface HomeScreenProps {
   navigation: any;
 }
 
-export default function HomeScreen({navigation}: HomeScreenProps) {
+export default function HomeScreen({ navigation }: HomeScreenProps) {
   const {
     currentPlaylist,
+    currentChannel,
     playlists,
     favorites,
     addPlaylist,
     setCurrentPlaylist,
+    setCurrentChannel,
     setFavorites,
     setEpgUrl,
     toggleFavorite,
@@ -87,7 +89,9 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
         setCurrentPlaylist(playlist);
       }
 
-      await PlaylistManager.savePlaylists(useStore.getState().playlists);
+      // Capture current playlists from store, then save
+      const updatedPlaylists = useStore.getState().playlists;
+      await PlaylistManager.savePlaylists(updatedPlaylists);
     } catch (error) {
       console.error('Error loading sample playlist:', error);
     }
@@ -128,7 +132,9 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
       addPlaylist(playlist);
       setCurrentPlaylist(playlist);
 
-      await PlaylistManager.savePlaylists(useStore.getState().playlists);
+      // Capture current playlists from store, then save
+      const updatedPlaylists = useStore.getState().playlists;
+      await PlaylistManager.savePlaylists(updatedPlaylists);
     } catch (error) {
       console.error('Error loading from alt server:', error);
     }
@@ -148,7 +154,9 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
       addPlaylist(playlist);
       setCurrentPlaylist(playlist);
 
-      await PlaylistManager.savePlaylists(useStore.getState().playlists);
+      // Capture current playlists from store, then save
+      const updatedPlaylists = useStore.getState().playlists;
+      await PlaylistManager.savePlaylists(updatedPlaylists);
     } catch (error) {
       console.error('Error loading Dezor playlist:', error);
     }
@@ -159,15 +167,15 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
       'Load Sample Channels',
       'This will load 30+ sample channels for testing. Continue?',
       [
-        {text: 'Cancel', style: 'cancel'},
-        {text: 'Load', onPress: loadSamplePlaylist},
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Load', onPress: loadSamplePlaylist },
       ]
     );
   };
 
   const handleAddPlaylist = async () => {
     if (!playlistUrl.trim()) return;
-    
+
     setLoading(true);
     try {
       const playlist = await M3UParser.fetchAndParse(
@@ -175,7 +183,7 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
         `playlist-${Date.now()}`,
         `Playlist ${playlists.length + 1}`
       );
-      
+
       addPlaylist(playlist);
       setCurrentPlaylist(playlist);
 
@@ -192,13 +200,13 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
 
   const getFilteredChannels = (): Channel[] => {
     if (!currentPlaylist) return [];
-    
+
     let channels = currentPlaylist.channels;
-    
+
     if (filter === 'favorites') {
       channels = channels.filter(c => favorites.includes(c.id));
     }
-    
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       channels = channels.filter(
@@ -207,14 +215,23 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
           c.group?.toLowerCase().includes(query)
       );
     }
-    
+
     return channels;
   };
 
-  const renderChannel = ({item}: {item: Channel}) => (
+  const renderChannel = ({ item }: { item: Channel }) => (
     <TouchableOpacity
       style={styles.channelItem}
-      onPress={() => navigation.navigate('Player', {channel: item})}>
+      onPress={() => {
+        // Set current channel before navigating (this updates previousChannel in store)
+        if (currentChannel) {
+          setCurrentChannel(item);
+        }
+        navigation.navigate('Player', {
+          channel: item,
+          fromChannel: currentChannel || undefined,
+        });
+      }}>
       <View style={styles.channelInfo}>
         <Text style={styles.channelName}>{item.name}</Text>
         {item.group && <Text style={styles.channelGroup}>{item.group}</Text>}
@@ -238,8 +255,13 @@ export default function HomeScreen({navigation}: HomeScreenProps) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>NextTV Viewer</Text>
+        <Text style={styles.title}>Switchback TV</Text>
         <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={styles.guideButton}
+            onPress={() => navigation.navigate('EPG')}>
+            <Text style={styles.guideButtonText}>Guide</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.sampleButton}
             onPress={handleLoadSampleData}>
@@ -337,6 +359,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  guideButton: {
+    backgroundColor: '#5856D6',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  guideButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   sampleButton: {
     backgroundColor: '#34C759',

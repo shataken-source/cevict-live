@@ -43,6 +43,12 @@ export default function App({ Component, pageProps }) {
     return () => clearTimeout(t)
   }, [router?.pathname])
 
+  // PWA: register service worker so install and caching work for this origin
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  }, [])
+
   return (
     <>
       <Head>

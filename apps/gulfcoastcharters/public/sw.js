@@ -1,207 +1,67 @@
-// Enhanced Service Worker with advanced caching strategies
-const CACHE_VERSION = 'v2';
-const STATIC_CACHE = `static-${CACHE_VERSION}`;
-const DYNAMIC_CACHE = `dynamic-${CACHE_VERSION}`;
-const IMAGE_CACHE = `images-${CACHE_VERSION}`;
-const API_CACHE = `api-${CACHE_VERSION}`;
+// GCC PWA Service Worker - spec: free PWA, network-first, offline fallback
+const CACHE_NAME = 'gcc-v1.0.0';
+const OFFLINE_URL = '/offline.html';
 
-const STATIC_ASSETS = [
+const PRECACHE_ASSETS = [
   '/',
-  '/index.html',
+  '/offline.html',
   '/manifest.json',
-  '/offline.html'
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
-// Install - cache static assets
+// Install: cache core assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then(cache => cache.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
   );
+  self.skipWaiting();
 });
 
-// Activate - cleanup old caches
+// Activate: clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(keys => 
+    caches.keys().then((cacheNames) =>
       Promise.all(
-        keys.filter(key => key.includes('v') && !key.includes(CACHE_VERSION))
-          .map(key => caches.delete(key))
+        cacheNames.map((name) => {
+          if (name !== CACHE_NAME) return caches.delete(name);
+        })
       )
-    ).then(() => self.clients.claim())
+    )
   );
+  self.clients.claim();
 });
 
-// Fetch - smart caching strategies
+// Fetch: network first, fallback to cache
 self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
+  if (!event.request.url.startsWith(self.location.origin)) return;
 
-  // API calls - Network First
-  if (url.pathname.includes('/functions/')) {
-    event.respondWith(networkFirst(request, API_CACHE));
-  }
-  // Images - Cache First
-  else if (request.destination === 'image') {
-    event.respondWith(cacheFirst(request, IMAGE_CACHE));
-  }
-  // Static assets - Cache First
-  else if (STATIC_ASSETS.some(asset => url.pathname === asset)) {
-    event.respondWith(cacheFirst(request, STATIC_CACHE));
-  }
-  // Everything else - Stale While Revalidate
-  else {
-    event.respondWith(staleWhileRevalidate(request, DYNAMIC_CACHE));
-  }
-});
-
-// Cache First Strategy
-async function cacheFirst(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-  
-  try {
-    const response = await fetch(request);
-    if (response.ok) cache.put(request, response.clone());
-    return response;
-  } catch (error) {
-    return caches.match('/offline.html');
-  }
-}
-
-// Network First Strategy
-async function networkFirst(request, cacheName) {
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch (error) {
-    const cached = await caches.match(request);
-    return cached || new Response('Offline', { status: 503 });
-  }
-}
-
-// Stale While Revalidate
-async function staleWhileRevalidate(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  const cached = await cache.match(request);
-  
-  const fetchPromise = fetch(request).then(response => {
-    if (response.ok) cache.put(request, response.clone());
-    return response;
-  });
-  
-  return cached || fetchPromise;
-}
-
-// Enhanced Push Notifications
-self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : {};
-  
-  const notificationTypes = {
-    'booking': {
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: 'booking-update',
-      url: '/customer/dashboard'
-    },
-    'message': {
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: 'new-message',
-      url: '/messages'
-    },
-    'review': {
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: 'review',
-      url: '/notifications'
-    },
-    'payment': {
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: 'payment',
-      url: '/customer/dashboard'
-    },
-    'system': {
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: 'system-alert',
-      url: '/notifications'
-    },
-    'weather': {
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: 'weather-alert',
-      url: '/captain/mobile-dashboard?tab=weather',
-      requireInteraction: data.severity === 'Extreme' || data.severity === 'Severe'
-    },
-    'reminder': {
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      tag: 'reminder',
-      url: '/customer/dashboard'
-    }
-  };
-
-  const type = data.type || 'system';
-  const config = notificationTypes[type] || notificationTypes['system'];
-  
-  const options = {
-    body: data.body || 'You have a new notification',
-    icon: config.icon,
-    badge: config.badge,
-    vibrate: [200, 100, 200],
-    tag: config.tag,
-    requireInteraction: config.requireInteraction || false,
-    data: {
-      url: data.url || config.url,
-      notificationId: data.notificationId,
-      ...data
-    },
-    actions: data.actions || []
-  };
-  
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'Gulf Coast Charters', options)
-  );
-});
-
-
-
-
-// Notification Click Handler
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        const url = event.notification.data?.url || '/captain/mobile-dashboard';
-        
-        // Focus existing window if open
-        for (const client of clientList) {
-          if (client.url.includes('/captain/mobile-dashboard') && 'focus' in client) {
-            return client.focus();
-          }
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
-        
-        // Open new window
-        if (clients.openWindow) {
-          return clients.openWindow(url);
-        }
+        return response;
       })
+      .catch(() =>
+        caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          if (event.request.headers.get('accept')?.includes('text/html')) {
+            return caches.match(OFFLINE_URL);
+          }
+          return new Response('Offline', { status: 503 });
+        })
+      )
   );
 });
 
-
-// Background Sync for bookings
+// Background Sync
 self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-fishing-reports') {
+    event.waitUntil(syncFishingReports());
+  }
   if (event.tag === 'sync-bookings') {
     event.waitUntil(syncBookings());
   }
@@ -210,40 +70,75 @@ self.addEventListener('sync', (event) => {
   }
 });
 
-async function syncBookings() {
-  const db = await openDB();
-  const bookings = await db.getAll('pending-bookings');
-  
-  for (const booking of bookings) {
-    try {
-      await fetch('/functions/v1/booking-manager', {
+async function syncFishingReports() {
+  // Offline fishing reports: app can write to GCCSyncDB pending-fishing-reports; when online we POST and clear.
+  try {
+    const db = await openSyncDB();
+    const pending = await getAllFromStore(db, 'pending-fishing-reports');
+    for (const report of pending) {
+      await fetch('/api/community/feed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(booking)
+        body: JSON.stringify(report)
       });
-      await db.delete('pending-bookings', booking.id);
-    } catch (error) {
-      console.error('Sync failed:', error);
+      await deleteFromStore(db, 'pending-fishing-reports', report.id);
     }
-  }
+  } catch (e) {}
+}
+
+function openSyncDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('GCCSyncDB', 1);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => resolve(req.result);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('pending-fishing-reports')) {
+        db.createObjectStore('pending-fishing-reports', { keyPath: 'id' });
+      }
+    };
+  });
+}
+
+function getAllFromStore(db, storeName) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function deleteFromStore(db, storeName, id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function syncBookings() {
+  try {
+    const db = await openDB();
+    const bookings = await getAllFromStore(db, 'pending-bookings');
+    for (const b of bookings) {
+      await fetch('/functions/v1/booking-manager', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
+      await deleteFromStore(db, 'pending-bookings', b.id);
+    }
+  } catch (e) {}
 }
 
 async function syncActions() {
-  const db = await openDB();
-  const actions = await db.getAll('pending-actions');
-  
-  for (const action of actions) {
-    try {
-      await fetch('/functions/v1/booking-manager', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(action)
-      });
-      await db.delete('pending-actions', action.id);
-    } catch (error) {
-      console.error('Action sync failed:', error);
+  try {
+    const db = await openDB();
+    const actions = await getAllFromStore(db, 'pending-actions');
+    for (const a of actions) {
+      await fetch('/functions/v1/booking-manager', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(a) });
+      await deleteFromStore(db, 'pending-actions', a.id);
     }
-  }
+  } catch (e) {}
 }
 
 function openDB() {
@@ -253,15 +148,35 @@ function openDB() {
     request.onsuccess = () => resolve(request.result);
     request.onupgradeneeded = (e) => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains('pending-bookings')) {
-        db.createObjectStore('pending-bookings', { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains('pending-actions')) {
-        db.createObjectStore('pending-actions', { keyPath: 'id', autoIncrement: true });
-      }
-      if (!db.objectStoreNames.contains('bookings')) {
-        db.createObjectStore('bookings', { keyPath: 'id' });
-      }
+      if (!db.objectStoreNames.contains('pending-bookings')) db.createObjectStore('pending-bookings', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('pending-actions')) db.createObjectStore('pending-actions', { keyPath: 'id', autoIncrement: true });
+      if (!db.objectStoreNames.contains('bookings')) db.createObjectStore('bookings', { keyPath: 'id' });
     };
   });
 }
+
+// Push notifications
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  const options = {
+    body: data.body || 'You have a new notification',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    vibrate: [200, 100, 200],
+    data: { url: data.url || '/' }
+  };
+  event.waitUntil(self.registration.showNotification(data.title || 'Gulf Coast Charters', options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if (c.url.includes(self.location.origin) && 'focus' in c) return c.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(url);
+    })
+  );
+});

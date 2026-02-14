@@ -467,12 +467,12 @@ export default function CaptainDashboard() {
 
 
           <TabsContent value="deals">
-            <LastMinuteDealsManager captainId={captainId} />
+            {captainId && <LastMinuteDealsManager captainId={captainId} />}
           </TabsContent>
 
 
           <TabsContent value="availability">
-            <CaptainAvailabilityManager captainId={captainId} />
+            {captainId && <CaptainAvailabilityManager captainId={captainId} />}
           </TabsContent>
 
           <TabsContent value="earnings">
@@ -482,40 +482,46 @@ export default function CaptainDashboard() {
 
 
           <TabsContent value="messages">
-            <CustomerMessagingPanel captainId={captainId} />
+            {captainId && <CustomerMessagingPanel captainId={captainId} />}
           </TabsContent>
 
           <TabsContent value="documents" className="space-y-6">
             <CaptainDocumentPurchase />
             
-            <CustomEmailPurchase 
-              userId={captainId}
-              userType="captain"
-              currentPoints={0}
-              onPurchaseSuccess={loadDocuments}
-            />
+            {captainId && (
+              <CustomEmailPurchase 
+                userId={captainId}
+                userType="captain"
+                currentPoints={0}
+                onPurchaseSuccess={loadDocuments}
+              />
+            )}
 
             
-            <CaptainComplianceOverview 
-              captainId={captainId} 
-              onUploadClick={(docType) => {
-                setSelectedDocType(docType);
-                // Scroll to upload section
-                setTimeout(() => {
-                  const uploadSection = document.getElementById('document-upload-section');
-                  uploadSection?.scrollIntoView({ behavior: 'smooth' });
-                }, 100);
-              }}
-            />
+            {captainId && (
+              <CaptainComplianceOverview 
+                captainId={captainId} 
+                onUploadClick={(docType) => {
+                  setSelectedDocType(docType);
+                  // Scroll to upload section
+                  setTimeout(() => {
+                    const uploadSection = document.getElementById('document-upload-section');
+                    uploadSection?.scrollIntoView({ behavior: 'smooth' });
+                  }, 100);
+                }}
+              />
+            )}
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <CaptainExpirationTimeline documents={documents} />
             </div>
 
-            <div id="document-upload-section">
-              <h2 className="text-2xl font-bold mb-4">Upload Documents</h2>
-              <EnhancedDocumentUpload captainId={captainId} />
-            </div>
+            {captainId && (
+              <div id="document-upload-section">
+                <h2 className="text-2xl font-bold mb-4">Upload Documents</h2>
+                <EnhancedDocumentUpload captainId={captainId} />
+              </div>
+            )}
           </TabsContent>
 
 
@@ -527,7 +533,7 @@ export default function CaptainDashboard() {
 
 
           <TabsContent value="calendar">
-            <CaptainAvailabilityCalendar captainId={captainId} />
+            {captainId && <CaptainAvailabilityCalendar captainId={captainId} />}
           </TabsContent>
 
           <TabsContent value="performance">
@@ -550,7 +556,7 @@ export default function CaptainDashboard() {
           </TabsContent>
 
           <TabsContent value="training">
-            <TrainingAcademyDashboard captainId={captainId} />
+            {captainId && <TrainingAcademyDashboard captainId={captainId} />}
           </TabsContent>
 
 

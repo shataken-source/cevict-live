@@ -11,9 +11,26 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   // Removed auto-redirect on mount - let user always see login form
   // Redirect only happens after successful login in submit()
+
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    const q = router.query;
+    const emailParam = typeof q.email === 'string' ? q.email : '';
+    const fromSso = q.sso === '1';
+
+    if (emailParam && !email) {
+      setEmail(emailParam);
+    }
+
+    if (fromSso && emailParam) {
+      setInfo(`SSO validated. Continue as ${emailParam}.`);
+    }
+  }, [router.isReady, router.query, email]);
 
   async function submit() {
     setError(null);
@@ -84,6 +101,12 @@ export default function AdminLoginPage() {
             <h1 className="text-2xl font-bold text-gray-900">Admin</h1>
             <p className="text-sm text-gray-600">Sign in to access the admin dashboard</p>
           </div>
+
+          {info && !error && (
+            <div className="mb-3 text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              {info}
+            </div>
+          )}
 
           <div className="flex gap-2 mb-4">
             <button

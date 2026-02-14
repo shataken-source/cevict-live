@@ -2,19 +2,50 @@
 
 import { useAuth } from '@/lib/auth-context'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { User, Mail, Calendar, LogOut, ArrowLeft } from 'lucide-react'
 
 export default function ProfilePage() {
   const { user, loading, signOut } = useAuth()
   const router = useRouter()
+  const [bookings, setBookings] = useState<any[] | null>(null)
+  const [bookingsError, setBookingsError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login')
     }
   }, [user, loading, router])
+
+  useEffect(() => {
+    if (!user) return
+
+    let cancelled = false
+    async function loadBookings() {
+      try {
+        setBookingsError(null)
+        const res = await fetch('/api/bookings/list')
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body.error || 'Failed to load bookings')
+        }
+        const body = await res.json()
+        if (!cancelled) {
+          setBookings(body.bookings || [])
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setBookingsError(err instanceof Error ? err.message : 'Failed to load bookings')
+        }
+      }
+    }
+
+    loadBookings()
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
   if (loading) {
     return (
@@ -96,6 +127,50 @@ export default function ProfilePage() {
                     View Rentals
                   </Link>
                 </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Bookings</h2>
+                {bookingsError && (
+                  <p className="text-sm text-red-600 mb-2">{bookingsError}</p>
+                )}
+                {bookings === null && !bookingsError && (
+                  <p className="text-sm text-gray-500">Loading bookings…</p>
+                )}
+                {bookings && bookings.length === 0 && !bookingsError && (
+                  <p className="text-sm text-gray-500">
+                    No bookings yet. When you book a rental, it will appear here.
+                  </p>
+                )}
+                {bookings && bookings.length > 0 && (
+                  <div className="space-y-3">
+                    {bookings.map((b) => (
+                      <div
+                        key={b.id}
+                        className="flex items-center justify-between p-3 border border-gray-200 rounded-lg"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {b.check_in && b.check_out
+                              ? `${new Date(b.check_in).toLocaleDateString()} → ${new Date(
+                                  b.check_out
+                                ).toLocaleDateString()}`
+                              : 'Booking'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Status: {b.status || 'pending'}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500">Total</p>
+                          <p className="text-lg font-bold text-blue-600">
+                            ${Number(b.total_amount ?? 0).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="border-t border-gray-200 pt-4">

@@ -234,16 +234,23 @@ export class ClaudeEffectEngine {
     }
 
     // Calculate combined Claude Effect (per complete guide spec)
-    // Formula: CLAUDE_EFFECT = (w₁ × SF) + (w₂ × NM) + (w₃ × IAI) + (w₅ × NIG) + (w₇ × EPD)
-    // NOTE: CSI and TRD are NOT in this formula - they're applied separately
-    // Use league-specific weights when available (NHL: NM; NFL: IAI from simulation)
+    // Weights normalized to sum to 1 so effect scale is consistent
     const w = this.getEffectiveWeights(gameData.league);
+    const weightSum = w.sentiment + w.narrative + w.information + w.network + w.emergent;
+    const n = weightSum > 0 ? weightSum : 1;
+    const nw = {
+      sentiment: w.sentiment / n,
+      narrative: w.narrative / n,
+      information: w.information / n,
+      network: w.network / n,
+      emergent: w.emergent / n
+    };
     const claudeEffect =
-      (w.sentiment * scores.sentimentField) +
-      (w.narrative * scores.narrativeMomentum) +
-      (w.information * scores.informationAsymmetry) +
-      (w.network * scores.networkInfluence) +
-      (w.emergent * scores.emergentPattern);
+      (nw.sentiment * scores.sentimentField) +
+      (nw.narrative * scores.narrativeMomentum) +
+      (nw.information * scores.informationAsymmetry) +
+      (nw.network * scores.networkInfluence) +
+      (nw.emergent * scores.emergentPattern);
 
     // Clamp Claude Effect to reasonable bounds (±15% max impact per guide)
     const clampedEffect = Math.max(-0.15, Math.min(0.15, claudeEffect));

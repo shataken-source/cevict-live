@@ -9,10 +9,10 @@
  *       const m=l.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
  *       if(m&&m[1].startsWith('TWITTER_')) process.env[m[1]]=m[2].trim();
  *     });
- *     require('./apps/praxis.original/scripts/verify-twitter-keys.mjs');
+ *     require('./apps/praxis/scripts/verify-twitter-keys.mjs');
  *   "
  * Or from praxis (keys in praxis .env.local):
- *   cd apps/praxis.original && node scripts/verify-twitter-keys.mjs
+ *   cd apps/praxis && node scripts/verify-twitter-keys.mjs
  *
  * Expects: TWITTER_API_KEY, TWITTER_API_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET
  */

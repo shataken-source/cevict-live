@@ -4,6 +4,8 @@
 
 This comprehensive guide explains everything you can do as a captain on our platform. Keep this for reference or share it with potential captains.
 
+*Feature availability and menu paths may vary; confirm in the live app.*
+
 ---
 
 ## Table of Contents
@@ -348,4 +350,4 @@ A: Yes, you control your pricing within platform guidelines.
 
 **Gulf Coast Charters - Empowering Captains, Delighting Customers**
 
-*Version 1.0 - Last Updated: November 2025*
+*Version 1.0 - Last Updated: February 2026*

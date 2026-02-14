@@ -85,9 +85,6 @@ export default function Home({ session }) {
           <Link href="/captains" className="bg-white text-blue-600 px-8 py-4 rounded-lg font-semibold inline-block">
             Find a Captain
           </Link>
-          <Link href="/admin" className="bg-blue-500/30 border border-white/20 px-8 py-4 rounded-lg font-semibold inline-block hover:bg-blue-500/40">
-            Admin
-          </Link>
         </div>
       </div>
 

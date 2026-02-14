@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="#1a1a2e"/>
+
+  <!-- Switch Arrow Left -->
+  <path d="M120 200 L200 200 L200 170 L280 256 L200 342 L200 312 L120 312 Z" fill="#e94560"/>
+
+  <!-- Switch Arrow Right -->
+  <path d="M392 200 L312 200 L312 170 L232 256 L312 342 L312 312 L392 312 Z" fill="#0f3460"/>
+
+  <!-- "Switch" Text Line -->
+  <rect x="160" y="380" width="192" height="24" rx="12" fill="#e94560"/>
+
+  <!-- "back" Text Line -->
+  <rect x="190" y="420" width="132" height="16" rx="8" fill="#0f3460"/>
+</svg>

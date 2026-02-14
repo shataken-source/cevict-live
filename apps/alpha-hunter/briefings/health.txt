@@ -1,3 +1,4 @@
-Health check: OK
-  Supabase: ok
-  Kalshi: ok
+Health check: FAIL
+  Supabase: fail
+  Kalshi: skip
+   Supabase: Invalid API key

@@ -10,6 +10,9 @@ import { Search } from 'lucide-react';
 import { ButtonShowcase } from '@/components/showcase/ButtonShowcase';
 import { CardShowcase } from '@/components/showcase/CardShowcase';
 import { InputShowcase } from '@/components/showcase/InputShowcase';
+import { SelectShowcase } from '@/components/showcase/SelectShowcase';
+import { TabsShowcase } from '@/components/showcase/TabsShowcase';
+import { BadgeShowcase } from '@/components/showcase/BadgeShowcase';
 import { AlertShowcase } from '@/components/showcase/AlertShowcase';
 
 export default function ComponentShowcase() {
@@ -18,8 +21,11 @@ export default function ComponentShowcase() {
 
   const components = [
     { id: 'button', component: <ButtonShowcase />, category: 'Form', name: 'Button' },
-    { id: 'card', component: <CardShowcase />, category: 'Layout', name: 'Card' },
     { id: 'input', component: <InputShowcase />, category: 'Form', name: 'Input' },
+    { id: 'select', component: <SelectShowcase />, category: 'Form', name: 'Select' },
+    { id: 'card', component: <CardShowcase />, category: 'Layout', name: 'Card' },
+    { id: 'tabs', component: <TabsShowcase />, category: 'Layout', name: 'Tabs' },
+    { id: 'badge', component: <BadgeShowcase />, category: 'Feedback', name: 'Badge' },
     { id: 'alert', component: <AlertShowcase />, category: 'Feedback', name: 'Alert' },
   ];
 

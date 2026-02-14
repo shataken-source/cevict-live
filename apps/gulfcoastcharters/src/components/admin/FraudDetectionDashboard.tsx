@@ -42,7 +42,12 @@ export default function FraudDetectionDashboard() {
 
   const loadStats = async () => {
     const { data } = await supabase.rpc('get_fraud_stats');
-    if (data) setStats(data);
+    if (data && typeof data === 'object') setStats({
+      total_alerts: data.total_alerts ?? 0,
+      critical_alerts: data.critical_alerts ?? 0,
+      resolved_today: data.resolved_today ?? 0,
+      fraud_prevented: data.fraud_prevented ?? 0,
+    });
   };
 
   const getSeverityColor = (severity: string) => {

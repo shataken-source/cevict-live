@@ -28,121 +28,24 @@ Comprehensive biometric authentication system using WebAuthn API for fingerprint
    - List registered passkeys
    - Add/remove passkeys inline
 
-### Required Edge Function
+### Edge Function
 
-Create `supabase/functions/biometric-manager/index.ts`:
+**`supabase/functions/biometric-manager/index.ts`** (implemented):
 
-```typescript
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+- **list-devices** – List credentials for `userId`, enriched with device type and `is_current` (by user-agent).
+- **delete-device** – Delete credential by `credential_id` and `userId`.
+- **update-last-used** – Update `last_used_at` and `user_agent` for a credential.
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
-
-  try {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
-
-    const { action, userId, deviceId } = await req.json();
-
-    switch (action) {
-      case 'list-devices': {
-        const { data: devices, error } = await supabase
-          .from('webauthn_credentials')
-          .select('*')
-          .eq('user_id', userId)
-          .order('last_used_at', { ascending: false });
-
-        if (error) throw error;
-
-        const userAgent = req.headers.get('user-agent') || '';
-        const enrichedDevices = devices.map((device: any) => ({
-          id: device.credential_id,
-          device_name: device.device_name || 'Unknown Device',
-          device_type: detectDeviceType(device.user_agent || ''),
-          last_used: device.last_used_at || device.created_at,
-          created_at: device.created_at,
-          is_current: device.user_agent === userAgent
-        }));
-
-        return new Response(
-          JSON.stringify({ success: true, devices: enrichedDevices }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      case 'delete-device': {
-        const { error } = await supabase
-          .from('webauthn_credentials')
-          .delete()
-          .eq('credential_id', deviceId)
-          .eq('user_id', userId);
-
-        if (error) throw error;
-
-        return new Response(
-          JSON.stringify({ success: true }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      case 'update-last-used': {
-        const { error } = await supabase
-          .from('webauthn_credentials')
-          .update({ 
-            last_used_at: new Date().toISOString(),
-            user_agent: req.headers.get('user-agent')
-          })
-          .eq('credential_id', deviceId)
-          .eq('user_id', userId);
-
-        if (error) throw error;
-
-        return new Response(
-          JSON.stringify({ success: true }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      default:
-        return new Response(
-          JSON.stringify({ success: false, error: 'Invalid action' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-    }
-  } catch (error: any) {
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-});
-
-function detectDeviceType(userAgent: string): string {
-  const ua = userAgent.toLowerCase();
-  if (ua.includes('mobile') || ua.includes('android') || ua.includes('iphone')) return 'mobile';
-  if (ua.includes('tablet') || ua.includes('ipad')) return 'tablet';
-  return 'desktop';
-}
-```
+Request body: `{ action, userId, deviceId? }`. Uses service role; client must send the authenticated user’s `userId`.
 
 ## Database Schema
 
-Ensure `webauthn_credentials` table exists:
+Table `webauthn_credentials` is created in **`supabase/migrations/20240119_biometric_auth.sql`**:
 
 ```sql
 CREATE TABLE IF NOT EXISTS webauthn_credentials (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   credential_id TEXT UNIQUE NOT NULL,
   public_key TEXT NOT NULL,
   device_name TEXT,
@@ -150,13 +53,18 @@ CREATE TABLE IF NOT EXISTS webauthn_credentials (
   user_agent TEXT,
   counter BIGINT DEFAULT 0,
   transports TEXT[],
+  authenticator_attachment TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  last_used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  last_used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  ...
 );
 
 CREATE INDEX idx_webauthn_user_id ON webauthn_credentials(user_id);
 CREATE INDEX idx_webauthn_credential_id ON webauthn_credentials(credential_id);
+CREATE INDEX idx_webauthn_last_used ON webauthn_credentials(last_used_at DESC);
 ```
+
+RLS is enabled; see `20240122_enable_rls.sql` and `20240122_rls_policies.sql`.
 
 ## Features
 
@@ -239,8 +147,8 @@ CREATE INDEX idx_webauthn_credential_id ON webauthn_credentials(credential_id);
 
 ## Deployment Checklist
 
-- [ ] Deploy `biometric-manager` edge function
-- [ ] Verify `webauthn_credentials` table exists
+- [x] Deploy `biometric-manager` edge function (implemented in repo)
+- [x] Verify `webauthn_credentials` table exists (migration `20240119_biometric_auth.sql`)
 - [ ] Test on multiple devices
 - [ ] Test biometric registration
 - [ ] Test biometric login
@@ -274,6 +182,17 @@ CREATE INDEX idx_webauthn_credential_id ON webauthn_credentials(credential_id);
 - Credential may have been deleted
 - Biometric verification failed
 - User cancelled the prompt
+
+## Implementation Status (No-BS)
+
+| Item | Status |
+|------|--------|
+| BiometricDeviceManager | `src/components/BiometricDeviceManager.tsx` – calls `biometric-manager` |
+| PasskeyAuthentication | `src/components/PasskeyAuthentication.tsx` |
+| PasskeyRegistration | `src/components/PasskeyRegistration.tsx` |
+| ProfileSettings / BiometricSettings | `src/components/ProfileSettings.tsx`, `BiometricSettings.tsx` |
+| biometric-manager edge function | `supabase/functions/biometric-manager/index.ts` (list-devices, delete-device, update-last-used) |
+| webauthn_credentials table | `supabase/migrations/20240119_biometric_auth.sql` + RLS in 20240122_* |
 
 ## Future Enhancements
 

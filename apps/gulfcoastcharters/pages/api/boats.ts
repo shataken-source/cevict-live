@@ -19,6 +19,9 @@ type PublicBoat = {
   featured?: boolean;
   available: boolean;
   home_port: string | null;
+  /** For WhereToVacation "properties near this charter" */
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 function toNumber(value: unknown): number | null {
@@ -77,6 +80,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'full_day_rate',
           'operating_area',
           'home_marina',
+          'home_latitude',
+          'home_longitude',
           'featured',
         ].join(',')
       )
@@ -177,6 +182,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               : row.operating_area
                 ? String(row.operating_area)
                 : null,
+          latitude: toNumber(row.home_latitude) ?? null,
+          longitude: toNumber(row.home_longitude) ?? null,
         };
       })
       .filter((b) => (availableOnly ? b.available : true));

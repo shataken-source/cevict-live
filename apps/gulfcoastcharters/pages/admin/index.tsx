@@ -15,43 +15,65 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     // Require login; use same client as login page so session is shared. Always send redirect=/admin.
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) router.replace('/admin/login?redirect=' + encodeURIComponent('/admin'));
-    });
-
-    async function loadStats() {
-      try {
-        const [usersRes, campaignsRes] = await Promise.all([
-          fetch('/api/admin/users').catch(() => null),
-          fetch('/api/admin/campaigns').catch(() => null),
-        ]);
-        
-        let totalUsers = 0;
-        let activeCampaigns = 0;
-        
-        if (usersRes?.ok) {
-          const usersData = await usersRes.json();
-          totalUsers = usersData.users?.length || 0;
-        }
-        
-        if (campaignsRes?.ok) {
-          const campaignsData = await campaignsRes.json();
-          activeCampaigns = campaignsData.campaigns?.filter((c: any) => c.status === 'sending' || c.status === 'draft').length || 0;
-        }
-        
-        setStats({
-          totalUsers,
-          totalCaptains: 0,
-          totalBookings: 0,
-          totalPoints: 0,
-          activeCampaigns
-        });
-      } catch (err) {
-        console.error('Error loading stats:', err);
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) {
+        router.replace('/admin/login?redirect=' + encodeURIComponent('/admin'));
+        return;
       }
-    }
-    
-    loadStats();
+
+      // Extra guard: call an admin-only API so RBAC can enforce role.
+      try {
+        const check = await fetch('/api/admin/users?limit=1');
+        if (check.status === 401) {
+          router.replace('/admin/login?redirect=' + encodeURIComponent('/admin'));
+          return;
+        }
+        if (check.status === 403) {
+          // Logged in but not an admin – send back to home.
+          router.replace('/');
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking admin access:', err);
+        router.replace('/');
+        return;
+      }
+
+      // Only load stats once we know the user is an admin.
+      async function loadStats() {
+        try {
+          const [usersRes, campaignsRes] = await Promise.all([
+            fetch('/api/admin/users').catch(() => null),
+            fetch('/api/admin/campaigns').catch(() => null),
+          ]);
+          
+          let totalUsers = 0;
+          let activeCampaigns = 0;
+          
+          if (usersRes?.ok) {
+            const usersData = await usersRes.json();
+            totalUsers = usersData.users?.length || 0;
+          }
+          
+          if (campaignsRes?.ok) {
+            const campaignsData = await campaignsRes.json();
+            activeCampaigns = campaignsData.campaigns?.filter((c: any) => c.status === 'sending' || c.status === 'draft').length || 0;
+          }
+          
+          setStats({
+            totalUsers,
+            totalCaptains: 0,
+            totalBookings: 0,
+            totalPoints: 0,
+            activeCampaigns
+          });
+        } catch (err) {
+          console.error('Error loading stats:', err);
+        }
+      }
+      
+      loadStats();
+    });
   }, [router]);
 
   return (

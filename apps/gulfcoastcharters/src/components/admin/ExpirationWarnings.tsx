@@ -12,7 +12,9 @@ interface ExpiringDoc {
   expiry_date: string;
   last_reminder_sent_at: string | null;
   reminder_count: number;
-  captain: { email: string; full_name: string; };
+  // Supabase nested relation `captain:captain_id (email, full_name)` can be an object or array;
+  // keep this loose to avoid over-constraining the type.
+  captain: any;
 }
 
 const ExpirationWarnings: React.FC = () => {

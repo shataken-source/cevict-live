@@ -42,105 +42,23 @@ supabase migration up 20240121_custom_emails
 
 ## Edge Function Setup
 
-### Create Purchase Function
-Create `supabase/functions/purchase-custom-email/index.ts`:
+### Purchase Function
+`supabase/functions/purchase-custom-email/index.ts`:
+- **Auth**: Bearer token required (user must be signed in).
+- **Body**: `emailPrefix`, `paymentMethod` (`points` | `cash`), `userType` (`captain` | `customer`).
+- **Points**: Deducts 5,000 via `award_points` (negative), then inserts into `custom_emails`. Uses `get_user_points` to check balance.
+- **Cash**: Returns error directing user to Stripe checkout in the app; actual cash purchases are completed via Stripe and `stripe-webhook` inserts the record.
 
-```typescript
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+### Grant Prize Function
+`supabase/functions/grant-custom-email-prize/index.ts`:
+- **Auth**: Bearer token required.
+- **Body**: `userId`, `emailPrefix`, optional `userType` (default `customer`).
+- Validates prefix and uniqueness, then inserts with `payment_method: 'prize'`. Limit of 1 per user type enforced by DB trigger.
 
-serve(async (req) => {
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  )
-
-  const { emailPrefix, paymentMethod, userType } = await req.json()
-  const authHeader = req.headers.get('Authorization')!
-  const token = authHeader.replace('Bearer ', '')
-  const { data: { user } } = await supabase.auth.getUser(token)
-
-  if (!user) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
-  }
-
-  // Check if email prefix is available
-  const { data: existing } = await supabase
-    .from('custom_emails')
-    .select('id')
-    .eq('email_prefix', emailPrefix)
-    .single()
-
-  if (existing) {
-    return new Response(
-      JSON.stringify({ error: 'Email prefix already taken' }), 
-      { status: 400 }
-    )
-  }
-
-  if (paymentMethod === 'points') {
-    // Deduct points
-    const { data: points } = await supabase
-      .from('user_points')
-      .select('total_points')
-      .eq('user_id', user.id)
-      .single()
-
-    if (!points || points.total_points < 5000) {
-      return new Response(
-        JSON.stringify({ error: 'Insufficient points' }), 
-        { status: 400 }
-      )
-    }
-
-    await supabase
-      .from('user_points')
-      .update({ total_points: points.total_points - 5000 })
-      .eq('user_id', user.id)
-
-    // Create email record
-    await supabase.from('custom_emails').insert({
-      user_id: user.id,
-      email_address: `${emailPrefix}@gulfcoastcharters.com`,
-      email_prefix: emailPrefix,
-      user_type: userType,
-      payment_method: 'points',
-      points_spent: 5000,
-      is_active: true
-    })
-
-    return new Response(
-      JSON.stringify({ success: true, email: `${emailPrefix}@gulfcoastcharters.com` }), 
-      { status: 200 }
-    )
-  }
-
-  if (paymentMethod === 'cash') {
-    // In production, integrate with Stripe
-    // For now, return success
-    await supabase.from('custom_emails').insert({
-      user_id: user.id,
-      email_address: `${emailPrefix}@gulfcoastcharters.com`,
-      email_prefix: emailPrefix,
-      user_type: userType,
-      payment_method: 'cash',
-      amount_paid: 25,
-      is_active: true
-    })
-
-    return new Response(
-      JSON.stringify({ success: true, email: `${emailPrefix}@gulfcoastcharters.com` }), 
-      { status: 200 }
-    )
-  }
-
-  return new Response(JSON.stringify({ error: 'Invalid payment method' }), { status: 400 })
-})
-```
-
-### Deploy Function
+### Deploy
 ```bash
 supabase functions deploy purchase-custom-email
+supabase functions deploy grant-custom-email-prize
 ```
 
 ## Email Forwarding Setup
@@ -165,17 +83,9 @@ supabase functions deploy purchase-custom-email
 
 ### Grant Email as Prize
 ```typescript
-// In admin panel
-const grantEmailPrize = async (userId: string, emailPrefix: string) => {
-  await supabase.from('custom_emails').insert({
-    user_id: userId,
-    email_address: `${emailPrefix}@gulfcoastcharters.com`,
-    email_prefix: emailPrefix,
-    user_type: 'customer', // or 'captain'
-    payment_method: 'prize',
-    is_active: true
-  })
-}
+await supabase.functions.invoke('grant-custom-email-prize', {
+  body: { userId: 'uuid', emailPrefix: 'jane.doe', userType: 'customer' }
+});
 ```
 
 ### Deactivate Email
@@ -189,18 +99,13 @@ await supabase
 ## Feature Flag (Hidden by Default)
 
 ### Enable Feature
-In `src/contexts/FeatureFlagContext.tsx`:
-```typescript
-const defaultFlags = {
-  customEmails: false, // Set to true when ready
-  // ... other flags
-}
-```
+In `src/contexts/FeatureFlagContext.tsx` (or your feature-flag source):
+- Add a flag e.g. `customEmails: true` when ready to show the feature.
 
 ### Conditional Rendering
 ```typescript
 {featureFlags.customEmails && (
-  <CustomEmailPurchase 
+  <CustomEmailPurchase
     userId={userId}
     userType="customer"
     currentPoints={userPoints}
@@ -223,7 +128,7 @@ const defaultFlags = {
 2. Go to Custom Email Manager
 3. View all purchased emails
 4. Test activate/deactivate
-5. Grant prize email to user
+5. Grant prize email to user (via function or future UI)
 
 ## Giveaway Integration
 
@@ -268,3 +173,19 @@ const defaultFlags = {
 ### Contact Support
 - Email: support@gulfcoastcharters.com
 - Include: User ID, desired prefix, error message
+
+---
+
+## Implementation status (no-BS)
+
+**Migration:** `20240121_custom_emails.sql` – table `custom_emails` (id, user_id, email_address, email_prefix, user_type, payment_method, amount_paid, points_spent, forward_to_email, is_active, purchased_at, expires_at, created_at, updated_at). Trigger `enforce_custom_email_limit` limits 1 active custom email per (user_id, user_type). View `custom_emails_admin_view` joins `auth.users` for admin list. RLS: users see own rows; admin policies depend on `user_roles`.
+
+**Edge functions:**
+- **purchase-custom-email** – Auth via Bearer. Validates prefix (3–30 chars, [a-z0-9-], no leading/trailing hyphen). Points: checks `get_user_points`, deducts via `award_points(..., -5000, 'custom_email_purchase', ...)`, inserts `custom_emails`. Cash: returns 400 telling client to use Stripe; Stripe flow is handled in **stripe-webhook** (metadata.type === 'custom_email', inserts after checkout).
+- **grant-custom-email-prize** – Auth via Bearer. Body: userId, emailPrefix, optional userType. Validates prefix and uniqueness; inserts with payment_method `prize`. DB trigger enforces one per user/type.
+
+**UI:** **CustomEmailPurchase** (Customer Dashboard profile, Captain Dashboard documents) – validates prefix, offers cash (opens StripeEmailCheckout) or points (calls purchase-custom-email). **CustomEmailManager** (Admin Panel) – reads `custom_emails_admin_view`, toggle is_active, calls grant-custom-email-prize (grant form can be added for userId + emailPrefix). **StripeEmailCheckout** used for $25 cash; success path and webhook set custom email record.
+
+**Points:** Balance from `get_user_points` (from `point_transactions` in 20240128_points_avatar_system). Deduction is negative `award_points` in purchase-custom-email.
+
+**Feature flag:** Guide mentions a feature flag; app may show CustomEmailPurchase based on route/dashboard. Add a flag in your FeatureFlagContext or localStorage if you want to hide until launch.

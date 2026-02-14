@@ -1,5 +1,16 @@
 // Prediction Tracker Module for Progno Sports Prediction Platform
 
+/** 95% binomial confidence interval for win rate (Grok audit). */
+export function binomialCI(p: number, n: number): { lower: number; upper: number } {
+  if (n <= 0) return { lower: 0, upper: 1 };
+  const z = 1.96;
+  const se = Math.sqrt((p * (1 - p)) / n);
+  return {
+    lower: Math.max(0, p - z * se),
+    upper: Math.min(1, p + z * se),
+  };
+}
+
 export interface PredictionResult {
   id: string;
   gameId: string;
@@ -11,6 +22,8 @@ export interface PredictionResult {
     pick: string;
     edge: number;
     rationale: string;
+    /** American odds for vig-adjusted profit (e.g. -110, +150). */
+    odds?: number;
   };
   actualResult?: {
     winner: string;
@@ -22,6 +35,8 @@ export interface PredictionResult {
     scoreAccuracy?: number;
     confidenceAccuracy?: number;
     profit?: number;
+    /** Brier score (prob scoring): (confidence - outcome)^2; lower is better, target <0.2. */
+    brierScore?: number;
   };
   timestamp: Date;
   sport: string;
@@ -31,9 +46,13 @@ export interface AccuracyMetrics {
   totalPredictions: number;
   correctPredictions: number;
   winRate: number;
+  /** 95% CI for win rate (Grok audit). */
+  winRateCI?: { lower: number; upper: number };
   averageConfidence: number;
   averageProfit: number;
   roi: number;
+  /** Mean Brier score over completed predictions; lower is better. */
+  averageBrier?: number;
   bySport: { [sport: string]: AccuracyMetrics };
   byConfidence: { [range: string]: AccuracyMetrics };
   recentPerformance: PredictionResult[];
@@ -218,21 +237,34 @@ class PredictionTracker {
     }
 
     const winnerCorrect = prediction.prediction.predictedWinner === prediction.actualResult.winner;
+    const conf = typeof prediction.prediction.confidence === 'number' && prediction.prediction.confidence <= 1
+      ? prediction.prediction.confidence
+      : (prediction.prediction.confidence ?? 0) / 100;
 
-    // Calculate score accuracy (how close the predicted score was to actual)
+    // Brier score: (prob - outcome)^2; outcome 1 if correct, 0 if wrong (Grok audit)
+    const brierScore = Math.pow(conf - (winnerCorrect ? 1 : 0), 2);
+
+    // Score accuracy (how close the predicted score was to actual)
     const predictedScore = prediction.prediction.predictedScore;
     const actualScore = prediction.actualResult.finalScore;
     const scoreDiff = Math.abs(predictedScore.home - actualScore.home) + Math.abs(predictedScore.away - actualScore.away);
-    const scoreAccuracy = Math.max(0, 100 - (scoreDiff * 5)); // 5 points per point difference
+    const scoreAccuracy = Math.max(0, 100 - (scoreDiff * 5));
 
-    // Calculate profit based on odds (simplified)
-    const profit = winnerCorrect ? prediction.prediction.stake * 0.91 : -prediction.prediction.stake; // Assuming -110 odds
+    // Vig-adjusted profit when odds present; else assume -110 (Grok audit)
+    const odds = prediction.prediction.odds;
+    const stake = prediction.prediction.stake;
+    const profit = winnerCorrect
+      ? (odds != null
+          ? stake * (odds > 0 ? odds / 100 : 100 / Math.abs(odds)) - stake
+          : stake * 0.91)
+      : -stake;
 
     return {
       winnerCorrect,
       scoreAccuracy: Math.round(scoreAccuracy),
       confidenceAccuracy: winnerCorrect ? prediction.prediction.confidence : 0,
-      profit
+      profit,
+      brierScore,
     };
   }
 
@@ -243,18 +275,23 @@ class PredictionTracker {
 
     const totalProfit = completedPredictions.reduce((sum, p) => sum + (p.accuracy.profit || 0), 0);
     const totalStaked = completedPredictions.reduce((sum, p) => sum + p.prediction.stake, 0);
+    const winRate = completedPredictions.length > 0 ? correctPredictions.length / completedPredictions.length : 0;
+    const n = completedPredictions.length;
+    const brierScores = completedPredictions.map(p => p.accuracy.brierScore).filter((b): b is number => typeof b === 'number');
+    const averageBrier = brierScores.length > 0 ? brierScores.reduce((a, b) => a + b, 0) / brierScores.length : undefined;
 
     const baseMetrics: AccuracyMetrics = {
       totalPredictions: this.predictions.length,
       correctPredictions: correctPredictions.length,
-      winRate: completedPredictions.length > 0 ? correctPredictions.length / completedPredictions.length : 0,
-      averageConfidence: completedPredictions.length > 0 ?
-        completedPredictions.reduce((sum, p) => sum + p.prediction.confidence, 0) / completedPredictions.length : 0,
-      averageProfit: completedPredictions.length > 0 ? totalProfit / completedPredictions.length : 0,
+      winRate,
+      winRateCI: n > 0 ? binomialCI(winRate, n) : undefined,
+      averageConfidence: n > 0 ? completedPredictions.reduce((sum, p) => sum + p.prediction.confidence, 0) / n : 0,
+      averageProfit: n > 0 ? totalProfit / n : 0,
       roi: totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0,
+      averageBrier,
       bySport: {},
       byConfidence: {},
-      recentPerformance: completedPredictions.slice(-10) // Last 10 predictions
+      recentPerformance: completedPredictions.slice(-10),
     };
 
     // Calculate metrics by sport

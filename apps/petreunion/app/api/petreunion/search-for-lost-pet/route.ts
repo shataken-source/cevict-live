@@ -14,59 +14,32 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get('state') || 'all';
     const city = searchParams.get('city') || '';
 
-    // If there's a search query, use multiple queries and combine results
-    // (Supabase .or() doesn't work well with ilike and wildcards)
-    if (query) {
-      // Fetch results from each field separately
-      const queries = [
-        supabase.from('lost_pets').select('*').ilike('pet_name', `%${query}%`),
-        supabase.from('lost_pets').select('*').ilike('breed', `%${query}%`),
-        supabase.from('lost_pets').select('*').ilike('color', `%${query}%`),
-        supabase.from('lost_pets').select('*').ilike('description', `%${query}%`),
-        supabase.from('lost_pets').select('*').ilike('location_city', `%${query}%`),
-      ];
+    // Single-query search: one OR across searchable fields (was 5 separate queries)
+    if (query.trim()) {
+      // Strip commas so .or() filter isn't broken (PostgREST uses comma to separate OR conditions)
+      const safeQuery = query.trim().replace(/,/g, ' ');
+      const pattern = `%${safeQuery}%`;
+      let searchQuery = supabase
+        .from('lost_pets')
+        .select('*')
+        .or(`pet_name.ilike.${pattern},breed.ilike.${pattern},color.ilike.${pattern},description.ilike.${pattern},location_city.ilike.${pattern}`);
+      if (status !== 'all') searchQuery = searchQuery.eq('status', status);
+      if (petType !== 'all') searchQuery = searchQuery.eq('pet_type', petType);
+      if (state !== 'all') searchQuery = searchQuery.eq('location_state', state);
+      if (city) searchQuery = searchQuery.ilike('location_city', `%${city}%`);
+      searchQuery = searchQuery.order('created_at', { ascending: false }).limit(50);
 
-      const results = await Promise.all(queries);
-      
-      // Combine all results
-      const allPets: any[] = [];
-      for (const result of results) {
-        if (result.data && !result.error) {
-          allPets.push(...result.data);
-        }
-      }
-
-      // Remove duplicates by id
-      const uniquePets = Array.from(
-        new Map(allPets.map(pet => [pet.id, pet])).values()
-      );
-
-      // Apply filters
-      let filtered = uniquePets;
-      if (status !== 'all') {
-        filtered = filtered.filter(p => p.status === status);
-      }
-      if (petType !== 'all') {
-        filtered = filtered.filter(p => p.pet_type === petType);
-      }
-      if (state !== 'all') {
-        filtered = filtered.filter(p => p.location_state === state);
-      }
-      if (city) {
-        filtered = filtered.filter(p => 
-          p.location_city?.toLowerCase().includes(city.toLowerCase())
+      const { data: searchData, error: searchError } = await searchQuery;
+      if (searchError) {
+        return NextResponse.json(
+          { success: false, error: searchError.message, pets: [] },
+          { status: 500 }
         );
       }
-
-      // Sort by most recent and limit
-      filtered.sort((a, b) => 
-        new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-      );
-
-      return NextResponse.json({ 
-        success: true, 
-        pets: filtered.slice(0, 50) 
-      });
+      const list = searchData ?? [];
+      // Dedupe by id (OR can return same row if multiple columns match)
+      const unique = Array.from(new Map(list.map(p => [p.id, p])).values());
+      return NextResponse.json({ success: true, pets: unique.slice(0, 50) });
     }
 
     // No search query - use regular query with filters
@@ -92,19 +65,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await dbQuery;
 
     if (error) {
-      console.error('Database error:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      return NextResponse.json({ 
-        success: false, 
-        error: error.message || 'Database query failed',
-        pets: [] 
-      });
+      return NextResponse.json(
+        { success: false, error: error.message || 'Database query failed', pets: [] },
+        { status: 500 }
+      );
     }
-
-    console.log(`No search query: Found ${data?.length || 0} pets`);
     return NextResponse.json({ success: true, pets: data || [] });
-  } catch (error) {
-    console.error('Search error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Search failed', pets: [] },
       { status: 500 }

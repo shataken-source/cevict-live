@@ -130,3 +130,36 @@ Queues notifications for interest matches
 3. A/B test personalized vs standard homepage
 4. Add email notifications for interest matches
 5. Expand to personalized pricing and offers
+
+---
+
+## Implementation status (no-BS)
+
+**Implemented (so the existing UI doesn’t break):**
+
+- **Tables** (migration `20260210_ai_personalization_tables.sql`):  
+  - **user_interests** – user_id (PK), interests (JSONB), updated_at. One row per user. RLS: own row only.  
+  - **user_searches** – id, user_id, query, created_at. RLS: own rows only.  
+  - **user_activity** – id, user_id, charter_id, activity_type, metadata (JSONB), created_at. RLS: own rows only.  
+  - **interest_notifications** – **not** created; no scanner or UI uses it yet.
+
+- **Edge function** `ai-personalization-engine`:  
+  - **generate_recommendations** – body: userId, data.userHistory (array with charter_id). Returns `{ data: [ { charterId } ] }` from recent activity, or fallback to first 8 charters. No Gemini call yet.  
+  - **analyze_interests** – body: userId, data.behavior. Returns `{ data: string[] }` with static suggestions (e.g. "Deep sea fishing", "Half day charter"). No AI yet.  
+  - **smart_search** – body: data.query. Returns `{ data: { enhancedQuery } }` (pass-through). No AI enhancement yet.
+
+- **UI that uses the above:**  
+  - **PersonalizedHomepage** – reads user_activity, calls generate_recommendations, shows Top Picks / Deals / Recently Viewed / Near You.  
+  - **UserInterestsManager** – reads/upserts user_interests, calls analyze_interests for suggestions. Uses `.maybeSingle()` so missing row doesn’t error.  
+  - **SmartSearchBar** – reads user_searches, inserts on search, calls smart_search and navigates to enhancedQuery.  
+  - **FrequentlyBookedTogether** – uses only `bookings` + `charters`; no new tables or function.  
+  - **ConversationalAIAssistant** – uses Gemini 2.5 Flash (e.g. OpenRouter) in the client; not this edge function.
+
+**Not implemented (vapor per no-BS rule):**
+
+- **interest-notification-scanner** – no cron or UI depends on it; **skip** until you add a cron and need it.  
+- **interest_notifications** table – only needed for that scanner; **skip** until scanner exists.  
+- **personalize_description** – no caller in codebase; **skip**.  
+- **Gemini inside ai-personalization-engine** – not wired; you can add later (e.g. GEMINI_API_KEY + fetch to Gemini API) for real recommendations/suggestions/enhanced search.
+
+**To add real AI later:** In `ai-personalization-engine`, call Gemini (or another model) in each action and replace the rule-based/mock responses with the model output. Ensure `user_activity` is written when users view charters so generate_recommendations has data to work with.

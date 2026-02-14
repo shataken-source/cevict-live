@@ -18,7 +18,7 @@ const corsHeaders = {
 
 // Gulf Coast Fish Species Database
 const FISH_SPECIES = [
-  { name: 'Red Snapper', avgWeight: 8, avgLength: 24, keywords: ['snapper', 'red snapper', 'redfish'] },
+  { name: 'Red Snapper', avgWeight: 8, avgLength: 24, keywords: ['snapper', 'red snapper'] },
   { name: 'Grouper', avgWeight: 15, avgLength: 30, keywords: ['grouper', 'bass', 'gag'] },
   { name: 'Mahi Mahi', avgWeight: 20, avgLength: 36, keywords: ['mahi', 'dolphin fish', 'dorado', 'dolphinfish'] },
   { name: 'King Mackerel', avgWeight: 25, avgLength: 40, keywords: ['mackerel', 'kingfish', 'king mackerel'] },

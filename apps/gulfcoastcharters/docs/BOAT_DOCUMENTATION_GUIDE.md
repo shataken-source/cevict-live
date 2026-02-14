@@ -190,3 +190,15 @@ Verified documents appear as badges on:
 
 ## Support
 For issues or questions, contact Gulf Coast Charters support or submit a ticket through the captain dashboard.
+
+---
+
+## Implementation status (no-BS)
+
+**Tables:** `boat_documents` (from `20260210_boats_boat_documents.sql`) with columns: `id`, `boat_id`, `document_type`, `file_url`, `file_name`, `expiration_date`, `status`, `created_at`. Optional migration `20260210_boat_documents_file_columns.sql` adds `file_url` and `file_name` if not present.
+
+**Edge function:** `boat-documentation-manager` in `supabase/functions/boat-documentation-manager/index.ts`. Actions: `list` (boatId → documents with verification_status, uploaded_at), `upload` (boatId, documentType, fileUrl, fileName?, expirationDate?), `verify` (documentId), `check_expirations` (marks rows with expiration_date ≤ today as status `expired`; does not send email reminders).
+
+**UI:** `DocumentManager` and `BoatCard` in `src/components/fleet/` call the edge function for list/upload and display badges. DocumentManager uploads to storage bucket `boat-documents` then calls the function with the resulting URL. Ensure the `boat-documents` bucket exists in Supabase (Storage); if it is private, replace `getPublicUrl` with signed URLs for viewing.
+
+**Reminder emails:** The 90/60/30/14/7-day email reminders described above are not implemented in the edge function. Implement by calling an email provider (e.g. Mailjet) from a scheduled job that queries expiring documents and sends reminders, or extend `check_expirations` to trigger emails.

@@ -1,6 +1,7 @@
 # Wake Cursor IDE and send "check moltbook" so the Agent runs the Moltbook check.
 # Uses Win32 ShowWindowAsync + SetForegroundWindow (more reliable than AppActivate when window is minimized or buried).
 # Keystrokes are "noisy" — if you're typing in another app when this runs, it can interrupt. Schedule when idle.
+# When run non-interactively (e.g. Task Scheduler), skips the modal and Cursor wake so the task can exit.
 
 param(
     [string]$Message = "check moltbook",
@@ -8,6 +9,14 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# Scheduled tasks often run with -NoProfile and no desktop; ShowDialog() would block forever.
+$isNonInteractive = -not [Environment]::UserInteractive -or
+    ([Environment]::GetCommandLineArgs() | Where-Object { $_ -like '-NonI*' })
+if ($isNonInteractive) {
+    Write-Host "Non-interactive run (e.g. scheduled task). Skipping Cursor wake and modal; trigger file was already updated."
+    exit 0
+}
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName Microsoft.VisualBasic
@@ -40,12 +49,13 @@ if (-not $cursorProc) {
     }
 }
 
-# 10-second countdown modal so you can step away (e.g. take the dog out) before keys are sent. "Run now" skips the wait.
+# 10-second countdown modal so you can step away (e.g. take the dog out) before keys are sent. "Run now" skips the wait; "Cancel" aborts.
 Add-Type -AssemblyName System.Windows.Forms
+$script:userCancelled = $false
 $countdown = 10
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Moltbook check"
-$form.Size = New-Object System.Drawing.Size(380, 160)
+$form.Size = New-Object System.Drawing.Size(380, 180)
 $form.FormBorderStyle = 'FixedDialog'
 $form.StartPosition = 'CenterScreen'
 $form.Topmost = $true
@@ -53,32 +63,49 @@ $label = New-Object System.Windows.Forms.Label
 $label.AutoSize = $false
 $label.Size = New-Object System.Drawing.Size(340, 55)
 $label.Location = New-Object System.Drawing.Point(20, 12)
-$label.Text = "Moltbook check is about to run in $countdown seconds.`nGo take the dog out — I'll be on Moltbook for a few minutes."
+$label.Text = "Moltbook check is about to run in $countdown seconds.`nGo take the dog out - I will be on Moltbook for a few minutes."
 $label.Font = New-Object System.Drawing.Font("Segoe UI", 11)
 $form.Controls.Add($label)
-$btn = New-Object System.Windows.Forms.Button
-$btn.Text = "Run now"
-$btn.Size = New-Object System.Drawing.Size(100, 28)
-$btn.Location = New-Object System.Drawing.Point(135, 75)
-$btn.Add_Click({
+$btnRun = New-Object System.Windows.Forms.Button
+$btnRun.Text = "Run now"
+$btnRun.Size = New-Object System.Drawing.Size(100, 28)
+$btnRun.Location = New-Object System.Drawing.Point(80, 75)
+$btnRun.Add_Click({
     $script:timer.Stop()
+    $script:userCancelled = $false
     $form.Close()
 })
-$form.Controls.Add($btn)
+$form.Controls.Add($btnRun)
+$btnCancel = New-Object System.Windows.Forms.Button
+$btnCancel.Text = "Cancel"
+$btnCancel.Size = New-Object System.Drawing.Size(100, 28)
+$btnCancel.Location = New-Object System.Drawing.Point(200, 75)
+$btnCancel.Add_Click({
+    $script:timer.Stop()
+    $script:userCancelled = $true
+    $form.Close()
+})
+$form.Controls.Add($btnCancel)
 $timer = New-Object System.Windows.Forms.Timer
 $script:timer = $timer
 $timer.Interval = 1000
 $timer.Add_Tick({
     $script:countdown--
-    $label.Text = "Moltbook check is about to run in $script:countdown seconds.`nGo take the dog out — I'll be on Moltbook for a few minutes."
+    $label.Text = "Moltbook check is about to run in $script:countdown seconds.`nGo take the dog out - I will be on Moltbook for a few minutes."
     if ($script:countdown -le 0) {
         $timer.Stop()
+        $script:userCancelled = $false
         $form.Close()
     }
 })
 $timer.Start()
 $form.Add_Shown({ $form.Activate() })
 [void]$form.ShowDialog()
+
+if ($script:userCancelled) {
+    Write-Host "Moltbook check cancelled. No keystrokes sent."
+    exit 0
+}
 
 # Force restore (9 = SW_RESTORE) and bring to foreground. More reliable than AppActivate when minimized or behind other apps.
 $hwnd = $cursorProc.MainWindowHandle
@@ -87,11 +114,13 @@ Start-Sleep -Milliseconds 300
 [WindowManager]::SetForegroundWindow($hwnd)
 Start-Sleep -Milliseconds 500
 
-# Open Composer (Ctrl+I) so Agent mode runs the command; use ^l for Chat instead if you prefer
-[System.Windows.Forms.SendKeys]::SendWait("^i")
+# Close any open panels first (ESC), then open Composer (Ctrl+I) so Agent mode runs the command
+[System.Windows.Forms.SendKeys]::SendWait("{ESC}")
 Start-Sleep -Milliseconds 300
+[System.Windows.Forms.SendKeys]::SendWait("^i")
+Start-Sleep -Milliseconds 500
 
 # Type the command and press Enter
 [System.Windows.Forms.SendKeys]::SendWait("$Message{ENTER}")
 
-Write-Host "Sent '$Message' to Cursor. Agent should run the Moltbook check now."
+Write-Host ("Sent '" + $Message + "' to Cursor. Agent should run the Moltbook check now.")

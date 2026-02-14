@@ -100,9 +100,11 @@ export default function LiveDashboard() {
         <label>Sport: </label>
         <select value={sport} onChange={e => setSport(e.target.value)}>
           <option value="nhl">NHL</option>
-          <option value="ncaab">NCAAB</option>
           <option value="nba">NBA</option>
           <option value="nfl">NFL</option>
+          <option value="ncaab">NCAAB</option>
+          <option value="ncaaf">NCAAF</option>
+          <option value="mlb">MLB</option>
         </select>
         <a href="/progno/admin" style={{ marginLeft: '20px', fontSize: '14px', color: '#666' }}>Admin</a>
         <button

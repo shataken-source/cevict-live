@@ -39,7 +39,15 @@ export default function AdvancedFilters({ onFilterChange }: AdvancedFiltersProps
         <label className="flex items-center gap-2 font-semibold mb-3">
           <Users className="w-5 h-5" /> Travelers: {travelers}
         </label>
-        <Slider value={[travelers]} onValueChange={([v]) => setTravelers(v)} min={1} max={10} />
+        <Slider
+          value={[travelers]}
+          onValueChange={(values: number[]) => {
+            const v = values[0] ?? travelers;
+            setTravelers(v);
+          }}
+          min={1}
+          max={10}
+        />
       </div>
 
       <div>

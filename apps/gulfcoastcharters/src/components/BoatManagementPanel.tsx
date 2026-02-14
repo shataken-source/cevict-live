@@ -65,7 +65,7 @@ export default function BoatManagementPanel({ captainEmail }: { captainEmail: st
     }
   };
 
-  const handleVerified = () => {
+  const handleVerified = (_phoneNumber: string, _smsOptIn: boolean) => {
     toast.success('Boat verified! Your listing is now active.');
     setShowAddForm(false);
     setFormData({ name: '', type: '', capacity: '', price: '', description: '', phone: '' });
@@ -160,8 +160,6 @@ export default function BoatManagementPanel({ captainEmail }: { captainEmail: st
       <SMSVerificationModal
         isOpen={showVerification}
         onClose={() => setShowVerification(false)}
-        email={captainEmail}
-        captainEmail={captainEmail}
         onVerified={handleVerified}
       />
 

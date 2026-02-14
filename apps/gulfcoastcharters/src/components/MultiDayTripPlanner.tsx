@@ -47,13 +47,19 @@ export default function MultiDayTripPlanner() {
   const handleSaveTrip = async () => {
     try {
       const { data, error } = await supabase.functions.invoke('multi-day-trip-manager', {
-        body: { action: 'create', tripData }
+        body: {
+          action: 'create',
+          tripData,
+          accommodations,
+          spots,
+          packingItems,
+          companions,
+        },
       });
 
       if (error) throw error;
 
       toast({ title: 'Trip created successfully!' });
-      // Save accommodations, spots, packing items
     } catch (error) {
       toast({ title: 'Failed to create trip', variant: 'destructive' });
     }

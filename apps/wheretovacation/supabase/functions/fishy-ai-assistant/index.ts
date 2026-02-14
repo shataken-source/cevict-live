@@ -123,7 +123,7 @@ serve(async (req) => {
   }
 
   try {
-    const { message, userType = 'customer', context = {}, conversationHistory = [] } = await req.json();
+    const { message, userType = 'customer', context = {}, conversationHistory = [], preferred_language } = await req.json();
 
     if (!message || typeof message !== 'string') {
       return new Response(
@@ -141,8 +141,12 @@ serve(async (req) => {
       );
     }
 
-    // Build system prompt based on user type
+    // Build system prompt based on user type and language
+    const langNote = preferred_language && preferred_language !== 'en'
+      ? `\nLanguage: Respond in the user's preferred language. Preferred language code: ${preferred_language}. Use that language for all responses (e.g. es=Spanish, fr=French, pt=Portuguese) unless the user writes in another language.`
+      : '';
     const systemPrompt = `You are Fishy, a helpful AI assistant for Where To Vacation, a vacation planning and booking platform.
+${langNote}
 
 User Type: ${userType === 'customer' ? 'Customer' : 'Guest'}
 Current Page: ${context.page || 'Unknown'}

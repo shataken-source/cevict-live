@@ -1,0 +1,898 @@
+﻿[
+    {
+        "winner":  "Buffalo Sabres",
+        "confidence":  0.63,
+        "score":  {
+                      "home":  10,
+                      "away":  10
+                  },
+        "edge":  50,
+        "keyFactors":  [
+                           "â ï¸ Upset risk: 22%",
+                           "Experimental: Night game, Prime time (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0,
+                             "chaosSensitivity":  0.22,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  -112,
+        "analysis":  "ð¯ Picking Buffalo Sabres with 63% confidence. â±ï¸ Slot: Night game, Prime time. ð 1,500 simulations: 100.0% win rate. ð Predicted score: 10-10. ð¤ AI signals: â ï¸ Upset risk: 22% ð° Value detected: moneyline Buffalo Sabres (+50.0% edge, $89.29 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Philadelphia Flyers",
+        "confidence":  0.78,
+        "score":  {
+                      "home":  10,
+                      "away":  10
+                  },
+        "edge":  64.38,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Night game, Prime time (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0431,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  160,
+        "analysis":  "ð¯ Picking Philadelphia Flyers with 78% confidence. â±ï¸ Slot: Night game, Prime time. ð 1,500 simulations: 100.0% win rate. ð Predicted score: 10-10. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline Philadelphia Flyers (+64.4% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Toronto Maple Leafs",
+        "confidence":  0.78,
+        "score":  {
+                      "home":  10,
+                      "away":  10
+                  },
+        "edge":  64.1,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Night game, Prime time (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0423,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  160,
+        "analysis":  "ð¯ Picking Toronto Maple Leafs with 78% confidence. â±ï¸ Slot: Night game, Prime time. ð 1,500 simulations: 100.0% win rate. ð Predicted score: 10-10. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline Toronto Maple Leafs (+64.1% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Seattle Kraken",
+        "confidence":  0.76,
+        "score":  {
+                      "home":  10,
+                      "away":  10
+                  },
+        "edge":  62.36,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Night game, Prime time (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0371,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.07,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  148,
+        "analysis":  "ð¯ Picking Seattle Kraken with 76% confidence. â±ï¸ Slot: Night game, Prime time. ð 1,500 simulations: 100.0% win rate. ð Predicted score: 10-10. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline Seattle Kraken (+62.4% edge, $148.00 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Under",
+        "confidence":  0.74,
+        "score":  {
+                      "home":  10,
+                      "away":  10
+                  },
+        "edge":  47.62,
+        "keyFactors":  [
+                           "Sharp money: backing home",
+                           "Experimental: Night game, Prime time (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  -0.0287,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0.1,
+                             "chaosSensitivity":  0.1,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "TOTAL",
+        "odds":  -110,
+        "analysis":  "ð¯ Picking Under with 74% confidence. â±ï¸ Slot: Night game, Prime time. ð 1,500 simulations: 100.0% win rate. ð Predicted score: 10-10. ð¤ AI signals: Sharp money: backing home ð° Value detected: total Under (+47.6% edge, $90.91 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Vegas Golden Knights",
+        "confidence":  0.66,
+        "score":  {
+                      "home":  10,
+                      "away":  10
+                  },
+        "edge":  51.34,
+        "keyFactors":  [
+                           "â ï¸ Upset risk: 22%",
+                           "Experimental: Night game (+6 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.004,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.0267,
+                             "chaosSensitivity":  0.22,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  -106,
+        "analysis":  "ð¯ Picking Vegas Golden Knights with 66% confidence. â±ï¸ Slot: Night game. ð 1,500 simulations: 100.0% win rate. ð Predicted score: 10-10. ð¤ AI signals: â ï¸ Upset risk: 22% ð° Value detected: moneyline Vegas Golden Knights (+51.3% edge, $94.34 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Under",
+        "confidence":  0.7,
+        "score":  {
+                      "home":  10,
+                      "away":  10
+                  },
+        "edge":  47.62,
+        "keyFactors":  [
+                           "Sharp money: backing home",
+                           "â ï¸ Upset risk: 18%",
+                           "Experimental: Night game (+6 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  -0.0138,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0.0919,
+                             "chaosSensitivity":  0.18,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "TOTAL",
+        "odds":  -110,
+        "analysis":  "ð¯ Picking Under with 70% confidence. â±ï¸ Slot: Night game. ð 1,500 simulations: 100.0% win rate. ð Predicted score: 10-10. ð¤ AI signals: Sharp money: backing home â ï¸ Upset risk: 18% ð° Value detected: total Under (+47.6% edge, $90.91 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Under",
+        "confidence":  0.72,
+        "score":  {
+                      "home":  10,
+                      "away":  10
+                  },
+        "edge":  47.62,
+        "keyFactors":  [
+                           "Sharp money: backing home",
+                           "â ï¸ Upset risk: 14%",
+                           "Experimental: Night game (+6 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  -0.015,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0.1,
+                             "chaosSensitivity":  0.14,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "TOTAL",
+        "odds":  -110,
+        "analysis":  "ð¯ Picking Under with 72% confidence. â±ï¸ Slot: Night game. ð 1,500 simulations: 100.0% win rate. ð Predicted score: 10-10. ð¤ AI signals: Sharp money: backing home â ï¸ Upset risk: 14% ð° Value detected: total Under (+47.6% edge, $90.91 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Penn State Nittany Lions",
+        "confidence":  0.68,
+        "score":  {
+                      "home":  82,
+                      "away":  75
+                  },
+        "edge":  29.12,
+        "keyFactors":  [
+                           "Sharp money: backing home",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  -0.0382,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  155,
+        "analysis":  "ð¯ Picking Penn State Nittany Lions with 68% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 66.4% win rate. ð Predicted score: 82-75. ð¤ AI signals: Sharp money: backing home ð° Value detected: moneyline Penn State Nittany Lions (+29.1% edge, $69.32 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Tulsa Golden Hurricane",
+        "confidence":  0.62,
+        "score":  {
+                      "home":  87,
+                      "away":  88
+                  },
+        "edge":  16.47,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0356,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.07,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  149,
+        "analysis":  "ð¯ Picking Tulsa Golden Hurricane with 62% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 54.6% win rate. ð Predicted score: 87-88. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline Tulsa Golden Hurricane (+16.5% edge, $35.95 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "UNC Greensboro Spartans",
+        "confidence":  0.88,
+        "score":  {
+                      "home":  72,
+                      "away":  82
+                  },
+        "edge":  61.58,
+        "keyFactors":  [
+                           "Sentiment favors home (12%)",
+                           "Sharp money: backing away",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.1155,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  625,
+        "analysis":  "ð¯ Picking UNC Greensboro Spartans with 88% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 73.1% win rate. ð Predicted score: 72-82. ð¤ AI signals: Sentiment favors home (12%) Sharp money: backing away ð° Value detected: moneyline UNC Greensboro Spartans (+61.6% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Ohio State Buckeyes",
+        "confidence":  0.87,
+        "score":  {
+                      "home":  90,
+                      "away":  76
+                  },
+        "edge":  64.3,
+        "keyFactors":  [
+                           "Sentiment favors away (-10%)",
+                           "Sharp money: backing home",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  -0.1017,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  447,
+        "analysis":  "ð¯ Picking Ohio State Buckeyes with 87% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 80.4% win rate. ð Predicted score: 90-76. ð¤ AI signals: Sentiment favors away (-10%) Sharp money: backing home ð° Value detected: moneyline Ohio State Buckeyes (+64.3% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "West Virginia Mountaineers",
+        "confidence":  0.72,
+        "score":  {
+                      "home":  74,
+                      "away":  65
+                  },
+        "edge":  39.32,
+        "keyFactors":  [
+                           "Sharp money: backing home",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  -0.0594,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  210,
+        "analysis":  "ð¯ Picking West Virginia Mountaineers with 72% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 69.5% win rate. ð Predicted score: 74-65. ð¤ AI signals: Sharp money: backing home ð° Value detected: moneyline West Virginia Mountaineers (+39.3% edge, $115.55 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Charlotte 49ers",
+        "confidence":  0.79,
+        "score":  {
+                      "home":  71,
+                      "away":  77
+                  },
+        "edge":  46.43,
+        "keyFactors":  [
+                           "Sentiment favors home (9%)",
+                           "Sharp money: backing away",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0899,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  352,
+        "analysis":  "ð¯ Picking Charlotte 49ers with 79% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 66.5% win rate. ð Predicted score: 71-77. ð¤ AI signals: Sentiment favors home (9%) Sharp money: backing away ð° Value detected: moneyline Charlotte 49ers (+46.4% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "UCF Knights",
+        "confidence":  0.58,
+        "score":  {
+                      "home":  74,
+                      "away":  74
+                  },
+        "edge":  13.61,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0334,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.07,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  145,
+        "analysis":  "ð¯ Picking UCF Knights with 58% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 52.5% win rate. ð Predicted score: 74-74. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline UCF Knights (+13.6% edge, $28.54 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Maryland Terrapins",
+        "confidence":  0.77,
+        "score":  {
+                      "home":  68,
+                      "away":  74
+                  },
+        "edge":  44.89,
+        "keyFactors":  [
+                           "Sentiment favors home (9%)",
+                           "Sharp money: backing away",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0857,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  324,
+        "analysis":  "ð¯ Picking Maryland Terrapins with 77% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 66.3% win rate. ð Predicted score: 68-74. ð¤ AI signals: Sentiment favors home (9%) Sharp money: backing away ð° Value detected: moneyline Maryland Terrapins (+44.9% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Tulane Green Wave",
+        "confidence":  0.63,
+        "score":  {
+                      "home":  78,
+                      "away":  72
+                  },
+        "edge":  26.94,
+        "keyFactors":  [
+                           "Sharp money: backing home",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  -0.0336,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0.1,
+                             "chaosSensitivity":  0.07,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  145,
+        "analysis":  "ð¯ Picking Tulane Green Wave with 63% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 65.7% win rate. ð Predicted score: 78-72. ð¤ AI signals: Sharp money: backing home ð° Value detected: moneyline Tulane Green Wave (+26.9% edge, $61.05 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Northwestern Wildcats",
+        "confidence":  0.88,
+        "score":  {
+                      "home":  65,
+                      "away":  75
+                  },
+        "edge":  64.42,
+        "keyFactors":  [
+                           "Sentiment favors home (12%)",
+                           "Sharp money: backing away",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.1163,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  646,
+        "analysis":  "ð¯ Picking Northwestern Wildcats with 88% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 75.7% win rate. ð Predicted score: 65-75. ð¤ AI signals: Sentiment favors home (12%) Sharp money: backing away ð° Value detected: moneyline Northwestern Wildcats (+64.4% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Rice Owls",
+        "confidence":  0.76,
+        "score":  {
+                      "home":  76,
+                      "away":  81
+                  },
+        "edge":  41.89,
+        "keyFactors":  [
+                           "Sentiment favors home (8%)",
+                           "Sharp money: backing away",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0835,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  312,
+        "analysis":  "ð¯ Picking Rice Owls with 76% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 64.1% win rate. ð Predicted score: 76-81. ð¤ AI signals: Sentiment favors home (8%) Sharp money: backing away ð° Value detected: moneyline Rice Owls (+41.9% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Kansas Jayhawks",
+        "confidence":  0.59,
+        "score":  {
+                      "home":  78,
+                      "away":  73
+                  },
+        "edge":  18.95,
+        "keyFactors":  [
+                           "Sharp money: backing home",
+                           "â ï¸ Upset risk: 14%",
+                           "Experimental: Night game, Prime time (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  -0.0208,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0.059,
+                             "chaosSensitivity":  0.14,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.93,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  120,
+        "analysis":  "ð¯ Picking Kansas Jayhawks with 59% confidence. â±ï¸ Slot: Night game, Prime time. ð 1,500 simulations: 62.0% win rate. ð Predicted score: 78-73. ð¤ AI signals: Sharp money: backing home â ï¸ Upset risk: 14% ð° Value detected: moneyline Kansas Jayhawks (+18.9% edge, $36.40 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "New York Knicks",
+        "confidence":  0.61,
+        "score":  {
+                      "home":  107,
+                      "away":  108
+                  },
+        "edge":  14.96,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0327,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.0978,
+                             "chaosSensitivity":  0.07,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  142,
+        "analysis":  "ð¯ Picking New York Knicks with 61% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 54.1% win rate. ð Predicted score: 107-108. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline New York Knicks (+15.0% edge, $30.84 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Washington Wizards",
+        "confidence":  0.83,
+        "score":  {
+                      "home":  125,
+                      "away":  112
+                  },
+        "edge":  58.39,
+        "keyFactors":  [
+                           "Sentiment favors away (-9%)",
+                           "Sharp money: backing home",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  -0.0918,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  362,
+        "analysis":  "ð¯ Picking Washington Wizards with 83% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 77.8% win rate. ð Predicted score: 125-112. ð¤ AI signals: Sentiment favors away (-9%) Sharp money: backing home ð° Value detected: moneyline Washington Wizards (+58.4% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Indiana Pacers",
+        "confidence":  0.74,
+        "score":  {
+                      "home":  111,
+                      "away":  117
+                  },
+        "edge":  40.33,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0766,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  273,
+        "analysis":  "ð¯ Picking Indiana Pacers with 74% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 64.8% win rate. ð Predicted score: 111-117. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline Indiana Pacers (+40.3% edge, $141.70 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Los Angeles Clippers",
+        "confidence":  0.74,
+        "score":  {
+                      "home":  110,
+                      "away":  116
+                  },
+        "edge":  41.12,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Weekend, Prime time (+1 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.075,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  265,
+        "analysis":  "ð¯ Picking Los Angeles Clippers with 74% confidence. â±ï¸ Slot: Weekend, Prime time. ð 1,500 simulations: 66.1% win rate. ð Predicted score: 110-116. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline Los Angeles Clippers (+41.1% edge, $141.39 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "New England Patriots",
+        "confidence":  0.77,
+        "score":  {
+                      "home":  28,
+                      "away":  21
+                  },
+        "edge":  37.92,
+        "keyFactors":  [
+                           "Sharp money: backing home",
+                           "Experimental: Night game, Weekend, Prime time (+7 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  -0.0555,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  1,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  198,
+        "analysis":  "ð¯ Picking New England Patriots with 77% confidence. â±ï¸ Slot: Night game, Weekend, Prime time. ð 1,500 simulations: 69.4% win rate. ð Predicted score: 28-21. ð¤ AI signals: Sharp money: backing home ð° Value detected: moneyline New England Patriots (+37.9% edge, $106.81 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "NC State Wolfpack",
+        "confidence":  0.59,
+        "score":  {
+                      "home":  29,
+                      "away":  30
+                  },
+        "edge":  11.95,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0286,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.065,
+                             "chaosSensitivity":  0.1,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  134,
+        "analysis":  "ð¯ Picking NC State Wolfpack with 59% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 52.4% win rate. ð Predicted score: 29-30. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline NC State Wolfpack (+11.9% edge, $22.62 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "North Carolina Tar Heels",
+        "confidence":  0.75,
+        "score":  {
+                      "home":  25,
+                      "away":  30
+                  },
+        "edge":  35.41,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.072,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  255,
+        "analysis":  "ð¯ Picking North Carolina Tar Heels with 75% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 61.4% win rate. ð Predicted score: 25-30. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline North Carolina Tar Heels (+35.4% edge, $117.97 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Baylor Bears",
+        "confidence":  0.73,
+        "score":  {
+                      "home":  29,
+                      "away":  33
+                  },
+        "edge":  32.75,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0672,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  235,
+        "analysis":  "ð¯ Picking Baylor Bears with 73% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 60.3% win rate. ð Predicted score: 29-33. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline Baylor Bears (+32.7% edge, $102.12 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "UCLA Bruins",
+        "confidence":  0.66,
+        "score":  {
+                      "home":  27,
+                      "away":  30
+                  },
+        "edge":  22.22,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0448,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  168,
+        "analysis":  "ð¯ Picking UCLA Bruins with 66% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 57.3% win rate. ð Predicted score: 27-30. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline UCLA Bruins (+22.2% edge, $53.47 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Clemson Tigers",
+        "confidence":  0.82,
+        "score":  {
+                      "home":  23,
+                      "away":  32
+                  },
+        "edge":  48.51,
+        "keyFactors":  [
+                           "Sentiment favors home (9%)",
+                           "Sharp money: backing away",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0901,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  350,
+        "analysis":  "ð¯ Picking Clemson Tigers with 82% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 68.5% win rate. ð Predicted score: 23-32. ð¤ AI signals: Sentiment favors home (9%) Sharp money: backing away ð° Value detected: moneyline Clemson Tigers (+48.5% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Louisville Cardinals",
+        "confidence":  0.67,
+        "score":  {
+                      "home":  26,
+                      "away":  29
+                  },
+        "edge":  23.36,
+        "keyFactors":  [
+                           "Sharp money: backing away",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0465,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  172,
+        "analysis":  "ð¯ Picking Louisville Cardinals with 67% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 57.9% win rate. ð Predicted score: 26-29. ð¤ AI signals: Sharp money: backing away ð° Value detected: moneyline Louisville Cardinals (+23.4% edge, $57.40 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Wisconsin Badgers",
+        "confidence":  0.91,
+        "score":  {
+                      "home":  19,
+                      "away":  32
+                  },
+        "edge":  64.94,
+        "keyFactors":  [
+                           "Sentiment favors home (12%)",
+                           "Sharp money: backing away",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.1172,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.1,
+                             "chaosSensitivity":  0.04,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  660,
+        "analysis":  "ð¯ Picking Wisconsin Badgers with 91% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 75.9% win rate. ð Predicted score: 19-32. ð¤ AI signals: Sentiment favors home (12%) Sharp money: backing away ð° Value detected: moneyline Wisconsin Badgers (+64.9% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Michigan Wolverines",
+        "confidence":  0.52,
+        "score":  {
+                      "home":  25,
+                      "away":  24
+                  },
+        "edge":  3.15,
+        "keyFactors":  [
+                           "â ï¸ Upset risk: 22%",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0055,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  0.0177,
+                             "chaosSensitivity":  0.22,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "SPREAD",
+        "odds":  -118,
+        "analysis":  "ð¯ Picking Michigan Wolverines with 52% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 51.1% win rate. ð Predicted score: 25-24. ð¤ AI signals: â ï¸ Upset risk: 22% ð° Value detected: spread Michigan Wolverines (+3.2% edge, $6.02 EV per $100). Powered by Cevict Flex 7D AI."
+    },
+    {
+        "winner":  "Texas Longhorns",
+        "confidence":  0.55,
+        "score":  {
+                      "home":  26,
+                      "away":  26
+                  },
+        "edge":  7.47,
+        "keyFactors":  [
+                           "â ï¸ Upset risk: 14%",
+                           "Experimental: Weekend (+4 conf)"
+                       ],
+        "claudeEffect":  {
+                             "sentimentField":  0.0166,
+                             "narrativeMomentum":  0,
+                             "informationAsymmetry":  -0.0208,
+                             "chaosSensitivity":  0.14,
+                             "networkInfluence":  0,
+                             "temporalDecay":  0.88,
+                             "emergentPattern":  0
+                         },
+        "engine":  "cevict_flex",
+        "pick_type":  "MONEYLINE",
+        "odds":  -137,
+        "analysis":  "ð¯ Picking Texas Longhorns with 55% confidence. â±ï¸ Slot: Weekend. ð 1,500 simulations: 48.1% win rate. ð Predicted score: 26-26. ð¤ AI signals: â ï¸ Upset risk: 14% ð° Value detected: moneyline Ohio State Buckeyes (+7.5% edge, $11.14 EV per $100). Powered by Cevict Flex 7D AI."
+    }
+]

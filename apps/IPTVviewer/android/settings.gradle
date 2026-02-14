@@ -1,13 +1,16 @@
-rootProject.name = 'NextTVViewer'
-apply from: file("../node_modules/@react-native/gradle-plugin/settings.gradle")
-includeBuild("../node_modules/@react-native/gradle-plugin")
+pluginManagement {
+    includeBuild("../node_modules/@react-native/gradle-plugin")
+}
+
+plugins {
+    id("com.facebook.react.settings") version "0.73.11"
+}
+
+rootProject.name = 'SwitchbackTV'
 
 include ':app'
 
-plugins {
-    id("com.facebook.react.settings")
-}
-
-extensions.configure(com.facebook.react.ReactSettingsExtension){ ex ->
-    ex.autolinkLibrariesWithApp()
+// React Native autolinking
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+    ex.autolinkLibrariesFromCommand()
 }

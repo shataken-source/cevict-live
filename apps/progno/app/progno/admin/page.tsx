@@ -1,8 +1,11 @@
 // app/progno/admin/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import EnhancedEarlyLinesSection from '../../../components/admin/EnhancedEarlyLinesSection';
+import PrintBetsSection from '../../../components/admin/PrintBetsSection';
+import ReportsSection from '../../../components/admin/ReportsSection';
 
 const ENV_VARS = [
   'CRON_SECRET',
@@ -24,6 +27,29 @@ const VIEWERS = [
   { name: 'Cevict Arb Tool', path: 'C:\\Users\\cevict\\Desktop\\CevictArbTool\\index.html', url: 'file:///C:/Users/cevict/Desktop/CevictArbTool/index.html' },
   { name: 'Cevict Picks Viewer', path: 'C:\\Users\\cevict\\Desktop\\CevictPicksViewer\\index.html', url: 'file:///C:/Users/cevict/Desktop/CevictPicksViewer/index.html' },
 ];
+
+// Date utility functions
+function getToday(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getYesterday(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split('T')[0];
+}
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+function subtractDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() - days);
+  return d.toISOString().split('T')[0];
+}
 
 function ResultsTable({ rows }: { rows: any[] }) {
   const cell = { padding: '6px 10px', borderBottom: '1px solid #eee', fontSize: '13px' } as const;
@@ -58,27 +84,54 @@ function ResultsTable({ rows }: { rows: any[] }) {
 
 export default function PrognoAdminPage() {
   const [secret, setSecret] = useState('');
+  const [activeTab, setActiveTab] = useState<'run' | 'analyze' | 'keys' | 'docs'>('run');
+
+  // Unified date system - single source of truth
+  // When you pick a "Game Date", we auto-calculate:
+  // - Early date = game date minus 4 days (typical early run)
+  // - Regular date = game date (when regular predictions run)
+  // - Results date = yesterday (for grading)
+  const [gameDate, setGameDate] = useState(() => getToday());
+  const [earlyOffset, setEarlyOffset] = useState(4);
+
+  // Derived dates (auto-calculated from gameDate)
+  const earlyDate = subtractDays(gameDate, earlyOffset);
+  const regularDate = gameDate;
+  const resultsDate = getYesterday();
+
   const [cronLog, setCronLog] = useState<{ job: string; ok: boolean; msg: string } | null>(null);
   const [cronLoading, setCronLoading] = useState<string | null>(null);
-  const [resultsDate, setResultsDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return d.toISOString().split('T')[0];
-  });
 
   const [keys, setKeys] = useState<{ id: string; label: string; createdAt: string }[]>([]);
   const [keysLoading, setKeysLoading] = useState(false);
   const [keyLabel, setKeyLabel] = useState('');
   const [keyValue, setKeyValue] = useState('');
   const [keyLog, setKeyLog] = useState<string | null>(null);
+
   const [resultsList, setResultsList] = useState<any[]>([]);
   const [resultsListDate, setResultsListDate] = useState<string | null>(null);
   const [fallbackSummary, setFallbackSummary] = useState<Record<string, string | number> | null>(null);
   const [scoresByLeague, setScoresByLeague] = useState<Record<string, { count: number; source: 'odds' | 'fallback' }> | null>(null);
-  const [earlyCompareDate, setEarlyCompareDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [regularCompareDate, setRegularCompareDate] = useState(() => new Date().toISOString().split('T')[0]);
+
   const [compareLoading, setCompareLoading] = useState(false);
   const [compareResult, setCompareResult] = useState<{ matches: any[]; message: string; sideFlippedCount: number; hintNoOverlap?: string } | { error: string; availableFiles?: string[]; hint?: string } | null>(null);
+
+  const [lastMainTab, setLastMainTab] = useState<string>('run');
+
+  // Force reset to today's date on mount to prevent cached dates
+  useEffect(() => {
+    const today = getToday();
+    if (gameDate !== today) {
+      setGameDate(today);
+    }
+  }, []);
+
+  // Sync lastMainTab whenever activeTab changes
+  useEffect(() => {
+    if (['run', 'analyze', 'keys', 'docs'].includes(activeTab)) {
+      setLastMainTab(activeTab);
+    }
+  }, [activeTab]);
 
   const runEarlyVsRegular = async () => {
     if (!secret.trim()) {
@@ -91,7 +144,7 @@ export default function PrognoAdminPage() {
       const res = await fetch('/api/progno/admin/early-vs-regular', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: secret.trim(), earlyDate: earlyCompareDate, regularDate: regularCompareDate }),
+        body: JSON.stringify({ secret: secret.trim(), earlyDate, regularDate }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -284,6 +337,119 @@ export default function PrognoAdminPage() {
         />
       </div>
 
+      {/* Smart Date Selector */}
+      <div style={{
+        marginBottom: '24px',
+        padding: '20px',
+        background: '#f8f9fa',
+        borderRadius: '12px',
+        border: '1px solid #dee2e6'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            📅 Smart Date Selector
+          </h3>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => { setGameDate(getYesterday()); }}
+              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #ccc', background: 'white', cursor: 'pointer', fontSize: '13px' }}
+            >
+              Yesterday
+            </button>
+            <button
+              onClick={() => { setGameDate(getToday()); }}
+              style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#0070f3', color: 'white', cursor: 'pointer', fontSize: '13px' }}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => { setGameDate(addDays(getToday(), 1)); }}
+              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #ccc', background: 'white', cursor: 'pointer', fontSize: '13px' }}
+            >
+              Tomorrow
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+          {/* Main Game Date Selector */}
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Game Date (Regular Run)
+            </label>
+            <input
+              type="date"
+              value={gameDate}
+              onChange={e => setGameDate(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                border: '2px solid #0070f3',
+                fontSize: '15px',
+                fontWeight: 500
+              }}
+            />
+          </div>
+
+          {/* Early Offset */}
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Early Lines Offset
+            </label>
+            <select
+              value={earlyOffset}
+              onChange={e => setEarlyOffset(Number(e.target.value))}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                border: '1px solid #ccc',
+                fontSize: '15px'
+              }}
+            >
+              <option value={2}>2 days before</option>
+              <option value={3}>3 days before</option>
+              <option value={4}>4 days before</option>
+              <option value={5}>5 days before</option>
+              <option value={6}>6 days before</option>
+              <option value={7}>7 days before</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Derived Dates Display */}
+        <div style={{
+          marginTop: '16px',
+          padding: '12px 16px',
+          background: 'white',
+          borderRadius: '8px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '20px',
+          fontSize: '13px'
+        }}>
+          <div>
+            <span style={{ color: '#666' }}>Early file: </span>
+            <code style={{ background: '#e9ecef', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+              predictions-early-{earlyDate}.json
+            </code>
+          </div>
+          <div>
+            <span style={{ color: '#666' }}>Regular file: </span>
+            <code style={{ background: '#e9ecef', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+              predictions-{regularDate}.json
+            </code>
+          </div>
+          <div>
+            <span style={{ color: '#666' }}>Results file: </span>
+            <code style={{ background: '#e9ecef', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+              results-{resultsDate}.json
+            </code>
+          </div>
+        </div>
+      </div>
+
       <section style={{ marginBottom: '32px' }}>
         <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Cron jobs</h2>
         <p style={{ color: '#555', marginBottom: '12px', fontSize: '14px' }}>
@@ -305,13 +471,7 @@ export default function PrognoAdminPage() {
             {cronLoading === 'daily-results' ? 'Running…' : 'Get results'}
           </button>
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            Results for date:
-            <input
-              type="date"
-              value={resultsDate}
-              onChange={e => setResultsDate(e.target.value)}
-              style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc' }}
-            />
+            Results use: <code>{resultsDate}</code>
           </label>
         </div>
         {cronLog && (
@@ -349,27 +509,17 @@ export default function PrognoAdminPage() {
           Compare early-line picks vs regular picks for the same games. When the pick <strong>flips to the other side</strong>, you have early position and the regular run likes the new line on the other team — possible hedge/arb. See <code>EARLY_LINES_STRATEGY.md</code>.
         </p>
         <p style={{ color: '#666', marginBottom: '10px', fontSize: '13px' }}>
-          Date = filename date: <code>predictions-early-YYYY-MM-DD.json</code> and <code>predictions-YYYY-MM-DD.json</code>. Use the date you ran each run (e.g. if you ran Regular on Feb 5, use 2026-02-05).
+          Using auto-calculated dates from Smart Date Selector above.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            Early file date:
-            <input
-              type="date"
-              value={earlyCompareDate}
-              onChange={e => setEarlyCompareDate(e.target.value)}
-              style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc' }}
-            />
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            Regular file date:
-            <input
-              type="date"
-              value={regularCompareDate}
-              onChange={e => setRegularCompareDate(e.target.value)}
-              style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc' }}
-            />
-          </label>
+          <div style={{ padding: '8px 12px', background: '#f0f4f8', borderRadius: '6px' }}>
+            <span style={{ fontSize: '12px', color: '#666' }}>Early file: </span>
+            <code>predictions-early-{earlyDate}.json</code>
+          </div>
+          <div style={{ padding: '8px 12px', background: '#f0f4f8', borderRadius: '6px' }}>
+            <span style={{ fontSize: '12px', color: '#666' }}>Regular file: </span>
+            <code>predictions-{regularDate}.json</code>
+          </div>
           <button
             onClick={runEarlyVsRegular}
             disabled={compareLoading || !secret.trim()}
@@ -428,6 +578,32 @@ export default function PrognoAdminPage() {
             )}
           </div>
         )}
+      </section>
+
+      <section style={{ marginBottom: '32px' }}>
+        <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>🎯 Enhanced Early Lines Analysis</h2>
+        <p style={{ color: '#555', marginBottom: '12px', fontSize: '14px' }}>
+          Advanced analysis with value scoring, odds movement tracking, and actionable recommendations.
+          Identifies hedge opportunities, double-downs, and positions to close.
+        </p>
+        <EnhancedEarlyLinesSection secret={secret} earlyDate={earlyDate} regularDate={regularDate} />
+      </section>
+
+      <section style={{ marginBottom: '32px' }}>
+        <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>🖨️ Print Bets Tracker</h2>
+        <p style={{ color: '#555', marginBottom: '12px', fontSize: '14px' }}>
+          Generate a printable tracking sheet for pen & paper bet tracking. Check off wins/losses throughout the day.
+        </p>
+        <PrintBetsSection date={gameDate} />
+      </section>
+
+      <section style={{ marginBottom: '32px' }}>
+        <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>📊 Reports & Analytics</h2>
+        <p style={{ color: '#555', marginBottom: '12px', fontSize: '14px' }}>
+          Generate detailed reports on performance, value bets, confidence levels, and ROI by odds range.
+          Export to CSV for spreadsheet analysis.
+        </p>
+        <ReportsSection secret={secret} date={gameDate} />
       </section>
 
       <section style={{ marginBottom: '32px' }}>

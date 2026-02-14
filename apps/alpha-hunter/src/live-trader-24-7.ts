@@ -27,6 +27,7 @@ import { marketLearner } from './intelligence/market-learner';
 import { PrognoIntegration } from './intelligence/progno-integration';
 import { PrognosticationSync } from './intelligence/prognostication-sync';
 import { getBotConfig, saveTradeRecord, TradeRecord } from './lib/supabase-memory';
+import { logTradeToLearningLoop } from './services/kalshi/settlement-worker';
 import { PrognoMassagerIntegration } from './intelligence/progno-massager';
 
 // Color constants
@@ -427,10 +428,9 @@ export class EventContractExecutionEngine {
           if (trade) {
             this.dailySpending += tradeSize;
             this.kalshiOpenBets.add(pred.market_id);
-            
-            // Save trade to database
+
             const contracts = this.kalshi.usdToContracts(tradeSize, limitPrice);
-            await saveTradeRecord({
+            const tradeId = await saveTradeRecord({
               platform: 'kalshi',
               trade_type: side,
               symbol: pred.market_title,
@@ -438,13 +438,30 @@ export class EventContractExecutionEngine {
               entry_price: limitPrice,
               amount: tradeSize,
               contracts,
-              fees: 0, // Maker orders have $0 fees
+              fees: 0,
               opened_at: new Date(),
               confidence: pred.confidence,
               edge: pred.edge,
               outcome: 'open',
               bot_category: pred.bot_category || 'unknown',
             });
+
+            if (tradeId) {
+              const marketCloseTs = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+              logTradeToLearningLoop({
+                tradeId,
+                marketTicker: pred.market_id,
+                marketTitle: pred.market_title,
+                marketCategory: pred.bot_category || 'sports',
+                predictedProbability: pred.confidence ?? 0,
+                marketOdds: limitPrice,
+                side,
+                stakeUsd: tradeSize,
+                contracts,
+                entryPriceCents: limitPrice,
+                marketCloseTs,
+              }).catch((err) => console.warn('Learning loop log failed:', err?.message));
+            }
 
             console.log(`   ${color.success('✅ Bet placed')} - $${tradeSize} on ${side.toUpperCase()}`);
             break;

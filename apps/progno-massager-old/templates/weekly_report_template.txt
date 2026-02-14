@@ -1,0 +1,166 @@
+================================================================================
+                    PROGNO WEEKLY STATUS REPORT
+                    Project Guardian | Cevict LLC
+================================================================================
+
+Report Generated: {{generated_date}}
+Report Period: {{period_start}} to {{period_end}}
+
+--------------------------------------------------------------------------------
+                           EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+
+Total Predictions Processed: {{total_predictions}}
+Approval Rate: {{approval_rate}}%
+
+✅ Approved: {{approved_count}}
+❌ Rejected: {{rejected_count}}
+⚠️ Warnings: {{warning_count}}
+
+Overall System Health: {{system_health_status}}
+
+--------------------------------------------------------------------------------
+                          TRI-ENGINE CONTRIBUTIONS
+--------------------------------------------------------------------------------
+
+This report tracks which AI engine contributed to data processing:
+
+  GEMINI          [{{gemini_bar}}] {{gemini_pct}}% ({{gemini_count}} items)
+  (Infrastructure)
+
+  CLAUDE          [{{claude_bar}}] {{claude_pct}}% ({{claude_count}} items)
+  (Logic/Frontend)
+
+  PROGNO          [{{progno_bar}}] {{progno_pct}}% ({{progno_count}} items)
+  (Data/Predictions)
+
+  CEVICT FLEX     [{{flex_bar}}] {{flex_pct}}% ({{flex_count}} items)
+  (Core Engine)
+
+--------------------------------------------------------------------------------
+                          ARBITRAGE OPPORTUNITIES
+--------------------------------------------------------------------------------
+
+Arbitrage opportunities detected this week: {{arb_count}}
+Average profit margin: {{avg_arb_profit}}%
+Highest profit detected: {{max_arb_profit}}% ({{max_arb_event}})
+
+Top 5 Opportunities:
+{{#each top_arbs}}
+  {{index}}. {{event_name}} - {{profit}}% profit
+{{/each}}
+
+--------------------------------------------------------------------------------
+                          PREDICTION ACCURACY
+--------------------------------------------------------------------------------
+
+Predictions with verified outcomes: {{verified_count}}
+Correct predictions: {{correct_count}}
+Win rate: {{win_rate}}%
+
+By Sport:
+{{#each sports_accuracy}}
+  - {{sport}}: {{win_rate}}% ({{correct}}/{{total}})
+{{/each}}
+
+--------------------------------------------------------------------------------
+                          SYSTEM HEALTH
+--------------------------------------------------------------------------------
+
+Component Status:
+  ✅ Supabase Database: {{supabase_status}}
+  ✅ Supervisor Agent: {{supervisor_status}}
+  ✅ PII Protection: {{pii_status}}
+  ✅ Addiction Safety: {{addiction_status}}
+  ✅ Hardware Monitor: {{hardware_status}}
+
+GPU Status (RTX 4000 SFF Ada):
+  - VRAM Usage: {{vram_used}}MB / {{vram_total}}MB
+  - Utilization: {{gpu_util}}%
+  - Temperature: {{gpu_temp}}°C
+
+ECC Memory: {{ecc_status}}
+
+--------------------------------------------------------------------------------
+                          COMPLIANCE STATUS
+--------------------------------------------------------------------------------
+
+✅ AI Disclosure Headers: Active
+✅ PII Protection: Active  
+✅ Legal Disclaimers: Active
+✅ Alabama Compliance: Verified
+✅ EU AI Act 2025: Compliant
+✅ GDPR: Compliant
+
+Compliance Score: {{compliance_score}}/100
+
+--------------------------------------------------------------------------------
+                          REJECTION ANALYSIS
+--------------------------------------------------------------------------------
+
+Total Rejections: {{rejected_count}}
+
+Rejection Reasons:
+{{#each rejection_reasons}}
+  - {{reason}}: {{count}} ({{percentage}}%)
+{{/each}}
+
+{{#if high_rejection_rate}}
+⚠️ ALERT: High rejection rate detected. Review Supervisor rules.
+{{/if}}
+
+--------------------------------------------------------------------------------
+                          ANOMALIES & ALERTS
+--------------------------------------------------------------------------------
+
+{{#if anomalies}}
+{{#each anomalies}}
+⚠️ {{timestamp}}: {{description}}
+   Action Taken: {{action}}
+{{/each}}
+{{else}}
+No anomalies detected this week.
+{{/if}}
+
+--------------------------------------------------------------------------------
+                          NOTES FOR VICTORIA
+--------------------------------------------------------------------------------
+
+{{#if notes}}
+{{notes}}
+{{else}}
+No critical issues or special notes this week.
+System running normally in autonomous mode.
+{{/if}}
+
+--------------------------------------------------------------------------------
+                          ACTION ITEMS
+--------------------------------------------------------------------------------
+
+{{#if action_items}}
+{{#each action_items}}
+[ ] {{item}}
+{{/each}}
+{{else}}
+No action items this week.
+{{/if}}
+
+--------------------------------------------------------------------------------
+                          NEXT WEEK PREVIEW
+--------------------------------------------------------------------------------
+
+Scheduled Events: {{scheduled_events_count}}
+Expected Predictions: {{expected_predictions}}
+Planned Maintenance: {{maintenance_notes}}
+
+--------------------------------------------------------------------------------
+
+This report was auto-generated by Project Guardian.
+For questions, contact the development team or Victoria directly.
+
+Report ID: {{report_id}}
+Generated By: PROGNO Massager v1.0 | Tri-Engine Architecture
+
+© 2025 Cevict LLC
+================================================================================
+

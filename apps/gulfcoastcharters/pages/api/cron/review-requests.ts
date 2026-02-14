@@ -5,7 +5,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getSupabaseAdmin } from '../../_lib/supabase';
+import { getSupabaseAdmin } from '../_lib/supabase';
 import { Resend } from 'resend';
 
 const HOUR_4 = 4;

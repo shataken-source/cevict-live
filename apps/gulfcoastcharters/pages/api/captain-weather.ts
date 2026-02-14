@@ -57,7 +57,10 @@ async function geocodeLocation(q: string): Promise<{ lat: number; lon: number } 
   return { lat, lon };
 }
 
-async function fetchAlerts(lat: number, lon: number): Promise<Array<{ severity?: string; event?: string; effective?: string; expires?: string }>> {
+async function fetchAlerts(
+  lat: number,
+  lon: number
+): Promise<Array<{ severity?: string; event?: string; effective?: string; expires?: string; onset?: string; ends?: string }>> {
   const res = await fetch(
     `https://api.weather.gov/alerts/active?point=${lat},${lon}`,
     { headers: { Accept: 'application/geo+json', 'User-Agent': USER_AGENT } }
@@ -112,7 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ alert: null });
     }
 
-    let props: Array<{ severity?: string; event?: string; effective?: string; expires?: string }>;
+    let props: Array<{ severity?: string; event?: string; effective?: string; expires?: string; onset?: string; ends?: string }>;
     try {
       props = await fetchAlerts(point.lat, point.lon);
     } catch (e) {

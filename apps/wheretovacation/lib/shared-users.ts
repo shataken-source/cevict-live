@@ -23,6 +23,7 @@ export interface SharedUser {
   avatar_url?: string;
   home_location?: string;
   preferred_currency: string;
+  preferred_language?: string;
   notification_preferences: Record<string, any>;
   gcc_active: boolean;
   wtv_active: boolean;

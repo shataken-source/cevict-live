@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { rentalId, rentalName, checkIn, checkOut } = body
+    const { rentalId, rentalName, checkIn, checkOut, userId } = body
 
-    if (!rentalId || !checkIn || !checkOut) {
+    if (!rentalId || !checkIn || !checkOut || !userId) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
         checkIn,
         checkOut,
         nights: nights.toString(),
+        userId,
       },
     })
 

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>SwitchbackTV</title>
+    <style>
+        body {
+            background: #222;
+            color: white;
+            font-family: Arial;
+            margin: 20px;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #00d4ff;
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #333;
+            color: white;
+            border: 1px solid #00d4ff;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #00d4ff;
+            color: #000;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+
+        button:hover {
+            background: #0099cc;
+        }
+
+        .card {
+            background: #333;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        .channel {
+            background: #444;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
+            border-left: 4px solid #00d4ff;
+        }
+
+        .channel:hover {
+            background: #555;
+        }
+
+        .error {
+            color: red;
+            text-align: center;
+        }
+
+        .success {
+            color: #4CAF50;
+            text-align: center;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>📺 SwitchbackTV</h1>
+
+        <div id="setup" class="card">
+            <h3>M3U Playlist URL:</h3>
+            <input type="text" id="m3uUrl" placeholder="Enter M3U URL here">
+            <button onclick="loadPlaylist()">Load Playlist</button>
+
+            <h3 style="margin-top: 20px;">Or Xtream Codes:</h3>
+            <input type="text" id="server" placeholder="Server URL (e.g., http://example.com:8080)">
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="loadXtream()">Load Xtream</button>
+        </div>
+
+        <div id="status"></div>
+
+        <div id="channels" class="card hidden">
+            <h3>Channels</h3>
+            <div id="channelList"></div>
+        </div>
+
+        <div id="player" class="card hidden">
+            <h3>Now Playing</h3>
+            <div id="nowPlaying"></div>
+            <video id="video" controls style="width: 100%; max-width: 400px;"></video>
+            <br><br>
+            <button onclick="backToChannels()">Back to Channels</button>
+        </div>
+    </div>
+
+    <script>
+        let channels = [];
+
+        function showStatus(message, type = '') {
+            document.getElementById('status').innerHTML = '<div class="' + type + '">' + message + '</div>';
+        }
+
+        function loadPlaylist() {
+            const url = document.getElementById('m3uUrl').value.trim();
+            if (!url) {
+                showStatus('Please enter a URL', 'error');
+                return;
+            }
+
+            showStatus('Loading playlist...');
+
+            // Try direct fetch first (most reliable)
+            fetch(url)
+                .then(response => response.text())
+                .then(text => {
+                    channels = parseM3U(text);
+                    if (channels.length > 0) {
+                        displayChannels();
+                        showStatus('Loaded ' + channels.length + ' channels!', 'success');
+                    } else {
+                        showStatus('No channels found', 'error');
+                    }
+                })
+                .catch(error => {
+                    showStatus('Failed to load playlist. Check URL.', 'error');
+                });
+        }
+
+        function loadXtream() {
+            const server = document.getElementById('server').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+
+            if (!server || !username || !password) {
+                showStatus('Please fill all Xtream fields', 'error');
+                return;
+            }
+
+            showStatus('Loading Xtream channels...');
+
+            const url = server + '/player_api.php?username=' + username + '&password=' + password + '&action=get_live_streams';
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && Array.isArray(data)) {
+                        channels = data.map(function (channel) {
+                            return {
+                                name: channel.name,
+                                url: server + '/live/' + username + '/' + password + '/' + channel.stream_id + '.ts',
+                                category: channel.category_name
+                            };
+                        });
+                        displayChannels();
+                        showStatus('Loaded ' + channels.length + ' channels!', 'success');
+                    } else {
+                        showStatus('Invalid server response', 'error');
+                    }
+                })
+                .catch(error => {
+                    showStatus('Failed to connect to server', 'error');
+                });
+        }
+
+        function parseM3U(text) {
+            const lines = text.split('\n');
+            const result = [];
+            let currentChannel = {};
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+
+                if (line.indexOf('#EXTINF:') === 0) {
+                    const nameMatch = line.match(/,(.+)$/);
+                    currentChannel = {
+                        name: nameMatch ? nameMatch[1] : 'Unknown Channel'
+                    };
+                } else if (line && line.indexOf('#') !== 0 && currentChannel.name) {
+                    currentChannel.url = line;
+                    result.push(currentChannel);
+                    currentChannel = {};
+                }
+            }
+
+            return result;
+        }
+
+        function displayChannels() {
+            const channelList = document.getElementById('channelList');
+            channelList.innerHTML = '';
+
+            channels.forEach(function (channel, index) {
+                const div = document.createElement('div');
+                div.className = 'channel';
+                div.innerHTML = '<strong>' + channel.name + '</strong><br><small>' + (channel.category || '') + '</small>';
+                div.onclick = function () { playChannel(index); };
+                channelList.appendChild(div);
+            });
+
+            document.getElementById('setup').classList.add('hidden');
+            document.getElementById('channels').classList.remove('hidden');
+        }
+
+        function playChannel(index) {
+            const channel = channels[index];
+            document.getElementById('channels').classList.add('hidden');
+            document.getElementById('player').classList.remove('hidden');
+            document.getElementById('nowPlaying').innerHTML = '<strong>' + channel.name + '</strong>';
+
+            const video = document.getElementById('video');
+            video.src = channel.url;
+            video.play();
+        }
+
+        function backToChannels() {
+            document.getElementById('player').classList.add('hidden');
+            document.getElementById('channels').classList.remove('hidden');
+            document.getElementById('video').pause();
+        }
+
+        // Load saved data
+        window.onload = function () {
+            const savedUrl = localStorage.getItem('m3uUrl');
+            if (savedUrl) {
+                document.getElementById('m3uUrl').value = savedUrl;
+            }
+
+            const savedChannels = localStorage.getItem('channels');
+            if (savedChannels) {
+                channels = JSON.parse(savedChannels);
+                displayChannels();
+                showStatus('Loaded ' + channels.length + ' saved channels', 'success');
+            }
+        };
+    </script>
+</body>
+
+</html>

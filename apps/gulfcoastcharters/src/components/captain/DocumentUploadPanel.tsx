@@ -26,10 +26,31 @@ export function DocumentUploadPanel({ captainId }: { captainId: string }) {
 
   const loadDocuments = async () => {
     try {
-      const { data } = await supabase.functions.invoke('captain-documents', {
-        body: { action: 'getDocuments', captainId }
+      const res = await fetch('/api/captain/documents', { credentials: 'include' });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.documents)) {
+        setDocuments(data.documents.map((d: any) => ({
+          id: d.id,
+          type: d.type,
+          name: d.name,
+          status: d.status,
+          expiryDate: d.expiry_date,
+          uploadedAt: d.uploaded_at,
+        })));
+        return;
+      }
+      const fn = await supabase.functions.invoke('captain-documents', {
+        body: { action: 'getDocuments', captainId },
       });
-      setDocuments(data?.documents || []);
+      const docs = fn.data?.documents || [];
+      setDocuments(docs.map((d: any) => ({
+        id: d.id,
+        type: d.type ?? d.documentType,
+        name: d.name,
+        status: d.status,
+        expiryDate: d.expiryDate ?? d.expiry_date,
+        uploadedAt: d.uploadedAt ?? d.uploaded_at,
+      })));
     } catch (error) {
       console.error('Error loading documents:', error);
     }
@@ -50,13 +71,21 @@ export function DocumentUploadPanel({ captainId }: { captainId: string }) {
 
       if (uploadError) throw uploadError;
 
+      const { data: { publicUrl } } = supabase.storage.from('captain-documents').getPublicUrl(fileName);
+      const apiRes = await fetch('/api/captain/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ type: docType, name: file.name, url: publicUrl }),
+      });
+      if (apiRes.ok) {
+        toast.success('Document uploaded successfully!');
+        loadDocuments();
+        setUploading(false);
+        return;
+      }
       await supabase.functions.invoke('captain-documents', {
-        body: { 
-          action: 'addDocument', 
-          captainId,
-          documentType: docType,
-          fileName
-        }
+        body: { action: 'addDocument', captainId, documentType: docType, fileName },
       });
 
       toast.success('Document uploaded successfully!');

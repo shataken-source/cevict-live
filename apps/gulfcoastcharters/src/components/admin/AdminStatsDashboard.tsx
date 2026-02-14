@@ -3,10 +3,10 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { Users, Anchor, TrendingUp, DollarSign } from 'lucide-react';
 
 const stats = [
-  { label: 'New Users', value: '234', change: '+12%', icon: Users, color: 'blue' },
-  { label: 'New Captains', value: '18', change: '+8%', icon: Anchor, color: 'green' },
-  { label: 'Revenue', value: '$12,450', change: '+23%', icon: DollarSign, color: 'purple' },
-  { label: 'Active Ads', value: '67', change: '+5%', icon: TrendingUp, color: 'orange' }
+  { label: 'New Users', value: '234', change: '+12%', icon: Users, iconClass: 'text-blue-500' },
+  { label: 'New Captains', value: '18', change: '+8%', icon: Anchor, iconClass: 'text-green-500' },
+  { label: 'Revenue', value: '$12,450', change: '+23%', icon: DollarSign, iconClass: 'text-purple-500' },
+  { label: 'Active Ads', value: '67', change: '+5%', icon: TrendingUp, iconClass: 'text-orange-500' }
 ];
 
 const chartData = [
@@ -23,10 +23,10 @@ export default function AdminStatsDashboard() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, idx) => (
-          <Card key={idx} className="p-4">
+        {stats.map((stat) => (
+          <Card key={stat.label} className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <stat.icon className={`w-8 h-8 text-${stat.color}-500`} />
+              <stat.icon className={`w-8 h-8 ${stat.iconClass}`} />
               <span className="text-green-600 text-sm font-semibold">{stat.change}</span>
             </div>
             <div className="text-2xl font-bold">{stat.value}</div>

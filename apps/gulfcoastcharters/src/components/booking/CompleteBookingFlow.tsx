@@ -61,8 +61,12 @@ export default function CompleteBookingFlow({ charter, onClose }: CompleteBookin
             </div>
             <div>
               <Label className="text-lg mb-3 block">Select Time</Label>
-              <TimeSlotSelector date={date} selectedTime={selectedTime} 
-                onTimeSelect={setSelectedTime} charterId={charter.id} />
+              <TimeSlotSelector
+                date={date}
+                selectedTime={selectedTime}
+                onTimeSelect={setSelectedTime}
+                captainId={charter.captain_id || charter.captainId || charter.id}
+              />
             </div>
             <div>
               <Label>Number of Guests (Max {charter.capacity || 6})</Label>

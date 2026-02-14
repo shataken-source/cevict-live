@@ -385,7 +385,7 @@ export default function AffiliatesPage() {
                     <Input
                       id="name"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, name: e.target.value })}
                       required
                       placeholder="e.g., Amazon Products"
                     />
@@ -395,7 +395,7 @@ export default function AffiliatesPage() {
                     <select
                       id="category"
                       value={formData.category || ''}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFormData({ ...formData, category: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     >
                       <option value="">Select category</option>
@@ -414,7 +414,7 @@ export default function AffiliatesPage() {
                     id="website_url"
                     type="url"
                     value={formData.website_url}
-                    onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, website_url: e.target.value })}
                     placeholder="https://example.com"
                   />
                 </div>
@@ -425,7 +425,7 @@ export default function AffiliatesPage() {
                     id="affiliate_url"
                     type="url"
                     value={formData.affiliate_url}
-                    onChange={(e) => setFormData({ ...formData, affiliate_url: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, affiliate_url: e.target.value })}
                     required
                     placeholder="https://example.com/ref=yourcode"
                   />
@@ -436,7 +436,7 @@ export default function AffiliatesPage() {
                   <textarea
                     id="description"
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     placeholder="Brief description of the affiliate"
@@ -468,7 +468,7 @@ export default function AffiliatesPage() {
                       type="number"
                       step="0.01"
                       value={formData.commission_rate || ''}
-                      onChange={(e) =>
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                         setFormData({
                           ...formData,
                           commission_rate: e.target.value ? parseFloat(e.target.value) : undefined,
@@ -482,7 +482,7 @@ export default function AffiliatesPage() {
                       type="checkbox"
                       id="is_active"
                       checked={formData.is_active ?? true}
-                      onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData({ ...formData, is_active: e.target.checked })}
                       className="rounded"
                     />
                     <Label htmlFor="is_active" className="cursor-pointer">
@@ -496,7 +496,7 @@ export default function AffiliatesPage() {
                   <Input
                     id="tags"
                     value={(formData.tags || []).join(', ')}
-                    onChange={(e) => {
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                       const tags = e.target.value.split(',').map((t) => t.trim()).filter(Boolean);
                       setFormData({ ...formData, tags });
                     }}
@@ -509,7 +509,7 @@ export default function AffiliatesPage() {
                   <textarea
                     id="notes"
                     value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, notes: e.target.value })}
                     rows={2}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                     placeholder="Internal notes about this affiliate"

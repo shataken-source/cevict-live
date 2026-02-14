@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseServiceClient } from '@/lib/supabase';
 
 /**
  * Get booking statistics (live data)
  */
 export async function GET() {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
+    let supabase;
+    try {
+      supabase = createSupabaseServiceClient();
+    } catch {
       return NextResponse.json({
         today: 0,
         thisWeek: 0,
@@ -17,35 +17,35 @@ export async function GET() {
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
 
-    // Get bookings from today
-    const { data: todayBookings } = await supabase
+    // Get bookings from today (Supabase chain returns a Promise; no .catch() on builder)
+    const { data: todayData, error: todayError } = await supabase
       .from('bookings')
       .select('*')
-      .gte('created_at', today.toISOString())
-      .catch(() => ({ data: [] }));
+      .gte('created_at', today.toISOString());
+
+    const todayList = todayError ? [] : (todayData || []);
 
     // Get bookings from this week
-    const { data: weekBookings } = await supabase
+    const { data: weekData, error: weekError } = await supabase
       .from('bookings')
       .select('*')
-      .gte('created_at', weekAgo.toISOString())
-      .catch(() => ({ data: [] }));
+      .gte('created_at', weekAgo.toISOString());
 
-    const revenue = (weekBookings?.data || []).reduce((sum: number, booking: any) => {
+    const weekList = weekError ? [] : (weekData || []);
+
+    const revenue = weekList.reduce((sum: number, booking: any) => {
       return sum + (booking.total_amount || booking.price || 0);
     }, 0);
 
     return NextResponse.json({
-      today: todayBookings?.data?.length || 0,
-      thisWeek: weekBookings?.data?.length || 0,
+      today: todayList.length,
+      thisWeek: weekList.length,
       revenue: revenue || 0,
     });
   } catch (error: any) {

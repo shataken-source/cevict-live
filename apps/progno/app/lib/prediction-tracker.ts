@@ -1,0 +1,372 @@
+// Prediction Tracker Module for Progno Sports Prediction Platform
+
+/** 95% binomial confidence interval for win rate (Grok audit). */
+export function binomialCI(p: number, n: number): { lower: number; upper: number } {
+  if (n <= 0) return { lower: 0, upper: 1 };
+  const z = 1.96;
+  const se = Math.sqrt((p * (1 - p)) / n);
+  return {
+    lower: Math.max(0, p - z * se),
+    upper: Math.min(1, p + z * se),
+  };
+}
+
+export interface PredictionResult {
+  id: string;
+  gameId: string;
+  prediction: {
+    predictedWinner: string;
+    confidence: number;
+    predictedScore: { home: number; away: number };
+    stake: number;
+    pick: string;
+    edge: number;
+    rationale: string;
+    /** American odds for vig-adjusted profit (e.g. -110, +150). */
+    odds?: number;
+  };
+  actualResult?: {
+    winner: string;
+    finalScore: { home: number; away: number };
+    status: 'win' | 'lose' | 'pending';
+  };
+  accuracy: {
+    winnerCorrect?: boolean;
+    scoreAccuracy?: number;
+    confidenceAccuracy?: number;
+    profit?: number;
+    /** Brier score (prob scoring): (confidence - outcome)^2; lower is better, target <0.2. */
+    brierScore?: number;
+  };
+  timestamp: Date;
+  sport: string;
+}
+
+export interface AccuracyMetrics {
+  totalPredictions: number;
+  correctPredictions: number;
+  winRate: number;
+  /** 95% CI for win rate (Grok audit). */
+  winRateCI?: { lower: number; upper: number };
+  avgConfidence: number;
+  avgEdge: number;
+  totalProfit: number;
+  roi: number;
+  averageBrier?: number;
+  bySport: Record<string, any>;
+  byConfidence: Record<string, any>;
+  recentPerformance: PredictionResult[];
+}
+
+class PredictionTracker {
+  private STORAGE_KEY = 'progno-predictions';
+  private fileStorePath = '.progno/predictions.json';
+  private hasLocalStorage = typeof window !== 'undefined';
+  private fs: any;
+  private memoryStore: PredictionResult[] = [];
+  private predictions: PredictionResult[] = [];
+
+  constructor() {
+    this.loadPredictions();
+  }
+
+  // Load predictions from localStorage or file
+  private loadPredictions(): void {
+    // LocalStorage path
+    if (this.hasLocalStorage) {
+      try {
+        const stored = localStorage.getItem(this.STORAGE_KEY);
+        if (stored) {
+          this.predictions = JSON.parse(stored).map((p: any) => ({
+            ...p,
+            timestamp: new Date(p.timestamp)
+          }));
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to load predictions:', error);
+      }
+    }
+
+    // File system fallback (cron/CLI)
+    if (this.fileStorePath && this.fs) {
+      try {
+        if (this.fs.existsSync(this.fileStorePath)) {
+          const stored = this.fs.readFileSync(this.fileStorePath, 'utf8');
+          if (stored) {
+            this.predictions = JSON.parse(stored).map((p: any) => ({
+              ...p,
+              timestamp: new Date(p.timestamp)
+            }));
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load file predictions:', error);
+      }
+    }
+
+    // In-memory fallback
+    this.predictions = [...this.memoryStore];
+  }
+
+  // Save predictions to localStorage
+  private savePredictions(): void {
+    // LocalStorage path
+    if (this.hasLocalStorage) {
+      try {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.predictions));
+      } catch (error) {
+        console.error('Failed to save predictions:', error);
+      }
+    }
+
+    // File system fallback (cron/CLI)
+    if (this.fileStorePath && this.fs) {
+      try {
+        this.fs.writeFileSync(this.fileStorePath, JSON.stringify(this.predictions, null, 2), 'utf8');
+      } catch (error) {
+        console.error('Failed to save file predictions:', error);
+      }
+    } else {
+      // Keep memory store updated for server/CLI use
+      this.memoryStore = [...this.predictions];
+    }
+  }
+
+  // Add a new prediction
+  addPrediction(gameId: string, prediction: any, sport: string): string {
+    const id = `pred_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    const newPrediction: PredictionResult = {
+      id,
+      gameId,
+      prediction: {
+        predictedWinner: prediction.predictedWinner,
+        confidence: prediction.confidence,
+        predictedScore: prediction.predictedScore,
+        stake: prediction.stake || 100,
+        pick: prediction.pick,
+        edge: prediction.edge || 0,
+        rationale: prediction.rationale || ''
+      },
+      actualResult: {
+        winner: '',
+        finalScore: { home: 0, away: 0 },
+        status: 'pending'
+      },
+      accuracy: {},
+      timestamp: new Date(),
+      sport
+    };
+
+    this.predictions.push(newPrediction);
+    this.savePredictions();
+    return id;
+  }
+
+  // Check if we already have a pending prediction for this gameId
+  hasPendingPredictionForGameId(gameId: string): boolean {
+    return this.predictions.some(p => p.gameId === gameId && p.actualResult?.status === 'pending');
+  }
+
+  // Update prediction with actual results
+  updatePredictionResult(predictionId: string, actualResult: { winner: string; finalScore: { home: number; away: number } }): void {
+    const prediction = this.predictions.find(p => p.id === predictionId);
+    if (!prediction) return;
+
+    prediction.actualResult = {
+      winner: actualResult.winner,
+      finalScore: actualResult.finalScore,
+      status: this.determinePredictionStatus(prediction, actualResult)
+    };
+
+    prediction.accuracy = this.calculateAccuracy(prediction);
+    this.savePredictions();
+  }
+
+  // Determine if prediction was correct
+  private determinePredictionStatus(prediction: PredictionResult, actualResult: { winner: string; finalScore: { home: number; away: number } }): 'win' | 'lose' | 'pending' {
+    if (!actualResult.winner) return 'pending';
+    return prediction.prediction.predictedWinner === actualResult.winner ? 'win' : 'lose';
+  }
+
+  // Calculate accuracy metrics for a prediction
+  private calculateAccuracy(prediction: PredictionResult): PredictionResult['accuracy'] {
+    if (!prediction.actualResult || prediction.actualResult.status === 'pending') {
+      return {};
+    }
+
+    const winnerCorrect = prediction.prediction.predictedWinner === prediction.actualResult.winner;
+    const conf = typeof prediction.prediction.confidence === 'number' && prediction.prediction.confidence <= 1
+      ? prediction.prediction.confidence
+      : (prediction.prediction.confidence ?? 0) / 100;
+
+    // Brier score: (prob - outcome)^2; outcome 1 if correct, 0 if wrong (Grok audit)
+    const brierScore = Math.pow(conf - (winnerCorrect ? 1 : 0), 2);
+
+    // Score accuracy (how close to predicted score was to actual)
+    const predictedScore = prediction.prediction.predictedScore;
+    const actualScore = prediction.actualResult.finalScore;
+    const scoreDiff = Math.abs(predictedScore.home - actualScore.home) + Math.abs(predictedScore.away - actualScore.away);
+    const scoreAccuracy = Math.max(0, 100 - (scoreDiff * 5));
+
+    // Vig-adjusted profit when odds present; else assume -110 (Grok audit)
+    const odds = prediction.prediction.odds;
+    const stake = prediction.prediction.stake;
+    const profit = winnerCorrect
+      ? (odds != null
+          ? stake * (odds > 0 ? odds / 100 : 100 / Math.abs(odds)) - stake
+          : stake * 0.91)
+      : -stake;
+
+    return {
+      winnerCorrect,
+      scoreAccuracy: Math.round(scoreAccuracy),
+      confidenceAccuracy: winnerCorrect ? prediction.prediction.confidence : 0,
+      profit,
+      brierScore,
+    };
+  }
+
+  // Get predictions for a specific date range
+  getPredictionsByDateRange(startDate: Date, endDate: Date): PredictionResult[] {
+    return this.predictions.filter(p =>
+      p.timestamp >= startDate && p.timestamp <= endDate
+    );
+  }
+
+  // Export prediction data
+  exportToCSV(): string {
+    const headers = [
+      'Date', 'Sport', 'Game ID', 'Predicted Winner', 'Actual Winner',
+      'Confidence', 'Status', 'Profit', 'ROI'
+    ];
+
+    const rows = this.predictions.map(p => [
+      p.timestamp.toISOString().split('T')[0],
+      p.sport,
+      p.gameId,
+      p.prediction.predictedWinner,
+      p.actualResult?.winner || 'Pending',
+      `${(p.prediction.confidence * 100).toFixed(1)}%`,
+      p.actualResult?.status || 'Pending',
+      p.accuracy.profit ? `$${p.accuracy.profit.toFixed(2)}` : 'Pending',
+      p.accuracy.profit && p.prediction.stake ? `${((p.accuracy.profit / p.prediction.stake) * 100).toFixed(1)}%` : 'Pending'
+    ]);
+
+    return [headers, ...rows].map(row => row.join(',')).join('\n');
+  }
+
+  // Clear all prediction history
+  clearHistory(): void {
+    this.predictions = [];
+    this.savePredictions();
+  }
+
+  // Global prediction tracker instance
+  export const predictionTracker = new PredictionTracker();
+
+  // Export functions for external use
+  export const addPrediction = (gameId: string, prediction: any, sport: string) =>
+    predictionTracker.addPrediction(gameId, prediction, sport);
+
+  export const updatePredictionResult = (predictionId: string, actualResult: { winner: string; finalScore: { home: number; away: number } }) =>
+    predictionTracker.updatePredictionResult(predictionId, actualResult);
+
+  export const getAccuracyMetrics = () => predictionTracker.getAccuracyMetrics();
+
+  export const updatePredictionsFromLiveGames = (games: any[]) =>
+    predictionTracker.updatePredictionsFromLiveGames(games);
+
+  // Get comprehensive accuracy metrics
+  getAccuracyMetrics(): AccuracyMetrics {
+    const completedPredictions = this.predictions.filter(p => p.actualResult?.status !== 'pending');
+    const correctPredictions = completedPredictions.filter(p => p.accuracy.winnerCorrect);
+    const totalProfit = completedPredictions.reduce((sum, p) => sum + (p.accuracy.profit || 0), 0);
+    const totalStaked = completedPredictions.reduce((sum, p) => sum + p.prediction.stake, 0);
+    const winRate = completedPredictions.length > 0 ? correctPredictions.length / completedPredictions.length : 0;
+    const n = completedPredictions.length;
+    const brierScores = completedPredictions.map(p => p.accuracy.brierScore).filter((b): b is number => typeof b === 'number');
+    const averageBrier = brierScores.length > 0 ? brierScores.reduce((a, b) => a + b, 0) / brierScores.length : undefined;
+    const baseMetrics: AccuracyMetrics = {
+      totalPredictions: this.predictions.length,
+      correctPredictions: correctPredictions.length,
+      winRate,
+      winRateCI: n > 0 ? binomialCI(winRate, n) : undefined,
+      averageConfidence: n > 0 ? completedPredictions.reduce((sum, p) => sum + p.prediction.confidence, 0) / n : 0,
+      averageProfit: n > 0 ? totalProfit / n : 0,
+      roi: totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0,
+      averageBrier,
+      bySport: {},
+      byConfidence: {},
+      recentPerformance: completedPredictions.slice(-10),
+    };
+
+    // Calculate metrics by sport
+    const sports = [...new Set(this.predictions.map(p => p.sport))];
+    for (const sport of sports) {
+      const sportPredictions = this.predictions.filter(p => p.sport === sport && p.actualResult?.status !== 'pending');
+      const sportCorrect = sportPredictions.filter(p => p.accuracy.winnerCorrect);
+      baseMetrics.bySport[sport] = {
+        totalPredictions: sportPredictions.length,
+        correctPredictions: sportCorrect.length,
+        winRate: sportPredictions.length > 0 ? sportCorrect.length / sportPredictions.length : 0,
+        averageConfidence: sportPredictions.length > 0 ? sportPredictions.reduce((sum, p) => sum + p.prediction.confidence, 0) / sportPredictions.length : 0,
+        averageProfit: sportPredictions.length > 0 ? sportPredictions.reduce((sum, p) => sum + (p.accuracy.profit || 0), 0) / sportPredictions.length : 0,
+        roi: sportPredictions.length > 0 ? (sportPredictions.reduce((sum, p) => sum + (p.accuracy.profit || 0), 0) / sportPredictions.reduce((sum, p) => sum + p.prediction.stake, 0)) * 100 : 0,
+        bySport: {},
+        byConfidence: {},
+        recentPerformance: sportPredictions.slice(-5)
+      };
+    }
+
+    // Calculate metrics by confidence range
+    const confidenceRanges = ['50-60%', '60-70%', '70-80%', '80-90%', '90-100%'];
+    for (const range of confidenceRanges) {
+      const [min, max] = range.split('-').map(r => parseInt(r));
+      const rangePredictions = completedPredictions.filter(p => {
+        const confidence = p.prediction.confidence * 100;
+        return confidence >= min && confidence < max;
+      });
+      const rangeCorrect = rangePredictions.filter(p => p.accuracy.winnerCorrect);
+      baseMetrics.byConfidence[range] = {
+        totalPredictions: rangePredictions.length,
+        correctPredictions: rangeCorrect.length,
+        winRate: rangePredictions.length > 0 ? rangeCorrect.length / rangePredictions.length : 0,
+        averageConfidence: rangePredictions.length > 0 ? rangePredictions.reduce((sum, p) => sum + p.prediction.confidence, 0) / rangePredictions.length : 0,
+        averageProfit: rangePredictions.length > 0 ? rangePredictions.reduce((sum, p) => sum + (p.accuracy.profit || 0), 0) / rangePredictions.length : 0,
+        roi: rangePredictions.length > 0 ? (rangePredictions.reduce((sum, p) => sum + (p.accuracy.profit || 0), 0) / rangePredictions.reduce((sum, p) => sum + p.prediction.stake, 0)) * 100 : 0,
+        bySport: {},
+        byConfidence: {},
+        recentPerformance: rangePredictions.slice(-5)
+      };
+    }
+
+    return baseMetrics;
+  }
+
+  // Auto-update predictions based on live game data
+  async updatePredictionsFromLiveGames(games: any[]): Promise<number> {
+    const completedGames = games.filter(game => game.isCompleted && game.liveScore);
+    let updated = 0;
+
+    for (const game of completedGames) {
+      const pendingPredictions = this.predictions.filter(
+        p => p.gameId === game.id && p.actualResult?.status === 'pending'
+      );
+
+      for (const prediction of pendingPredictions) {
+        const actualResult = {
+          winner: game.liveScore.home > game.liveScore.away ? game.homeTeam : game.awayTeam,
+          finalScore: game.liveScore
+        };
+
+        this.updatePredictionResult(prediction.id, actualResult);
+        updated++;
+      }
+    }
+
+    return updated;
+  }
+}

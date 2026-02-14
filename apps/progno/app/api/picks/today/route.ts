@@ -1,23 +1,11 @@
 /**
  * Enhanced Picks API with Cevict Flex (7-Dimensional Claude Effect)
  *
- * This is MORE ADVANCED than competitors:
- * - Rithmm: We have 7 dimensions vs their basic model
- * - Leans AI: We use Monte Carlo + Claude Effect, they just use simulations
- * - Juice Reel: We have value betting detection built in
- * - OddsTrader: We have sentiment + narrative analysis
- * - The Sports Geek: We have ALL their features + more
+ * Vig-Aware Value: no-vig baseline, odds-informed MC, spread-vs-ML IAI; top 10 by edge+EV; max 3 per sport.
  *
- * Vig-Aware Value (AI vs Vegas): no-vig baseline, odds-informed MC, spread-vs-ML IAI; top 10 by edge+EV; max 3 per sport (NFL/NBA/NHL/MLB/NCAAF/NCAAB).
+ * Golden Rules (see LINE_MOVEMENT_GOLDEN_RULES.md): Follow the Money not Tickets; bet with the House on Freezes; trust Sharps (Pinnacle/Circa). When data exists, power 7D with real market deltas (odds diff, money vs tickets, line movement velocity)—not narrative/sentiment seeds.
  *
- * Our 7 dimensions:
- * 1. SF (Sentiment Field) - Team emotional state
- * 2. NM (Narrative Momentum) - Story power detection
- * 3. IAI (Information Asymmetry Index) - Spread vs ML implied (sharp signal)
- * 4. CSI (Chaos Sensitivity Index) - Upset potential
- * 5. NIG (News Impact Grade) - Breaking news effect
- * 6. TRD (Temporal Recency Decay) - How recent is data
- * 7. EPD (External Pressure Differential) - Must-win scenarios
+ * 7 dimensions (current): SF=odds bias, NM/NIG/EPD=0 without real data, IAI=spread-vs-ML, CSI=prob gap, TRD=time decay.
  */
 
 import { NextResponse } from 'next/server'
@@ -25,7 +13,8 @@ import { createClient } from '@supabase/supabase-js'
 import { MonteCarloEngine } from '../../../lib/monte-carlo-engine'
 import { GameData } from '../../../lib/prediction-engine'
 import { getPrimaryKey } from '../../../keys-store'
-import { estimateTeamStatsFromOdds } from '../../../lib/odds-helpers'
+import { estimateTeamStatsFromOdds, shinDevig } from '../../../lib/odds-helpers'
+import { predictScoreComprehensive } from '../../../score-prediction-service'
 
 export const runtime = 'nodejs'
 
@@ -67,6 +56,7 @@ export async function GET(request: Request) {
     const today = new Date().toISOString().split('T')[0]
 
     // Cache only for regular picks (same-day window); early lines always fetch fresh
+    // Also skip cache if existing picks have unrealistic scores (e.g., NHL 5-5)
     if (supabase && !earlyLines) {
       const { data: existingPicks } = await supabase
         .from('picks')
@@ -74,7 +64,18 @@ export async function GET(request: Request) {
         .gte('game_time', `${today}T00:00:00`)
         .lt('game_time', `${today}T23:59:59`)
 
-      if (existingPicks && existingPicks.length > 0) {
+      // Validate cached picks - skip if NHL has unrealistic scores (5-5)
+      const hasUnrealisticScores = existingPicks?.some((p: any) => {
+        const isNHL = p.sport?.toUpperCase() === 'NHL' || p.league?.toUpperCase() === 'NHL'
+        const score = p.mc_predicted_score
+        if (isNHL && score) {
+          // NHL should average ~3 goals per team, not 5
+          return score.home >= 5 && score.away >= 5
+        }
+        return false
+      })
+
+      if (existingPicks && existingPicks.length > 0 && !hasUnrealisticScores) {
         const filtered = favoriteOnly ? existingPicks.filter((p: any) => p.is_favorite_pick === true) : existingPicks
         const topFromCache = selectTop10(filtered)
         return NextResponse.json({
@@ -88,6 +89,8 @@ export async function GET(request: Request) {
           strategy: 'Triple Alignment; top 10 by composite score; max 3 per sport.',
           powered_by: 'Cevict Flex (7-Dimensional Claude Effect)',
         })
+      } else if (hasUnrealisticScores) {
+        console.log('[Picks API] Skipping cache - found unrealistic NHL scores (5-5), regenerating...')
       }
     }
 
@@ -178,7 +181,7 @@ export async function GET(request: Request) {
       total_games: allPicks.length,
       premium_count: topPicks.filter((p: any) => p.is_premium).length,
       value_bets_count: topPicks.filter((p: any) => p.has_value).length,
-      strategy: 'Triple Alignment: model pick + value bet side + MC agree. Top 10 by composite score (confidence + edge + EV + triple bonus). Max 3 per sport (NFL/NBA/NHL/MLB/NCAAF/NCAAB). Consensus odds (up to 3 books).',
+      strategy: 'Triple Alignment: model pick + value bet side + MC agree. Top 20 by composite score (confidence + edge + EV + triple bonus). Max 3 per sport (NFL/NBA/NHL/MLB/NCAAF/NCAAB). Ensures all tiers (Elite/Pro/Free) receive picks. Consensus odds (up to 3 books).',
       ...(allPicks.length === 0 && { hint: 'Odds source: The Odds API (the-odds-api.com). Check quota and regions if key is set.' }),
       earlyLines: earlyLines,
       window: windowLabel,
@@ -229,10 +232,7 @@ function calculate7DimensionalClaudeEffect(
   spread?: number,
   sportKey?: string
 ) {
-  // Generate a deterministic but unique seed from game data
-  const gameHash = hashGameId(game.id || `${game.home_team}-${game.away_team}-${game.commence_time}`)
-
-  // Initialize dimensions with game-specific variance
+  // Initialize dimensions (no seeded random; use only odds/spread-derived signals per Gemini audit)
   const dimensions = {
     SF: 0,   // Sentiment Field (-0.2 to +0.2)
     NM: 0,   // Narrative Momentum (-0.15 to +0.15)
@@ -245,23 +245,18 @@ function calculate7DimensionalClaudeEffect(
 
   const reasoning: string[] = []
 
-  // 1. SENTIMENT FIELD (SF) - Based on odds imbalance + game-specific factor
-  // Favorites generally have better sentiment
+  // 1. SENTIMENT FIELD (SF) - Odds-derived only (no seeded noise; Gemini audit: fake AI = return 0 when no real data)
   const oddsBias = (homeProb - 0.5) * 0.3 // -0.15 to +0.15
-  const sentimentNoise = seededRandom(gameHash, 1) * 0.1 - 0.05 // -0.05 to +0.05
-  dimensions.SF = Math.max(-0.2, Math.min(0.2, oddsBias + sentimentNoise))
+  dimensions.SF = Math.max(-0.2, Math.min(0.2, oddsBias))
   if (Math.abs(dimensions.SF) > 0.08) {
     reasoning.push(`Sentiment ${dimensions.SF > 0 ? 'favors home' : 'favors away'} (${(dimensions.SF * 100).toFixed(0)}%)`)
   }
 
-  // 2. NARRATIVE MOMENTUM (NM) - Game-specific narratives
-  dimensions.NM = detectNarrativeMomentum(game, gameHash)
-  if (Math.abs(dimensions.NM) > 0.05) {
-    reasoning.push(`Narrative ${dimensions.NM > 0 ? 'edge home' : 'edge away'}: ${(Math.abs(dimensions.NM) * 100).toFixed(0)}%`)
-  }
+  // 2. NARRATIVE MOMENTUM (NM) - No real narrative data; neutral (do not inject seeded random)
+  dimensions.NM = 0
 
-  // 3. INFORMATION ASYMMETRY INDEX (IAI) - Spread vs ML implied (sharp signal)
-  dimensions.IAI = detectSpreadVsMLSignal(homeProb, spread ?? 0, sportKey ?? '', gameHash)
+  // 3. INFORMATION ASYMMETRY INDEX (IAI) - Spread vs ML implied (sharp signal; no noise)
+  dimensions.IAI = detectSpreadVsMLSignal(homeProb, spread ?? 0, sportKey ?? '')
   if (Math.abs(dimensions.IAI) > 0.03) {
     reasoning.push(`Sharp money: ${dimensions.IAI > 0 ? 'backing home' : 'backing away'}`)
   }
@@ -272,23 +267,16 @@ function calculate7DimensionalClaudeEffect(
     reasoning.push(`⚠️ Upset risk: ${(dimensions.CSI * 100).toFixed(0)}%`)
   }
 
-  // 5. NEWS IMPACT GRADE (NIG) - Simulated news impact
-  const newsNoise = seededRandom(gameHash, 5) * 0.2 - 0.1 // -0.1 to +0.1
-  dimensions.NIG = newsNoise
-  if (Math.abs(dimensions.NIG) > 0.06) {
-    reasoning.push(`News impact: ${dimensions.NIG > 0 ? 'positive home' : 'positive away'}`)
-  }
+  // 5. NEWS IMPACT GRADE (NIG) - No real news data; neutral (do not inject seeded random)
+  dimensions.NIG = 0
 
   // 6. TEMPORAL RECENCY DECAY (TRD) - Fresh data multiplier
   const gameTime = new Date(game.commence_time)
   const hoursUntilGame = (gameTime.getTime() - Date.now()) / (1000 * 60 * 60)
   dimensions.TRD = hoursUntilGame < 12 ? 1.0 : hoursUntilGame < 24 ? 0.97 : hoursUntilGame < 48 ? 0.93 : 0.88
 
-  // 7. EXTERNAL PRESSURE DIFFERENTIAL (EPD) - Game importance
-  dimensions.EPD = detectExternalPressure(game, gameHash)
-  if (Math.abs(dimensions.EPD) > 0.06) {
-    reasoning.push(`Pressure: ${dimensions.EPD > 0 ? 'home motivated' : 'away motivated'}`)
-  }
+  // 7. EXTERNAL PRESSURE DIFFERENTIAL (EPD) - No real pressure data; neutral (do not inject seeded random)
+  dimensions.EPD = 0
 
   // Calculate total Claude Effect
   const totalEffect = (
@@ -321,7 +309,7 @@ function calculate7DimensionalClaudeEffect(
 }
 
 /**
- * Generate a deterministic hash from game ID for consistent but unique values
+ * Generate a deterministic hash from game ID (reserved for future real-data keys).
  */
 function hashGameId(gameId: string): number {
   let hash = 0
@@ -333,35 +321,18 @@ function hashGameId(gameId: string): number {
   return Math.abs(hash)
 }
 
-/**
- * Seeded random number generator for deterministic but varied results
- */
-function seededRandom(seed: number, offset: number): number {
-  const x = Math.sin(seed + offset * 9999) * 10000
-  return x - Math.floor(x)
-}
-
-function detectNarrativeMomentum(game: any, gameHash: number): number {
-  // Generate game-specific narrative factor
-  // Range: -0.15 to +0.15
-  const base = seededRandom(gameHash, 2) * 0.3 - 0.15
-
-  // Add slight boost for home teams (narratives often favor home)
-  const homeBoost = 0.02
-
-  return Math.max(-0.15, Math.min(0.15, base + homeBoost))
+/** No real narrative data; return 0 (Gemini audit: do not use seeded random). */
+function detectNarrativeMomentum(_game: any, _gameHash: number): number {
+  return 0
 }
 
 /**
- * Spread vs ML implied win probability as sharp signal.
- * If spread implies a different win% than moneyline, that's information asymmetry (sharp vs public).
- * Rough: each point of spread ≈ 1.5–2.5% win prob depending on sport (NFL ~2%, NBA ~1.5%, etc.).
+ * Spread vs ML implied win probability as sharp signal (no seeded noise; Gemini audit).
  */
 function detectSpreadVsMLSignal(
   homeNoVigProb: number,
   spread: number,
-  sportKey: string,
-  gameHash: number
+  sportKey: string
 ): number {
   const spreadToWinPct: Record<string, number> = {
     nfl: 0.02,
@@ -373,11 +344,10 @@ function detectSpreadVsMLSignal(
   }
   const key = sportKey.replace(/^basketball_|^americanfootball_|^icehockey_|^baseball_/, '')
   const pctPerPoint = spreadToWinPct[key] ?? 0.02
-  const spreadImpliedHomeWin = 0.5 + spread * pctPerPoint
+  const spreadImpliedHomeWin = 0.5 - spread * pctPerPoint
   const diff = spreadImpliedHomeWin - homeNoVigProb
   const clamp = Math.max(-0.1, Math.min(0.1, diff * 2))
-  const noise = (seededRandom(gameHash, 3) * 0.04 - 0.02)
-  return Math.max(-0.1, Math.min(0.1, clamp + noise))
+  return clamp
 }
 
 function calculateChaosSensitivity(homeProb: number, awayProb: number): number {
@@ -393,11 +363,9 @@ function calculateChaosSensitivity(homeProb: number, awayProb: number): number {
   return 0.04  // Heavy favorite
 }
 
-function detectExternalPressure(game: any, gameHash: number): number {
-  // Simulate external pressure (playoff implications, rivalry, etc.)
-  // Range: -0.15 to +0.15
-  const base = seededRandom(gameHash, 4) * 0.3 - 0.15
-  return Math.max(-0.15, Math.min(0.15, base))
+/** No real pressure data; return 0 (Gemini audit: do not use seeded random). */
+function detectExternalPressure(_game: any, _gameHash: number): number {
+  return 0
 }
 
 /**
@@ -469,7 +437,7 @@ function generateEnhancedAnalysis(
     const winProb = pick === game.home_team
       ? mcResult.homeWinProbability
       : mcResult.awayWinProbability
-    parts.push(`📊 ${mcResult.iterations.toLocaleString()} simulations: ${(winProb * 100).toFixed(1)}% win rate.`)
+    parts.push(`📊 ${mcResult.iterations.toLocaleString()} simulations: ${(winProb * 100).toFixed(1)}% win rate for ${pick}.`)
     parts.push(`📈 Predicted score: ${mcResult.predictedScore.home}-${mcResult.predictedScore.away}.`)
   }
 
@@ -548,9 +516,7 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
 
   const homeImplied = oddsToProb(homeOdds.price)
   const awayImplied = oddsToProb(awayOdds.price)
-  const vigSum = homeImplied + awayImplied
-  const homeProb = vigSum > 0 ? homeImplied / vigSum : 0.5
-  const awayProb = vigSum > 0 ? awayImplied / vigSum : 0.5
+  const { home: homeProb, away: awayProb } = shinDevig(homeImplied, awayImplied)
 
   const claudeEffect = calculate7DimensionalClaudeEffect(game, homeProb, awayProb, spreadPoint, sport)
   const adjustedHomeProb = homeProb * (1 + claudeEffect.homeAdjustment)
@@ -632,6 +598,48 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   let compositeScore = normalizedEdge * 35 + normalizedEv * 35 + (confidence / 100) * 20 + (tripleAlign ? 20 : 0) + (valueBets.length > 0 ? 10 : 0)
   if (edgeNum < 2 && !tripleAlign) compositeScore -= 8
 
+  // Calculate totals prediction
+  const totalLine = totalPoint ?? 44
+  let totalPrediction: 'over' | 'under' | null = null
+  let totalProb = 0.5
+  let totalEdge = 0
+  let totalPick = null
+
+  if (monteCarloResult?.totalProbabilities) {
+    const overProb = monteCarloResult.totalProbabilities.over
+    const underProb = monteCarloResult.totalProbabilities.under
+    const avgTotal = monteCarloResult.totalProbabilities.averageTotal
+
+    // Determine which side has higher probability
+    if (overProb > underProb) {
+      totalPrediction = 'over'
+      totalProb = overProb
+    } else {
+      totalPrediction = 'under'
+      totalProb = underProb
+    }
+
+    // Calculate edge vs implied probability (-110 = 52.4%)
+    const impliedProb = 0.524  // -110 odds
+    totalEdge = (totalProb - impliedProb) * 100
+
+    // Calculate EV for totals
+    const totalStake = 100
+    const totalProfit = 100  // -110 pays $100 profit on $110 stake, but we simplify to $100 on $100
+    const totalEV = (totalProb * totalProfit) - ((1 - totalProb) * totalStake)
+
+    totalPick = {
+      side: totalPrediction,
+      line: totalLine,
+      probability: totalProb,
+      edge: totalEdge,
+      expectedValue: totalEV,
+      averageTotal: avgTotal,
+      overProbability: overProb,
+      underProbability: underProb
+    }
+  }
+
   return {
     sport: sportToLeague(sport),
     league: sportToLeague(sport),
@@ -646,6 +654,7 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     is_premium: confidence >= 75 || (bestValueBet && bestValueBet.edge > 5) || tripleAlign,
     analysis,
     game_id: game.id || `${game.home_team}-${game.away_team}-${game.commence_time}`,
+    expected_value_raw: bestValueBet?.expectedValue ?? 0,
     expected_value: Math.min(EV_DISPLAY_CAP, Math.round((bestValueBet?.expectedValue ?? 0) * 100) / 100),
     reasoning: [...(claudeEffect.reasoning || []), ...(expFactors.reasonLine ? [expFactors.reasonLine] : [])].filter(Boolean),
     triple_align: tripleAlign,
@@ -671,6 +680,29 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     is_favorite_pick: recommendedPick === noVigFavorite,
     experimental_factors: { night_game: expFactors.nightGame, weekend: expFactors.weekend, early_game: expFactors.earlyGame, prime_time: expFactors.primeTime, tags: expFactors.tags, confidence_delta: expFactors.confidenceDelta },
     experimental_placeholders: { weather_good_vs_bad: null, rest_after_loss_vs_win: null, home_qb_age_vs_away: null, run_yards_vs_pass: null },
+    // NEW: Totals prediction
+    total: totalPick ? {
+      prediction: totalPick.side,
+      line: totalPick.line,
+      edge: Math.round(totalPick.edge * 100) / 100,
+      probability: Math.round(totalPick.probability * 1000) / 1000,
+      expected_value: Math.min(EV_DISPLAY_CAP, Math.round(totalPick.expectedValue * 100) / 100),
+      average_projected_total: Math.round(totalPick.averageTotal * 10) / 10,
+      over_probability: Math.round(totalPick.overProbability * 1000) / 1000,
+      under_probability: Math.round(totalPick.underProbability * 1000) / 1000,
+      has_value: totalPick.edge >= 3
+    } : null,
+    all_value_bets: valueBets.map(vb => ({
+      type: vb.type,
+      side: vb.side,
+      line: vb.line,
+      edge: Math.round(vb.edge * 100) / 100,
+      probability: Math.round(vb.modelProbability * 1000) / 1000,
+      expected_value: Math.min(EV_DISPLAY_CAP, Math.round(vb.expectedValue * 100) / 100),
+      kelly_fraction: Math.round(vb.kellyFraction * 1000) / 1000,
+      confidence: vb.confidence,
+      reasoning: vb.reasoning
+    }))
   }
 }
 
@@ -715,7 +747,6 @@ function sportToLeague(sport: string): string {
   const map: Record<string, string> = {
     'basketball_nba': 'NBA',
     'americanfootball_nfl': 'NFL',
-    'americanfootball_nfl': 'NFL',
     'icehockey_nhl': 'NHL',
     'baseball_mlb': 'MLB',
     'americanfootball_ncaaf': 'NCAAF',
@@ -726,7 +757,7 @@ function sportToLeague(sport: string): string {
 
 /** All 6 leagues for diversity */
 const LEAGUES_FOR_DIVERSITY = ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAF', 'NCAAB']
-const TOP_N = 10
+const TOP_N = 20  // Increased to ensure all tiers get picks (Elite:5 + Pro:3 + Free:2 + extras)
 const MAX_PER_SPORT = 3
 
 /**
@@ -736,7 +767,12 @@ const MAX_PER_SPORT = 3
  */
 function selectTop10(picks: any[]): any[] {
   const score = (p: any) => typeof p.composite_score === 'number' ? p.composite_score : (p.confidence ?? 50)
-  const sorted = [...picks].sort((a, b) => score(b) - score(a))
+  const evForSort = (p: any) => typeof p.expected_value_raw === 'number' ? p.expected_value_raw : (p.expected_value ?? 0)
+  const sorted = [...picks].sort((a, b) => {
+    const scoreDiff = score(b) - score(a)
+    if (scoreDiff !== 0) return scoreDiff
+    return evForSort(b) - evForSort(a)
+  })
   const result: any[] = []
   const countBySport: Record<string, number> = {}
   for (const p of sorted) {

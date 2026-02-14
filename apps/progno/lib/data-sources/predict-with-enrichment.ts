@@ -61,8 +61,8 @@ export async function predictGameWithEnrichment(game: Game) {
   if (game.odds?.moneyline?.home && game.odds.moneyline.home !== 'N/A') {
     const homeOdds = Number(game.odds.moneyline.home);
     if (!isNaN(homeOdds)) {
-      const impliedHome = homeOdds > 0 
-        ? 100 / (homeOdds + 100) 
+      const impliedHome = homeOdds > 0
+        ? 100 / (homeOdds + 100)
         : Math.abs(100 / homeOdds) / (Math.abs(100 / homeOdds) + 1);
       const modelProb = projectedHome > projectedAway ? confidence : 1 - confidence;
       edge = Number(((modelProb - impliedHome) * 100).toFixed(1));
@@ -73,12 +73,24 @@ export async function predictGameWithEnrichment(game: Game) {
   const base = 0.6 + Math.random() * 0.3;
   const variation = Math.random() * 0.3 - 0.15;
 
+  // Generate unique IDs for tracking
+  const predictionId = `pred_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const gameId = game.id || `${game.homeTeam}-${game.awayTeam}-${Date.now()}`;
+
   return {
+    predictionId,
+    gameId,
     winner,
     confidence,
     score: { home: projectedHome, away: projectedAway },
     edge,
     keyFactors,
+    methodsUsed: ['statistical', 'claude_effect', 'momentum', 'home_advantage'],
+    engine: 'cevict_flex_v2.1',
+    modelVersion: '2.1.0',
+    dataSources: ['odds_api', 'historical', 'team_stats'],
+    timestamp: new Date().toISOString(),
+    calibrationBin: `${Math.floor(confidence * 10) * 10}-${Math.floor(confidence * 10) * 10 + 10}`,
     claudeEffect: {
       sentimentField: Number((base + variation).toFixed(2)),
       narrativeMomentum: Number((base + variation * 0.8).toFixed(2)),

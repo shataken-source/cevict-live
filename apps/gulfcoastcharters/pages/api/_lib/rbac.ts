@@ -103,3 +103,15 @@ export async function requireRole(req: NextApiRequest, res: NextApiResponse, rol
   return true;
 }
 
+// Dummy default export to satisfy Next.js 16 ApiRouteConfig type constraint.
+// This file is a helper, not an API route, but Next.js 16 validates modules
+// under `pages/api` as if they were handlers. We export a no-op handler so the
+// type constraint is satisfied. It should never actually be invoked.
+const rbacHandler = (req: any, res: any) => {
+  if (res && typeof res.status === 'function') {
+    res.status(405).json({ error: 'RBAC helper module; not a route handler' });
+  }
+};
+
+export default rbacHandler;
+

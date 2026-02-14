@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RevenueAnalyticsDashboard } from '@/components/monetization/RevenueAnalyticsDashboard';
@@ -7,14 +7,56 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DollarSign, Settings, TrendingUp } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminMonetization() {
-  const [commissionRate, setCommissionRate] = React.useState(12);
-  const [serviceFeeRate, setServiceFeeRate] = React.useState(8);
+  const [commissionRate, setCommissionRate] = useState(12);
+  const [serviceFeeRate, setServiceFeeRate] = useState(8);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const { data } = await supabase
+        .from('monetization_settings')
+        .select('setting_key, setting_value')
+        .in('setting_key', ['platform_commission_rate', 'service_fee_rate']);
+      if (data) {
+        data.forEach((row: { setting_key: string; setting_value: string }) => {
+          const v = parseFloat(row.setting_value);
+          if (row.setting_key === 'platform_commission_rate' && !Number.isNaN(v)) setCommissionRate(Math.round(v * 100));
+          if (row.setting_key === 'service_fee_rate' && !Number.isNaN(v)) setServiceFeeRate(Math.round(v * 100));
+        });
+      }
+    } catch (_) {
+      // keep defaults
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSaveSettings = async () => {
-    // Save monetization settings to database
-    console.log('Saving settings:', { commissionRate, serviceFeeRate });
+    setSaving(true);
+    try {
+      await supabase.from('monetization_settings').upsert(
+        [
+          { setting_key: 'platform_commission_rate', setting_value: String(commissionRate / 100), description: 'Default platform commission rate', updated_at: new Date().toISOString() },
+          { setting_key: 'service_fee_rate', setting_value: String(serviceFeeRate / 100), description: 'Default service fee rate', updated_at: new Date().toISOString() }
+        ],
+        { onConflict: 'setting_key' }
+      );
+      toast({ title: 'Settings saved', description: 'Commission and service fee rates updated.' });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message ?? 'Failed to save', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -62,8 +104,8 @@ export default function AdminMonetization() {
                     type="number"
                     min="0"
                     max="100"
-                    value={commissionRate}
-                    onChange={(e) => setCommissionRate(parseFloat(e.target.value))}
+                    value={loading ? '' : commissionRate}
+                    onChange={(e) => setCommissionRate(parseFloat(e.target.value) || 0)}
                   />
                   <p className="text-sm text-muted-foreground">
                     Percentage taken from each booking (paid by captain)
@@ -77,8 +119,8 @@ export default function AdminMonetization() {
                     type="number"
                     min="0"
                     max="100"
-                    value={serviceFeeRate}
-                    onChange={(e) => setServiceFeeRate(parseFloat(e.target.value))}
+                    value={loading ? '' : serviceFeeRate}
+                    onChange={(e) => setServiceFeeRate(parseFloat(e.target.value) || 0)}
                   />
                   <p className="text-sm text-muted-foreground">
                     Additional fee charged to customers at checkout
@@ -104,8 +146,8 @@ export default function AdminMonetization() {
                 </div>
               </div>
 
-              <Button onClick={handleSaveSettings} className="w-full">
-                Save Settings
+              <Button onClick={handleSaveSettings} className="w-full" disabled={loading || saving}>
+                {saving ? 'Saving...' : 'Save Settings'}
               </Button>
             </CardContent>
           </Card>

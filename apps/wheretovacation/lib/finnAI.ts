@@ -287,16 +287,62 @@ export class FINNAI {
 
     profile.lastUpdated = new Date().toISOString();
     this.profiles.set(userId, profile);
+
+    // Sync to Supabase (shared Finn memory for GCC + WTV)
+    if (typeof window !== 'undefined') {
+      try {
+        await fetch('/api/finn/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(profile),
+        });
+      } catch {
+        // ignore
+      }
+    }
   }
 
   /**
-   * Get or create user profile
+   * Get or create user profile (loads from Supabase via API when possible)
    */
   private async getOrCreateProfile(userId: string): Promise<FINNMemoryProfile | null> {
-    if (!this.profiles.has(userId)) {
-      return await this.initializeProfile(userId);
+    if (this.profiles.has(userId)) {
+      return this.profiles.get(userId) || null;
     }
-    return this.profiles.get(userId) || null;
+    if (typeof window !== 'undefined') {
+      try {
+        const r = await fetch('/api/finn/profile', { credentials: 'include' });
+        if (r.ok) {
+          const data = await r.json();
+          if (data && data.userId) {
+            let anniversaries: Date[] = [];
+            let birthdays: Date[] = [];
+            try {
+              const sd = await fetch('/api/finn/special-dates?daysAhead=365', { credentials: 'include' });
+              if (sd.ok) {
+                const j = await sd.json();
+                anniversaries = (j.anniversaries || []).map((a: any) => new Date(a.date));
+                birthdays = (j.birthdays || []).map((b: any) => new Date(b.date));
+              }
+            } catch {
+              // ignore
+            }
+            const profile: FINNMemoryProfile = {
+              ...data,
+              anniversaries,
+              birthdays,
+              budgetRange: data.budgetRange || { min: 200, max: 1000 },
+            };
+            this.profiles.set(userId, profile);
+            return profile;
+          }
+        }
+      } catch {
+        // fall through
+      }
+    }
+    return await this.initializeProfile(userId);
   }
 
   /**

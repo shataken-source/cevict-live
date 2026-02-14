@@ -1,0 +1,33 @@
+{
+  "name": "@utils/env-validator",
+  "version": "1.0.0",
+  "description": "Reusable environment variable validation utility for TypeScript/Next.js projects",
+  "main": "env.ts",
+  "types": "types.ts",
+  "keywords": [
+    "environment",
+    "validation",
+    "typescript",
+    "nextjs",
+    "zod",
+    "env-vars"
+  ],
+  "author": "WhereToVacation Team",
+  "license": "MIT",
+  "peerDependencies": {
+    "zod": "^3.20.0"
+  },
+  "files": [
+    "env.ts",
+    "types.ts",
+    "examples/",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wheretovacation/utils"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

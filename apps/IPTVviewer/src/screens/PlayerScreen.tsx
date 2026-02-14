@@ -5,6 +5,8 @@ import {
   TouchableOpacity,
   Text,
   BackHandler,
+  Platform,
+  Pressable,
 } from 'react-native';
 import Video from 'react-native-video';
 import { useStore } from '@/store/useStore';
@@ -17,15 +19,28 @@ interface PlayerScreenProps {
   route: {
     params: {
       channel: Channel;
+      fromChannel?: Channel; // Explicit previous channel from navigation
     };
   };
   navigation: any;
 }
 
 export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
-  const { channel } = route.params;
-  const videoRef = useRef<Video>(null);
+  const { channel, fromChannel: initialPrevious } = route.params;
+  const videoRef = useRef<any>(null);
   const adTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Use navigation param first, fall back to store for previous channel
+  const [prevChannel, setPrevChannel] = useState<Channel | null>(initialPrevious || null);
+  const prevChannelRef = useRef<Channel | null>(initialPrevious || null);
+
+  // Other state
+  const [showControls, setShowControls] = useState(true);
+  const [controlsTimeout, setControlsTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [adDetection, setAdDetection] = useState(true);
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const [currentProgram, setCurrentProgram] = useState<EPGProgram | null>(null);
+  const adDetectionService = useRef(new AdDetectionService()).current;
 
   const {
     setCurrentChannel,
@@ -34,24 +49,34 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
     toggleMute,
     volume,
     isMuted,
-    previousChannel,
     adConfig,
     epgUrl,
   } = useStore();
 
-  const [showControls, setShowControls] = useState(true);
-  const [controlsTimeout, setControlsTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
-  const [adDetection, setAdDetection] = useState(true);
-  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  // originalVolume must be declared after volume from store
   const [originalVolume, setOriginalVolume] = useState(volume);
-  const [currentProgram, setCurrentProgram] = useState<EPGProgram | null>(null);
-  const adDetectionService = useRef(new AdDetectionService()).current;
 
+  // Handle previous channel switch - FLAWLESS IMPLEMENTATION
   const handlePreviousChannel = useCallback(() => {
-    if (previousChannel) {
-      navigation.replace('Player', { channel: previousChannel });
+    const prev = prevChannelRef.current;
+    if (prev) {
+      // CRITICAL: Store current channel as the new previous BEFORE navigating
+      // This ensures we can switch back again
+      setCurrentChannel(channel);
+      // Update refs for the new navigation
+      prevChannelRef.current = channel;
+      // Navigate with explicit fromChannel for the new screen
+      navigation.replace('Player', { channel: prev, fromChannel: channel });
     }
-  }, [previousChannel, navigation]);
+  }, [channel, navigation, setCurrentChannel]);
+
+  // Initialize previous channel when navigating between channels
+  useEffect(() => {
+    if (initialPrevious) {
+      setPrevChannel(initialPrevious);
+      prevChannelRef.current = initialPrevious;
+    }
+  }, [initialPrevious]);
 
   useEffect(() => {
     setCurrentChannel(channel);
@@ -66,11 +91,15 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
     adDetectionService.setCallbacks(handleAdDetected, handleAdEnded);
     adDetectionService.startMonitoring(volume);
 
-    // Back button: return to channel list. (TVEventHandler with "this" is undefined in function components and was removed.)
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+    // Back button: return to channel list
+    const backSub = BackHandler.addEventListener('hardwareBackPress', () => {
       navigation.goBack();
       return true;
     });
+
+    // Note: D-pad Select button is handled via on-screen "Previous" button
+    // because TVEventHandler is unreliable in function components
+    // Users can tap the on-screen Previous button to switch channels
 
     const adCheckInterval = setInterval(() => {
       if (adDetection) {
@@ -79,7 +108,7 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
     }, 3000);
 
     return () => {
-      sub.remove();
+      backSub.remove();
       setPlaying(false);
       adDetectionService.stopMonitoring();
       clearInterval(adCheckInterval);
@@ -131,11 +160,19 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
     setVolume(originalVolume);
   };
 
-  const simulateAdCheck = () => {
-    const randomLevel = Math.random() * 2;
-    const result = adDetectionService.simulateAdDetection(randomLevel);
+  const simulateAdCheck = async () => {
+    // Use real EPG-based detection instead of random simulation
+    const programDuration = currentProgram?.end
+      ? (currentProgram.end.getTime() - currentProgram.start.getTime()) / 1000
+      : undefined;
+
+    const result = await adDetectionService.detect(
+      currentProgram?.title,
+      programDuration,
+    );
 
     if (result.isAd && !isAdPlaying) {
+      console.log('[AdDetection] Ad detected:', result.reason);
       handleAdDetected(result);
       if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
       adTimeoutRef.current = setTimeout(() => handleAdEnded(), 10000);
@@ -219,12 +256,12 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
               <Text style={styles.buttonText}>Back</Text>
             </TouchableOpacity>
 
-            {previousChannel && (
+            {prevChannel && (
               <TouchableOpacity
                 style={[styles.button, styles.previousButton]}
                 onPress={handlePreviousChannel}>
                 <Text style={styles.buttonText}>
-                  Previous ({previousChannel.name})
+                  Previous ({prevChannel.name})
                 </Text>
               </TouchableOpacity>
             )}

@@ -56,7 +56,7 @@ export default function BusinessDashboard() {
           maxPassengers: charter.maxPassengers?.toString() || '',
           priceHalfDay: charter.priceHalfDay?.toString() || '',
           priceFullDay: charter.priceFullDay?.toString() || '',
-          description: charter.description || '',
+          description: (charter as any).description || '',
         });
       }
     }
@@ -123,7 +123,8 @@ export default function BusinessDashboard() {
 
   const handleUnavailableDatesChange = (dates: Date[]) => {
     if (captainCharter) {
-      updateCharterAvailability(captainCharter.id, dates);
+      const dateStrings = dates.map((d) => d.toISOString().split('T')[0]);
+      updateCharterAvailability(captainCharter.id, dateStrings);
       setSuccessMessage('Availability updated successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
     }

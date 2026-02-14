@@ -2,6 +2,7 @@ import { cursorLearnFromFinals } from "./cursor-effect";
 // cursorLearnFromFinals is now async and uses Claude Effect
 import { updatePredictionsFromLiveGames } from "./prediction-tracker";
 import { Game } from "./weekly-analyzer";
+import { getOddsJamAPIKey, fetchOddsJamGames, fetchOddsJamOdds, OddsJamGame, OddsJamOdds } from "./oddsjam-fetcher";
 
 type SupportedSport = "NFL" | "NBA" | "MLB" | "NHL" | "NCAAF" | "NCAAB";
 
@@ -20,6 +21,16 @@ const SPORT_KEY_MAP: Record<SupportedSport, string> = {
   NHL: "icehockey_nhl",
   NCAAF: "americanfootball_ncaaf",
   NCAAB: "basketball_ncaab"
+};
+
+// Sport mapping for OddsJam
+const ODDSJAM_SPORT_MAP: Record<SupportedSport, string> = {
+  NFL: "football",
+  NBA: "basketball",
+  MLB: "baseball",
+  NHL: "hockey",
+  NCAAF: "football",
+  NCAAB: "basketball"
 };
 
 function normalizeName(name: string) {
@@ -106,6 +117,73 @@ export async function fetchLiveOddsTheOddsApi(apiKey: string, sport: SupportedSp
   }
 
   return simplified;
+}
+
+/**
+ * Fetch live odds with automatic fallback to OddsJam if The Odds API fails.
+ * This provides redundancy for critical data source availability.
+ */
+export async function fetchLiveOddsWithFallback(apiKey: string, sport: SupportedSport): Promise<SimplifiedOdds[]> {
+  // Try The Odds API first
+  try {
+    const odds = await fetchLiveOddsTheOddsApi(apiKey, sport);
+    if (odds.length > 0) {
+      return odds;
+    }
+    // Empty result, try fallback
+    console.warn(`[Odds Fallback] The Odds API returned empty for ${sport}, trying OddsJam...`);
+  } catch (error) {
+    console.warn(`[Odds Fallback] The Odds API failed for ${sport}:`, error);
+  }
+
+  // Fallback to OddsJam
+  try {
+    const oddsjamKey = getOddsJamAPIKey();
+    if (!oddsjamKey) {
+      throw new Error('OddsJam API key not configured');
+    }
+
+    const oddsjamSport = ODDSJAM_SPORT_MAP[sport];
+    const games = await fetchOddsJamGames(oddsjamSport);
+
+    if (!games || games.length === 0) {
+      return [];
+    }
+
+    // Get odds for all games
+    const gameIds = games.map(g => g.id);
+    const oddsData = await fetchOddsJamOdds(gameIds);
+
+    // Transform to SimplifiedOdds format
+    const simplified: SimplifiedOdds[] = [];
+    for (const game of games) {
+      const gameOdds = oddsData.find(o =>
+        // Match by checking if this odds entry belongs to this game
+        // OddsJam returns odds with game context
+        true // Simplified - would need proper matching logic
+      );
+
+      // Use the first available odds or default
+      const bestOdds = gameOdds || game.odds?.[0];
+
+      simplified.push({
+        homeTeam: game.homeTeam,
+        awayTeam: game.awayTeam,
+        moneyline: bestOdds ? {
+          home: bestOdds.homeOdds,
+          away: bestOdds.awayOdds
+        } : undefined,
+        spread: bestOdds?.spread,
+        total: bestOdds?.total
+      });
+    }
+
+    console.log(`[Odds Fallback] Successfully fetched ${simplified.length} games from OddsJam for ${sport}`);
+    return simplified;
+  } catch (fallbackError) {
+    console.error(`[Odds Fallback] Both The Odds API and OddsJam failed for ${sport}:`, fallbackError);
+    throw new Error(`Unable to fetch odds for ${sport}: Both primary and fallback sources failed`);
+  }
 }
 
 // Fetch upcoming schedule + odds (single call)

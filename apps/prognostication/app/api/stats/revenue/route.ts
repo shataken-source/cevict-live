@@ -5,8 +5,8 @@ export const runtime = 'nodejs';
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2024-12-18' as any,
-    })
+    apiVersion: '2026-01-28.clover' as any,
+  })
   : null;
 
 /**
@@ -14,6 +14,19 @@ const stripe = process.env.STRIPE_SECRET_KEY
  */
 export async function GET(request: NextRequest) {
   try {
+    // Skip during build/static generation
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+      return NextResponse.json({
+        success: true,
+        revenue: { mrr: 0, arr: 0 },
+        subscribers: {
+          total: 0,
+          pro: { total: 0, weekly: 0, monthly: 0 },
+          elite: { total: 0, weekly: 0, monthly: 0 },
+        },
+      });
+    }
+
     if (!stripe) {
       return NextResponse.json(
         { success: false, error: 'Stripe not configured' },

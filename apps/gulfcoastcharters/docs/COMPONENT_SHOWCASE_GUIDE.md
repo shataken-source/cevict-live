@@ -4,7 +4,7 @@
 The Component Showcase is an interactive documentation system that displays all UI components with live examples, code snippets, and interactive controls. It's similar to Storybook but built directly into the application.
 
 ## Access
-Navigate to: **http://localhost:5173/components-showcase**
+Navigate to: **/components-showcase** (e.g. `http://localhost:3000/components-showcase` when running `npm run dev` with Next.js).
 
 ## Features
 

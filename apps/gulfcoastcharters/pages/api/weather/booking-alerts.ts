@@ -24,7 +24,9 @@ function getBaseUrl(req: NextApiRequest): string {
   return process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
 }
 
-type AlertLevel = 'safe' | 'caution' | 'warning' | 'danger';
+// AlertLevel kept as a string for now to avoid over-constraining unions during analysis;
+// values are logically 'safe' | 'caution' | 'warning' | 'danger'.
+type AlertLevel = string;
 
 function analyzeConditions(obs: {
   windSpeedMph?: number | null;

@@ -1,0 +1,60 @@
+Subject: Help me pick a logo & slogan for my new TV app! 🎬
+
+Hey everyone!
+
+I've been building a new IPTV app for Android TV called **Switchback.tv**. The main feature everyone loves: a "Previous Channel" button that actually works!
+
+I need your help picking a logo and slogan. I have 4 logo concepts (see attached/images) and several taglines.
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+LOGOS (refer to attached images)
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. TOP LEFT: "The S-Arrow"
+   - Sleek 'S' with a circular back arrow inside
+   - Vibe: Modern, elegant, direct
+
+2. TOP RIGHT: "The X-Switch"
+   - Two diagonal lines crossing (like a crossroads)
+   - Vibe: Bold, techy, decisive
+
+3. BOTTOM LEFT: "The Road"
+   - Stylized winding road with arrow
+   - Vibe: Dynamic, adventurous, literal
+
+4. BOTTOM RIGHT: "The S-Screen"
+   - Minimalist 'S' inside a TV screen
+   - Vibe: Clear, digital, familiar
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+COLOR PALETTE (for the app itself)
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+• Background: Deep Slate (#121212) - Easy on eyes for TV
+• Accent: Electric Teal (#00F5D4) - Makes selections pop
+• Special: Recall Orange (#FF9F1C) - For the Previous button
+• Text: Off-White (#E0E0E0) - Softer than pure white
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+SLOGAN OPTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Pick your favorite:
+
+1. "Control the stream. Own the architecture."
+2. "Finally, an IPTV app with a memory."
+3. "Don't just channel surf. Switchback."
+4. "Modular. Extensible. Instant."
+5. "The future of TV navigation."
+6. "Your TV, Evolved."
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+QUICK POLL
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+Just reply with:
+• Logo: 1, 2, 3, or 4
+• Slogan: Your favorite number
+
+Thanks for the help!
+[Your Name]

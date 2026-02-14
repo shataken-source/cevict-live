@@ -1,6 +1,11 @@
-# NextTV Viewer
+# Switchback TV
 
 IPTV viewer with previous-channel support and extensible architecture for Android TV and TV platforms.
+
+## Domains
+
+- **quickflip.tv** - Quick channel switching
+- **switchback.tv** - Primary domain (switch back to previous channel)
 
 ## Features
 

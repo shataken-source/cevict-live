@@ -1,11 +1,12 @@
 /**
  * Offline 7D-style Claude Effect for backtest (no HTTP).
- * Same logic as picks/today: spread-vs-ML IAI, chaos sensitivity, seeded noise (SF, NM, NIG, EPD).
+ * Odds-derived only: spread-vs-ML IAI, chaos from prob gap; SF from odds bias. No seeded noise (Gemini audit).
  * Used when gatherClaudeEffectData fails (no server) or BACKTEST_USE_OFFLINE_CE=true.
  * Weights from getWeightsForLeague (NHL Momentum, NFL Efficiency); TRD omitted for historical.
  */
 
 import { getWeightsForLeague } from './claude-effect-weights';
+import { shinDevig } from './odds-helpers';
 
 export interface OfflineGameData {
   homeTeam: string;
@@ -23,21 +24,6 @@ function getClaudeWeights(league?: string): { SF: number; NM: number; IAI: numbe
   return { SF: W.SF, NM: W.NM, IAI: W.IAI, CSI: W.CSI, NIG: W.NIG, EPD: W.EPD };
 }
 
-function hashGameId(gameId: string): number {
-  let hash = 0;
-  for (let i = 0; i < gameId.length; i++) {
-    const char = gameId.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return Math.abs(hash);
-}
-
-function seededRandom(seed: number, offset: number): number {
-  const x = Math.sin(seed + offset * 9999) * 10000;
-  return x - Math.floor(x);
-}
-
 function oddsToProb(odds: number): number {
   if (odds > 0) return 100 / (odds + 100);
   return Math.abs(odds) / (Math.abs(odds) + 100);
@@ -46,8 +32,7 @@ function oddsToProb(odds: number): number {
 function spreadVsMLSignal(
   homeNoVigProb: number,
   spread: number,
-  sportKey: string,
-  gameHash: number
+  sportKey: string
 ): number {
   const spreadToWinPct: Record<string, number> = {
     nfl: 0.02,
@@ -61,9 +46,7 @@ function spreadVsMLSignal(
   const pctPerPoint = spreadToWinPct[key] ?? 0.02;
   const spreadImpliedHomeWin = 0.5 + spread * pctPerPoint;
   const diff = spreadImpliedHomeWin - homeNoVigProb;
-  const clamp = Math.max(-0.1, Math.min(0.1, diff * 2));
-  const noise = seededRandom(gameHash, 3) * 0.04 - 0.02;
-  return Math.max(-0.1, Math.min(0.1, clamp + noise));
+  return Math.max(-0.1, Math.min(0.1, diff * 2));
 }
 
 function chaosSensitivity(homeProb: number, awayProb: number): number {
@@ -84,20 +67,16 @@ export function getOfflineClaudeEffectAdjustment(gameData: OfflineGameData): num
   const { odds } = gameData;
   const homeImplied = oddsToProb(odds.home);
   const awayImplied = oddsToProb(odds.away);
-  const vigSum = homeImplied + awayImplied;
-  const homeProb = vigSum > 0 ? homeImplied / vigSum : 0.5;
-  const awayProb = vigSum > 0 ? awayImplied / vigSum : 0.5;
+  const { home: homeProb, away: awayProb } = shinDevig(homeImplied, awayImplied);
 
-  const gameId = gameData.id ?? `${gameData.homeTeam}-${gameData.awayTeam}-${gameData.date ?? ''}`;
-  const gameHash = hashGameId(gameId);
   const sportKey = (gameData.sport ?? gameData.league ?? 'nfl').toLowerCase();
 
-  const SF = Math.max(-0.2, Math.min(0.2, (homeProb - 0.5) * 0.3 + (seededRandom(gameHash, 1) * 0.1 - 0.05)));
-  const NM = Math.max(-0.15, Math.min(0.15, seededRandom(gameHash, 2) * 0.3 - 0.15 + 0.02));
-  const IAI = spreadVsMLSignal(homeProb, odds.spread ?? 0, sportKey, gameHash);
+  const SF = Math.max(-0.2, Math.min(0.2, (homeProb - 0.5) * 0.3));
+  const NM = 0;
+  const IAI = spreadVsMLSignal(homeProb, odds.spread ?? 0, sportKey);
   const CSI = chaosSensitivity(homeProb, awayProb);
-  const NIG = seededRandom(gameHash, 5) * 0.2 - 0.1;
-  const EPD = Math.max(-0.15, Math.min(0.15, seededRandom(gameHash, 4) * 0.3 - 0.15));
+  const NIG = 0;
+  const EPD = 0;
 
   const W = getClaudeWeights(gameData.league);
   const totalEffect =

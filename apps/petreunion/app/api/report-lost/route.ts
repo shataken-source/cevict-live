@@ -118,9 +118,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Sanitize location fields
+    // Sanitize location fields and require state (no hardcoded default)
     parsedLocation.city = sanitizeString(parsedLocation.city, 100);
-    parsedLocation.state = parsedLocation.state ? sanitizeString(parsedLocation.state, 2) : null;
+    const stateRaw = parsedLocation.state ? sanitizeString(parsedLocation.state, 2) : null;
+    if (!stateRaw || stateRaw.length !== 2) {
+      return NextResponse.json(
+        {
+          error: 'Please provide a valid US city and state (e.g., "Houston, TX" or "Los Angeles, California")',
+        },
+        { status: 400 }
+      );
+    }
+    parsedLocation.state = stateRaw;
     parsedLocation.zip = parsedLocation.zip ? sanitizeString(parsedLocation.zip, 10) : null;
     parsedLocation.detail = parsedLocation.detail ? sanitizeString(parsedLocation.detail, MAX_LENGTHS.location) : null;
 

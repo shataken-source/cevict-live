@@ -1,289 +1,296 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import AdSenseBanner from '@/components/AdSenseBanner';
 
-interface KalshiTrade {
-  id: string;
-  platform: 'kalshi';
-  trade_type: 'yes' | 'no';
-  symbol: string;
-  market_id?: string;
-  entry_price: number;
-  amount: number;
-  pnl?: number;
-  fees: number;
-  opened_at: string;
-  bot_category?: string;
-  confidence?: number;
-  edge?: number;
-  outcome?: 'win' | 'loss' | 'open';
+interface Pick {
+    id: string;
+    sport: string;
+    league: string;
+    home_team: string;
+    away_team: string;
+    pick: string;
+    confidence: number;
+    odds: number;
+    edge: number;
+    expected_value: number;
+    game_time: string;
+    mc_predicted_score?: {
+        home: number;
+        away: number;
+    };
+    analysis: string[];
+    is_favorite_pick: boolean;
+    value_bet_edge: number;
 }
 
-interface LiveStats {
-  totalTrades: number;
-  openTrades: number;
-  winTrades: number;
-  lossTrades: number;
-  totalPnl: number;
-  winRate: number;
-  avgConfidence: number;
-  avgEdge: number;
+interface PicksData {
+    success: boolean;
+    elite: Pick[];
+    pro: Pick[];
+    free: Pick[];
+    totalPicks: number;
+    timestamp: string;
 }
 
-const KALSHI_REFERRAL_CODE = process.env.NEXT_PUBLIC_KALSHI_REFERRAL_CODE || 'CEVICT2025';
+function HomePage() {
+    const [picksData, setPicksData] = useState<PicksData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [selectedTier, setSelectedTier] = useState<'elite' | 'pro' | 'free'>('elite');
 
-function HomePageContent() {
-  const [trades, setTrades] = useState<KalshiTrade[]>([]);
-  const [stats, setStats] = useState<LiveStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    useEffect(() => {
+        async function fetchPicks() {
+            try {
+                setLoading(true);
+                const response = await fetch('/api/picks/today', { cache: 'no-store' });
+                const data = await response.json();
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoading(true);
-        setError(null);
+                if (data.success) {
+                    const allPicks: Pick[] = data.picks || [];
 
-        const [tradesRes, statsRes] = await Promise.all([
-          fetch('/api/trades/kalshi?limit=20', { cache: 'no-store' }),
-          fetch('/api/stats/live', { cache: 'no-store' }),
-        ]);
+                    const elite = allPicks.filter((p: Pick) => p.confidence >= 80).slice(0, 5);
+                    const pro = allPicks.filter((p: Pick) => p.confidence >= 65 && p.confidence < 80).slice(0, 3);
+                    const free = allPicks.filter((p: Pick) => p.confidence < 65).slice(0, 2);
 
-        if (tradesRes.ok) {
-          const tradesData = await tradesRes.json();
-          if (tradesData.success) {
-            setTrades(tradesData.trades || []);
-          }
+                    setPicksData({
+                        success: true,
+                        elite,
+                        pro,
+                        free,
+                        totalPicks: allPicks.length,
+                        timestamp: new Date().toISOString()
+                    });
+                } else {
+                    setError('Failed to load picks');
+                }
+            } catch (e) {
+                setError('Network error loading picks');
+            } finally {
+                setLoading(false);
+            }
         }
 
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          if (statsData.success) {
-            setStats(statsData.stats);
-          }
-        }
+        fetchPicks();
+    }, []);
 
-        setLastUpdated(new Date());
-      } catch (e: any) {
-        console.error('Failed to load data:', e);
-        setError(e.message || 'Failed to load data');
-      } finally {
-        setLoading(false);
-      }
+    const getCurrentPicks = () => {
+        if (!picksData) return [];
+        return picksData[selectedTier] || [];
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-emerald-400 mx-auto mb-4"></div>
+                    <p className="text-slate-300">Loading today's picks...</p>
+                </div>
+            </div>
+        );
     }
 
-    loadData();
-    const interval = setInterval(loadData, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
-
-  const getKalshiUrl = (marketId?: string) => {
-    if (marketId) {
-      return `https://kalshi.com/markets/${marketId}?referral=${KALSHI_REFERRAL_CODE}`;
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+                <div className="text-center">
+                    <p className="text-red-400 mb-4">{error}</p>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-lg text-white"
+                    >
+                        Retry
+                    </button>
+                </div>
+            </div>
+        );
     }
-    return `https://kalshi.com?referral=${KALSHI_REFERRAL_CODE}`;
-  };
 
-  const getOutcomeColor = (outcome?: string) => {
-    if (outcome === 'win') return 'text-green-400 bg-green-500/10 border-green-500/30';
-    if (outcome === 'loss') return 'text-red-400 bg-red-500/10 border-red-500/30';
-    return 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30';
-  };
+    const currentPicks = getCurrentPicks();
 
-  const getOutcomeText = (outcome?: string) => {
-    if (outcome === 'win') return 'WIN';
-    if (outcome === 'loss') return 'LOSS';
-    return 'OPEN';
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950">
-      {/* Header Ad Banner */}
-      <div className="w-full">
-        <AdSenseBanner 
-          adSlot={process.env.NEXT_PUBLIC_ADSENSE_HEADER_SLOT || '1234567890'}
-          format="horizontal"
-          style={{ height: '90px' }}
-          className="w-full"
-        />
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <header className="text-center mb-12">
-          <h1 className="text-5xl font-black text-white mb-4 tracking-tight">
-            PROGNOSTICATION
-          </h1>
-          <p className="text-xl text-indigo-300 mb-2">
-            AI-Powered Prediction Market Intelligence
-          </p>
-          <p className="text-gray-400 text-sm">
-            Live trading signals from our autonomous AI trading system
-          </p>
-          {lastUpdated && (
-            <p className="text-gray-500 text-xs mt-2">
-              Last updated: {lastUpdated.toLocaleTimeString()}
-            </p>
-          )}
-        </header>
-
-        {/* Live Stats */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold text-green-400 mb-1">
-                {stats.winRate.toFixed(1)}%
-              </div>
-              <div className="text-sm text-gray-400">Win Rate</div>
-            </div>
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 text-center">
-              <div className={`text-3xl font-bold mb-1 ${stats.totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                ${stats.totalPnl >= 0 ? '+' : ''}{stats.totalPnl.toFixed(2)}
-              </div>
-              <div className="text-sm text-gray-400">Total P&L</div>
-            </div>
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold text-indigo-400 mb-1">
-                {stats.totalTrades}
-              </div>
-              <div className="text-sm text-gray-400">Total Trades</div>
-            </div>
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 text-center">
-              <div className="text-3xl font-bold text-yellow-400 mb-1">
-                {stats.openTrades}
-              </div>
-              <div className="text-sm text-gray-400">Open Positions</div>
-            </div>
-          </div>
-        )}
-
-        {/* In-Content Ad */}
-        <div className="mb-12">
-          <AdSenseBanner 
-            adSlot={process.env.NEXT_PUBLIC_ADSENSE_CONTENT_SLOT || '1234567891'}
-            format="horizontal"
-            style={{ height: '90px' }}
-            className="w-full"
-          />
-        </div>
-
-        {/* Trades List */}
-        <section className="mb-12">
-          <h2 className="text-2xl font-bold text-white mb-6">Recent Trades</h2>
-          
-          {loading ? (
-            <div className="text-center py-20">
-              <div className="inline-block w-12 h-12 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-indigo-300">Loading trades...</p>
-            </div>
-          ) : error ? (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
-              <p className="text-red-400">Error: {error}</p>
-            </div>
-          ) : trades.length === 0 ? (
-            <div className="bg-white/5 border border-white/10 rounded-xl p-12 text-center">
-              <div className="text-6xl mb-4">📊</div>
-              <p className="text-xl text-indigo-300 mb-2">No trades yet</p>
-              <p className="text-gray-400">
-                Our AI trading system will display trades here as they are executed.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {trades.map((trade) => (
-                <a
-                  key={trade.id}
-                  href={getKalshiUrl(trade.market_id)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 hover:border-indigo-500/50 hover:bg-white/10 transition-all group"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getOutcomeColor(trade.outcome)}`}>
-                          {getOutcomeText(trade.outcome)}
-                        </span>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          trade.trade_type === 'yes' 
-                            ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                        }`}>
-                          {trade.trade_type.toUpperCase()}
-                        </span>
-                        {trade.bot_category && (
-                          <span className="px-3 py-1 rounded-full text-xs bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                            {trade.bot_category.toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-lg font-semibold text-white group-hover:text-indigo-300 transition-colors mb-2">
-                        {trade.symbol}
-                      </h3>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-400">
-                        <span>Entry: {trade.entry_price}¢</span>
-                        <span>Amount: ${trade.amount.toFixed(2)}</span>
-                        {trade.confidence && <span>Confidence: {trade.confidence}%</span>}
-                        {trade.edge && <span>Edge: +{trade.edge}%</span>}
-                        {trade.pnl !== undefined && trade.pnl !== null && (
-                          <span className={trade.pnl >= 0 ? 'text-green-400' : 'text-red-400'}>
-                            P&L: {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
-                          </span>
-                        )}
-                      </div>
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+            {/* Header */}
+            <header className="bg-slate-800/50 backdrop-blur-md border-b border-slate-700">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-white">
+                            <span className="text-emerald-400">PROGNO</span>
+                            <span className="text-slate-400 ml-2">PICKS</span>
+                        </h1>
+                        <p className="text-sm text-slate-400">AI-Powered Sports Predictions</p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xs text-gray-500 mb-1">
-                        {new Date(trade.opened_at).toLocaleDateString()}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {new Date(trade.opened_at).toLocaleTimeString()}
-                      </div>
+                    <nav className="flex gap-4">
+                        <Link href="/pricing" className="text-slate-300 hover:text-emerald-400 transition">
+                            Pricing
+                        </Link>
+                        <Link href="/accuracy" className="text-slate-300 hover:text-emerald-400 transition">
+                            Accuracy
+                        </Link>
+                        <Link href="/admin" className="text-slate-300 hover:text-emerald-400 transition">
+                            Admin
+                        </Link>
+                    </nav>
+                </div>
+            </header>
+
+            {/* Hero Section */}
+            <section className="max-w-7xl mx-auto px-4 py-12">
+                <div className="text-center mb-12">
+                    <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+                        Today's Best Sports Picks
+                    </h2>
+                    <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                        Powered by 7D Claude Effect + Monte Carlo simulations.
+                        {picksData?.totalPicks} games analyzed.
+                    </p>
+                </div>
+
+                {/* Tier Selector */}
+                <div className="flex justify-center gap-2 mb-8">
+                    {(['elite', 'pro', 'free'] as const).map((tier) => (
+                        <button
+                            key={tier}
+                            onClick={() => setSelectedTier(tier)}
+                            className={`px-6 py-3 rounded-lg font-semibold transition-all ${selectedTier === tier
+                                    ? tier === 'elite'
+                                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25'
+                                        : tier === 'pro'
+                                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
+                                            : 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/25'
+                                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                }`}
+                        >
+                            <span className="capitalize">{tier}</span>
+                            <span className="ml-2 text-sm opacity-80">
+                                ({picksData?.[tier]?.length || 0})
+                            </span>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Picks Grid */}
+                <div className="grid gap-6">
+                    {currentPicks.length === 0 ? (
+                        <div className="text-center py-12">
+                            <p className="text-slate-400 text-lg">
+                                No {selectedTier} picks available for today.
+                            </p>
+                        </div>
+                    ) : (
+                        currentPicks.map((pick) => (
+                            <div
+                                key={pick.id}
+                                className="bg-slate-800/50 backdrop-blur rounded-xl border border-slate-700 p-6 hover:border-slate-600 transition"
+                            >
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    {/* Game Info */}
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <span className="px-3 py-1 bg-slate-700 rounded-full text-sm text-slate-300">
+                                                {pick.sport}
+                                            </span>
+                                            <span className="text-slate-400 text-sm">
+                                                {new Date(pick.game_time).toLocaleString()}
+                                            </span>
+                                        </div>
+                                        <h3 className="text-xl font-semibold text-white">
+                                            {pick.away_team} @ {pick.home_team}
+                                        </h3>
+                                        <p className="text-emerald-400 font-medium mt-1">
+                                            Pick: {pick.pick}
+                                        </p>
+                                    </div>
+
+                                    {/* Score Prediction */}
+                                    {pick.mc_predicted_score && (
+                                        <div className="text-center px-6">
+                                            <p className="text-sm text-slate-400 mb-1">Projected Score</p>
+                                            <p className="text-2xl font-bold text-white">
+                                                {pick.mc_predicted_score.away} - {pick.mc_predicted_score.home}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Stats */}
+                                    <div className="flex gap-6 text-center">
+                                        <div>
+                                            <p className="text-2xl font-bold text-emerald-400">
+                                                {pick.confidence}%
+                                            </p>
+                                            <p className="text-sm text-slate-400">Confidence</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-2xl font-bold text-blue-400">
+                                                {pick.edge}%
+                                            </p>
+                                            <p className="text-sm text-slate-400">Edge</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-2xl font-bold text-purple-400">
+                                                +{pick.expected_value}
+                                            </p>
+                                            <p className="text-sm text-slate-400">EV ($)</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Analysis */}
+                                {pick.analysis && pick.analysis.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-slate-700">
+                                        <ul className="flex flex-wrap gap-2">
+                                            {pick.analysis.map((item, idx) => (
+                                                <li
+                                                    key={idx}
+                                                    className="px-3 py-1 bg-slate-700/50 rounded-full text-sm text-slate-300"
+                                                >
+                                                    {item}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Footer Stats */}
+                <div className="mt-12 grid grid-cols-3 gap-6 text-center">
+                    <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700">
+                        <p className="text-3xl font-bold text-emerald-400">7D</p>
+                        <p className="text-slate-400">Claude Effect Dimensions</p>
                     </div>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-4 pt-4 border-t border-white/10">
-                    Click to view on Kalshi →
-                  </div>
-                </a>
-              ))}
-            </div>
-          )}
-        </section>
+                    <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700">
+                        <p className="text-3xl font-bold text-blue-400">1000+</p>
+                        <p className="text-slate-400">Monte Carlo Sims/Game</p>
+                    </div>
+                    <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700">
+                        <p className="text-3xl font-bold text-purple-400">Real-Time</p>
+                        <p className="text-slate-400">Odds from The Odds API</p>
+                    </div>
+                </div>
+            </section>
 
-        {/* Footer Ad */}
-        <div className="mb-12">
-          <AdSenseBanner 
-            adSlot={process.env.NEXT_PUBLIC_ADSENSE_FOOTER_SLOT || '1234567892'}
-            format="horizontal"
-            style={{ height: '90px' }}
-            className="w-full"
-          />
+            {/* Footer */}
+            <footer className="bg-slate-900 border-t border-slate-800 mt-12">
+                <div className="max-w-7xl mx-auto px-4 py-8 text-center">
+                    <p className="text-slate-500">
+                        © 2026 Progno. AI-powered sports predictions.
+                        <Link href="/privacy" className="text-emerald-400 hover:underline ml-2">Privacy</Link>
+                        <Link href="/terms" className="text-emerald-400 hover:underline ml-2">Terms</Link>
+                    </p>
+                </div>
+            </footer>
         </div>
-
-        {/* Footer */}
-        <footer className="border-t border-white/10 pt-8 pb-12 text-center">
-          <p className="text-sm text-gray-400 mb-4">
-            ⚠️ Prediction markets involve risk. Only trade with money you can afford to lose.
-          </p>
-          <p className="text-xs text-gray-500 mb-2">
-            © {new Date().getFullYear()} Prognostication. Not affiliated with Kalshi, Inc.
-          </p>
-          <p className="text-xs text-gray-600">
-            All trades shown are from our live AI trading system. Click any trade to view on Kalshi.
-          </p>
-        </footer>
-      </div>
-    </div>
-  );
+    );
 }
 
-export default function HomePage() {
-  return (
-    <ErrorBoundary>
-      <HomePageContent />
-    </ErrorBoundary>
-  );
+export default function Home() {
+    return (
+        <ErrorBoundary>
+            <HomePage />
+        </ErrorBoundary>
+    );
 }

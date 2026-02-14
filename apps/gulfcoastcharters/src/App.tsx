@@ -53,6 +53,7 @@ const MembershipAdminPage = lazy(() => import("./components/admin/MembershipAdmi
 const AdminScraperDashboard = lazy(() => import("./pages/AdminScraperDashboard"));
 const ChatbotAdmin = lazy(() => import("./components/admin/ChatbotAdmin"));
 const BackupManagement = lazy(() => import("./components/admin/BackupManagement"));
+const MailingListManager = lazy(() => import("./components/MailingListManager"));
 const AdminMonetization = lazy(() => import("./pages/AdminMonetization"));
 
 
@@ -129,6 +130,7 @@ const App = () => (
                         <Route path="/admin/backups" element={<BackupManagement />} />
                         <Route path="/admin/monetization" element={<AdminMonetization />} />
                         <Route path="/admin/fraud-detection" element={<AdminFraudDetection />} />
+                        <Route path="/admin/mailing-list" element={<MailingListManager />} />
                         <Route path="/affiliate-program" element={<AffiliateProgram />} />
                         <Route path="/developer-onboarding" element={<DeveloperOnboarding />} />
                         <Route path="/components-showcase" element={<ComponentShowcase />} />

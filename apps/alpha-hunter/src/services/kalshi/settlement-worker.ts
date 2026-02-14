@@ -9,8 +9,29 @@
  */
 
 import { KalshiTrader } from "../../intelligence/kalshi-trader";
-import { closeTradeRecord, getOpenTradeRecords, markBotPredictionsResolved } from "../../lib/supabase-memory";
+import { closeTradeRecord, getOpenTradeRecords, markBotPredictionsResolved, saveTradeRecord } from "../../lib/supabase-memory";
 import { logPositionClose } from "../trade-safety";
+import { updateKalshiTradeOutcome, logKalshiTrade } from "./learning-loop";
+
+/**
+ * LEARNING LOOP MIDDLEWARE
+ * Intercepts trade placement and logs to kalshi_learning_data
+ */
+export async function logTradeToLearningLoop(trade: {
+  tradeId: string;
+  marketTicker: string;
+  marketTitle?: string;
+  marketCategory: string;
+  predictedProbability: number;
+  marketOdds: number;
+  side: 'yes' | 'no';
+  stakeUsd: number;
+  contracts: number;
+  entryPriceCents: number;
+  marketCloseTs: Date;
+}): Promise<void> {
+  await logKalshiTrade(trade);
+}
 
 type KalshiSettlement = {
   ticker: string;
@@ -94,6 +115,13 @@ export class KalshiSettlementWorker {
 
       // BUG #7: Exit/close logging
       await logPositionClose(trade.market_id, pnlUsd, exitPriceCents);
+
+      // LEARNING LOOP: Update trade outcome (trigger will update calibration)
+      await updateKalshiTradeOutcome({
+        tradeId: trade.id as string,
+        actualOutcome: settlement.market_result,
+        pnlUsd,
+      });
     }
   }
 }

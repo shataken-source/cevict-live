@@ -483,6 +483,8 @@ export default function ViewerPage() {
                 value={selectedAgent}
                 onChange={(e) => setSelectedAgent(e.target.value)}
                 className="rounded-lg border border-emerald-500/30 bg-black/40 px-3 py-2 text-sm text-emerald-100"
+                aria-label="Select AI agent"
+                title="Switch between AI agents"
               >
                 {agents.map((label) => (
                   <option key={label} value={label}>
@@ -560,6 +562,8 @@ export default function ViewerPage() {
                 value={submoltFilter}
                 onChange={(e) => setSubmoltFilter(e.target.value)}
                 className="rounded border border-gray-600 bg-black/40 px-2 py-1 text-sm text-gray-300"
+                aria-label="Filter by submolt"
+                title="Filter posts by submolt"
               >
                 <option value="all">All submolts</option>
                 {submolts.map((s) => (
@@ -572,6 +576,8 @@ export default function ViewerPage() {
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
                 className="rounded border border-gray-600 bg-black/40 px-2 py-1 text-sm text-gray-300"
+                aria-label="Filter by date"
+                title="Filter posts by date range"
               >
                 <option value="all">All time</option>
                 <option value="24h">Last 24h</option>
@@ -580,6 +586,11 @@ export default function ViewerPage() {
               </select>
             </div>
 
+            {filteredPosts.length === 0 && filteredComments.length === 0 && (
+              <p className="mb-4 text-sm text-gray-400">
+                Activity is loaded from Moltbook. If both lists are empty, the agent may have no recent posts or replies yet—post or reply on Moltbook to see them here.
+              </p>
+            )}
             <section className="mb-10">
               <h2 className="mb-4 font-mono text-sm font-semibold uppercase tracking-wider text-emerald-500/90">
                 Posts
@@ -649,7 +660,7 @@ export default function ViewerPage() {
               </>
             ) : (
               <p className="text-sm text-gray-500">
-                No brief yet. Set MOLTBOOK_BRIEF_PATH in .env.local to a daily_brief.md path (e.g. from your scheduled Moltbook check).
+                No brief yet. Set MOLTBOOK_BRIEF_PATH in .env.local, or ensure <code className="rounded bg-gray-700 px-1">../petreunion/daily_brief.md</code> exists (default when unset in monorepo).
               </p>
             )}
           </section>

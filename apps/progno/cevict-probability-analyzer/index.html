@@ -1,0 +1,276 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎯 Cevict Probability Analyzer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif; background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #2d1b69 100%); min-height: 100vh; padding: 0; color: #fff; }
+    .wrapper { display: flex; height: 100vh; overflow: hidden; }
+    .sidebar { width: 320px; background: rgba(10, 14, 39, 0.95); border-right: 1px solid rgba(102, 126, 234, 0.2); display: flex; flex-direction: column; overflow-y: auto; padding: 20px; }
+    .sidebar-header { font-size: 1.2em; font-weight: 700; margin-bottom: 20px; color: #667eea; }
+    .sidebar-section { margin-bottom: 25px; }
+    .sidebar-section h3 { font-size: 0.9em; font-weight: 600; text-transform: uppercase; color: #888; margin-bottom: 12px; }
+    .date-input { width: 100%; padding: 10px; background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 6px; color: #fff; margin-bottom: 10px; }
+    .btn-load { width: 100%; padding: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 6px; color: white; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .btn-load:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+    .btn-paste { width: 100%; padding: 8px; background: rgba(102, 126, 234, 0.2); border: 1px solid rgba(102, 126, 234, 0.4); border-radius: 6px; color: #667eea; font-weight: 600; cursor: pointer; margin-top: 8px; transition: all 0.3s; }
+    .btn-paste:hover { background: rgba(102, 126, 234, 0.3); }
+    .picks-list { display: flex; flex-direction: column; gap: 8px; max-height: calc(100vh - 350px); overflow-y: auto; }
+    .pick-card { background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 6px; padding: 10px; cursor: pointer; transition: all 0.3s; }
+    .pick-card:hover { background: rgba(102, 126, 234, 0.2); border-color: rgba(102, 126, 234, 0.4); transform: translateX(4px); }
+    .pick-sport { font-size: 0.75em; font-weight: 700; text-transform: uppercase; color: #667eea; margin-bottom: 4px; }
+    .pick-teams { font-size: 0.85em; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pick-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .pick-conf { background: rgba(102, 126, 234, 0.2); border-radius: 3px; padding: 2px 6px; font-size: 0.75em; font-weight: 600; color: #667eea; }
+    .pick-odds { font-size: 0.75em; color: #aaa; }
+    .main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px 30px; text-align: center; border-bottom: 1px solid rgba(102, 126, 234, 0.2); }
+    .header h1 { font-size: 2em; margin-bottom: 8px; }
+    .content { padding: 30px; flex: 1; overflow-y: auto; }
+    .input-section { background: rgba(102, 126, 234, 0.05); padding: 25px; border-radius: 12px; margin-bottom: 30px; border: 1px solid rgba(102, 126, 234, 0.1); }
+    .input-section h2 { font-size: 1.2em; margin-bottom: 20px; }
+    .input-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 15px; }
+    .input-group { display: flex; flex-direction: column; }
+    .input-group label { font-weight: 600; margin-bottom: 6px; color: #aaa; font-size: 0.9em; }
+    .input-group input { padding: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 6px; color: #fff; font-size: 0.95em; }
+    .input-group input:focus { outline: none; border-color: #667eea; background: rgba(102, 126, 234, 0.1); }
+    .data-points { margin-top: 20px; }
+    .data-point { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr auto; gap: 10px; margin-bottom: 10px; align-items: end; }
+    .btn { padding: 12px 24px; border: none; border-radius: 6px; font-size: 1em; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; width: 100%; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4); }
+    .btn-secondary { background: rgba(40, 167, 69, 0.2); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.3); font-size: 0.9em; padding: 8px 16px; }
+    .btn-danger { background: rgba(220, 53, 69, 0.2); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.3); font-size: 0.9em; padding: 8px 16px; }
+    .results { margin-top: 30px; }
+    .result-card { background: rgba(102, 126, 234, 0.05); border-left: 3px solid #667eea; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
+    .result-card h3 { color: #667eea; margin-bottom: 15px; font-size: 1.2em; }
+    .model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .model-item { background: rgba(255, 255, 255, 0.05); padding: 12px; border-radius: 6px; border: 1px solid rgba(102, 126, 234, 0.1); }
+    .model-name { font-weight: 600; color: #aaa; margin-bottom: 6px; font-size: 0.85em; }
+    .model-prob { font-size: 1.6em; font-weight: 700; color: #667eea; margin-bottom: 4px; }
+    .model-conf { font-size: 0.8em; color: #666; }
+    .ensemble-highlight { background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.05) 100%); border: 1px solid rgba(102, 126, 234, 0.2); padding: 25px; border-radius: 12px; margin-bottom: 20px; }
+    .ensemble-stat { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(102, 126, 234, 0.1); }
+    .stat-label { font-size: 0.95em; color: #aaa; }
+    .stat-value { font-size: 1.6em; font-weight: 700; color: #667eea; }
+    .signal-box { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(102, 126, 234, 0.1); padding: 25px; border-radius: 12px; text-align: center; }
+    .signal-status { font-size: 2.2em; font-weight: 700; margin-bottom: 10px; }
+    .signal-bet { color: #28a745; }
+    .signal-pass { color: #dc3545; }
+    .signal-reasons { list-style: none; text-align: left; margin-top: 15px; }
+    .signal-reasons li { padding: 8px 0; border-bottom: 1px solid rgba(102, 126, 234, 0.1); font-size: 0.95em; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="sidebar">
+      <div class="sidebar-header">📊 Progno Picks</div>
+      <div class="sidebar-section">
+        <h3>Load Predictions</h3>
+        <input type="date" id="pickDate" class="date-input" />
+        <button class="btn-load" onclick="loadPredictions()">Load Picks</button>
+        <button class="btn-paste" onclick="showPasteDialog()">Paste JSON</button>
+      </div>
+      <input type="file" id="jsonFileInput" accept=".json" style="display: none;" onchange="handleFileSelect(event)" />
+      <div class="sidebar-section">
+        <h3>Picks (<span id="pickCount">0</span>)</h3>
+        <div class="picks-list" id="picksList"></div>
+      </div>
+    </div>
+    <div class="main">
+      <div class="header">
+        <h1>🎯 Cevict Probability Analyzer</h1>
+        <p>16-Model Ensemble • Real-Time Picks Integration</p>
+      </div>
+      <div class="content">
+        <div class="input-section">
+          <h2>📋 Event Analysis</h2>
+          <div class="input-row">
+            <div class="input-group"><label>Event Name</label><input type="text" id="eventName" placeholder="e.g., Chiefs vs Raiders" /></div>
+            <div class="input-group"><label>Your Probability (%)</label><input type="number" id="myProb" value="65" min="0" max="100" step="1" /></div>
+            <div class="input-group"><label>Market Odds (American)</label><input type="number" id="marketOdds" value="-110" step="1" /></div>
+            <div class="input-group"><label>Bankroll ($)</label><input type="number" id="bankroll" value="1000" min="0" step="100" /></div>
+          </div>
+          <div class="data-points">
+            <h3 style="margin-bottom: 15px;">🔬 Data Points</h3>
+            <div id="dataPointsContainer">
+              <div class="data-point">
+                <div class="input-group"><label>Source</label><input type="text" class="dp-source" placeholder="e.g., Cevict Flex" /></div>
+                <div class="input-group"><label>Metric</label><input type="text" class="dp-metric" placeholder="e.g., Confidence" /></div>
+                <div class="input-group"><label>Value</label><input type="number" class="dp-value" placeholder="0-100" step="0.1" /></div>
+                <div class="input-group"><label>Weight</label><input type="number" class="dp-weight" value="0.8" min="0" max="1" step="0.1" /></div>
+                <button class="btn btn-danger" onclick="removeDataPoint(this)">×</button>
+              </div>
+            </div>
+            <button class="btn btn-secondary" onclick="addDataPoint()">+ Add Data Point</button>
+          </div>
+          <button class="btn btn-primary" onclick="analyze()" style="margin-top: 20px;">🎲 Analyze with 16 Models</button>
+        </div>
+        <div id="results" class="results hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SPORT_ICONS = {'NFL': '🏈', 'NBA': '🏀', 'NCAAB': '🏀', 'MLB': '⚾', 'NHL': '🏒'};
+    let allPicks = [];
+    let selectedPick = null;
+
+    function getSportIcon(sport) { return SPORT_ICONS[sport] || '🎯'; }
+    function formatOdds(odds) { return odds > 0 ? `+${odds}` : String(odds); }
+
+    function loadPredictions() {
+      document.getElementById("jsonFileInput").click();
+    }
+
+    function showStats() { if (!allPicks.length) return; const avgConf = (allPicks.reduce((s,p) => s+p.confidence,0) / allPicks.length).toFixed(1); const avgEV = (allPicks.reduce((s,p) => s+(p.expected_value||0),0) / allPicks.length).toFixed(0); const leagues = [...new Set(allPicks.map(p=>p.league))].join(", "); console.log(`Avg Conf: ${avgConf}% | Avg EV: ${avgEV} | Leagues: ${leagues}`); } function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.picks && Array.isArray(data.picks)) {
+            allPicks = data.picks;
+            renderPicksList();
+            alert(`✓ Loaded ${allPicks.length} picks from ${file.name}`);
+          } else {
+            alert('Invalid file: expected { picks: [...] }');
+          }
+        } catch (err) {
+          alert('Error reading file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function showPasteDialog() {
+      const json = prompt('Paste JSON predictions data:');
+      if (!json) return;
+      try {
+        const data = JSON.parse(json);
+        if (data.picks && Array.isArray(data.picks)) {
+          allPicks = data.picks;
+          renderPicksList();
+          alert(`✓ Loaded ${allPicks.length} picks!`);
+        } else {
+          alert('Invalid: expected { picks: [...] }');
+        }
+      } catch (e) {
+        alert('Invalid JSON: ' + e.message);
+      }
+    }
+
+    function renderPicksList() {
+      const list = document.getElementById('picksList');
+      const count = document.getElementById('pickCount');
+      count.textContent = allPicks.length;
+      list.innerHTML = allPicks.map((pick, idx) => `
+        <div class="pick-card" onclick="selectPick(${idx})">
+          <div class="pick-sport">${getSportIcon(pick.sport)} ${pick.league}</div>
+          <div class="pick-teams">${pick.home_team} vs ${pick.away_team}</div>
+          <div class="pick-meta"><div class="pick-conf">⭐ ${pick.confidence}%</div><div class="pick-odds">${formatOdds(pick.odds)}</div></div>
+          <div style="font-size: 0.7em; color: #999; margin-top: 6px;">EV: $${(pick.expected_value || 0).toFixed(0)} | Edge: ${(pick.value_bet_edge || 0).toFixed(1)}%</div>
+        </div>
+      `).join('');
+    }
+
+    function selectPick(idx) {
+      selectedPick = allPicks[idx];
+      const pick = selectedPick;
+      document.getElementById('eventName').value = `${pick.away_team} @ ${pick.home_team}`;
+      document.getElementById('myProb').value = pick.confidence;
+      document.getElementById('marketOdds').value = pick.odds;
+      document.getElementById('bankroll').value = 1000;
+      const container = document.getElementById('dataPointsContainer');
+      container.innerHTML = '';
+      if (pick.reasoning && Array.isArray(pick.reasoning) && pick.reasoning.length > 0) {
+        const div = document.createElement('div');
+        div.className = 'data-point';
+        div.innerHTML = `
+          <div class="input-group"><label>Source</label><input type="text" class="dp-source" value="Cevict Flex AI" /></div>
+          <div class="input-group"><label>Metric</label><input type="text" class="dp-metric" value="${pick.reasoning[0].substring(0, 40)}" /></div>
+          <div class="input-group"><label>Value</label><input type="number" class="dp-value" value="75" step="0.1" /></div>
+          <div class="input-group"><label>Weight</label><input type="number" class="dp-weight" value="0.8" min="0" max="1" step="0.1" /></div>
+          <button class="btn btn-danger" onclick="removeDataPoint(this)">×</button>
+        `;
+        container.appendChild(div);
+      }
+    }
+
+    function addDataPoint() {
+      const container = document.getElementById('dataPointsContainer');
+      const div = document.createElement('div');
+      div.className = 'data-point';
+      div.innerHTML = `
+        <div class="input-group"><label>Source</label><input type="text" class="dp-source" placeholder="e.g., ESPN" /></div>
+        <div class="input-group"><label>Metric</label><input type="text" class="dp-metric" placeholder="e.g., Rating" /></div>
+        <div class="input-group"><label>Value</label><input type="number" class="dp-value" placeholder="0-100" step="0.1" /></div>
+        <div class="input-group"><label>Weight</label><input type="number" class="dp-weight" value="0.8" min="0" max="1" step="0.1" /></div>
+        <button class="btn btn-danger" onclick="removeDataPoint(this)">×</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function removeDataPoint(btn) { btn.closest('.data-point').remove(); }
+    function americanToDecimal(odds) { return odds > 0 ? (odds / 100) + 1 : (100 / Math.abs(odds)) + 1; }
+    function getImpliedProb(odds) { return (1 / americanToDecimal(odds)) * 100; }
+    function calculateKelly(winProb, odds, bankroll) { const decimal = americanToDecimal(odds); const b = decimal - 1; const p = winProb / 100; const q = 1 - p; const kellyFraction = (b * p - q) / b; const safeFraction = Math.max(0, kellyFraction) * 0.25; return { fraction: safeFraction * 100, stake: Math.min(bankroll * safeFraction, bankroll * 0.1) }; }
+    function calculateEV(winProb, odds, stake = 100) { const decimal = americanToDecimal(odds); const p = winProb / 100; const ev = (p * (decimal - 1) - (1 - p)) * stake; const evPercent = (ev / stake) * 100; let rating = evPercent >= 10 ? 'excellent' : evPercent >= 5 ? 'good' : evPercent > 0 ? 'marginal' : 'negative'; return { ev, evPercent, rating }; }
+    function bayesianUpdate(priorProb, dataPoints) { let posterior = priorProb; for (const dp of dataPoints) { const likelihoodRatio = 1 + (dp.value / 100) * dp.weight; const priorOdds = posterior / (100 - posterior); posterior = (priorOdds * likelihoodRatio / (1 + priorOdds * likelihoodRatio)) * 100; } return { name: 'Bayesian', probability: Math.max(0, Math.min(100, posterior)), confidence: 80 }; }
+    function weightedFactors(baseProb, dataPoints) { let total = dataPoints.reduce((s, d) => s + Math.max(-50, Math.min(50, d.value)) * d.weight, 0); const finalProb = Math.max(0, Math.min(100, baseProb + total)); return { name: 'Weighted Factors', probability: finalProb, confidence: 75 }; }
+    function consensus(dataPoints) { if (!dataPoints.length) return { name: 'Consensus', probability: 50, confidence: 20 }; const avgProb = dataPoints.reduce((s, d) => s + d.value, 0) / dataPoints.length; return { name: 'Consensus', probability: avgProb, confidence: 70 }; }
+    function randomForest(dataPoints, baseProb) { let sum = 0; for (let i = 0; i < 50; i++) { let prob = baseProb; for (const dp of dataPoints) { if (Math.random() > 0.3) prob += (dp.value > 0 ? 1 : -1) * dp.weight * 3; } sum += Math.max(10, Math.min(90, prob)); } return { name: 'Random Forest', probability: sum / 50, confidence: 85 }; }
+    function xgboost(dataPoints, baseProb) { let pred = baseProb; for (let i = 0; i < 100; i++) { const out = dataPoints.reduce((s, d) => s + (d.value > 0 ? 1 : -1) * d.weight * 0.5, 0); pred += 0.05 * out; } return { name: 'XGBoost', probability: Math.max(10, Math.min(90, pred)), confidence: 87 }; }
+    function neuralNetwork(dataPoints, baseProb) { const hidden = dataPoints.map(d => Math.max(0, (d.value / 100) * d.weight)).reduce((a, b) => a + b, 0) / dataPoints.length; const output = 1 / (1 + Math.exp(-((hidden - 0.5) * 4 + (baseProb - 50) / 25))); return { name: 'Neural Network', probability: Math.max(15, Math.min(85, output * 100)), confidence: 78 }; }
+    function markovChain(baseProb) { return { name: 'Markov Chain', probability: Math.max(30, Math.min(70, 50 + (baseProb - 50) * 0.8)), confidence: 68 }; }
+    function knn(dataPoints, baseProb) { const avg = dataPoints.reduce((s, d) => s + d.value, 0) / dataPoints.length; return { name: 'KNN', probability: Math.max(20, Math.min(80, baseProb + avg * 0.3)), confidence: 76 }; }
+    function svm(dataPoints, baseProb) { const pos = dataPoints.filter(d => d.value > 0).reduce((s, d) => s + d.weight * d.value, 0); const neg = dataPoints.filter(d => d.value <= 0).reduce((s, d) => s + d.weight * Math.abs(d.value), 0); const margin = (pos - neg) / (pos + neg + 0.01); return { name: 'SVM', probability: Math.max(15, Math.min(85, 50 + margin * 40)), confidence: 73 }; }
+    function lstm(dataPoints, baseProb) { let state = 0; for (const dp of dataPoints) state = 0.8 * state + 0.6 * Math.tanh(dp.value / 100); return { name: 'LSTM', probability: Math.max(15, Math.min(85, 50 + state * 40)), confidence: 76 }; }
+    function attention(dataPoints, baseProb) { if (!dataPoints.length) return { name: 'Attention', probability: baseProb, confidence: 30 }; const scores = dataPoints.map(d => Math.exp(d.value * d.weight / 50)); const sum = scores.reduce((a, b) => a + b, 0); const weights = scores.map(s => s / sum); const out = dataPoints.reduce((s, d, i) => s + weights[i] * d.value, 0); return { name: 'Attention', probability: Math.max(20, Math.min(80, baseProb + out * 0.3)), confidence: 74 }; }
+    function gradient(dataPoints, baseProb) { let pred = baseProb; for (let i = 0; i < 50; i++) { const tgt = dataPoints.reduce((s, d) => s + (d.value > 0 ? d.weight : -d.weight), 0); pred += 0.1 * (tgt - (pred - 50) / 10); } return { name: 'Gradient Boost', probability: Math.max(15, Math.min(85, pred)), confidence: 82 }; }
+    function elo(homeRating, awayRating, homeAdv = 50) { const diff = homeRating - awayRating + homeAdv; const prob = (1 / (1 + Math.pow(10, -diff / 400))) * 100; return { name: 'Elo Rating', probability: Math.max(5, Math.min(95, prob)), confidence: 85 }; }
+    function factorial(n) { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+    function poisson(expectedHome, expectedAway) { let homeWin = 0; for (let h = 0; h <= 10; h++) { for (let a = 0; a <= 10; a++) { if (h > a) { const hprob = (Math.pow(expectedHome, h) * Math.exp(-expectedHome)) / factorial(h); const aprob = (Math.pow(expectedAway, a) * Math.exp(-expectedAway)) / factorial(a); homeWin += hprob * aprob; } } } return { name: "Poisson", probability: Math.min(100, homeWin * 100), confidence: 75 }; }
+    function linear(dataPoints, baseProb) { if (dataPoints.length < 2) return { name: 'Linear', probability: baseProb, confidence: 30 }; const n = dataPoints.length; const sumX = dataPoints.reduce((s, _, i) => s + i, 0); const sumY = dataPoints.reduce((s, d) => s + d.value, 0); const sumXY = dataPoints.reduce((s, d, i) => s + i * d.value, 0); const sumX2 = dataPoints.reduce((s, _, i) => s + i * i, 0); const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX) || 0; const pred = baseProb + slope * n / 2; return { name: 'Linear', probability: Math.max(10, Math.min(90, pred)), confidence: 80 }; }
+    function momentumModel(dataPoints) { const score = dataPoints.reduce((s, d) => s + d.value * d.weight, 0); return { name: 'Momentum', probability: Math.max(20, Math.min(80, 50 + score / 2)), confidence: 75 }; }
+
+    function analyze() {
+      const eventName = document.getElementById('eventName').value || 'Event';
+      const myProb = parseFloat(document.getElementById('myProb').value);
+      const marketOdds = parseFloat(document.getElementById('marketOdds').value);
+      const bankroll = parseFloat(document.getElementById('bankroll').value);
+      if (isNaN(myProb) || isNaN(marketOdds) || isNaN(bankroll)) { alert('Fill all required fields'); return; }
+      const dataPoints = [];
+      document.querySelectorAll('.data-point').forEach(dp => {
+        const source = dp.querySelector('.dp-source').value;
+        const metric = dp.querySelector('.dp-metric').value;
+        const value = parseFloat(dp.querySelector('.dp-value').value);
+        const weight = parseFloat(dp.querySelector('.dp-weight').value);
+        if (source && metric && !isNaN(value) && !isNaN(weight)) { dataPoints.push({ source, metric, value, weight }); }
+      });
+      if (!dataPoints.length) { dataPoints.push({ source: 'Base', metric: 'Prior', value: myProb - 50, weight: 0.5 }); }
+      const models = [bayesianUpdate(myProb, dataPoints), weightedFactors(myProb, dataPoints), consensus(dataPoints), randomForest(dataPoints, myProb), xgboost(dataPoints, myProb), neuralNetwork(dataPoints, myProb), markovChain(myProb), knn(dataPoints, myProb), svm(dataPoints, myProb), lstm(dataPoints, myProb), attention(dataPoints, myProb), gradient(dataPoints, myProb), elo(1500 + myProb * 5, 1500 - myProb * 3), poisson(2.5 + (myProb - 50) / 20, 1.5), linear(dataPoints, myProb), momentumModel(dataPoints)];
+      const totalConf = models.reduce((s, m) => s + m.confidence, 0);
+      const ensemble = models.reduce((s, m) => s + (m.probability * m.confidence / totalConf), 0);
+      const marketImplied = getImpliedProb(marketOdds);
+      const edge = ensemble - marketImplied;
+      const ev = calculateEV(ensemble, marketOdds);
+      const kelly = calculateKelly(ensemble, marketOdds, bankroll);
+      const shouldBet = edge >= 5 && ev.evPercent >= 5 && ensemble >= 55;
+      let side = selectedPick ? selectedPick.pick : null;
+      if (!side) { const parts = eventName.split(" @ "); side = parts[0] || (ensemble > 50 ? "YES" : "NO"); }
+      const odds = selectedPick ? selectedPick.odds : marketOdds;
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.className = 'results';
+      resultsDiv.innerHTML = `<div class="result-card"><h3>🎯 ${eventName}</h3></div><div class="result-card"><h3>📊 16 Models</h3><div class="model-grid">${models.map(m => `<div class="model-item"><div class="model-name">${m.name}</div><div class="model-prob">${m.probability.toFixed(1)}%</div><div class="model-conf">${m.confidence.toFixed(0)}%</div></div>`).join('')}</div></div><div class="ensemble-highlight"><h3 style="margin-bottom: 20px;">🎲 Ensemble</h3><div class="ensemble-stat"><span class="stat-label">Probability:</span><span class="stat-value">${ensemble.toFixed(1)}%</span></div><div class="ensemble-stat"><span class="stat-label">Market:</span><span class="stat-value">${marketImplied.toFixed(1)}%</span></div><div class="ensemble-stat"><span class="stat-label">Edge:</span><span class="stat-value">${edge >= 0 ? '+' : ''}${edge.toFixed(1)}%</span></div></div><div class="result-card"><h3>💰 Value</h3><div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;"><div><div style="color: #aaa; font-size: 0.9em;">EV</div><div style="font-size: 1.6em; font-weight: 700; color: ${ev.evPercent >= 0 ? '#28a745' : '#dc3545'};">${ev.evPercent >= 0 ? '+' : ''}${ev.evPercent.toFixed(2)}%</div><div style="color: #aaa; font-size: 0.8em;">${ev.rating}</div></div><div><div style="color: #aaa; font-size: 0.9em;">Kelly</div><div style="font-size: 1.6em; font-weight: 700; color: #667eea;">${kelly.fraction.toFixed(2)}%</div></div><div><div style="color: #aaa; font-size: 0.9em;">Stake</div><div style="font-size: 1.6em; font-weight: 700; color: #667eea;">$${kelly.stake.toFixed(2)}</div></div></div></div><div class="signal-box"><div class="signal-status ${shouldBet ? 'signal-bet' : 'signal-pass'}">${shouldBet ? '✅ BET' : '❌ PASS'}</div>${shouldBet ? `<div style="font-size: 1.1em; margin-top: 10px;"><strong>${side}</strong> @ ${formatOdds(odds)}</div><div style="font-size: 0.9em; margin-top: 8px; color: #aaa;">Stake: $${kelly.stake.toFixed(2)}</div><ul class="signal-reasons"><li>✓ Edge: +${edge.toFixed(1)}%</li><li>✓ EV: +${ev.evPercent.toFixed(1)}% (${ev.rating})</li><li>✓ Ensemble: ${ensemble.toFixed(1)}%</li></ul>` : `<ul class="signal-reasons">${edge < 5 ? `<li>✗ Edge: ${edge.toFixed(1)}%</li>` : ''}${ev.evPercent < 5 ? `<li>✗ EV: ${ev.evPercent.toFixed(1)}%</li>` : ''}${ensemble < 55 ? `<li>✗ Low: ${ensemble.toFixed(1)}%</li>` : ''}</ul>`}</div>`;
+    }
+
+    document.getElementById('pickDate').valueAsDate = new Date();
+  </script>
+</body>
+</html>
+

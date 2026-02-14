@@ -8,7 +8,17 @@ $logPath = Join-Path $scriptDir "moltbook-scheduled-run.log"
 Start-Transcript -Path $logPath -Append
 try {
     Write-Host "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Starting scheduled run."
+    # Free ports 3010 (moltbook-viewer) and 3006 (petreunion) so next run doesn't hit "Port already in use"
+    $cleanupScript = Join-Path $repoRoot "scripts\agent-cleanup-ports.ps1"
+    if (Test-Path $cleanupScript) {
+        & $cleanupScript
+    }
     & "$scriptDir\moltbook-scheduled-check.ps1"
+    # Keyword search (lost pet, prediction, Kalshi, shelter, etc.) -> MOLTBOOK_SEARCH_RESULTS.md for "check Moltbook"
+    $searchScript = Join-Path $scriptDir "moltbook-search-keywords.ps1"
+    if (Test-Path $searchScript) {
+        try { & $searchScript } catch { Write-Host "Keyword search failed: $_" }
+    }
     # Touch trigger file so Cursor rule can see "new feed data" even when focus/keys didn't land
     $triggerFile = Join-Path $scriptDir "MOLTBOOK_TRIGGER.txt"
     Set-Content -Path $triggerFile -Value ("Feed updated " + (Get-Date -Format "yyyy-MM-dd HH:mm:ss"))

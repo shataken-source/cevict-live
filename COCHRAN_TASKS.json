@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "generated_at": "2026-02-12T00:00:00Z",
+  "tasks": [
+    {
+      "id": "db-migrate-wtv-20260205-itineraries-fx-bundle-i18n",
+      "enabled": true,
+      "type": "sql_migration",
+      "env": "supabase-wtv-test",
+      "description": "Create itineraries table + FX snapshot + unified_bookings FX + destination enrichment + preferred_language.",
+      "sql_file": "apps/wheretovacation/supabase/migrations/20260205_itineraries_fx_bundle_i18n.sql",
+      "apply_with": "supabase-cli",
+      "human_approval_required": true
+    },
+    {
+      "id": "db-migrate-wtv-20260210-notifications-search-recos",
+      "enabled": true,
+      "type": "sql_migration",
+      "env": "supabase-wtv-test",
+      "description": "Notifications (templates + queue), saved searches/alerts, rental availability, destination content, audit & user_events.",
+      "sql_file": "apps/wheretovacation/supabase/migrations/20260210_notifications_search_recos.sql",
+      "apply_with": "supabase-cli",
+      "depends_on": ["db-migrate-wtv-20260205-itineraries-fx-bundle-i18n"],
+      "human_approval_required": true
+    },
+    {
+      "id": "db-migrate-wtv-20260211-chatbot-memory",
+      "enabled": true,
+      "type": "sql_migration",
+      "env": "supabase-wtv-test",
+      "description": "Create chatbot_conversations, chatbot_knowledge_base, chatbot_feedback, chatbot_analytics for Finn/Fishy memory & analytics.",
+      "sql_file": "apps/wheretovacation/supabase/migrations/20260211_chatbot_memory.sql",
+      "apply_with": "supabase-cli",
+      "depends_on": ["db-migrate-wtv-20260210-notifications-search-recos"],
+      "human_approval_required": true
+    },
+    {
+      "id": "db-migrate-wtv-20260212-itinerary-storyboards",
+      "enabled": true,
+      "type": "sql_migration",
+      "env": "supabase-wtv-test",
+      "description": "Add share_id, is_public, storyboard JSONB to itineraries for visual trip storyboards and sharing.",
+      "sql_file": "apps/wheretovacation/supabase/migrations/20260212_itinerary_storyboards.sql",
+      "apply_with": "supabase-cli",
+      "depends_on": ["db-migrate-wtv-20260205-itineraries-fx-bundle-i18n"],
+      "human_approval_required": true
+    },
+    {
+      "id": "db-migrate-wtv-20260212-agent-test-events",
+      "enabled": true,
+      "type": "sql_migration",
+      "env": "supabase-wtv-test",
+      "description": "Create agent_test_events table in TEST project as a simple Cochran smoke test.",
+      "sql_file": "apps/wheretovacation/supabase/migrations/20260212_agent_test_events.sql",
+      "apply_with": "supabase-cli",
+      "human_approval_required": false
+    },
+    {
+      "id": "db-migrate-accu-solar-20260212-tiers-knowledge",
+      "enabled": true,
+      "type": "sql_migration",
+      "env": "supabase-accu-solar",
+      "project": "accu-solar",
+      "description": "Accu-Solar cevict.ai: subscriptions, sites, telemetry, alerts, usage, accu_solar_ai_knowledge (solar-dedicated AI). Run in Accu-Solar Supabase project.",
+      "sql_file": "apps/accu-solar/supabase/migrations/20260212000000_accu_solar_tiers_and_knowledge.sql",
+      "apply_with": "supabase-cli",
+      "human_approval_required": true
+    }
+  ]
+}
+

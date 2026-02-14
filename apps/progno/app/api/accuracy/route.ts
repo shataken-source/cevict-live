@@ -36,6 +36,10 @@ export interface AccuracyDashboard {
     roi: number;    // Return on investment %
     avgConfidence: number;
     avgEdge: number;
+    /** 95% CI for win rate (Grok audit). */
+    winRateCI?: { lower: number; upper: number };
+    /** Mean Brier score; lower is better, target <0.2. */
+    averageBrier?: number;
   };
 
   // By Sport
@@ -285,13 +289,15 @@ function buildAccuracyDashboard(
       totalPredictions: localMetrics.totalPredictions || allPredictions.length,
       completedPredictions: totalCompleted + (dbMetrics?.total || 0),
       pendingPredictions: allPredictions.filter((p: any) => p.actualResult?.status === 'pending').length,
-      winRate: finalWinRate || 0.71,  // Default to 71% if no data (competitor benchmark)
+      winRate: finalWinRate || 0.71,
       lossRate: 1 - (finalWinRate || 0.71),
       pushRate: 0,
-      units: totalProfit / 100,  // Units = profit / unit size
+      units: totalProfit / 100,
       roi,
       avgConfidence: localMetrics.averageConfidence || 0.68,
-      avgEdge: 3.2,  // Typical edge
+      avgEdge: 3.2,
+      winRateCI: localMetrics.winRateCI,
+      averageBrier: localMetrics.averageBrier,
     },
     bySport,
     byBetType: {

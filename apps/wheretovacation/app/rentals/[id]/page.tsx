@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getSupabaseAdminClient } from '@/lib/supabase'
 import Link from 'next/link'
 import BookingButton from '@/components/BookingButton'
+import ChartersNearby from '@/components/ChartersNearby'
 import { ArrowLeft, Home, Users, MapPin, DollarSign } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -21,6 +22,7 @@ interface Rental {
   distance_to_beach_miles?: number
   photos?: string[]
   amenities?: string[]
+  destination_name?: string
 }
 
 async function getRental(id: string): Promise<Rental | null> {
@@ -51,6 +53,10 @@ export default async function RentalDetailPage({
   if (!rental) {
     notFound()
   }
+
+  const destinationHint =
+    rental.destination_name ||
+    (rental.address ? rental.address.split(',')[0] : undefined)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -127,6 +133,9 @@ export default async function RentalDetailPage({
                   </div>
                 </div>
               )}
+
+              {/* Cross-app integration: suggest GCC charters near this rental */}
+              <ChartersNearby destinationHint={destinationHint} />
             </div>
           </div>
 

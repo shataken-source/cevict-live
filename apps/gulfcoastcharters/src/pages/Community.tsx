@@ -16,8 +16,11 @@ import PointsRewardsDisplay from '@/components/PointsRewardsDisplay';
 import ReferralDashboard from '@/components/ReferralDashboard';
 import ReferralLeaderboard from '@/components/ReferralLeaderboard';
 import { SocialShareButton } from '@/components/SocialShareButton';
-import { mockThreads } from '@/data/mockCommunityData';
-import { Users, MessageSquare, MessageCircle, Calendar, Trophy, Award, ShoppingBag, Sparkles } from 'lucide-react';
+import ActivityFeed from '@/components/community/ActivityFeed';
+import DailyChallengesList from '@/components/community/DailyChallengesList';
+import CommunityForums from '@/components/community/CommunityForums';
+import RewardsStore from '@/components/community/RewardsStore';
+import { Users, MessageSquare, MessageCircle, Calendar, Trophy, Award, ShoppingBag, Sparkles, Rss, Target, MessageSquareQuote, Gift } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -44,7 +47,7 @@ export default function Community() {
 
   const loadUserData = async () => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
       const [profileRes, avatarRes, inventoryRes] = await Promise.all([
@@ -73,8 +76,8 @@ export default function Community() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
         <div className="container mx-auto px-4">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="text-white mb-4 hover:bg-white/20"
             onClick={() => navigate('/')}
           >
@@ -98,10 +101,10 @@ export default function Community() {
                 <div className="flex items-center gap-6">
                   {avatarData ? (
                     <AvatarDisplay
-                      sex={avatarData.sex}
-                      skinColor={avatarData.skin_color}
-                      hairStyle={avatarData.hair_style}
-                      hairColor={avatarData.hair_color}
+                      sex={avatarData.sex as string}
+                      skinColor={avatarData.skin_color as string}
+                      hairStyle={avatarData.hair_style as string}
+                      hairColor={avatarData.hair_color as string}
                       equippedItems={equippedItems}
                       size={120}
                     />
@@ -139,7 +142,7 @@ export default function Community() {
               </div>
               {showAvatarCustomizer && (
                 <div className="mt-6">
-                  <AvatarCustomizer 
+                  <AvatarCustomizer
                     userId={user.id}
                     initialData={avatarData}
                     onSave={handleAvatarSave}
@@ -156,8 +159,24 @@ export default function Community() {
           </>
         )}
 
-        <Tabs defaultValue="shop" className="w-full">
-          <TabsList className="grid w-full grid-cols-7 mb-8">
+        <Tabs defaultValue="feed" className="w-full">
+          <TabsList className="flex flex-wrap gap-2 mb-8">
+            <TabsTrigger value="feed">
+              <Rss className="w-5 h-5 mr-2" />
+              Feed
+            </TabsTrigger>
+            <TabsTrigger value="challenges">
+              <Target className="w-5 h-5 mr-2" />
+              Challenges
+            </TabsTrigger>
+            <TabsTrigger value="forums">
+              <MessageSquareQuote className="w-5 h-5 mr-2" />
+              Forums
+            </TabsTrigger>
+            <TabsTrigger value="rewards">
+              <Gift className="w-5 h-5 mr-2" />
+              Rewards
+            </TabsTrigger>
             <TabsTrigger value="shop">
               <ShoppingBag className="w-5 h-5 mr-2" />
               Avatar Shop
@@ -189,12 +208,48 @@ export default function Community() {
           </TabsList>
 
 
+          <TabsContent value="feed">
+            {user ? <ActivityFeed /> : (
+              <Card className="p-12 text-center">
+                <p className="text-xl text-gray-600 mb-4">Please login to see the community feed</p>
+                <Button onClick={() => navigate('/')}>Go to Login</Button>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="challenges">
+            {user ? <DailyChallengesList /> : (
+              <Card className="p-12 text-center">
+                <p className="text-xl text-gray-600 mb-4">Please login to view daily challenges</p>
+                <Button onClick={() => navigate('/')}>Go to Login</Button>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="forums">
+            {user ? <CommunityForums /> : (
+              <Card className="p-12 text-center">
+                <p className="text-xl text-gray-600 mb-4">Please login to participate in forums</p>
+                <Button onClick={() => navigate('/')}>Go to Login</Button>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="rewards">
+            {user ? <RewardsStore /> : (
+              <Card className="p-12 text-center">
+                <p className="text-xl text-gray-600 mb-4">Please login to redeem rewards</p>
+                <Button onClick={() => navigate('/')}>Go to Login</Button>
+              </Card>
+            )}
+          </TabsContent>
+
           <TabsContent value="shop">
             {user ? (
-              <AvatarShop 
-                userId={user.id} 
-                userPoints={userPoints} 
-                onPointsChange={(newPoints) => setUserPoints(newPoints)} 
+              <AvatarShop
+                userId={user.id}
+                userPoints={userPoints}
+                onPointsChange={(newPoints) => setUserPoints(newPoints)}
               />
             ) : (
               <Card className="p-12 text-center">

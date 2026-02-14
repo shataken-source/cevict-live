@@ -68,6 +68,8 @@ export interface PaidAd {
   startDate: string;
   endDate: string;
   active: boolean;
+  businessId?: string;
+  cost?: number;
 }
 
 interface AppState {

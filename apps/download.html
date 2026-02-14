@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwitchbackTV - Download</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: linear-gradient(135deg, #1a1a2e, #16213e); 
+            color: white; 
+            text-align: center; 
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { 
+            font-size: 2.5em; 
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .download-btn {
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 30px;
+            font-size: 1.3em;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 30px 0;
+            display: inline-block;
+            text-decoration: none;
+            transition: transform 0.2s;
+        }
+        .download-btn:hover { transform: scale(1.05); }
+        .download-btn:active { transform: scale(0.95); }
+        .info {
+            background: rgba(0,212,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #00d4ff;
+        }
+        .steps { text-align: left; margin: 15px 0; }
+        .steps li { margin: 10px 0; }
+        .tv-icon { font-size: 4em; margin: 20px 0; }
+        .apk-info {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📺 SwitchbackTV</h1>
+        <div class="tv-icon">⬇️</div>
+        
+        <a href="switchback-tv.apk" class="download-btn" download>
+            📱 Download APK (2.4MB)
+        </a>
+        
+        <div class="apk-info">
+            <strong>File:</strong> switchback-tv.apk<br>
+            <strong>Size:</strong> 2.4MB<br>
+            <strong>Version:</strong> 1.0.0<br>
+            <strong>Platform:</strong> Android TV / Fire TV
+        </div>
+        
+        <div class="info">
+            <h3>📺 Installation Instructions</h3>
+            <div class="steps">
+                <ol>
+                    <li><strong>Download the APK</strong> using the button above</li>
+                    <li><strong>Enable Unknown Sources</strong> in your TV settings</li>
+                    <li><strong>Install the APK</strong> using your TV's file manager or Downloader app</li>
+                    <li><strong>Launch SwitchbackTV</strong> and load your M3U playlist</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div class="info">
+            <h3>🔗 Alternative: Web Version</h3>
+            <p>No download needed! Use our web version:</p>
+            <a href="https://cevict-a.vercel.app/switchback.html" style="color: #00d4ff;">
+                https://cevict-a.vercel.app/switchback.html
+            </a>
+        </div>
+        
+        <p style="margin-top: 40px; opacity: 0.7;">
+            Works on Samsung TV, Fire TV, Android TV, and any device with a web browser
+        </p>
+    </div>
+    
+    <script>
+        // Auto-focus download button
+        window.onload = function() {
+            document.querySelector('.download-btn').focus();
+        };
+    </script>
+</body>
+</html>

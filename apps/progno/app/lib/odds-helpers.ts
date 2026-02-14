@@ -77,39 +77,115 @@ export function extractAveragedOdds(gameData: any): { home: number; away: number
   };
 }
 
+/**
+ * Shin (1991/1993) devig: implied = true + z * sqrt(true * (1 - true)).
+ * Solves for true probabilities that account for favorite-longshot bias (vig not equal across outcomes).
+ * Binary search for z so that true_home + true_away = 1; then returns no-vig home/away.
+ */
+export function shinDevig(impliedHome: number, impliedAway: number): { home: number; away: number } {
+  const eps = 1e-9;
+  const maxIter = 25;
+
+  function solveTrueProb(implied: number, z: number): number {
+    let p = Math.max(eps, Math.min(1 - eps, implied));
+    for (let i = 0; i < maxIter; i++) {
+      const next = implied - z * Math.sqrt(p * (1 - p));
+      const nextClamped = Math.max(eps, Math.min(1 - eps, next));
+      if (Math.abs(nextClamped - p) < eps) return nextClamped;
+      p = nextClamped;
+    }
+    return p;
+  }
+
+  function sumTrueProbs(z: number): number {
+    const th = solveTrueProb(impliedHome, z);
+    const ta = solveTrueProb(impliedAway, z);
+    return th + ta;
+  }
+
+  let zLo = 0;
+  let zHi = 2;
+  for (let b = 0; b < 40; b++) {
+    const zMid = (zLo + zHi) / 2;
+    const sum = sumTrueProbs(zMid);
+    if (Math.abs(sum - 1) < eps) {
+      const home = solveTrueProb(impliedHome, zMid);
+      const away = solveTrueProb(impliedAway, zMid);
+      const s = home + away;
+      return { home: s > 0 ? home / s : 0.5, away: s > 0 ? away / s : 0.5 };
+    }
+    if (sum > 1) zLo = zMid;
+    else zHi = zMid;
+  }
+  const z = (zLo + zHi) / 2;
+  const home = solveTrueProb(impliedHome, z);
+  const away = solveTrueProb(impliedAway, z);
+  const s = home + away;
+  return { home: s > 0 ? home / s : 0.5, away: s > 0 ? away / s : 0.5 };
+}
+
+/**
+ * Fair (no-vig) probability from multiple books (e.g. Pinnacle, Circa, BetMGM).
+ * Uses Shin devig for the averaged implied probs (better for sports / favorite-longshot bias).
+ */
+export function getFairProbability(
+  homeOddsArray: number[],
+  awayOddsArray: number[]
+): { home: number; away: number } {
+  if (homeOddsArray.length === 0 || awayOddsArray.length === 0) {
+    return { home: 0.5, away: 0.5 };
+  }
+  const avgHomeImplied =
+    homeOddsArray.reduce((s, o) => s + americanToImpliedProb(o), 0) / homeOddsArray.length;
+  const avgAwayImplied =
+    awayOddsArray.reduce((s, o) => s + americanToImpliedProb(o), 0) / awayOddsArray.length;
+  const sum = avgHomeImplied + avgAwayImplied;
+  if (sum <= 0) return { home: 0.5, away: 0.5 };
+  return shinDevig(avgHomeImplied, avgAwayImplied);
+}
+
+// Sport-specific scoring constants
+const SPORT_SCORING = {
+  nfl: { avgTotal: 45, avgHome: 24, avgAway: 21, gamesPerSeason: 17 },
+  ncaaf: { avgTotal: 58, avgHome: 31, avgAway: 27, gamesPerSeason: 12 },
+  nba: { avgTotal: 227, avgHome: 115, avgAway: 112, gamesPerSeason: 82 },
+  ncaab: { avgTotal: 145, avgHome: 74, avgAway: 71, gamesPerSeason: 30 },
+  nhl: { avgTotal: 6.2, avgHome: 3.2, avgAway: 3.0, gamesPerSeason: 82 },
+  mlb: { avgTotal: 8.7, avgHome: 4.6, avgAway: 4.1, gamesPerSeason: 162 },
+};
+
 // Estimate team stats from odds (more accurate than zeros)
 export function estimateTeamStatsFromOdds(odds: { home: number; away: number; spread?: number; total?: number }, sport: string): {
   home: any;
   away: any;
 } {
-  // Convert American odds to implied probabilities
-  const homeProb = americanToImpliedProb(odds.home);
-  const awayProb = americanToImpliedProb(odds.away);
+  const sportKey = sport.toLowerCase().replace(/basketball_|americanfootball_|icehockey_|baseball_/, '');
+  const scoring = SPORT_SCORING[sportKey as keyof typeof SPORT_SCORING] || SPORT_SCORING.nfl;
 
-  // Estimate win percentages from odds
-  const homeWinPct = homeProb / (homeProb + awayProb);
-  const awayWinPct = 1 - homeWinPct;
+  // Convert American odds to implied probabilities, then Shin devig (favorite-longshot bias)
+  const homeImplied = americanToImpliedProb(odds.home);
+  const awayImplied = americanToImpliedProb(odds.away);
+  const { home: homeWinPct, away: awayWinPct } = shinDevig(homeImplied, awayImplied);
 
-  // Estimate season record (assuming ~16 game season for NFL, adjust for other sports)
-  const gamesPerSeason = sport.includes('nfl') ? 17 : sport.includes('nba') ? 82 : sport.includes('mlb') ? 162 : 82;
-  const homeWins = Math.round(homeWinPct * gamesPerSeason * 0.5); // Rough estimate
-  const homeLosses = gamesPerSeason - homeWins;
-  const awayWins = Math.round(awayWinPct * gamesPerSeason * 0.5);
-  const awayLosses = gamesPerSeason - awayWins;
+  // Estimate season record
+  const homeWins = Math.round(homeWinPct * scoring.gamesPerSeason * 0.5);
+  const homeLosses = scoring.gamesPerSeason - homeWins;
+  const awayWins = Math.round(awayWinPct * scoring.gamesPerSeason * 0.5);
+  const awayLosses = scoring.gamesPerSeason - awayWins;
 
-  // Estimate points from spread and total
+  // Estimate points from spread and total - use sport-appropriate defaults
   const spread = odds.spread || 0;
-  const total = odds.total || (sport.includes('nfl') ? 45 : sport.includes('nba') ? 220 : 9);
+  const total = odds.total || scoring.avgTotal;
 
   // Home team expected points = (total + spread) / 2
   const homeExpectedPoints = (total + spread) / 2;
   const awayExpectedPoints = (total - spread) / 2;
 
   // Estimate points for/against based on expected points and win percentage
-  const homePointsFor = homeExpectedPoints * gamesPerSeason;
-  const homePointsAgainst = awayExpectedPoints * gamesPerSeason;
-  const awayPointsFor = awayExpectedPoints * gamesPerSeason;
-  const awayPointsAgainst = homeExpectedPoints * gamesPerSeason;
+  const homePointsFor = homeExpectedPoints * scoring.gamesPerSeason;
+  const homePointsAgainst = awayExpectedPoints * scoring.gamesPerSeason;
+  const awayPointsFor = awayExpectedPoints * scoring.gamesPerSeason;
+  const awayPointsAgainst = homeExpectedPoints * scoring.gamesPerSeason;
 
   return {
     home: {

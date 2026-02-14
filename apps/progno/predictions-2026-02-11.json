@@ -1,0 +1,427 @@
+{
+  "date": "2026-02-11",
+  "generatedAt": "2026-02-11T23:46:46.218Z",
+  "count": 6,
+  "message": "Top 6 picks (of 111 games) — Cevict Flex + Triple Alignment — Regular (0-1 days)",
+  "earlyLines": false,
+  "picks": [
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Western Carolina Catamounts",
+      "away_team": "The Citadel Bulldogs",
+      "pick": "The Citadel Bulldogs",
+      "pick_type": "MONEYLINE",
+      "odds": 3300,
+      "confidence": 92,
+      "game_time": "2026-02-11T23:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking The Citadel Bulldogs with 92% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 96.3% win rate. 📈 Predicted score: 64-91. 🤖 AI signals: Sentiment favors home (14%) 💰 Value detected: moneyline The Citadel Bulldogs (+94.3% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "767f1df6f8864eda193d94ee54a57501",
+      "expected_value_raw": 3173.07,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (14%)",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": 0.0087,
+      "sentiment_field": 0.1441,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.0231,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 1,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.0373,
+      "mc_predicted_score": {
+        "home": 64,
+        "away": 91,
+        "homeRange": [
+          47,
+          82
+        ],
+        "awayRange": [
+          73,
+          109
+        ]
+      },
+      "mc_spread_probability": 0.588,
+      "mc_total_probability": 0.58,
+      "mc_iterations": 1500,
+      "value_bet_edge": 94.3,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Saint Mary's Gaels",
+      "away_team": "Pepperdine Waves",
+      "pick": "Pepperdine Waves",
+      "pick_type": "MONEYLINE",
+      "odds": 2250,
+      "confidence": 92,
+      "game_time": "2026-02-12T03:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Pepperdine Waves with 92% confidence. ⏱️ Slot: Night game. 📊 1,500 simulations: 92.8% win rate. 📈 Predicted score: 62-84. 🤖 AI signals: Sentiment favors home (14%) Sharp money: backing away 💰 Value detected: moneyline Pepperdine Waves (+90.1% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "0eca9e653250e1c78dfb71afa036a390",
+      "expected_value_raw": 2080.8,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (14%)",
+        "Sharp money: backing away",
+        "Experimental: Night game (+6 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.007,
+      "sentiment_field": 0.1418,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 1,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.072,
+      "mc_predicted_score": {
+        "home": 62,
+        "away": 84,
+        "homeRange": [
+          44,
+          80
+        ],
+        "awayRange": [
+          65,
+          102
+        ]
+      },
+      "mc_spread_probability": 0.5733,
+      "mc_total_probability": 0.5733,
+      "mc_iterations": 1500,
+      "value_bet_edge": 90.07,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": false,
+        "tags": [
+          "Night game"
+        ],
+        "confidence_delta": 0.5
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Gardner-Webb Bulldogs",
+      "away_team": "Winthrop Eagles",
+      "pick": "Gardner-Webb Bulldogs",
+      "pick_type": "MONEYLINE",
+      "odds": 1600,
+      "confidence": 92,
+      "game_time": "2026-02-13T00:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Gardner-Webb Bulldogs with 92% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 92.2% win rate. 📈 Predicted score: 90-67. 🤖 AI signals: Sentiment favors away (-14%) Sharp money: backing home 💰 Value detected: moneyline Gardner-Webb Bulldogs (+88.2% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "807a75ef0e64ad954b61a995289651d7",
+      "expected_value_raw": 1467.4,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors away (-14%)",
+        "Sharp money: backing home",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.0005,
+      "sentiment_field": -0.1379,
+      "narrative_momentum": 0,
+      "information_asymmetry": 0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 0.93,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.922,
+      "mc_predicted_score": {
+        "home": 90,
+        "away": 67,
+        "homeRange": [
+          71,
+          109
+        ],
+        "awayRange": [
+          50,
+          85
+        ]
+      },
+      "mc_spread_probability": 0.586,
+      "mc_total_probability": 0.5593,
+      "mc_iterations": 1500,
+      "value_bet_edge": 88.17,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NBA",
+      "league": "NBA",
+      "home_team": "Cleveland Cavaliers",
+      "away_team": "Washington Wizards",
+      "pick": "Washington Wizards",
+      "pick_type": "MONEYLINE",
+      "odds": 722,
+      "confidence": 92,
+      "game_time": "2026-02-12T00:10:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Washington Wizards with 92% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 81.5% win rate. 📈 Predicted score: 113-128. 🤖 AI signals: Sentiment favors home (12%) Sharp money: backing away 💰 Value detected: moneyline Washington Wizards (+71.6% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "1e29ea38e9c7789166418c9a3544bff9",
+      "expected_value_raw": 570.2,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (12%)",
+        "Sharp money: backing away",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.0096,
+      "sentiment_field": 0.1203,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 1,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.1847,
+      "mc_predicted_score": {
+        "home": 113,
+        "away": 128,
+        "homeRange": [
+          95,
+          132
+        ],
+        "awayRange": [
+          109,
+          148
+        ]
+      },
+      "mc_spread_probability": 0.5447,
+      "mc_total_probability": 0.534,
+      "mc_iterations": 1500,
+      "value_bet_edge": 71.63,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NBA",
+      "league": "NBA",
+      "home_team": "Oklahoma City Thunder",
+      "away_team": "Milwaukee Bucks",
+      "pick": "Milwaukee Bucks",
+      "pick_type": "MONEYLINE",
+      "odds": 530,
+      "confidence": 89,
+      "game_time": "2026-02-13T00:40:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Milwaukee Bucks with 89% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 76.3% win rate. 📈 Predicted score: 103-114. 🤖 AI signals: Sentiment favors home (11%) Sharp money: backing away 💰 Value detected: moneyline Milwaukee Bucks (+62.6% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "1c3809071b6a6e313c87dee15e46bdc1",
+      "expected_value_raw": 380.48,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (11%)",
+        "Sharp money: backing away",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 97.8,
+      "claude_effect": -0.0102,
+      "sentiment_field": 0.1089,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 0.93,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.2373,
+      "mc_predicted_score": {
+        "home": 103,
+        "away": 114,
+        "homeRange": [
+          83,
+          123
+        ],
+        "awayRange": [
+          95,
+          134
+        ]
+      },
+      "mc_spread_probability": 0.536,
+      "mc_total_probability": 0.546,
+      "mc_iterations": 1500,
+      "value_bet_edge": 62.58,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    },
+    {
+      "sport": "NBA",
+      "league": "NBA",
+      "home_team": "Denver Nuggets",
+      "away_team": "Memphis Grizzlies",
+      "pick": "Memphis Grizzlies",
+      "pick_type": "MONEYLINE",
+      "odds": 496,
+      "confidence": 88,
+      "game_time": "2026-02-12T02:10:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Memphis Grizzlies with 88% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 74.0% win rate. 📈 Predicted score: 116-126. 🤖 AI signals: Sentiment favors home (11%) Sharp money: backing away 💰 Value detected: moneyline Memphis Grizzlies (+59.5% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "72e90971d6ffe7bcc9ce0c5c15a12ece",
+      "expected_value_raw": 341.04,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (11%)",
+        "Sharp money: backing away",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 97.6,
+      "claude_effect": -0.0112,
+      "sentiment_field": 0.1066,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 1,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.26,
+      "mc_predicted_score": {
+        "home": 116,
+        "away": 126,
+        "homeRange": [
+          96,
+          136
+        ],
+        "awayRange": [
+          108,
+          146
+        ]
+      },
+      "mc_spread_probability": 0.598,
+      "mc_total_probability": 0.56,
+      "mc_iterations": 1500,
+      "value_bet_edge": 59.52,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      }
+    }
+  ]
+}

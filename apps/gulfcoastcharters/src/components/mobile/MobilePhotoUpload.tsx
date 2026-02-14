@@ -45,9 +45,11 @@ export default function MobilePhotoUpload({ bookingId, onUploadComplete }: Mobil
         .getPublicUrl(fileName);
 
       if (bookingId) {
-        await supabase.from('trip_photos').insert({
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from('booking_trip_photos').insert({
           booking_id: bookingId,
-          photo_url: publicUrl
+          photo_url: publicUrl,
+          uploaded_by: user?.id ?? null,
         });
       }
 

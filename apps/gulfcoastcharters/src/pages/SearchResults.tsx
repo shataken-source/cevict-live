@@ -4,16 +4,25 @@ import AdBanner from '../components/AdBanner';
 import SidebarAd from '../components/SidebarAd';
 import GoogleAdSense from '../components/GoogleAdSense';
 
+interface SearchFilters {
+  location: string;
+  boatType: string;
+  priceRange: string;
+  sortBy: string;
+}
+
 interface SearchResultsProps {
-  filters: {
-    location: string;
-    boatType: string;
-    priceRange: string;
-    sortBy: string;
-  };
+  filters?: SearchFilters;
 }
 
 export default function SearchResults({ filters }: SearchResultsProps) {
+  const effectiveFilters: SearchFilters =
+    filters ?? {
+      location: '',
+      boatType: '',
+      priceRange: '',
+      sortBy: 'relevance',
+    };
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
@@ -31,7 +40,7 @@ export default function SearchResults({ filters }: SearchResultsProps) {
 
           {/* Main Results */}
           <main className="flex-1">
-            <CharterGrid filters={filters} />
+            <CharterGrid filters={effectiveFilters} />
           </main>
 
           {/* Right Sidebar with Ads */}

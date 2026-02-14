@@ -60,7 +60,7 @@ export default function BookingFlowOptimized({ isOpen, onClose, charter }: Booki
       }
 
       // Create booking with optimistic locking
-      const booking = await optimisticBooking(charter.id, sanitized.date, {
+      const booking: any = await optimisticBooking(charter.id, sanitized.date, {
         charter_id: charter.id,
         captain_id: charter.id,
         customer_name: sanitized.name,

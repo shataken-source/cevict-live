@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwitchbackTV</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #1a1a2e; 
+            color: white; 
+            margin: 0; 
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        h1 { 
+            color: #00d4ff; 
+            text-align: center; 
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        .card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0,212,255,0.3);
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #00d4ff;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(0,212,255,0.3);
+            background: rgba(0,0,0,0.3);
+            color: white;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #00d4ff;
+            color: #1a1a2e;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover { background: #0099cc; }
+        button:active { background: #007799; }
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid rgba(0,212,255,0.3);
+            background: rgba(255,255,255,0.05);
+            color: #aaa;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background: rgba(0,212,255,0.2);
+            color: #00d4ff;
+            border-color: #00d4ff;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .channel-item {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            border-left: 3px solid #00d4ff;
+        }
+        .channel-item:hover { background: rgba(0,212,255,0.1); }
+        .channel-name { font-weight: bold; color: #00d4ff; }
+        .channel-info { color: #aaa; font-size: 0.9em; }
+        .status { text-align: center; padding: 20px; color: #888; }
+        .error { color: #ff4444; text-align: center; padding: 10px; }
+        .success { color: #44ff44; text-align: center; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📺 SwitchbackTV</h1>
+        
+        <div class="card">
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="showTab('m3u')">M3U URL</button>
+                <button class="tab-btn" onclick="showTab('xtream')">Xtream</button>
+            </div>
+            
+            <div id="m3u-tab" class="tab-content active">
+                <div class="input-group">
+                    <label for="m3uUrl">M3U Playlist URL:</label>
+                    <input type="text" id="m3uUrl" placeholder="https://example.com/playlist.m3u" value="">
+                </div>
+                <button onclick="loadM3U()">Load M3U Playlist</button>
+            </div>
+            
+            <div id="xtream-tab" class="tab-content">
+                <div class="input-group">
+                    <label for="xtreamServer">Server URL:</label>
+                    <input type="text" id="xtreamServer" placeholder="http://example.com:8080">
+                </div>
+                <div class="input-group">
+                    <label for="xtreamUsername">Username:</label>
+                    <input type="text" id="xtreamUsername" placeholder="username">
+                </div>
+                <div class="input-group">
+                    <label for="xtreamPassword">Password:</label>
+                    <input type="password" id="xtreamPassword" placeholder="password">
+                </div>
+                <button onclick="loadXtream()">Load Xtream</button>
+            </div>
+        </div>
+        
+        <div id="status" class="status">Enter playlist details above to get started</div>
+        
+        <div id="channels" style="display: none;">
+            <div class="card">
+                <h2>Channels</h2>
+                <div id="channelList"></div>
+            </div>
+        </div>
+        
+        <div id="player" style="display: none;">
+            <div class="card">
+                <h2>Now Playing</h2>
+                <div id="playerContent"></div>
+                <button onclick="backToChannels()">Back to Channels</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentChannels = [];
+        
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+            document.getElementById(tabId + '-tab').classList.add('active');
+        }
+        
+        function showStatus(message, type = 'status') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = type;
+        }
+        
+        function loadM3U() {
+            const url = document.getElementById('m3uUrl').value.trim();
+            if (!url) {
+                showStatus('Please enter an M3U URL', 'error');
+                return;
+            }
+            
+            showStatus('Loading M3U playlist...', 'status');
+            
+            // Use CORS proxy for Downloader compatibility
+            const proxyUrl = 'https://cors-anywhere.herokuapp.com/' + url;
+            
+            fetch(proxyUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    return response.text();
+                })
+                .then(text => {
+                    const channels = parseM3U(text);
+                    if (channels.length > 0) {
+                        currentChannels = channels;
+                        localStorage.setItem('m3uUrl', url);
+                        localStorage.setItem('channels', JSON.stringify(channels));
+                        displayChannels(channels);
+                        showStatus(`Loaded ${channels.length} channels!`, 'success');
+                    } else {
+                        showStatus('No channels found in playlist', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Fallback: try without proxy
+                    fetch(url)
+                        .then(response => response.text())
+                        .then(text => {
+                            const channels = parseM3U(text);
+                            if (channels.length > 0) {
+                                currentChannels = channels;
+                                localStorage.setItem('m3uUrl', url);
+                                localStorage.setItem('channels', JSON.stringify(channels));
+                                displayChannels(channels);
+                                showStatus(`Loaded ${channels.length} channels!`, 'success');
+                            } else {
+                                showStatus('No channels found in playlist', 'error');
+                            }
+                        })
+                        .catch(fallbackError => {
+                            showStatus('Failed to load playlist. Check URL and try again.', 'error');
+                        });
+                });
+        }
+        
+        function loadXtream() {
+            const server = document.getElementById('xtreamServer').value.trim();
+            const username = document.getElementById('xtreamUsername').value.trim();
+            const password = document.getElementById('xtreamPassword').value.trim();
+            
+            if (!server || !username || !password) {
+                showStatus('Please fill all Xtream fields', 'error');
+                return;
+            }
+            
+            showStatus('Loading Xtream channels...', 'status');
+            
+            const apiUrl = `${server}/player_api.php?username=${username}&password=${password}&action=get_live_streams`;
+            
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && Array.isArray(data)) {
+                        const channels = data.map(channel => ({
+                            name: channel.name,
+                            url: `${server}/live/${username}/${password}/${channel.stream_id}.ts`,
+                            logo: channel.stream_icon,
+                            category: channel.category_name
+                        }));
+                        
+                        currentChannels = channels;
+                        localStorage.setItem('xtreamConfig', JSON.stringify({server, username, password}));
+                        localStorage.setItem('channels', JSON.stringify(channels));
+                        displayChannels(channels);
+                        showStatus(`Loaded ${channels.length} channels from Xtream!`, 'success');
+                    } else {
+                        showStatus('Invalid response from Xtream server', 'error');
+                    }
+                })
+                .catch(error => {
+                    showStatus('Failed to connect to Xtream server', 'error');
+                });
+        }
+        
+        function parseM3U(text) {
+            const lines = text.split('\n');
+            const channels = [];
+            let currentChannel = {};
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                if (line.startsWith('#EXTINF:')) {
+                    const nameMatch = line.match(/,(.+)$/);
+                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                    const categoryMatch = line.match(/group-title="([^"]+)"/);
+                    
+                    currentChannel = {
+                        name: nameMatch ? nameMatch[1] : 'Unknown Channel',
+                        logo: logoMatch ? logoMatch[1] : '',
+                        category: categoryMatch ? categoryMatch[1] : 'General'
+                    };
+                } else if (line && !line.startsWith('#') && currentChannel.name) {
+                    currentChannel.url = line;
+                    channels.push({...currentChannel});
+                    currentChannel = {};
+                }
+            }
+            
+            return channels;
+        }
+        
+        function displayChannels(channels) {
+            const channelsDiv = document.getElementById('channels');
+            const channelList = document.getElementById('channelList');
+            const status = document.getElementById('status');
+            
+            if (channels.length === 0) {
+                showStatus('No channels to display', 'error');
+                return;
+            }
+            
+            // Group channels by category
+            const categories = {};
+            channels.forEach(channel => {
+                const category = channel.category || 'General';
+                if (!categories[category]) {
+                    categories[category] = [];
+                }
+                categories[category].push(channel);
+            });
+            
+            // Display channels
+            channelList.innerHTML = '';
+            Object.keys(categories).sort().forEach(category => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.innerHTML = `<h3 style="color: #00d4ff; margin: 20px 0 10px 0;">${category}</h3>`;
+                channelList.appendChild(categoryDiv);
+                
+                categories[category].forEach(channel => {
+                    const channelDiv = document.createElement('div');
+                    channelDiv.className = 'channel-item';
+                    channelDiv.onclick = () => playChannel(channel);
+                    
+                    channelDiv.innerHTML = `
+                        <div class="channel-name">${channel.name}</div>
+                        <div class="channel-info">${channel.category || 'General'}</div>
+                    `;
+                    
+                    channelList.appendChild(channelDiv);
+                });
+            });
+            
+            status.style.display = 'none';
+            channelsDiv.style.display = 'block';
+        }
+        
+        function playChannel(channel) {
+            const channelsDiv = document.getElementById('channels');
+            const playerDiv = document.getElementById('player');
+            const playerContent = document.getElementById('playerContent');
+            
+            playerContent.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="font-size: 1.5em; color: #00d4ff; margin-bottom: 10px;">${channel.name}</div>
+                    <div style="color: #aaa; margin-bottom: 20px;">${channel.category || 'General'}</div>
+                    <video controls style="width: 100%; max-width: 500px; height: 250px; background: black;">
+                        <source src="${channel.url}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            `;
+            
+            channelsDiv.style.display = 'none';
+            playerDiv.style.display = 'block';
+        }
+        
+        function backToChannels() {
+            document.getElementById('channels').style.display = 'block';
+            document.getElementById('player').style.display = 'none';
+        }
+        
+        // Load saved data on page load
+        window.onload = function() {
+            const savedUrl = localStorage.getItem('m3uUrl');
+            if (savedUrl) {
+                document.getElementById('m3uUrl').value = savedUrl;
+            }
+            
+            const savedXtream = localStorage.getItem('xtreamConfig');
+            if (savedXtream) {
+                const config = JSON.parse(savedXtream);
+                document.getElementById('xtreamServer').value = config.server || '';
+                document.getElementById('xtreamUsername').value = config.username || '';
+                document.getElementById('xtreamPassword').value = config.password || '';
+            }
+            
+            const savedChannels = localStorage.getItem('channels');
+            if (savedChannels) {
+                currentChannels = JSON.parse(savedChannels);
+                displayChannels(currentChannels);
+                showStatus(`${currentChannels.length} channels loaded from storage`, 'success');
+            }
+        };
+    </script>
+</body>
+</html>

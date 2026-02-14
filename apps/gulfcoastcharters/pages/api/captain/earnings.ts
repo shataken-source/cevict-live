@@ -112,9 +112,16 @@ export default async function handler(
         }
       });
 
-      // Get last payout (would need a payouts table, for now return 0)
-      const lastPayout = 0;
-      const payoutHistory: any[] = [];
+      // Payout history from captain_payouts
+      const { data: payoutRows } = await admin
+        .from('captain_payouts')
+        .select('id, amount, status, requested_at, paid_at')
+        .eq('captain_id', captainId)
+        .order('requested_at', { ascending: false })
+        .limit(50);
+      const payoutHistory = payoutRows || [];
+      const lastPaid = payoutHistory.find((p: any) => p.status === 'paid');
+      const lastPayout = lastPaid?.amount != null ? Number(lastPaid.amount) : 0;
 
       return res.status(200).json({
         success: true,
@@ -134,19 +141,44 @@ export default async function handler(
 
   if (req.method === 'POST') {
     try {
-      const { action } = req.body;
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
+      const { action, amount: requestAmount } = body;
 
       if (action === 'requestPayout') {
-        // TODO: Implement payout request logic
-        // This would typically:
-        // 1. Create a payout record
-        // 2. Calculate available balance
-        // 3. Initiate Stripe transfer or bank transfer
-        // 4. Update booking payment statuses
-
+        const minPayout = 50;
+        // Use requested amount or compute available from earnings (simplified: use pending)
+        const { data: bookingsData } = await admin
+          .from('bookings')
+          .select('total_price, captain_payout')
+          .eq('captain_id', captainId)
+          .in('status', ['completed', 'confirmed']);
+        let available = 0;
+        (bookingsData || []).forEach((b: any) => {
+          const amt = b.captain_payout != null ? Number(b.captain_payout) : (Number(b.total_price || 0) * 0.85);
+          available += amt;
+        });
+        const existingPending = await admin
+          .from('captain_payouts')
+          .select('amount')
+          .eq('captain_id', captainId)
+          .in('status', ['pending', 'processing']);
+        (existingPending.data || []).forEach((p: any) => { available -= Number(p.amount); });
+        const amount = requestAmount != null ? Number(requestAmount) : Math.max(0, Math.round(available * 100) / 100);
+        if (amount < minPayout) {
+          return res.status(400).json({
+            error: `Minimum payout is $${minPayout}. Available: $${Math.round(available * 100) / 100}.`,
+          });
+        }
+        const { data: payout, error: insertErr } = await admin
+          .from('captain_payouts')
+          .insert({ captain_id: captainId, amount, status: 'pending' })
+          .select()
+          .single();
+        if (insertErr) return res.status(500).json({ error: insertErr.message });
         return res.status(200).json({
           success: true,
           message: 'Payout request submitted. Funds will be transferred within 3-5 business days.',
+          payout,
         });
       }
 

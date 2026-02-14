@@ -88,7 +88,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       latitude = toNum(Array.isArray(latVal) ? latVal[0] : latVal);
       longitude = toNum(Array.isArray(lonVal) ? lonVal[0] : lonVal);
       location = String(query.location || '').trim() || location;
-      includeAlerts = query.alerts === 'true' || query.alerts === true;
+      const alertsVal = Array.isArray(query.alerts) ? query.alerts[0] : query.alerts;
+      includeAlerts = String(alertsVal || '').toLowerCase() === 'true';
     }
 
     if (latitude === null || longitude === null) {

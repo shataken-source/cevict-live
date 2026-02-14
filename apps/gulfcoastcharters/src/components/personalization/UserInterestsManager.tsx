@@ -27,7 +27,7 @@ export default function UserInterestsManager() {
       .from('user_interests')
       .select('interests')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (data) setInterests(data.interests || []);
   };

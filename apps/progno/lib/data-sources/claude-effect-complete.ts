@@ -27,14 +27,14 @@ const MAX_EFFECT_SWING = 0.25;
 
 const RECOMMENDATION_THRESHOLDS = {
   NFL: {
-    strong:    { prob: 0.62, conf: 78, edge: 7 },
-    moderate:  { prob: 0.58, conf: 70, edge: 5 },
-    lean:      { prob: 0.55, conf: 62, edge: 3 }
+    strong: { prob: 0.62, conf: 78, edge: 7 },
+    moderate: { prob: 0.58, conf: 70, edge: 5 },
+    lean: { prob: 0.55, conf: 62, edge: 3 }
   },
   DEFAULT: {
-    strong:    { prob: 0.65, conf: 80, edge: 8 },
-    moderate:  { prob: 0.60, conf: 72, edge: 6 },
-    lean:      { prob: 0.56, conf: 65, edge: 4 }
+    strong: { prob: 0.65, conf: 80, edge: 8 },
+    moderate: { prob: 0.60, conf: 72, edge: 6 },
+    lean: { prob: 0.56, conf: 65, edge: 4 }
   }
 } as const;
 
@@ -88,8 +88,8 @@ export class CompleteClaudeEffectEngine {
     const dimensions = await this.gatherAllDimensions(input);
     const claudeEffect = this.computeBoundedEffect(dimensions);
     const temporalDecay = dimensions.temporalDecay;
-
-    let adjustedProbability = input.baseProbability * (1 + claudeEffect) * temporalDecay;
+    const decayedEffect = claudeEffect * temporalDecay;
+    let adjustedProbability = input.baseProbability * (1 + decayedEffect);
     adjustedProbability = Math.max(0.50, Math.min(0.95, adjustedProbability));
 
     const CSI_PENALTY = Math.min(dimensions.chaosSensitivity * 0.35, 0.35);
@@ -203,8 +203,12 @@ export class CompleteClaudeEffectEngine {
       else temporalDecay = 0.92;
     }
 
+    // Calculate sentiment field from information asymmetry and market dynamics
+    // Higher sentiment when there's divergence between model and market
+    const sentimentField = this.calculateSentimentField(informationAsymmetry, input.baseProbability);
+
     return {
-      sentimentField: 0.4,
+      sentimentField,
       narrativeMomentum,
       informationAsymmetry,
       chaosSensitivity,
@@ -212,6 +216,32 @@ export class CompleteClaudeEffectEngine {
       temporalDecay,
       emergentPatterns: 0.15
     };
+  }
+
+  /**
+   * Calculate sentiment field based on market information asymmetry and base probability
+   * Detects sharp money movement and market sentiment shifts
+   */
+  private calculateSentimentField(informationAsymmetry: number, baseProbability: number): number {
+    // Base sentiment starts at neutral (0.4)
+    let sentiment = 0.4;
+
+    // Adjust based on information asymmetry (divergence from market efficiency)
+    // High asymmetry suggests sharp money moving against public
+    if (informationAsymmetry > 0.15) {
+      sentiment += 0.15; // Sharp money detected - positive sentiment
+    } else if (informationAsymmetry < 0.05) {
+      sentiment -= 0.1; // Market consensus - neutral/negative sentiment
+    }
+
+    // Adjust based on probability extremes
+    // Extreme probabilities (>75% or <25%) often indicate strong sentiment
+    if (baseProbability > 0.75 || baseProbability < 0.25) {
+      sentiment += 0.1;
+    }
+
+    // Clamp to valid range
+    return Math.max(0.1, Math.min(0.8, sentiment));
   }
 
   private computeBoundedEffect(scores: DimensionScores): number {

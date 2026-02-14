@@ -20,9 +20,8 @@ import { Shield, Users, Database, Phone, Download, Upload, Mail, BarChart, GitMe
 
 
 import { useNavigate } from 'react-router-dom';
-
-
-import { toast } from 'sonner';
+import { useToast } from '@/hooks/use-toast';
+import FeatureFlagManager from './FeatureFlagManager';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DeduplicationTool from './DeduplicationTool';
@@ -45,6 +44,7 @@ import AffiliateLinkTester from './admin/AffiliateLinkTester';
 export default function AdminPanel() {
   const { user } = useUser();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [users, setUsers] = useState<Array<{ email: string; level: number }>>([]);
 

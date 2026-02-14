@@ -61,10 +61,11 @@ export default function FeatureFlagManager() {
   };
 
   const toggleFlag = (key: string) => {
-    const newFlags = { ...flags, [key]: !flags[key] };
+    const newValue = !flags[key];
+    const newFlags = { ...flags, [key]: newValue };
     setFlags(newFlags);
     localStorage.setItem('feature_flags', JSON.stringify(newFlags));
-    toast.success(`Feature ${!flags[key] ? 'enabled' : 'disabled'}`);
+    toast.success(`Feature ${newValue ? 'enabled' : 'disabled'}`);
   };
 
   return (

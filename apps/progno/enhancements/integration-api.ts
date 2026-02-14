@@ -217,8 +217,10 @@ export function formatEnhancedPrediction(result: EnhancedPredictionResult): stri
     if (result.realTimeData.weather) {
       lines.push(`  🌤️  Weather: ${result.realTimeData.weather.conditions}`);
     }
-    if (result.realTimeData.socialSentiment) {
-      lines.push(`  💬 Social sentiment: ${result.realTimeData.socialSentiment.overall}`);
+    if (result.realTimeData.sentiment && result.realTimeData.sentiment.sampleSize > 0) {
+      const s = result.realTimeData.sentiment;
+      const overall = s.positive + s.negative > 0 ? (s.positive / (s.positive + s.negative) > 0.5 ? 'bullish' : 'bearish') : 'neutral';
+      lines.push(`  💬 Social sentiment: ${overall} (n=${s.sampleSize})`);
     }
     lines.push('');
   }

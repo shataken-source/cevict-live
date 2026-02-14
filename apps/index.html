@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SwitchbackTV</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+            background: linear-gradient(45deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: transform 0.2s;
+            touch-action: manipulation;
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+
+        .nav-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.5);
+        }
+
+        .section {
+            display: none;
+            padding: 20px;
+            animation: fadeIn 0.3s;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .feature-item {
+            background: rgba(0, 212, 255, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            border-left: 3px solid #00d4ff;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .feature-item:active {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        .feature-item h3 {
+            color: #00d4ff;
+            margin-bottom: 5px;
+            font-size: 1em;
+        }
+
+        .feature-item p {
+            color: #aaa;
+            font-size: 0.9em;
+        }
+
+        input[type="text"],
+        input[type="url"] {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-size: 1em;
+            margin-bottom: 15px;
+        }
+
+        input::placeholder {
+            color: #666;
+        }
+
+        .action-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            border: none;
+            color: white;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .action-btn:active {
+            opacity: 0.8;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .bottom-nav button {
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 0.75em;
+            cursor: pointer;
+            padding: 5px 15px;
+            touch-action: manipulation;
+        }
+
+        .bottom-nav button.active {
+            color: #00d4ff;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: #00d4ff;
+            color: #1a1a2e;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            color: #aaa;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            border-color: #00d4ff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .channel-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .channel-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .channel-item:hover {
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .channel-item:active {
+            background: rgba(0, 212, 255, 0.2);
+        }
+
+        .channel-name {
+            font-weight: bold;
+            color: #00d4ff;
+            margin-bottom: 5px;
+        }
+
+        .channel-info {
+            color: #aaa;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>SwitchbackTV</h1>
+    </div>
+
+    <!-- HOME SECTION -->
+    <div id="home" class="section active">
+        <div class="nav-buttons">
+            <button class="nav-btn" onclick="showSection('player')">Watch Now</button>
+            <button class="nav-btn secondary" onclick="showSection('settings')">Settings</button>
+        </div>
+
+        <div class="card">
+            <h2>Quick Access</h2>
+            <div class="feature-grid">
+                <div class="feature-item" onclick="showSection('player')">
+                    <h3>Player</h3>
+                    <p>Watch your IPTV channels</p>
+                </div>
+                <div class="feature-item" onclick="showSection('channels')">
+                    <h3>Channels</h3>
+                    <p>Browse channel list</p>
+                </div>
+                <div class="feature-item" onclick="showSection('settings')">
+                    <h3>Settings</h3>
+                    <p>Load M3U playlist</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Features</h2>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <h3>VPN Ready</h3>
+                    <p>Secure streaming support</p>
+                </div>
+                <div class="feature-item">
+                    <h3>TimeShift</h3>
+                    <p>Pause live TV</p>
+                </div>
+                <div class="feature-item">
+                    <h3>Voice Control</h3>
+                    <p>Hands-free navigation</p>
+                </div>
+                <div class="feature-item">
+                    <h3>Smart Favorites</h3>
+                    <p>ML-powered suggestions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PLAYER SECTION -->
+    <div id="player" class="section">
+        <div class="card">
+            <h2>Player</h2>
+            <p style="color: #888; text-align: center; padding: 40px;">
+                Select a channel from the Channels tab to start watching.<br><br>
+                <button class="action-btn" onclick="showSection('channels')">Browse Channels</button>
+            </p>
+        </div>
+    </div>
+
+    <!-- CHANNELS SECTION -->
+    <div id="channels" class="section">
+        <div class="card">
+            <h2>Channels</h2>
+            <div id="channelStatus" style="color: #888; margin-bottom: 15px;">No channels loaded. Add an M3U playlist in
+                Settings.</div>
+            <div id="channelList" class="channel-list" style="display: none;">
+                <!-- Channels will be loaded here -->
+            </div>
+            <button id="loadPlaylistBtn" class="action-btn" onclick="showSection('settings')">Load Playlist</button>
+        </div>
+    </div>
+
+    <!-- SETTINGS SECTION -->
+    <div id="settings" class="section">
+        <div class="card">
+            <h2>Playlist Configuration</h2>
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="showTab('m3u')">M3U URL</button>
+                <button class="tab-btn" onclick="showTab('xtream')">Xtream Codes</button>
+            </div>
+
+            <div id="m3u-tab" class="tab-content active">
+                <p style="color: #888; margin-bottom: 15px;">Enter your IPTV M3U playlist URL:</p>
+                <input type="url" id="m3uUrl" placeholder="https://example.com/playlist.m3u">
+                <button class="action-btn" onclick="loadM3U()">Load M3U Playlist</button>
+            </div>
+
+            <div id="xtream-tab" class="tab-content">
+                <p style="color: #888; margin-bottom: 15px;">Enter your Xtream Codes API details:</p>
+                <input type="text" id="xtreamServer" placeholder="Server URL (e.g., http://example.com:8080)">
+                <input type="text" id="xtreamUsername" placeholder="Username">
+                <input type="password" id="xtreamPassword" placeholder="Password">
+                <button class="action-btn" onclick="loadXtream()">Load Xtream Playlist</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>VPN Settings</h2>
+            <p style="color: #888; margin-bottom: 15px;">Configure VPN for secure streaming:</p>
+            <button class="action-btn" onclick="alert('VPN configuration coming soon!')">Configure VPN</button>
+        </div>
+
+        <div class="card">
+            <h2>App Info</h2>
+            <p style="color: #888;">Version: 1.0.0</p>
+            <p style="color: #888;">Status: <span class="status-badge">Ready</span></p>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <div class="bottom-nav">
+        <button class="active" onclick="showSection('home')" id="nav-home">Home</button>
+        <button onclick="showSection('player')" id="nav-player">Player</button>
+        <button onclick="showSection('channels')" id="nav-channels">Channels</button>
+        <button onclick="showSection('settings')" id="nav-settings">Settings</button>
+    </div>
+
+    <script>
+        let currentChannels = [];
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.remove('active'));
+            document.getElementById('nav-' + sectionId).classList.add('active');
+        }
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+            document.getElementById(tabId + '-tab').classList.add('active');
+        }
+
+        async function loadM3U() {
+            const url = document.getElementById('m3uUrl').value;
+            if (!url) {
+                alert('Please enter a valid M3U URL');
+                return;
+            }
+
+            try {
+                const response = await fetch(url);
+                const text = await response.text();
+                const channels = parseM3U(text);
+
+                if (channels.length > 0) {
+                    currentChannels = channels;
+                    localStorage.setItem('m3uUrl', url);
+                    localStorage.setItem('channels', JSON.stringify(channels));
+                    displayChannels(channels);
+                    showSection('channels');
+                    alert(`Loaded ${channels.length} channels successfully!`);
+                } else {
+                    alert('No channels found in the playlist');
+                }
+            } catch (error) {
+                alert('Failed to load M3U playlist: ' + error.message);
+            }
+        }
+
+        async function loadXtream() {
+            const server = document.getElementById('xtreamServer').value;
+            const username = document.getElementById('xtreamUsername').value;
+            const password = document.getElementById('xtreamPassword').value;
+
+            if (!server || !username || !password) {
+                alert('Please fill in all Xtream Codes fields');
+                return;
+            }
+
+            try {
+                // Construct the Xtream Codes API URL
+                const apiUrl = `${server}/player_api.php?username=${username}&password=${password}&action=get_live_streams`;
+
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data && Array.isArray(data)) {
+                    const channels = data.map(channel => ({
+                        name: channel.name,
+                        url: `${server}/live/${username}/${password}/${channel.stream_id}.ts`,
+                        logo: channel.stream_icon,
+                        category: channel.category_name
+                    }));
+
+                    currentChannels = channels;
+                    localStorage.setItem('xtreamConfig', JSON.stringify({ server, username, password }));
+                    localStorage.setItem('channels', JSON.stringify(channels));
+                    displayChannels(channels);
+                    showSection('channels');
+                    alert(`Loaded ${channels.length} channels from Xtream Codes!`);
+                } else {
+                    alert('Invalid response from Xtream Codes server');
+                }
+            } catch (error) {
+                alert('Failed to connect to Xtream Codes: ' + error.message);
+            }
+        }
+
+        function parseM3U(text) {
+            const lines = text.split('\n');
+            const channels = [];
+            let currentChannel = {};
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+
+                if (line.startsWith('#EXTINF:')) {
+                    const nameMatch = line.match(/,(.+)$/);
+                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                    const categoryMatch = line.match(/group-title="([^"]+)"/);
+
+                    currentChannel = {
+                        name: nameMatch ? nameMatch[1] : 'Unknown Channel',
+                        logo: logoMatch ? logoMatch[1] : '',
+                        category: categoryMatch ? categoryMatch[1] : 'General'
+                    };
+                } else if (line && !line.startsWith('#') && currentChannel.name) {
+                    currentChannel.url = line;
+                    channels.push({ ...currentChannel });
+                    currentChannel = {};
+                }
+            }
+
+            return channels;
+        }
+
+        function displayChannels(channels) {
+            const channelStatus = document.getElementById('channelStatus');
+            const channelList = document.getElementById('channelList');
+            const loadPlaylistBtn = document.getElementById('loadPlaylistBtn');
+
+            if (channels.length === 0) {
+                channelStatus.textContent = 'No channels loaded. Add an M3U playlist in Settings.';
+                channelList.style.display = 'none';
+                loadPlaylistBtn.style.display = 'block';
+                return;
+            }
+
+            channelStatus.textContent = `${channels.length} channels loaded`;
+            channelList.style.display = 'block';
+            loadPlaylistBtn.style.display = 'none';
+
+            // Group channels by category
+            const categories = {};
+            channels.forEach(channel => {
+                const category = channel.category || 'General';
+                if (!categories[category]) {
+                    categories[category] = [];
+                }
+                categories[category].push(channel);
+            });
+
+            // Display channels by category
+            channelList.innerHTML = '';
+            Object.keys(categories).sort().forEach(category => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.innerHTML = `<h3 style="color: #00d4ff; margin: 20px 0 10px 0;">${category}</h3>`;
+                channelList.appendChild(categoryDiv);
+
+                categories[category].forEach(channel => {
+                    const channelDiv = document.createElement('div');
+                    channelDiv.className = 'channel-item';
+                    channelDiv.onclick = () => playChannel(channel);
+
+                    channelDiv.innerHTML = `
+                        <div class="channel-name">${channel.name}</div>
+                        <div class="channel-info">${channel.category || 'General'}</div>
+                    `;
+
+                    channelList.appendChild(channelDiv);
+                });
+            });
+        }
+
+        function playChannel(channel) {
+            localStorage.setItem('currentChannel', JSON.stringify(channel));
+            showSection('player');
+
+            // Update player section
+            const playerSection = document.getElementById('player');
+            playerSection.innerHTML = `
+                <div class="card">
+                    <h2>Now Playing</h2>
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="font-size: 1.5em; color: #00d4ff; margin-bottom: 10px;">${channel.name}</div>
+                        <div style="color: #aaa; margin-bottom: 20px;">${channel.category || 'General'}</div>
+                        <video controls style="width: 100%; max-width: 600px; height: 300px; background: black;">
+                            <source src="${channel.url}" type="application/x-mpegURL">
+                            <source src="${channel.url}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div style="margin-top: 20px;">
+                            <button class="action-btn" onclick="showSection('channels')">Back to Channels</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.onload = function () {
+            // Load saved M3U URL
+            const savedUrl = localStorage.getItem('m3uUrl');
+            if (savedUrl) {
+                document.getElementById('m3uUrl').value = savedUrl;
+            }
+
+            // Load saved Xtream config
+            const savedXtream = localStorage.getItem('xtreamConfig');
+            if (savedXtream) {
+                const config = JSON.parse(savedXtream);
+                document.getElementById('xtreamServer').value = config.server || '';
+                document.getElementById('xtreamUsername').value = config.username || '';
+                document.getElementById('xtreamPassword').value = config.password || '';
+            }
+
+            // Load saved channels
+            const savedChannels = localStorage.getItem('channels');
+            if (savedChannels) {
+                currentChannels = JSON.parse(savedChannels);
+                displayChannels(currentChannels);
+            }
+        };
+    </script>
+</body>
+
+</html>

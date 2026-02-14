@@ -18,6 +18,7 @@ out/
 .env.*.local
 .env.production
 .env.local.backup*
+key-store-values-temp.txt
 
 # Logs
 logs/
@@ -36,6 +37,10 @@ pids/
 .bot-memory/
 .cache/
 .temp/
+
+# Cochran AI task runner (runtime)
+apps/local-agent/.cochran-tasks-state.json
+apps/local-agent/.cochran-task-notification.json
 
 # IDE
 .vscode/

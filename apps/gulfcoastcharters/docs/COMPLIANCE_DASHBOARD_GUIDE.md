@@ -1,186 +1,90 @@
-# Compliance Dashboard Guide
+# Compliance Dashboard (No-BS)
 
-## Overview
-The Compliance Dashboard provides comprehensive fleet-wide document tracking, expiration monitoring, and regulatory compliance management. It includes PDF export functionality for Coast Guard inspections and audits.
+Fleet-wide document and expiration tracking for boats, with PDF export for inspections/audits. This doc reflects what’s in the repo and what you need to run it.
 
-## Features
+---
 
-### 1. Fleet-Wide Metrics
-- **Total Vessels**: Complete count of all boats in the fleet
-- **Compliant Vessels**: Vessels with 90%+ compliance rate
-- **Expiring Soon**: Documents expiring within 30 days
-- **Expired Documents**: Overdue documents requiring immediate attention
-- **Overall Compliance**: Fleet-wide compliance percentage
+## What’s in the repo
 
-### 2. Expiration Timeline
-- Visual timeline of upcoming expirations (next 90 days)
-- Color-coded urgency indicators:
-  - **Red**: Expired or expiring within 7 days (Critical)
-  - **Yellow**: Expiring within 30 days (Warning)
-  - **Blue**: Expiring within 90 days (Upcoming)
-- Sorted by urgency with most critical items first
+| Piece | Location | Notes |
+|-------|----------|--------|
+| **ComplianceDashboard** | `src/components/ComplianceDashboard.tsx` | Loads `boats` + `boat_documents` from Supabase; computes metrics and expiring list; renders ComplianceMetrics, ExpirationTimeline, VesselComplianceTable; Export PDF calls `compliance-report-pdf`. |
+| **ComplianceMetrics** | `src/components/compliance/ComplianceMetrics.tsx` | Cards: total vessels, compliant vessels, expiring soon, expired, overall compliance %. |
+| **ExpirationTimeline** | `src/components/compliance/ExpirationTimeline.tsx` | List of docs expiring in 90 days; color by urgency (red &lt;7d, yellow ≤30d, blue ≤90d). |
+| **VesselComplianceTable** | `src/components/compliance/VesselComplianceTable.tsx` | Per-vessel compliance %, doc counts; “View details” links to `/fleet/:id`. |
+| **compliance-report-pdf** | `supabase/functions/compliance-report-pdf/index.ts` | Accepts metrics + vessel list + expiring docs; returns `{ pdf: base64 }`. Uses pdf-lib. |
+| **DB migration** | `supabase/migrations/20260210_boats_boat_documents.sql` | Creates `boats`, `boat_documents`, RLS. |
 
-### 3. Vessel Compliance Table
-- Individual compliance status for each vessel
-- Document counts by status (compliant, expiring, expired)
-- Compliance percentage with visual progress bar
-- Quick view button to access vessel details
+---
 
-### 4. Regulatory Requirements Tracking
-- Standard Coast Guard requirements
-- USCG Documentation
-- Insurance Certificates
-- Safety Equipment Inspections
-- Fire Extinguisher Certifications
+## Database
 
-### 5. PDF Export for Audits
-- One-click export to professional PDF report
-- Includes all metrics and vessel status
-- Upcoming expirations list
-- Formatted for Coast Guard inspections
-- Timestamped and ready for submission
+Run the migration so the dashboard has data to read:
 
-## Usage
+- Apply `supabase/migrations/20260210_boats_boat_documents.sql`.
 
-### Accessing the Dashboard
-```typescript
+Tables:
+
+- **boats** – id, name, registration_number, created_at. Dashboard uses id, name, registration_number.
+- **boat_documents** – id, boat_id (FK boats), document_type, expiration_date, status, created_at. Compliance logic uses boat_id and expiration_date only (status is optional).
+
+Compliance logic in the dashboard:
+
+- **Compliant:** expiration_date &gt; 30 days from today.
+- **Expiring:** 0 ≤ days until expiration ≤ 30.
+- **Expired:** expiration_date in the past.
+- **Vessel compliance %:** (compliant + expiring) / total docs × 100 (per vessel).
+- **Compliant vessel:** vessel compliance ≥ 90%.
+- **Overall fleet %:** (vessels with ≥90% compliance) / total vessels × 100.
+
+---
+
+## Where the dashboard is mounted
+
+The dashboard is not wired in `App.tsx` in the snippet we saw. Mount it where you want (e.g. admin or fleet route), for example:
+
+```tsx
 import { ComplianceDashboard } from '@/components/ComplianceDashboard';
-
-// In your app
 <ComplianceDashboard />
 ```
 
-### Refreshing Data
-Click the "Refresh" button to reload the latest compliance data from the database.
+---
 
-### Exporting Reports
-1. Click "Export PDF" button
-2. Report generates with current fleet status
-3. PDF downloads automatically
-4. Use for Coast Guard inspections or internal audits
+## PDF export
 
-## Database Requirements
+- **Flow:** User clicks “Export PDF” → frontend calls `compliance-report-pdf` with current metrics, vessel list, and expiring documents → function returns base64 PDF → browser downloads.
+- **Deploy:** `supabase functions deploy compliance-report-pdf`.
+- **Dependencies:** pdf-lib via esm.sh; no extra env vars.
 
-The dashboard requires these Supabase tables:
+If export fails: confirm the function is deployed, CORS, and that the request body matches what the function expects (metrics, vessels, expiringDocuments, generatedDate).
 
-### boats table
-```sql
-- id (uuid)
-- name (text)
-- registration_number (text)
-- created_at (timestamp)
-```
+---
 
-### boat_documents table
-```sql
-- id (uuid)
-- boat_id (uuid, foreign key to boats)
-- document_type (text)
-- expiration_date (date)
-- status (text)
-- created_at (timestamp)
-```
+## Relation to other tables
 
-## Compliance Calculations
+- The app also has **vessels** (e.g. from `20260119_vessels.sql`) for charter/listings. **boats** here is for compliance only. You can keep boats and vessels in sync or treat boats as the compliance-specific list; the dashboard does not read from vessels.
+- Notifications (email/SMS for expirations) are not part of this component; add them via cron or your notification system if needed.
 
-### Vessel Compliance Percentage
-```
-Compliance % = (Compliant Docs + Expiring Docs) / Total Docs × 100
-```
+---
 
-### Document Status Categories
-- **Compliant**: Expiration date > 30 days away
-- **Expiring**: Expiration date within 30 days
-- **Expired**: Expiration date has passed
+## Checklist (e.g. for Coast Guard)
 
-### Overall Fleet Compliance
-```
-Fleet Compliance % = Vessels with 90%+ compliance / Total Vessels × 100
-```
+- All vessels in **boats** have documents in **boat_documents** as required.
+- USCG documentation, insurance, safety equipment, fire extinguisher, etc. are reflected as document_type rows with correct expiration_date.
+- No expired documents left unaddressed.
+- Export PDF and use for inspection/audit as needed.
 
-## Color Coding System
-
-### Compliance Levels
-- **Green (90-100%)**: Excellent - Fully compliant
-- **Yellow (70-89%)**: Good - Minor attention needed
-- **Red (0-69%)**: Needs Attention - Immediate action required
-
-### Urgency Indicators
-- **Red Dot**: Expired or critical (< 7 days)
-- **Yellow Dot**: Warning (8-30 days)
-- **Blue Dot**: Upcoming (31-90 days)
-
-## Best Practices
-
-### Regular Monitoring
-- Review dashboard weekly
-- Address expired documents immediately
-- Plan renewals 60 days in advance
-
-### Pre-Inspection Preparation
-1. Export PDF report 1 week before inspection
-2. Review all red/yellow items
-3. Update expired documents
-4. Ensure all vessels show 90%+ compliance
-
-### Document Management
-- Upload documents as soon as received
-- Set expiration dates accurately
-- Enable email notifications for upcoming expirations
-- Keep digital copies in Supabase storage
-
-## Integration with Other Systems
-
-### Fleet Management
-The dashboard integrates with the Fleet Management system to pull vessel and document data.
-
-### Notification System
-Connects to email/SMS reminder systems for expiration alerts.
-
-### Captain Dashboard
-Captains can view their assigned vessel's compliance status.
+---
 
 ## Troubleshooting
 
-### No Data Showing
-- Ensure boats are added to the `boats` table
-- Verify documents are uploaded to `boat_documents` table
-- Check Supabase connection
+| Issue | Check |
+|-------|--------|
+| No data | `boats` and `boat_documents` exist and have rows; RLS allows read. |
+| PDF export fails | Deploy `compliance-report-pdf`; check Supabase function logs; confirm response shape (pdf base64). |
+| Wrong percentages | Expiration dates and timezone; Refresh to recalc from current data. |
 
-### PDF Export Fails
-- Check that `compliance-report-pdf` edge function is deployed
-- Verify CORS headers are configured
-- Ensure browser allows downloads
+---
 
-### Incorrect Compliance Percentages
-- Verify expiration dates are set correctly
-- Check document status values
-- Refresh the dashboard data
-
-## Coast Guard Inspection Checklist
-
-✅ All vessels have current USCG documentation
-✅ Insurance certificates are valid and up-to-date
-✅ Safety equipment inspections completed
-✅ Fire extinguisher certifications current
-✅ No expired documents in fleet
-✅ PDF report generated and printed
-✅ Overall compliance > 90%
-
-## Support
-
-For issues or questions about the Compliance Dashboard:
-1. Check this guide first
-2. Review the BOAT_DOCUMENTATION_GUIDE.md
-3. Contact fleet management administrator
-4. Review Supabase logs for errors
-
-## Future Enhancements
-
-Potential additions:
-- Automated expiration email alerts
-- OCR integration for document scanning (see OCR_INTEGRATION_REMINDER.md)
-- Mobile app for on-site inspections
-- Integration with Coast Guard API for verification
-- Historical compliance tracking and trends
-- Predictive analytics for renewal planning
+**Last updated:** February 2026 (no-BS pass).  
+**See also:** `BOAT_DOCUMENTATION_GUIDE.md` if you have it; `COMPREHENSIVE_PLATFORM_GUIDE.md` (no-BS).

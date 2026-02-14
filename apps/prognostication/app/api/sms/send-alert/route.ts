@@ -6,8 +6,8 @@ export const runtime = 'nodejs';
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2024-12-18' as any, // Stripe types may be outdated
-    })
+    apiVersion: '2026-01-28.clover' as any, // Stripe types may be outdated
+  })
   : null;
 
 /**

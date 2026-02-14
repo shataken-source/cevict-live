@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cevict Picks Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --surface: #161922;
+      --surface2: #1e212b;
+      --border: #2a2e3d;
+      --text: #e6e9f0;
+      --text-muted: #8b90a4;
+      --accent: #00d4aa;
+      --accent-dim: #00a884;
+      --sport-nhl: #37b3e8;
+      --sport-nba: #f0b429;
+      --sport-ncaab: #8b5cf6;
+      --sport-ncaaf: #ef4444;
+      --value: #22c55e;
+      --premium: #f59e0b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+    .load-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    label.file-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    label.file-label:hover { background: var(--surface); border-color: var(--accent-dim); }
+    input[type="file"] { display: none; }
+    .file-name { font-size: 0.85rem; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+
+    .summary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .summary h2 { font-size: 1rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+    .summary .message { font-size: 1.1rem; font-weight: 600; color: var(--text); }
+    .summary .meta { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .summary .strategy { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.35rem; font-style: italic; }
+
+    .cards { display: flex; flex-direction: column; gap: 1rem; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: var(--border); }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 1rem 1.25rem;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    .sport-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+    }
+    .sport-NHL { background: rgba(55,179,232,0.2); color: var(--sport-nhl); }
+    .sport-NBA { background: rgba(240,180,41,0.2); color: var(--sport-nba); }
+    .sport-NCAAB { background: rgba(139,92,246,0.2); color: var(--sport-ncaab); }
+    .sport-NCAAF { background: rgba(239,68,68,0.2); color: var(--sport-ncaaf); }
+    .sport-NFL { background: rgba(34,197,94,0.2); color: #22c55e; }
+    .sport-MLB { background: rgba(248,113,113,0.2); color: #f87171; }
+    .sport-default { background: rgba(0,212,170,0.15); color: var(--accent); }
+
+    .league-section { margin-bottom: 1.5rem; }
+    .league-section h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .pick-type-badge {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+      margin-left: 0.25rem;
+    }
+    .pick-type-MONEYLINE { background: rgba(139,92,246,0.25); color: #a78bfa; }
+    .pick-type-SPREAD { background: rgba(34,197,94,0.25); color: #4ade80; }
+    .pick-type-TOTAL { background: rgba(59,130,246,0.25); color: #60a5fa; }
+    .pick-type-OVER { background: rgba(59,130,246,0.25); color: #60a5fa; }
+    .pick-type-UNDER { background: rgba(59,130,246,0.25); color: #60a5fa; }
+    .pick-type-default { background: var(--surface2); color: var(--text-muted); }
+
+    .matchup {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .matchup .at { font-weight: 400; color: var(--text-muted); margin: 0 0.25rem; }
+    .pick-line {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 0.35rem;
+    }
+    .pick-name { font-weight: 600; color: var(--accent); }
+    .pick-type { font-size: 0.8rem; color: var(--text-muted); }
+    .confidence { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--value); }
+    .odds-display { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--text-muted); }
+    .ev-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; background: rgba(34,197,94,0.15); color: var(--value); padding: 0.2rem 0.5rem; border-radius: 4px; }
+    .edge-badge { font-size: 0.8rem; color: var(--accent); }
+    .game-time { font-size: 0.8rem; color: var(--text-muted); }
+    .triple-align { font-size: 0.75rem; color: var(--premium); }
+
+    .card-body { padding: 1rem 1.25rem; }
+    .analysis {
+      font-size: 0.9rem;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .key-factors {
+      list-style: none;
+      margin-top: 0.75rem;
+    }
+    .key-factors li {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      padding: 0.2rem 0;
+      padding-left: 1rem;
+      position: relative;
+    }
+    .key-factors li::before { content: '•'; position: absolute; left: 0; color: var(--accent-dim); }
+
+    .score-pred { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--text-muted); }
+    .reasoning { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem; }
+    .reasoning-title { font-weight: 600; color: var(--text-muted); margin-bottom: 0.25rem; }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--text-muted);
+    }
+    .empty-state p { margin-top: 0.5rem; }
+    .error-state { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 1rem; color: #fca5a5; margin-bottom: 1rem; }
+
+    .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .filter-btn {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .filter-btn:hover, .filter-btn.active { border-color: var(--accent-dim); color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎯 Cevict Picks Viewer</h1>
+      <div class="load-row">
+        <label class="file-label" for="file-input">📂 Load JSON file</label>
+        <input type="file" id="file-input" accept=".json,.txt,application/json,text/plain" />
+        <span class="file-name" id="file-name">No file loaded</span>
+      </div>
+    </header>
+
+    <div id="error" class="error-state" style="display: none;"></div>
+    <div id="summary" class="summary" style="display: none;"></div>
+    <div id="filters" class="filters" style="display: none;"></div>
+    <div id="cards" class="cards"></div>
+    <div id="empty" class="empty-state">
+      <p><strong>Load a JSON file</strong> from your game probability picker (predictions or top-picks format).</p>
+      <p>Supports: <code>predictions-YYYY-MM-DD.json</code>, Top 10 / Cevict Flex JSON, and the same content in <code>.txt</code> files.</p>
+    </div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const fileNameEl = document.getElementById('file-name');
+    const errorEl = document.getElementById('error');
+    const summaryEl = document.getElementById('summary');
+    const filtersEl = document.getElementById('filters');
+    const cardsEl = document.getElementById('cards');
+    const emptyEl = document.getElementById('empty');
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.style.display = 'block';
+      summaryEl.style.display = 'none';
+      filtersEl.style.display = 'none';
+      cardsEl.innerHTML = '';
+      emptyEl.style.display = 'none';
+    }
+
+    function hideError() {
+      errorEl.style.display = 'none';
+    }
+
+    function formatGameTime(iso) {
+      if (!iso) return '';
+      try {
+        const d = new Date(iso);
+        return d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+      } catch (_) { return iso; }
+    }
+
+    function formatOdds(n) {
+      if (n == null) return '';
+      const x = Number(n);
+      if (x >= 100) return '+' + x;
+      return String(x);
+    }
+
+    function sportClass(sport) {
+      if (!sport) return 'sport-default';
+      const s = (sport + '').toUpperCase();
+      if (['NHL','NBA','NCAAB','NCAAF','NFL','MLB'].includes(s)) return 'sport-' + s;
+      return 'sport-default';
+    }
+
+    function pickTypeClass(pickType) {
+      if (!pickType) return 'pick-type-default';
+      const t = (pickType + '').toUpperCase();
+      if (['MONEYLINE','SPREAD','TOTAL','OVER','UNDER'].includes(t)) return 'pick-type-' + t;
+      return 'pick-type-default';
+    }
+
+    function pickTypeLabel(pickType) {
+      if (!pickType) return '';
+      const t = (pickType + '').toUpperCase();
+      if (t === 'MONEYLINE') return 'Moneyline';
+      if (t === 'SPREAD') return 'Spread';
+      if (t === 'TOTAL' || t === 'OVER' || t === 'UNDER') return 'Total';
+      return (pickType + '').replace(/_/g, ' ');
+    }
+
+    function renderTopPicks(data) {
+      const rawPicks = data.picks || [];
+      const message = data.message || 'Top picks';
+      const total = data.total_games != null ? data.total_games : (data.count || rawPicks.length);
+      const strategy = data.strategy || '';
+      const meta = [];
+      if (data.count != null) meta.push(`${data.count} picks`);
+      if (data.premium_count != null) meta.push(`${data.premium_count} premium`);
+      if (data.value_bets_count != null) meta.push(`${data.value_bets_count} value bets`);
+
+      summaryEl.innerHTML = `
+        <h2>Summary</h2>
+        <div class="message">${escapeHtml(message)}</div>
+        <div class="meta">${meta.join(' · ')}${total ? ` · ${total} total games` : ''}</div>
+        ${strategy ? `<div class="strategy">${escapeHtml(strategy)}</div>` : ''}
+      `;
+      summaryEl.style.display = 'block';
+
+      // Group by league (sport), then sort each group by edge (highest first)
+      const leagueOrder = ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAF', 'NCAAB'];
+      const byLeague = {};
+      rawPicks.forEach(p => {
+        const sport = (p.sport || '').toUpperCase() || 'OTHER';
+        if (!byLeague[sport]) byLeague[sport] = [];
+        byLeague[sport].push(p);
+      });
+      leagueOrder.forEach(league => {
+        if (byLeague[league]) {
+          byLeague[league].sort((a, b) => {
+            const edgeA = a.value_bet_edge != null ? Number(a.value_bet_edge) : 0;
+            const edgeB = b.value_bet_edge != null ? Number(b.value_bet_edge) : 0;
+            return edgeB - edgeA;
+          });
+        }
+      });
+      if (byLeague['OTHER']) {
+        byLeague['OTHER'].sort((a, b) => {
+          const edgeA = a.value_bet_edge != null ? Number(a.value_bet_edge) : 0;
+          const edgeB = b.value_bet_edge != null ? Number(b.value_bet_edge) : 0;
+          return edgeB - edgeA;
+        });
+      }
+
+      const sortedLeagues = leagueOrder.filter(l => byLeague[l] && byLeague[l].length).concat(
+        Object.keys(byLeague).filter(l => !leagueOrder.includes(l))
+      );
+
+      let allHtml = '';
+      sortedLeagues.forEach(league => {
+        const picks = byLeague[league];
+        const leagueLabel = league === 'OTHER' ? 'Other' : league;
+        allHtml += `<div class="league-section" data-sport="${league}"><h3>${escapeHtml(leagueLabel)}</h3>`;
+
+        picks.forEach((p) => {
+          const sport = (p.sport || '').toUpperCase() || '—';
+          const mc = p.mc_predicted_score;
+          const scoreStr = mc ? `${mc.home}–${mc.away}` : '';
+          const ev = p.value_bet_ev != null ? `$${Math.round(p.value_bet_ev)} EV` : '';
+          const edge = p.value_bet_edge != null ? `${p.value_bet_edge.toFixed(1)}% edge` : '';
+          const confidence = p.confidence != null ? `${p.confidence}%` : '';
+          const odds = p.odds != null ? formatOdds(p.odds) : '';
+          const line = p.recommended_line != null ? ` (${p.recommended_line > 0 ? '+' : ''}${p.recommended_line})` : '';
+          const pickType = p.pick_type || '';
+
+          allHtml += `
+          <div class="card" data-sport="${sport}">
+            <div class="card-header">
+              <div>
+                <span class="sport-badge ${sportClass(p.sport)}">${sport || '—'}</span>
+                ${pickType ? `<span class="pick-type-badge ${pickTypeClass(pickType)}">${escapeHtml(pickTypeLabel(pickType))}</span>` : ''}
+                <div class="matchup">${escapeHtml(p.away_team || 'Away')} <span class="at">@</span> ${escapeHtml(p.home_team || 'Home')}</div>
+                <div class="pick-line">
+                  <span class="pick-name">Pick: ${escapeHtml(p.pick || '—')}</span>
+                  <span class="pick-type">${escapeHtml((pickType || '').replace('_',' '))}${line}</span>
+                  ${confidence ? `<span class="confidence">${confidence}</span>` : ''}
+                  ${odds ? `<span class="odds-display">${odds}</span>` : ''}
+                  ${ev ? `<span class="ev-badge">${ev}</span>` : ''}
+                  ${edge ? `<span class="edge-badge">${edge}</span>` : ''}
+                  ${p.triple_align ? '<span class="triple-align">✓ Triple align</span>' : ''}
+                </div>
+                ${p.game_time ? `<div class="game-time">${formatGameTime(p.game_time)}</div>` : ''}
+              </div>
+            </div>
+            <div class="card-body">
+              ${p.analysis ? `<div class="analysis">${escapeHtml(p.analysis)}</div>` : ''}
+              ${scoreStr ? `<div class="score-pred">Predicted score: ${scoreStr}</div>` : ''}
+              ${(Array.isArray(p.reasoning) && p.reasoning.length) ? `
+                <div class="reasoning">
+                  <div class="reasoning-title">Reasoning</div>
+                  <ul class="key-factors">${p.reasoning.slice(0,5).map(r => '<li>' + escapeHtml(String(r)) + '</li>').join('')}</ul>
+                </div>
+              ` : ''}
+            </div>
+          </div>`;
+        });
+        allHtml += '</div>';
+      });
+
+      cardsEl.innerHTML = allHtml;
+      emptyEl.style.display = 'none';
+
+      const sports = sortedLeagues;
+      if (sports.length > 1) {
+        filtersEl.innerHTML = '<button class="filter-btn active" data-sport="">All</button>' +
+          sports.map(s => `<button class="filter-btn" data-sport="${s}">${s === 'OTHER' ? 'Other' : s}</button>`).join('');
+        filtersEl.style.display = 'flex';
+        filtersEl.querySelectorAll('.filter-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            filtersEl.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const sport = btn.dataset.sport;
+            cardsEl.querySelectorAll('.league-section').forEach(section => {
+              section.style.display = !sport || section.dataset.sport === sport ? 'block' : 'none';
+            });
+          });
+        });
+      } else {
+        filtersEl.style.display = 'none';
+      }
+    }
+
+    function renderPredictionsArray(arr) {
+      summaryEl.innerHTML = `
+        <h2>Summary</h2>
+        <div class="message">${arr.length} game predictions</div>
+        <div class="meta">Loaded from predictions file</div>
+      `;
+      summaryEl.style.display = 'block';
+
+      const pickCards = arr.map((p, i) => {
+        const winner = p.winner || '—';
+        const conf = p.confidence != null ? Math.round(p.confidence * 100) + '%' : '';
+        const score = p.score ? `${p.score.home}–${p.score.away}` : '';
+        const edge = p.edge != null ? `${p.edge.toFixed(1)}% edge` : '';
+        const factors = p.keyFactors || [];
+
+        return `
+          <div class="card" data-sport="">
+            <div class="card-header">
+              <div>
+                <div class="matchup">Prediction #${i + 1}</div>
+                <div class="pick-line">
+                  <span class="pick-name">${escapeHtml(winner)}</span>
+                  ${conf ? `<span class="confidence">${conf}</span>` : ''}
+                  ${edge ? `<span class="edge-badge">${edge}</span>` : ''}
+                </div>
+                ${score ? `<div class="score-pred">Score: ${score}</div>` : ''}
+              </div>
+            </div>
+            <div class="card-body">
+              ${factors.length ? `<ul class="key-factors">${factors.map(f => '<li>' + escapeHtml(f) + '</li>').join('')}</ul>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      cardsEl.innerHTML = pickCards;
+      emptyEl.style.display = 'none';
+      filtersEl.style.display = 'none';
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    function detectAndRender(data) {
+      hideError();
+      if (Array.isArray(data)) {
+        renderPredictionsArray(data);
+        return;
+      }
+      if (data && typeof data.picks === 'object' && Array.isArray(data.picks)) {
+        renderTopPicks(data);
+        return;
+      }
+      showError('Unknown JSON format. Expected an array of predictions or an object with a "picks" array.');
+    }
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        fileNameEl.textContent = 'No file loaded';
+        emptyEl.style.display = 'block';
+        cardsEl.innerHTML = '';
+        summaryEl.style.display = 'none';
+        filtersEl.style.display = 'none';
+        return;
+      }
+      fileNameEl.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          detectAndRender(data);
+        } catch (e) {
+          showError('Invalid JSON: ' + e.message);
+        }
+      };
+      reader.onerror = () => showError('Could not read file.');
+      reader.readAsText(file, 'UTF-8');
+    });
+  </script>
+</body>
+</html>

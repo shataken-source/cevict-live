@@ -1,318 +1,238 @@
-# Gulf Coast Charters (GCC)
+# Gulf Coast Charters – Premium Charter Booking Platform
 
-**Production URL:** https://gulfcoastcharters.vercel.app  
-**Port:** 3000 (dev)  
-**Framework:** Next.js 14 (Pages Router)  
-**Database:** Supabase (PostgreSQL)  
-**Deployment:** Vercel
+**The complete solution for charter fishing and water experiences on the Gulf Coast**
 
----
-
-## Overview
-
-Gulf Coast Charters is a comprehensive charter fishing booking platform with gamification, weather alerts, real-time GPS tracking, and AI-powered concierge services. The platform connects customers with charter captains, manages bookings, tracks catches, and provides a complete fishing experience ecosystem.
+**Production:** https://gulfcoastcharters.vercel.app  
+**Dev:** http://localhost:3009 | **Framework:** Next.js 14 (Pages Router) | **Database:** Supabase (PostgreSQL) | **Deploy:** Vercel
 
 ---
 
-## What This Project Does
+## Project overview
 
-### Core Features
+Gulf Coast Charters is a professional charter booking platform (fishing, dolphin tours, sunset cruises, party boats, kayak, intracoastal) with features competitors don’t have:
 
-1. **Charter Booking System**
-   - Captain directory with profiles and ratings
-   - Vessel listings with availability
-   - Multi-day trip booking
-   - Stripe payment integration
-   - Booking management dashboard
+### Core features
 
-2. **AI Concierge Systems**
-   - **Finn Concierge**: Personal vacation concierge with memory system
-     - Remembers user preferences, anniversaries, birthdays
-     - Proactive booking reminders
-     - Weather-based activity suggestions
-     - Multi-step booking flow assistance
-   - **Fishy Learning Chatbot**: Public AI assistant
-     - Context-aware responses (captain/customer)
-     - Conversation learning and pattern recognition
-     - Intent detection and sentiment analysis
+- Real-time weather alerts (NOAA buoy, Open-Meteo)
+- Community gamification & points system
+- GPS location sharing with privacy controls
+- Fishing tournaments and live leaderboards
+- Real-time messaging
+- Secure Stripe payments (85% to captains)
+- USCG license verification
+- PWA mobile app (installable, offline, push)
+- AI concierge (Finn) and chatbot (Fishy)
+- Admin panel with cron and scraper management
 
-3. **Weather & Marine Data**
-   - Real-time weather conditions (Open-Meteo)
-   - NOAA buoy data and marine forecasts
-   - Weather alerts and notifications
-   - Tide charts and water temperature
+### Business model
 
-4. **Gamification System**
-   - Points and rewards for bookings, reviews, catches
-   - Achievement badges and leaderboards
-   - Avatar customization system
-   - Loyalty program integration
-
-5. **Catch Logging & Verification**
-   - Photo upload with GPS location
-   - AI fish species recognition (planned)
-   - Catch history and statistics
-   - Social sharing of catches
-
-6. **SMS & Communication**
-   - Booking reminders (Sinch/Twilio)
-   - SMS notifications for weather alerts
-   - SMS campaigns for marketing
-   - Phone verification system
-
-7. **Admin Tools**
-   - Captain application management
-   - Email campaign system (Resend)
-   - Scraper for boat listings
-   - GPS tracking dashboard
-   - User management and analytics
-
-8. **Community Features**
-   - Community feed and activity
-   - Fishing buddy finder
-   - Catch of the day highlights
-   - Social sharing system
+- **15% platform commission** (85% to captains)
+- Revenue: subscriptions, tournament fees, premium features (e.g. PRO/CAPTAIN media tiers)
+- Target: $3M–$53M revenue potential (Years 1–5)
 
 ---
 
-## Tools & Technologies
+## Project structure
 
-### Frontend
-- **Next.js 14** (Pages Router)
-- **React 18** with TypeScript
-- **Tailwind CSS** for styling
-- **Radix UI** components
-- **Lucide React** icons
-- **Leaflet** for maps/GPS tracking
-
-### Backend
-- **Supabase** (PostgreSQL database, Auth, Storage)
-- **Supabase Edge Functions** (Deno) for serverless functions
-- **Next.js API Routes** for server-side logic
-
-### Services & Integrations
-- **Stripe** - Payment processing
-- **Resend** - Email campaigns
-- **Sinch/Twilio** - SMS notifications
-- **Open-Meteo** - Weather data
-- **NOAA** - Marine data and alerts
-- **AI Gateway** - AI chatbot responses (Claude/GPT)
-- **Google Custom Search** - Search functionality
-- **Amazon Affiliate** - Gear recommendations
-
-### Data Storage
-- **Supabase PostgreSQL** - Primary database
-- **IndexedDB** - Offline inspection storage (encrypted)
-- **Supabase Storage** - File uploads (photos, documents)
-
----
-
-## Manual Workflows (Automation Opportunities)
-
-### 1. **Booking Management**
-- **Current**: Manual confirmation emails, reminder scheduling
-- **Automation Opportunity**: Auto-send confirmation emails, schedule SMS reminders, update booking status based on payment
-
-### 2. **Weather Alerts**
-- **Current**: Manual weather monitoring and alert sending
-- **Automation Opportunity**: Automated weather monitoring, threshold-based alerts, proactive cancellation suggestions
-
-### 3. **Captain Onboarding**
-- **Current**: Manual review of captain applications, email communication
-- **Automation Opportunity**: Auto-approve based on criteria, automated welcome emails, document collection workflow
-
-### 4. **Scraper Reports**
-- **Current**: Manual review of incomplete boat listings
-- **Automation Opportunity**: Auto-flag missing data, send follow-up emails to sources, schedule re-scraping
-
-### 5. **Email Campaigns**
-- **Current**: Manual campaign creation and sending
-- **Automation Opportunity**: Scheduled campaigns, segment-based automation, A/B testing workflows
-
-### 6. **Catch Verification**
-- **Current**: Manual review of catch photos and species identification
-- **Automation Opportunity**: Auto-verify catches with AI, award points automatically, generate social posts
-
-### 7. **Points & Rewards**
-- **Current**: Manual point calculation and reward distribution
-- **Automation Opportunity**: Auto-calculate points on actions, trigger reward emails, update leaderboards
-
-### 8. **Customer Support**
-- **Current**: Manual response to customer inquiries
-- **Automation Opportunity**: Auto-respond to common questions, route tickets, escalate based on keywords
-
-### 9. **Review Management**
-- **Current**: Manual review moderation and response
-- **Automation Opportunity**: Auto-publish verified reviews, send follow-up emails, flag suspicious reviews
-
-### 10. **Inventory Management**
-- **Current**: Manual tracking of boat availability
-- **Automation Opportunity**: Auto-update availability based on bookings, sync with external calendars
-
----
-
-## Quick Start
-
-```bash
-cd apps/gulfcoastcharters
-npm install
-npm run dev
-# Runs on http://localhost:3000
+```
+apps/gulfcoastcharters/
+├── pages/              # Next.js pages & API routes
+│   ├── api/            # REST APIs (bookings, weather, community, etc.)
+│   ├── index.tsx       # Homepage
+│   ├── search.tsx      # Charter search
+│   ├── weather.tsx     # Weather
+│   ├── dashboard.tsx    # My trips
+│   └── admin/          # Admin pages
+├── src/
+│   ├── components/     # React components (UI, captain, community, mobile)
+│   ├── lib/            # Utilities (supabase, media-tiers, badges, etc.)
+│   ├── hooks/          # React hooks
+│   └── pages/          # Additional page components
+├── supabase/
+│   ├── migrations/     # SQL migrations
+│   └── functions/      # Edge Functions (Deno)
+├── public/             # Static assets, manifest, sw.js, offline.html
+└── docs/               # Documentation
 ```
 
 ---
 
-## Key Routes
+## Tech stack
 
-### Public Pages
-- `/` - Homepage
-- `/captains` - Captain directory
-- `/captains/[id]` - Captain profile
-- `/vessels` - Vessel listings
-- `/vessels/[id]` - Vessel details
-- `/gear` - Gear recommendations
-- `/weather` - Weather dashboard
-- `/community` - Community feed
-- `/bookings` - User bookings
-- `/bookings/[id]` - Booking details
+**Frontend:** Next.js 14, React 18, TypeScript, Tailwind CSS, Radix UI, Lucide, Leaflet, Framer Motion  
 
-### Admin Pages
-- `/admin` - Admin dashboard
-- `/admin/campaigns` - Email campaigns
-- `/admin/scraper` - Boat scraper
-- `/admin/scraper-reports` - Scraper reports
-- `/admin/gps` - GPS tracking
-- `/admin/sms-campaigns` - SMS campaigns
+**Backend:** Supabase (PostgreSQL, Auth, Storage), Supabase Edge Functions (Deno), Next.js API routes  
+
+**Integrations:** Stripe, Resend, Sinch/Twilio, Open-Meteo, NOAA, AI Gateway (Claude/GPT), Google Custom Search, Amazon Affiliate  
 
 ---
 
-## API Routes
+## Setup
 
-Located in `pages/api/`:
+### Prerequisites
 
-### Admin APIs
-- `/api/admin/campaigns` - Email campaign management
-- `/api/admin/campaigns/[id]/send` - Send campaign
-- `/api/admin/scraper/run` - Run boat scraper
-- `/api/admin/scraper/reports` - Get scraper reports
-- `/api/admin/users` - User management
+- Node.js 18+
+- npm 9+
+- Supabase CLI (for migrations/functions)
+- Stripe account
 
-### Booking APIs
-- `/api/bookings/track` - Track bookings for anniversary detection
-- `/api/bookings/create` - Create booking from Finn concierge
+### Steps
 
-### Weather & Activities
-- `/api/weather/current` - Current weather conditions
-- `/api/activities/local` - Local activities
+```bash
+cd apps/gulfcoastcharters
+npm install
+```
 
-### Other APIs
-- `/api/boats` - Boat listings
-- `/api/gps/latest` - Latest GPS tracking data
-- `/api/gps/push` - Push GPS location
-- `/api/send-test-email` - Test email sending
+Copy `.env.example` to `.env.local` and set:
 
----
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
 
-## Supabase Edge Functions
+# Stripe
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=...
+STRIPE_SECRET_KEY=...
+STRIPE_WEBHOOK_SECRET=...
 
-Located in `supabase/functions/`:
+# Email (Resend)
+RESEND_API_KEY=...
+RESEND_FROM_EMAIL=...
 
-- `fishy-ai-assistant` - AI chatbot with learning
-- `weather-api` - Weather data aggregation
-- `weather-alerts` - NWS alert fetching
-- `noaa-buoy-data` - Buoy data retrieval
-- `stripe-checkout` - Payment processing
-- `stripe-webhook` - Payment webhooks
-- `sms-booking-reminders` - Booking reminders
-- `sms-campaign-manager` - SMS campaigns
-- `twilio-sms-service` - SMS notifications
-- `booking-reminder-scheduler` - Reminder scheduling
-- `points-rewards-system` - Points calculation
-- `captain-weather-alerts` - Captain alerts
-- `fishing-buddy-finder` - Buddy matching
-- `catch-of-the-day` - Daily highlights
+# SMS (Sinch/Twilio)
+SINCH_API_TOKEN=...
+SINCH_SERVICE_PLAN_ID=...
+# or TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN
 
----
+# AI (Fishy/Finn)
+GATEWAY_API_KEY=...
+# OPENAI_API_KEY=...
 
-## Environment Variables
+# Admin
+GCC_ADMIN_EMAILS=...
+# CRON_SECRET=...   # For cron routes (review-requests, weather/booking-alerts)
+```
 
-### Required
-- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
-- `SUPABASE_SERVICE_ROLE_KEY` - Service role key (admin)
+```bash
+# Link Supabase (if using CLI)
+supabase link --project-ref YOUR_REF
+supabase db push   # or run migrations manually
 
-### Payment
-- `STRIPE_SECRET_KEY` - Stripe secret key
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Stripe publishable key
+# Run dev server
+npm run dev
+```
 
-### Email
-- `RESEND_API_KEY` - Resend API key
-- `RESEND_FROM_EMAIL` - From email address
-- `RESEND_REPLY_TO` - Reply-to email
-
-### SMS
-- `SINCH_API_TOKEN` - Sinch API token
-- `SINCH_SERVICE_PLAN_ID` - Sinch service plan
-- `SINCH_FROM` - Sinch from number
-- `TWILIO_ACCOUNT_SID` - Twilio account SID (optional)
-- `TWILIO_AUTH_TOKEN` - Twilio auth token (optional)
-
-### AI Services
-- `GATEWAY_API_KEY` - AI Gateway API key (for chatbots)
-- `OPENAI_API_KEY` - OpenAI API key (optional)
-
-### Admin
-- `GCC_ADMIN_EMAILS` - Comma-separated admin emails
-- `GCC_ADMIN_KEY` - Server-to-server admin key
-
-### Other
-- `NEXT_PUBLIC_GOOGLE_ADS_CLIENT_ID` - Google Ads
-- `NEXT_PUBLIC_AMAZON_AFFILIATE_TAG` - Amazon affiliate
-- `GOOGLE_CUSTOM_SEARCH_API_KEY` - Google Search
-- `GOOGLE_CUSTOM_SEARCH_ENGINE_ID` - Search engine ID
+Visit http://localhost:3009
 
 ---
 
-## Database
+## Key routes
 
-### Key Tables
-- `vessels` - Boat/charter listings
-- `captains` - Captain profiles
-- `bookings` - Booking records
-- `catches` - Catch logs
-- `points_transactions` - Points history
-- `fishy_conversations` - Chatbot learning data
-- `fishy_learning_patterns` - AI patterns
-- `sms_campaigns` - SMS campaigns
-- `email_campaigns` - Email campaigns
-
-See `supabase/migrations/` for complete schema.
-
----
-
-## Deployment
-
-- **Platform**: Vercel
-- **Build Command**: `npm run build`
-- **Output Directory**: `.next`
-- **Node Version**: >=20.0.0
-
-Configuration in `vercel.json` includes security headers.
+| Purpose        | Path |
+|----------------|------|
+| Home           | `/` |
+| Search charters| `/search` |
+| Weather        | `/weather` |
+| My trips       | `/dashboard` |
+| Community      | `/community` |
+| Captains       | `/captains`, `/captains/[id]` |
+| Vessels        | `/vessels`, `/vessels/[id]` |
+| Bookings       | `/bookings`, `/bookings/[id]` |
+| Admin          | `/admin`, `/admin/campaigns`, `/admin/scraper`, `/admin/gps`, `/admin/sms-campaigns` |
 
 ---
 
-## Development Notes
+## Database (high level)
 
-- TypeScript config excludes `supabase/` directory (Deno edge functions)
-- Uses Pages Router (not App Router)
-- Offline inspection storage uses encrypted IndexedDB
-- AI systems use singleton pattern for memory management
+**Core:** `bookings`, `captains`, `charters`/`vessels`, `reviews`, `users`/profiles  
+
+**Features:** `weather_alerts`, `shared_users` (points/tier), `tournaments`, `messages`, `notifications`, `activity_feed`, `booking_trip_photos`, `captain_subscriptions`  
+
+**Security:** RLS enabled, PostGIS for geo where used. See `supabase/migrations/` for schema.
+
+---
+
+## Deployment (Vercel)
+
+- Build: `npm run build` | Output: `.next` | Node >= 20  
+- Set all env vars in Vercel. Supabase and Edge Functions are separate (Supabase host + CLI for functions).
+
+---
+
+## Features deep dive
+
+- **Weather:** NOAA buoy + Open-Meteo, alerts, captain/customer notifications.  
+- **Gamification:** Points, badges, loyalty tiers (bronze→platinum), leaderboards.  
+- **Messaging:** Direct and group messaging; read receipts.  
+- **Tournaments:** Public/private, entry fees, leaderboards, photo verification.  
+- **Location:** GPS sharing with privacy modes; Mapbox/Leaflet.  
+- **Payments:** Stripe Connect; 85% captain payout; refunds.  
+- **PWA:** Manifest, service worker (gcc-v1.0.0), install prompt, offline fallback, push.  
+- **Media:** Photos free (tier limits); video PRO/CAPTAIN. See `docs/PWA_MEDIA_STRATEGY_SPEC.md`.
+
+---
+
+## Security
+
+- Auth: Supabase Auth (email, Google, etc.), JWT, RLS.  
+- Payments: Stripe (PCI DSS); no card data stored.  
+- HTTPS, env for secrets, parameterized queries, React escaping.  
+- USCG: manual verification, document upload, verified badge.
+
+---
+
+## Admin
+
+`/admin` (admin role): cron-style jobs, user moderation, captain verification, revenue analytics, scraper, GPS dashboard, SMS/email campaigns.
+
+---
+
+## Roadmap (summary)
+
+- **Phase 1 (MVP):** Booking, payments, weather, basic gamification ✅  
+- **Phase 2:** Tournaments, messaging, PWA, captain analytics  
+- **Phase 3:** AI fish ID, marketplace, corporate bookings, partner API  
+
+---
+
+## Business metrics (targets)
+
+- Year 1: $3M → Year 5: $53M  
+- Revenue: commissions, Captain Pro ($49/mo), customer premium ($9/mo), tournament fees, affiliate, ads, courses, corporate, insurance referrals.
+
+---
+
+## Quick start checklist
+
+- [ ] Clone repo, `cd apps/gulfcoastcharters`, `npm install`  
+- [ ] Copy `.env.example` → `.env.local`, fill keys  
+- [ ] Supabase: link project, push migrations  
+- [ ] Deploy Edge Functions (optional): `supabase functions deploy ...`  
+- [ ] `npm run dev`, test booking/weather/payments  
+- [ ] Deploy to Vercel, set env, configure domain  
 
 ---
 
 ## Documentation
 
-- `docs/AUDIT_REPORT.md` - System audit
-- `docs/DEEP_AUDIT_SUMMARY.md` - Audit summary
-- `FEATURES_VERIFICATION_COMPLETE.md` - Feature status
-- `PRODUCTION_READY_SUMMARY.md` - Deployment guide
+- `docs/PWA_MEDIA_STRATEGY_SPEC.md` – PWA & media tiers (photos free, video premium)  
+- `docs/PWA_AND_PHOTO_SHARING_DEEP_DIVE.md` – PWA and photo sharing from the boat  
+- `docs/FUZZY_FEATURES_STATUS.md` – OCR, session isolation, USCG, GPS, etc.  
+- `docs/GCC_CODEBASE_LOCATIONS.md` – Where GCC code lives (cevict-live, backups, etc.)  
+- `supabase/migrations/` – Database schema
+
+---
+
+## Support
+
+**Business:** jason@gulfcoastcharters.com  
+**Legal:** Navid  
+
+**Technical:** See `/docs` and implementation guides.
+
+---
+
+**Proprietary – © 2025 Gulf Coast Charters**
+
+Built for Gulf Coast captains and anglers. Tight lines.

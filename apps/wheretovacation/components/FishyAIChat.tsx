@@ -15,9 +15,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-// Using native HTML elements instead of shadcn components
 import { X, Send, Minimize2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase-client';
+import { t } from '@/lib/translations';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -27,21 +27,31 @@ interface Message {
 interface FishyAIChatProps {
   userType?: 'customer' | 'guest';
   context?: { page?: string; [key: string]: any };
+  language?: string;
 }
 
 /**
  * Fishy AI Chat Widget
  * Floating chat interface with AI assistant
  */
-export default function FishyAIChat({ userType = 'customer', context }: FishyAIChatProps) {
+export default function FishyAIChat({ userType = 'customer', context, language = 'en' }: FishyAIChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: "Ahoy! I'm Fishy, your AI guide for Where To Vacation. How can I help you plan your perfect trip? 🏖️" }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [sessionId] = useState(() =>
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `fishy-${Date.now()}`
+  );
+
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([{ role: 'assistant', content: t(language, 'fishy.greeting') }]);
+    }
+  }, [language]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -65,19 +75,40 @@ export default function FishyAIChat({ userType = 'customer', context }: FishyAIC
         throw new Error('Supabase client not configured');
       }
 
-      // Call Fishy AI edge function
+      // Call Fishy AI edge function (pass language so AI responds in user's language)
       const { data, error } = await supabase.functions.invoke('fishy-ai-assistant', {
         body: { 
           message: userMessage, 
           userType, 
           context,
+          preferred_language: language,
           conversationHistory: messages.slice(-6) // Last 6 messages for context
         }
       });
 
       if (error) throw error;
 
-      setMessages(prev => [...prev, { role: 'assistant', content: data.message }]);
+      const assistantMessage = data.message as string;
+      setMessages(prev => [...prev, { role: 'assistant', content: assistantMessage }]);
+
+      // Log to backend for shared memory
+      try {
+        await fetch('/api/chat/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            bot: 'fishy',
+            platform: 'wtv',
+            session_id: sessionId,
+            message: userMessage,
+            response: assistantMessage,
+            metadata: { userType, context },
+          }),
+        });
+      } catch {
+        // ignore
+      }
     } catch (error) {
       console.error('Fishy AI error:', error);
       setMessages(prev => [...prev, { 
@@ -95,7 +126,7 @@ export default function FishyAIChat({ userType = 'customer', context }: FishyAIC
       <button
         onClick={() => setIsOpen(true)}
         className="fixed bottom-4 right-4 md:bottom-6 md:right-6 rounded-full w-14 h-14 md:w-16 md:h-16 shadow-2xl bg-blue-500 hover:bg-blue-600 z-50 flex items-center justify-center"
-        aria-label="Open Fishy AI Chat"
+        aria-label={t(language, 'fishy.openLabel')}
       >
         <span className="text-2xl">🐟</span>
       </button>
@@ -171,7 +202,7 @@ export default function FishyAIChat({ userType = 'customer', context }: FishyAIC
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                placeholder="Ask Fishy anything..."
+                placeholder={t(language, 'fishy.placeholder')}
                 disabled={loading}
                 className="flex-1 text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/supabase'
+import { getServerUser, getSupabaseAdminClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,6 +14,15 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    
+    // Require authenticated user so we can associate the package
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
 
     const admin = getSupabaseAdminClient()
     if (!admin) {
@@ -23,19 +32,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Save package to database
-    // Note: In production, you'd have a vacation_packages table
-    // For now, we'll return success and the package can be stored in user's session/localStorage
-    const packageData = {
-      name,
-      items,
-      pricing,
-      created_at: new Date().toISOString(),
+    // Save package to database (vacation_packages table)
+    const subtotal = Number(pricing?.subtotal ?? 0)
+    const discount = Number(pricing?.discount ?? 0)
+    const total = Number(pricing?.total ?? subtotal - discount)
+
+    const { data, error } = await admin
+      .from('vacation_packages')
+      .insert({
+        user_id: user.id,
+        name,
+        description: null,
+        items,
+        subtotal,
+        discount,
+        total,
+        status: 'saved',
+      })
+      .select('id, name, subtotal, discount, total, status, created_at')
+      .maybeSingle()
+
+    if (error) {
+      console.error('[packages/create] Insert error:', error.message)
+      return NextResponse.json(
+        { error: 'Failed to save package' },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
       success: true,
-      package: packageData,
+      package: data,
       message: 'Package saved successfully. You can now proceed to booking.',
     })
   } catch (error: any) {

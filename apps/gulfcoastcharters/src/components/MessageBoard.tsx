@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useUser } from '@/contexts/UserContext';
 import { Send, Reply, Anchor, Waves, Coins } from 'lucide-react';
 import { initialTopics } from '@/data/messageBoardTopics';
 import { supabase } from '@/lib/supabase';
@@ -12,8 +13,8 @@ import UserBadges from './UserBadges';
 import { getUserPoints } from '@/lib/avatar-helpers';
 
 export default function MessageBoard() {
+  const { user } = useUser();
   const { toast } = useToast();
-  const [user, setUser] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [newTitle, setNewTitle] = useState('');
   const [newContent, setNewContent] = useState('');
@@ -22,40 +23,20 @@ export default function MessageBoard() {
   const [userPoints, setUserPoints] = useState<number>(0);
 
   useEffect(() => {
-    // Get current user from Supabase
-    supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
-      setUser(currentUser);
-      if (currentUser) {
-        loadUserPoints(currentUser.id);
-      }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-      if (session?.user) {
-        loadUserPoints(session.user.id);
-      } else {
-        setUserPoints(0);
-      }
-    });
-
     const stored = localStorage.getItem('messageBoard');
     if (!stored) localStorage.setItem('messageBoard', JSON.stringify(initialTopics));
     loadMessages();
-
-    // Refresh points periodically (every 3 seconds) to catch updates
-    const pointsInterval = setInterval(() => {
-      if (user?.id) {
-        loadUserPoints(user.id);
-      }
-    }, 3000);
-
-    return () => {
-      subscription.unsubscribe();
-      clearInterval(pointsInterval);
-    };
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setUserPoints(0);
+      return;
+    }
+    loadUserPoints(user.id);
+    const pointsInterval = setInterval(() => loadUserPoints(user.id), 3000);
+    return () => clearInterval(pointsInterval);
+  }, [user?.id]);
 
   const loadUserPoints = async (userId: string) => {
     const points = await getUserPoints(userId);
@@ -83,7 +64,7 @@ export default function MessageBoard() {
         id: postId, 
         title: newTitle, 
         content: newContent, 
-        author: user.user_metadata?.full_name || user.email || 'Anonymous',
+        author: user.name || user.email || 'Anonymous',
         userId: user.id,
         timestamp: Date.now() 
       });
@@ -169,7 +150,7 @@ export default function MessageBoard() {
       all.push({ 
         id: replyId, 
         content: replyContent, 
-        author: user.user_metadata?.full_name || user.email || 'Anonymous',
+        author: user.name || user.email || 'Anonymous',
         userId: user.id,
         timestamp: Date.now(), 
         parentId 

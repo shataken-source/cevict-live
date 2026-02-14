@@ -1,7 +1,7 @@
 # Get our agent's posts (profile endpoint often returns recentPosts)
-$envPath = Join-Path $PSScriptRoot ".env.local"
-$key = (Get-Content $envPath | Where-Object { $_ -match "MOLTBOOK_API_KEY=" }) -replace "MOLTBOOK_API_KEY=",""
-$key = $key.Trim().Trim('"').Trim("'")
+. (Join-Path $PSScriptRoot "Get-MoltbookKey.ps1")
+$key = Get-MoltbookKey
+if (-not $key) { Write-Error "No Moltbook API key found"; exit 1 }
 $r = Invoke-RestMethod -Uri "https://www.moltbook.com/api/v1/agents/profile?name=PetReunionBot" -Headers @{ Authorization = "Bearer $key" }
 $agent = if ($r.agent) { $r.agent } else { $r }
 if ($agent.recentPosts) {

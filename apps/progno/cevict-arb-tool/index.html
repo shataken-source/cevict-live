@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cevict Arb Finder — SportsData.io</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --surface: #161922;
+      --surface2: #1e212b;
+      --border: #2a2e3d;
+      --text: #e6e9f0;
+      --text-muted: #8b90a4;
+      --accent: #00d4aa;
+      --accent-dim: #00a884;
+      --arb: #22c55e;
+      --arb-dim: #16a34a;
+      --no-arb: #64748b;
+      --value: #22c55e;
+      --warn: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+
+    header {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .form-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-panel h2 {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-end;
+      margin-bottom: 0.75rem;
+    }
+
+    .form-row:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .field label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .field input {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      min-width: 140px;
+    }
+
+    .field input:focus {
+      outline: none;
+      border-color: var(--accent-dim);
+    }
+
+    .field input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.8;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.6rem 1.25rem;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--accent-dim);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .url-preview {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      word-break: break-all;
+      margin-top: 0.75rem;
+      padding: 0.5rem;
+      background: var(--surface2);
+      border-radius: 6px;
+    }
+
+    .error-box {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 8px;
+      padding: 1rem;
+      color: #fca5a5;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .error-box.show {
+      display: block;
+    }
+
+    .games {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .game-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .game-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 1rem 1.25rem;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .game-matchup {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .game-matchup .at {
+      font-weight: 400;
+      color: var(--text-muted);
+      margin: 0 0.25rem;
+    }
+
+    .game-time {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .game-body {
+      padding: 1rem 1.25rem;
+    }
+
+    .odds-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .odds-table th,
+    .odds-table td {
+      padding: 0.4rem 0.6rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .odds-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .odds-table .num {
+      font-family: 'JetBrains Mono', monospace;
+      text-align: right;
+    }
+
+    .odds-table .positive {
+      color: var(--value);
+    }
+
+    .odds-table .negative {
+      color: var(--warn);
+    }
+
+    .arb-section {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .arb-section h3 {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .arb-yes {
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: var(--arb);
+    }
+
+    .arb-yes .profit {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .arb-yes .stakes {
+      font-size: 0.85rem;
+      margin-top: 0.35rem;
+      color: var(--text);
+    }
+
+    .arb-no {
+      color: var(--no-arb);
+      font-size: 0.9rem;
+    }
+
+    .arb-detail {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>⚖️ Cevict Arb Finder</h1>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.25rem;">Find moneyline, spread, and
+        over/under arbitrage across sportsbooks (SportsData.io)</p>
+    </header>
+
+    <div class="form-panel">
+      <h2>API inputs</h2>
+      <div class="form-row">
+        <div class="field">
+          <label for="league">League</label>
+          <input type="text" id="league" placeholder="nba" value="nba" />
+        </div>
+        <div class="field">
+          <label for="date">Date</label>
+          <input type="date" id="date" />
+        </div>
+        <div class="field" id="apikey-wrap">
+          <label for="apikey">SportsData.io API Key</label>
+          <input type="password" id="apikey" placeholder="your key (if not using proxy)" />
+        </div>
+        <div class="field" style="flex-direction: row; align-items: center; padding-top: 1.5rem;">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; white-space: nowrap;">
+            <input type="checkbox" id="use-proxy" checked />
+            Use Progno proxy (localhost:3008)
+          </label>
+        </div>
+        <button type="button" class="btn" id="fetch-btn">Fetch odds</button>
+        <div class="field">
+          <label for="minprofit">Min profit %</label>
+          <input type="number" id="minprofit" placeholder="0 = all" value="0" min="0" max="20" step="0.1"
+            style="min-width: 80px;" />
+        </div>
+      </div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;"><strong>Use Progno proxy</strong>:
+        when checked, fetches via your Progno app (no CORS, key stays in .env as SPORTSDATA_IO_KEY). Uncheck to call
+        SportsData.io directly with your key.</p>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Min profit %: only show games with at
+        least one arb at or above this %. 0 = show all.</p>
+      <div class="url-preview" id="url-preview" aria-hidden="true"></div>
+    </div>
+
+    <div id="error" class="error-box"></div>
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const leagueInput = document.getElementById('league');
+    const dateInput = document.getElementById('date');
+    const apikeyInput = document.getElementById('apikey');
+    const fetchBtn = document.getElementById('fetch-btn');
+    const urlPreview = document.getElementById('url-preview');
+    const minProfitInput = document.getElementById('minprofit');
+    const errorEl = document.getElementById('error');
+    const resultsEl = document.getElementById('results');
+
+    let lastFetchedData = null;
+
+    // Default date to today (YYYY-MM-DD)
+    const today = new Date();
+    dateInput.value = today.toISOString().slice(0, 10);
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.classList.add('show');
+    }
+    function hideError() {
+      errorEl.classList.remove('show');
+    }
+
+    function americanToDecimal(american) {
+      const n = Number(american);
+      if (n >= 100) return 1 + n / 100;
+      if (n <= -100) return 1 + 100 / Math.abs(n);
+      return 1;
+    }
+    function impliedProb(american) {
+      return 1 / americanToDecimal(american);
+    }
+    function formatAmerican(n) {
+      const x = Number(n);
+      if (x > 0) return '+' + x;
+      return String(x);
+    }
+
+    function sportsbookNameFromUrl(url, fallback) {
+      if (!url || typeof url !== 'string') return fallback || 'Unknown';
+      try {
+        const u = new URL(url);
+        const host = (u.hostname || '').toLowerCase();
+        const known = {
+          'sportsbook.draftkings.com': 'DraftKings',
+          'draftkings.com': 'DraftKings',
+          'sportsbook.fanduel.com': 'FanDuel',
+          'fanduel.com': 'FanDuel',
+          'sportsbook.caesars.com': 'Caesars',
+          'caesars.com': 'Caesars',
+          'sports.betmgm.com': 'BetMGM',
+          'betmgm.com': 'BetMGM',
+          'pa.playsugarhouse.com': 'PlaySugarhouse',
+          'nj.betrivers.com': 'BetRivers (NJ)',
+          'pa.betrivers.com': 'BetRivers (PA)',
+          'pa.parxcasino.com': 'Parx',
+          'parxcasino.com': 'Parx',
+          'sportsbook.pointsbet.com': 'PointsBet',
+          'pointsbet.com': 'PointsBet',
+          'sportsbook.bet365.com': 'Bet365',
+          'bet365.com': 'Bet365',
+          'sportsbook.unibet.com': 'Unibet',
+          'unibet.com': 'Unibet',
+          'sportsbook.wynnbet.com': 'WynnBET',
+          'wynnbet.com': 'WynnBET',
+          'sportsbook.borgata.com': 'Borgata',
+          'sportsbook.betway.com': 'Betway',
+          'betway.com': 'Betway',
+          'sportsbook.betrivers.com': 'BetRivers'
+        };
+        if (known[host]) return known[host];
+        const parts = host.replace(/^www\./, '').split('.');
+        const main = parts.length >= 2 ? parts[parts.length - 2] : host;
+        return main.charAt(0).toUpperCase() + main.slice(1).replace(/([a-z])([A-Z])/g, '$1 $2');
+      } catch (_) {
+        return fallback || 'Unknown';
+      }
+    }
+
+    function bookDisplayName(o) {
+      const fromUrl = sportsbookNameFromUrl(o.SportsbookUrl, null);
+      const fallback = 'Book ' + (o.SportsbookId ?? '?');
+      if (!fromUrl || fromUrl === 'Scrambled' || fromUrl === 'Unknown') return fallback;
+      return fromUrl;
+    }
+
+    const useProxyInput = document.getElementById('use-proxy');
+    const PROXY_BASE = 'http://localhost:3008/api/arb-proxy';
+
+    function buildUrl(league, date, key, useProxy) {
+      if (useProxy) {
+        return PROXY_BASE + '?league=' + encodeURIComponent(league) + '&date=' + encodeURIComponent(date);
+      }
+      const base = 'https://api.sportsdata.io/v3/' + encodeURIComponent(league) + '/odds/json/GameOddsByDate/' + encodeURIComponent(date);
+      if (key) return base + '?key=' + encodeURIComponent(key);
+      return base;
+    }
+
+    function updateUrlPreview() {
+      const league = (leagueInput.value || 'nba').trim().toLowerCase();
+      const date = dateInput.value || '';
+      const useProxy = useProxyInput.checked;
+      const key = apikeyInput.value ? '••••••••' : '(none)';
+      urlPreview.textContent = buildUrl(league, date, key, useProxy);
+    }
+    leagueInput.addEventListener('input', updateUrlPreview);
+    dateInput.addEventListener('input', updateUrlPreview);
+    apikeyInput.addEventListener('input', updateUrlPreview);
+    useProxyInput.addEventListener('change', updateUrlPreview);
+    updateUrlPreview();
+
+    minProfitInput.addEventListener('input', () => {
+      if (lastFetchedData == null || lastFetchedData.length === 0) return;
+      const minPct = parseFloat(minProfitInput.value) || 0;
+      const html = lastFetchedData.map(g => renderGame(g, minPct)).filter(Boolean).join('');
+      resultsEl.innerHTML = html ? '<div class="games">' + html + '</div>' : '<div class="empty-state">No games meet the min profit % threshold. Try lowering it.</div>';
+    });
+
+    function findMoneylineArb(pregameOdds) {
+      const pregame = (pregameOdds || []).filter(o => o.OddType === 'pregame');
+      if (pregame.length === 0) return null;
+      let bestHome = null, bestAway = null;
+      for (const o of pregame) {
+        const h = o.HomeMoneyLine != null ? Number(o.HomeMoneyLine) : null;
+        const a = o.AwayMoneyLine != null ? Number(o.AwayMoneyLine) : null;
+        if (h != null && (bestHome == null || h > bestHome.odds)) bestHome = { odds: h, book: bookDisplayName(o), id: o.SportsbookId };
+        if (a != null && (bestAway == null || a > bestAway.odds)) bestAway = { odds: a, book: bookDisplayName(o), id: o.SportsbookId };
+      }
+      if (bestHome == null || bestAway == null) return null;
+      const impHome = impliedProb(bestHome.odds);
+      const impAway = impliedProb(bestAway.odds);
+      const totalImplied = impHome + impAway;
+      const hasArb = totalImplied < 1;
+      const profitPct = hasArb ? ((1 / totalImplied - 1) * 100) : 0;
+      const stakeHome = hasArb ? (impHome / totalImplied) * 100 : 50;
+      const stakeAway = hasArb ? (impAway / totalImplied) * 100 : 50;
+      return {
+        bestHome,
+        bestAway,
+        impHome,
+        impAway,
+        totalImplied,
+        hasArb,
+        profitPct,
+        stakeHome,
+        stakeAway
+      };
+    }
+
+    function findSpreadArb(pregameOdds) {
+      const pregame = (pregameOdds || []).filter(o => o.OddType === 'pregame');
+      if (pregame.length === 0) return null;
+      let bestHome = null, bestAway = null;
+      for (const o of pregame) {
+        const hp = o.HomePointSpreadPayout != null ? Number(o.HomePointSpreadPayout) : null;
+        const ap = o.AwayPointSpreadPayout != null ? Number(o.AwayPointSpreadPayout) : null;
+        const line = o.HomePointSpread != null ? o.HomePointSpread : null;
+        if (hp != null && (bestHome == null || hp > bestHome.odds)) bestHome = { odds: hp, book: bookDisplayName(o), line };
+        if (ap != null && (bestAway == null || ap > bestAway.odds)) bestAway = { odds: ap, book: bookDisplayName(o), line: o.AwayPointSpread };
+      }
+      if (bestHome == null || bestAway == null) return null;
+      const impHome = impliedProb(bestHome.odds);
+      const impAway = impliedProb(bestAway.odds);
+      const totalImplied = impHome + impAway;
+      const hasArb = totalImplied < 1;
+      const profitPct = hasArb ? ((1 / totalImplied - 1) * 100) : 0;
+      const stakeHome = hasArb ? (impHome / totalImplied) * 100 : 50;
+      const stakeAway = hasArb ? (impAway / totalImplied) * 100 : 50;
+      return { bestHome, bestAway, impHome, impAway, totalImplied, hasArb, profitPct, stakeHome, stakeAway };
+    }
+
+    function findOverUnderArb(pregameOdds) {
+      const pregame = (pregameOdds || []).filter(o => o.OddType === 'pregame');
+      if (pregame.length === 0) return null;
+      let bestOver = null, bestUnder = null;
+      for (const o of pregame) {
+        const ov = o.OverPayout != null ? Number(o.OverPayout) : null;
+        const un = o.UnderPayout != null ? Number(o.UnderPayout) : null;
+        const total = o.OverUnder != null ? o.OverUnder : null;
+        if (ov != null && (bestOver == null || ov > bestOver.odds)) bestOver = { odds: ov, book: bookDisplayName(o), total };
+        if (un != null && (bestUnder == null || un > bestUnder.odds)) bestUnder = { odds: un, book: bookDisplayName(o), total };
+      }
+      if (bestOver == null || bestUnder == null) return null;
+      const impOver = impliedProb(bestOver.odds);
+      const impUnder = impliedProb(bestUnder.odds);
+      const totalImplied = impOver + impUnder;
+      const hasArb = totalImplied < 1;
+      const profitPct = hasArb ? ((1 / totalImplied - 1) * 100) : 0;
+      const stakeOver = hasArb ? (impOver / totalImplied) * 100 : 50;
+      const stakeUnder = hasArb ? (impUnder / totalImplied) * 100 : 50;
+      return { bestOver, bestUnder, impOver, impUnder, totalImplied, hasArb, profitPct, stakeOver, stakeUnder };
+    }
+
+    function renderGame(game, minProfitPct) {
+      const mlArb = findMoneylineArb(game.PregameOdds);
+      const spreadArb = findSpreadArb(game.PregameOdds);
+      const ouArb = findOverUnderArb(game.PregameOdds);
+      const maxProfit = Math.max(
+        (mlArb && mlArb.hasArb ? mlArb.profitPct : 0),
+        (spreadArb && spreadArb.hasArb ? spreadArb.profitPct : 0),
+        (ouArb && ouArb.hasArb ? ouArb.profitPct : 0)
+      );
+      if (minProfitPct > 0 && maxProfit < minProfitPct) return '';
+
+      const arb = mlArb;
+      const pregame = (game.PregameOdds || []).filter(o => o.OddType === 'pregame');
+      const timeStr = game.DateTime ? new Date(game.DateTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : '';
+
+      let arbHtml = '';
+      if (arb) {
+        if (arb.hasArb) {
+          arbHtml = `
+            <div class="arb-section">
+              <h3>Moneyline arb</h3>
+              <div class="arb-yes">
+                <div class="profit">✓ Arb: ${arb.profitPct.toFixed(2)}% profit</div>
+                <div class="stakes">
+                  Bet <strong>${arb.stakeHome.toFixed(1)}%</strong> on ${game.HomeTeamName} at ${escapeHtml(arb.bestHome.book)} (${formatAmerican(arb.bestHome.odds)})<br/>
+                  Bet <strong>${arb.stakeAway.toFixed(1)}%</strong> on ${game.AwayTeamName} at ${escapeHtml(arb.bestAway.book)} (${formatAmerican(arb.bestAway.odds)})
+                </div>
+                <div class="arb-detail">Combined implied: ${(arb.totalImplied * 100).toFixed(2)}%</div>
+              </div>
+            </div>
+          `;
+        } else {
+          arbHtml = `
+            <div class="arb-section">
+              <h3>Moneyline arb</h3>
+              <div class="arb-no">No arb. Best: Home ${formatAmerican(arb.bestHome.odds)} (${arb.bestHome.book}), Away ${formatAmerican(arb.bestAway.odds)} (${arb.bestAway.book}). Combined implied: ${(arb.totalImplied * 100).toFixed(2)}%</div>
+            </div>
+          `;
+        }
+      }
+
+      if (spreadArb) {
+        if (spreadArb.hasArb) {
+          arbHtml += `
+            <div class="arb-section">
+              <h3>Spread arb</h3>
+              <div class="arb-yes">
+                <div class="profit">✓ Arb: ${spreadArb.profitPct.toFixed(2)}% profit</div>
+                <div class="stakes">
+                  Bet <strong>${spreadArb.stakeHome.toFixed(1)}%</strong> on Home ${spreadArb.bestHome.line != null ? spreadArb.bestHome.line : ''} at ${escapeHtml(spreadArb.bestHome.book)} (${formatAmerican(spreadArb.bestHome.odds)})<br/>
+                  Bet <strong>${spreadArb.stakeAway.toFixed(1)}%</strong> on Away ${spreadArb.bestAway.line != null ? spreadArb.bestAway.line : ''} at ${escapeHtml(spreadArb.bestAway.book)} (${formatAmerican(spreadArb.bestAway.odds)})
+                </div>
+                <div class="arb-detail">Combined implied: ${(spreadArb.totalImplied * 100).toFixed(2)}%</div>
+              </div>
+            </div>
+          `;
+        } else {
+          arbHtml += `
+            <div class="arb-section">
+              <h3>Spread arb</h3>
+              <div class="arb-no">No arb. Best: Home ${formatAmerican(spreadArb.bestHome.odds)} (${escapeHtml(spreadArb.bestHome.book)}), Away ${formatAmerican(spreadArb.bestAway.odds)} (${escapeHtml(spreadArb.bestAway.book)}). Combined implied: ${(spreadArb.totalImplied * 100).toFixed(2)}%</div>
+            </div>
+          `;
+        }
+      }
+
+      if (ouArb) {
+        if (ouArb.hasArb) {
+          const totalLine = ouArb.bestOver && ouArb.bestOver.total != null ? ouArb.bestOver.total : (ouArb.bestUnder && ouArb.bestUnder.total != null ? ouArb.bestUnder.total : '');
+          arbHtml += `
+            <div class="arb-section">
+              <h3>Over/Under arb (total ${totalLine})</h3>
+              <div class="arb-yes">
+                <div class="profit">✓ Arb: ${ouArb.profitPct.toFixed(2)}% profit</div>
+                <div class="stakes">
+                  Bet <strong>${ouArb.stakeOver.toFixed(1)}%</strong> on Over at ${escapeHtml(ouArb.bestOver.book)} (${formatAmerican(ouArb.bestOver.odds)})<br/>
+                  Bet <strong>${ouArb.stakeUnder.toFixed(1)}%</strong> on Under at ${escapeHtml(ouArb.bestUnder.book)} (${formatAmerican(ouArb.bestUnder.odds)})
+                </div>
+                <div class="arb-detail">Combined implied: ${(ouArb.totalImplied * 100).toFixed(2)}%</div>
+              </div>
+            </div>
+          `;
+        } else {
+          arbHtml += `
+            <div class="arb-section">
+              <h3>Over/Under arb</h3>
+              <div class="arb-no">No arb. Best: Over ${formatAmerican(ouArb.bestOver.odds)} (${escapeHtml(ouArb.bestOver.book)}), Under ${formatAmerican(ouArb.bestUnder.odds)} (${escapeHtml(ouArb.bestUnder.book)}). Combined implied: ${(ouArb.totalImplied * 100).toFixed(2)}%</div>
+            </div>
+          `;
+        }
+      }
+
+      const rows = pregame.slice(0, 12).map(o => {
+        const h = o.HomeMoneyLine != null ? formatAmerican(o.HomeMoneyLine) : '—';
+        const a = o.AwayMoneyLine != null ? formatAmerican(o.AwayMoneyLine) : '—';
+        const spread = o.HomePointSpread != null ? (o.HomePointSpread > 0 ? '+' + o.HomePointSpread : o.HomePointSpread) : '—';
+        const total = o.OverUnder != null ? o.OverUnder : '—';
+        const book = bookDisplayName(o);
+        return `<tr><td>${escapeHtml(book)}</td><td class="num">${h}</td><td class="num">${a}</td><td class="num">${spread}</td><td class="num">${total}</td></tr>`;
+      }).join('');
+
+      return `
+        <div class="game-card">
+          <div class="game-head">
+            <span class="game-matchup">${escapeHtml(game.AwayTeamName || 'Away')} <span class="at">@</span> ${escapeHtml(game.HomeTeamName || 'Home')}</span>
+            <span class="game-time">${timeStr}</span>
+          </div>
+          <div class="game-body">
+            <table class="odds-table">
+              <thead><tr><th>Sportsbook</th><th class="num">Home ML</th><th class="num">Away ML</th><th class="num">Spread (H)</th><th class="num">Total</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+            ${arbHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    fetchBtn.addEventListener('click', async () => {
+      const league = (leagueInput.value || 'nba').trim().toLowerCase();
+      const date = dateInput.value?.trim();
+      const useProxy = useProxyInput.checked;
+      const key = apikeyInput.value?.trim();
+      if (!league || !date) {
+        showError('Please enter league and date.');
+        return;
+      }
+      if (!useProxy && !key) {
+        showError('Either check "Use Progno proxy" (and run Progno on port 3008) or enter your SportsData.io API key.');
+        return;
+      }
+
+      hideError();
+      fetchBtn.disabled = true;
+      resultsEl.innerHTML = '<div class="loading">Fetching odds…</div>';
+
+      const url = buildUrl(league, date, key, useProxy);
+      try {
+        const res = await fetch(url);
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          const msg = data && data.error ? data.error : (res.status === 401 ? 'Invalid API key.' : res.status + ' ' + res.statusText);
+          if (useProxy && (res.status === 502 || res.status === 500)) {
+            throw new Error(msg + ' (Is Progno running on port 3008? Is SPORTSDATA_IO_KEY set in .env.local?)');
+          }
+          throw new Error(msg);
+        }
+        if (!Array.isArray(data)) {
+          throw new Error(data && data.error ? data.error : 'Unexpected response format (expected array of games).');
+        }
+        if (data.length === 0) {
+          resultsEl.innerHTML = '<div class="empty-state">No games found for this date.</div>';
+          lastFetchedData = null;
+          return;
+        }
+        lastFetchedData = data;
+        const minPct = parseFloat(minProfitInput.value) || 0;
+        const html = data.map(g => renderGame(g, minPct)).filter(Boolean).join('');
+        resultsEl.innerHTML = html ? '<div class="games">' + html + '</div>' : '<div class="empty-state">No games meet the min profit % threshold. Try lowering it.</div>';
+      } catch (e) {
+        if (e.name === 'TypeError' && e.message.includes('fetch')) {
+          showError('Network or CORS error. Try running this page from a local server (e.g. http://localhost) or check that the API allows browser requests.');
+        } else {
+          showError(e.message || 'Failed to fetch odds.');
+        }
+        resultsEl.innerHTML = '<div class="empty-state">Enter league, date, and API key, then click Fetch odds.</div>';
+      } finally {
+        fetchBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+
+</html>

@@ -1,7 +1,7 @@
 # Monetization System Implementation Guide
 
 ## Overview
-Gulf Coast Charters now has a comprehensive revenue generation system with multiple income streams including platform commissions, service fees, premium subscriptions, and featured listings.
+Gulf Coast Charters has a comprehensive revenue generation system with multiple income streams including platform commissions, service fees, premium subscriptions, and featured listings.
 
 ## Revenue Streams Implemented
 
@@ -61,9 +61,9 @@ Benefits:
 
 ## Admin Dashboard Access
 
-Navigate to: `/admin/monetization`
+Navigate to: **`/admin/monetization`**
 
-### Features Available:
+### Features Available
 
 1. **Revenue Analytics Tab**
    - Total revenue tracking
@@ -76,65 +76,41 @@ Navigate to: `/admin/monetization`
    - Time range filters (7, 30, 90 days)
 
 2. **Commission Settings Tab**
-   - Adjust platform commission rate
-   - Adjust customer service fee rate
-   - Real-time calculation preview
-   - Example booking breakdown
+   - Adjust platform commission rate (%)
+   - Adjust customer service fee rate (%)
+   - Real-time example calculation
+   - Save to database (`monetization_settings`)
 
 3. **Subscription Plans Tab**
-   - View all subscription tiers
-   - Manage pricing
-   - Update features
+   - View all subscription tiers (Basic, Pro, Elite)
+   - Manage pricing (stored in `monetization_settings`)
    - Track active subscriptions
 
-## Database Schema Required
+## Database Schema
 
-```sql
--- Captain subscriptions table
-CREATE TABLE captain_subscriptions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id),
-  plan_type TEXT NOT NULL, -- 'basic', 'pro', 'elite'
-  amount DECIMAL(10,2) NOT NULL,
-  status TEXT NOT NULL, -- 'active', 'cancelled', 'expired'
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  expires_at TIMESTAMPTZ
-);
+Migration: **`20260119_monetization_system.sql`**
 
--- Featured listings table
-CREATE TABLE featured_listings (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  charter_id UUID REFERENCES charters(id),
-  user_id UUID REFERENCES auth.users(id),
-  plan_type TEXT NOT NULL, -- 'featured-day', 'featured-week', 'featured-month'
-  amount DECIMAL(10,2) NOT NULL,
-  status TEXT NOT NULL, -- 'active', 'expired'
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  expires_at TIMESTAMPTZ
-);
-
--- Update bookings table to include commission tracking
-ALTER TABLE bookings ADD COLUMN commission_amount DECIMAL(10,2);
-ALTER TABLE bookings ADD COLUMN service_fee DECIMAL(10,2);
-ALTER TABLE bookings ADD COLUMN captain_payout DECIMAL(10,2);
-```
+- **captain_subscriptions**: id, user_id, plan_type (basic|pro|elite), amount, status, stripe_subscription_id, created_at, expires_at
+- **featured_listings**: id, charter_id, user_id, plan_type (featured-day|featured-week|featured-month), amount, status, created_at, expires_at
+- **bookings** (columns added): commission_amount, service_fee, captain_payout
+- **monetization_settings**: setting_key, setting_value (text), description. Keys: platform_commission_rate, service_fee_rate, pro_subscription_price, elite_subscription_price, featured_day_price, featured_week_price, featured_month_price
 
 ## Integration Points
 
 ### Booking Flow
 When a customer books a charter:
 1. Calculate base booking amount
-2. Apply platform commission (based on captain's subscription tier)
-3. Add service fee for customer
-4. Store all amounts in booking record
-5. Calculate captain payout (booking - commission)
+2. Get captain commission rate via `get_captain_commission_rate(captain_id)` (5% elite, 8% pro, 12% basic)
+3. Get service fee rate from `monetization_settings.service_fee_rate`
+4. Store commission_amount, service_fee, captain_payout on booking
+5. Customer total = booking amount + service fee
 
 ### Payment Processing
 ```javascript
 const bookingAmount = 500;
-const captainTier = 'pro'; // Get from captain_subscriptions
+const captainTier = 'pro'; // from captain_subscriptions
 const commissionRate = captainTier === 'elite' ? 0.05 : captainTier === 'pro' ? 0.08 : 0.12;
-const serviceFeeRate = 0.08;
+const serviceFeeRate = 0.08; // or read from monetization_settings
 
 const platformCommission = bookingAmount * commissionRate;
 const serviceFee = bookingAmount * serviceFeeRate;
@@ -142,13 +118,8 @@ const captainPayout = bookingAmount - platformCommission;
 const customerTotal = bookingAmount + serviceFee;
 ```
 
-### Captain Dashboard Integration
-Show captains:
-- Current subscription tier
-- Commission rate
-- Upgrade options
-- Featured listing options
-- Earnings breakdown
+### SQL Helper
+Use `calculate_booking_amounts(booking_amount, captain_id)` to get commission_amount, service_fee, captain_payout, customer_total (reads settings and captain tier).
 
 ## Revenue Projections
 
@@ -178,7 +149,7 @@ Show captains:
 
 ## Next Steps
 
-1. Set up Stripe/payment processor integration
+1. Set up Stripe/payment processor integration for subscriptions and featured listings
 2. Create automated payout system for captains
 3. Implement subscription renewal reminders
 4. Add featured listing expiration notifications
@@ -189,7 +160,29 @@ Show captains:
 
 ## Support
 
-For questions or issues:
 - Email: jason@gulfcoastcharters.com
 - Dashboard: `/admin/monetization`
 - Documentation: This guide
+
+---
+
+## Implementation status (no-BS)
+
+**Route:** `/admin/monetization` → **AdminMonetization** (tabs: Revenue Analytics, Commission Settings, Subscription Plans).
+
+**Tables (migration `20260119_monetization_system.sql`):**  
+- **captain_subscriptions** – plan_type basic|pro|elite, amount, status, expires_at; RLS by user_id and admin (profiles.role = 'admin').  
+- **featured_listings** – charter_id, user_id, plan_type featured-day|featured-week|featured-month, amount, status, expires_at; RLS same pattern.  
+- **bookings** – columns commission_amount, service_fee, captain_payout added if missing.  
+- **monetization_settings** – key/value (setting_key, setting_value text). Defaults: platform_commission_rate 0.12, service_fee_rate 0.08, pro/elite/featured prices. RLS: admin only.
+
+**Functions:**  
+- **get_captain_commission_rate(user_id)** – returns 0.05 (elite), 0.08 (pro), 0.12 (basic) from active captain_subscriptions.  
+- **calculate_booking_amounts(booking_amount, captain_id)** – returns commission_amount, service_fee, captain_payout, customer_total using above + service_fee_rate from settings.
+
+**Admin UI:**  
+- **Revenue Analytics** – RevenueAnalyticsDashboard: reads bookings (total_amount, commission_amount, service_fee), captain_subscriptions, featured_listings for selected period (7/30/90 days); aggregates and displays.  
+- **Commission Settings** – Loads platform_commission_rate and service_fee_rate from monetization_settings (displayed as %); saves back via upsert on Save. Example $500 breakdown shown.  
+- **Subscription Plans** – PremiumSubscriptionPlans: shows Basic/Pro/Elite; subscribe flows to `/api/create-subscription` (Stripe). Active subscriptions and plan-based commission are used by get_captain_commission_rate when calculating booking amounts.
+
+**Booking flow:** Payment/checkout code should call `calculate_booking_amounts` or equivalent logic and persist commission_amount, service_fee, captain_payout on the booking row. Stripe/subscription and featured listing payments need to be wired to create/update captain_subscriptions and featured_listings (e.g. Stripe webhooks or existing APIs).

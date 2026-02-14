@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -48,6 +48,10 @@ export default function DisputeResolutionWorkflow() {
       .order('created_at', { ascending: false });
     if (data) setDisputes(data);
   };
+
+  useEffect(() => {
+    loadDisputes();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -109,12 +113,44 @@ export default function DisputeResolutionWorkflow() {
           ))}
         </TabsContent>
 
-        <TabsContent value="investigating">
-          <p className="text-muted-foreground">No disputes under investigation</p>
+        <TabsContent value="investigating" className="space-y-4">
+          {disputes.filter(d => d.status === 'investigating').length === 0 ? (
+            <p className="text-muted-foreground">No disputes under investigation</p>
+          ) : (
+            disputes.filter(d => d.status === 'investigating').map((dispute) => (
+              <Card key={dispute.id}>
+                <CardHeader>
+                  <CardTitle>{dispute.dispute_type}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{dispute.affiliate_name} • {new Date(dispute.created_at).toLocaleDateString()}</p>
+                </CardHeader>
+                <CardContent><p>{dispute.description}</p></CardContent>
+              </Card>
+            ))
+          )}
         </TabsContent>
 
-        <TabsContent value="resolved">
-          <p className="text-muted-foreground">View resolved disputes</p>
+        <TabsContent value="resolved" className="space-y-4">
+          {disputes.filter(d => d.status === 'resolved' || d.status === 'rejected').length === 0 ? (
+            <p className="text-muted-foreground">No resolved disputes</p>
+          ) : (
+            disputes.filter(d => d.status === 'resolved' || d.status === 'rejected').map((dispute) => (
+              <Card key={dispute.id}>
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle>{dispute.dispute_type}</CardTitle>
+                      <p className="text-sm text-muted-foreground">{dispute.affiliate_name} • {new Date(dispute.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <Badge variant={dispute.status === 'rejected' ? 'destructive' : 'default'}>{dispute.status}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p>{dispute.description}</p>
+                  {dispute.resolution_notes && <p className="text-sm text-muted-foreground mt-2">Resolution: {dispute.resolution_notes}</p>}
+                </CardContent>
+              </Card>
+            ))
+          )}
         </TabsContent>
       </Tabs>
     </div>

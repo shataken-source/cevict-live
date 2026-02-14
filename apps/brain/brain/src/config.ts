@@ -1,4 +1,4 @@
-import { getEnv, getEnvNumber } from "../../../packages/core-logic/src/config";
+import { getEnv, getEnvNumber } from "./env";
 
 const dispatchUrlDefault = "http://localhost:3000/api/brain/dispatch";
 const healthDefaults: Record<string, string> = {
@@ -9,6 +9,8 @@ const healthDefaults: Record<string, string> = {
   core: "http://localhost:3000/health/core",
   forge: "http://localhost:3000/health/forge",
   jobs: "http://localhost:3000/health/jobs",
+  praxis: "http://localhost:3000/api/health",
+  monitor: "http://localhost:3010/api/health",
 };
 
 function parseHealthOverrides(raw?: string): Record<string, string> {
@@ -56,6 +58,8 @@ export const brainConfig = {
     "agent:petreunion",
     "agent:shelter",
     "agent:forge",
+    "agent:praxis",
+    "agent:monitor",
   ],
   rateLimitPerMinute: getEnvNumber("BRAIN_RATE_LIMIT_PER_MIN" as any, 60),
   maxConcurrent: getEnvNumber("BRAIN_MAX_CONCURRENT" as any, 5),

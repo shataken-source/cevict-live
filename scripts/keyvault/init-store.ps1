@@ -32,6 +32,14 @@ if ((Test-Path -LiteralPath $StorePath) -and -not $Force) {
   exit 0
 }
 
+if ($Force) {
+  Write-Host ""
+  Write-Host "DESTRUCTIVE: -Force will REPLACE the store with the example and WIPE ALL EXISTING SECRETS." -ForegroundColor Red
+  Write-Host "Target: $StorePath" -ForegroundColor Yellow
+  Write-Host "If you need to keep keys, back up the file first or do not use -Force." -ForegroundColor Yellow
+  Write-Host ""
+}
+
 Copy-Item -LiteralPath $example -Destination $StorePath -Force
 Write-Host "Created KeyVault store: $StorePath"
 Write-Host "Now edit it and fill in real values."

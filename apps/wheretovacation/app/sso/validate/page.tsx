@@ -36,11 +36,23 @@ function SSOValidateContent() {
           return;
         }
 
+        // Token is valid – hand off to the normal login flow with context
         setStatus('success');
-        setMessage('SSO validated! Redirecting...');
-        setTimeout(() => {
-          router.push('/');
-        }, 1500);
+        setMessage('SSO validated. Redirecting you to sign in...');
+
+        const next =
+          searchParams.get('redirect') ||
+          searchParams.get('next') ||
+          '/';
+
+        const params = new URLSearchParams();
+        params.set('redirect', next);
+        if (data.user?.email) {
+          params.set('email', data.user.email);
+          params.set('sso', '1');
+        }
+
+        router.push(`/auth/login?${params.toString()}`);
       } catch (error: any) {
         setStatus('error');
         setMessage(`Error: ${error.message}`);

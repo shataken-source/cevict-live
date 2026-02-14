@@ -30,3 +30,13 @@ export async function getAuthedUser(req: NextApiRequest, res: NextApiResponse) {
   return { user: data.user ?? null, error: null };
 }
 
+// Dummy default export to satisfy Next.js 16 ApiRouteConfig type constraint.
+// This module is a helper, not an actual API route handler.
+const supabaseHelperHandler = (req: any, res: any) => {
+  if (res && typeof res.status === 'function') {
+    res.status(405).json({ error: 'Supabase helper module; not a route handler' });
+  }
+};
+
+export default supabaseHelperHandler;
+

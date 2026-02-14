@@ -1,5 +1,5 @@
 import type { BrainAction, BrainEvent, BrainPriority, BrainRule, BrainHandler } from "./types";
-import { loadEnv, getEnvNumber } from "../../../packages/core-logic/src/config";
+import { loadEnv, getEnvNumber } from "./env";
 
 // Simple in-memory queue for MVP (can be swapped to Redis/Supabase later)
 const eventQueue: BrainEvent[] = [];

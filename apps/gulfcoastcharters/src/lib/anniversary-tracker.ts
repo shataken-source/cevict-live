@@ -106,47 +106,65 @@ function parseDate(dateStr: string): Date | null {
 }
 
 /**
- * Save special dates for a user
+ * Save special dates for a user (Supabase via API; fallback to localStorage)
  */
 export async function saveSpecialDates(
   userId: string,
   anniversaries: SpecialDate[],
   birthdays: SpecialDate[]
 ): Promise<void> {
-  // In production, this would save to Supabase
-  // For now, we'll use localStorage as a fallback
+  const toSend = [
+    ...anniversaries.map((a) => ({ type: 'anniversary' as const, date: a.date, name: a.name, originalBookingDate: a.originalBookingDate })),
+    ...birthdays.map((b) => ({ type: 'birthday' as const, date: b.date, name: b.name })),
+  ];
+  if (toSend.length > 0 && typeof fetch !== 'undefined') {
+    try {
+      const r = await fetch('/api/finn/special-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ dates: toSend }),
+      });
+      if (r.ok) return;
+    } catch (e) {
+      console.warn('Failed to save special dates to API:', e);
+    }
+  }
   try {
-    const stored = localStorage.getItem(`finn_dates_${userId}`);
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(`finn_dates_${userId}`) : null;
     const existing = stored ? JSON.parse(stored) : { anniversaries: [], birthdays: [] };
-    
-    existing.anniversaries.push(...anniversaries.map(a => ({
-      ...a,
-      date: a.date.toISOString(),
-    })));
-    existing.birthdays.push(...birthdays.map(b => ({
-      ...b,
-      date: b.date.toISOString(),
-    })));
-
-    localStorage.setItem(`finn_dates_${userId}`, JSON.stringify(existing));
+    existing.anniversaries.push(...anniversaries.map((a) => ({ ...a, date: a.date.toISOString() })));
+    existing.birthdays.push(...birthdays.map((b) => ({ ...b, date: b.date.toISOString() })));
+    if (typeof localStorage !== 'undefined') localStorage.setItem(`finn_dates_${userId}`, JSON.stringify(existing));
   } catch (error) {
     console.error('Failed to save special dates:', error);
   }
 }
 
 /**
- * Get upcoming occasions for a user
+ * Get upcoming occasions for a user (Supabase via API; fallback to localStorage)
  */
 export async function getUpcomingOccasions(
   userId: string,
   daysAhead: number = 45
 ): Promise<UpcomingOccasions> {
-  try {
-    const stored = localStorage.getItem(`finn_dates_${userId}`);
-    if (!stored) {
-      return { anniversaries: [], birthdays: [] };
+  if (typeof fetch !== 'undefined') {
+    try {
+      const r = await fetch(`/api/finn/special-dates?daysAhead=${daysAhead}`, { credentials: 'include' });
+      if (r.ok) {
+        const j = await r.json();
+        return {
+          anniversaries: (j.anniversaries || []).map((a: any) => ({ ...a, date: new Date(a.date) })),
+          birthdays: (j.birthdays || []).map((b: any) => ({ ...b, date: new Date(b.date) })),
+        };
+      }
+    } catch {
+      // fall through to localStorage
     }
-
+  }
+  try {
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(`finn_dates_${userId}`) : null;
+    if (!stored) return { anniversaries: [], birthdays: [] };
     const data = JSON.parse(stored);
     const today = new Date();
     const futureDate = new Date();

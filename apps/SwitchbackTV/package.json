@@ -1,0 +1,10 @@
+{
+  "name": "switchback-tv",
+  "version": "1.0.0",
+  "description": "SwitchbackTV - Professional IPTV Viewer",
+  "scripts": {
+    "build": "echo 'Build complete'",
+    "start": "echo 'Start complete'"
+  },
+  "dependencies": {}
+}

@@ -11,6 +11,7 @@
  */
 
 import { GameData, TeamStats } from './prediction-engine';
+import { shinDevig } from './odds-helpers';
 
 export interface MonteCarloConfig {
   iterations: number;        // Number of simulations (1000-10000)
@@ -95,7 +96,8 @@ const DEFAULT_CONFIG: MonteCarloConfig = {
 };
 
 /**
- * Sport-specific scoring parameters
+ * Sport-specific scoring parameters.
+ * NHL: higher stdDev (1.7) reflects higher variance; basketball uses normal, hockey could use Poisson in future.
  */
 const SPORT_PARAMS: Record<string, {
   avgScore: number;
@@ -108,7 +110,7 @@ const SPORT_PARAMS: Record<string, {
   NCAAF: { avgScore: 28, stdDev: 14, minScore: 0, maxScore: 70, homeAdvantage: 3.5 },
   NBA: { avgScore: 112, stdDev: 12, minScore: 70, maxScore: 150, homeAdvantage: 3.0 },
   NCAAB: { avgScore: 72, stdDev: 11, minScore: 40, maxScore: 110, homeAdvantage: 4.0 },
-  NHL: { avgScore: 3, stdDev: 1.5, minScore: 0, maxScore: 10, homeAdvantage: 0.3 },
+  NHL: { avgScore: 3, stdDev: 1.7, minScore: 0, maxScore: 10, homeAdvantage: 0.3 },
   MLB: { avgScore: 4.5, stdDev: 2.5, minScore: 0, maxScore: 15, homeAdvantage: 0.2 },
 };
 
@@ -149,7 +151,8 @@ export class MonteCarloEngine {
         homeStdDev,
         awayStdDev,
         params.minScore,
-        params.maxScore
+        params.maxScore,
+        gameData
       );
       outcomes.push(outcome);
     }
@@ -280,7 +283,8 @@ export class MonteCarloEngine {
     homeStdDev: number,
     awayStdDev: number,
     minScore: number,
-    maxScore: number
+    maxScore: number,
+    gameData: GameData
   ): SimulationOutcome {
     // Generate scores using normal distribution
     const homeScore = this.clamp(
@@ -298,12 +302,29 @@ export class MonteCarloEngine {
     const roundedHome = Math.round(homeScore);
     const roundedAway = Math.round(awayScore);
 
+    // Apply NHL-specific total cap (max 10 goals total, and avg should be ~3 per team)
+    let finalHome = roundedHome;
+    let finalAway = roundedAway;
+
+    if (gameData.sport?.includes('NHL') || gameData.league?.includes('NHL')) {
+      const total = roundedHome + roundedAway;
+      // NHL should average ~3 goals per team, not 5
+      if (total > 7) {  // Stricter cap - max 7 total (e.g., 4-3)
+        const ratio = 7 / total;
+        finalHome = Math.round(roundedHome * ratio);
+        finalAway = Math.round(roundedAway * ratio);
+      }
+      // Ensure neither team exceeds 5 goals (realistic NHL max)
+      if (finalHome > 5) finalHome = 5;
+      if (finalAway > 5) finalAway = 5;
+    }
+
     return {
-      homeScore: roundedHome,
-      awayScore: roundedAway,
-      homeWin: roundedHome > roundedAway,
-      margin: roundedHome - roundedAway,
-      total: roundedHome + roundedAway,
+      homeScore: finalHome,
+      awayScore: finalAway,
+      homeWin: finalHome > finalAway,
+      margin: finalHome - finalAway,
+      total: finalHome + finalAway,
     };
   }
 
@@ -410,39 +431,40 @@ export class MonteCarloEngine {
   ): ValueBet[] {
     const valueBets: ValueBet[] = [];
 
-    // Check moneyline value
+    // Check moneyline value (Shin no-vig for favorite-longshot bias)
     const homeImplied = this.americanToImplied(odds.home);
     const awayImplied = this.americanToImplied(odds.away);
+    const { home: homeNoVig, away: awayNoVig } = shinDevig(homeImplied, awayImplied);
 
     // Home moneyline
-    const homeEdge = (result.homeWinProbability - homeImplied) * 100;
+    const homeEdge = (result.homeWinProbability - homeNoVig) * 100;
     if (homeEdge > 3) {  // Minimum 3% edge
       valueBets.push({
         type: 'moneyline',
         side: homeTeam,
         modelProbability: result.homeWinProbability,
-        impliedProbability: homeImplied,
+        impliedProbability: homeNoVig,
         edge: homeEdge,
         expectedValue: this.calculateEV(result.homeWinProbability, odds.home),
         confidence: this.edgeToConfidence(homeEdge),
         kellyFraction: this.kellyFraction(result.homeWinProbability, odds.home),
-        reasoning: `Model: ${(result.homeWinProbability * 100).toFixed(1)}% vs Market: ${(homeImplied * 100).toFixed(1)}%`,
+        reasoning: `Model: ${(result.homeWinProbability * 100).toFixed(1)}% vs Market: ${(homeNoVig * 100).toFixed(1)}%`,
       });
     }
 
     // Away moneyline
-    const awayEdge = (result.awayWinProbability - awayImplied) * 100;
+    const awayEdge = (result.awayWinProbability - awayNoVig) * 100;
     if (awayEdge > 3) {
       valueBets.push({
         type: 'moneyline',
         side: awayTeam,
         modelProbability: result.awayWinProbability,
-        impliedProbability: awayImplied,
+        impliedProbability: awayNoVig,
         edge: awayEdge,
         expectedValue: this.calculateEV(result.awayWinProbability, odds.away),
         confidence: this.edgeToConfidence(awayEdge),
         kellyFraction: this.kellyFraction(result.awayWinProbability, odds.away),
-        reasoning: `Model: ${(result.awayWinProbability * 100).toFixed(1)}% vs Market: ${(awayImplied * 100).toFixed(1)}%`,
+        reasoning: `Model: ${(result.awayWinProbability * 100).toFixed(1)}% vs Market: ${(awayNoVig * 100).toFixed(1)}%`,
       });
     }
 
@@ -597,8 +619,8 @@ export class MonteCarloEngine {
     const q = 1 - p;
 
     const kelly = (b * p - q) / b;
-    // Cap at 25% of bankroll (quarter Kelly for safety)
-    return Math.max(0, Math.min(kelly * 0.25, 0.25));
+    // Quarter-Kelly for safety; absolute cap 5% of bankroll (audit: avoid aggressive stakes)
+    return Math.max(0, Math.min(kelly * 0.25, 0.05));
   }
 
   private edgeToConfidence(edge: number): 'low' | 'medium' | 'high' | 'very_high' {

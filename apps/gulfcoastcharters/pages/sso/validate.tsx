@@ -35,9 +35,14 @@ export default function SSOValidatePage() {
           return;
         }
 
-        // Create local Supabase session
-        // Note: In a real implementation, you'd exchange the token for a Supabase session
-        // For now, we'll just redirect to login if not already authenticated
+        // Decide where the user ultimately wants to land (defaults to admin)
+        const rawRedirect = router.query.redirect;
+        const redirect =
+          typeof rawRedirect === 'string' && rawRedirect.startsWith('/')
+            ? rawRedirect
+            : '/admin';
+
+        // Check existing Supabase session – if already logged in as this user, just go there
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user && user.id === data.user.id) {
@@ -45,15 +50,23 @@ export default function SSOValidatePage() {
           setStatus('success');
           setMessage('SSO validated! Redirecting...');
           setTimeout(() => {
-            router.push('/');
+            router.push(redirect);
           }, 1500);
         } else {
-          // Need to log in - redirect to login with message
-          setStatus('error');
-          setMessage('Please log in to complete SSO. Redirecting to login...');
+          // Need to log in – hand off to the normal admin login with SSO context
+          setStatus('success');
+          setMessage('SSO validated. Please confirm your account to continue...');
+
+          const params = new URLSearchParams();
+          params.set('redirect', redirect);
+          if (data.user?.email) {
+            params.set('email', data.user.email);
+            params.set('sso', '1');
+          }
+
           setTimeout(() => {
-            router.push('/admin/login?redirect=/');
-          }, 2000);
+            router.push(`/admin/login?${params.toString()}`);
+          }, 1200);
         }
       } catch (error: any) {
         setStatus('error');

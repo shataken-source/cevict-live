@@ -43,6 +43,7 @@
     "history:weather": "tsx src/intelligence/historical-knowledge.ts weather",
     "train-bots": "tsx src/train-category-bots.ts",
     "bot-stats": "tsx src/train-category-bots.ts stats",
+    "train-academy": "tsx src/train-bot-academy.ts",
     "bot-manager": "tsx src/bot-manager.ts",
     "bots": "tsx src/bot-manager.ts",
     "best-kalshi": "tsx src/find-best-kalshi.ts",

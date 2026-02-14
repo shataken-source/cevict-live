@@ -8,26 +8,39 @@ export default function PWAEnhancedInstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
+    // PWA mode: standalone or iOS standalone
+    const isPWA = () =>
+      typeof window !== 'undefined' &&
+      (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true);
+    if (isPWA()) {
+      document.body.classList.add('pwa-mode');
+    }
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      
-      // Show prompt after 30 seconds or 3 page views
       const views = parseInt(localStorage.getItem('page_views') || '0');
       const dismissed = localStorage.getItem('pwa_dismissed');
-      
       if (views >= 3 && !dismissed) {
         setTimeout(() => setShowPrompt(true), 30000);
       }
     };
 
+    const installed = () => {
+      setShowPrompt(false);
+      setDeferredPrompt(null);
+      document.body.classList.add('pwa-mode');
+    };
+
     window.addEventListener('beforeinstallprompt', handler);
-    
-    // Track page views
+    window.addEventListener('appinstalled', installed);
     const views = parseInt(localStorage.getItem('page_views') || '0');
     localStorage.setItem('page_views', (views + 1).toString());
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('appinstalled', installed);
+    };
   }, []);
 
   const handleInstall = async () => {

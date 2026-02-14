@@ -48,7 +48,8 @@ export default function CampaignManager() {
         const { data, error } = await supabase.functions.invoke('email-campaign-sender', {
           body: {
             campaignType: template,
-            recipients: [], // Would fetch based on audience
+            audience,
+            recipients: [],
             templateData: { headline: subject, message }
           }
         });

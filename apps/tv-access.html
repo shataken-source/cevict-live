@@ -1,0 +1,139 @@
+L<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwitchbackTV - TV Access</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            text-align: center;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .container { max-width: 600px; }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .qr-container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            margin: 30px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .qr-code {
+            width: 300px;
+            height: 300px;
+            margin: 0 auto;
+        }
+        .url {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            word-break: break-all;
+            font-family: monospace;
+            border: 1px solid rgba(0,212,255,0.3);
+        }
+        .instructions {
+            background: rgba(0,212,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #00d4ff;
+        }
+        .steps { text-align: left; margin: 15px 0; }
+        .steps li { margin: 10px 0; }
+        .tv-icon { font-size: 3em; margin: 20px 0; }
+        .btn {
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📺 SwitchbackTV</h1>
+        <div class="tv-icon">📱➡️📺</div>
+
+        <div class="qr-container">
+            <div class="qr-code" id="qrCode">
+                <!-- QR Code will be generated here -->
+            </div>
+        </div>
+
+        <div class="url">
+            <strong>Direct URL:</strong><br>
+            <span id="urlText">https://cevict-a.vercel.app/switchback.html</span>
+        </div>
+
+        <div class="instructions">
+            <h3>📱 How to get on your TV:</h3>
+            <div class="steps">
+                <ol>
+                    <li><strong>Scan QR Code</strong> with your phone camera</li>
+                    <li><strong>Open URL</strong> on your phone</li>
+                    <li><strong>Cast to TV</strong> using Chromecast/Miracast OR</li>
+                    <li><strong>Use Downloader App</strong> on TV and enter URL manually</li>
+                </ol>
+            </div>
+        </div>
+
+        <div>
+            <button class="btn" onclick="copyURL()">📋 Copy URL</button>
+            <button class="btn" onclick="window.open('https://cevict-a.vercel.app/switchback.html')">🚀 Open App</button>
+        </div>
+
+        <p style="margin-top: 30px; opacity: 0.7;">
+            Works on Samsung TV, Fire TV, Android TV, and any device with a web browser
+        </p>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script>
+        // Generate QR Code
+        const url = 'https://cevict-a.vercel.app/switchback.html';
+        const qr = qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
+
+        document.getElementById('qrCode').innerHTML = qr.createImgTag(5, 0);
+        document.getElementById('urlText').textContent = url;
+
+        function copyURL() {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('URL copied to clipboard! 📋');
+            });
+        }
+
+        // Auto-focus on load
+        window.onload = function() {
+            document.body.style.opacity = '0';
+            setTimeout(() => {
+                document.body.style.transition = 'opacity 0.5s';
+                document.body.style.opacity = '1';
+            }, 100);
+        };
+    </script>
+</body>
+</html>

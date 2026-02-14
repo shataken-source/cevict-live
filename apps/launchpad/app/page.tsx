@@ -1,5 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { UserButton } from '@clerk/nextjs'
 import KeyManagement from '@/components/KeyManagement'
 
 type Project = {
@@ -70,7 +72,7 @@ export default function Launchpad() {
     { name: 'PopThePopcorn', path: 'popthepopcorn', port: 3006, description: 'Entertainment news', running: false, url: 'http://localhost:3006' },
     { name: 'SmokersRights', path: 'smokersrights', port: 3010, description: 'Advocacy platform', running: false, url: 'http://localhost:3010' },
     { name: 'Gulf Coast Charters', path: 'gcc', port: 3009, description: 'All charter types', running: false, url: 'http://localhost:3009' },
-    { name: 'Where To Vacation', path: 'wheretovacation', port: 3011, description: 'Vacation planning', running: false, url: 'http://localhost:3011' },
+    { name: 'WTV (Where To Vacation)', path: 'wheretovacation', port: 3011, description: 'Vacation planning', running: false, url: 'http://localhost:3011' },
   ]
 
   // Load live stats from all apps
@@ -300,8 +302,12 @@ export default function Launchpad() {
               </p>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '1.2rem', color: '#6b7280', marginBottom: '0.5rem' }} suppressHydrationWarning>
+          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <Link href="/landing" style={{ color: '#94a3b8', fontSize: '1rem', textDecoration: 'none' }}>About</Link>
+              <UserButton afterSignOutUrl="/landing" />
+            </div>
+            <div style={{ fontSize: '1.2rem', color: '#6b7280' }} suppressHydrationWarning>
               {mounted ? currentTime : 'Loading...'}
             </div>
             <div style={{ fontSize: '1rem', color: '#6b7280' }}>
@@ -682,6 +688,29 @@ export default function Launchpad() {
               >
               🔪 Kill All Ports
             </button>
+
+            <a
+              href="/command-center"
+              style={{
+                padding: '2rem',
+                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                borderRadius: '15px',
+                border: 'none',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '1.2rem',
+                cursor: 'pointer',
+                boxShadow: '0 6px 20px rgba(99, 102, 241, 0.4)',
+                transition: 'transform 0.2s',
+                textDecoration: 'none',
+                display: 'block',
+                textAlign: 'center',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0) scale(1)')}
+              >
+              🎛️ Command Center
+            </a>
 
             <a
               href="/affiliates"

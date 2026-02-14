@@ -49,12 +49,11 @@ const mockCaptainData = {
 
 const mockReviews = [
   {
-    id: 1,
-    userName: 'John Smith',
-    userAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100',
+    id: '1',
+    customerName: 'John Smith',
     rating: 5,
-    date: '2024-11-10',
-    comment: 'Captain James was fantastic! Very knowledgeable and made our trip unforgettable.',
+    createdAt: '2024-11-10',
+    reviewText: 'Captain James was fantastic! Very knowledgeable and made our trip unforgettable.',
     photos: ['https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400']
   }
 ];

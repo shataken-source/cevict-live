@@ -59,9 +59,12 @@ export async function fetchAllRealTimeData(...args: any[]): Promise<RealTimeData
   };
 }
 
-export function integrateRealTimeData(baseProb: number, data: RealTimeData): any {
+export function integrateRealTimeData(baseProb: number, data: RealTimeData): {
+  adjustedPrediction: number;
+  adjustments: Array<{ factor: string; impact: number; description: string }>;
+} {
   let adjustment = 0;
-  const adjustments = [];
+  const adjustments: Array<{ factor: string; impact: number; description: string }> = [];
 
   if (data.sentiment && data.sentiment.sampleSize > 5) {
     const total = data.sentiment.positive + data.sentiment.negative;
@@ -69,16 +72,16 @@ export function integrateRealTimeData(baseProb: number, data: RealTimeData): any
       const ratio = data.sentiment.positive / total;
       if (ratio > 0.65) {
         adjustment += 0.05;
-        adjustments.push("Public Sentiment: Bullish (+5%)");
+        adjustments.push({ factor: 'Sentiment', impact: 0.05, description: 'Public sentiment bullish (+5%)' });
       } else if (ratio < 0.35) {
         adjustment -= 0.05;
-        adjustments.push("Public Sentiment: Bearish (-5%)");
+        adjustments.push({ factor: 'Sentiment', impact: -0.05, description: 'Public sentiment bearish (-5%)' });
       }
     }
   }
 
   return {
     adjustedPrediction: Math.min(Math.max(baseProb + adjustment, 0), 1),
-    adjustments
+    adjustments,
   };
 }

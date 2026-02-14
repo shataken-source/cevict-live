@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Copy, Mail, Share2 } from 'lucide-react';
+import { Download, Copy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AffiliatePromotionalKit({ affiliateCode }: { affiliateCode: string }) {
@@ -37,6 +37,29 @@ Happy fishing!`;
     toast({ title: `${label} copied!`, description: 'Ready to share' });
   };
 
+  const downloadBanner = (size: string, name: string) => {
+    const [w, h] = size.split('x').map(Number);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = `bold ${Math.min(w / 12, 24)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('Gulf Coast Charters', w / 2, h / 2 - 10);
+    ctx.font = `${Math.min(w / 20, 14)}px system-ui, sans-serif`;
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(`Code: ${affiliateCode}`, w / 2, h / 2 + 16);
+    const link = document.createElement('a');
+    link.download = `gulf-coast-charters-banner-${size}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast({ title: 'Banner downloaded', description: `${name} (${size}px)` });
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -57,7 +80,7 @@ Happy fishing!`;
                   <p className="font-medium">{banner.name}</p>
                   <p className="text-sm text-gray-500">{banner.size}px</p>
                 </div>
-                <Button variant="outline">
+                <Button variant="outline" onClick={() => downloadBanner(banner.size, banner.name)}>
                   <Download className="w-4 h-4 mr-2" />Download
                 </Button>
               </div>

@@ -18,7 +18,7 @@ import {
   saveTradeRecord,
   getOpenTradeRecords,
 } from "./lib/supabase-memory";
-import { KalshiSettlementWorker } from "./services/kalshi/settlement-worker";
+import { KalshiSettlementWorker, logTradeToLearningLoop } from "./services/kalshi/settlement-worker";
 import { LearningUpdater } from "./intelligence/learning-updater";
 import {
   preFlightTradeCheck,
@@ -338,10 +338,10 @@ async function main() {
 
           const contracts = kalshi.usdToContracts(tradeSize, limitPrice);
 
-          // Save trade record
-          const saveResult = await safeExecute(
+          // Save trade record and log to learning loop (same id so settlement can update outcome)
+          const tradeId = await safeExecute(
             async () => {
-              const saved = await saveTradeRecord({
+              const id = await saveTradeRecord({
                 platform: "kalshi",
                 trade_type: side,
                 symbol: pred.market_title,
@@ -356,13 +356,28 @@ async function main() {
                 edge: Number(pred.edge),
                 outcome: "open",
               });
-              return saved;
+              return id;
             },
             `Save trade record for ${pred.market_id}`
           );
 
-          if (!saveResult.success) {
+          if (!tradeId.success || !tradeId.result) {
             console.log(`⚠️ Trade placed but record save failed for ${pred.market_id}`);
+          } else {
+            const marketCloseTs = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            logTradeToLearningLoop({
+              tradeId: tradeId.result,
+              marketTicker: pred.market_id,
+              marketTitle: pred.market_title,
+              marketCategory: categorizeMarket(pred.market_title ?? ''),
+              predictedProbability: Number(pred.confidence),
+              marketOdds: limitPrice,
+              side,
+              stakeUsd: tradeSize,
+              contracts,
+              entryPriceCents: limitPrice,
+              marketCloseTs,
+            }).catch((err) => console.warn('Learning loop log failed:', err?.message));
           }
 
           // Record position tracking (BUGS #1, #2, #4)

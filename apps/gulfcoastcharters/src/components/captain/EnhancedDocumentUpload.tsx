@@ -152,6 +152,9 @@ export function EnhancedDocumentUpload({ captainId }: { captainId: string }) {
       const { data: { publicUrl } } = supabase.storage.from('captain-documents').getPublicUrl(fileName);
       const ocrData = await processOCR(publicUrl, docType);
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
       await supabase.from('captain_documents').insert({
         captain_id: user.id, type: docType, name: file.name, url: publicUrl,
         status: ocrData?.expirationDate ? 'verified' : 'pending',

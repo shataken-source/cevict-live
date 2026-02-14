@@ -4,7 +4,6 @@ apps/*
 
 # Ignore common directories
 node_modules
-.next
 .turbo
 dist
 build

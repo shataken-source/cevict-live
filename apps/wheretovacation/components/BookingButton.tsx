@@ -40,6 +40,7 @@ export default function BookingButton({ rentalId, rentalName }: BookingButtonPro
           rentalName,
           checkIn,
           checkOut,
+          userId: user.id,
         }),
       })
 
@@ -69,6 +70,7 @@ export default function BookingButton({ rentalId, rentalName }: BookingButtonPro
           value={checkIn}
           onChange={(e) => setCheckIn(e.target.value)}
           min={new Date().toISOString().split('T')[0]}
+          placeholder="Select check-in date"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg"
         />
       </div>
@@ -81,6 +83,7 @@ export default function BookingButton({ rentalId, rentalName }: BookingButtonPro
           value={checkOut}
           onChange={(e) => setCheckOut(e.target.value)}
           min={checkIn || new Date().toISOString().split('T')[0]}
+          placeholder="Select check-out date"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg"
         />
       </div>

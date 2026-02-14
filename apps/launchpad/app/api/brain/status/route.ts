@@ -59,13 +59,14 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: error?.message || 'Failed to reach brain status',
-      },
-      { status: 500 }
-    );
+    // Return 200 with ok: false so launchpad can show "Brain offline" without a failed request
+    return NextResponse.json({
+      ok: false,
+      brainReachable: false,
+      brainHealthy: false,
+      error: error?.message || 'Failed to reach brain status',
+      timestamp: new Date().toISOString(),
+    });
   }
 }
 

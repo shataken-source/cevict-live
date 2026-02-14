@@ -72,9 +72,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Sanitize location fields
+    // Sanitize location fields — require state (no default to AL; invalid location = reject)
     parsedLocation.city = sanitizeString(parsedLocation.city, 100);
-    parsedLocation.state = parsedLocation.state ? sanitizeString(parsedLocation.state, 2) : 'AL'; // Default to AL if missing
+    const stateRaw = parsedLocation.state ? sanitizeString(parsedLocation.state, 2) : null;
+    if (!stateRaw || stateRaw.length !== 2) {
+      return NextResponse.json(
+        {
+          error: 'Please provide a valid US city and state (e.g., "Houston, TX" or "Los Angeles, California"). State is required.',
+        },
+        { status: 400 }
+      );
+    }
+    parsedLocation.state = stateRaw;
     parsedLocation.zip = parsedLocation.zip ? sanitizeString(parsedLocation.zip, 10) : null;
     parsedLocation.detail = parsedLocation.detail ? sanitizeString(parsedLocation.detail, MAX_LENGTHS.location) : null;
 
