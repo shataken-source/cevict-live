@@ -319,6 +319,50 @@ export const NCAAB_TEAMS = [
   "Memphis Tigers"
 ] as const;
 
+// NASCAR Cup Series Drivers (2025 Season)
+export const NASCAR_CUP_DRIVERS = [
+  "Kyle Larson",
+  "William Byron",
+  "Chase Elliott",
+  "Denny Hamlin",
+  "Joey Logano",
+  "Christopher Bell",
+  "Ryan Blaney",
+  "Tyler Reddick",
+  "Martin Truex Jr",
+  "Kyle Busch",
+  "Brad Keselowski",
+  "Ty Gibbs",
+  "Alex Bowman",
+  "Ross Chastain",
+  "Austin Cindric",
+  "Chase Briscoe",
+  "Chris Buescher",
+  "Daniel Suarez",
+  "Austin Dillon",
+  "Justin Allgaier",
+  "Carson Hocevar",
+  "Noah Gragson",
+  "Bubba Wallace",
+  "Ricky Stenhouse Jr",
+  "Josh Berry",
+  "Aric Almirola",
+  "John Hunter Nemechek",
+  "Erik Jones",
+  "Corey LaJoie",
+  "Todd Gilliland",
+  "Michael McDowell",
+  "Justin Haley",
+  "AJ Allmendinger",
+  "Cole Custer",
+  "Zane Smith",
+  "Shane van Gisbergen",
+  "Riley Herbst",
+  "Ty Dillon",
+  "Cody Ware",
+  "Kaz Grala"
+] as const;
+
 // Legacy alias for backward compatibility
 export const NCAA_D1_TEAMS = NCAAF_TEAMS;
 
@@ -444,6 +488,8 @@ export function getTeamsForSport(sport: string): readonly string[] {
     return NCAAF_TEAMS;
   } else if (sportUpper === "NCAAB" || sportUpper === "NCAA BASKETBALL" || (sportUpper.includes("NCAA") && sportUpper.includes("BASKETBALL"))) {
     return NCAAB_TEAMS;
+  } else if (sportUpper === "NASCAR" || sportUpper === "RACING" || sportUpper === "CUP SERIES") {
+    return NASCAR_CUP_DRIVERS;
   } else if (sportUpper === "NCAA" || sportUpper === "COLLEGE") {
     // Default to football for generic NCAA
     return NCAAF_TEAMS;

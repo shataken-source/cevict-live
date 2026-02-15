@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { 
-  MapPin, 
-  Utensils, 
-  Fuel, 
-  Toilet, 
-  Wrench, 
-  Mountain, 
-  Landmark, 
+import { useState, useMemo, useEffect } from 'react';
+import {
+  MapPin,
+  Utensils,
+  Fuel,
+  Toilet,
+  Wrench,
+  Mountain,
+  Landmark,
   Tent,
   CloudRain,
   Navigation,
@@ -21,8 +21,15 @@ import {
   Info,
   ExternalLink,
   Wifi,
-  Signal
+  Signal,
+  Loader2
 } from 'lucide-react';
+
+// Geoapify API Configuration
+const GEOAPIFY_CONFIG = {
+  API_KEY: process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY || 'a10bf4a7da4a4b95996c12331743e645',
+  BASE_URL: 'https://api.geoapify.com/v1',
+};
 
 // Mock attraction database for demo - structured for real API integration
 type AttractionType = 'food' | 'gas' | 'restroom' | 'repair' | 'trail' | 'historic' | 'shelter' | 'entertainment';
@@ -105,17 +112,17 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   const R = 3959; // Earth radius in miles
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLng/2) * Math.sin(dLng/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.round(R * c * 10) / 10;
 }
 
 // Generate mock attractions for unknown locations
 function generateMockAttractions(zip: string, coords?: { lat: number; lng: number }): Attraction[] {
   const zipNum = parseInt(zip.substring(0, 3));
-  
+
   return [
     { id: 'm1', name: 'Local Grocery', type: 'food', distance: 5.2, rating: 3.8, address: `${zip} Main St`, phone: '(555) 123-4567', hours: '7-10 daily', description: 'Local grocery and camping supplies', isOpen: true, tags: ['groceries', 'supplies'] },
     { id: 'm2', name: 'Shell Station', type: 'gas', distance: 3.8, rating: 4.0, address: `${zip} Highway`, phone: '(555) 234-5678', hours: '5-11 daily', description: 'Gas, diesel, basic convenience items', isOpen: true, tags: ['fuel', 'snacks'] },
@@ -130,6 +137,120 @@ function generateMockAttractions(zip: string, coords?: { lat: number; lng: numbe
   ];
 }
 
+// Geoapify API Functions
+interface GeoapifyPlace {
+  place_id: string;
+  name: string;
+  formatted: string;
+  lat: number;
+  lon: number;
+  categories: string[];
+  distance?: number;
+  contact?: {
+    phone?: string;
+  };
+  opening_hours?: string;
+  website?: string;
+  rating?: number;
+}
+
+// Geocode ZIP/city to coordinates
+const geocodeLocation = async (query: string): Promise<{ lat: number; lng: number; name: string } | null> => {
+  try {
+    const url = `${GEOAPIFY_CONFIG.BASE_URL}/geocode/search?text=${encodeURIComponent(query)}&apiKey=${GEOAPIFY_CONFIG.API_KEY}&limit=1`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Geocoding failed');
+    const data = await response.json();
+    if (data.features?.length > 0) {
+      const [lon, lat] = data.features[0].geometry.coordinates;
+      const name = data.features[0].properties.formatted || query;
+      return { lat, lng: lon, name };
+    }
+    return null;
+  } catch (err) {
+    console.error('Geocoding error:', err);
+    return null;
+  }
+};
+
+// Search for nearby places
+const searchNearbyPlaces = async (
+  lat: number,
+  lng: number,
+  radius: number = 50000, // 50km in meters
+  categories: string[] = []
+): Promise<GeoapifyPlace[]> => {
+  try {
+    const categoryParam = categories.length > 0 ? `&categories=${categories.join(',')}` : '';
+    const url = `${GEOAPIFY_CONFIG.BASE_URL}/places/nearby?lat=${lat}&lon=${lng}&radius=${radius}${categoryParam}&apiKey=${GEOAPIFY_CONFIG.API_KEY}&limit=20`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Places search failed');
+    const data = await response.json();
+    return data.features?.map((f: any) => ({
+      place_id: f.properties.place_id,
+      name: f.properties.name || 'Unknown',
+      formatted: f.properties.formatted || '',
+      lat: f.properties.lat,
+      lon: f.properties.lon,
+      categories: f.properties.categories || [],
+      distance: f.properties.distance,
+      contact: f.properties.contact,
+      opening_hours: f.properties.opening_hours,
+      website: f.properties.website,
+      rating: f.properties.rating,
+    })) || [];
+  } catch (err) {
+    console.error('Places search error:', err);
+    return [];
+  }
+};
+
+// Map Geoapify categories to our types
+const mapCategoryToType = (categories: string[]): AttractionType => {
+  const cats = categories.join(',').toLowerCase();
+  if (cats.includes('catering') || cats.includes('food') || cats.includes('grocery') || cats.includes('supermarket')) return 'food';
+  if (cats.includes('fuel') || cats.includes('gas') || cats.includes('charging_station')) return 'gas';
+  if (cats.includes('toilet') || cats.includes('restroom') || cats.includes('bathroom')) return 'restroom';
+  if (cats.includes('service') || cats.includes('repair') || cats.includes('car_repair')) return 'repair';
+  if (cats.includes('outdoor') || cats.includes('trail') || cats.includes('park') || cats.includes('mountain')) return 'trail';
+  if (cats.includes('historic') || cats.includes('monument') || cats.includes('museum')) return 'historic';
+  if (cats.includes('entertainment') || cats.includes('tourism') || cats.includes('attraction')) return 'entertainment';
+  return 'shelter';
+};
+
+// Convert Geoapify place to our Attraction format
+const convertGeoapifyPlace = (place: GeoapifyPlace, centerLat: number, centerLng: number): Attraction => {
+  const type = mapCategoryToType(place.categories);
+  const distanceMiles = place.distance ? Math.round((place.distance / 1609.34) * 10) / 10 : 0;
+
+  // Extract tags from categories
+  const tagMap: Record<string, string[]> = {
+    'food': ['food', 'restaurant', 'dining'],
+    'gas': ['fuel', 'gas', 'diesel'],
+    'restroom': ['restrooms', 'facilities'],
+    'repair': ['repair', 'service', 'parts'],
+    'trail': ['hiking', 'nature', 'outdoor'],
+    'historic': ['historic', 'landmark', 'tourism'],
+    'shelter': ['emergency', 'shelter'],
+    'entertainment': ['attraction', 'tourism', 'sightseeing'],
+  };
+
+  return {
+    id: place.place_id,
+    name: place.name,
+    type,
+    distance: distanceMiles,
+    rating: place.rating || (3.5 + Math.random()),
+    address: place.formatted || 'Address unavailable',
+    phone: place.contact?.phone,
+    hours: place.opening_hours,
+    description: place.categories?.[0] || 'Local point of interest',
+    isOpen: true, // Would need actual opening hours parsing
+    tags: tagMap[type] || ['local'],
+    website: place.website,
+  };
+};
+
 export default function LocalAttractions() {
   const [searchInput, setSearchInput] = useState('25965');
   const [activeLocation, setActiveLocation] = useState<string>('25965');
@@ -137,11 +258,25 @@ export default function LocalAttractions() {
   const [maxDistance, setMaxDistance] = useState(50);
   const [hasConnectivity, setHasConnectivity] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [liveAttractions, setLiveAttractions] = useState<Attraction[]>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
 
   const locationData = useMemo(() => {
+    // Use live data if available and online
+    if (hasConnectivity && liveAttractions.length > 0) {
+      return {
+        zip: activeLocation,
+        name: searchInput,
+        coords,
+        attractions: liveAttractions,
+      };
+    }
+
+    // Fall back to mock database
     const data = LOCATION_DATABASE[activeLocation];
     if (data) return data;
-    
+
     // Generate mock data for unknown locations
     return {
       zip: activeLocation,
@@ -149,7 +284,7 @@ export default function LocalAttractions() {
       coords: { lat: 38.0, lng: -95.0 },
       attractions: generateMockAttractions(activeLocation)
     };
-  }, [activeLocation]);
+  }, [activeLocation, hasConnectivity, liveAttractions, searchInput, coords]);
 
   const filteredAttractions = useMemo(() => {
     return locationData.attractions.filter(attraction => {
@@ -159,19 +294,79 @@ export default function LocalAttractions() {
     }).sort((a, b) => a.distance - b.distance);
   }, [locationData.attractions, selectedCategories, maxDistance]);
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!searchInput.trim()) return;
     setIsSearching(true);
-    // Simulate API search
-    setTimeout(() => {
-      setActiveLocation(searchInput.trim());
-      setIsSearching(false);
-    }, 500);
+    setApiError(null);
+
+    if (hasConnectivity) {
+      // Try to geocode and fetch real places
+      const geoResult = await geocodeLocation(searchInput);
+
+      if (geoResult) {
+        setCoords({ lat: geoResult.lat, lng: geoResult.lng });
+
+        // Define category filters based on user selection
+        const categoryMap: Record<string, string[]> = {
+          'food': ['catering', 'commercial.food_and_drink'],
+          'gas': ['commercial.fuel', 'service.vehicle.fuel'],
+          'restroom': ['facilities.toilet'],
+          'repair': ['service.vehicle.repair', 'service.repair'],
+          'trail': ['national_park', 'leisure.park', 'natural'],
+          'historic': ['heritage', 'tourism'],
+          'entertainment': ['tourism.attraction', 'entertainment'],
+          'shelter': ['facilities'],
+        };
+
+        let allPlaces: GeoapifyPlace[] = [];
+
+        if (selectedCategories.length > 0) {
+          // Search for specific categories
+          for (const cat of selectedCategories) {
+            const categories = categoryMap[cat] || [];
+            if (categories.length > 0) {
+              const places = await searchNearbyPlaces(
+                geoResult.lat,
+                geoResult.lng,
+                maxDistance * 1609.34, // Convert miles to meters
+                categories
+              );
+              allPlaces.push(...places);
+            }
+          }
+        } else {
+          // Search all categories
+          const places = await searchNearbyPlaces(
+            geoResult.lat,
+            geoResult.lng,
+            maxDistance * 1609.34
+          );
+          allPlaces = places;
+        }
+
+        // Remove duplicates and convert
+        const uniquePlaces = Array.from(new Map(allPlaces.map(p => [p.place_id, p])).values());
+        const converted = uniquePlaces.map(p => convertGeoapifyPlace(p, geoResult.lat, geoResult.lng));
+
+        if (converted.length > 0) {
+          setLiveAttractions(converted);
+        } else {
+          setApiError('No places found via Geoapify - using demo data');
+          setLiveAttractions([]);
+        }
+      } else {
+        setApiError('Geocoding failed - using demo data');
+        setLiveAttractions([]);
+      }
+    }
+
+    setActiveLocation(searchInput.trim());
+    setIsSearching(false);
   };
 
   const toggleCategory = (type: AttractionType) => {
-    setSelectedCategories(prev => 
-      prev.includes(type) 
+    setSelectedCategories(prev =>
+      prev.includes(type)
         ? prev.filter(t => t !== type)
         : [...prev, type]
     );
@@ -228,7 +423,7 @@ export default function LocalAttractions() {
               </button>
             </div>
           </div>
-          
+
           {/* Connectivity Toggle */}
           <div className="flex items-center gap-2 bg-slate-700 rounded-lg px-3 py-2">
             <label className="text-sm text-slate-300 flex items-center gap-2">
@@ -277,11 +472,10 @@ export default function LocalAttractions() {
                 <button
                   key={type}
                   onClick={() => toggleCategory(type)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all ${
-                    isActive 
-                      ? getCategoryStyle(type)
-                      : 'bg-slate-700 text-slate-400 border border-slate-600'
-                  }`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all ${isActive
+                    ? getCategoryStyle(type)
+                    : 'bg-slate-700 text-slate-400 border border-slate-600'
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span>{label}</span>
@@ -300,12 +494,17 @@ export default function LocalAttractions() {
             {filteredAttractions.length} places found
           </span>
         </h3>
-        {hasConnectivity && (
-          <div className="text-xs bg-emerald-900/30 text-emerald-400 px-2 py-1 rounded flex items-center gap-1">
-            <Wifi className="w-3 h-3" />
-            Live results
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {apiError && (
+            <span className="text-xs text-amber-400">⚠ {apiError}</span>
+          )}
+          {hasConnectivity && liveAttractions.length > 0 && (
+            <div className="text-xs bg-emerald-900/30 text-emerald-400 px-2 py-1 rounded flex items-center gap-1">
+              <Wifi className="w-3 h-3" />
+              Geoapify Live
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Attractions List */}
@@ -313,9 +512,9 @@ export default function LocalAttractions() {
         {filteredAttractions.map((attraction) => {
           const Icon = getCategoryIcon(attraction.type);
           const isOpen = attraction.isOpen;
-          
+
           return (
-            <div 
+            <div
               key={attraction.id}
               className="bg-slate-800 rounded-xl p-4 border border-slate-700 hover:border-slate-600 transition-colors"
             >
@@ -324,7 +523,7 @@ export default function LocalAttractions() {
                 <div className={`p-3 rounded-lg ${getCategoryStyle(attraction.type)}`}>
                   <Icon className="w-5 h-5" />
                 </div>
-                
+
                 {/* Main Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
@@ -344,7 +543,7 @@ export default function LocalAttractions() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Details Row */}
                   <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
                     <span className="text-slate-400 flex items-center gap-1">
@@ -368,7 +567,7 @@ export default function LocalAttractions() {
                       <span className="text-amber-400">{attraction.rating}</span>
                     </span>
                   </div>
-                  
+
                   {/* Tags */}
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {attraction.tags.map((tag) => (
@@ -377,7 +576,7 @@ export default function LocalAttractions() {
                       </span>
                     ))}
                   </div>
-                  
+
                   {/* Actions */}
                   <div className="flex gap-2 mt-3">
                     <button className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
@@ -385,7 +584,7 @@ export default function LocalAttractions() {
                       Directions
                     </button>
                     {attraction.website && (
-                      <a 
+                      <a
                         href={attraction.website}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -405,7 +604,7 @@ export default function LocalAttractions() {
             </div>
           );
         })}
-        
+
         {filteredAttractions.length === 0 && (
           <div className="text-center py-12 bg-slate-800/50 rounded-xl border border-slate-700 border-dashed">
             <MapPin className="w-12 h-12 text-slate-600 mx-auto mb-3" />
@@ -421,11 +620,11 @@ export default function LocalAttractions() {
           <Info className="w-5 h-5 text-blue-400 mt-0.5" />
           <div className="text-sm text-slate-400">
             <p className="mb-2">
-              <strong className="text-slate-300">Offline Mode:</strong> Basic location data works without internet. 
-              Toggle "Online" for live results, current hours, and reviews.
+              <strong className="text-slate-300">Offline Mode:</strong> Basic location data works without internet.
+              Toggle "Online" for live results via Geoapify API with current hours and real places.
             </p>
             <p>
-              <strong className="text-slate-300">RV Mode:</strong> Look for tags like "RV dump", "propane", and 
+              <strong className="text-slate-300">RV Mode:</strong> Look for tags like "RV dump", "propane", and
               "diesel" when traveling with a camper.
             </p>
           </div>

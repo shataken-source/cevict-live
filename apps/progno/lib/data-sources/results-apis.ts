@@ -9,7 +9,7 @@
 
 import type { GameResult } from './historical-results';
 
-const PROGNO_LEAGUES = ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAB', 'NCAAF'] as const;
+const PROGNO_LEAGUES = ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAB', 'NCAAF', 'NASCAR'] as const;
 type SportKey = (typeof PROGNO_LEAGUES)[number];
 
 /** Map league to provider sport/league identifiers where needed */
@@ -20,6 +20,7 @@ const LEAGUE_TO_JSONODDS: Record<string, string> = {
   MLB: 'MLB',
   NCAAF: 'NCAAF',
   NCAAB: 'NCAAB',
+  NASCAR: 'NASCAR',
 };
 
 /** ESPN scoreboard API path per league (no key, near real-time). */
@@ -30,6 +31,7 @@ const LEAGUE_TO_ESPN_PATH: Record<string, string> = {
   MLB: 'baseball/mlb',
   NCAAF: 'football/college-football',
   NCAAB: 'basketball/mens-college-basketball',
+  NASCAR: 'racing/nascar',
 };
 
 /** Normalize for dedup: "Team Name" -> lowercase alphanumeric */

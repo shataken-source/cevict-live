@@ -170,6 +170,7 @@ export default function PrognoDashboard() {
             <option value="nfl">NFL</option>
             <option value="ncaaf">NCAAF</option>
             <option value="mlb">MLB</option>
+            <option value="nascar">NASCAR</option>
             <option value="today">Today's Best Bets</option>
             <option value="picks-display">📊 Picks Display</option>
             <option value="trading-dashboard">🚀 Trading Dashboard</option>

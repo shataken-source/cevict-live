@@ -1,10 +1,10 @@
 /**
  * KALSHI API INTEGRATION FOR PROGNO
  * Real-time prediction market data from Kalshi
- * 
+ *
  * Kalshi uses probability-based pricing (0-99 cents = 0-99% probability)
  * Perfect for users in states without legal sports betting
- * 
+ *
  * Documentation: https://docs.kalshi.com
  */
 
@@ -50,8 +50,8 @@ const KALSHI_DEMO_API_BASE = 'https://demo-api.kalshi.co/trade-api/v2';
 /**
  * Get Kalshi API credentials from environment
  */
-function getKalshiCredentials(): { 
-  apiKeyId: string; 
+function getKalshiCredentials(): {
+  apiKeyId: string;
   privateKey: string;
   isDemo: boolean;
 } | null {
@@ -77,18 +77,18 @@ function generateKalshiSignature(
   privateKeyPem: string
 ): string {
   const message = `${timestamp}${method}${path}`;
-  
+
   try {
     const sign = crypto.createSign('RSA-SHA256');
     sign.update(message);
     sign.end();
-    
+
     const signature = sign.sign({
       key: privateKeyPem,
       padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
       saltLength: crypto.constants.RSA_PSS_SALTLEN_DIGEST
     }, 'base64');
-    
+
     return signature;
   } catch (error) {
     console.error('Failed to generate Kalshi signature:', error);
@@ -108,32 +108,32 @@ async function kalshiRequest(
   const baseUrl = credentials.isDemo ? KALSHI_DEMO_API_BASE : KALSHI_API_BASE;
   const url = `${baseUrl}${path}`;
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  
+
   const signature = generateKalshiSignature(
     timestamp,
     method,
     path,
     credentials.privateKey
   );
-  
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'KALSHI-ACCESS-KEY': credentials.apiKeyId,
     'KALSHI-ACCESS-SIGNATURE': signature,
     'KALSHI-ACCESS-TIMESTAMP': timestamp,
   };
-  
+
   const response = await fetch(url, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
   });
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`Kalshi API error ${response.status}: ${errorText}`);
   }
-  
+
   return response.json();
 }
 
@@ -141,11 +141,11 @@ async function kalshiRequest(
  * Search Kalshi markets
  */
 export async function searchKalshiMarkets(
-  query: string, 
+  query: string,
   limit: number = 20
 ): Promise<KalshiSearchResult> {
   const credentials = getKalshiCredentials();
-  
+
   if (!credentials) {
     console.warn('[Kalshi] No API credentials configured');
     return {
@@ -155,39 +155,39 @@ export async function searchKalshiMarkets(
       source: 'unavailable',
     };
   }
-  
+
   try {
     // Build query parameters
     const params = new URLSearchParams({
       limit: limit.toString(),
       status: 'open',
     });
-    
+
     if (query) {
       params.append('series_ticker', query.toUpperCase());
     }
-    
+
     const path = `/markets?${params.toString()}`;
     const data = await kalshiRequest('GET', path, credentials);
-    
+
     // Transform to our format with probability calculations
     const markets: KalshiMarket[] = (data.markets || []).map((m: any) => {
       const yesBid = m.yes_bid || 0;
       const yesAsk = m.yes_ask || 0;
       const noBid = m.no_bid || 0;
       const noAsk = m.no_ask || 0;
-      
+
       // Calculate implied probability from mid-price
       const yesMid = (yesBid + yesAsk) / 2;
       const noMid = (noBid + noAsk) / 2;
       const impliedProbability = yesMid / 100; // Convert cents to probability
-      
+
       // Calculate confidence from spread and volume
       const spread = Math.abs(yesAsk - yesBid);
       const volumeScore = Math.min((m.volume || 0) / 50000, 1);
       const spreadScore = Math.max(0, 1 - spread / 20);
       const confidence = (volumeScore * 0.6 + spreadScore * 0.4);
-      
+
       return {
         ticker: m.ticker,
         title: m.title,
@@ -208,14 +208,14 @@ export async function searchKalshiMarkets(
         confidence,
       };
     });
-    
+
     return {
       markets,
       total: data.cursor?.total || markets.length,
       query,
       source: 'api',
     };
-    
+
   } catch (error) {
     console.error('[Kalshi] API error:', error);
     return {
@@ -271,7 +271,7 @@ export function getMarketProbability(market: KalshiMarket): number {
 export function getKalshiCategories(): string[] {
   return [
     'Politics',
-    'Economics', 
+    'Economics',
     'Sports',
     'Tech & Science',
     'Crypto',
@@ -294,7 +294,7 @@ export async function findBestKalshiMatch(question: string): Promise<{
   // Extract keywords for search
   const keywords = extractKeywords(question);
   const searchResults = await searchKalshiMarkets(keywords.join(' '), 10);
-  
+
   if (searchResults.markets.length === 0 || searchResults.source === 'unavailable') {
     return {
       market: null,
@@ -303,12 +303,12 @@ export async function findBestKalshiMatch(question: string): Promise<{
       relevance: 0,
     };
   }
-  
+
   // Score each market for relevance
   const scoredMarkets = searchResults.markets.map(market => {
     const titleLower = market.title.toLowerCase();
     const questionLower = question.toLowerCase();
-    
+
     // Calculate relevance based on keyword matches
     let relevance = 0;
     for (const keyword of keywords) {
@@ -317,14 +317,14 @@ export async function findBestKalshiMatch(question: string): Promise<{
       }
     }
     relevance = Math.min(relevance, 1);
-    
+
     return { market, relevance };
   });
-  
+
   // Sort by relevance and get best match
   scoredMarkets.sort((a, b) => b.relevance - a.relevance);
   const best = scoredMarkets[0];
-  
+
   if (!best || best.relevance < 0.2) {
     return {
       market: null,
@@ -333,7 +333,7 @@ export async function findBestKalshiMatch(question: string): Promise<{
       relevance: 0,
     };
   }
-  
+
   return {
     market: best.market,
     probability: best.market.impliedProbability,
@@ -357,7 +357,7 @@ function extractKeywords(question: string): string[] {
     'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just',
     'this', 'that', 'these', 'those', 'what', 'which', 'who', 'whom',
   ]);
-  
+
   return question
     .toLowerCase()
     .replace(/[?!.,;:'"()]/g, '')
@@ -373,17 +373,17 @@ export async function getTrendingKalshiMarkets(
   limit: number = 10
 ): Promise<KalshiMarket[]> {
   const searchResults = await searchKalshiMarkets(category || '', limit * 2);
-  
+
   // Sort by volume (most active = trending)
   const sorted = searchResults.markets.sort((a, b) => b.volume - a.volume);
-  
+
   // Filter by category if specified
   if (category) {
     return sorted
       .filter(m => m.category.toLowerCase() === category.toLowerCase())
       .slice(0, limit);
   }
-  
+
   return sorted.slice(0, limit);
 }
 
@@ -416,13 +416,14 @@ export async function getKalshiSportsMarkets(
     'ncaab': 'COLLEGE BASKETBALL',
     'soccer': 'SOCCER',
     'ufc': 'UFC MMA',
+    'nascar': 'NASCAR',
   };
-  
+
   const query = sport ? sportQueries[sport.toLowerCase()] || sport : 'SPORTS';
   const results = await searchKalshiMarkets(query, limit);
-  
-  return results.markets.filter(m => 
-    m.category === 'Sports' || 
+
+  return results.markets.filter(m =>
+    m.category === 'Sports' ||
     m.title.toLowerCase().includes('game') ||
     m.title.toLowerCase().includes('win') ||
     m.title.toLowerCase().includes('championship')
