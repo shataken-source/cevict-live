@@ -1,7 +1,45 @@
 'use client';
 
 import { useState } from 'react';
-import { Backpack, Shirt, Thermometer, Wind, CloudRain, Check, Calendar, MapPin } from 'lucide-react';
+import { Backpack, Shirt, Thermometer, Wind, CloudRain, Check, Calendar, MapPin, Tv, Radio, Compass, ExternalLink } from 'lucide-react';
+
+// Antenna direction database for common camping areas
+const ANTENNA_DIRECTIONS: Record<string, { direction: string; degrees: number; tips: string[]; towers: string }> = {
+  '25965': { direction: 'Northwest', degrees: 315, towers: 'Oak Hill/Clarksburg area', tips: ['Point antenna NW toward Oak Hill (310°–320°)', 'Elevation is critical', 'Avoid hills/trees blocking NW path'] },
+  '82190': { direction: 'South/Southeast', degrees: 160, towers: 'Cody, WY and Billings, MT', tips: ['Point antenna SE toward Cody (150°–170°)', 'Mount high - mountains block signals', 'Consider amplified antenna'] },
+  '90210': { direction: 'North', degrees: 0, towers: 'Mt. Wilson transmitters', tips: ['Point antenna North toward Mt. Wilson', 'Line of sight to north hills important', 'Rescan after repositioning'] },
+};
+
+// Regional radio station defaults
+const RADIO_STATIONS = [
+  { freq: '91.1', band: 'FM', name: 'NPR', format: 'News/Talk' },
+  { freq: '93.5', band: 'FM', name: 'K-LOVE', format: 'Christian' },
+  { freq: '96.7', band: 'FM', name: 'Country FM', format: 'Country' },
+  { freq: '100.3', band: 'FM', name: 'Rock Radio', format: 'Rock' },
+  { freq: '104.5', band: 'FM', name: 'Classical', format: 'Classical' },
+  { freq: '162.4', band: 'WX', name: 'NOAA Weather', format: 'Weather Alerts' },
+];
+
+function getAntennaDirection(zipCode: string) {
+  if (ANTENNA_DIRECTIONS[zipCode]) return ANTENNA_DIRECTIONS[zipCode];
+
+  const zip = parseInt(zipCode.substring(0, 3));
+
+  if (zip >= 200 && zip <= 299) {
+    return { direction: 'West/Northwest', degrees: 290, towers: 'Local broadcast towers', tips: ['Point antenna W/NW toward local towers', 'Elevation helps in hilly areas'] };
+  }
+  if (zip >= 100 && zip <= 199) {
+    return { direction: 'Southwest', degrees: 225, towers: 'Empire State Building area', tips: ['Point SW toward major transmitters', 'Use compass app for precise aiming'] };
+  }
+  if (zip >= 300 && zip <= 399) {
+    return { direction: 'North', degrees: 0, towers: 'Regional broadcast towers', tips: ['Point antenna North generally', 'Flat terrain favors reception'] };
+  }
+  if (zip >= 800 && zip <= 899) {
+    return { direction: 'East/Southeast', degrees: 120, towers: 'Denver/front range area', tips: ['Point E/SE toward major cities', 'Mount antenna very high'] };
+  }
+
+  return { direction: 'North', degrees: 0, towers: 'Regional towers', tips: ['Point antenna North generally', 'Use compass for aiming'] };
+}
 
 export default function TripPlanner() {
   const [days, setDays] = useState(3);
@@ -202,6 +240,83 @@ export default function TripPlanner() {
             <CloudRain className="w-4 h-4 text-blue-400" />
             Rain expected
           </label>
+        </div>
+
+        {/* TV/Radio Stations */}
+        <div className="mt-6 pt-6 border-t border-slate-700">
+          <h4 className="font-medium mb-4 flex items-center gap-2">
+            <Tv className="w-4 h-4 text-cyan-400" />
+            TV/Radio at Destination
+          </h4>
+
+          {/* Antenna Direction */}
+          {zipCode.length === 5 && (
+            <div className="bg-slate-900/50 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <Compass className="w-5 h-5 text-amber-400" />
+                <span className="font-medium">Antenna Direction</span>
+              </div>
+              {(() => {
+                const direction = getAntennaDirection(zipCode);
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-4">
+                      <div className="text-2xl font-bold">{direction.direction}</div>
+                      <div className="text-slate-400">{direction.degrees}°</div>
+                    </div>
+                    <p className="text-sm text-slate-400">Target: {direction.towers}</p>
+                    <ul className="text-sm text-slate-500 space-y-1">
+                      {direction.tips.map((tip, i) => (
+                        <li key={i}>• {tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Radio Stations */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
+            {RADIO_STATIONS.map((station) => (
+              <div key={station.freq} className="bg-slate-900/50 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{station.freq}</span>
+                  <span className="text-xs text-slate-400">{station.band}</span>
+                </div>
+                <div className="text-sm">{station.name}</div>
+                <div className="text-xs text-slate-500">{station.format}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* External Links */}
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={`https://www.antennaweb.org/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors"
+            >
+              AntennaWeb <ExternalLink className="w-3 h-3" />
+            </a>
+            <a
+              href={`https://www.fcc.gov/media/dtv/dtvmaps`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors"
+            >
+              FCC DTV Maps <ExternalLink className="w-3 h-3" />
+            </a>
+            <a
+              href={`https://rabbitears.info/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors"
+            >
+              RabbitEars <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
         </div>
       </div>
 
