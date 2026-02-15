@@ -36,11 +36,11 @@ debug.log
 
 # Exclude documentation (keep essential)
 *.md
-!README.txt
 !DOCUMENTATION.md
 !PROGNO_API.md
 !PUBLIC_APIS.md
 *.txt
+!README.txt
 !robots.txt
 
 # Exclude archives and backups

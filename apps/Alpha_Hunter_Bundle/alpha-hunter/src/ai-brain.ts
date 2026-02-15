@@ -1,7 +1,7 @@
 /**
  * AI BRAIN - UNIFIED INTELLIGENCE CENTER
  * Integrates ALL intelligence modules for comprehensive analysis
- * 
+ *
  * Combines:
  * - Category Learners (politics, sports, weather, etc.)
  * - Historical Knowledge (crypto cycles, seasonality, etc.)
@@ -399,7 +399,7 @@ Be CONSERVATIVE. Only recommend if clear setup exists. If sideways/unclear, use 
 
     // Category-specific seasonality
     if (category === 'sports') {
-      if (month >= 8 && month <= 1) factors.push('NFL season: High betting volume, efficient markets');
+      if (month >= 8 || month <= 1) factors.push('NFL season: High betting volume, efficient markets');
       if (month >= 2 && month <= 5) factors.push('March Madness/NBA playoffs: Casual money creates edges');
     }
     if (category === 'politics') {

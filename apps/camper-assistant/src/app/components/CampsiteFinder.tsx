@@ -42,7 +42,7 @@ const API_SOURCES = {
 
 // API Keys
 const API_KEYS = {
-  RIDB: process.env.NEXT_PUBLIC_RIDB_API_KEY || '1076a96c-e667-4c9d-903d-7c77dfb0ebe2',
+  RIDB: process.env.NEXT_PUBLIC_RIDB_API_KEY || '',
 };
 
 // Track API quota usage

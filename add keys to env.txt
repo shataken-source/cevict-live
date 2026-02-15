@@ -1,8 +1,0 @@
-PowerShell needs .\ to run a script in the current directory. You used \sync-env.ps1 (one backslash), so it’s looking for a path from the drive root.
-From repo root (your usual):
-.\scripts\keyvault\sync-env.ps1 -AppPath "C:\cevict-live\apps\praxis.original"
-From scripts\keyvault:
-.\sync-env.ps1 -AppPath "C:\cevict-live\apps\praxis.original"
-Sync all apps (from repo root):
-.\scripts\keyvault\sync-env.ps1 -All
-Rule: use .\ before the script name so PowerShell runs the file in the current (or given) path instead of treating it as a global command.

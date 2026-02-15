@@ -27,10 +27,10 @@
 #>
 
 param(
-  [string] $PrognoBase     = 'http://localhost:3008',
-  [string] $GccBase        = 'http://localhost:3000',
-  [string] $PetReunionBase = 'http://localhost:3006',
-  [string] $CronSecret     = '',
+  [string] $PrognoBase = 'http://localhost:3008',
+  [string] $GccBase = 'http://localhost:3009',
+  [string] $PetReunionBase = 'http://localhost:3007',
+  [string] $CronSecret = '',
   [switch] $SkipAlphaHunter
 )
 
@@ -65,13 +65,16 @@ function Test-Endpoint {
     }
     if ($ok) {
       $script:Pass++; Write-Host "  OK   $Name" -ForegroundColor Green
-    } else {
+    }
+    else {
       $script:Fail++; Write-Host "  FAIL $Name (status $($r.StatusCode))" -ForegroundColor Red
     }
-  } catch {
+  }
+  catch {
     $script:Fail++
-    $status = $_.Exception.Response.StatusCode.value__
-    Write-Host "  FAIL $Name ($status / $($_.Exception.Message))" -ForegroundColor Red
+    $status = if ($_.Exception.Response) { $_.Exception.Response.StatusCode.value__ } else { 'No Response' }
+    $msg = if ($_.Exception.Message) { $_.Exception.Message } else { $_.ToString() }
+    Write-Host "  FAIL $Name ($status / $msg)" -ForegroundColor Red
   }
 }
 
@@ -87,14 +90,17 @@ function Test-AlphaHunter {
     $out = & npx tsx scripts/test-learning-loop.ts 2>&1
     if ($LASTEXITCODE -eq 0) {
       $script:Pass++; Write-Host "  OK   Alpha Hunter learning-loop" -ForegroundColor Green
-    } else {
+    }
+    else {
       $script:Fail++; Write-Host "  FAIL Alpha Hunter learning-loop" -ForegroundColor Red
       if ($out) { Write-Host $out }
     }
-  } catch {
+  }
+  catch {
     $script:Fail++; Write-Host "  FAIL Alpha Hunter learning-loop" -ForegroundColor Red
     Write-Host $_.Exception.Message
-  } finally {
+  }
+  finally {
     Pop-Location
   }
 }
@@ -108,8 +114,9 @@ Test-Endpoint -Name "Progno GET /api/progno/live-odds/alerts" -Method GET -Url "
 Test-Endpoint -Name "Progno GET /api/progno/portfolio/leaderboard" -Method GET -Url "$PrognoBase/api/progno/portfolio/leaderboard" -Assert { param($j) $j.success -eq $true }
 if ($CronSecret) {
   $h = @{ Authorization = "Bearer $CronSecret" }
-  Test-Endpoint -Name "Progno GET /api/cron/capture-odds" -Method GET -Url "$PrognoBase/api/cron/capture-odds" -Headers $h -AcceptStatus 200,201
-} else {
+  Test-Endpoint -Name "Progno GET /api/cron/capture-odds" -Method GET -Url "$PrognoBase/api/cron/capture-odds" -Headers $h -AcceptStatus 200, 201
+}
+else {
   Write-Host "  SKIP Progno /api/cron/capture-odds (no -CronSecret)" -ForegroundColor Yellow
 }
 
@@ -124,7 +131,8 @@ Write-Host "`n[ PetReunion ] $PetReunionBase" -ForegroundColor Cyan
 if ($CronSecret) {
   $h = @{ Authorization = "Bearer $CronSecret" }
   Test-Endpoint -Name "PetReunion GET /api/cron/sync-shelters" -Method GET -Url "$PetReunionBase/api/cron/sync-shelters" -Headers $h -Assert { param($j) $j.success -eq $true }
-} else {
+}
+else {
   Test-Endpoint -Name "PetReunion GET /api/cron/sync-shelters (expect 401)" -Method GET -Url "$PetReunionBase/api/cron/sync-shelters" -AcceptStatus 401
 }
 
@@ -132,7 +140,8 @@ if ($CronSecret) {
 Write-Host "`n[ Alpha Hunter ]" -ForegroundColor Cyan
 if ($SkipAlphaHunter) {
   Write-Host "  SKIP Alpha Hunter (SkipAlphaHunter)" -ForegroundColor Yellow
-} else {
+}
+else {
   Test-AlphaHunter
 }
 

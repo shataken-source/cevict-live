@@ -280,7 +280,7 @@ export default function WeatherWidget() {
   const fetchOpenUV = async (lat: number, lon: number) => {
     try {
       const response = await fetch(`https://api.openuv.io/api/v1/uv?lat=${lat}&lng=${lon}`, {
-        headers: { 'x-access-token': 'openuv-p37rmln6hsya-io' }
+        headers: { 'x-access-token': process.env.NEXT_PUBLIC_OPENUV_API_KEY || '' }
       });
       if (!response.ok) throw new Error('UV fetch failed');
       const data = await response.json();
@@ -297,11 +297,14 @@ export default function WeatherWidget() {
     }
   };
 
+  const API_KEYS = {
+    WEATHERAPI: process.env.NEXT_PUBLIC_WEATHERAPI_KEY || '',
+  };
+
   const fetchWeatherAPI = async (zip: string) => {
     try {
-      const apiKey = process.env.NEXT_PUBLIC_WEATHERAPI_KEY || '';
-      if (!apiKey) return;
-      const response = await fetch(`https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${zip}&days=7`);
+      if (!API_KEYS.WEATHERAPI) return;
+      const response = await fetch(`https://api.weatherapi.com/v1/forecast.json?key=${API_KEYS.WEATHERAPI}&q=${zip}&days=7`);
       if (!response.ok) throw new Error('WeatherAPI fetch failed');
       const data = await response.json();
       setWeather(prev => ({
