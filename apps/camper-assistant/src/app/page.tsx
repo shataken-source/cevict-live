@@ -62,8 +62,8 @@ export default function Home() {
                 <Sun className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">Camper Assistant</h1>
-                <p className="text-xs text-slate-400">Your wilderness companion</p>
+                <h1 className="text-xl font-bold text-white">WildReady</h1>
+                <p className="text-xs text-slate-400">Your Off-Grid Command Center</p>
               </div>
             </div>
             <div className="flex items-center gap-4 text-sm text-slate-300">
@@ -154,6 +154,23 @@ export default function Home() {
         {activeTab === 'wildfire' && <WildfireTracker />}
         {activeTab === 'mesh' && <MeshNetwork />}
       </main>
+
+      {/* Footer */}
+      <footer className="bg-slate-800 border-t border-slate-700 py-4 mt-8">
+        <div className="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="text-sm text-slate-400">
+            © 2026 WildReady — Made for the off-grid community
+          </div>
+          <a
+            href="https://ko-fi.com/wildready"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            ☕ Support $10
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }
