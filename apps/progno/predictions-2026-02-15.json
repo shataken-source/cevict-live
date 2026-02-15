@@ -1,8 +1,343 @@
 {
   "date": "2026-02-15",
-  "generatedAt": "2026-02-15T14:51:30.088Z",
-  "count": 0,
-  "message": "No games found today",
+  "generatedAt": "2026-02-15T21:57:21.826Z",
+  "count": 3,
+  "message": "Top 3 picks (of 11 games) — Cevict Flex + Triple Alignment — Regular (0-1 days)",
   "earlyLines": false,
-  "picks": []
+  "picks": [
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Duke Blue Devils",
+      "away_team": "Syracuse Orange",
+      "pick": "Syracuse Orange",
+      "pick_type": "MONEYLINE",
+      "odds": 1600,
+      "confidence": 92,
+      "game_time": "2026-02-17T00:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Syracuse Orange with 92% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 88.5% win rate for Syracuse Orange. 📈 Predicted score: 65-83. 🤖 AI signals: Sentiment favors home (14%) Sharp money: backing away 💰 Value detected: moneyline Syracuse Orange (+84.5% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "15b2457a3d50c0ac836f826be9804c00",
+      "expected_value_raw": 1405.07,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (14%)",
+        "Sharp money: backing away",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.0069,
+      "sentiment_field": 0.1379,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 0.93,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.1147,
+      "mc_predicted_score": {
+        "home": 65,
+        "away": 83,
+        "homeRange": [
+          47,
+          82
+        ],
+        "awayRange": [
+          64,
+          101
+        ]
+      },
+      "mc_spread_probability": 0.55,
+      "mc_total_probability": 0.5687,
+      "mc_iterations": 1500,
+      "value_bet_edge": 84.51,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      },
+      "total": {
+        "prediction": "over",
+        "line": 144,
+        "edge": 4.47,
+        "probability": 0.569,
+        "expected_value": 13.73,
+        "average_projected_total": 147.4,
+        "over_probability": 0.569,
+        "under_probability": 0.409,
+        "has_value": true
+      },
+      "all_value_bets": [
+        {
+          "type": "moneyline",
+          "side": "Syracuse Orange",
+          "edge": 84.51,
+          "probability": 0.885,
+          "expected_value": 150,
+          "kelly_fraction": 0.05,
+          "confidence": "very_high",
+          "reasoning": "Model: 88.5% vs Market: 4.0%"
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 144,
+          "edge": 4.49,
+          "probability": 0.569,
+          "expected_value": 8.56,
+          "kelly_fraction": 0.024,
+          "confidence": "low",
+          "reasoning": "Model: 56.9% over 144 (avg: 147.4)"
+        }
+      ]
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Dayton Flyers",
+      "away_team": "Davidson Wildcats",
+      "pick": "Davidson Wildcats",
+      "pick_type": "MONEYLINE",
+      "odds": 403,
+      "confidence": 81,
+      "game_time": "2026-02-15T21:07:21Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Davidson Wildcats with 81% confidence. ⏱️ Slot: Weekend, Prime time. 📊 1,500 simulations: 65.7% win rate for Davidson Wildcats. 📈 Predicted score: 66-71. 🤖 AI signals: Sentiment favors home (10%) Sharp money: backing away 💰 Value detected: moneyline Davidson Wildcats (+49.0% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "7cfecb0c1701ee5b986e281a08fefcc1",
+      "expected_value_raw": 230.3,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (10%)",
+        "Sharp money: backing away",
+        "Experimental: Weekend, Prime time (+1 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 96.2,
+      "claude_effect": -0.012,
+      "sentiment_field": 0.1001,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 1,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.3433,
+      "mc_predicted_score": {
+        "home": 66,
+        "away": 71,
+        "homeRange": [
+          48,
+          83
+        ],
+        "awayRange": [
+          53,
+          90
+        ]
+      },
+      "mc_spread_probability": 0.588,
+      "mc_total_probability": 0.568,
+      "mc_iterations": 1500,
+      "value_bet_edge": 49.02,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": false,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Weekend",
+          "Prime time"
+        ],
+        "confidence_delta": 0.1
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      },
+      "total": {
+        "prediction": "over",
+        "line": 134,
+        "edge": 4.4,
+        "probability": 0.568,
+        "expected_value": 13.6,
+        "average_projected_total": 136.8,
+        "over_probability": 0.568,
+        "under_probability": 0.411,
+        "has_value": true
+      },
+      "all_value_bets": [
+        {
+          "type": "moneyline",
+          "side": "Davidson Wildcats",
+          "edge": 49.02,
+          "probability": 0.657,
+          "expected_value": 150,
+          "kelly_fraction": 0.05,
+          "confidence": "very_high",
+          "reasoning": "Model: 65.7% vs Market: 16.6%"
+        },
+        {
+          "type": "spread",
+          "side": "Dayton Flyers",
+          "line": -8.7,
+          "edge": 6.42,
+          "probability": 0.588,
+          "expected_value": 12.25,
+          "kelly_fraction": 0.034,
+          "confidence": "medium",
+          "reasoning": "Model: 58.8% to cover -8.7"
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 134,
+          "edge": 4.42,
+          "probability": 0.568,
+          "expected_value": 8.44,
+          "kelly_fraction": 0.023,
+          "confidence": "low",
+          "reasoning": "Model: 56.8% over 134 (avg: 136.8)"
+        }
+      ]
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "San Diego Toreros",
+      "away_team": "San Francisco Dons",
+      "pick": "San Diego Toreros",
+      "pick_type": "MONEYLINE",
+      "odds": 196,
+      "confidence": 78,
+      "game_time": "2026-02-15T23:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking San Diego Toreros with 78% confidence. ⏱️ Slot: Night game, Weekend, Prime time. 📊 1,500 simulations: 71.5% win rate for San Diego Toreros. 📈 Predicted score: 80-71. 🤖 AI signals: Sharp money: backing home 💰 Value detected: moneyline San Diego Toreros (+39.7% edge, $111.54 EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "446049fe26b64ca9e2557a236d184d7d",
+      "expected_value_raw": 111.54,
+      "expected_value": 111.54,
+      "reasoning": [
+        "Sharp money: backing home",
+        "Experimental: Night game, Weekend, Prime time (+7 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 95.6,
+      "claude_effect": 0.0094,
+      "sentiment_field": -0.0548,
+      "narrative_momentum": 0,
+      "information_asymmetry": 0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 1,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.7147,
+      "mc_predicted_score": {
+        "home": 80,
+        "away": 71,
+        "homeRange": [
+          63,
+          98
+        ],
+        "awayRange": [
+          53,
+          90
+        ]
+      },
+      "mc_spread_probability": 0.594,
+      "mc_total_probability": 0.5733,
+      "mc_iterations": 1500,
+      "value_bet_edge": 39.74,
+      "value_bet_ev": 111.54,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Weekend",
+          "Prime time"
+        ],
+        "confidence_delta": 0.6
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      },
+      "total": {
+        "prediction": "over",
+        "line": 148,
+        "edge": 4.93,
+        "probability": 0.573,
+        "expected_value": 14.67,
+        "average_projected_total": 151.6,
+        "over_probability": 0.573,
+        "under_probability": 0.399,
+        "has_value": true
+      },
+      "all_value_bets": [
+        {
+          "type": "moneyline",
+          "side": "San Diego Toreros",
+          "edge": 39.74,
+          "probability": 0.715,
+          "expected_value": 111.54,
+          "kelly_fraction": 0.05,
+          "confidence": "very_high",
+          "reasoning": "Model: 71.5% vs Market: 31.7%"
+        },
+        {
+          "type": "spread",
+          "side": "San Diego Toreros",
+          "line": 5.3,
+          "edge": 7.02,
+          "probability": 0.594,
+          "expected_value": 13.4,
+          "kelly_fraction": 0.037,
+          "confidence": "high",
+          "reasoning": "Model: 59.4% to cover 5.3"
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 148,
+          "edge": 4.95,
+          "probability": 0.573,
+          "expected_value": 9.45,
+          "kelly_fraction": 0.026,
+          "confidence": "low",
+          "reasoning": "Model: 57.3% over 148 (avg: 151.6)"
+        }
+      ]
+    }
+  ]
 }

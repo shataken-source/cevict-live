@@ -102,3 +102,4 @@ export async function analyzeWeeklyGames(games: Game[], calibration?: ModelCalib
 }
 
 export { predictGameWithEnrichment as predictGame };
+export type { ModelCalibration } from '@/lib/data-sources/weekly-analyzer-types';
