@@ -1,11 +1,25 @@
 /**
  * Cevict Probability Analyzer
- * 
+ *
  * Analyzes prediction accuracy, confidence calibration, and probability distributions
  * Uses Brier scoring, calibration curves, and statistical analysis
  */
 
 import { getAccuracyMetrics } from './prediction-tracker';
+
+export interface ConfidenceLevelStats {
+  predictions: number;
+  accuracy: number;
+  brierScore: number;
+  expectedAccuracy: number;
+}
+
+export interface SportStats {
+  totalPredictions: number;
+  winRate: number;
+  avgConfidence: number;
+  avgBrierScore: number;
+}
 
 export interface ProbabilityAnalysis {
   brierScore: number;
@@ -16,24 +30,14 @@ export interface ProbabilityAnalysis {
     reliabilityIndex: number;
   };
   confidenceDistribution: {
-    excellent: number;    // 70-100%
-    good: number;           // 60-70%
-    average: number;        // 50-60%
-    poor: number;          // 30-50%
-    terrible: number;       // 0-30%
+    excellent: number;
+    good: number;
+    average: number;
+    poor: number;
+    terrible: number;
   };
-  byConfidence: Record<string, {
-    predictions: number;
-    accuracy: number;
-    brierScore: number;
-    expectedAccuracy: number;
-  };
-  bySport: Record<string, {
-    totalPredictions: number;
-    winRate: number;
-    avgConfidence: number;
-    avgBrierScore: number;
-  };
+  byConfidence: Record<string, ConfidenceLevelStats>;
+  bySport: Record<string, SportStats>;
 }
 
 export class CevictProbabilityAnalyzer {
@@ -42,10 +46,10 @@ export class CevictProbabilityAnalyzer {
    */
   analyze(): ProbabilityAnalysis {
     const metrics = getAccuracyMetrics();
-    
+
     // Calculate Brier score (lower is better, target <0.25)
     const overallBrier = metrics.averageBrier || 0;
-    
+
     // Confidence calibration analysis
     const confidenceRanges = {
       excellent: { min: 70, max: 100, count: 0 },
@@ -54,7 +58,7 @@ export class CevictProbabilityAnalyzer {
       poor: { min: 30, max: 50, count: 0 },
       terrible: { min: 0, max: 30, count: 0 }
     };
-    
+
     // Count predictions by confidence range
     const predictions = metrics.byConfidence ? Object.values(metrics.byConfidence) : [];
     predictions.forEach(pred => {
@@ -65,13 +69,13 @@ export class CevictProbabilityAnalyzer {
       else if (confidence >= 30) confidenceRanges.poor.count++;
       else confidenceRanges.terrible.count++;
     });
-    
+
     // Calculate calibration metrics
     const perfectCalibration = overallBrier < 0.1 ? 1 : 0;
     const overconfidence = overallBrier > 0.25 ? 1 : 0;
     const underconfidence = overallBrier > 0.35 ? 1 : 0;
     const reliabilityIndex = 1 - (overallBrier / 0.25);
-    
+
     return {
       brierScore: overallBrier,
       calibration: {
