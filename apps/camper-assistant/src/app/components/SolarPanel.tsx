@@ -6,10 +6,19 @@ import { Sun, Info, ArrowUp } from 'lucide-react';
 export default function SolarPanel() {
   const [tiltAngle, setTiltAngle] = useState(42);
   const [panelWatts, setPanelWatts] = useState(300);
+  const [hasHardware, setHasHardware] = useState(false);
 
   // Calculate optimal tilt based on latitude (simplified)
   const latitude = 35; // Would be from GPS
   const optimalTilt = latitude; // Rough estimate
+
+  // Current production - would come from charge controller API/BLE
+  const currentProduction = hasHardware ? 245 : null;
+  const todayProduction = hasHardware ? 1.2 : null;
+  const peakToday = hasHardware ? 312 : null;
+  const voltage = hasHardware ? 18.5 : null;
+  const current = hasHardware ? 13.2 : null;
+  const efficiency = hasHardware ? 21 : null;
 
   return (
     <div className="space-y-6">
@@ -23,15 +32,39 @@ export default function SolarPanel() {
           {/* Current Production */}
           <div className="bg-slate-700 rounded-lg p-4">
             <div className="text-sm text-slate-400 mb-1">Current Production</div>
-            <div className="text-4xl font-bold text-amber-400">245W</div>
-            <div className="text-sm text-emerald-400 mt-2">82% of max capacity</div>
+            {hasHardware ? (
+              <>
+                <div className="text-4xl font-bold text-amber-400">{currentProduction}W</div>
+                <div className="text-sm text-emerald-400 mt-2">82% of max capacity</div>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <div className="text-4xl font-bold text-slate-500">--</div>
+                <div className="text-sm text-slate-400 mt-2">Connect charge controller via Bluetooth</div>
+                <button
+                  onClick={() => setHasHardware(true)}
+                  className="mt-3 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded transition-colors"
+                >
+                  Simulate Connection
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Daily Total */}
           <div className="bg-slate-700 rounded-lg p-4">
             <div className="text-sm text-slate-400 mb-1">Today's Production</div>
-            <div className="text-4xl font-bold text-emerald-400">1.2 kWh</div>
-            <div className="text-sm text-slate-400 mt-2">Peak: 312W at 12:30 PM</div>
+            {hasHardware ? (
+              <>
+                <div className="text-4xl font-bold text-emerald-400">{todayProduction} kWh</div>
+                <div className="text-sm text-slate-400 mt-2">Peak: {peakToday}W at 12:30 PM</div>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <div className="text-4xl font-bold text-slate-500">--</div>
+                <div className="text-sm text-slate-400 mt-2">No data available</div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -84,15 +117,21 @@ export default function SolarPanel() {
           </div>
           <div className="bg-slate-700 rounded-lg p-3">
             <div className="text-xs text-slate-400">Voltage</div>
-            <div className="text-lg font-semibold text-emerald-400">18.5V</div>
+            <div className={`text-lg font-semibold ${voltage ? 'text-emerald-400' : 'text-slate-500'}`}>
+              {voltage ? `${voltage}V` : '--'}
+            </div>
           </div>
           <div className="bg-slate-700 rounded-lg p-3">
             <div className="text-xs text-slate-400">Current</div>
-            <div className="text-lg font-semibold text-amber-400">13.2A</div>
+            <div className={`text-lg font-semibold ${current ? 'text-amber-400' : 'text-slate-500'}`}>
+              {current ? `${current}A` : '--'}
+            </div>
           </div>
           <div className="bg-slate-700 rounded-lg p-3">
             <div className="text-xs text-slate-400">Efficiency</div>
-            <div className="text-lg font-semibold text-blue-400">21%</div>
+            <div className={`text-lg font-semibold ${efficiency ? 'text-blue-400' : 'text-slate-500'}`}>
+              {efficiency ? `${efficiency}%` : '--'}
+            </div>
           </div>
         </div>
       </div>

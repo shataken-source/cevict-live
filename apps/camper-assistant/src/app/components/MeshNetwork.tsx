@@ -47,106 +47,19 @@ interface MeshMessage {
   isEmergency?: boolean;
 }
 
-// Mock data for demo mode
-const MOCK_NODES: MeshNode[] = [
-  {
-    id: '!a1b2c3d4',
-    name: 'Base Camp',
-    shortName: 'BASE',
-    lat: 44.6,
-    lng: -110.5,
-    altitude: 7800,
-    batteryLevel: 85,
-    voltage: 4.1,
-    lastHeard: Date.now() / 1000 - 60,
-    snr: 8,
-    hopsAway: 0,
-    isOnline: true,
-    role: 'router'
-  },
-  {
-    id: '!e5f6g7h8',
-    name: 'Hiking Group A',
-    shortName: 'HIKE1',
-    lat: 44.62,
-    lng: -110.48,
-    altitude: 7950,
-    batteryLevel: 62,
-    voltage: 3.9,
-    lastHeard: Date.now() / 1000 - 300,
-    snr: 5,
-    hopsAway: 1,
-    isOnline: true,
-    role: 'client'
-  },
-  {
-    id: '!i9j0k1l2',
-    name: 'Fishing Team',
-    shortName: 'FISH',
-    lat: 44.58,
-    lng: -110.52,
-    altitude: 7650,
-    batteryLevel: 45,
-    voltage: 3.7,
-    lastHeard: Date.now() / 1000 - 900,
-    snr: 3,
-    hopsAway: 2,
-    isOnline: true,
-    role: 'client'
-  },
-  {
-    id: '!m3n4o5p6',
-    name: 'Scout Unit',
-    shortName: 'SCOUT',
-    lat: 44.65,
-    lng: -110.45,
-    altitude: 8200,
-    batteryLevel: 12,
-    voltage: 3.4,
-    lastHeard: Date.now() / 1000 - 1800,
-    snr: -10,
-    hopsAway: 3,
-    isOnline: false,
-    role: 'client'
-  }
-];
+// Mock data removed - only live Meshtastic connections
+const MOCK_NODES: MeshNode[] = [];
 
-const MOCK_MESSAGES: MeshMessage[] = [
-  {
-    id: 'msg-1',
-    from: '!e5f6g7h8',
-    to: '!a1b2c3d4',
-    text: 'Found a great viewpoint at mile 2.5!',
-    timestamp: Date.now() - 300000,
-    isEmergency: false
-  },
-  {
-    id: 'msg-2',
-    from: '!i9j0k1l2',
-    to: 'broadcast',
-    text: 'Caught 3 trout, heading back in 30 min',
-    timestamp: Date.now() - 600000,
-    isEmergency: false
-  },
-  {
-    id: 'msg-3',
-    from: '!a1b2c3d4',
-    to: 'broadcast',
-    text: 'Dinner at 6pm - chili is ready!',
-    timestamp: Date.now() - 900000,
-    isEmergency: false
-  }
-];
+const MOCK_MESSAGES: MeshMessage[] = [];
 
 export default function MeshNetwork() {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionType, setConnectionType] = useState<'ble' | 'serial' | 'wifi' | null>(null);
-  const [nodes, setNodes] = useState<MeshNode[]>(MOCK_NODES);
-  const [messages, setMessages] = useState<MeshMessage[]>(MOCK_MESSAGES);
+  const [nodes, setNodes] = useState<MeshNode[]>([]);
+  const [messages, setMessages] = useState<MeshMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [selectedNode, setSelectedNode] = useState<string>('broadcast');
   const [expandedNode, setExpandedNode] = useState<string | null>(null);
-  const [isDemoMode, setIsDemoMode] = useState(true);
   const [myNodeId, setMyNodeId] = useState('!a1b2c3d4');
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -155,10 +68,10 @@ export default function MeshNetwork() {
     const R = 3959; // Earth's radius in miles
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLng/2) * Math.sin(dLng/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return Math.round(R * c * 10) / 10;
   };
 
@@ -167,7 +80,7 @@ export default function MeshNetwork() {
     const dLng = (lng2 - lng1) * Math.PI / 180;
     const y = Math.sin(dLng) * Math.cos(lat2 * Math.PI / 180);
     const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
-              Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng);
+      Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLng);
     const bearing = Math.atan2(y, x) * 180 / Math.PI;
     return (bearing + 360) % 360;
   };
@@ -191,7 +104,7 @@ export default function MeshNetwork() {
   // Send message
   const sendMessage = () => {
     if (!newMessage.trim()) return;
-    
+
     const msg: MeshMessage = {
       id: `msg-${Date.now()}`,
       from: myNodeId,
@@ -200,7 +113,7 @@ export default function MeshNetwork() {
       timestamp: Date.now(),
       isEmergency: newMessage.toUpperCase().includes('SOS') || newMessage.toUpperCase().includes('EMERGENCY')
     };
-    
+
     setMessages(prev => [msg, ...prev]);
     setNewMessage('');
   };
@@ -208,14 +121,16 @@ export default function MeshNetwork() {
   // Simulate connection
   const connectToRadio = async (type: 'ble' | 'serial' | 'wifi') => {
     setIsConnecting(true);
-    setIsDemoMode(false);
-    
+
     // Simulate connection delay
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     setConnectionType(type);
     setIsConnected(true);
     setIsConnecting(false);
+    // In real implementation, would populate nodes/messages from radio
+    setNodes([]);
+    setMessages([]);
   };
 
   // Get battery color
@@ -235,7 +150,16 @@ export default function MeshNetwork() {
     return { label: 'Lost', color: 'text-red-400' };
   };
 
-  const myNode = nodes.find(n => n.id === myNodeId) || nodes[0];
+  const myNode = nodes.find(n => n.id === myNodeId) || {
+    id: myNodeId,
+    name: 'My Node',
+    shortName: 'ME',
+    batteryLevel: undefined,
+    snr: undefined,
+    isOnline: false,
+    role: 'client',
+    lastHeard: Date.now() / 1000
+  };
 
   return (
     <div className="space-y-6">
@@ -246,30 +170,21 @@ export default function MeshNetwork() {
             <Radio className="w-6 h-6 text-emerald-400" />
             <h2 className="text-xl font-semibold">Mesh Network</h2>
           </div>
-          
+
           <div className="flex items-center gap-2">
-            <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-              isConnected 
-                ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-700/50' 
-                : 'bg-amber-900/50 text-amber-400 border border-amber-700/50'
-            }`}>
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${isConnected
+              ? 'bg-emerald-900/50 text-emerald-400 border border-emerald-700/50'
+              : 'bg-amber-900/50 text-amber-400 border border-amber-700/50'
+              }`}>
               {isConnected ? `Connected (${connectionType?.toUpperCase()})` : 'Disconnected'}
             </div>
-            <button
-              onClick={() => setIsDemoMode(!isDemoMode)}
-              className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                isDemoMode ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Demo Mode
-            </button>
           </div>
         </div>
         <p className="text-slate-400 mt-2">
           Off-grid communication with your group. No cell service required.
         </p>
-        
-        {!isConnected && !isDemoMode && (
+
+        {!isConnected && (
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               onClick={() => connectToRadio('ble')}
@@ -304,7 +219,7 @@ export default function MeshNetwork() {
         <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
           <div className="text-sm text-slate-400 mb-1">Nodes Online</div>
           <div className="text-3xl font-bold text-emerald-400">
-            {nodes.filter(n => n.isOnline).length}/{nodes.length}
+            {nodes.filter(n => n.isOnline).length}/{nodes.length || '--'}
           </div>
         </div>
         <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
@@ -314,13 +229,13 @@ export default function MeshNetwork() {
         <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
           <div className="text-sm text-slate-400 mb-1">My Battery</div>
           <div className={`text-3xl font-bold ${getBatteryColor(myNode.batteryLevel)}`}>
-            {myNode.batteryLevel}%
+            {myNode.batteryLevel !== undefined ? `${myNode.batteryLevel}%` : '--'}
           </div>
         </div>
         <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
           <div className="text-sm text-slate-400 mb-1">Mesh SNR</div>
           <div className={`text-3xl font-bold ${getSignalQuality(myNode.snr).color}`}>
-            {myNode.snr}dB
+            {myNode.snr !== undefined ? `${myNode.snr}dB` : '--'}
           </div>
         </div>
       </div>
@@ -333,12 +248,12 @@ export default function MeshNetwork() {
             <Users className="w-5 h-5" />
             Network Nodes
           </h3>
-          
+
           {nodes.map((node) => {
             const isExpanded = expandedNode === node.id;
             const signal = getSignalQuality(node.snr);
             const isMe = node.id === myNodeId;
-            
+
             // Calculate distance and bearing from my position
             let distance = 0;
             let bearing = 0;
@@ -348,13 +263,12 @@ export default function MeshNetwork() {
               bearing = calculateBearing(myNode.lat, myNode.lng, node.lat, node.lng);
               cardinal = getCardinal(bearing);
             }
-            
+
             return (
-              <div 
+              <div
                 key={node.id}
-                className={`bg-slate-800 rounded-xl border-2 overflow-hidden ${
-                  isMe ? 'border-blue-600' : node.isOnline ? 'border-slate-700' : 'border-slate-800'
-                }`}
+                className={`bg-slate-800 rounded-xl border-2 overflow-hidden ${isMe ? 'border-blue-600' : node.isOnline ? 'border-slate-700' : 'border-slate-800'
+                  }`}
               >
                 <div
                   onClick={() => setExpandedNode(isExpanded ? null : node.id)}
@@ -362,10 +276,9 @@ export default function MeshNetwork() {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${
-                        isMe ? 'bg-blue-900/50 text-blue-400' :
+                      <div className={`p-2 rounded-lg ${isMe ? 'bg-blue-900/50 text-blue-400' :
                         node.isOnline ? 'bg-emerald-900/50 text-emerald-400' : 'bg-slate-700 text-slate-400'
-                      }`}>
+                        }`}>
                         <Radio className="w-5 h-5" />
                       </div>
                       <div>
@@ -375,7 +288,7 @@ export default function MeshNetwork() {
                           {!node.isOnline && <span className="text-xs bg-slate-600 text-slate-300 px-2 py-0.5 rounded">OFFLINE</span>}
                         </div>
                         <p className="text-sm text-slate-400">{node.shortName} • {node.role}</p>
-                        
+
                         {node.isOnline && !isMe && (
                           <div className="flex items-center gap-3 mt-2 text-sm">
                             <span className="text-slate-400">
@@ -387,7 +300,7 @@ export default function MeshNetwork() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       {node.batteryLevel !== undefined && (
                         <div className={`flex items-center gap-1 ${getBatteryColor(node.batteryLevel)}`}>
@@ -399,7 +312,7 @@ export default function MeshNetwork() {
                     </div>
                   </div>
                 </div>
-                
+
                 {isExpanded && (
                   <div className="border-t border-slate-700 p-4 bg-slate-850">
                     <div className="grid grid-cols-2 gap-3 text-sm mb-4">
@@ -432,7 +345,7 @@ export default function MeshNetwork() {
                         <span className={`ml-2 ${signal.color}`}>{node.snr}dB</span>
                       </div>
                     </div>
-                    
+
                     <div className="flex gap-2">
                       {node.lat && node.lng && (
                         <a
@@ -468,7 +381,7 @@ export default function MeshNetwork() {
             <MessageSquare className="w-5 h-5" />
             Mesh Chat
           </h3>
-          
+
           {/* Message List */}
           <div className="bg-slate-800 rounded-xl border border-slate-700 h-96 overflow-y-auto">
             <div className="p-4 space-y-3">
@@ -482,15 +395,14 @@ export default function MeshNetwork() {
                   const sender = nodes.find(n => n.id === msg.from);
                   const isMe = msg.from === myNodeId;
                   const isBroadcast = msg.to === 'broadcast';
-                  
+
                   return (
-                    <div 
+                    <div
                       key={msg.id}
-                      className={`p-3 rounded-lg ${
-                        isMe ? 'bg-blue-900/30 border border-blue-700/50' :
+                      className={`p-3 rounded-lg ${isMe ? 'bg-blue-900/30 border border-blue-700/50' :
                         msg.isEmergency ? 'bg-red-900/50 border-2 border-red-500' :
-                        'bg-slate-700/50 border border-slate-600'
-                      }`}
+                          'bg-slate-700/50 border border-slate-600'
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-2">
@@ -513,7 +425,7 @@ export default function MeshNetwork() {
               )}
             </div>
           </div>
-          
+
           {/* Send Message */}
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 space-y-3">
             <div className="flex gap-2">
@@ -535,7 +447,7 @@ export default function MeshNetwork() {
                 🆘 SOS
               </button>
             </div>
-            
+
             <div className="flex gap-2">
               <input
                 type="text"
@@ -574,7 +486,7 @@ export default function MeshNetwork() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-emerald-900/30 border border-emerald-700/50 rounded-xl p-4">
           <div className="flex items-start gap-3">
             <Navigation className="w-5 h-5 text-emerald-400 mt-0.5" />
@@ -584,7 +496,7 @@ export default function MeshNetwork() {
                 <button className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-2 rounded-lg transition-colors">
                   📍 Drop Waypoint
                 </button>
-                  <button className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-2 rounded-lg transition-colors">
+                <button className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-2 rounded-lg transition-colors">
                   🔔 Test Alarm
                 </button>
                 <button className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-2 rounded-lg transition-colors">

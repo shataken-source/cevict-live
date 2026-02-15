@@ -43,54 +43,8 @@ interface WildfireIncident {
   severity: 'low' | 'moderate' | 'high' | 'critical';
 }
 
-// Mock wildfire data for demonstration
-const MOCK_WILDFIRES: WildfireIncident[] = [
-  {
-    id: 'wf-001',
-    name: 'Crystal Fire',
-    lat: 44.65,
-    lng: -110.55,
-    size: 1250,
-    containment: 45,
-    discovered: '2026-02-10',
-    updated: '2 hours ago',
-    cause: 'Lightning',
-    location: 'Yellowstone NP - North',
-    distance: 12.5,
-    status: 'active',
-    severity: 'high'
-  },
-  {
-    id: 'wf-002',
-    name: 'Ridge Creek Fire',
-    lat: 38.45,
-    lng: -80.75,
-    size: 85,
-    containment: 90,
-    discovered: '2026-02-08',
-    updated: '6 hours ago',
-    cause: 'Human - Under Investigation',
-    location: 'Monongahela NF',
-    distance: 45.2,
-    status: 'controlled',
-    severity: 'low'
-  },
-  {
-    id: 'wf-003',
-    name: 'Thunder Basin Blaze',
-    lat: 44.2,
-    lng: -110.3,
-    size: 8500,
-    containment: 15,
-    discovered: '2026-02-12',
-    updated: '30 min ago',
-    cause: 'Unknown',
-    location: 'Bridger-Teton NF',
-    distance: 28.7,
-    status: 'active',
-    severity: 'critical'
-  }
-];
+// Mock wildfire data - REMOVED - only live data now
+const MOCK_WILDFIRES: WildfireIncident[] = [];
 
 const getSeverityColor = (severity: string) => {
   switch (severity) {
@@ -117,35 +71,33 @@ const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: numbe
   const R = 3959; // Earth's radius in miles
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLng/2) * Math.sin(dLng/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.round(R * c * 10) / 10;
 };
 
 export default function WildfireTracker() {
   const [location, setLocation] = useState('82190'); // Yellowstone area
-  const [fires, setFires] = useState<WildfireIncident[]>(MOCK_WILDFIRES);
+  const [fires, setFires] = useState<WildfireIncident[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [useLiveData, setUseLiveData] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [expandedFire, setExpandedFire] = useState<string | null>(null);
   const [showActiveOnly, setShowActiveOnly] = useState(false);
   const [maxDistance, setMaxDistance] = useState(100);
 
-  // Fetch wildfire data from InciWeb (mock for demo)
+  // Fetch wildfire data from InciWeb (live data only)
   const fetchWildfireData = async (lat: number, lng: number) => {
     try {
-      // In production, this would call the InciWeb API or similar
-      // For demo, filter and recalculate distances for mock data
-      return MOCK_WILDFIRES.map(fire => ({
-        ...fire,
-        distance: calculateDistance(lat, lng, fire.lat, fire.lng)
-      })).filter(f => f.distance <= maxDistance);
+      // InciWeb API call would go here
+      // For now, return empty - user wants no demo data
+      setApiError('Live wildfire data requires InciWeb API integration');
+      return [];
     } catch (err) {
       console.error('Wildfire fetch error:', err);
-      return null;
+      setApiError('Failed to fetch wildfire data');
+      return [];
     }
   };
 
@@ -187,34 +139,17 @@ export default function WildfireTracker() {
             <Flame className="w-6 h-6 text-red-400" />
             <h2 className="text-xl font-semibold">Wildfire Tracker</h2>
           </div>
-          
-          <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1">
-            <button
-              onClick={() => setUseLiveData(false)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                !useLiveData ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Demo Data
-            </button>
-            <button
-              onClick={() => setUseLiveData(true)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                useLiveData ? 'bg-red-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              InciWeb Live
-            </button>
+
+          <div className="text-xs text-amber-400 bg-amber-900/30 px-2 py-1 rounded">
+            Live Data Only
           </div>
         </div>
         <p className="text-slate-400 mt-2">
           Track active wildfires near your location with air quality impact alerts.
         </p>
-        {useLiveData && (
-          <div className="mt-3 flex items-center gap-2 text-sm text-red-400">
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            InciWeb/NWCG Active
-            {apiError && <span className="text-amber-400 ml-2">⚠ {apiError}</span>}
+        {apiError && (
+          <div className="mt-3 text-sm text-amber-400">
+            ⚠ {apiError}
           </div>
         )}
       </div>
@@ -226,7 +161,7 @@ export default function WildfireTracker() {
           <div>
             <h3 className="font-bold text-red-400 text-lg">CRITICAL FIRE NEARBY</h3>
             <p className="text-red-300">
-              Active critical fire within 20 miles. Monitor evacuation orders. 
+              Active critical fire within 20 miles. Monitor evacuation orders.
               Have go-bags ready. Check local emergency alerts.
             </p>
           </div>
@@ -280,7 +215,7 @@ export default function WildfireTracker() {
               </button>
             </div>
           </div>
-          
+
           <div>
             <label className="text-sm text-slate-400 block mb-1">Max Distance</label>
             <select
@@ -314,16 +249,15 @@ export default function WildfireTracker() {
           Fire Incidents
           <span className="text-slate-500 text-sm font-normal ml-2">{filteredFires.length} found</span>
         </h3>
-        
+
         {filteredFires.map((fire) => {
           const isExpanded = expandedFire === fire.id;
           return (
-            <div 
-              key={fire.id} 
-              className={`bg-slate-800 rounded-xl border-2 overflow-hidden ${
-                fire.severity === 'critical' ? 'border-red-700' : 
-                fire.severity === 'high' ? 'border-orange-700' : 'border-slate-700'
-              }`}
+            <div
+              key={fire.id}
+              className={`bg-slate-800 rounded-xl border-2 overflow-hidden ${fire.severity === 'critical' ? 'border-red-700' :
+                  fire.severity === 'high' ? 'border-orange-700' : 'border-slate-700'
+                }`}
             >
               <div
                 onClick={() => setExpandedFire(isExpanded ? null : fire.id)}
@@ -348,7 +282,7 @@ export default function WildfireTracker() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-1 rounded uppercase font-medium ${getSeverityColor(fire.severity)}`}>
                       {fire.severity}
@@ -357,7 +291,7 @@ export default function WildfireTracker() {
                   </div>
                 </div>
               </div>
-              
+
               {isExpanded && (
                 <div className="border-t border-slate-700 p-4 bg-slate-850">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -381,7 +315,7 @@ export default function WildfireTracker() {
                       <div className="text-sm text-slate-300">{fire.updated}</div>
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-2">
                     <a
                       href={`https://www.google.com/maps?q=${fire.lat},${fire.lng}`}
@@ -407,7 +341,7 @@ export default function WildfireTracker() {
             </div>
           );
         })}
-        
+
         {filteredFires.length === 0 && (
           <div className="text-center py-12 bg-slate-800/50 rounded-xl border border-slate-700 border-dashed">
             <Flame className="w-12 h-12 text-slate-600 mx-auto mb-3" />
