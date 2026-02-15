@@ -103,11 +103,15 @@ export default function AirQualityMonitor() {
   const fetchAQIData = async (zip: string) => {
     try {
       // AirNow API endpoint for current conditions by ZIP
-      const url = `${AIRNOW_CONFIG.BASE_URL}/observation/latLong/current/?format=application/json&zipCode=${zip}&distance=25&API_KEY=${AIRNOW_CONFIG.API_KEY}`;
-      
+      const url = `${AIRNOW_CONFIG.BASE_URL}/observation/zipCode/current/?format=application/json&zipCode=${zip}&distance=25&API_KEY=${AIRNOW_CONFIG.API_KEY}`;
+
       const response = await fetch(url);
-      if (!response.ok) throw new Error('AirNow API error');
-      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('AirNow API error:', response.status, errorText);
+        throw new Error(`AirNow API error: ${response.status}`);
+      }
+
       const data = await response.json();
       if (data && data.length > 0) {
         const reading = data[0];
@@ -173,21 +177,19 @@ export default function AirQualityMonitor() {
             <Wind className="w-6 h-6 text-blue-400" />
             <h2 className="text-xl font-semibold">Air Quality Monitor</h2>
           </div>
-          
+
           <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1">
             <button
               onClick={() => setUseLiveData(false)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                !useLiveData ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
-              }`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${!useLiveData ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+                }`}
             >
               Demo Data
             </button>
             <button
               onClick={() => setUseLiveData(true)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                useLiveData ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${useLiveData ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
             >
               AirNow API
             </button>
@@ -240,7 +242,7 @@ export default function AirQualityMonitor() {
               Primary Pollutant: <span className="text-slate-200">{aqiData.pollutant}</span>
             </div>
           </div>
-          
+
           <div className={`w-24 h-24 rounded-full ${colors.bg} flex items-center justify-center`}>
             <span className="text-3xl font-bold text-white">{aqiData.aqi}</span>
           </div>
@@ -270,7 +272,7 @@ export default function AirQualityMonitor() {
           {aqiData.forecast.map((day) => {
             const dayColors = getAQIColor(day.aqi);
             const isExpanded = expandedDay === day.day;
-            
+
             return (
               <div key={day.day} className="space-y-2">
                 <button
@@ -281,7 +283,7 @@ export default function AirQualityMonitor() {
                   <div className={`text-2xl font-bold ${dayColors.text}`}>{day.aqi}</div>
                   <div className={`text-xs ${dayColors.text}`}>{day.category}</div>
                 </button>
-                
+
                 {isExpanded && (
                   <div className="p-2 bg-slate-700 rounded-lg text-xs text-slate-400 text-center">
                     {getHealthRecommendations(day.aqi).outdoor}
