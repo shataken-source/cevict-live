@@ -2,265 +2,244 @@
 
 /**
  * Nearby Smoking-Friendly Places
- * Location-based recommendations
+ * Real data from Google Places API
  */
 
 import { useState, useEffect } from 'react';
+import { MapPin, RefreshCw, Star, Phone, Globe, Clock, Check, Navigation } from 'lucide-react';
+
+type PlaceType = 'bar' | 'restaurant' | 'lounge' | 'outdoor' | 'hotel' | 'casino' | 'vape_shop' | 'smoke_shop' | 'hookah_lounge';
+type SmokingPolicy = 'allowed' | 'designated' | 'outdoor-only' | 'vape-only';
 
 interface Place {
   id: string;
   name: string;
-  type: 'bar' | 'restaurant' | 'lounge' | 'outdoor' | 'hotel' | 'casino';
+  type: PlaceType;
   address: string;
   distance: string;
   rating: number;
   reviews: number;
-  smokingPolicy: 'allowed' | 'designated' | 'outdoor-only' | 'vape-only';
+  smokingPolicy: SmokingPolicy;
   features: string[];
   verified: boolean;
+  phone?: string;
+  website?: string;
+  hours?: string[];
+  lat?: number;
+  lng?: number;
 }
 
 export default function NearbyPlaces() {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | Place['type']>('all');
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | PlaceType>('all');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
-    requestLocation();
+    getLocation();
   }, []);
 
-  const requestLocation = () => {
+  const getLocation = () => {
     if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser');
+      setError('Geolocation not supported');
       setLoading(false);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        });
-        fetchNearbyPlaces(position.coords.latitude, position.coords.longitude);
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(loc);
+        fetchPlaces(loc.lat, loc.lng);
       },
       () => {
-        setLocationError('Unable to get your location. Please enable location services.');
-        setLoading(false);
-        setPlaces(getSamplePlaces());
+        setError('Location access denied. Using default location.');
+        fetchPlaces(33.749, -84.388); // Atlanta fallback
       }
     );
   };
 
-  const fetchNearbyPlaces = async (lat: number, lng: number) => {
-    // Using sample data - API endpoint not implemented yet
-    setPlaces(getSamplePlaces());
-    setLoading(false);
-  };
-
-  const getSamplePlaces = (): Place[] => [
-    {
-      id: '1',
-      name: 'The Smoking Room',
-      type: 'lounge',
-      address: '123 Main St, Atlanta, GA',
-      distance: '0.3 mi',
-      rating: 4.5,
-      reviews: 127,
-      smokingPolicy: 'allowed',
-      features: ['Full Bar', 'Live Music', 'Outdoor Patio'],
-      verified: true
-    },
-    {
-      id: '2',
-      name: 'Bourbon & Cigars',
-      type: 'bar',
-      address: '456 Oak Ave, Atlanta, GA',
-      distance: '0.7 mi',
-      rating: 4.8,
-      reviews: 89,
-      smokingPolicy: 'designated',
-      features: ['Cigar Selection', 'Private Rooms', 'Happy Hour'],
-      verified: true
-    },
-    {
-      id: '3',
-      name: 'Cloud Nine Vape Lounge',
-      type: 'lounge',
-      address: '789 Peach St, Atlanta, GA',
-      distance: '1.2 mi',
-      rating: 4.2,
-      reviews: 56,
-      smokingPolicy: 'vape-only',
-      features: ['Vape Products', 'Gaming', 'WiFi'],
-      verified: false
-    },
-    {
-      id: '4',
-      name: 'The Garden Terrace',
-      type: 'outdoor',
-      address: '321 Park Blvd, Atlanta, GA',
-      distance: '1.5 mi',
-      rating: 4.6,
-      reviews: 203,
-      smokingPolicy: 'outdoor-only',
-      features: ['Restaurant', 'Pet Friendly', 'Parking'],
-      verified: true
-    },
-  ];
-
-  const getTypeIcon = (type: Place['type']) => {
-    switch (type) {
-      case 'bar': return '🍺';
-      case 'restaurant': return '🍽️';
-      case 'lounge': return '🛋️';
-      case 'outdoor': return '🌳';
-      case 'hotel': return '🏨';
-      case 'casino': return '🎰';
-      default: return '📍';
+  const fetchPlaces = async (lat: number, lng: number) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/places/nearby?lat=${lat}&lng=${lng}&radius=5000`);
+      
+      if (res.ok) {
+        const data = await res.json();
+        setPlaces(data.places || []);
+        setError(null);
+      } else {
+        setError('Failed to load places from database');
+      }
+    } catch {
+      setError('Network error - places service unavailable');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getPolicyBadge = (policy: Place['smokingPolicy']) => {
-    switch (policy) {
-      case 'allowed':
-        return { text: 'Smoking Allowed', color: 'bg-green-500/20 text-green-600' };
-      case 'designated':
-        return { text: 'Designated Area', color: 'bg-blue-500/20 text-blue-600' };
-      case 'outdoor-only':
-        return { text: 'Outdoor Only', color: 'bg-yellow-500/20 text-yellow-600' };
-      case 'vape-only':
-        return { text: 'Vape Only', color: 'bg-purple-500/20 text-purple-600' };
-    }
-  };
-
-  const filteredPlaces = filter === 'all'
-    ? places
+  const filteredPlaces = filter === 'all' 
+    ? places 
     : places.filter(p => p.type === filter);
 
-  if (loading) {
-    return (
-      <div className="p-8 text-center">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-slate-600">Finding places near you...</p>
-      </div>
-    );
-  }
+  const getIcon = (type: PlaceType) => {
+    const icons: Record<PlaceType, string> = {
+      bar: '🍺',
+      restaurant: '🍽️',
+      lounge: '🛋️',
+      outdoor: '🌳',
+      hotel: '🏨',
+      casino: '🎰',
+      vape_shop: '💨',
+      smoke_shop: '🚬',
+      hookah_lounge: '🪝'
+    };
+    return icons[type] || '📍';
+  };
+
+  const getPolicyBadge = (policy: SmokingPolicy) => {
+    const badges: Record<SmokingPolicy, { text: string; color: string }> = {
+      'allowed': { text: '✓ Smoking Allowed', color: 'bg-green-100 text-green-700' },
+      'designated': { text: 'Designated Areas', color: 'bg-amber-100 text-amber-700' },
+      'outdoor-only': { text: 'Outdoor Only', color: 'bg-blue-100 text-blue-700' },
+      'vape-only': { text: 'Vape Products', color: 'bg-purple-100 text-purple-700' }
+    };
+    const badge = badges[policy];
+    return <span className={`px-2 py-1 rounded text-xs font-medium ${badge.color}`}>{badge.text}</span>;
+  };
+
+  const openDirections = (place: Place) => {
+    if (place.lat && place.lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}`, '_blank');
+    }
+  };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-      {/* Header */}
-      <div className="p-6 border-b border-slate-200">
-        <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+      <div className="p-6 border-b">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-2xl">
-              📍
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <MapPin className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Nearby Places</h2>
+              <h3 className="font-bold text-slate-900">Nearby Places</h3>
               <p className="text-sm text-slate-500">
-                {userLocation ? 'Based on your location' : 'Enable location for better results'}
+                {userLocation ? 'Real places near you' : 'Showing local results'}
               </p>
             </div>
           </div>
-          <button
-            onClick={requestLocation}
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1"
+          <button 
+            onClick={getLocation}
+            className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+            title="Refresh location"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {(['all', 'bar', 'restaurant', 'lounge', 'outdoor', 'casino'] as const).map(type => (
+        <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+          {(['all', 'smoke_shop', 'vape_shop', 'bar', 'lounge', 'hookah_lounge'] as const).map((f) => (
             <button
-              key={type}
-              onClick={() => setFilter(type)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${filter === type
-                  ? 'bg-blue-600 text-white'
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
+                filter === f 
+                  ? 'bg-blue-600 text-white' 
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+              }`}
             >
-              {type === 'all' ? '🗺️ All' : `${getTypeIcon(type)} ${type.charAt(0).toUpperCase() + type.slice(1)}`}
+              {f === 'all' ? '🗺️ All' : `${getIcon(f as PlaceType)} ${f.replace('_', ' ')}`}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Location Error */}
-      {locationError && (
-        <div className="mx-6 mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-          <p className="text-yellow-800 text-sm">{locationError}</p>
-        </div>
-      )}
-
-      {/* Places List */}
-      <div className="divide-y divide-slate-100">
-        {filteredPlaces.map(place => {
-          const policy = getPolicyBadge(place.smokingPolicy);
-          return (
-            <div
-              key={place.id}
-              className="p-6 hover:bg-slate-50 transition-all cursor-pointer"
+      <div className="p-4">
+        {loading ? (
+          <div className="text-center py-8 text-slate-500">
+            <div className="animate-pulse">Finding places near you...</div>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-amber-600 mb-2">⚠️ {error}</p>
+            <button 
+              onClick={() => userLocation ? fetchPlaces(userLocation.lat, userLocation.lng) : getLocation()}
+              className="text-blue-600 hover:underline"
             >
-              <div className="flex items-start gap-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center text-3xl flex-shrink-0">
-                  {getTypeIcon(place.type)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold text-slate-900">{place.name}</h3>
-                    {place.verified && (
-                      <span className="text-blue-500" title="Verified">✓</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-slate-500 mb-2">{place.address}</p>
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${policy.color}`}>
-                      {policy.text}
-                    </span>
-                    <span className="text-xs text-slate-400">{place.distance}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1">
-                      <span className="text-yellow-500">⭐</span>
-                      <span className="font-medium text-slate-900">{place.rating}</span>
-                      <span className="text-slate-400 text-sm">({place.reviews})</span>
+              Try again
+            </button>
+          </div>
+        ) : filteredPlaces.length === 0 ? (
+          <div className="text-center py-8 text-slate-500">
+            <p>No places found in this area.</p>
+            <p className="text-sm mt-2">Try adjusting filters or expanding your search radius.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredPlaces.slice(0, 6).map((place) => (
+              <div key={place.id} className="border rounded-lg p-4 hover:border-blue-300 transition-colors">
+                <div className="flex gap-3">
+                  <div className="text-3xl flex-shrink-0">{getIcon(place.type)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-slate-900 truncate">{place.name}</h4>
+                      {place.verified && <Check className="w-4 h-4 text-green-500 flex-shrink-0" />}
                     </div>
-                    <div className="flex gap-1">
-                      {place.features.slice(0, 3).map(feature => (
-                        <span
-                          key={feature}
-                          className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full"
-                        >
-                          {feature}
+                    <p className="text-sm text-slate-500 truncate">{place.address}</p>
+                    
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      {getPolicyBadge(place.smokingPolicy)}
+                      <span className="text-sm text-slate-500">{place.distance} mi</span>
+                      {place.rating > 0 && (
+                        <span className="flex items-center gap-1 text-sm text-amber-600">
+                          <Star className="w-4 h-4 fill-amber-400" />
+                          {place.rating} ({place.reviews})
                         </span>
-                      ))}
+                      )}
+                    </div>
+
+                    {place.features.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {place.features.slice(0, 3).map((f, i) => (
+                          <span key={i} className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-3 mt-3 text-sm">
+                      {place.phone && (
+                        <a href={`tel:${place.phone}`} className="flex items-center gap-1 text-blue-600 hover:underline">
+                          <Phone className="w-4 h-4" /> Call
+                        </a>
+                      )}
+                      {place.website && (
+                        <a href={place.website} target="_blank" rel="noopener" className="flex items-center gap-1 text-blue-600 hover:underline">
+                          <Globe className="w-4 h-4" /> Website
+                        </a>
+                      )}
+                      <button 
+                        onClick={() => openDirections(place)}
+                        className="flex items-center gap-1 text-blue-600 hover:underline"
+                      >
+                        <Navigation className="w-4 h-4" /> Directions
+                      </button>
                     </div>
                   </div>
                 </div>
-                <button className="text-blue-600 hover:text-blue-700">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </button>
               </div>
-            </div>
-          );
-        })}
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Footer */}
-      <div className="p-4 bg-slate-50 border-t border-slate-200 text-center">
-        <a href="/submit-place" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-          📝 Know a smoking-friendly place? Add it here!
+      <div className="p-4 bg-slate-50 border-t text-center">
+        <a href="/places" className="text-sm text-blue-600 hover:underline">
+          View all places →
         </a>
       </div>
     </div>

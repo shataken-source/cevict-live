@@ -3,11 +3,21 @@
   "outputDirectory": ".next",
   "installCommand": "npm install --no-frozen-lockfile",
   "framework": "nextjs",
-  "regions": ["iad1"],
+  "regions": [
+    "iad1"
+  ],
   "crons": [
     {
       "path": "/api/bot/run",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/fetch-legislation",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/fetch-places",
+      "schedule": "0 4 * * 0"
     }
   ]
 }
