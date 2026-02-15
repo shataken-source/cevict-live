@@ -1,7 +1,11 @@
 import Link from 'next/link'
-import { Search, Scale, ShoppingBag, MapPin, FileText, ArrowRight, Crown } from 'lucide-react'
+import { Search, Scale, ShoppingBag, MapPin, FileText, ArrowRight, Crown, Bot, MapPinned, Bookmark } from 'lucide-react'
 import BuyMeACoffee from '@/components/ads/BuyMeACoffee'
 import AdBanner from '@/components/ads/AdBanner'
+import LegislationTracker from '@/components/LegislationTracker'
+import NearbyPlaces from '@/components/NearbyPlaces'
+import AIAssistant from '@/components/AIAssistant'
+import EnhancedSearch from '@/components/EnhancedSearch'
 
 export default function HomePage() {
   return (
@@ -43,7 +47,10 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* Stats */}
+        {/* Enhanced Search */}
+        <div className="max-w-2xl mx-auto mb-12">
+          <EnhancedSearch onSearch={(q) => console.log('Search:', q)} />
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
           <div className="bg-white rounded-lg shadow-lg p-6 text-center">
             <div className="text-3xl font-bold text-blue-600 mb-2">50</div>
@@ -62,6 +69,26 @@ export default function HomePage() {
             <div className="text-sm text-gray-600">To Use</div>
           </div>
         </div>
+
+        {/* New Features Grid */}
+        <div className="grid md:grid-cols-2 gap-6 mb-16">
+          <LegislationTracker initialState="GA" />
+          <NearbyPlaces />
+        </div>
+
+        {/* AI Assistant Section */}
+        <section className="bg-white rounded-2xl shadow-lg p-8 mb-16">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+              <Bot className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">AI Legal Assistant</h2>
+              <p className="text-slate-600">Ask about laws, products, or get legal guidance</p>
+            </div>
+          </div>
+          <AIAssistant />
+        </section>
 
         {/* Main Features */}
         <div className="grid md:grid-cols-3 gap-6 mb-16">
