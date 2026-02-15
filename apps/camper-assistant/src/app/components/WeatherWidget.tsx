@@ -192,32 +192,17 @@ export default function WeatherWidget() {
   const [useRealData, setUseRealData] = useState(true);
 
   const [weather, setWeather] = useState<WeatherData>({
-    temp: 72, condition: 'Partly Cloudy', humidity: 45, windSpeed: 8, uvIndex: 6,
-    pressure: 30.12, feelsLike: 70, sunrise: '6:30 AM', sunset: '7:45 PM',
-    precipitation: 0, visibility: 10,
+    temp: 0, condition: 'Loading...', humidity: 0, windSpeed: 0, uvIndex: 0,
+    pressure: 0, feelsLike: 0, sunrise: '--:--', sunset: '--:--',
+    precipitation: 0, visibility: 0,
   });
 
-  const [forecast, setForecast] = useState<ForecastDay[]>([
-    { day: 'Today', high: 75, low: 52, condition: 'Partly Cloudy', icon: 'cloud', precipitation: 20 },
-    { day: 'Tomorrow', high: 78, low: 55, condition: 'Sunny', icon: 'sun', precipitation: 0 },
-    { day: 'Wed', high: 73, low: 50, condition: 'Thunderstorms', icon: 'storm', precipitation: 80 },
-    { day: 'Thu', high: 68, low: 48, condition: 'Rain', icon: 'rain', precipitation: 60 },
-    { day: 'Fri', high: 71, low: 49, condition: 'Partly Cloudy', icon: 'cloud', precipitation: 10 },
-    { day: 'Sat', high: 76, low: 53, condition: 'Sunny', icon: 'sun', precipitation: 0 },
-    { day: 'Sun', high: 79, low: 56, condition: 'Sunny', icon: 'sun', precipitation: 0 },
-  ]);
+  const [forecast, setForecast] = useState<ForecastDay[]>([]);
 
-  const [hourly, setHourly] = useState<HourlyData[]>([
-    { time: '6 AM', temp: 55, precip: 0, windSpeed: 5 },
-    { time: '9 AM', temp: 62, precip: 10, windSpeed: 7 },
-    { time: '12 PM', temp: 72, precip: 20, windSpeed: 8 },
-    { time: '3 PM', temp: 75, precip: 30, windSpeed: 10 },
-    { time: '6 PM', temp: 68, precip: 60, windSpeed: 12 },
-    { time: '9 PM', temp: 58, precip: 80, windSpeed: 9 },
-  ]);
+  const [hourly, setHourly] = useState<HourlyData[]>([]);
 
   const [uvData, setUvData] = useState<UVData>({
-    uv: 6, maxUv: 8, exposureTime: '15-25 min', safeExposure: 'Seek shade 10AM-4PM'
+    uv: 0, maxUv: 0, exposureTime: '--', safeExposure: 'Loading UV data...'
   });
 
   const fetchOpenMeteo = async (lat: number, lon: number) => {
@@ -298,7 +283,7 @@ export default function WeatherWidget() {
   };
 
   const API_KEYS = {
-    WEATHERAPI: process.env.NEXT_PUBLIC_WEATHERAPI_KEY || '',
+    WEATHERAPI: process.env.WEATHER_API_KEY || process.env.NEXT_PUBLIC_WEATHER_API_KEY || '',
   };
 
   const fetchWeatherAPI = async (zip: string) => {
