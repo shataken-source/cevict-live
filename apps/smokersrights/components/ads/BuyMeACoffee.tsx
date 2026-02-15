@@ -6,25 +6,27 @@ import { useState } from 'react'
 interface BuyMeACoffeeProps {
   username?: string
   variant?: 'button' | 'card' | 'floating'
+  kofiUrl?: string
 }
 
 /**
- * Buy Me a Coffee / Tip Jar Component
- * 
+ * Ko-fi / Tip Jar Component
+ *
  * Quick monetization - visitors can support the site
- * Sign up at https://www.buymeacoffee.com
+ * Uses Ko-fi: https://ko-fi.com/cevict
  */
-export default function BuyMeACoffee({ 
-  username = 'smokersrights',
-  variant = 'button' 
+export default function BuyMeACoffee({
+  username = 'cevict',
+  variant = 'button',
+  kofiUrl = 'https://ko-fi.com/cevict?ref=onboarding_email_founderwelcome'
 }: BuyMeACoffeeProps) {
   const [showOptions, setShowOptions] = useState(false)
 
   const handleSupport = (amount?: number) => {
-    const url = amount 
-      ? `https://www.buymeacoffee.com/${username}?amount=${amount}`
-      : `https://www.buymeacoffee.com/${username}`
-    
+    const url = amount
+      ? `${kofiUrl}&amount=${amount}`
+      : kofiUrl
+
     window.open(url, '_blank')
   }
 
@@ -50,7 +52,7 @@ export default function BuyMeACoffee({
         <p className="text-gray-600 text-sm mb-4">
           Help us keep smoking rights information free and accessible for everyone.
         </p>
-        
+
         {showOptions ? (
           <div className="flex gap-2 justify-center">
             <button
