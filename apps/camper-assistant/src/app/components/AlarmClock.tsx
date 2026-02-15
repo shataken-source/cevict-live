@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Bell, Clock, Volume2, Music, Pause, Play, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Bell, Clock, Music, Pause, Play, Trash2 } from 'lucide-react';
 
 export default function AlarmClock() {
   const [alarms, setAlarms] = useState([
@@ -13,10 +13,98 @@ export default function AlarmClock() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [playing, setPlaying] = useState<string | null>(null);
 
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const oscillatorsRef = useRef<OscillatorNode[]>([]);
+  const noiseNodesRef = useRef<AudioBufferSourceNode[]>([]);
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const stopAllSounds = useCallback(() => {
+    oscillatorsRef.current.forEach(osc => {
+      try { osc.stop(); osc.disconnect(); } catch { }
+    });
+    noiseNodesRef.current.forEach(noise => {
+      try { noise.stop(); noise.disconnect(); } catch { }
+    });
+    oscillatorsRef.current = [];
+    noiseNodesRef.current = [];
+  }, []);
+
+  const createNoise = (ctx: AudioContext): AudioBuffer => {
+    const bufferSize = ctx.sampleRate * 2;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const output = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    return buffer;
+  };
+
+  const playSound = (soundId: string) => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioContextRef.current;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    stopAllSounds();
+
+    if (soundId === 'birds') {
+      // Bird-like chirping using oscillators
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = 2000 + Math.random() * 1000;
+          gain.gain.value = 0.1;
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.1);
+        }, i * 300);
+      }
+    } else if (soundId === 'waves') {
+      // Pink noise for ocean waves
+      const buffer = createNoise(ctx);
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      noise.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 400;
+      noise.connect(filter);
+      filter.connect(ctx.destination);
+      noise.start();
+      noiseNodesRef.current.push(noise);
+    } else if (soundId === 'forest') {
+      // Brown noise for forest wind
+      const buffer = createNoise(ctx);
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      noise.loop = true;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 600;
+      noise.connect(filter);
+      filter.connect(ctx.destination);
+      noise.start();
+      noiseNodesRef.current.push(noise);
+    }
+  };
+
+  const toggleSound = (soundId: string) => {
+    if (playing === soundId) {
+      stopAllSounds();
+      setPlaying(null);
+    } else {
+      playSound(soundId);
+      setPlaying(soundId);
+    }
+  };
 
   const addAlarm = () => {
     setAlarms([...alarms, {
@@ -141,10 +229,10 @@ export default function AlarmClock() {
           {sounds.map((sound) => (
             <button
               key={sound.id}
-              onClick={() => setPlaying(playing === sound.id ? null : sound.id)}
+              onClick={() => toggleSound(sound.id)}
               className={`flex items-center justify-center gap-2 py-3 rounded-lg transition-colors ${playing === sound.id
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                ? 'bg-purple-500 text-white'
+                : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
                 }`}
             >
               {playing === sound.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
