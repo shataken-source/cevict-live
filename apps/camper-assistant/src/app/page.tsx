@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope, ShoppingCart, Tent, Bird, Signal, Wind as WindIcon, Flame as FlameIcon, Radio } from 'lucide-react';
+import { Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope, ShoppingCart, Tent, Bird, Signal, Wind as WindIcon, Flame as FlameIcon, Radio, Fish, Leaf } from 'lucide-react';
 import SolarPanel from './components/SolarPanel';
 import WeatherWidget from './components/WeatherWidget';
 import BatteryMonitor from './components/BatteryMonitor';
@@ -20,6 +20,8 @@ import CellSignalMapper from './components/CellSignalMapper';
 import AirQualityMonitor from './components/AirQualityMonitor';
 import WildfireTracker from './components/WildfireTracker';
 import MeshNetwork from './components/MeshNetwork';
+import FishingIntelligence from './components/FishingIntelligence';
+import ForagingGuide from './components/ForagingGuide';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -50,6 +52,8 @@ export default function Home() {
     { id: 'air', label: 'Air Quality', icon: WindIcon },
     { id: 'wildfire', label: 'Wildfire', icon: FlameIcon },
     { id: 'mesh', label: 'Mesh Network', icon: Radio },
+    { id: 'fishing', label: 'Fishing', icon: Fish },
+    { id: 'foraging', label: 'Foraging', icon: Leaf },
   ];
 
   return (
@@ -153,6 +157,8 @@ export default function Home() {
         {activeTab === 'air' && <AirQualityMonitor />}
         {activeTab === 'wildfire' && <WildfireTracker />}
         {activeTab === 'mesh' && <MeshNetwork />}
+        {activeTab === 'fishing' && <FishingIntelligence />}
+        {activeTab === 'foraging' && <ForagingGuide />}
       </main>
 
       {/* Footer */}
