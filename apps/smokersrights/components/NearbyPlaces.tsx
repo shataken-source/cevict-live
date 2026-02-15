@@ -55,19 +55,9 @@ export default function NearbyPlaces() {
   };
 
   const fetchNearbyPlaces = async (lat: number, lng: number) => {
-    try {
-      const res = await fetch(`/api/places/nearby?lat=${lat}&lng=${lng}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPlaces(data.places || getSamplePlaces());
-      } else {
-        setPlaces(getSamplePlaces());
-      }
-    } catch {
-      setPlaces(getSamplePlaces());
-    } finally {
-      setLoading(false);
-    }
+    // Using sample data - API endpoint not implemented yet
+    setPlaces(getSamplePlaces());
+    setLoading(false);
   };
 
   const getSamplePlaces = (): Place[] => [
@@ -146,8 +136,8 @@ export default function NearbyPlaces() {
     }
   };
 
-  const filteredPlaces = filter === 'all' 
-    ? places 
+  const filteredPlaces = filter === 'all'
+    ? places
     : places.filter(p => p.type === filter);
 
   if (loading) {
@@ -192,11 +182,10 @@ export default function NearbyPlaces() {
             <button
               key={type}
               onClick={() => setFilter(type)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                filter === type
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${filter === type
                   ? 'bg-blue-600 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+                }`}
             >
               {type === 'all' ? '🗺️ All' : `${getTypeIcon(type)} ${type.charAt(0).toUpperCase() + type.slice(1)}`}
             </button>

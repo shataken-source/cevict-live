@@ -10,33 +10,50 @@ export default function AIAssistant() {
 
   async function sendMessage() {
     if (!input.trim()) return;
-    
+
     const userMsg = { role: "user", content: input };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setLoading(true);
 
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        messages: [...messages, userMsg],
-        systemPrompt: `You are a SmokersRights AI assistant. Help users with:
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [...messages, userMsg],
+          systemPrompt: `You are a SmokersRights AI assistant. Help users with:
 - State/local smoking laws and regulations
 - Product recommendations (CBD, vaping, hemp, accessories)
 - Legal resources and advocacy
 - How to fight smoking bans
 
-Be helpful, accurate, and always remind users to check local laws. 
+Be helpful, accurate, and always remind users to check local laws.
 For products, recommend from our affiliate marketplace.
 Never provide medical advice - suggest consulting a doctor.
 Always verify age (21+) for product recommendations.`
-      })
-    });
+        })
+      });
 
-    const data = await res.json();
-    setMessages(prev => [...prev, { role: "assistant", content: data.message }]);
-    setLoading(false);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(prev => [...prev, { role: "assistant", content: data.message }]);
+      } else {
+        // Fallback response when API is not available
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: "I'm currently in demo mode. To get full AI responses, please connect an AI service like OpenAI or Anthropic.\n\nIn the meantime, you can:\n• Browse our state law guides\n• Check the legislation tracker\n• Find nearby smoking-friendly places"
+        }]);
+      }
+    } catch {
+      // Fallback response when API is not available
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: "I'm currently in demo mode. To get full AI responses, please connect an AI service like OpenAI or Anthropic.\n\nIn the meantime, you can:\n• Browse our state law guides\n• Check the legislation tracker\n• Find nearby smoking-friendly places"
+      }]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -52,16 +69,16 @@ Always verify age (21+) for product recommendations.`
         ))}
         {loading && <div className="text-center text-gray-500">Thinking...</div>}
       </div>
-      
+
       <div className="flex gap-3">
-        <input 
+        <input
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyPress={e => e.key === "Enter" && sendMessage()}
           placeholder="Ask about laws, products, or legal help..."
           className="flex-1 p-4 text-base border border-gray-200 rounded-lg"
         />
-        <button 
+        <button
           onClick={sendMessage}
           disabled={loading}
           className="bg-black text-white px-8 py-4 rounded-lg text-base font-bold disabled:opacity-50"
