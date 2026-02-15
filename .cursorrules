@@ -254,6 +254,96 @@ irm http://localhost:8471/schedule/list
 
 **When to use:** Automated backups, periodic audits, scheduled deployments.
 
+---
+
+## Cochran Complete Endpoint Reference (56+ Endpoints)
+
+**Base URL:** `http://localhost:8471`
+
+### Core Operations
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/health` | GET | API status check |
+| `/git/status` | GET | Git repository status |
+| `/git/commit-and-push` | POST | Stage → commit → push |
+| `/vercel/deploy` | POST | Deploy with build checks |
+| `/vercel/build` | POST | Build only |
+
+### Audit & Organization
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/audit/large-files` | GET | Find files > threshold |
+| `/audit/node-modules` | GET | List node_modules sizes |
+| `/audit/safe-to-remove` | GET | Removable artifacts |
+| `/audit/unused-deps` | GET | Unused dependencies |
+| `/organize/disk-usage` | GET | Per-app disk breakdown |
+| `/organize/empty-dirs` | GET | Find empty directories |
+| `/organize/duplicate-names` | GET | Duplicate filenames |
+
+### System Tools
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/tools/port/{port}` | GET | Check port status |
+| `/tools/ports-scan` | GET | Scan common ports |
+| `/tools/port/{port}/kill` | POST | Kill process on port |
+| `/tools/kill-process` | POST | Kill by name |
+| `/tools/command` | POST | Run arbitrary command |
+
+### Workflows (Chained)
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/workflow/git-commit-push` | POST | Full git workflow |
+| `/workflow/deploy` | POST | Build + deploy |
+| `/workflow/audit-project` | POST | Comprehensive audit |
+| `/workflow/status/{id}` | GET | Check workflow progress |
+| `/workflow/list` | GET | List workflows |
+
+### Multi-Instance Coordination
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/cascade/heartbeat` | POST | Register activity |
+| `/cascade/active` | GET | List active instances |
+| `/cascade/check-collision` | POST | Detect conflicts |
+| `/cascade/context` | POST/GET | Save/load context |
+| `/cascade/work-summary` | GET | Cross-instance summary |
+
+### Advanced Features
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/keyvault/secrets` | GET | List secrets |
+| `/keyvault/secret/{name}` | GET | Get secret value |
+| `/search/files` | POST | Find files |
+| `/search/grep` | POST | Content search |
+| `/tasks/run` | POST | Background task |
+| `/tasks/status/{id}` | GET | Check task status |
+| `/system/disk` | GET | Disk usage |
+| `/system/memory` | GET | Memory info |
+| `/system/processes` | GET | Running processes |
+
+### Work Discovery
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/work/todos` | GET | Find TODO/FIXME comments |
+| `/work/suggest` | GET | Suggest next task |
+| `/work/next` | GET | Best next task |
+| `/work/smart-audit` | POST | Audit projects with issues |
+
+### Project Tracking
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/projects/activity` | GET | Rank by git commits |
+| `/projects/hot` | GET | Most active projects |
+| `/projects/cold` | GET | Stale projects |
+
+### Watchers & Research
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/watch/package-json` | POST | Auto-install deps |
+| `/research` | POST | Web research with synopsis |
+| `/notify/register` | POST | Agent notifications |
+| `/notify/poll` | GET | Poll for notifications |
+| `/schedule/add` | POST | Scheduled jobs |
+
 ## Usage Patterns for Maximum Efficiency
 
 ### Pattern 1: Pre-Flight Check
