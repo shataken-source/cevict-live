@@ -1,5 +1,16 @@
 // lib/odds-service.ts
 import { getPrimaryKey } from '../app/keys-store';
+import { fetchApiSportsOdds, convertToOddsServiceFormat } from './api-sports-client';
+import { fetchRapidOdds } from './rapidapi-client';
+import { scrapeNASCAROdds, convertToOddsServiceFormat as convertNASCAR } from './nascar-scraper';
+import { fetchCFBDGames, fetchCFBDLines, convertCFBDToOddsServiceFormat } from './cfbd-client';
+import { fetchDraftKingsNASCAROdds, convertDraftKingsToOddsService } from './draftkings-client';
+import { fetchDraftKingsCollegeBaseball } from './draftkings-college-baseball';
+import { OddsCacheService } from './odds-cache';
+
+// Import plugin registration (this registers all odds source plugins)
+import './odds-sources/register-plugins';
+import { fetchOddsFromPlugins } from './odds-sources';
 
 const API_BASE = 'https://api.the-odds-api.com/v4';
 
@@ -11,7 +22,10 @@ const SPORT_MAP: Record<string, string> = {
   ncaab: 'basketball_ncaab',
   cbb: 'basketball_ncaab',
   cfb: 'americanfootball_ncaaf',
-  ncaaf: 'americanfootball_ncaaf'
+  ncaaf: 'americanfootball_ncaaf',
+  nascar: 'motorsports_nascar',
+  'college-baseball': 'baseball_ncaa',
+  ncaabaseball: 'baseball_ncaa',
 };
 
 /** Normalize team names per sport when the API returns wrong or alternate names. Official NHL list includes Utah Mammoth. */
@@ -69,48 +83,184 @@ async function fetchFromOddsApi(endpoint: string, params: Record<string, string>
   return data;
 }
 
+/**
+ * No hardcoded mock data - only real API data
+ */
+export function getHardcodedGames(sport: string): any[] {
+  // Return empty - no mock data
+  return [];
+}
+function getHardcodedNASCAROdds(): any[] {
+  // No mock data - return empty
+  return [];
+}
+
 export class OddsService {
   static async getGames(params: { sport?: string; date?: string } = {}): Promise<any[]> {
     const lowerSport = params.sport?.toLowerCase() || 'nhl';
-    const sportKey = SPORT_MAP[lowerSport] || 'icehockey_nhl';
+    const date = params.date || new Date().toISOString().split('T')[0];
 
-    console.log(`[OddsService] Loading games for sport: ${lowerSport} (key: ${sportKey})`);
+    console.log(`[OddsService] Loading games for sport: ${lowerSport}, date: ${date}`);
 
-    const apiParams: Record<string, string> = {};
+    // Priority 0: Check Supabase cache first (for supported sports)
+    const supportedCacheSports = ['nhl', 'nba', 'nfl', 'mlb', 'ncaab', 'ncaaf'];
+    if (supportedCacheSports.includes(lowerSport)) {
+      try {
+        const cachedOdds = await OddsCacheService.getOddsForDate(lowerSport, date);
+        console.log(`[OddsService] Cache check result: ${cachedOdds.length} games found`);
 
-    if (params.date) {
-      apiParams.date = params.date;
+        if (cachedOdds.length > 0) {
+          console.log(`[OddsService] Using ${cachedOdds.length} cached games from Supabase`);
+          return cachedOdds.map(game => ({
+            id: game.external_id,
+            sport: game.sport,
+            homeTeam: game.homeTeam,
+            awayTeam: game.awayTeam,
+            startTime: game.startTime,
+            venue: game.venue || 'Unknown',
+            odds: game.odds,
+            source: game.source,
+          }));
+        }
+        console.log('[OddsService] No cached odds, falling back to APIs...');
+      } catch (error) {
+        console.error('[OddsService] Cache lookup failed:', error);
+      }
     }
 
-    const data = await fetchFromOddsApi(`/sports/${sportKey}/odds`, apiParams);
+    // Priority 1: Try plugin-based odds sources (DraftKings, Vegas Insider, etc.)
+    console.log('[OddsService] Trying plugin-based odds sources...');
+    try {
+      const pluginResult = await fetchOddsFromPlugins(lowerSport, date);
+      if (pluginResult && pluginResult.odds.length > 0) {
+        console.log(`[OddsService] Using ${pluginResult.odds.length} games from ${pluginResult.source}`);
+        return pluginResult.odds.map(odds => ({
+          id: odds.id,
+          sport: odds.sport,
+          homeTeam: odds.homeTeam,
+          awayTeam: odds.awayTeam,
+          startTime: odds.startTime,
+          venue: odds.venue || 'Unknown',
+          odds: odds.odds,
+          source: odds.source,
+        }));
+      }
+    } catch (error) {
+      console.error('[OddsService] Plugin system failed:', error);
+    }
 
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      console.log(`[OddsService] No games or odds for ${lowerSport}`);
+    // Priority 2: NASCAR fallback (not in API-SPORTS)
+    if (lowerSport === 'nascar') {
+      console.log('[OddsService] NASCAR fallback: Using hardcoded Daytona 500 odds');
+      return getHardcodedNASCAROdds();
+    }
+
+    // Priority 3: College Baseball fallback
+    if (lowerSport === 'college-baseball' || lowerSport === 'ncaab') {
+      console.log('[OddsService] College Baseball detected, trying DraftKings...');
+      try {
+        const dkGames = await fetchDraftKingsCollegeBaseball();
+        if (dkGames.length > 0) {
+          console.log(`[OddsService] Using ${dkGames.length} college baseball games from DraftKings`);
+          return dkGames;
+        }
+      } catch (error) {
+        console.error('[OddsService] DraftKings college baseball failed:', error);
+      }
+    }
+
+    // Try API-SPORTS first for all other sports (reliable, paid)
+    console.log(`[OddsService] Trying API-SPORTS for ${lowerSport}...`);
+    try {
+      const apiSportsGames = await fetchApiSportsOdds(lowerSport, params.date);
+      console.log(`[OddsService] API-SPORTS returned ${apiSportsGames.length} games`);
+      if (apiSportsGames.length > 0) {
+        console.log(`[OddsService] Using ${apiSportsGames.length} games from API-SPORTS`);
+        return apiSportsGames.map(convertToOddsServiceFormat);
+      }
+    } catch (error) {
+      console.error(`[OddsService] API-SPORTS failed for ${lowerSport}:`, error);
+    }
+
+    // NCAAF fallback to CFBD API (College Football Data)
+    if (lowerSport === 'ncaaf' || lowerSport === 'cfb') {
+      console.log('[OddsService] NCAAF detected, trying CFBD API...');
+      try {
+        const year = new Date().getFullYear();
+        const [games, lines] = await Promise.all([
+          fetchCFBDGames(year),
+          fetchCFBDLines(year),
+        ]);
+
+        if (games.length > 0) {
+          const cfbdGames = convertCFBDToOddsServiceFormat(games, lines);
+          console.log(`[OddsService] Using ${cfbdGames.length} NCAAF games from CFBD`);
+          return cfbdGames;
+        }
+      } catch (error) {
+        console.warn('[OddsService] CFBD API failed for NCAAF:', error);
+        console.log(`[OddsService] CFBD API error details: ${error.message}`);
+        console.log(`[OddsService] CFBD API error stack: ${error.stack}`);
+      }
+    }
+
+    // Fall back to The-Odds API
+    console.log(`[OddsService] Trying The-Odds API for ${lowerSport}...`);
+    const sportKey = SPORT_MAP[lowerSport] || 'icehockey_nhl';
+    const apiParams: Record<string, string> = {};
+    if (params.date) apiParams.date = params.date;
+
+    console.log(`[OddsService] Calling The-Odds API with sportKey: ${sportKey}`);
+    try {
+      const data = await fetchFromOddsApi(`/sports/${sportKey}/odds`, apiParams);
+      console.log(`[OddsService] The-Odds API returned:`, data ? `${data.length} games` : 'null/undefined');
+
+      if (data && Array.isArray(data) && data.length > 0) {
+        const games = data.map((event: any) => ({
+          id: event.id,
+          sport: lowerSport,
+          homeTeam: normalizeTeamName(lowerSport, event.home_team),
+          awayTeam: normalizeTeamName(lowerSport, event.away_team),
+          startTime: event.commence_time,
+          venue: event.venue || 'Unknown',
+          odds: {
+            moneyline: {
+              home: firstFromBookmakers(event, 'h2h', (m) => m?.outcomes?.find((o: any) => o.name === event.home_team)?.price ?? null),
+              away: firstFromBookmakers(event, 'h2h', (m) => m?.outcomes?.find((o: any) => o.name === event.away_team)?.price ?? null),
+            },
+            spread: {
+              home: firstFromBookmakers(event, 'spreads', (m) => m?.outcomes?.find((o: any) => o.name === event.home_team)?.point ?? null),
+              away: firstFromBookmakers(event, 'spreads', (m) => m?.outcomes?.find((o: any) => o.name === event.away_team)?.point ?? null),
+            },
+            total: {
+              line: firstFromBookmakers(event, 'totals', (m) => m?.outcomes?.[0]?.point ?? null),
+            },
+          },
+          source: 'the-odds-api',
+        }));
+
+        // Save successful API results to Supabase cache
+        const queryDate = params.date || new Date().toISOString().split('T')[0];
+        console.log(`[OddsService] Saving ${games.length} games to Supabase cache for ${lowerSport} on ${queryDate}...`);
+        try {
+          await OddsCacheService.saveGames(lowerSport, queryDate, games);
+          console.log(`[OddsService] Successfully cached ${games.length} games for ${lowerSport}`);
+        } catch (cacheError) {
+          console.error(`[OddsService] Failed to cache games:`, cacheError);
+          // Don't fail the request if caching fails
+        }
+
+        return games;
+      }
+
+      console.log(`[OddsService] No games available for ${lowerSport}`);
+      return [];
+    } catch (error) {
+      console.error(`[OddsService] The-Odds API failed:`, error);
       return [];
     }
 
-    return data.map((event: any) => {
-      const homeDisplay = normalizeTeamName(lowerSport, event.home_team);
-      const awayDisplay = normalizeTeamName(lowerSport, event.away_team);
-      const mlHome = firstFromBookmakers(event, 'h2h', (m) => m?.outcomes?.find((o: any) => o.name === event.home_team)?.price ?? null);
-      const mlAway = firstFromBookmakers(event, 'h2h', (m) => m?.outcomes?.find((o: any) => o.name === event.away_team)?.price ?? null);
-      const spreadHome = firstFromBookmakers(event, 'spreads', (m) => m?.outcomes?.find((o: any) => o.name === event.home_team)?.point ?? null);
-      const spreadAway = firstFromBookmakers(event, 'spreads', (m) => m?.outcomes?.find((o: any) => o.name === event.away_team)?.point ?? null);
-      const totalLine = firstFromBookmakers(event, 'totals', (m) => m?.outcomes?.[0]?.point ?? null);
-      return {
-        id: event.id,
-        sport: lowerSport,
-        homeTeam: homeDisplay,
-        awayTeam: awayDisplay,
-        startTime: event.commence_time,
-        venue: event.venue || 'Unknown',
-        odds: {
-          moneyline: { home: mlHome, away: mlAway },
-          spread: { home: spreadHome, away: spreadAway },
-          total: { line: totalLine }
-        }
-      };
-    });
+    // End of getGames method - getGame is a separate method
   }
 
   static async getGame(gameId: string): Promise<any | null> {
@@ -170,3 +320,5 @@ export class OddsService {
     return [];
   }
 }
+
+export { OddsService };

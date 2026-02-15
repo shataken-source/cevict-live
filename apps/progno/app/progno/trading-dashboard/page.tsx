@@ -54,7 +54,7 @@ function TradingDashboardContent() {
   const [autoSyndicate, setAutoSyndicate] = useState(false);
   const [syndicationStatus, setSyndicationStatus] = useState<string | null>(null);
 
-  const sports = ['all', 'nhl', 'nba', 'nfl', 'mlb', 'ncaab', 'ncaaf'];
+  const sports = ['all', 'nhl', 'nba', 'nfl', 'mlb', 'ncaab', 'ncaaf', 'nascar'];
 
   useEffect(() => {
     async function loadData() {

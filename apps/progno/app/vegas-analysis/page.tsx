@@ -28,6 +28,7 @@ export default function VegasAnalysis() {
         'NHL': 'nhl',
         'NCAAF': 'cfb',
         'NCAAB': 'cbb',
+        'NASCAR': 'nascar',
       };
       const sport = sportMap[league] || 'nfl';
       const date = new Date().toISOString().split('T')[0];
@@ -95,6 +96,7 @@ export default function VegasAnalysis() {
         'NHL': 'nhl',
         'NCAAF': 'cfb',
         'NCAAB': 'cbb',
+        'NASCAR': 'nascar',
       };
       const sport = sportMap[league] || 'nfl';
 
@@ -112,7 +114,7 @@ export default function VegasAnalysis() {
       const picksWithSimulations: any[] = [];
       const threshold = parseFloat(confidenceThreshold) || 0;
       console.log(`[Vegas Analysis] Processing ${fetchedGames.length} games with threshold: ${threshold}%`);
-      
+
       for (const game of fetchedGames) {
         try {
           const gameId = game.id || `${sport}-${game.awayTeam?.name?.toLowerCase()?.replace(/\s+/g, '-')}-${game.homeTeam?.name?.toLowerCase()?.replace(/\s+/g, '-')}`;
@@ -124,7 +126,7 @@ export default function VegasAnalysis() {
           if (analyzeResponse.ok) {
             const analysisData = await analyzeResponse.json();
             const pdata = analysisData?.data || {};
-            
+
             // Calculate confidence - handle both decimal (0.58) and percentage (58) formats
             let confidencePct: number;
             if (pdata.confidenceScore !== undefined) {
@@ -136,7 +138,7 @@ export default function VegasAnalysis() {
             } else {
               confidencePct = 0;
             }
-            
+
             const edgePct = Math.round(((pdata.spread?.edge ?? 0) || 0) * 100) / 100;
             const quality = Math.round(((pdata.quality ?? 0) || 0) * 100) / 100;
             const primaryPick = pdata.recommendation?.primaryPick || {};
@@ -272,9 +274,9 @@ export default function VegasAnalysis() {
               <option value="NHL">NHL</option>
               <option value="NCAAF">NCAAF</option>
               <option value="NCAAB">NCAAB</option>
+              <option value="NASCAR">NASCAR</option>
             </select>
           </div>
-
           {/* Bankroll */}
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{
@@ -620,6 +622,6 @@ export default function VegasAnalysis() {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 }

@@ -1,0 +1,452 @@
+[
+  {
+    "date": "2024-09-05",
+    "league": "NFL",
+    "homeTeam": "Kansas City Chiefs",
+    "awayTeam": "Dallas Cowboys",
+    "homeScore": 15,
+    "awayScore": 30,
+    "winner": "Dallas Cowboys"
+  },
+  {
+    "date": "2024-09-06",
+    "league": "NFL",
+    "homeTeam": "Baltimore Ravens",
+    "awayTeam": "Philadelphia Eagles",
+    "homeScore": 10,
+    "awayScore": 22,
+    "winner": "Philadelphia Eagles"
+  },
+  {
+    "date": "2024-09-07",
+    "league": "NFL",
+    "homeTeam": "Buffalo Bills",
+    "awayTeam": "Washington Commanders",
+    "homeScore": 10,
+    "awayScore": 18,
+    "winner": "Washington Commanders"
+  },
+  {
+    "date": "2024-09-08",
+    "league": "NFL",
+    "homeTeam": "Miami Dolphins",
+    "awayTeam": "New York Giants",
+    "homeScore": 27,
+    "awayScore": 36,
+    "winner": "New York Giants"
+  },
+  {
+    "date": "2024-09-09",
+    "league": "NFL",
+    "homeTeam": "Pittsburgh Steelers",
+    "awayTeam": "Green Bay Packers",
+    "homeScore": 28,
+    "awayScore": 20,
+    "winner": "Pittsburgh Steelers"
+  },
+  {
+    "date": "2024-09-10",
+    "league": "NFL",
+    "homeTeam": "Cleveland Browns",
+    "awayTeam": "Chicago Bears",
+    "homeScore": 10,
+    "awayScore": 28,
+    "winner": "Chicago Bears"
+  },
+  {
+    "date": "2024-09-11",
+    "league": "NFL",
+    "homeTeam": "Cincinnati Bengals",
+    "awayTeam": "Minnesota Vikings",
+    "homeScore": 16,
+    "awayScore": 14,
+    "winner": "Cincinnati Bengals"
+  },
+  {
+    "date": "2024-09-12",
+    "league": "NFL",
+    "homeTeam": "Baltimore Ravens",
+    "awayTeam": "Detroit Lions",
+    "homeScore": 36,
+    "awayScore": 24,
+    "winner": "Baltimore Ravens"
+  },
+  {
+    "date": "2024-09-13",
+    "league": "NFL",
+    "homeTeam": "New York Jets",
+    "awayTeam": "Atlanta Falcons",
+    "homeScore": 19,
+    "awayScore": 26,
+    "winner": "Atlanta Falcons"
+  },
+  {
+    "date": "2024-09-14",
+    "league": "NFL",
+    "homeTeam": "New England Patriots",
+    "awayTeam": "New Orleans Saints",
+    "homeScore": 24,
+    "awayScore": 20,
+    "winner": "New England Patriots"
+  },
+  {
+    "date": "2024-09-15",
+    "league": "NFL",
+    "homeTeam": "Indianapolis Colts",
+    "awayTeam": "Tampa Bay Buccaneers",
+    "homeScore": 24,
+    "awayScore": 32,
+    "winner": "Tampa Bay Buccaneers"
+  },
+  {
+    "date": "2024-09-16",
+    "league": "NFL",
+    "homeTeam": "Tennessee Titans",
+    "awayTeam": "Carolina Panthers",
+    "homeScore": 32,
+    "awayScore": 11,
+    "winner": "Tennessee Titans"
+  },
+  {
+    "date": "2024-09-17",
+    "league": "NFL",
+    "homeTeam": "Denver Broncos",
+    "awayTeam": "Arizona Cardinals",
+    "homeScore": 39,
+    "awayScore": 27,
+    "winner": "Denver Broncos"
+  },
+  {
+    "date": "2024-09-18",
+    "league": "NFL",
+    "homeTeam": "Las Vegas Raiders",
+    "awayTeam": "San Francisco 49ers",
+    "homeScore": 20,
+    "awayScore": 28,
+    "winner": "San Francisco 49ers"
+  },
+  {
+    "date": "2024-09-19",
+    "league": "NFL",
+    "homeTeam": "Los Angeles Chargers",
+    "awayTeam": "Los Angeles Rams",
+    "homeScore": 26,
+    "awayScore": 33,
+    "winner": "Los Angeles Rams"
+  },
+  {
+    "date": "2024-09-20",
+    "league": "NFL",
+    "homeTeam": "Kansas City Chiefs",
+    "awayTeam": "Seattle Seahawks",
+    "homeScore": 24,
+    "awayScore": 19,
+    "winner": "Kansas City Chiefs"
+  },
+  {
+    "date": "2024-09-12",
+    "league": "NFL",
+    "homeTeam": "Dallas Cowboys",
+    "awayTeam": "Kansas City Chiefs",
+    "homeScore": 25,
+    "awayScore": 20,
+    "winner": "Dallas Cowboys"
+  },
+  {
+    "date": "2024-09-13",
+    "league": "NFL",
+    "homeTeam": "Philadelphia Eagles",
+    "awayTeam": "Baltimore Ravens",
+    "homeScore": 18,
+    "awayScore": 35,
+    "winner": "Baltimore Ravens"
+  },
+  {
+    "date": "2024-09-14",
+    "league": "NFL",
+    "homeTeam": "Washington Commanders",
+    "awayTeam": "Buffalo Bills",
+    "homeScore": 37,
+    "awayScore": 22,
+    "winner": "Washington Commanders"
+  },
+  {
+    "date": "2024-09-15",
+    "league": "NFL",
+    "homeTeam": "New York Giants",
+    "awayTeam": "Miami Dolphins",
+    "homeScore": 14,
+    "awayScore": 24,
+    "winner": "Miami Dolphins"
+  },
+  {
+    "date": "2024-09-16",
+    "league": "NFL",
+    "homeTeam": "Green Bay Packers",
+    "awayTeam": "Pittsburgh Steelers",
+    "homeScore": 16,
+    "awayScore": 29,
+    "winner": "Pittsburgh Steelers"
+  },
+  {
+    "date": "2024-09-17",
+    "league": "NFL",
+    "homeTeam": "Chicago Bears",
+    "awayTeam": "Cleveland Browns",
+    "homeScore": 12,
+    "awayScore": 23,
+    "winner": "Cleveland Browns"
+  },
+  {
+    "date": "2024-09-18",
+    "league": "NFL",
+    "homeTeam": "Minnesota Vikings",
+    "awayTeam": "Cincinnati Bengals",
+    "homeScore": 15,
+    "awayScore": 23,
+    "winner": "Cincinnati Bengals"
+  },
+  {
+    "date": "2024-09-19",
+    "league": "NFL",
+    "homeTeam": "Detroit Lions",
+    "awayTeam": "Baltimore Ravens",
+    "homeScore": 22,
+    "awayScore": 22,
+    "winner": "Baltimore Ravens"
+  },
+  {
+    "date": "2024-09-20",
+    "league": "NFL",
+    "homeTeam": "Atlanta Falcons",
+    "awayTeam": "New York Jets",
+    "homeScore": 24,
+    "awayScore": 34,
+    "winner": "New York Jets"
+  },
+  {
+    "date": "2024-09-21",
+    "league": "NFL",
+    "homeTeam": "New Orleans Saints",
+    "awayTeam": "New England Patriots",
+    "homeScore": 30,
+    "awayScore": 28,
+    "winner": "New Orleans Saints"
+  },
+  {
+    "date": "2024-09-22",
+    "league": "NFL",
+    "homeTeam": "Tampa Bay Buccaneers",
+    "awayTeam": "Indianapolis Colts",
+    "homeScore": 38,
+    "awayScore": 39,
+    "winner": "Indianapolis Colts"
+  },
+  {
+    "date": "2024-09-23",
+    "league": "NFL",
+    "homeTeam": "Carolina Panthers",
+    "awayTeam": "Tennessee Titans",
+    "homeScore": 39,
+    "awayScore": 28,
+    "winner": "Carolina Panthers"
+  },
+  {
+    "date": "2024-09-24",
+    "league": "NFL",
+    "homeTeam": "Arizona Cardinals",
+    "awayTeam": "Denver Broncos",
+    "homeScore": 26,
+    "awayScore": 29,
+    "winner": "Denver Broncos"
+  },
+  {
+    "date": "2024-09-25",
+    "league": "NFL",
+    "homeTeam": "San Francisco 49ers",
+    "awayTeam": "Las Vegas Raiders",
+    "homeScore": 25,
+    "awayScore": 26,
+    "winner": "Las Vegas Raiders"
+  },
+  {
+    "date": "2024-09-26",
+    "league": "NFL",
+    "homeTeam": "Los Angeles Rams",
+    "awayTeam": "Los Angeles Chargers",
+    "homeScore": 35,
+    "awayScore": 23,
+    "winner": "Los Angeles Rams"
+  },
+  {
+    "date": "2024-09-27",
+    "league": "NFL",
+    "homeTeam": "Seattle Seahawks",
+    "awayTeam": "Kansas City Chiefs",
+    "homeScore": 33,
+    "awayScore": 28,
+    "winner": "Seattle Seahawks"
+  },
+  {
+    "date": "2024-09-19",
+    "league": "NFL",
+    "homeTeam": "Kansas City Chiefs",
+    "awayTeam": "Dallas Cowboys",
+    "homeScore": 12,
+    "awayScore": 24,
+    "winner": "Dallas Cowboys"
+  },
+  {
+    "date": "2024-09-20",
+    "league": "NFL",
+    "homeTeam": "Baltimore Ravens",
+    "awayTeam": "Philadelphia Eagles",
+    "homeScore": 29,
+    "awayScore": 31,
+    "winner": "Philadelphia Eagles"
+  },
+  {
+    "date": "2024-09-21",
+    "league": "NFL",
+    "homeTeam": "Buffalo Bills",
+    "awayTeam": "Washington Commanders",
+    "homeScore": 19,
+    "awayScore": 16,
+    "winner": "Buffalo Bills"
+  },
+  {
+    "date": "2024-09-22",
+    "league": "NFL",
+    "homeTeam": "Miami Dolphins",
+    "awayTeam": "New York Giants",
+    "homeScore": 22,
+    "awayScore": 14,
+    "winner": "Miami Dolphins"
+  },
+  {
+    "date": "2024-09-23",
+    "league": "NFL",
+    "homeTeam": "Pittsburgh Steelers",
+    "awayTeam": "Green Bay Packers",
+    "homeScore": 18,
+    "awayScore": 32,
+    "winner": "Green Bay Packers"
+  },
+  {
+    "date": "2024-09-24",
+    "league": "NFL",
+    "homeTeam": "Cleveland Browns",
+    "awayTeam": "Chicago Bears",
+    "homeScore": 32,
+    "awayScore": 16,
+    "winner": "Cleveland Browns"
+  },
+  {
+    "date": "2024-09-25",
+    "league": "NFL",
+    "homeTeam": "Cincinnati Bengals",
+    "awayTeam": "Minnesota Vikings",
+    "homeScore": 39,
+    "awayScore": 39,
+    "winner": "Minnesota Vikings"
+  },
+  {
+    "date": "2024-09-26",
+    "league": "NFL",
+    "homeTeam": "Baltimore Ravens",
+    "awayTeam": "Detroit Lions",
+    "homeScore": 24,
+    "awayScore": 33,
+    "winner": "Detroit Lions"
+  },
+  {
+    "date": "2024-09-27",
+    "league": "NFL",
+    "homeTeam": "New York Jets",
+    "awayTeam": "Atlanta Falcons",
+    "homeScore": 38,
+    "awayScore": 31,
+    "winner": "New York Jets"
+  },
+  {
+    "date": "2024-09-28",
+    "league": "NFL",
+    "homeTeam": "New England Patriots",
+    "awayTeam": "New Orleans Saints",
+    "homeScore": 30,
+    "awayScore": 19,
+    "winner": "New England Patriots"
+  },
+  {
+    "date": "2024-09-29",
+    "league": "NFL",
+    "homeTeam": "Indianapolis Colts",
+    "awayTeam": "Tampa Bay Buccaneers",
+    "homeScore": 10,
+    "awayScore": 28,
+    "winner": "Tampa Bay Buccaneers"
+  },
+  {
+    "date": "2024-09-30",
+    "league": "NFL",
+    "homeTeam": "Tennessee Titans",
+    "awayTeam": "Carolina Panthers",
+    "homeScore": 13,
+    "awayScore": 20,
+    "winner": "Carolina Panthers"
+  },
+  {
+    "date": "2024-10-01",
+    "league": "NFL",
+    "homeTeam": "Denver Broncos",
+    "awayTeam": "Arizona Cardinals",
+    "homeScore": 17,
+    "awayScore": 26,
+    "winner": "Arizona Cardinals"
+  },
+  {
+    "date": "2024-10-02",
+    "league": "NFL",
+    "homeTeam": "Las Vegas Raiders",
+    "awayTeam": "San Francisco 49ers",
+    "homeScore": 33,
+    "awayScore": 39,
+    "winner": "San Francisco 49ers"
+  },
+  {
+    "date": "2024-10-03",
+    "league": "NFL",
+    "homeTeam": "Los Angeles Chargers",
+    "awayTeam": "Los Angeles Rams",
+    "homeScore": 32,
+    "awayScore": 19,
+    "winner": "Los Angeles Chargers"
+  },
+  {
+    "date": "2024-10-04",
+    "league": "NFL",
+    "homeTeam": "Kansas City Chiefs",
+    "awayTeam": "Seattle Seahawks",
+    "homeScore": 10,
+    "awayScore": 28,
+    "winner": "Seattle Seahawks"
+  },
+  {
+    "date": "2024-09-26",
+    "league": "NFL",
+    "homeTeam": "Dallas Cowboys",
+    "awayTeam": "Kansas City Chiefs",
+    "homeScore": 33,
+    "awayScore": 38,
+    "winner": "Kansas City Chiefs"
+  },
+  {
+    "date": "2024-09-27",
+    "league": "NFL",
+    "homeTeam": "Philadelphia Eagles",
+    "awayTeam": "Baltimore Ravens",
+    "homeScore": 30,
+    "awayScore": 33,
+    "winner": "Baltimore Ravens"
+  }
+]

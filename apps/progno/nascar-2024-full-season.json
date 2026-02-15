@@ -1,0 +1,224 @@
+[
+  {
+    "date": "2024-02-15",
+    "track": "Daytona International Speedway",
+    "raceName": "Bluegreen Vacations Duel 1",
+    "winner": "Tyler Reddick"
+  },
+  {
+    "date": "2024-02-15",
+    "track": "Daytona International Speedway",
+    "raceName": "Bluegreen Vacations Duel 2",
+    "winner": "Christopher Bell"
+  },
+  {
+    "date": "2024-02-19",
+    "track": "Daytona International Speedway",
+    "raceName": "Daytona 500",
+    "winner": "William Byron"
+  },
+  {
+    "date": "2024-02-24",
+    "track": "Atlanta Motor Speedway",
+    "raceName": "Ambetter Health 400",
+    "winner": "Daniel Suarez"
+  },
+  {
+    "date": "2024-03-03",
+    "track": "Las Vegas Motor Speedway",
+    "raceName": "Pennzoil 400",
+    "winner": "Kyle Larson"
+  },
+  {
+    "date": "2024-03-10",
+    "track": "Phoenix Raceway",
+    "raceName": "Shriners Childrens 500",
+    "winner": "Christopher Bell"
+  },
+  {
+    "date": "2024-03-17",
+    "track": "Bristol Motor Speedway",
+    "raceName": "Food City 500",
+    "winner": "Denny Hamlin"
+  },
+  {
+    "date": "2024-03-24",
+    "track": "Circuit of the Americas",
+    "raceName": "EchoPark Automotive Grand Prix",
+    "winner": "William Byron"
+  },
+  {
+    "date": "2024-03-31",
+    "track": "Richmond Raceway",
+    "raceName": "Toyota Owners 400",
+    "winner": "Denny Hamlin"
+  },
+  {
+    "date": "2024-04-07",
+    "track": "Martinsville Speedway",
+    "raceName": "Cook Out 400",
+    "winner": "William Byron"
+  },
+  {
+    "date": "2024-04-14",
+    "track": "Texas Motor Speedway",
+    "raceName": "Autotrader EchoPark Automotive 400",
+    "winner": "Chase Elliott"
+  },
+  {
+    "date": "2024-04-21",
+    "track": "Talladega Superspeedway",
+    "raceName": "GEICO 500",
+    "winner": "Tyler Reddick"
+  },
+  {
+    "date": "2024-04-28",
+    "track": "Dover Motor Speedway",
+    "raceName": "Wurth 400",
+    "winner": "Denny Hamlin"
+  },
+  {
+    "date": "2024-05-05",
+    "track": "Kansas Speedway",
+    "raceName": "AdventHealth 400",
+    "winner": "Kyle Larson"
+  },
+  {
+    "date": "2024-05-12",
+    "track": "Darlington Raceway",
+    "raceName": "Goodyear 400",
+    "winner": "Brad Keselowski"
+  },
+  {
+    "date": "2024-05-26",
+    "track": "Charlotte Motor Speedway",
+    "raceName": "Coca-Cola 600",
+    "winner": "Kyle Larson"
+  },
+  {
+    "date": "2024-06-02",
+    "track": "World Wide Technology Raceway",
+    "raceName": "Enjoy Illinois 300",
+    "winner": "Austin Cindric"
+  },
+  {
+    "date": "2024-06-09",
+    "track": "Sonoma Raceway",
+    "raceName": "Toyota/Save Mart 350",
+    "winner": "Joey Logano"
+  },
+  {
+    "date": "2024-06-16",
+    "track": "Iowa Speedway",
+    "raceName": "Iowa Corn 350",
+    "winner": "Ryan Blaney"
+  },
+  {
+    "date": "2024-06-23",
+    "track": "New Hampshire Motor Speedway",
+    "raceName": "USA Today 301",
+    "winner": "Joey Logano"
+  },
+  {
+    "date": "2024-06-30",
+    "track": "Nashville Superspeedway",
+    "raceName": "Ally 400",
+    "winner": "Joey Logano"
+  },
+  {
+    "date": "2024-07-07",
+    "track": "Chicago Street Course",
+    "raceName": "Grant Park 165",
+    "winner": "Alex Bowman"
+  },
+  {
+    "date": "2024-07-14",
+    "track": "Pocono Raceway",
+    "raceName": "The Great American Getaway 400",
+    "winner": "Ryan Blaney"
+  },
+  {
+    "date": "2024-07-21",
+    "track": "Indianapolis Motor Speedway",
+    "raceName": "Brickyard 400",
+    "winner": "Kyle Larson"
+  },
+  {
+    "date": "2024-08-11",
+    "track": "Michigan International Speedway",
+    "raceName": "FireKeepers Casino 400",
+    "winner": "Tyler Reddick"
+  },
+  {
+    "date": "2024-08-18",
+    "track": "Daytona International Speedway",
+    "raceName": "Coke Zero Sugar 400",
+    "winner": "Harrison Burton"
+  },
+  {
+    "date": "2024-08-25",
+    "track": "Darlington Raceway",
+    "raceName": "Cook Out Southern 500",
+    "winner": "Chase Briscoe"
+  },
+  {
+    "date": "2024-09-01",
+    "track": "Atlanta Motor Speedway",
+    "raceName": "Quaker State 400",
+    "winner": "Joey Logano"
+  },
+  {
+    "date": "2024-09-08",
+    "track": "Watkins Glen International",
+    "raceName": "Go Bowling at The Glen",
+    "winner": "Chris Buescher"
+  },
+  {
+    "date": "2024-09-15",
+    "track": "Bristol Motor Speedway",
+    "raceName": "Bass Pro Shops Night Race",
+    "winner": "Kyle Larson"
+  },
+  {
+    "date": "2024-09-22",
+    "track": "Kansas Speedway",
+    "raceName": "Hollywood Casino 400",
+    "winner": "Ross Chastain"
+  },
+  {
+    "date": "2024-09-29",
+    "track": "Talladega Superspeedway",
+    "raceName": "YellaWood 500",
+    "winner": "Ricky Stenhouse Jr"
+  },
+  {
+    "date": "2024-10-06",
+    "track": "Charlotte Motor Speedway",
+    "raceName": "Bank of America Roval 400",
+    "winner": "Kyle Larson"
+  },
+  {
+    "date": "2024-10-13",
+    "track": "Las Vegas Motor Speedway",
+    "raceName": "South Point 400",
+    "winner": "Joey Logano"
+  },
+  {
+    "date": "2024-10-20",
+    "track": "Homestead-Miami Speedway",
+    "raceName": "Dixie Vodka 400",
+    "winner": "Tyler Reddick"
+  },
+  {
+    "date": "2024-10-27",
+    "track": "Martinsville Speedway",
+    "raceName": "Xfinity 500",
+    "winner": "Ryan Blaney"
+  },
+  {
+    "date": "2024-11-03",
+    "track": "Phoenix Raceway",
+    "raceName": "NASCAR Cup Series Championship",
+    "winner": "Joey Logano"
+  }
+]

@@ -83,7 +83,7 @@ export default function PicksDisplayPage() {
     autoSync: false
   });
 
-  const sports = ['all', 'nhl', 'nba', 'nfl', 'mlb', 'ncaab', 'ncaaf'];
+  const sports = ['all', 'nhl', 'nba', 'nfl', 'mlb', 'ncaab', 'ncaaf', 'nascar'];
 
   useEffect(() => {
     loadPicks();

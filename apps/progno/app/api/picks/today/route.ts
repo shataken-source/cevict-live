@@ -15,8 +15,93 @@ import { GameData } from '../../../lib/prediction-engine'
 import { getPrimaryKey } from '../../../keys-store'
 import { estimateTeamStatsFromOdds, shinDevig } from '../../../lib/odds-helpers'
 import { predictScoreComprehensive } from '../../../score-prediction-service'
+import { OddsService } from '../../../../lib/odds-service'
+import { fetchApiSportsOdds, ApiSportsGame } from '../../../../lib/api-sports-client'
 
-export const runtime = 'nodejs'
+const API_SPORTS_KEY = process.env.API_SPORTS_KEY || '55ec5171c639766087f9fea40d9cb215'
+
+const SPORT_TO_API_SPORTS: Record<string, string> = {
+  'basketball_ncaab': 'ncaab',
+  'baseball_mlb': 'mlb',
+  'basketball_nba': 'nba',
+  'americanfootball_nfl': 'nfl',
+  'icehockey_nhl': 'nhl',
+  'americanfootball_ncaaf': 'ncaaf',
+  // Also accept short form (UI sends these)
+  'ncaab': 'ncaab',
+  'mlb': 'mlb',
+  'nba': 'nba',
+  'nfl': 'nfl',
+  'nhl': 'nhl',
+  'ncaaf': 'ncaaf',
+}
+
+/**
+ * Convert API-Sports game to The-Odds format for buildPickFromRawGame
+ */
+function convertApiSportsToOddsFormat(game: ApiSportsGame): any {
+  // Create bookmakers structure from API-Sports odds
+  const bookmakers = []
+
+  if (game.odds.moneyline.home || game.odds.moneyline.away) {
+    const outcomes = []
+    if (game.odds.moneyline.home) {
+      outcomes.push({ name: game.homeTeam, price: game.odds.moneyline.home })
+    }
+    if (game.odds.moneyline.away) {
+      outcomes.push({ name: game.awayTeam, price: game.odds.moneyline.away })
+    }
+    bookmakers.push({
+      key: 'api-sports',
+      title: 'API-Sports',
+      markets: [{ key: 'h2h', outcomes }]
+    })
+  }
+
+  if (game.odds.spread.home || game.odds.spread.away) {
+    const spreadOutcomes = []
+    if (game.odds.spread.home) {
+      spreadOutcomes.push({ name: game.homeTeam, point: game.odds.spread.home, price: -110 })
+    }
+    if (game.odds.spread.away) {
+      spreadOutcomes.push({ name: game.awayTeam, point: game.odds.spread.away, price: -110 })
+    }
+    if (bookmakers.length > 0) {
+      bookmakers[0].markets.push({ key: 'spreads', outcomes: spreadOutcomes })
+    } else {
+      bookmakers.push({
+        key: 'api-sports',
+        title: 'API-Sports',
+        markets: [{ key: 'spreads', outcomes: spreadOutcomes }]
+      })
+    }
+  }
+
+  if (game.odds.total.line) {
+    const totalOutcomes = [
+      { name: 'Over', point: game.odds.total.line, price: game.odds.total.over || -110 },
+      { name: 'Under', point: game.odds.total.line, price: game.odds.total.under || -110 }
+    ]
+    if (bookmakers.length > 0) {
+      bookmakers[0].markets.push({ key: 'totals', outcomes: totalOutcomes })
+    } else {
+      bookmakers.push({
+        key: 'api-sports',
+        title: 'API-Sports',
+        markets: [{ key: 'totals', outcomes: totalOutcomes }]
+      })
+    }
+  }
+
+  return {
+    id: game.id.toString(),
+    sport_key: SPORT_TO_API_SPORTS[game.sport] || game.sport,
+    home_team: game.homeTeam,
+    away_team: game.awayTeam,
+    commence_time: game.startTime,
+    bookmakers: bookmakers.length > 0 ? bookmakers : undefined,
+  }
+}
 
 /** Cap displayed EV per $100 so copy stays realistic (avoid "win $500 per $100" claims). */
 const EV_DISPLAY_CAP = 150
@@ -729,17 +814,56 @@ const SPORTS_LIST = [
  * @param sportHint - Optional sport key (e.g. basketball_nba) to avoid fetching all sports.
  */
 export async function getSingleGamePick(gameId: string, sportHint?: string): Promise<any | null> {
+  console.log(`[getSingleGamePick] Searching for game: ${gameId}, sportHint: ${sportHint}`)
+
+  // Try The-Odds API first
   const apiKey = getPrimaryKey()
-  if (!apiKey) return null
-  const sportsToTry = sportHint ? [sportHint] : SPORTS_LIST
-  for (const sport of sportsToTry) {
-    const games = await fetchRawGamesForSport(sport, apiKey)
-    const game = games.find((g: any) => g.id === gameId)
-    if (game) {
-      const pick = await buildPickFromRawGame(game, sport)
-      return pick ?? null
+  if (apiKey) {
+    const sportsToTry = sportHint ? [sportHint] : SPORTS_LIST
+    for (const sport of sportsToTry) {
+      const games = await fetchRawGamesForSport(sport, apiKey)
+      const apiGame = games.find((g: any) => g.id === gameId)
+      if (apiGame) {
+        console.log(`[getSingleGamePick] Game found in The-Odds ${sport}:`, apiGame.home_team, 'vs', apiGame.away_team)
+        const pick = await buildPickFromRawGame(apiGame, sport)
+        return pick ?? null
+      }
     }
   }
+
+  // Try API-Sports as fallback (for NCAAB, MLB games)
+  console.log(`[getSingleGamePick] Game ${gameId} not found in The-Odds, trying API-Sports with sportHint: ${sportHint}...`)
+  const apiSportsSport = sportHint ? SPORT_TO_API_SPORTS[sportHint] : undefined
+  const apiSportsSports = apiSportsSport ? [apiSportsSport] : Object.values(SPORT_TO_API_SPORTS).filter((v, i, arr) => arr.indexOf(v) === i)
+
+  console.log(`[getSingleGamePick] Searching API-Sports sports:`, apiSportsSports)
+
+  for (const sport of apiSportsSports) {
+    if (!sport) continue
+    try {
+      console.log(`[getSingleGamePick] Fetching API-Sports ${sport}...`)
+      const games = await fetchApiSportsOdds(sport)
+      console.log(`[getSingleGamePick] API-Sports ${sport} returned ${games.length} games`)
+
+      // Log first few game IDs for debugging
+      if (games.length > 0) {
+        console.log(`[getSingleGamePick] First 3 game IDs in ${sport}:`, games.slice(0, 3).map((g: ApiSportsGame) => g.id))
+      }
+
+      const foundGame = games.find((g: ApiSportsGame) => g.id.toString() === gameId.toString())
+      if (foundGame) {
+        console.log(`[getSingleGamePick] Game found in API-Sports ${sport}:`, foundGame.homeTeam, 'vs', foundGame.awayTeam)
+        const oddsFormatGame = convertApiSportsToOddsFormat(foundGame)
+        const oddsApiSportKey = Object.entries(SPORT_TO_API_SPORTS).find(([_, v]) => v === sport)?.[0] || sport
+        const pick = await buildPickFromRawGame(oddsFormatGame, oddsApiSportKey)
+        return pick ?? null
+      }
+    } catch (error) {
+      console.error(`[getSingleGamePick] API-Sports failed for ${sport}:`, error)
+    }
+  }
+
+  console.log(`[getSingleGamePick] Game ${gameId} not found in any source`)
   return null
 }
 

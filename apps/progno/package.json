@@ -16,6 +16,7 @@
         "fetch-espn-results": "tsx scripts/fetch-espn-results.ts"
     },
     "dependencies": {
+        "@sendgrid/mail": "^8.1.6",
         "@supabase/ssr": "^0.8.0",
         "@supabase/supabase-js": "^2.89.0",
         "axios": "^1.7.0",
@@ -25,8 +26,10 @@
         "ioredis": "^5.8.2",
         "lucide-react": "^0.344.0",
         "next": "^16.1.6",
+        "puppeteer-core": "^24.37.3",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",
+        "resend": "^6.9.2",
         "zod": "^3.25.76"
     },
     "devDependencies": {

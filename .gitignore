@@ -94,3 +94,4 @@ vault/secrets/
 
 # KeyVault targets (local overrides)
 config/keyvault.targets.json
+.env*.local

@@ -1,0 +1,542 @@
+[
+  {
+    "date": "2023-11-06",
+    "league": "NCAAB",
+    "homeTeam": "Duke",
+    "awayTeam": "Utah",
+    "homeScore": 94,
+    "awayScore": 74,
+    "winner": "Duke"
+  },
+  {
+    "date": "2023-11-07",
+    "league": "NCAAB",
+    "homeTeam": "North Carolina",
+    "awayTeam": "Colorado",
+    "homeScore": 60,
+    "awayScore": 92,
+    "winner": "Colorado"
+  },
+  {
+    "date": "2023-11-08",
+    "league": "NCAAB",
+    "homeTeam": "Virginia",
+    "awayTeam": "Oregon",
+    "homeScore": 83,
+    "awayScore": 68,
+    "winner": "Virginia"
+  },
+  {
+    "date": "2023-11-09",
+    "league": "NCAAB",
+    "homeTeam": "Wake Forest",
+    "awayTeam": "Washington",
+    "homeScore": 99,
+    "awayScore": 61,
+    "winner": "Wake Forest"
+  },
+  {
+    "date": "2023-11-10",
+    "league": "NCAAB",
+    "homeTeam": "Clemson",
+    "awayTeam": "Kentucky",
+    "homeScore": 78,
+    "awayScore": 75,
+    "winner": "Clemson"
+  },
+  {
+    "date": "2023-11-11",
+    "league": "NCAAB",
+    "homeTeam": "NC State",
+    "awayTeam": "Tennessee",
+    "homeScore": 75,
+    "awayScore": 99,
+    "winner": "Tennessee"
+  },
+  {
+    "date": "2023-11-12",
+    "league": "NCAAB",
+    "homeTeam": "Florida State",
+    "awayTeam": "Auburn",
+    "homeScore": 99,
+    "awayScore": 87,
+    "winner": "Florida State"
+  },
+  {
+    "date": "2023-11-13",
+    "league": "NCAAB",
+    "homeTeam": "Georgia Tech",
+    "awayTeam": "Alabama",
+    "homeScore": 68,
+    "awayScore": 73,
+    "winner": "Alabama"
+  },
+  {
+    "date": "2023-11-14",
+    "league": "NCAAB",
+    "homeTeam": "Kansas",
+    "awayTeam": "Florida",
+    "homeScore": 77,
+    "awayScore": 62,
+    "winner": "Kansas"
+  },
+  {
+    "date": "2023-11-15",
+    "league": "NCAAB",
+    "homeTeam": "Baylor",
+    "awayTeam": "Arkansas",
+    "homeScore": 76,
+    "awayScore": 78,
+    "winner": "Arkansas"
+  },
+  {
+    "date": "2023-11-16",
+    "league": "NCAAB",
+    "homeTeam": "Texas",
+    "awayTeam": "LSU",
+    "homeScore": 78,
+    "awayScore": 78,
+    "winner": "LSU"
+  },
+  {
+    "date": "2023-11-17",
+    "league": "NCAAB",
+    "homeTeam": "Oklahoma",
+    "awayTeam": "Missouri",
+    "homeScore": 74,
+    "awayScore": 90,
+    "winner": "Missouri"
+  },
+  {
+    "date": "2023-11-18",
+    "league": "NCAAB",
+    "homeTeam": "Oklahoma State",
+    "awayTeam": "Gonzaga",
+    "homeScore": 63,
+    "awayScore": 64,
+    "winner": "Gonzaga"
+  },
+  {
+    "date": "2023-11-19",
+    "league": "NCAAB",
+    "homeTeam": "Iowa State",
+    "awayTeam": "Saint Mary's",
+    "homeScore": 74,
+    "awayScore": 97,
+    "winner": "Saint Mary's"
+  },
+  {
+    "date": "2023-11-20",
+    "league": "NCAAB",
+    "homeTeam": "Kansas State",
+    "awayTeam": "BYU",
+    "homeScore": 67,
+    "awayScore": 75,
+    "winner": "BYU"
+  },
+  {
+    "date": "2023-11-21",
+    "league": "NCAAB",
+    "homeTeam": "West Virginia",
+    "awayTeam": "San Diego State",
+    "homeScore": 96,
+    "awayScore": 81,
+    "winner": "West Virginia"
+  },
+  {
+    "date": "2023-11-22",
+    "league": "NCAAB",
+    "homeTeam": "Arizona",
+    "awayTeam": "UConn",
+    "homeScore": 72,
+    "awayScore": 61,
+    "winner": "Arizona"
+  },
+  {
+    "date": "2023-11-23",
+    "league": "NCAAB",
+    "homeTeam": "UCLA",
+    "awayTeam": "Marquette",
+    "homeScore": 96,
+    "awayScore": 78,
+    "winner": "UCLA"
+  },
+  {
+    "date": "2023-11-24",
+    "league": "NCAAB",
+    "homeTeam": "USC",
+    "awayTeam": "Villanova",
+    "homeScore": 70,
+    "awayScore": 78,
+    "winner": "Villanova"
+  },
+  {
+    "date": "2023-11-25",
+    "league": "NCAAB",
+    "homeTeam": "Arizona State",
+    "awayTeam": "Providence",
+    "homeScore": 72,
+    "awayScore": 77,
+    "winner": "Providence"
+  },
+  {
+    "date": "2023-11-26",
+    "league": "NCAAB",
+    "homeTeam": "Utah",
+    "awayTeam": "Duke",
+    "homeScore": 89,
+    "awayScore": 67,
+    "winner": "Utah"
+  },
+  {
+    "date": "2023-11-27",
+    "league": "NCAAB",
+    "homeTeam": "Colorado",
+    "awayTeam": "North Carolina",
+    "homeScore": 79,
+    "awayScore": 65,
+    "winner": "Colorado"
+  },
+  {
+    "date": "2023-11-28",
+    "league": "NCAAB",
+    "homeTeam": "Oregon",
+    "awayTeam": "Virginia",
+    "homeScore": 71,
+    "awayScore": 86,
+    "winner": "Virginia"
+  },
+  {
+    "date": "2023-11-29",
+    "league": "NCAAB",
+    "homeTeam": "Washington",
+    "awayTeam": "Wake Forest",
+    "homeScore": 82,
+    "awayScore": 95,
+    "winner": "Wake Forest"
+  },
+  {
+    "date": "2023-11-30",
+    "league": "NCAAB",
+    "homeTeam": "Kentucky",
+    "awayTeam": "Clemson",
+    "homeScore": 74,
+    "awayScore": 66,
+    "winner": "Kentucky"
+  },
+  {
+    "date": "2023-12-01",
+    "league": "NCAAB",
+    "homeTeam": "Tennessee",
+    "awayTeam": "NC State",
+    "homeScore": 61,
+    "awayScore": 74,
+    "winner": "NC State"
+  },
+  {
+    "date": "2023-12-02",
+    "league": "NCAAB",
+    "homeTeam": "Auburn",
+    "awayTeam": "Florida State",
+    "homeScore": 99,
+    "awayScore": 77,
+    "winner": "Auburn"
+  },
+  {
+    "date": "2023-12-03",
+    "league": "NCAAB",
+    "homeTeam": "Alabama",
+    "awayTeam": "Georgia Tech",
+    "homeScore": 60,
+    "awayScore": 69,
+    "winner": "Georgia Tech"
+  },
+  {
+    "date": "2023-12-04",
+    "league": "NCAAB",
+    "homeTeam": "Florida",
+    "awayTeam": "Kansas",
+    "homeScore": 78,
+    "awayScore": 76,
+    "winner": "Florida"
+  },
+  {
+    "date": "2023-12-05",
+    "league": "NCAAB",
+    "homeTeam": "Arkansas",
+    "awayTeam": "Baylor",
+    "homeScore": 89,
+    "awayScore": 87,
+    "winner": "Arkansas"
+  },
+  {
+    "date": "2023-12-06",
+    "league": "NCAAB",
+    "homeTeam": "LSU",
+    "awayTeam": "Texas",
+    "homeScore": 93,
+    "awayScore": 90,
+    "winner": "LSU"
+  },
+  {
+    "date": "2023-12-07",
+    "league": "NCAAB",
+    "homeTeam": "Missouri",
+    "awayTeam": "Oklahoma",
+    "homeScore": 95,
+    "awayScore": 96,
+    "winner": "Oklahoma"
+  },
+  {
+    "date": "2023-12-08",
+    "league": "NCAAB",
+    "homeTeam": "Gonzaga",
+    "awayTeam": "Oklahoma State",
+    "homeScore": 96,
+    "awayScore": 64,
+    "winner": "Gonzaga"
+  },
+  {
+    "date": "2023-12-09",
+    "league": "NCAAB",
+    "homeTeam": "Saint Mary's",
+    "awayTeam": "Iowa State",
+    "homeScore": 89,
+    "awayScore": 92,
+    "winner": "Iowa State"
+  },
+  {
+    "date": "2023-12-10",
+    "league": "NCAAB",
+    "homeTeam": "BYU",
+    "awayTeam": "Kansas State",
+    "homeScore": 64,
+    "awayScore": 83,
+    "winner": "Kansas State"
+  },
+  {
+    "date": "2023-12-11",
+    "league": "NCAAB",
+    "homeTeam": "San Diego State",
+    "awayTeam": "West Virginia",
+    "homeScore": 98,
+    "awayScore": 61,
+    "winner": "San Diego State"
+  },
+  {
+    "date": "2023-12-12",
+    "league": "NCAAB",
+    "homeTeam": "UConn",
+    "awayTeam": "Arizona",
+    "homeScore": 86,
+    "awayScore": 71,
+    "winner": "UConn"
+  },
+  {
+    "date": "2023-12-13",
+    "league": "NCAAB",
+    "homeTeam": "Marquette",
+    "awayTeam": "UCLA",
+    "homeScore": 71,
+    "awayScore": 68,
+    "winner": "Marquette"
+  },
+  {
+    "date": "2023-12-14",
+    "league": "NCAAB",
+    "homeTeam": "Villanova",
+    "awayTeam": "USC",
+    "homeScore": 88,
+    "awayScore": 82,
+    "winner": "Villanova"
+  },
+  {
+    "date": "2023-12-15",
+    "league": "NCAAB",
+    "homeTeam": "Providence",
+    "awayTeam": "Arizona State",
+    "homeScore": 61,
+    "awayScore": 62,
+    "winner": "Arizona State"
+  },
+  {
+    "date": "2023-12-16",
+    "league": "NCAAB",
+    "homeTeam": "Duke",
+    "awayTeam": "Utah",
+    "homeScore": 63,
+    "awayScore": 71,
+    "winner": "Utah"
+  },
+  {
+    "date": "2023-12-17",
+    "league": "NCAAB",
+    "homeTeam": "North Carolina",
+    "awayTeam": "Colorado",
+    "homeScore": 68,
+    "awayScore": 71,
+    "winner": "Colorado"
+  },
+  {
+    "date": "2023-12-18",
+    "league": "NCAAB",
+    "homeTeam": "Virginia",
+    "awayTeam": "Oregon",
+    "homeScore": 94,
+    "awayScore": 81,
+    "winner": "Virginia"
+  },
+  {
+    "date": "2023-12-19",
+    "league": "NCAAB",
+    "homeTeam": "Wake Forest",
+    "awayTeam": "Washington",
+    "homeScore": 61,
+    "awayScore": 63,
+    "winner": "Washington"
+  },
+  {
+    "date": "2023-12-20",
+    "league": "NCAAB",
+    "homeTeam": "Clemson",
+    "awayTeam": "Kentucky",
+    "homeScore": 60,
+    "awayScore": 69,
+    "winner": "Kentucky"
+  },
+  {
+    "date": "2023-12-21",
+    "league": "NCAAB",
+    "homeTeam": "NC State",
+    "awayTeam": "Tennessee",
+    "homeScore": 84,
+    "awayScore": 66,
+    "winner": "NC State"
+  },
+  {
+    "date": "2023-12-22",
+    "league": "NCAAB",
+    "homeTeam": "Florida State",
+    "awayTeam": "Auburn",
+    "homeScore": 81,
+    "awayScore": 83,
+    "winner": "Auburn"
+  },
+  {
+    "date": "2023-12-23",
+    "league": "NCAAB",
+    "homeTeam": "Georgia Tech",
+    "awayTeam": "Alabama",
+    "homeScore": 60,
+    "awayScore": 98,
+    "winner": "Alabama"
+  },
+  {
+    "date": "2023-12-24",
+    "league": "NCAAB",
+    "homeTeam": "Kansas",
+    "awayTeam": "Florida",
+    "homeScore": 92,
+    "awayScore": 79,
+    "winner": "Kansas"
+  },
+  {
+    "date": "2023-12-25",
+    "league": "NCAAB",
+    "homeTeam": "Baylor",
+    "awayTeam": "Arkansas",
+    "homeScore": 70,
+    "awayScore": 97,
+    "winner": "Arkansas"
+  },
+  {
+    "date": "2023-12-26",
+    "league": "NCAAB",
+    "homeTeam": "Texas",
+    "awayTeam": "LSU",
+    "homeScore": 89,
+    "awayScore": 83,
+    "winner": "Texas"
+  },
+  {
+    "date": "2023-12-27",
+    "league": "NCAAB",
+    "homeTeam": "Oklahoma",
+    "awayTeam": "Missouri",
+    "homeScore": 75,
+    "awayScore": 89,
+    "winner": "Missouri"
+  },
+  {
+    "date": "2023-12-28",
+    "league": "NCAAB",
+    "homeTeam": "Oklahoma State",
+    "awayTeam": "Gonzaga",
+    "homeScore": 88,
+    "awayScore": 83,
+    "winner": "Oklahoma State"
+  },
+  {
+    "date": "2023-12-29",
+    "league": "NCAAB",
+    "homeTeam": "Iowa State",
+    "awayTeam": "Saint Mary's",
+    "homeScore": 84,
+    "awayScore": 93,
+    "winner": "Saint Mary's"
+  },
+  {
+    "date": "2023-12-30",
+    "league": "NCAAB",
+    "homeTeam": "Kansas State",
+    "awayTeam": "BYU",
+    "homeScore": 70,
+    "awayScore": 97,
+    "winner": "BYU"
+  },
+  {
+    "date": "2023-12-31",
+    "league": "NCAAB",
+    "homeTeam": "West Virginia",
+    "awayTeam": "San Diego State",
+    "homeScore": 89,
+    "awayScore": 94,
+    "winner": "San Diego State"
+  },
+  {
+    "date": "2024-01-01",
+    "league": "NCAAB",
+    "homeTeam": "Arizona",
+    "awayTeam": "UConn",
+    "homeScore": 76,
+    "awayScore": 62,
+    "winner": "Arizona"
+  },
+  {
+    "date": "2024-01-02",
+    "league": "NCAAB",
+    "homeTeam": "UCLA",
+    "awayTeam": "Marquette",
+    "homeScore": 79,
+    "awayScore": 88,
+    "winner": "Marquette"
+  },
+  {
+    "date": "2024-01-03",
+    "league": "NCAAB",
+    "homeTeam": "USC",
+    "awayTeam": "Villanova",
+    "homeScore": 78,
+    "awayScore": 92,
+    "winner": "Villanova"
+  },
+  {
+    "date": "2024-01-04",
+    "league": "NCAAB",
+    "homeTeam": "Arizona State",
+    "awayTeam": "Providence",
+    "homeScore": 64,
+    "awayScore": 72,
+    "winner": "Providence"
+  }
+]

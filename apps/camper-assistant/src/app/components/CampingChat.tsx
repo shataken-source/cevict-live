@@ -269,6 +269,7 @@ export default function CampingChat() {
   ];
 
   const handleSend = () => {
+    console.log('handleSend called, input:', input);
     if (!input.trim()) return;
 
     const userMsg = input.trim();
@@ -373,7 +374,10 @@ export default function CampingChat() {
         {(mode === 'camping' ? campingSuggestions : firstAidSuggestions).map((suggestion) => (
           <button
             key={suggestion}
-            onClick={() => setInput(suggestion)}
+            onClick={() => {
+              console.log('Suggestion clicked:', suggestion);
+              setInput(suggestion);
+            }}
             className={`rounded-full px-4 py-2 text-sm transition-colors ${mode === 'first-aid'
               ? 'bg-red-900/30 hover:bg-red-900/50 border border-red-700/30 text-red-200'
               : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300'
