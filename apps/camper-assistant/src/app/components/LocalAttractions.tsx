@@ -56,45 +56,6 @@ interface LocationData {
   attractions: Attraction[];
 }
 
-// Sample data for popular camping areas
-const LOCATION_DATABASE: Record<string, LocationData> = {
-  '25965': {
-    zip: '25965',
-    name: 'Summersville, WV',
-    coords: { lat: 38.3237, lng: -80.8445 },
-    attractions: [
-      { id: '1', name: 'Summersville Lake', type: 'entertainment', distance: 3.2, rating: 4.8, address: 'Summersville Lake Marina', phone: '(304) 872-3412', hours: 'Dawn - Dusk', description: 'Crystal clear lake with swimming, boating, and cliff jumping', isOpen: true, tags: ['swimming', 'boating', 'fishing', 'cliff jumping'], website: 'https://summersvillelake.com' },
-      { id: '2', name: 'Walmart Supercenter', type: 'food', distance: 4.1, rating: 3.5, address: '200 Walmart Way, Summersville', phone: '(304) 872-4444', hours: '24 hours', description: 'Full grocery, camping supplies, RV supplies', isOpen: true, tags: ['groceries', 'supplies', '24hr'] },
-      { id: '3', name: 'Sheetz', type: 'gas', distance: 3.8, rating: 4.2, address: '605 Arbuckle Rd, Summersville', phone: '(304) 872-5555', hours: '24 hours', description: 'Gas, diesel, made-to-order food, coffee, propane exchange', isOpen: true, tags: ['diesel', 'propane', 'food'] },
-      { id: '4', name: 'Love’s Travel Stop', type: 'gas', distance: 5.2, rating: 4.3, address: 'I-79 Exit 48', phone: '(304) 872-8888', hours: '24 hours', description: 'RV dump station, propane, showers, laundry', isOpen: true, tags: ['RV dump', 'showers', 'laundry', 'diesel'] },
-      { id: '5', name: 'Summersville Rest Area', type: 'restroom', distance: 4.5, rating: 3.8, address: 'I-79 Southbound', description: 'Clean restrooms, picnic tables, tourist info', isOpen: true, tags: ['restrooms', 'picnic'] },
-      { id: '6', name: 'NAPA Auto Parts', type: 'repair', distance: 4.3, rating: 4.1, address: '1201 Main St, Summersville', phone: '(304) 872-3333', hours: 'Mon-Sat 8-6', description: 'Parts, fluids, basic tools, roadside assistance referrals', isOpen: false, tags: ['parts', 'tools', 'emergency'] },
-      { id: '7', name: 'Long Point Trail', type: 'trail', distance: 2.8, rating: 4.7, address: 'Summersville Lake West Side', description: '3-mile loop with stunning lake views and cliff overlooks', isOpen: true, tags: ['hiking', 'views', 'moderate', 'dog-friendly'] },
-      { id: '8', name: 'Battle of Carnifex Ferry', type: 'historic', distance: 6.1, rating: 4.5, address: '1194 Carnifex Ferry Rd, Summersville', phone: '(304) 872-0824', hours: 'Dawn - Dusk', description: 'Civil War battlefield site with museum and trails', isOpen: true, tags: ['civil war', 'museum', 'history', 'picnic'] },
-      { id: '9', name: 'Summersville Arena', type: 'shelter', distance: 3.5, rating: 4.0, address: '178 Arena Rd, Summersville', phone: '(304) 872-1810', description: 'Emergency shelter location during severe weather', isOpen: true, tags: ['emergency', 'shelter', 'storm'] },
-      { id: '10', name: 'Pies & Pints', type: 'food', distance: 3.9, rating: 4.6, address: '211 Main St, Summersville', phone: '(304) 872-9000', hours: '11-10 daily', description: 'Gourmet pizza and craft beer - local favorite', isOpen: true, tags: ['pizza', 'beer', 'local'] },
-      { id: '11', name: 'Cathedral Falls Trail', type: 'trail', distance: 8.3, rating: 4.8, address: 'US-60, Gauley Bridge', description: 'Short hike to spectacular 60-foot waterfall', isOpen: true, tags: ['waterfall', 'easy', 'scenic', 'photo'] },
-      { id: '12', name: 'Charleston', type: 'entertainment', distance: 42, rating: 4.2, address: 'WV State Capitol', description: 'State capital - museums, restaurants, shopping', isOpen: true, tags: ['city', 'museums', 'shopping', 'food'] },
-    ]
-  },
-  '82190': {
-    zip: '82190',
-    name: 'Yellowstone Area, WY',
-    coords: { lat: 44.6, lng: -110.5 },
-    attractions: [
-      { id: '1', name: 'Old Faithful', type: 'entertainment', distance: 12, rating: 4.9, address: 'Upper Geyser Basin', description: 'Most famous geyser - erupts every 90 minutes', isOpen: true, tags: ['geyser', 'iconic', 'must-see'] },
-      { id: '2', name: 'Grant Village General Store', type: 'food', distance: 8.5, rating: 3.8, address: 'Grant Village', hours: '7-9 daily', description: 'Groceries, camping supplies, basic gear', isOpen: true, tags: ['groceries', 'supplies', 'limited'] },
-      { id: '3', name: 'Canyon Lodge Gas', type: 'gas', distance: 18, rating: 3.5, address: 'Canyon Village', hours: '7-7 seasonal', description: 'Last gas for many miles - premium prices', isOpen: true, tags: ['expensive', 'essential'] },
-      { id: '4', name: 'West Yellowstone Visitor Center', type: 'restroom', distance: 25, rating: 4.2, address: 'West Yellowstone, MT', description: 'Clean facilities, info, maps, cell service', isOpen: true, tags: ['info', 'cell service', 'maps'] },
-      { id: '5', name: 'Yellowstone RV Services', type: 'repair', distance: 28, rating: 4.0, address: 'West Yellowstone, MT', phone: '(406) 646-9010', hours: 'Mon-Sat 8-5', description: 'RV repairs, mobile service available', isOpen: false, tags: ['RV', 'mobile service', 'emergency'] },
-      { id: '6', name: 'Fairy Falls Trail', type: 'trail', distance: 10, rating: 4.6, address: 'Lower Geyser Basin', description: '5-mile round trip to 200-foot waterfall', isOpen: true, tags: ['hiking', 'waterfall', 'moderate'] },
-      { id: '7', name: 'Roosevelt Lodge', type: 'food', distance: 35, rating: 4.3, address: 'Tower-Roosevelt Area', phone: '(307) 344-7311', hours: 'Seasonal', description: 'Historic lodge, restaurant, frontier cookouts', isOpen: true, tags: ['historic', 'food', 'atmosphere'] },
-      { id: '8', name: 'Mammoth Hot Springs', type: 'entertainment', distance: 45, rating: 4.7, address: 'North Entrance', description: 'Terraced hot springs, visitor center, elk herds', isOpen: true, tags: ['hot springs', 'wildlife', 'visitor center'] },
-      { id: '9', name: 'Yellowstone Forever Institute', type: 'historic', distance: 15, rating: 4.8, address: 'Lake Yellowstone Hotel', phone: '(307) 344-2293', description: 'Ranger programs, educational tours, history', isOpen: true, tags: ['education', 'ranger', 'tours'] },
-      { id: '10', name: 'Grant Village Emergency', type: 'shelter', distance: 8.5, rating: 4.0, address: 'Grant Village', phone: '911', description: 'Ranger station and emergency services', isOpen: true, tags: ['ranger', 'emergency', 'medical'] },
-    ]
-  }
-};
 
 const ATTRACTION_CATEGORIES: { type: AttractionType; icon: any; label: string; color: string }[] = [
   { type: 'food', icon: Utensils, label: 'Food & Groceries', color: 'text-emerald-400 bg-emerald-900/30 border-emerald-700/50' },
@@ -119,23 +80,6 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return Math.round(R * c * 10) / 10;
 }
 
-// Generate mock attractions for unknown locations
-function generateMockAttractions(zip: string, coords?: { lat: number; lng: number }): Attraction[] {
-  const zipNum = parseInt(zip.substring(0, 3));
-
-  return [
-    { id: 'm1', name: 'Local Grocery', type: 'food', distance: 5.2, rating: 3.8, address: `${zip} Main St`, phone: '(555) 123-4567', hours: '7-10 daily', description: 'Local grocery and camping supplies', isOpen: true, tags: ['groceries', 'supplies'] },
-    { id: 'm2', name: 'Shell Station', type: 'gas', distance: 3.8, rating: 4.0, address: `${zip} Highway`, phone: '(555) 234-5678', hours: '5-11 daily', description: 'Gas, diesel, basic convenience items', isOpen: true, tags: ['fuel', 'snacks'] },
-    { id: 'm3', name: 'Rest Area', type: 'restroom', distance: 12, rating: 3.5, address: `I-Highway Mile 45`, description: 'Restrooms and picnic area', isOpen: true, tags: ['restrooms', 'picnic'] },
-    { id: 'm4', name: 'NAPA Auto Parts', type: 'repair', distance: 8.5, rating: 4.1, address: `${zip} Industrial Rd`, phone: '(555) 345-6789', hours: 'Mon-Sat 8-6', description: 'Parts and emergency repairs', isOpen: false, tags: ['parts', 'tools'] },
-    { id: 'm5', name: 'State Park Trailhead', type: 'trail', distance: 6.2, rating: 4.5, address: `State Park Rd`, description: 'Local hiking trails and nature walks', isOpen: true, tags: ['hiking', 'nature'] },
-    { id: 'm6', name: 'Historic Downtown', type: 'historic', distance: 7.1, rating: 4.2, address: `${zip} Old Town`, description: 'Local history and architecture', isOpen: true, tags: ['history', 'walking'] },
-    { id: 'm7', name: 'Community Center', type: 'shelter', distance: 4.5, rating: 4.0, address: `${zip} Center St`, phone: '(555) 456-7890', description: 'Emergency shelter during severe weather', isOpen: true, tags: ['emergency', 'shelter'] },
-    { id: 'm8', name: 'Local Diner', type: 'food', distance: 4.2, rating: 4.3, address: `${zip} Oak Ave`, phone: '(555) 567-8901', hours: '6-9 daily', description: 'Home cooking and local atmosphere', isOpen: true, tags: ['food', 'local'] },
-    { id: 'm9', name: 'Walmart', type: 'food', distance: 15, rating: 3.6, address: `${zip} Retail Blvd`, phone: '(555) 678-9012', hours: '24 hours', description: 'Full shopping and camping supplies', isOpen: true, tags: ['24hr', 'supplies', 'groceries'] },
-    { id: 'm10', name: 'Riverwalk Trail', type: 'trail', distance: 3.5, rating: 4.4, address: `Riverside Park`, description: 'Scenic river walk and fishing access', isOpen: true, tags: ['scenic', 'fishing', 'easy'] },
-  ];
-}
 
 // Geoapify API Functions
 interface GeoapifyPlace {
