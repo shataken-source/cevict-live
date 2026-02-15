@@ -11,7 +11,7 @@ export default function AlarmClock() {
   const [newAlarm, setNewAlarm] = useState('07:00');
   const [newLabel, setNewLabel] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [playing, setPlaying] = useState<number | null>(null);
+  const [playing, setPlaying] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -111,13 +111,11 @@ export default function AlarmClock() {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => toggleAlarm(alarm.id)}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      alarm.active ? 'bg-emerald-500' : 'bg-slate-600'
-                    }`}
+                    className={`w-12 h-6 rounded-full transition-colors ${alarm.active ? 'bg-emerald-500' : 'bg-slate-600'
+                      }`}
                   >
-                    <div className={`w-4 h-4 bg-white rounded-full transition-transform ${
-                      alarm.active ? 'translate-x-7' : 'translate-x-1'
-                    }`} />
+                    <div className={`w-4 h-4 bg-white rounded-full transition-transform ${alarm.active ? 'translate-x-7' : 'translate-x-1'
+                      }`} />
                   </button>
                   <button
                     onClick={() => deleteAlarm(alarm.id)}
@@ -144,11 +142,10 @@ export default function AlarmClock() {
             <button
               key={sound.id}
               onClick={() => setPlaying(playing === sound.id ? null : sound.id)}
-              className={`flex items-center justify-center gap-2 py-3 rounded-lg transition-colors ${
-                playing === sound.id
+              className={`flex items-center justify-center gap-2 py-3 rounded-lg transition-colors ${playing === sound.id
                   ? 'bg-purple-500 text-white'
                   : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-              }`}
+                }`}
             >
               {playing === sound.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               {sound.name}
