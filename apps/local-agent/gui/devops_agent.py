@@ -1445,6 +1445,100 @@ class DevOpsWindow(QMainWindow):
 
         dialog.exec()
 
+    def _send_message_to_ai(self):
+        """Open dialog to send a message to the AI assistant's inbox."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Send Message to AI")
+        dialog.setMinimumSize(400, 250)
+        layout = QVBoxLayout(dialog)
+
+        # Priority selection
+        priority_label = QLabel("Priority:")
+        layout.addWidget(priority_label)
+
+        priority_combo = QComboBox()
+        priority_combo.addItems(["low", "normal", "high", "urgent"])
+        priority_combo.setCurrentText("normal")
+        layout.addWidget(priority_combo)
+
+        # Category selection
+        category_label = QLabel("Category:")
+        layout.addWidget(category_label)
+
+        category_combo = QComboBox()
+        category_combo.addItems(["general", "command", "info", "question", "alert"])
+        category_combo.setCurrentText("info")
+        layout.addWidget(category_combo)
+
+        # Message text
+        message_label = QLabel("Message:")
+        layout.addWidget(message_label)
+
+        message_input = QPlainTextEdit()
+        message_input.setPlaceholderText("Enter your message for the AI...")
+        message_input.setMaximumHeight(100)
+        layout.addWidget(message_input)
+
+        # Status label
+        status_label = QLabel("")
+        status_label.setStyleSheet(f"color: {GREEN};")
+        layout.addWidget(status_label)
+
+        # Send button
+        def send_message():
+            message = message_input.toPlainText().strip()
+            if not message:
+                status_label.setText("Please enter a message")
+                status_label.setStyleSheet(f"color: {RED};")
+                return
+
+            import json
+            import urllib.request
+
+            data = {
+                "message": message,
+                "priority": priority_combo.currentText(),
+                "category": category_combo.currentText()
+            }
+
+            try:
+                req = urllib.request.Request(
+                    "http://localhost:8471/inbox/send",
+                    data=json.dumps(data).encode('utf-8'),
+                    headers={'Content-Type': 'application/json'},
+                    method='POST'
+                )
+
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    result = json.loads(response.read().decode('utf-8'))
+                    if result.get('success'):
+                        status_label.setText(f"✅ Message sent! (ID: {result.get('message_id', 'unknown')})")
+                        status_label.setStyleSheet(f"color: {GREEN};")
+                        message_input.clear()
+                    else:
+                        status_label.setText(f"❌ Error: {result.get('error', 'Unknown error')}")
+                        status_label.setStyleSheet(f"color: {RED};")
+            except Exception as e:
+                status_label.setText(f"❌ Failed to send: {str(e)}")
+                status_label.setStyleSheet(f"color: {RED};")
+
+        send_btn = QPushButton("Send Message")
+        send_btn.clicked.connect(send_message)
+        layout.addWidget(send_btn)
+
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+
+        # PowerShell one-liner info
+        ps_label = QLabel("<small>PowerShell:<br>irm http://localhost:8471/inbox/send -Method POST -Body '{\"message\":\"Your message\",\"priority\":\"normal\",\"category\":\"info\"}' -ContentType 'application/json'</small>")
+        ps_label.setWordWrap(True)
+        ps_label.setStyleSheet("color: #9ca3af;")
+        layout.addWidget(ps_label)
+
+        dialog.exec()
+
     # ---- Window behavior ----
     def closeEvent(self, event):
         event.ignore()
@@ -1507,6 +1601,10 @@ def main():
     action_picks = QAction("📊 Today's Picks (Progno)", menu)
     action_picks.triggered.connect(window._show_todays_picks)
     menu.addAction(action_picks)
+
+    action_send_msg = QAction("✉️ Send Message to AI", menu)
+    action_send_msg.triggered.connect(window._send_message_to_ai)
+    menu.addAction(action_send_msg)
 
     menu.addSeparator()
 
