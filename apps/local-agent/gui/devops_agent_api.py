@@ -2087,6 +2087,83 @@ if HAS_FLASK:
             "recommendation": "Review sources for accuracy" if search_results else "Try a more specific query",
         })
 
+    # -------------------------------------------------------------------------
+    # Async Inbox (Non-disruptive message delivery)
+    # -------------------------------------------------------------------------
+    inbox_messages: list[dict] = []
+
+    @app.route('/inbox/send', methods=['POST'])
+    def inbox_send():
+        """Send a message to the AI assistant's inbox (non-blocking)."""
+        data = request.get_json() or {}
+        message = data.get('message', '')
+        priority = data.get('priority', 'normal')  # low, normal, high, urgent
+        category = data.get('category', 'general')  # command, info, question, alert
+
+        if not message:
+            return jsonify({"success": False, "error": "message required"}), 400
+
+        msg = {
+            "id": f"msg-{datetime.now().strftime('%H%M%S')}-{len(inbox_messages)}",
+            "sent_at": datetime.now().isoformat(),
+            "message": message,
+            "priority": priority,
+            "category": category,
+            "read": False,
+        }
+        inbox_messages.append(msg)
+
+        return jsonify({
+            "success": True,
+            "message_id": msg["id"],
+            "inbox_count": len([m for m in inbox_messages if not m["read"]]),
+            "status": "Message queued - AI will check when convenient",
+        })
+
+    @app.route('/inbox', methods=['GET'])
+    def inbox_get():
+        """Get all unread messages (AI calls this to check inbox)."""
+        unread_only = request.args.get('unread', 'true').lower() == 'true'
+
+        if unread_only:
+            messages = [m for m in inbox_messages if not m["read"]]
+        else:
+            messages = inbox_messages
+
+        return jsonify({
+            "success": True,
+            "unread_count": len([m for m in inbox_messages if not m["read"]]),
+            "total_count": len(inbox_messages),
+            "messages": messages,
+        })
+
+    @app.route('/inbox/read/<message_id>', methods=['POST'])
+    def inbox_mark_read(message_id: str):
+        """Mark a message as read."""
+        for msg in inbox_messages:
+            if msg["id"] == message_id:
+                msg["read"] = True
+                return jsonify({
+                    "success": True,
+                    "message": f"Marked {message_id} as read",
+                })
+
+        return jsonify({"success": False, "error": "Message not found"}), 404
+
+    @app.route('/inbox/clear', methods=['POST'])
+    def inbox_clear():
+        """Clear all read messages."""
+        global inbox_messages
+        kept = [m for m in inbox_messages if not m["read"]]
+        cleared_count = len(inbox_messages) - len(kept)
+        inbox_messages = kept
+
+        return jsonify({
+            "success": True,
+            "cleared": cleared_count,
+            "remaining": len(inbox_messages),
+        })
+
     def run_api():
         print(f"DevOps Agent API running on http://localhost:{API_PORT}")
         app.run(host='127.0.0.1', port=API_PORT, debug=False, threaded=True)
