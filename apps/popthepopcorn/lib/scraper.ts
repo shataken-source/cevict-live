@@ -34,25 +34,25 @@ const newsSources: NewsSource[] = [
   { name: 'Deadline', url: 'https://deadline.com/feed/', category: 'entertainment' },
   { name: 'Rolling Stone', url: 'https://www.rollingstone.com/feed/', category: 'entertainment' },
   { name: 'People', url: 'https://people.com/feed/', category: 'entertainment' },
-  
+
   // Social Issues (Gen Z cares deeply about)
   { name: 'Vox', url: 'https://www.vox.com/rss/index.xml', category: 'other' },
   { name: 'The Guardian', url: 'https://www.theguardian.com/world/rss', category: 'other' },
-  
+
   // Tech (Gen Z is tech-native)
   { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', category: 'tech' },
   { name: 'The Verge', url: 'https://www.theverge.com/rss/index.xml', category: 'tech' },
   { name: 'Hacker News', url: 'https://hnrss.org/frontpage', category: 'tech' },
   { name: 'Wired', url: 'https://www.wired.com/feed/rss', category: 'tech' },
-  
+
   // Viral/Entertainment
   { name: 'BuzzFeed News', url: 'https://www.buzzfeed.com/news.xml', category: 'entertainment' },
-  
+
   // Politics (Secondary for Gen Z, but still important)
   { name: 'CNN', url: 'http://rss.cnn.com/rss/cnn_topstories.rss', category: 'politics' },
   { name: 'BBC News', url: 'http://feeds.bbci.co.uk/news/rss.xml', category: 'politics' },
   { name: 'Axios', url: 'https://api.axios.com/feed/', category: 'politics' },
-  
+
   // Sports
   { name: 'ESPN', url: 'https://www.espn.com/espn/rss/news', category: 'sports' },
 ]
@@ -107,9 +107,9 @@ async function scrapeSource(source: NewsSource, trendingTopics: string[] = [], r
         })
 
         // Determine if breaking (drama score >= 8 or title contains "breaking")
-        const isBreaking = dramaScore >= 8 || 
-                          item.title.toLowerCase().includes('breaking') ||
-                          item.title.toLowerCase().includes('urgent')
+        const isBreaking = dramaScore >= 8 ||
+          item.title.toLowerCase().includes('breaking') ||
+          item.title.toLowerCase().includes('urgent')
 
         // Generate video script for Gen Z platforms
         const videoScript = generateVideoScript({
@@ -146,8 +146,7 @@ async function scrapeSource(source: NewsSource, trendingTopics: string[] = [], r
           url: item.link,
         })
 
-        // Insert into database with verification and sentiment data
-        // Build insert object, making bias_label optional in case schema cache is stale
+        // Insert into database - essential fields only (schema cache issues)
         const insertData: any = {
           title: item.title,
           url: item.link,
@@ -159,23 +158,6 @@ async function scrapeSource(source: NewsSource, trendingTopics: string[] = [], r
           posted_at: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
           is_breaking: isBreaking,
           description: item.contentSnippet || item.content?.substring(0, 500) || null,
-          source_verification: verification.verification_status,
-          video_script: tiktokScript,
-          verification_status: verification.verification_status,
-          verification_confidence: verification.confidence,
-          verification_risk: verification.risk,
-          verification_summary: verification.summary,
-          evidence_links: verification.evidence_links,
-          red_flags: verification.red_flags,
-          sentiment: sentiment.sentiment,
-          vibe_score: sentiment.score,
-          provenance: verification.provenance,
-          source_trace: sourceTrace,
-        }
-        
-        // Only include bias_label if it exists (schema cache might be stale)
-        if (verification.bias_label) {
-          insertData.bias_label = verification.bias_label
         }
 
         const { error, data: insertedHeadline } = await supabase
@@ -204,7 +186,7 @@ async function scrapeSource(source: NewsSource, trendingTopics: string[] = [], r
           console.error(`Error inserting headline from ${source.name}:`, error)
         } else {
           addedCount++
-          
+
           // Add to Story Arc (The "Lore" System) if high drama
           if (insertedHeadline && dramaScore >= 7) {
             try {
@@ -221,7 +203,7 @@ async function scrapeSource(source: NewsSource, trendingTopics: string[] = [], r
             }
           }
           console.log(`✓ Added: ${item.title.substring(0, 60)}... (Drama: ${dramaScore}/10)`)
-          
+
           // Send to Discord if high drama (Gen Z distribution)
           if (dramaScore >= 7 && insertedHeadline) {
             await sendDiscordNotification({
@@ -236,7 +218,7 @@ async function scrapeSource(source: NewsSource, trendingTopics: string[] = [], r
           }
         }
       }
-      
+
       console.log(`✓ Successfully scraped ${source.name}: ${addedCount} new items added (${feed.items.length} total found)`)
       return // Success, exit retry loop
     } catch (error: any) {
@@ -294,11 +276,11 @@ async function scrapeAll() {
   try {
     const redditPosts = await monitorRedditForBreakingNews()
     console.log(`Found ${redditPosts.length} high-engagement Reddit posts\n`)
-    
+
     // Process Reddit posts as headlines
     for (const post of redditPosts.slice(0, 20)) { // Limit to top 20
       const headlineData = redditPostToHeadline(post)
-      
+
       // Check if already exists
       const { data: existing } = await supabase
         .from('headlines')
@@ -309,8 +291,8 @@ async function scrapeAll() {
       if (existing) continue
 
       // Calculate drama score
-        // Twitter trends matching (optional - requires TWITTER_BEARER_TOKEN)
-        const matchingTrends: string[] = [] // Disabled for now - can be enabled with Twitter API
+      // Twitter trends matching (optional - requires TWITTER_BEARER_TOKEN)
+      const matchingTrends: string[] = [] // Disabled for now - can be enabled with Twitter API
 
       const dramaScore = calculateDramaScore({
         title: headlineData.title,
@@ -354,8 +336,7 @@ async function scrapeAll() {
       })
       const tiktokScript = formatScriptForPlatform(videoScript, 'tiktok')
 
-      // Insert Reddit post as headline with full verification data
-      // Build insert object, making bias_label optional in case schema cache is stale
+      // Insert Reddit post as headline - essential fields only
       const redditInsertData: any = {
         title: headlineData.title,
         url: headlineData.url,
@@ -367,23 +348,6 @@ async function scrapeAll() {
         posted_at: new Date(post.created_utc * 1000).toISOString(),
         is_breaking: dramaScore >= 8,
         description: headlineData.description,
-        source_verification: headlineData.source_verification,
-        video_script: tiktokScript,
-        verification_status: verification.verification_status,
-        verification_confidence: verification.confidence,
-        verification_risk: verification.risk,
-        verification_summary: verification.summary,
-        evidence_links: verification.evidence_links,
-        red_flags: verification.red_flags,
-        sentiment: sentiment.sentiment,
-        vibe_score: sentiment.score,
-        provenance: verification.provenance,
-        source_trace: sourceTrace,
-      }
-      
-      // Only include bias_label if it exists (schema cache might be stale)
-      if (verification.bias_label) {
-        redditInsertData.bias_label = verification.bias_label
       }
 
       const { error: redditError, data: insertedHeadline } = await supabase

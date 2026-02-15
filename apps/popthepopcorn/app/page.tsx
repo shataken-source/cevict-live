@@ -14,7 +14,8 @@ import AgeGate from '@/components/AgeGate'
 import PopcornAnimation from '@/components/PopcornAnimation'
 import KeyboardShortcuts from '@/components/KeyboardShortcuts'
 import BingeMode from '@/components/BingeMode'
-import { Settings, Bell, Tv, Zap, Coins, TrendingUp } from 'lucide-react'
+import BuyMeACoffee from '@/components/ads/BuyMeACoffee'
+import { Settings, Bell, Tv, Zap, Coins, TrendingUp, Crown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateVersusFrame } from '@/lib/brand-guide'
 import { getUserBalance, updateStreak, getStreakBadge } from '@/lib/virtual-currency'
@@ -103,7 +104,7 @@ export default function Home() {
         controller.abort()
         console.warn('[Frontend] Headlines fetch aborted after 2 seconds')
       }, 2000)
-      
+
       const response = await fetch('/api/headlines', {
         signal: controller.signal,
         cache: 'no-store',
@@ -111,21 +112,21 @@ export default function Home() {
           'Cache-Control': 'no-cache',
         },
       })
-      
+
       clearTimeout(timeoutId)
       clearTimeout(immediateTimeout)
-      
+
       if (response.ok) {
         const data = await response.json()
         const fetchedHeadlines = data.headlines || []
         console.log('[Frontend] Fetched headlines:', fetchedHeadlines.length)
-        
+
         // Show warning if timeout occurred but still got data
         if (data.warning) {
           console.warn('[Frontend] API warning:', data.warning)
           toast.error(data.warning, { duration: 5000 })
         }
-        
+
         setHeadlines(fetchedHeadlines)
         setOverallDrama(data.overallDrama || 5)
         setLastUpdated(new Date())
@@ -133,14 +134,14 @@ export default function Home() {
         const errorData = await response.json().catch(() => ({ error: 'Network error' }))
         console.error('[Frontend] API error:', errorData)
         const errorMessage = errorData.message || errorData.error || 'Unknown error'
-        
+
         // If it's a timeout, show helpful message
         if (errorMessage.includes('timeout') || response.status === 504) {
           toast.error('Request timed out. The database may be slow. Showing cached data if available.', { duration: 6000 })
         } else {
           toast.error(`Failed to load headlines: ${errorMessage}`)
         }
-        
+
         // Log more details for debugging
         if (errorData.details) {
           console.error('[Frontend] Error details:', errorData.details)
@@ -153,7 +154,7 @@ export default function Home() {
       setHeadlines([])
       setOverallDrama(5)
       setLoading(false)
-      
+
       if (error instanceof Error && error.name === 'AbortError') {
         // Don't show toast for timeout - user already sees empty feed
         console.log('[Frontend] Request timed out - showing empty feed')
@@ -239,13 +240,13 @@ export default function Home() {
     // Load user balance and update streak
     const loadUserData = async () => {
       if (typeof window === 'undefined') return
-      
+
       try {
         const userIdentifier = localStorage.getItem('user_id') || 'anonymous'
         if (!localStorage.getItem('user_id')) {
           localStorage.setItem('user_id', `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
         }
-        
+
         const balance = await getUserBalance(userIdentifier)
         const streak = await updateStreak(userIdentifier)
         setUserBalance({ ...balance, streak })
@@ -258,8 +259,8 @@ export default function Home() {
     // Fetch headlines first (most important), then other data
     Promise.all([
       fetchHeadlines(), // This will set loading to false internally
-      fetchTwitterTrends().catch(() => {}), // Optional, don't block
-      fetchStoryArcs().catch(() => {}), // Optional, don't block
+      fetchTwitterTrends().catch(() => { }), // Optional, don't block
+      fetchStoryArcs().catch(() => { }), // Optional, don't block
       loadUserData(),
     ]).finally(() => {
       clearTimeout(safetyTimeout)
@@ -273,7 +274,7 @@ export default function Home() {
 
     // Get refresh interval from settings (default 60 seconds)
     const refreshInterval = parseInt(process.env.NEXT_PUBLIC_AUTO_REFRESH_INTERVAL || '60', 10) * 1000
-    
+
     const interval = setInterval(() => {
       fetchHeadlines()
     }, refreshInterval)
@@ -297,7 +298,7 @@ export default function Home() {
     }
   }, [headlines])
 
-  const primaryHeadline = headlines.length > 0 
+  const primaryHeadline = headlines.length > 0
     ? (headlines.find(h => h.is_breaking || h.drama_score >= 9) || headlines[0])
     : null
   const feedHeadlines = headlines.length > 0 && primaryHeadline
@@ -308,12 +309,12 @@ export default function Home() {
   const trendingTopics = twitterTrends.length > 0
     ? twitterTrends.slice(0, 15)
     : Array.from(
-        new Set(
-          headlines
-            .flatMap(h => h.title.toLowerCase().split(/\s+/))
-            .filter(word => word.length > 4)
-        )
-      ).map(name => ({ name, source: 'unknown' as const, fetchedAt: new Date().toISOString() })).slice(0, 15)
+      new Set(
+        headlines
+          .flatMap(h => h.title.toLowerCase().split(/\s+/))
+          .filter(word => word.length > 4)
+      )
+    ).map(name => ({ name, source: 'unknown' as const, fetchedAt: new Date().toISOString() })).slice(0, 15)
 
   const highDramaAlerts = headlines.filter(h => h.drama_score >= 7)
 
@@ -333,9 +334,9 @@ export default function Home() {
   // Show Binge Mode if enabled
   if (bingeMode) {
     return (
-      <BingeMode 
-        headlines={headlines} 
-        onClose={() => setBingeMode(false)} 
+      <BingeMode
+        headlines={headlines}
+        onClose={() => setBingeMode(false)}
       />
     )
   }
@@ -384,42 +385,51 @@ export default function Home() {
                 <Zap size={18} />
                 Binge Mode
               </button>
-              <button 
+              <button
                 onClick={fetchHeadlines}
-                className={`px-3 py-1 text-sm border rounded transition-all ${
-                  darkMode 
-                    ? 'border-[#333] text-white hover:border-[#FFD700] hover:bg-[#FFD700] hover:bg-opacity-10 hover:text-[#FFD700]' 
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                }`}
+                className={`px-3 py-1 text-sm border rounded transition-all ${darkMode
+                  ? 'border-[#333] text-white hover:border-[#FFD700] hover:bg-[#FFD700] hover:bg-opacity-10 hover:text-[#FFD700]'
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                  }`}
                 title="Refresh headlines (Ctrl/Cmd + R)"
               >
                 Refresh
               </button>
               <button
                 onClick={() => setDarkMode(!darkMode)}
-                className={`p-2 rounded transition-all ${
-                  darkMode 
-                    ? 'hover:bg-[#FFD700] hover:bg-opacity-20 text-white' 
-                    : 'hover:bg-gray-100 text-gray-700'
-                }`}
+                className={`p-2 rounded transition-all ${darkMode
+                  ? 'hover:bg-[#FFD700] hover:bg-opacity-20 text-white'
+                  : 'hover:bg-gray-100 text-gray-700'
+                  }`}
                 title="Toggle dark mode (Ctrl/Cmd + D)"
               >
                 {darkMode ? '☀️' : '🌙'}
               </button>
-              <button className={`p-2 rounded transition-all ${
-                darkMode 
-                  ? 'hover:bg-[#FFD700] hover:bg-opacity-20 text-white' 
-                  : 'hover:bg-gray-100 text-gray-700'
-              }`}>
+              <button className={`p-2 rounded transition-all ${darkMode
+                ? 'hover:bg-[#FFD700] hover:bg-opacity-20 text-white'
+                : 'hover:bg-gray-100 text-gray-700'
+                }`}>
                 <Bell size={20} />
               </button>
-              <button className={`p-2 rounded transition-all ${
-                darkMode 
-                  ? 'hover:bg-[#FFD700] hover:bg-opacity-20 text-white' 
-                  : 'hover:bg-gray-100 text-gray-700'
-              }`}>
+              <button className={`p-2 rounded transition-all ${darkMode
+                ? 'hover:bg-[#FFD700] hover:bg-opacity-20 text-white'
+                : 'hover:bg-gray-100 text-gray-700'
+                }`}>
                 <Settings size={20} />
               </button>
+              <Link
+                href="/premium"
+                className={`p-2 rounded transition-all flex items-center gap-1 ${darkMode
+                  ? 'hover:bg-amber-500/20 text-amber-400'
+                  : 'hover:bg-amber-100 text-amber-600'
+                  }`}
+                title="Go Premium"
+              >
+                <Crown size={20} />
+              </Link>
+              <div className="hidden sm:block">
+                <BuyMeACoffee variant="button" />
+              </div>
             </div>
           </div>
           <div className="flex items-center justify-between">
@@ -477,11 +487,10 @@ export default function Home() {
                 {storyArcs.length > 3 && (
                   <button
                     onClick={() => setShowArcs(!showArcs)}
-                    className={`w-full mt-3 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
-                      darkMode 
-                        ? 'bg-[#FFD700] bg-opacity-20 text-[#FFD700] hover:bg-opacity-30 border border-[#FFD700]' 
-                        : 'bg-[#FFD700] text-black hover:bg-[#FFC700]'
-                    }`}
+                    className={`w-full mt-3 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${darkMode
+                      ? 'bg-[#FFD700] bg-opacity-20 text-[#FFD700] hover:bg-opacity-30 border border-[#FFD700]'
+                      : 'bg-[#FFD700] text-black hover:bg-[#FFC700]'
+                      }`}
                   >
                     {showArcs ? 'Show Less' : `Show All (${storyArcs.length})`}
                   </button>
@@ -497,33 +506,32 @@ export default function Home() {
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {trendingTopics.slice(0, 12).map((trend, index) => {
-                    const trendObj = typeof trend === 'string' 
+                    const trendObj = typeof trend === 'string'
                       ? { name: trend, source: 'unknown' as const, fetchedAt: new Date().toISOString() }
                       : trend
                     const isBoth = trendObj.source === 'both'
                     const isGoogle = trendObj.source === 'google'
                     const isTwitter = trendObj.source === 'twitter'
                     const apiTrend = twitterTrends.find(t => t.name === trendObj.name)
-                    
+
                     return (
                       <span
                         key={index}
-                        className={`px-2 py-1 rounded-full text-xs hover:opacity-80 cursor-pointer flex items-center gap-1 ${
-                          darkMode
-                            ? isBoth 
-                              ? 'bg-gradient-to-r from-blue-600 to-red-600 border border-blue-400 text-white' 
-                              : isGoogle
+                        className={`px-2 py-1 rounded-full text-xs hover:opacity-80 cursor-pointer flex items-center gap-1 ${darkMode
+                          ? isBoth
+                            ? 'bg-gradient-to-r from-blue-600 to-red-600 border border-blue-400 text-white'
+                            : isGoogle
                               ? 'bg-red-600 border border-red-400 text-white'
                               : 'bg-gray-700 border border-gray-600 text-white'
-                            : isBoth 
-                              ? 'bg-gradient-to-r from-blue-100 to-red-100 border border-blue-300 text-gray-800' 
-                              : isGoogle
+                          : isBoth
+                            ? 'bg-gradient-to-r from-blue-100 to-red-100 border border-blue-300 text-gray-800'
+                            : isGoogle
                               ? 'bg-red-100 border border-red-300 text-gray-800'
                               : 'bg-gray-100 border border-gray-300 text-gray-800'
-                        }`}
+                          }`}
                         title={
-                          apiTrend?.tweetCount 
-                            ? `${apiTrend.tweetCount.toLocaleString()} tweets` 
+                          apiTrend?.tweetCount
+                            ? `${apiTrend.tweetCount.toLocaleString()} tweets`
                             : 'Trending topic'
                         }
                       >
@@ -547,11 +555,10 @@ export default function Home() {
                 {['All', 'Politics', 'Tech', 'Entertainment', 'Breaking'].map((cat) => (
                   <button
                     key={cat}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                      darkMode 
-                        ? 'hover:bg-[#0A0A0A] border border-[#333]' 
-                        : 'hover:bg-gray-100 border border-gray-200'
-                    }`}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${darkMode
+                      ? 'hover:bg-[#0A0A0A] border border-[#333]'
+                      : 'hover:bg-gray-100 border border-gray-200'
+                      }`}
                   >
                     {cat}
                   </button>
@@ -564,13 +571,12 @@ export default function Home() {
           <div className="lg:col-span-6 space-y-6">
             {/* Primary Headline - The Main Event */}
             {primaryHeadline && (
-              <div className={`rounded-2xl overflow-hidden border-2 ${
-                primaryHeadline.drama_score >= 9 
-                  ? 'border-[#FF4444] breaking-pulse cyber-glow' 
-                  : primaryHeadline.drama_score >= 7
+              <div className={`rounded-2xl overflow-hidden border-2 ${primaryHeadline.drama_score >= 9
+                ? 'border-[#FF4444] breaking-pulse cyber-glow'
+                : primaryHeadline.drama_score >= 7
                   ? 'border-[#FF6B35]'
                   : 'border-[#FFD700]'
-              } ${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'} relative`}>
+                } ${darkMode ? 'bg-[#1A1A1A]' : 'bg-white'} relative`}>
                 {primaryHeadline.drama_score >= 9 && (
                   <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
                     {[...Array(3)].map((_, i) => (
@@ -621,6 +627,11 @@ export default function Home() {
 
           {/* RIGHT COLUMN - Chatbot, Drama Alerts, Stats */}
           <aside className="lg:col-span-3 space-y-6">
+            {/* Support Card */}
+            <div className="hidden lg:block">
+              <BuyMeACoffee variant="card" />
+            </div>
+
             {/* Chatbot - Always Visible */}
             <div className="sticky top-24">
               <SidebarChatBot className="h-[600px]" />
@@ -646,10 +657,10 @@ export default function Home() {
                       <div className={`text-lg font-black ${headline.drama_score >= 9 ? 'text-[#FF4444]' : 'text-[#FF6B35]'}`}>
                         {headline.drama_score}/10
                       </div>
-                      <Link 
-                        href={headline.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
+                      <Link
+                        href={headline.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className={`flex-1 hover:underline text-xs ${darkMode ? 'text-white' : 'text-black'}`}
                       >
                         {headline.title.substring(0, 80)}...
@@ -657,11 +668,10 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <button className={`w-full px-4 py-2 text-sm font-bold rounded-lg transition-all ${
-                  darkMode 
-                    ? 'bg-[#FF4444] text-white hover:bg-[#FF5555]' 
-                    : 'bg-red-600 text-white hover:bg-red-700'
-                }`}>
+                <button className={`w-full px-4 py-2 text-sm font-bold rounded-lg transition-all ${darkMode
+                  ? 'bg-[#FF4444] text-white hover:bg-[#FF5555]'
+                  : 'bg-red-600 text-white hover:bg-red-700'
+                  }`}>
                   🔔 Subscribe
                 </button>
               </div>
@@ -698,10 +708,16 @@ export default function Home() {
           AI-powered verification • Source trace receipts • Real-time sentiment analysis
         </p>
         <p className="mt-2">
-          <a href="/admin/login" className="underline">Admin Dashboard</a> | 
-          <a href="/feed" className="underline ml-2">RSS Feed</a>
+          <Link href="/admin/login" className="underline">Admin Dashboard</Link> |
+          <Link href="/feed" className="underline ml-2">RSS Feed</Link> |
+          <Link href="/premium" className="underline ml-2 text-amber-500">Go Premium</Link>
         </p>
       </footer>
+
+      {/* Floating Support Button (mobile) */}
+      <div className="lg:hidden">
+        <BuyMeACoffee variant="floating" />
+      </div>
 
     </div>
   )
