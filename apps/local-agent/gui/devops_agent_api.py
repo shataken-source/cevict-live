@@ -1576,6 +1576,113 @@ if HAS_FLASK:
             "why": f"Priority {top['priority']}: {top['type']}",
         })
 
+    # -------------------------------------------------------------------------
+    # Agent Notifications (Tell agents when long tasks finish)
+    # -------------------------------------------------------------------------
+    pending_notifications: dict[str, list] = {}  # instance_id -> list of notifications
+    registered_agents: dict[str, dict] = {}  # instance_id -> {registered_at, callback_url, last_poll}
+
+    @app.route('/notify/register', methods=['POST'])
+    def notify_register():
+        """Register an agent to receive notifications when tasks complete."""
+        data = request.get_json() or {}
+        instance_id = data.get('instance_id', 'unknown')
+        callback_url = data.get('callback_url', '')  # Optional: URL to POST to
+
+        registered_agents[instance_id] = {
+            "instance_id": instance_id,
+            "registered_at": datetime.now().isoformat(),
+            "callback_url": callback_url,
+            "last_poll": datetime.now().isoformat(),
+        }
+
+        # Initialize notification queue
+        if instance_id not in pending_notifications:
+            pending_notifications[instance_id] = []
+
+        return jsonify({
+            "success": True,
+            "message": f"Agent {instance_id} registered for notifications",
+            "registered_at": registered_agents[instance_id]["registered_at"],
+            "queue_length": len(pending_notifications[instance_id]),
+        })
+
+    @app.route('/notify/poll', methods=['GET'])
+    def notify_poll():
+        """Poll for notifications ( agents call this to check for messages )."""
+        instance_id = request.args.get('instance_id', 'unknown')
+        clear = request.args.get('clear', 'true').lower() == 'true'
+
+        # Update last poll time
+        if instance_id in registered_agents:
+            registered_agents[instance_id]["last_poll"] = datetime.now().isoformat()
+
+        notifications = pending_notifications.get(instance_id, [])
+        result = {
+            "success": True,
+            "instance_id": instance_id,
+            "notification_count": len(notifications),
+            "notifications": notifications,
+        }
+
+        # Clear queue after polling
+        if clear and instance_id in pending_notifications:
+            pending_notifications[instance_id] = []
+
+        return jsonify(result)
+
+    @app.route('/notify/send', methods=['POST'])
+    def notify_send():
+        """Send a notification to registered agents (internal use by Cochran)."""
+        data = request.get_json() or {}
+        message = data.get('message', '')
+        task_type = data.get('task_type', 'general')
+        target_instance = data.get('target_instance', '')  # Empty = broadcast to all
+        details = data.get('details', {})
+
+        notification = {
+            "sent_at": datetime.now().isoformat(),
+            "task_type": task_type,
+            "message": message,
+            "details": details,
+        }
+
+        sent_to = []
+        if target_instance and target_instance in pending_notifications:
+            pending_notifications[target_instance].append(notification)
+            sent_to.append(target_instance)
+        else:
+            # Broadcast to all registered agents
+            for instance_id in pending_notifications:
+                pending_notifications[instance_id].append(notification)
+                sent_to.append(instance_id)
+
+        return jsonify({
+            "success": True,
+            "sent_to": sent_to,
+            "message": message,
+        })
+
+    def _broadcast_completion(workflow_id: str, task_type: str, result: dict):
+        """Internal helper to broadcast task completion to all agents."""
+        message = f"Task {workflow_id} ({task_type}) completed"
+        if result.get('success'):
+            message += " successfully"
+        else:
+            message += " with errors"
+
+        notification = {
+            "sent_at": datetime.now().isoformat(),
+            "task_type": task_type,
+            "workflow_id": workflow_id,
+            "message": message,
+            "success": result.get('success', False),
+            "details": result,
+        }
+
+        for instance_id in pending_notifications:
+            pending_notifications[instance_id].append(notification)
+
     def run_api():
         print(f"DevOps Agent API running on http://localhost:{API_PORT}")
         app.run(host='127.0.0.1', port=API_PORT, debug=False, threaded=True)
