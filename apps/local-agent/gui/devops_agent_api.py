@@ -1676,6 +1676,128 @@ if HAS_FLASK:
         })
 
     # -------------------------------------------------------------------------
+    # Project Activity Tracking (Hot vs Cold Projects)
+    # -------------------------------------------------------------------------
+    @app.route('/projects/activity', methods=['GET'])
+    def projects_activity():
+        """Get activity stats for all projects - ranks by git commits."""
+        days = request.args.get('days', 30, type=int)
+
+        activity_data = []
+
+        for app_dir in sorted(APPS_DIR.iterdir()):
+            if not app_dir.is_dir() or app_dir.name.startswith('.'):
+                continue
+
+            # Get commit count in last N days
+            since_date = (datetime.now() - __import__('datetime').timedelta(days=days)).strftime('%Y-%m-%d')
+            code, commit_count = git("rev-list", "--count", "--since", since_date, "HEAD", "--", str(app_dir))
+
+            # Get last commit date
+            code2, last_commit = git("log", "-1", "--format=%ct", "--", str(app_dir))
+
+            # Get total commits
+            code3, total_commits = git("rev-list", "--count", "HEAD", "--", str(app_dir))
+
+            try:
+                commits = int(commit_count.strip()) if code == 0 and commit_count.strip() else 0
+                last_ts = int(last_commit.strip()) if code2 == 0 and last_commit.strip() else 0
+                total = int(total_commits.strip()) if code3 == 0 and total_commits.strip() else 0
+
+                days_ago = (datetime.now().timestamp() - last_ts) / 86400 if last_ts else 999
+
+                # Classify project
+                if commits >= 10:
+                    status = "hot"  # Very active
+                elif commits >= 3:
+                    status = "warm"  # Active
+                elif commits >= 1:
+                    status = "cool"  # Some activity
+                elif days_ago < 30:
+                    status = "dormant"  # No recent commits but recent
+                else:
+                    status = "cold"  # Stale/junk candidate
+
+                activity_data.append({
+                    "app": app_dir.name,
+                    "commits_last_{}d".format(days): commits,
+                    "total_commits": total,
+                    "last_commit_days_ago": int(days_ago),
+                    "status": status,
+                    "hot_score": commits * 10 + max(0, 30 - int(days_ago)),  # Activity score
+                })
+            except Exception:
+                activity_data.append({
+                    "app": app_dir.name,
+                    "status": "unknown",
+                    "error": "Failed to get git stats",
+                })
+
+        # Sort by hot score (descending)
+        activity_data.sort(key=lambda x: x.get('hot_score', 0), reverse=True)
+
+        # Group by status
+        by_status = {}
+        for proj in activity_data:
+            by_status.setdefault(proj['status'], []).append(proj['app'])
+
+        return jsonify({
+            "success": True,
+            "period_days": days,
+            "projects": activity_data,
+            "summary": {
+                "hot": len(by_status.get('hot', [])),
+                "warm": len(by_status.get('warm', [])),
+                "cool": len(by_status.get('cool', [])),
+                "dormant": len(by_status.get('dormant', [])),
+                "cold": len(by_status.get('cold', [])),
+            },
+            "hot_projects": by_status.get('hot', [])[:5],
+            "cold_projects": by_status.get('cold', [])[:5],
+            "recommendation": "Focus on hot projects with issues. Consider archiving cold projects.",
+        })
+
+    @app.route('/projects/hot', methods=['GET'])
+    def projects_hot():
+        """Get only the hot (most active) projects."""
+        limit = request.args.get('limit', 5, type=int)
+        min_commits = request.args.get('min_commits', 5, type=int)
+
+        # Get full activity data
+        resp = projects_activity()
+        data = resp.get_json() if hasattr(resp, 'get_json') else resp.json
+
+        hot = [p for p in data.get('projects', []) if p.get('commits_last_30d', 0) >= min_commits]
+        hot = hot[:limit]
+
+        return jsonify({
+            "success": True,
+            "hot_projects": hot,
+            "count": len(hot),
+            "message": f"Top {len(hot)} most active projects" if hot else "No hot projects found",
+        })
+
+    @app.route('/projects/cold', methods=['GET'])
+    def projects_cold():
+        """Get cold (stale) projects that might be junk."""
+        limit = request.args.get('limit', 10, type=int)
+        stale_days = request.args.get('stale_days', 60, type=int)
+
+        resp = projects_activity()
+        data = resp.get_json() if hasattr(resp, 'get_json') else resp.json
+
+        cold = [p for p in data.get('projects', [])
+                if p.get('status') in ['cold', 'dormant'] or p.get('last_commit_days_ago', 0) > stale_days]
+        cold = cold[:limit]
+
+        return jsonify({
+            "success": True,
+            "cold_projects": cold,
+            "count": len(cold),
+            "recommendation": "Consider archiving or deleting these projects" if len(cold) > 3 else "Few stale projects - good maintenance",
+        })
+
+    # -------------------------------------------------------------------------
     # Agent Notifications (Tell agents when long tasks finish)
     # -------------------------------------------------------------------------
     pending_notifications: dict[str, list] = {}  # instance_id -> list of notifications
