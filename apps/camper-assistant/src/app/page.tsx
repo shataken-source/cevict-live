@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Sun, Battery, CloudRain, Thermometer, Wind,
-  Utensils, MessageCircle, Backpack, Bell, Music,
-  Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned
+  Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope
 } from 'lucide-react';
 import SolarPanel from './components/SolarPanel';
 import WeatherWidget from './components/WeatherWidget';
@@ -15,6 +13,8 @@ import CampingChat from './components/CampingChat';
 import AlarmClock from './components/AlarmClock';
 import TVGuide from './components/TVGuide';
 import LocalAttractions from './components/LocalAttractions';
+import MaintenanceLog from './components/MaintenanceLog';
+import StarMap from './components/StarMap';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -36,6 +36,8 @@ export default function Home() {
     { id: 'alarm', label: 'Alarm', icon: Bell },
     { id: 'tv', label: 'TV Guide', icon: Tv },
     { id: 'attractions', label: 'Local Explorer', icon: MapPinned },
+    { id: 'maintenance', label: 'Maintenance', icon: Wrench },
+    { id: 'stars', label: 'Night Sky', icon: Telescope },
   ];
 
   return (
@@ -130,6 +132,8 @@ export default function Home() {
         {activeTab === 'alarm' && <AlarmClock />}
         {activeTab === 'tv' && <TVGuide />}
         {activeTab === 'attractions' && <LocalAttractions />}
+        {activeTab === 'maintenance' && <MaintenanceLog />}
+        {activeTab === 'stars' && <StarMap />}
       </main>
     </div>
   );

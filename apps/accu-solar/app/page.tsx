@@ -404,6 +404,11 @@ export default function AccuSolarDashboard() {
     return activeAlerts;
   }, [telemetry, weather]);
 
+  const tiltProfile = useMemo<TiltProfile | null>(() => {
+    if (!selectedLocation) return null;
+    return calculateTiltProfiles(selectedLocation.lat);
+  }, [selectedLocation]);
+
   const shadingResult = useMemo<ShadingImpactResult | null>(() => {
     const profile: ShadingProfile = {
       morning: 10,
