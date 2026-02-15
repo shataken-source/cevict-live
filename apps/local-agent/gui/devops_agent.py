@@ -1367,6 +1367,15 @@ class DevOpsWindow(QMainWindow):
 # Entry point
 # ---------------------------------------------------------------------------
 def main():
+    # Start API server in background thread
+    api_script = Path(__file__).parent / "devops_agent_api.py"
+    if api_script.exists():
+        import subprocess
+        subprocess.Popen(
+            [sys.executable, str(api_script)],
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0,
+        )
+
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
     app.setStyleSheet(STYLESHEET)
