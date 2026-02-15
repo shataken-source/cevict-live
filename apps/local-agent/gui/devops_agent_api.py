@@ -1904,6 +1904,97 @@ if HAS_FLASK:
         for instance_id in pending_notifications:
             pending_notifications[instance_id].append(notification)
 
+    # -------------------------------------------------------------------------
+    # Package.json Watcher (Auto-install dependencies)
+    # -------------------------------------------------------------------------
+    package_watches: dict[str, dict] = {}  # app -> {last_hash, last_check}
+
+    @app.route('/watch/package-json', methods=['POST'])
+    def watch_package_json():
+        """Watch package.json and auto-run install if changed."""
+        data = request.get_json() or {}
+        app = data.get('app', '')
+        auto_install = data.get('auto_install', True)
+        dry_run = data.get('dry_run', False)
+
+        if not app:
+            return jsonify({"success": False, "error": "app parameter required"}), 400
+
+        app_dir = APPS_DIR / app
+        pkg_file = app_dir / 'package.json'
+
+        if not pkg_file.exists():
+            return jsonify({"success": False, "error": f"package.json not found for {app}"}), 404
+
+        # Read current package.json
+        content = pkg_file.read_text('utf-8')
+        current_hash = hash(content)
+
+        # Check if changed since last watch
+        last_watch = package_watches.get(app, {})
+        last_hash = last_watch.get('hash', 0)
+
+        changed = current_hash != last_hash
+
+        # Update watch record
+        package_watches[app] = {
+            'hash': current_hash,
+            'last_check': datetime.now().isoformat(),
+            'auto_install': auto_install,
+        }
+
+        result = {
+            "success": True,
+            "app": app,
+            "changed": changed,
+            "last_check": package_watches[app]['last_check'],
+        }
+
+        if changed and auto_install and not dry_run:
+            # Detect package manager
+            if (app_dir / 'pnpm-lock.yaml').exists():
+                cmd = ['pnpm', 'install']
+                pkg_manager = 'pnpm'
+            elif (app_dir / 'yarn.lock').exists():
+                cmd = ['yarn', 'install']
+                pkg_manager = 'yarn'
+            else:
+                cmd = ['npm', 'install']
+                pkg_manager = 'npm'
+
+            # Run install
+            code, output = run_cmd(cmd, cwd=str(app_dir), timeout=300)
+
+            result['install'] = {
+                'package_manager': pkg_manager,
+                'exit_code': code,
+                'success': code == 0,
+                'output': output[-2000:] if len(output) > 2000 else output,  # Truncate if huge
+            }
+
+            if code == 0:
+                result['message'] = f"✅ {pkg_manager} install completed for {app}"
+            else:
+                result['message'] = f"❌ {pkg_manager} install failed for {app}"
+                result['recommendation'] = "Check output for peer dependency warnings or version conflicts"
+        elif changed and dry_run:
+            result['message'] = f"📦 package.json changed - would run install (dry_run=true)"
+        elif not changed:
+            result['message'] = f"📦 No changes to package.json for {app}"
+        else:
+            result['message'] = f"📦 package.json changed but auto_install=false"
+
+        return jsonify(result)
+
+    @app.route('/watch/package-json/status', methods=['GET'])
+    def watch_package_json_status():
+        """Get status of all package.json watches."""
+        return jsonify({
+            "success": True,
+            "watches": package_watches,
+            "count": len(package_watches),
+        })
+
     def run_api():
         print(f"DevOps Agent API running on http://localhost:{API_PORT}")
         app.run(host='127.0.0.1', port=API_PORT, debug=False, threaded=True)
