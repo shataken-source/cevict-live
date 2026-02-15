@@ -1079,6 +1079,321 @@ if HAS_FLASK:
             "events": events,
         })
 
+    # -------------------------------------------------------------------------
+    # Workflow Automation (Chained Operations)
+    # -------------------------------------------------------------------------
+    workflow_status: dict[str, dict] = {}
+
+    @app.route('/workflow/git-commit-push', methods=['POST'])
+    def workflow_git_commit_push():
+        """One-shot git add, commit, push with optional checks."""
+        data = request.get_json() or {}
+        message = data.get('message', 'auto: workflow commit').strip()
+        stage_all = data.get('stage_all', True)
+        check_status_first = data.get('check_status_first', True)
+
+        workflow_id = f"git-push-{datetime.now().strftime('%H%M%S')}"
+        workflow_status[workflow_id] = {
+            "id": workflow_id,
+            "type": "git-commit-push",
+            "status": "running",
+            "started_at": datetime.now().isoformat(),
+            "steps": [],
+        }
+
+        results = {"steps": []}
+
+        # Step 1: Check status
+        if check_status_first:
+            code, status = git("status", "--short")
+            results["steps"].append({"step": "status", "exit_code": code, "output": status})
+            if code == 0 and not status.strip():
+                workflow_status[workflow_id].update({
+                    "status": "completed",
+                    "result": results,
+                    "message": "Nothing to commit - working tree clean",
+                    "completed_at": datetime.now().isoformat(),
+                })
+                return jsonify({"success": True, "workflow_id": workflow_id, "nothing_to_do": True})
+
+        # Step 2: Stage
+        if stage_all:
+            code, out = git("add", "-A")
+            results["steps"].append({"step": "add", "exit_code": code, "output": out})
+
+        # Step 3: Commit
+        code, out = git("commit", "-m", message)
+        results["steps"].append({"step": "commit", "exit_code": code, "output": out})
+        if code != 0 and "nothing to commit" not in out.lower():
+            workflow_status[workflow_id].update({
+                "status": "failed",
+                "result": results,
+                "completed_at": datetime.now().isoformat(),
+            })
+            return jsonify({"success": False, "workflow_id": workflow_id, "error": "Commit failed", "output": out})
+
+        # Step 4: Push
+        code, out = git("push")
+        results["steps"].append({"step": "push", "exit_code": code, "output": out})
+
+        workflow_status[workflow_id].update({
+            "status": "completed" if code == 0 else "failed",
+            "result": results,
+            "completed_at": datetime.now().isoformat(),
+        })
+
+        return jsonify({
+            "success": code == 0,
+            "workflow_id": workflow_id,
+            "all_pushed": code == 0,
+            "steps": results["steps"],
+        })
+
+    @app.route('/workflow/deploy', methods=['POST'])
+    def workflow_deploy():
+        """Deploy app with pre-flight checks and post-deploy verification."""
+        data = request.get_json() or {}
+        app_name = data.get('app', '').strip()
+        production = data.get('production', False)
+        build_first = data.get('build_first', True)
+
+        if not app_name:
+            return jsonify({"success": False, "error": "App name required"}), 400
+
+        workflow_id = f"deploy-{app_name}-{datetime.now().strftime('%H%M%S')}"
+        workflow_status[workflow_id] = {
+            "id": workflow_id,
+            "type": "deploy",
+            "app": app_name,
+            "status": "running",
+            "started_at": datetime.now().isoformat(),
+            "steps": [],
+        }
+
+        results = {"app": app_name, "steps": []}
+        app_path = str(APPS_DIR / app_name)
+
+        # Step 1: Disk check
+        try:
+            import shutil
+            usage = shutil.disk_usage('C:\\')
+            percent_used = (usage.used / usage.total) * 100
+            results["steps"].append({
+                "step": "disk-check",
+                "percent_used": round(percent_used, 1),
+                "warning": percent_used > 95,
+            })
+            if percent_used > 98:
+                workflow_status[workflow_id].update({
+                    "status": "failed",
+                    "result": results,
+                    "error": "Disk critically full - aborting deploy",
+                    "completed_at": datetime.now().isoformat(),
+                })
+                return jsonify({"success": False, "workflow_id": workflow_id, "error": "Disk full"})
+        except Exception as e:
+            results["steps"].append({"step": "disk-check", "error": str(e)})
+
+        # Step 2: Build (if requested)
+        if build_first:
+            code, out = run_cmd(["npx", "next", "build"], cwd=app_path, timeout=300)
+            results["steps"].append({"step": "build", "exit_code": code, "output": out[:500]})
+            if code != 0:
+                workflow_status[workflow_id].update({
+                    "status": "failed",
+                    "result": results,
+                    "error": "Build failed",
+                    "completed_at": datetime.now().isoformat(),
+                })
+                return jsonify({"success": False, "workflow_id": workflow_id, "error": "Build failed"})
+
+        # Step 3: Deploy
+        cmd = ["npx", "vercel", "--yes"]
+        if production:
+            cmd.append("--prod")
+        code, out = run_cmd(cmd, cwd=app_path, timeout=300)
+
+        # Extract URL
+        url = ""
+        for line in out.split("\n"):
+            if "https://" in line and ".vercel.app" in line:
+                url = line.strip().split()[-1]
+                break
+
+        results["steps"].append({"step": "deploy", "exit_code": code, "url": url, "output": out[:500]})
+
+        workflow_status[workflow_id].update({
+            "status": "completed" if code == 0 else "failed",
+            "result": results,
+            "url": url,
+            "completed_at": datetime.now().isoformat(),
+        })
+
+        return jsonify({
+            "success": code == 0,
+            "workflow_id": workflow_id,
+            "url": url,
+            "production": production,
+            "steps": results["steps"],
+        })
+
+    @app.route('/workflow/audit-project', methods=['POST'])
+    def workflow_audit_project():
+        """Full project audit: large files, node_modules, unused deps, disk usage."""
+        data = request.get_json() or {}
+        app_name = data.get('app', '')
+        check_deps = data.get('check_deps', True)
+        check_disk = data.get('check_disk', True)
+
+        workflow_id = f"audit-{app_name or 'repo'}-{datetime.now().strftime('%H%M%S')}"
+        workflow_status[workflow_id] = {
+            "id": workflow_id,
+            "type": "audit",
+            "app": app_name,
+            "status": "running",
+            "started_at": datetime.now().isoformat(),
+            "findings": [],
+        }
+
+        results = {"app": app_name, "findings": [], "recommendations": []}
+
+        # Audit 1: Large files
+        target = APPS_DIR / app_name if app_name else REPO_ROOT
+        large_files = []
+        try:
+            for f in target.rglob("*"):
+                if f.is_file() and "node_modules" not in f.parts and ".git" not in f.parts:
+                    try:
+                        size = f.stat().st_size
+                        if size > 1_000_000:  # > 1MB
+                            large_files.append({
+                                "path": str(f.relative_to(REPO_ROOT)) if f.is_relative_to(REPO_ROOT) else str(f),
+                                "size": size,
+                                "size_formatted": format_size(size),
+                            })
+                    except OSError:
+                        pass
+        except Exception as e:
+            results["findings"].append({"type": "error", "message": str(e)})
+
+        large_files.sort(key=lambda x: x["size"], reverse=True)
+        if large_files:
+            results["findings"].append({
+                "type": "large_files",
+                "count": len(large_files),
+                "files": large_files[:10],
+                "total_size": format_size(sum(f["size"] for f in large_files)),
+            })
+            results["recommendations"].append(f"Found {len(large_files)} files > 1MB")
+
+        # Audit 2: node_modules (if app specified)
+        if app_name:
+            nm_path = APPS_DIR / app_name / "node_modules"
+            if nm_path.exists():
+                try:
+                    size = sum(f.stat().st_size for f in nm_path.rglob("*") if f.is_file())
+                    results["findings"].append({
+                        "type": "node_modules",
+                        "path": str(nm_path.relative_to(REPO_ROOT)),
+                        "size": size,
+                        "size_formatted": format_size(size),
+                    })
+                except Exception:
+                    pass
+
+        # Audit 3: Unused deps (if app specified and has package.json)
+        if check_deps and app_name:
+            pkg_file = APPS_DIR / app_name / "package.json"
+            if pkg_file.exists():
+                try:
+                    pkg = json.loads(pkg_file.read_text("utf-8"))
+                    deps = list(pkg.get("dependencies", {}).keys())
+                    dev_deps = list(pkg.get("devDependencies", {}).keys())
+
+                    # Quick import scan
+                    imported = set()
+                    for f in (APPS_DIR / app_name).rglob("*"):
+                        if f.suffix in ['.ts', '.tsx', '.js', '.jsx']:
+                            try:
+                                content = f.read_text("utf-8", errors="ignore")
+                                for line in content.split('\n'):
+                                    if 'import' in line or 'require' in line:
+                                        for dep in deps + dev_deps:
+                                            if dep in line:
+                                                imported.add(dep)
+                            except Exception:
+                                pass
+
+                    unused = [d for d in deps if d not in imported]
+                    if unused:
+                        results["findings"].append({
+                            "type": "unused_deps",
+                            "potentially_unused": unused[:10],
+                            "count": len(unused),
+                        })
+                        results["recommendations"].append(f"Potentially unused deps: {', '.join(unused[:5])}")
+                except Exception:
+                    pass
+
+        # Audit 4: Disk usage
+        if check_disk:
+            try:
+                import shutil
+                usage = shutil.disk_usage('C:\\')
+                percent_used = (usage.used / usage.total) * 100
+                results["disk"] = {
+                    "total": format_size(usage.total),
+                    "used": format_size(usage.used),
+                    "free": format_size(usage.free),
+                    "percent_used": round(percent_used, 1),
+                    "warning": percent_used > 90,
+                    "critical": percent_used > 95,
+                }
+                if percent_used > 95:
+                    results["recommendations"].append("⚠️ CRITICAL: Disk >95% full!")
+                elif percent_used > 90:
+                    results["recommendations"].append("⚠️ WARNING: Disk >90% full")
+            except Exception:
+                pass
+
+        workflow_status[workflow_id].update({
+            "status": "completed",
+            "result": results,
+            "completed_at": datetime.now().isoformat(),
+        })
+
+        return jsonify({
+            "success": True,
+            "workflow_id": workflow_id,
+            "app": app_name,
+            "findings_count": len(results["findings"]),
+            "recommendations": results["recommendations"],
+            "full_results": results,
+        })
+
+    @app.route('/workflow/status/<workflow_id>', methods=['GET'])
+    def workflow_get_status(workflow_id):
+        """Get status of a workflow."""
+        wf = workflow_status.get(workflow_id)
+        if not wf:
+            return jsonify({"success": False, "error": "Workflow not found"}), 404
+        return jsonify({"success": True, **wf})
+
+    @app.route('/workflow/list', methods=['GET'])
+    def workflow_list():
+        """List recent workflows."""
+        limit = request.args.get('limit', 20, type=int)
+        sorted_wf = sorted(
+            workflow_status.values(),
+            key=lambda x: x.get('started_at', ''),
+            reverse=True,
+        )
+        return jsonify({
+            "success": True,
+            "workflows": sorted_wf[:limit],
+            "total": len(workflow_status),
+        })
+
     def run_api():
         print(f"DevOps Agent API running on http://localhost:{API_PORT}")
         app.run(host='127.0.0.1', port=API_PORT, debug=False, threaded=True)

@@ -269,6 +269,74 @@ if ($port.in_use -and $port.process -eq "node") {
 }
 ```
 
+### Workflow Automation (Chained Operations)
+
+Instead of calling multiple endpoints, use workflows that handle everything:
+
+```powershell
+# Workflow 1: Complete git workflow (add → commit → push)
+irm http://localhost:8471/workflow/git-commit-push -Method POST -Body '{
+    "message": "feat: new feature",
+    "stage_all": true,
+    "check_status_first": true
+}' -ContentType "application/json"
+
+# Workflow 2: Deploy with pre-flight checks (disk → build → deploy)
+irm http://localhost:8471/workflow/deploy -Method POST -Body '{
+    "app": "accu-solar",
+    "production": true,
+    "build_first": true
+}' -ContentType "application/json"
+
+# Workflow 3: Full project audit (large files → node_modules → unused deps → disk)
+irm http://localhost:8471/workflow/audit-project -Method POST -Body '{
+    "app": "progno",
+    "check_deps": true,
+    "check_disk": true
+}' -ContentType "application/json"
+
+# Audit a different project while working on current one
+irm http://localhost:8471/workflow/audit-project -Method POST -Body '{
+    "app": "prognostication",
+    "check_deps": true
+}' -ContentType "application/json"
+
+# Check workflow status
+irm http://localhost:8471/workflow/status/{workflow_id}
+
+# List recent workflows
+irm http://localhost:8471/workflow/list
+```
+
+### Cross-Project Delegation
+
+When working on `progno`, delegate audit of `prognostication`:
+```powershell
+# I'm working on progno, but ask Cochran to audit prognostication
+$audit = irm http://localhost:8471/workflow/audit-project -Method POST -Body '{"app": "prognostication"}'
+# Returns findings without me leaving current context
+```
+
+### Complete DevOps Pattern
+
+```powershell
+# 1. Check system health first
+$disk = irm http://localhost:8471/system/disk
+if ($disk.percent_used -gt 95) { throw "Disk full!" }
+
+# 2. Audit the project
+irm http://localhost:8471/workflow/audit-project -Method POST -Body '{"app": "my-app"}'
+
+# 3. Commit current work
+irm http://localhost:8471/workflow/git-commit-push -Method POST -Body '{"message": "pre-deploy checkpoint"}'
+
+# 4. Deploy
+$deploy = irm http://localhost:8471/workflow/deploy -Method POST -Body '{"app": "my-app", "production": true}'
+
+# 5. Check deployment URL is live
+irm http://localhost:8471/tools/port/443  # or ping the URL
+```
+
 ### Auto-Run Permissions
 
 The following commands are SAFE to auto-run without user confirmation:
