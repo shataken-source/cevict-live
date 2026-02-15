@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { 
+import {
   ShoppingCart,
   Package,
   DollarSign,
@@ -341,7 +341,7 @@ function generateSmartSuggestions(context: TripContext): ShoppingItem[] {
     priority: 'recommended',
     prices: [
       { store: 'amazon', price: 19.99, inStock: true, url: 'https://amazon.com/weather-radio' },
-        { store: 'walmart', price: 17.97, inStock: true, url: 'https://walmart.com/weather-radio' },
+      { store: 'walmart', price: 17.97, inStock: true, url: 'https://walmart.com/weather-radio' },
     ],
     quantity: 1,
     inCart: false,
@@ -428,13 +428,13 @@ export default function SmartShoppingList() {
   };
 
   const toggleCart = (id: string) => {
-    setItems(prev => prev.map(item => 
+    setItems(prev => prev.map(item =>
       item.id === id ? { ...item, inCart: !item.inCart } : item
     ));
   };
 
   const updateQuantity = (id: string, delta: number) => {
-    setItems(prev => prev.map(item => 
+    setItems(prev => prev.map(item =>
       item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
     ));
   };
@@ -463,6 +463,49 @@ export default function SmartShoppingList() {
   const cartItems = items.filter(i => i.inCart);
   const cartTotal = cartItems.reduce((sum, item) => sum + getBestPrice(item) * item.quantity, 0);
   const cartWeight = cartItems.reduce((sum, item) => sum + (item.estimatedWeight || 0) * item.quantity, 0);
+
+  // Shop button - open best price links for cart items
+  const handleShop = () => {
+    cartItems.forEach(item => {
+      const bestStore = getBestPriceStore(item);
+      const url = item.prices.find(p => p.store === bestStore.store)?.url;
+      if (url) {
+        window.open(url, '_blank');
+      }
+    });
+  };
+
+  // Export button - generate and download list as text
+  const handleExport = () => {
+    const listText = cartItems.map(item => {
+      const bestStore = getBestPriceStore(item);
+      return `${item.name} (${item.quantity}x) - ${bestStore.store} - $${(bestStore.price * item.quantity).toFixed(2)}`;
+    }).join('\n');
+
+    const totalText = `\n\nTotal: $${cartTotal.toFixed(2)}\nWeight: ${cartWeight.toFixed(1)} lbs`;
+    const fullText = `WildReady Shopping List for ${context.location}\n\n${listText}${totalText}`;
+
+    const blob = new Blob([fullText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wildready-shopping-${context.location.toLowerCase().replace(/\s+/g, '-')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Save button - save to localStorage
+  const handleSave = () => {
+    const saveData = {
+      context,
+      items: cartItems,
+      total: cartTotal,
+      weight: cartWeight,
+      savedAt: new Date().toISOString()
+    };
+    localStorage.setItem(`wildready-shopping-${context.location}`, JSON.stringify(saveData));
+    alert('Shopping list saved!');
+  };
 
   return (
     <div className="space-y-4">
@@ -578,9 +621,8 @@ export default function SmartShoppingList() {
             <div className="flex gap-2">
               <button
                 onClick={() => setSelectedCategory('all')}
-                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                  selectedCategory === 'all' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300'
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedCategory === 'all' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-300'
+                  }`}
               >
                 All
               </button>
@@ -588,9 +630,8 @@ export default function SmartShoppingList() {
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                    selectedCategory === cat.id ? cat.color : 'bg-slate-700 text-slate-300'
-                  }`}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedCategory === cat.id ? cat.color : 'bg-slate-700 text-slate-300'
+                    }`}
                 >
                   <cat.icon className="w-3 h-3" />
                   {cat.name}
@@ -610,19 +651,17 @@ export default function SmartShoppingList() {
           const CategoryIcon = categoryConfig?.icon || Package;
 
           return (
-            <div 
+            <div
               key={item.id}
-              className={`bg-slate-800 rounded-xl p-4 border transition-all ${
-                item.inCart ? 'border-emerald-600 bg-emerald-900/10' : 'border-slate-700 hover:border-slate-600'
-              }`}
+              className={`bg-slate-800 rounded-xl p-4 border transition-all ${item.inCart ? 'border-emerald-600 bg-emerald-900/10' : 'border-slate-700 hover:border-slate-600'
+                }`}
             >
               <div className="flex items-start gap-4">
                 {/* Checkbox */}
                 <button
                   onClick={() => toggleCart(item.id)}
-                  className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${
-                    item.inCart ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'
-                  }`}
+                  className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${item.inCart ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-500 hover:bg-slate-600'
+                    }`}
                 >
                   {item.inCart && <Check className="w-4 h-4" />}
                 </button>
@@ -640,11 +679,10 @@ export default function SmartShoppingList() {
                         <h4 className={`font-semibold ${item.inCart ? 'text-emerald-400 line-through' : 'text-white'}`}>
                           {item.name}
                         </h4>
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          item.priority === 'essential' ? 'bg-red-900/50 text-red-400' :
+                        <span className={`text-xs px-2 py-0.5 rounded ${item.priority === 'essential' ? 'bg-red-900/50 text-red-400' :
                           item.priority === 'recommended' ? 'bg-amber-900/50 text-amber-400' :
-                          'bg-slate-700 text-slate-400'
-                        }`}>
+                            'bg-slate-700 text-slate-400'
+                          }`}>
                           {item.priority}
                         </span>
                       </div>
@@ -674,11 +712,10 @@ export default function SmartShoppingList() {
                         href={price.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
-                          price.store === bestStore.store 
-                            ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-700/30' 
-                            : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                        }`}
+                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${price.store === bestStore.store
+                          ? 'bg-emerald-900/30 text-emerald-400 border border-emerald-700/30'
+                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                          }`}
                       >
                         <Store className="w-3 h-3" />
                         {STORES.find(s => s.id === price.store)?.name}
@@ -698,16 +735,15 @@ export default function SmartShoppingList() {
                         <span>{item.estimatedWeight} lbs</span>
                       )}
                       {item.packSize && (
-                        <span className={`px-2 py-0.5 rounded text-xs ${
-                          item.packSize === 'small' ? 'bg-green-900/30 text-green-400' :
+                        <span className={`px-2 py-0.5 rounded text-xs ${item.packSize === 'small' ? 'bg-green-900/30 text-green-400' :
                           item.packSize === 'medium' ? 'bg-amber-900/30 text-amber-400' :
-                          'bg-red-900/30 text-red-400'
-                        }`}>
+                            'bg-red-900/30 text-red-400'
+                          }`}>
                           {item.packSize} pack
                         </span>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => updateQuantity(item.id, -1)}
@@ -756,15 +792,24 @@ export default function SmartShoppingList() {
       {cartItems.length > 0 && (
         <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
           <div className="flex flex-wrap gap-3">
-            <button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+            <button
+              onClick={handleShop}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+            >
               <ExternalLink className="w-4 h-4" />
               Shop Best Prices (${cartTotal.toFixed(2)})
             </button>
-            <button className="px-6 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              className="px-6 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+            >
               <Download className="w-4 h-4" />
               Export List
             </button>
-            <button className="px-6 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center gap-2">
+            <button
+              onClick={handleSave}
+              className="px-6 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+            >
               <Save className="w-4 h-4" />
               Save for Trip
             </button>
