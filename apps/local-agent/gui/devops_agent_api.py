@@ -1394,6 +1394,188 @@ if HAS_FLASK:
             "total": len(workflow_status),
         })
 
+    # -------------------------------------------------------------------------
+    # Work Discovery (For When AI Drifts/Bored/Hallucinates)
+    # -------------------------------------------------------------------------
+    @app.route('/work/todos', methods=['GET'])
+    def work_todos():
+        """Scan codebase for TODO, FIXME, XXX, HACK comments."""
+        app_filter = request.args.get('app', '')
+        limit = request.args.get('limit', 50, type=int)
+
+        patterns = ['TODO', 'FIXME', 'XXX', 'HACK', 'BUG', 'NOTE']
+        target = APPS_DIR / app_filter if app_filter else REPO_ROOT
+
+        findings = []
+        try:
+            for f in target.rglob('*'):
+                if f.suffix not in ['.ts', '.tsx', '.js', '.jsx', '.py', '.md']:
+                    continue
+                if 'node_modules' in f.parts or '.git' in f.parts or 'dist' in f.parts:
+                    continue
+                try:
+                    content = f.read_text('utf-8', errors='ignore')
+                    lines = content.split('\n')
+                    for i, line in enumerate(lines, 1):
+                        for pattern in patterns:
+                            if pattern in line.upper():
+                                findings.append({
+                                    "file": str(f.relative_to(REPO_ROOT)) if f.is_relative_to(REPO_ROOT) else str(f),
+                                    "line": i,
+                                    "type": pattern,
+                                    "text": line.strip()[:150],
+                                })
+                                break
+                        if len(findings) >= limit:
+                            break
+                    if len(findings) >= limit:
+                        break
+                except Exception:
+                    continue
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+        # Group by type
+        by_type = {}
+        for f in findings:
+            by_type.setdefault(f['type'], []).append(f)
+
+        return jsonify({
+            "success": True,
+            "total": len(findings),
+            "by_type": by_type,
+            "findings": findings[:limit],
+            "suggestion": f"Found {len(findings)} items to work on" if findings else "No TODOs found - try /work/suggest",
+        })
+
+    @app.route('/work/suggest', methods=['GET'])
+    def work_suggest():
+        """Suggest the next project/task to work on."""
+        # Get git status to see if there's uncommitted work
+        code, git_status = git("status", "--short")
+
+        suggestions = []
+
+        # Priority 1: Uncommitted changes
+        if git_status.strip():
+            lines = [l.strip() for l in git_status.split('\n') if l.strip()]
+            files = [l.split()[-1] for l in lines]
+            apps_affected = set()
+            for f in files:
+                if f.startswith('apps/'):
+                    app = f.split('/')[1]
+                    apps_affected.add(app)
+
+            suggestions.append({
+                "priority": 1,
+                "type": "uncommitted",
+                "message": f"You have {len(lines)} uncommitted changes",
+                "apps_affected": list(apps_affected),
+                "command": "irm http://localhost:8471/workflow/git-commit-push -Method POST -Body '{\"message\":\"feat: wip\",\"stage_all\":true}'",
+            })
+
+        # Priority 2: Check disk space
+        try:
+            import shutil
+            usage = shutil.disk_usage('C:\\')
+            percent = (usage.used / usage.total) * 100
+            if percent > 95:
+                suggestions.append({
+                    "priority": 2,
+                    "type": "critical",
+                    "message": f"Disk is {percent:.1f}% full - clean up needed!",
+                    "command": "irm http://localhost:8471/workflow/audit-project -Method POST -Body '{\"app\":\"\",\"check_disk\":true}'",
+                })
+        except Exception:
+            pass
+
+        # Priority 3: Projects with TODOs
+        for app_dir in APPS_DIR.iterdir():
+            if not app_dir.is_dir() or app_dir.name.startswith('.'):
+                continue
+            todo_count = 0
+            try:
+                for f in app_dir.rglob('*.tsx'):
+                    if 'node_modules' in f.parts:
+                        continue
+                    try:
+                        content = f.read_text('utf-8', errors='ignore')
+                        if 'TODO' in content or 'FIXME' in content:
+                            todo_count += 1
+                    except Exception:
+                        pass
+                    if todo_count >= 3:
+                        break
+            except Exception:
+                pass
+
+            if todo_count > 0:
+                suggestions.append({
+                    "priority": 3,
+                    "type": "todos",
+                    "message": f"{app_dir.name} has TODOs to fix",
+                    "app": app_dir.name,
+                    "command": f"irm http://localhost:8471/work/todos?app={app_dir.name}",
+                })
+
+        # Priority 4: Recent but inactive projects
+        try:
+            # Check git log for each app
+            for app_dir in sorted(APPS_DIR.iterdir())[:5]:
+                if not app_dir.is_dir():
+                    continue
+                code, log = git("log", "-1", "--format=%ct", "--", str(app_dir))
+                if code == 0 and log.strip():
+                    last_commit = int(log.strip())
+                    days_ago = (datetime.now().timestamp() - last_commit) / 86400
+                    if days_ago > 7:
+                        suggestions.append({
+                            "priority": 4,
+                            "type": "stale",
+                            "message": f"{app_dir.name} hasn't been touched in {int(days_ago)} days",
+                            "app": app_dir.name,
+                            "command": f"irm http://localhost:8471/workflow/audit-project -Method POST -Body '{{\"app\":\"{app_dir.name}\"}}'",
+                        })
+        except Exception:
+            pass
+
+        # Sort by priority
+        suggestions.sort(key=lambda x: x['priority'])
+
+        return jsonify({
+            "success": True,
+            "suggestion_count": len(suggestions),
+            "suggestions": suggestions[:10],
+            "top_priority": suggestions[0] if suggestions else None,
+            "drift_recovery": "Pick a suggestion and run the command",
+        })
+
+    @app.route('/work/next', methods=['GET'])
+    def work_next():
+        """Get the single best next task to work on."""
+        # Call suggest and return just the top one
+        suggestions = work_suggest().get_json()
+
+        if not suggestions.get('top_priority'):
+            return jsonify({
+                "success": True,
+                "message": "No urgent work found - you're all caught up!",
+                "alternatives": [
+                    "Audit a random app: irm http://localhost:8471/workflow/audit-project -Method POST -Body '{\"app\":\"accu-solar\"}'",
+                    "Check Cochran status: irm http://localhost:8471/cochran/status",
+                    "Take a break - you've earned it!",
+                ],
+            })
+
+        top = suggestions['top_priority']
+        return jsonify({
+            "success": True,
+            "next_task": top,
+            "message": top['message'],
+            "action": top.get('command', 'Start working!'),
+            "why": f"Priority {top['priority']}: {top['type']}",
+        })
+
     def run_api():
         print(f"DevOps Agent API running on http://localhost:{API_PORT}")
         app.run(host='127.0.0.1', port=API_PORT, debug=False, threaded=True)
