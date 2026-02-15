@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope, ShoppingCart, Tent } from 'lucide-react';
+import { Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope, ShoppingCart, Tent, Bird } from 'lucide-react';
 import SolarPanel from './components/SolarPanel';
 import WeatherWidget from './components/WeatherWidget';
 import BatteryMonitor from './components/BatteryMonitor';
@@ -15,6 +15,7 @@ import MaintenanceLog from './components/MaintenanceLog';
 import StarMap from './components/StarMap';
 import SmartShoppingList from './components/SmartShoppingList';
 import CampsiteFinder from './components/CampsiteFinder';
+import WildlifeSpotter from './components/WildlifeSpotter';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -40,6 +41,7 @@ export default function Home() {
     { id: 'stars', label: 'Night Sky', icon: Telescope },
     { id: 'shopping', label: 'AI Shopping', icon: ShoppingCart },
     { id: 'campsites', label: 'Campsites', icon: Tent },
+    { id: 'wildlife', label: 'Wildlife', icon: Bird },
   ];
 
   return (
@@ -138,6 +140,7 @@ export default function Home() {
         {activeTab === 'stars' && <StarMap />}
         {activeTab === 'shopping' && <SmartShoppingList />}
         {activeTab === 'campsites' && <CampsiteFinder />}
+        {activeTab === 'wildlife' && <WildlifeSpotter />}
       </main>
     </div>
   );
