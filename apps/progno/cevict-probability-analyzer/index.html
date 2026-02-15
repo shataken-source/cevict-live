@@ -470,35 +470,62 @@
       document.getElementById("jsonFileInput").click();
     }
 
-    function showStats() { if (!allPicks.length) return; const avgConf = (allPicks.reduce((s, p) => s + p.confidence, 0) / allPicks.length).toFixed(1); const avgEV = (allPicks.reduce((s, p) => s + (p.expected_value || 0), 0) / allPicks.length).toFixed(0); const leagues = [...new Set(allPicks.map(p => p.league))].join(", "); console.log(`Avg Conf: ${avgConf}% | Avg EV: ${avgEV} | Leagues: ${leagues}`); } function handleFileSelect(event) {
+    function showStats() { if (!allPicks.length) return; const avgConf = (allPicks.reduce((s, p) => s + p.confidence, 0) / allPicks.length).toFixed(1); const avgEV = (allPicks.reduce((s, p) => s + (p.expected_value || 0), 0) / allPicks.length).toFixed(0); const leagues = [...new Set(allPicks.map(p => p.league))].join(", "); console.log(`Avg Conf: ${avgConf}% | Avg EV: ${avgEV} | Leagues: ${leagues}`); }
+
+    function handleFileSelect(event) {
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const data = JSON.parse(e.target.result);
+          console.log('Loaded data structure:', Object.keys(data));
+
           // Support multiple formats
           let picks = null;
+          let format = null;
+
           if (data.picks && Array.isArray(data.picks)) {
             picks = data.picks;
+            format = '{ picks: [...] }';
           } else if (Array.isArray(data)) {
             picks = data;
+            format = '[...] array';
           } else if (data.results && Array.isArray(data.results)) {
             picks = data.results;
+            format = '{ results: [...] }';
           } else if (data.predictions && Array.isArray(data.predictions)) {
             picks = data.predictions;
+            format = '{ predictions: [...] }';
+          } else if (data.games && Array.isArray(data.games)) {
+            picks = data.games;
+            format = '{ games: [...] }';
+          } else if (typeof data === 'object' && data !== null) {
+            // Try to find any array property
+            for (const key of Object.keys(data)) {
+              if (Array.isArray(data[key]) && data[key].length > 0) {
+                picks = data[key];
+                format = `{ ${key}: [...] } (auto-detected)`;
+                console.log(`Auto-detected picks in property: ${key}`);
+                break;
+              }
+            }
           }
-          if (picks) {
+
+          if (picks && Array.isArray(picks)) {
             allPicks = picks;
             renderPicksList();
-            alert(`✓ Loaded ${allPicks.length} picks from ${file.name}`);
+            alert(`✓ Loaded ${allPicks.length} picks from ${file.name}\nFormat: ${format}`);
           } else {
-            alert('Invalid file: expected { picks: [...] } or [...] array');
+            const keys = Object.keys(data).join(', ');
+            const type = Array.isArray(data) ? 'array' : typeof data;
+            alert(`Invalid file format.\n\nReceived: ${type}${keys ? ' with keys: ' + keys : ''}\n\nExpected one of:\n• { picks: [...] }\n• { results: [...] }\n• { predictions: [...] }\n• { games: [...] }\n• [...] array`);
           }
         } catch (err) {
-          alert('Error reading file: ' + err.message);
+          alert('Error parsing JSON: ' + err.message);
         }
       };
+      reader.onerror = () => alert('Error reading file');
       reader.readAsText(file);
     }
 
@@ -507,23 +534,47 @@
       if (!json) return;
       try {
         const data = JSON.parse(json);
+        console.log('Pasted data structure:', Object.keys(data));
+
         // Support multiple formats
         let picks = null;
+        let format = null;
+
         if (data.picks && Array.isArray(data.picks)) {
           picks = data.picks;
+          format = '{ picks: [...] }';
         } else if (Array.isArray(data)) {
           picks = data;
+          format = '[...] array';
         } else if (data.results && Array.isArray(data.results)) {
           picks = data.results;
+          format = '{ results: [...] }';
         } else if (data.predictions && Array.isArray(data.predictions)) {
           picks = data.predictions;
+          format = '{ predictions: [...] }';
+        } else if (data.games && Array.isArray(data.games)) {
+          picks = data.games;
+          format = '{ games: [...] }';
+        } else if (typeof data === 'object' && data !== null) {
+          // Try to find any array property
+          for (const key of Object.keys(data)) {
+            if (Array.isArray(data[key]) && data[key].length > 0) {
+              picks = data[key];
+              format = `{ ${key}: [...] } (auto-detected)`;
+              console.log(`Auto-detected picks in property: ${key}`);
+              break;
+            }
+          }
         }
-        if (picks) {
+
+        if (picks && Array.isArray(picks)) {
           allPicks = picks;
           renderPicksList();
-          alert(`✓ Loaded ${allPicks.length} picks!`);
+          alert(`✓ Loaded ${allPicks.length} picks!\nFormat: ${format}`);
         } else {
-          alert('Invalid: expected { picks: [...] } or [...] array');
+          const keys = Object.keys(data).join(', ');
+          const type = Array.isArray(data) ? 'array' : typeof data;
+          alert(`Invalid format.\n\nReceived: ${type}${keys ? ' with keys: ' + keys : ''}\n\nExpected one of:\n• { picks: [...] }\n• { results: [...] }\n• { predictions: [...] }\n• { games: [...] }\n• [...] array`);
         }
       } catch (e) {
         alert('Invalid JSON: ' + e.message);
