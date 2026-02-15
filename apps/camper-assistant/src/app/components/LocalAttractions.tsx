@@ -27,7 +27,7 @@ import {
 
 // Geoapify API Configuration
 const GEOAPIFY_CONFIG = {
-  API_KEY: process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY || 'a10bf4a7da4a4b95996c12331743e645',
+  API_KEY: process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY || '',
   BASE_URL: 'https://api.geoapify.com/v1',
 };
 
@@ -263,8 +263,8 @@ export default function LocalAttractions() {
   const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 0, lng: 0 });
 
   const locationData = useMemo(() => {
-    // Use live data if available and online
-    if (hasConnectivity && liveAttractions.length > 0) {
+    // Only use live data - no demo fallback
+    if (liveAttractions.length > 0) {
       return {
         zip: activeLocation,
         name: searchInput,
@@ -273,18 +273,14 @@ export default function LocalAttractions() {
       };
     }
 
-    // Fall back to mock database
-    const data = LOCATION_DATABASE[activeLocation];
-    if (data) return data;
-
-    // Generate mock data for unknown locations
+    // Return empty if no data
     return {
       zip: activeLocation,
-      name: `Area ${activeLocation}`,
-      coords: { lat: 38.0, lng: -95.0 },
-      attractions: generateMockAttractions(activeLocation)
+      name: searchInput || activeLocation,
+      coords,
+      attractions: [],
     };
-  }, [activeLocation, hasConnectivity, liveAttractions, searchInput, coords]);
+  }, [activeLocation, liveAttractions, searchInput, coords]);
 
   const filteredAttractions = useMemo(() => {
     return locationData.attractions.filter(attraction => {
