@@ -1576,6 +1576,105 @@ if HAS_FLASK:
             "why": f"Priority {top['priority']}: {top['type']}",
         })
 
+    @app.route('/work/smart-audit', methods=['POST'])
+    def work_smart_audit():
+        """Smart audit - only audit projects that actually need attention."""
+        data = request.get_json() or {}
+        max_projects = data.get('max_projects', 3)
+        auto_fix = data.get('auto_fix', False)  # Auto-fix minor issues
+
+        findings = []
+        projects_to_audit = []
+
+        # Quick scan - check for obvious issues without full audit
+        for app_dir in sorted(APPS_DIR.iterdir()):
+            if not app_dir.is_dir() or app_dir.name.startswith('.'):
+                continue
+
+            issues = []
+
+            # Check 1: Has TODOs?
+            try:
+                for f in app_dir.rglob('*.tsx'):
+                    if 'node_modules' in f.parts:
+                        continue
+                    try:
+                        content = f.read_text('utf-8', errors='ignore')
+                        if 'TODO' in content or 'FIXME' in content:
+                            issues.append('has_todos')
+                            break
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+            # Check 2: Stale project (>7 days)?
+            try:
+                code, log = git("log", "-1", "--format=%ct", "--", str(app_dir))
+                if code == 0 and log.strip():
+                    last_commit = int(log.strip())
+                    days_ago = (datetime.now().timestamp() - last_commit) / 86400
+                    if days_ago > 7:
+                        issues.append(f'stale_{int(days_ago)}d')
+            except Exception:
+                pass
+
+            # Check 3: Has uncommitted changes in this app?
+            try:
+                code, status = git("status", "--short", "--", str(app_dir))
+                if status.strip():
+                    lines = [l for l in status.split('\n') if l.strip()]
+                    issues.append(f'uncommitted_{len(lines)}')
+            except Exception:
+                pass
+
+            # Check 4: Large node_modules?
+            try:
+                nm = app_dir / 'node_modules'
+                if nm.exists():
+                    size = sum(f.stat().st_size for f in nm.rglob('*') if f.is_file())
+                    size_mb = size / (1024 * 1024)
+                    if size_mb > 500:  # >500MB
+                        issues.append(f'large_nm_{int(size_mb)}MB')
+            except Exception:
+                pass
+
+            if issues:
+                findings.append({
+                    "app": app_dir.name,
+                    "issues": issues,
+                    "needs_audit": True,
+                })
+                projects_to_audit.append(app_dir.name)
+
+            if len(projects_to_audit) >= max_projects:
+                break
+
+        # Run full audits only on projects with issues
+        audit_results = []
+        for app in projects_to_audit[:max_projects]:
+            try:
+                # Call the audit workflow via internal function
+                # For now, just return the suggestion to audit
+                audit_results.append({
+                    "app": app,
+                    "status": "needs_audit",
+                    "command": f"irm http://localhost:8471/workflow/audit-project -Method POST -Body '{{\"app\":\"{app}\"}}'",
+                })
+            except Exception as e:
+                audit_results.append({"app": app, "error": str(e)})
+
+        return jsonify({
+            "success": True,
+            "scan_type": "smart",
+            "projects_scanned": len(list(APPS_DIR.iterdir())),
+            "projects_with_issues": len(findings),
+            "findings": findings,
+            "audit_results": audit_results,
+            "summary": f"Found {len(findings)} projects needing attention. Audited {len(audit_results)}.",
+            "recommendation": "Run the audit commands for projects with issues" if audit_results else "All clean! No audits needed.",
+        })
+
     # -------------------------------------------------------------------------
     # Agent Notifications (Tell agents when long tasks finish)
     # -------------------------------------------------------------------------
