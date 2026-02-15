@@ -23,6 +23,7 @@ import MeshNetwork from './components/MeshNetwork';
 import FishingIntelligence from './components/FishingIntelligence';
 import ForagingGuide from './components/ForagingGuide';
 import SoundGenerator from './components/SoundGenerator';
+import NewsletterSignup from './components/NewsletterSignup';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -110,32 +111,39 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         {activeTab === 'dashboard' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <div className="flex items-center gap-3 mb-4">
-                <Sun className="w-6 h-6 text-amber-400" />
-                <h2 className="text-lg font-semibold mb-2">Solar Production</h2>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                <div className="flex items-center gap-3 mb-4">
+                  <Sun className="w-6 h-6 text-amber-400" />
+                  <h2 className="text-lg font-semibold mb-2">Solar Production</h2>
+                </div>
+                <div className="text-3xl font-bold text-amber-400">245W</div>
+                <p className="text-slate-400 text-sm">Optimal tilt angle: 42°</p>
               </div>
-              <div className="text-3xl font-bold text-amber-400">245W</div>
-              <p className="text-slate-400 text-sm">Optimal tilt angle: 42°</p>
+
+              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                <div className="flex items-center gap-3 mb-4">
+                  <CloudRain className="w-6 h-6 text-blue-400" />
+                  <h2 className="text-lg font-semibold mb-2">Weather</h2>
+                </div>
+                <div className="text-3xl font-bold text-blue-400">72°F</div>
+                <p className="text-slate-400 text-sm">Partly cloudy, 45% humidity</p>
+              </div>
+
+              <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                <div className="flex items-center gap-3 mb-4">
+                  <Battery className="w-6 h-6 text-emerald-400" />
+                  <h2 className="text-lg font-semibold mb-2">Battery</h2>
+                </div>
+                <div className="text-3xl font-bold text-emerald-400">87%</div>
+                <p className="text-slate-400 text-sm">12.6V • 18 hours remaining</p>
+              </div>
             </div>
 
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <div className="flex items-center gap-3 mb-4">
-                <CloudRain className="w-6 h-6 text-blue-400" />
-                <h2 className="text-lg font-semibold mb-2">Weather</h2>
-              </div>
-              <div className="text-3xl font-bold text-blue-400">72°F</div>
-              <p className="text-slate-400 text-sm">Partly cloudy, 45% humidity</p>
-            </div>
-
-            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-              <div className="flex items-center gap-3 mb-4">
-                <Battery className="w-6 h-6 text-emerald-400" />
-                <h2 className="text-lg font-semibold mb-2">Battery</h2>
-              </div>
-              <div className="text-3xl font-bold text-emerald-400">87%</div>
-              <p className="text-slate-400 text-sm">12.6V • 18 hours remaining</p>
+            {/* Newsletter Signup */}
+            <div className="max-w-md mx-auto">
+              <NewsletterSignup />
             </div>
           </div>
         )}
