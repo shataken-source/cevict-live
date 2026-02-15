@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { chromium } from 'playwright';
 import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
@@ -25,29 +24,32 @@ export async function GET(request: NextRequest) {
 
   try {
     console.log('Starting NCSL Playwright scrape...');
-    
+
+    // Dynamic import Playwright to avoid build issues
+    const { chromium } = await import('playwright');
+
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
-    
+
     await page.goto(NCSL_URL, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(5000);
 
     // Extract legislation data
     const laws = await page.evaluate(() => {
       const results: any[] = [];
-      
+
       // Look for state sections and legislation entries
       const sections = document.querySelectorAll('h2, h3, .state-section');
       let currentState = '';
-      
+
       sections.forEach(section => {
         const text = section.textContent || '';
         const stateMatch = text.match(/^(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)/);
-        
+
         if (stateMatch) {
           currentState = stateMatch[1];
         }
-        
+
         // Look for bill patterns
         const billMatch = text.match(/(SB|HB|AB|LB|HF)\s*(\d+).*?(medical|adult use|recreational|hemp|CBD|cannabis)/i);
         if (billMatch && currentState) {
@@ -60,7 +62,7 @@ export async function GET(request: NextRequest) {
           });
         }
       });
-      
+
       return results;
     });
 
@@ -74,18 +76,18 @@ export async function GET(request: NextRequest) {
         state: law.state,
         title: law.title || `${law.billNumber} - Cannabis Legislation`,
         summary: law.summary?.substring(0, 300) || '',
-        category: law.category?.includes('medical') ? 'indoor' : 
-                 law.category?.includes('adult') || law.category?.includes('recreational') ? 'indoor' : 
-                 law.category?.includes('hemp') || law.category?.includes('cbd') ? 'vaping' : 'indoor',
-        icon: law.category?.includes('medical') ? '⚕️' : 
-              law.category?.includes('adult') || law.category?.includes('recreational') ? '🍃' : '🌿',
+        category: law.category?.includes('medical') ? 'indoor' :
+          law.category?.includes('adult') || law.category?.includes('recreational') ? 'indoor' :
+            law.category?.includes('hemp') || law.category?.includes('cbd') ? 'vaping' : 'indoor',
+        icon: law.category?.includes('medical') ? '⚕️' :
+          law.category?.includes('adult') || law.category?.includes('recreational') ? '🍃' : '🌿',
         severity: 'green',
         details: law.summary || '',
         source_url: NCSL_URL,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
-      
+
       if (!error) stored++;
     }
 
@@ -100,7 +102,7 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     if (browser) await browser.close();
     console.error('NCSL scrape error:', err);
-    
+
     return NextResponse.json({
       error: 'Scrape failed',
       message: err instanceof Error ? err.message : 'Unknown error'
