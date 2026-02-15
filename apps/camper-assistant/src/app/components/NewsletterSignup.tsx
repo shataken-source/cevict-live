@@ -18,8 +18,8 @@ export default function NewsletterSignup() {
 
     try {
       const endpoint = activeTab === 'email' ? '/api/subscribe/email' : '/api/subscribe/sms';
-      const payload = activeTab === 'email' 
-        ? { email, name } 
+      const payload = activeTab === 'email'
+        ? { email, name }
         : { phone, name };
 
       const response = await fetch(endpoint, {
@@ -68,25 +68,24 @@ export default function NewsletterSignup() {
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setActiveTab('email')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'email'
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'email'
               ? 'bg-emerald-600 text-white'
               : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-          }`}
+            }`}
         >
           <Mail className="w-4 h-4" />
           Email
         </button>
         <button
           onClick={() => setActiveTab('sms')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'sms'
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'sms'
               ? 'bg-emerald-600 text-white'
               : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-          }`}
+            }`}
         >
           <Smartphone className="w-4 h-4" />
           SMS
+          <span className="text-xs bg-amber-600/80 text-white px-1.5 py-0.5 rounded">Soon</span>
         </button>
       </div>
 
@@ -151,11 +150,10 @@ export default function NewsletterSignup() {
       {/* Result */}
       {result && (
         <div
-          className={`mt-4 p-3 rounded-lg flex items-start gap-2 ${
-            result.success
+          className={`mt-4 p-3 rounded-lg flex items-start gap-2 ${result.success
               ? 'bg-emerald-900/30 border border-emerald-700/30'
               : 'bg-red-900/30 border border-red-700/30'
-          }`}
+            }`}
         >
           {result.success ? (
             <Check className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
