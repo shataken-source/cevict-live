@@ -1,11 +1,33 @@
 import Link from 'next/link'
-import { Search, Scale, ShoppingBag, MapPin, FileText, ArrowRight } from 'lucide-react'
+import { Search, Scale, ShoppingBag, MapPin, FileText, ArrowRight, Crown } from 'lucide-react'
+import BuyMeACoffee from '@/components/ads/BuyMeACoffee'
+import AdBanner from '@/components/ads/AdBanner'
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
-      {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 py-16">
+      {/* Header Navigation */}
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <Link href="/" className="text-xl font-bold text-gray-900">
+            SmokersRights.com
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/premium" className="flex items-center gap-1 text-amber-600 hover:text-amber-700 font-medium">
+              <Crown className="w-4 h-4" />
+              <span className="hidden sm:inline">Premium</span>
+            </Link>
+            <BuyMeACoffee variant="button" />
+          </div>
+        </div>
+      </nav>
+
+      {/* Ad Banner - Header */}
+      <div className="max-w-7xl mx-auto px-4 mt-4">
+        <AdBanner slot="header-banner" format="horizontal" />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center mb-12">
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-4">
             SmokersRights.com
@@ -156,6 +178,11 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Support Card */}
+        <div className="max-w-md mx-auto mb-12">
+          <BuyMeACoffee variant="card" />
+        </div>
+
         {/* Premium Subscription CTA */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-8 text-white">
           <div className="flex items-center justify-between">
@@ -183,18 +210,25 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Free Resource CTA */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mt-12 text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Free Legal Guide</h2>
-          <p className="text-gray-600 mb-6 max-w-2xl mx-auto">
-            Download our free "50-State Legal Reference Guide" - a comprehensive PDF covering all state laws.
+        {/* Ad Banner - Footer */}
+        <div className="mt-12 mb-8">
+          <AdBanner slot="footer-banner" format="horizontal" />
+        </div>
+
+        {/* Footer */}
+        <footer className="border-t pt-8 text-center text-sm text-gray-600">
+          <p>© 2026 SmokersRights.com - Your Legal Navigator for Adult Tobacco Rights</p>
+          <p className="mt-2">
+            <Link href="/about" className="underline hover:text-gray-900">About</Link> |
+            <Link href="/contact" className="underline hover:text-gray-900 ml-2">Contact</Link> |
+            <Link href="/premium" className="underline hover:text-amber-600 ml-2">Go Premium</Link> |
+            <Link href="/affiliates" className="underline hover:text-gray-900 ml-2">Affiliates</Link>
           </p>
-          <Link
-            href="/download"
-            className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold transition-colors"
-          >
-            Download Free Guide
-          </Link>
+        </footer>
+
+        {/* Floating Support Button (mobile) */}
+        <div className="lg:hidden">
+          <BuyMeACoffee variant="floating" />
         </div>
       </div>
     </div>
