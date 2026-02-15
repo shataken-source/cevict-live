@@ -3,9 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 /**
  * Generate State Law Cards using AI
  * Creates realistic but synthetic state law summaries for all 50 states
- * 
+ *
  * Run: npx ts-node scripts/generate-law-cards.ts
- * 
+ *
  * Env vars needed:
  * - OPENAI_API_KEY
  * - NEXT_PUBLIC_SUPABASE_URL
@@ -93,7 +93,8 @@ async function generateLawCards() {
   }
 
   if (!OPENAI_API_KEY) {
-    console.log('No OPENAI_API_KEY - generating law cards manually');
+    console.error('Missing OPENAI_API_KEY! Set it in environment variables.');
+    process.exit(1);
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -117,13 +118,8 @@ async function generateLawCards() {
 
       let laws: LawCard[];
 
-      if (OPENAI_API_KEY) {
-        // Generate with AI
-        laws = await generateWithAI(state);
-      } else {
-        // Generate manually
-        laws = generateManually(state);
-      }
+      // Generate with AI only - no manual fallback
+      laws = await generateWithAI(state);
 
       // Store in database
       for (const law of laws) {
@@ -138,11 +134,10 @@ async function generateLawCards() {
       console.log(`  ${state.name}: Generated ${laws.length} law cards`);
 
       // Rate limit for AI calls
-      if (OPENAI_API_KEY) {
-        await new Promise(r => setTimeout(r, 1000));
-      }
+      await new Promise(r => setTimeout(r, 1000));
     } catch (err) {
       console.error(`  Error processing ${state.name}:`, err);
+      // Continue with next state instead of crashing entire script
     }
   }
 
@@ -150,7 +145,7 @@ async function generateLawCards() {
 }
 
 async function generateWithAI(state: { code: string; name: string }): Promise<LawCard[]> {
-  const prompt = `Generate 3 realistic but fictional smoking and vaping law summaries for ${state.name}. 
+  const prompt = `Generate 3 realistic but fictional smoking and vaping law summaries for ${state.name}.
 
 Each law should have:
 - Title: Brief name (e.g., "Indoor Smoking Act", "Vaping Regulations")
@@ -197,15 +192,15 @@ Respond in JSON format:
 
     const data = await res.json();
     const content = data.choices[0].message.content;
-    
+
     // Parse JSON from the response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error('No JSON found in response');
     }
-    
+
     const parsed = JSON.parse(jsonMatch[0]);
-    
+
     return parsed.laws.map((law: any) => ({
       id: crypto.randomUUID(),
       state: state.code,
@@ -219,83 +214,12 @@ Respond in JSON format:
       updated_at: new Date().toISOString()
     }));
   } catch (err) {
-    console.log(`  AI generation failed for ${state.name}, using manual fallback`);
-    return generateManually(state);
+    console.error(`  AI generation failed for ${state.name}:`, err);
+    throw err; // Don't fallback to manual - require real AI
   }
 }
 
-function generateManually(state: { code: string; name: string }): LawCard[] {
-  // Create varied laws based on state characteristics
-  const isStrict = ['CA', 'NY', 'NJ', 'MA', 'CT', 'WA', 'VT'].includes(state.code);
-  const isPermissive = ['NV', 'WY', 'MT', 'ND', 'SD', 'TN', 'KY'].includes(state.code);
-  
-  const baseLaws: Partial<LawCard>[] = [
-    {
-      title: 'Indoor Clean Air Act',
-      category: 'indoor',
-      icon: '🏢'
-    },
-    {
-      title: 'Vaping Device Regulations',
-      category: 'vaping',
-      icon: '💨'
-    },
-    {
-      title: 'Tobacco Product Taxation',
-      category: 'taxation',
-      icon: '💰'
-    }
-  ];
-
-  return baseLaws.map(base => {
-    const severity = isStrict ? 'red' : isPermissive ? 'green' : 'yellow';
-    
-    let summary: string;
-    let details: string;
-    
-    if (base.category === 'indoor') {
-      if (isStrict) {
-        summary = `Comprehensive indoor smoking ban in effect for ${state.name}. Smoking prohibited in all enclosed workplaces, restaurants, and bars.`;
-        details = 'Exemptions may exist for designated hotel rooms and private clubs. Fines range from $100-$500 for violations.';
-      } else if (isPermissive) {
-        summary = `${state.name} allows smoking in designated areas of bars, casinos, and certain restaurants with proper ventilation.`;
-        details = 'Business owners must post signage and designate separate smoking sections. Local jurisdictions may impose stricter rules.';
-      } else {
-        summary = `Indoor smoking in ${state.name} is restricted but allowed in stand-alone bars and casinos with proper signage.`;
-        details = 'Restaurants must maintain smoke-free dining areas. Bars must have separate ventilation for smoking sections.';
-      }
-    } else if (base.category === 'vaping') {
-      if (isStrict) {
-        summary = `Vaping products treated equally with tobacco in ${state.name}. Same restrictions apply to e-cigarettes.`;
-        details = 'Flavor restrictions may apply. Age verification required for online purchases. Marketing restrictions in place.';
-      } else {
-        summary = `${state.name} regulates vaping separately from tobacco with moderate restrictions on public use.`;
-        details = 'Vaping permitted in designated areas. Sales to minors prohibited. Some local flavor bans may exist.';
-      }
-    } else {
-      if (isStrict) {
-        summary = `${state.name} imposes high taxes on tobacco products, typically $2.00+ per pack of cigarettes.`;
-        details = 'Tax revenue funds health programs and smoking cessation initiatives. Vaping products may have separate tax rates.';
-      } else {
-        summary = `Moderate tobacco taxes in ${state.name}, generally under $1.50 per pack.`;
-        details = 'Lower tax rates aim to prevent black market sales while still funding public health initiatives.';
-      }
-    }
-    
-    return {
-      id: crypto.randomUUID(),
-      state: state.code,
-      title: base.title!,
-      summary,
-      category: base.category as any,
-      icon: base.icon!,
-      severity: severity as any,
-      details,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-  });
-}
+// Removed generateManually - no synthetic data allowed
 
 // Run if called directly
 if (require.main === module) {

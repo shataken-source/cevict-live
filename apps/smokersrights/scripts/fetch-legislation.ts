@@ -51,6 +51,11 @@ async function fetchAndStoreLegislation() {
     process.exit(1);
   }
 
+  if (!LEGISCAN_API_KEY) {
+    console.error('Missing LEGISCAN_API_KEY! Set it in environment variables.');
+    process.exit(1);
+  }
+
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   let newBills = 0;
   let updatedBills = 0;
@@ -60,16 +65,6 @@ async function fetchAndStoreLegislation() {
     console.log(`Fetching bills for ${state}...`);
 
     try {
-      // If no API key, use mock for development
-      if (!LEGISCAN_API_KEY) {
-        console.log('No LEGISCAN_API_KEY - using mock data mode');
-        // Insert a sample mock bill for this state
-        const mockBill = generateMockBill(state);
-        await storeBill(supabase, mockBill);
-        newBills++;
-        continue;
-      }
-
       const bills = await searchLegiScanBills(state);
 
       for (const bill of bills) {
@@ -132,45 +127,6 @@ function transformLegiScanBill(raw: any, state: string): LegislationBill {
     external_id: raw.bill_id?.toString(),
     url: raw.state_link || raw.url || '',
     sponsor: raw.sponsors?.[0]?.name || 'Unknown',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  };
-}
-
-function generateMockBill(state: string): LegislationBill {
-  const billTypes = ['HB', 'SB', 'AB'];
-  const type = billTypes[Math.floor(Math.random() * billTypes.length)];
-  const num = Math.floor(Math.random() * 900) + 100;
-
-  const topics = [
-    'Tobacco Tax Increase',
-    'Vaping Regulations',
-    'Flavor Ban',
-    'Indoor Smoking Restrictions',
-    'Retail License Requirements',
-    'Age Verification Enhancement',
-    'Hemp Product Regulations',
-    'CBD Sales Licensing',
-    'Marijuana Dispensary Zoning',
-    'Edibles Packaging Requirements',
-    'Delta-8 THC Restrictions',
-    'Cannabis Social Consumption'
-  ];
-  const topic = topics[Math.floor(Math.random() * topics.length)];
-
-  return {
-    id: crypto.randomUUID(),
-    bill_number: `${type} ${num}`,
-    title: `${topic} Act`,
-    description: `A bill concerning ${topic.toLowerCase()} in ${state}`,
-    state: state,
-    status: ['introduced', 'committee', 'passed', 'signed'][Math.floor(Math.random() * 4)] as any,
-    impact: ['positive', 'negative', 'neutral'][Math.floor(Math.random() * 3)] as any,
-    last_action: 'Introduced',
-    last_action_date: new Date().toISOString(),
-    session: '2026',
-    sponsor: 'Rep. Sample',
-    url: `https://legiscan.com/${state}/bill/${type}-${num}`,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };

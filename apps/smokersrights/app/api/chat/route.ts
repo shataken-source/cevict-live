@@ -58,14 +58,18 @@ Guidelines:
 
     let response: string;
 
+    if (!OPENAI_API_KEY && !ANTHROPIC_API_KEY) {
+      return NextResponse.json({
+        error: 'AI service not configured',
+        message: 'AI assistant is not available. Please configure OPENAI_API_KEY or ANTHROPIC_API_KEY.'
+      }, { status: 503 });
+    }
+
     // Try OpenAI first
     if (OPENAI_API_KEY) {
       response = await callOpenAI(messages, systemPrompt);
-    } else if (ANTHROPIC_API_KEY) {
-      response = await callAnthropic(messages, systemPrompt);
     } else {
-      // Fallback to demo response
-      response = generateDemoResponse(messages[messages.length - 1].content, state);
+      response = await callAnthropic(messages, systemPrompt);
     }
 
     // Log conversation to database (optional)
@@ -120,6 +124,8 @@ async function callOpenAI(messages: ChatMessage[], systemPrompt: string): Promis
 }
 
 async function callAnthropic(messages: ChatMessage[], systemPrompt: string): Promise<string> {
+  if (!ANTHROPIC_API_KEY) throw new Error('Anthropic API key not configured');
+
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -142,18 +148,4 @@ async function callAnthropic(messages: ChatMessage[], systemPrompt: string): Pro
 
   const data = await res.json();
   return data.content[0].text;
-}
-
-function generateDemoResponse(question: string, state?: string): string {
-  const stateRef = state ? ` in ${state.toUpperCase()} ` : '';
-
-  if (question.toLowerCase().includes('law') || question.toLowerCase().includes('legal')) {
-    return `I can help you understand smoking and vaping laws${stateRef}.However, I'm currently running in demo mode without a connected AI service.\n\nFor accurate legal information, please:\n1. Browse our state law guides at /search\n2. Check the legislation tracker for recent changes\n3. Consult a local attorney for specific legal advice\n\nTo enable full AI responses, add OPENAI_API_KEY or ANTHROPIC_API_KEY to your environment variables.`;
-  }
-
-  if (question.toLowerCase().includes('product') || question.toLowerCase().includes('vape') || question.toLowerCase().includes('tobacco')) {
-    return `I can provide general information about tobacco and vaping products${stateRef}. However, I'm currently in demo mode.\n\nFor product recommendations and reviews, please visit our affiliate marketplace or check user reviews on trusted sites.\n\nNote: Always verify age requirements (21+) and local regulations before purchasing.`;
-  }
-
-  return `I'm here to help with smoking rights information${stateRef}! I'm currently operating in demo mode.\n\nTo get full AI-powered responses, please configure an AI service:\n- Set OPENAI_API_KEY for GPT-4\n- Set ANTHROPIC_API_KEY for Claude\n\nIn the meantime, you can:\n• Browse our comprehensive state law guides\n• Track active legislation\n• Find smoking-friendly locations near you`;
 }
