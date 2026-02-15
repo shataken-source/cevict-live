@@ -1,11 +1,10 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import {
   Sun, Battery, CloudRain, Thermometer, Wind,
   Utensils, MessageCircle, Backpack, Bell, Music,
-  Tv, AlertTriangle, ChevronRight, MapPin, Clock
+  Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned
 } from 'lucide-react';
 import SolarPanel from './components/SolarPanel';
 import WeatherWidget from './components/WeatherWidget';
@@ -15,6 +14,7 @@ import TripPlanner from './components/TripPlanner';
 import CampingChat from './components/CampingChat';
 import AlarmClock from './components/AlarmClock';
 import TVGuide from './components/TVGuide';
+import LocalAttractions from './components/LocalAttractions';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -35,6 +35,7 @@ export default function Home() {
     { id: 'planner', label: 'Trip Planner', icon: Backpack },
     { id: 'alarm', label: 'Alarm', icon: Bell },
     { id: 'tv', label: 'TV Guide', icon: Tv },
+    { id: 'attractions', label: 'Local Explorer', icon: MapPinned },
   ];
 
   return (
@@ -128,6 +129,7 @@ export default function Home() {
         {activeTab === 'planner' && <TripPlanner />}
         {activeTab === 'alarm' && <AlarmClock />}
         {activeTab === 'tv' && <TVGuide />}
+        {activeTab === 'attractions' && <LocalAttractions />}
       </main>
     </div>
   );
