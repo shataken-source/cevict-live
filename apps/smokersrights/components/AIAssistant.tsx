@@ -3,7 +3,7 @@ import { useState } from "react";
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "👋 Hi! I'm your SmokersRights AI assistant. Ask me about:\n• State smoking laws\n• Product recommendations\n• Legal resources\n• How to fight unfair restrictions" }
+    { role: "assistant", content: "👋 Hi! I'm your SmokersRights AI assistant. Ask me about:\n• State tobacco, hemp & marijuana laws\n• CBD, delta-8, delta-9 regulations\n• Vaping, edibles & gummies laws\n• Product recommendations\n• Legal resources & advocacy" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);

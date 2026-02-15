@@ -38,14 +38,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const systemPrompt = `You are a helpful AI assistant for SmokersRights.com. You provide accurate information about tobacco and vaping laws, but always remind users to verify with official sources.
+    const systemPrompt = `You are a helpful AI assistant for SmokersRights.com. You provide accurate information about tobacco, hemp, marijuana, vaping, and alternative product laws, but always remind users to verify with official sources.
 
 Your knowledge areas:
 - State and local smoking/vaping laws
-- Tobacco product regulations
-- Age restrictions and compliance
-- Designated smoking areas
-- Recent legislative changes
+- Tobacco, hemp, and marijuana regulations
+- CBD, delta-8, delta-9, and THC product laws
+- Edibles, gummies, and infused product regulations
+- Age restrictions and compliance for all products
+- Designated smoking/vaping areas
+- Recent legislative changes affecting adult recreational products
 
 Guidelines:
 - Be factual and cite sources when possible
@@ -94,7 +96,7 @@ async function callOpenAI(messages: ChatMessage[], systemPrompt: string): Promis
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Authorization': `Bearer ${OPENAI_API_KEY} `,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -110,7 +112,7 @@ async function callOpenAI(messages: ChatMessage[], systemPrompt: string): Promis
 
   if (!res.ok) {
     const error = await res.text();
-    throw new Error(`OpenAI API error: ${error}`);
+    throw new Error(`OpenAI API error: ${error} `);
   }
 
   const data = await res.json();
@@ -135,7 +137,7 @@ async function callAnthropic(messages: ChatMessage[], systemPrompt: string): Pro
 
   if (!res.ok) {
     const error = await res.text();
-    throw new Error(`Anthropic API error: ${error}`);
+    throw new Error(`Anthropic API error: ${error} `);
   }
 
   const data = await res.json();
@@ -143,10 +145,10 @@ async function callAnthropic(messages: ChatMessage[], systemPrompt: string): Pro
 }
 
 function generateDemoResponse(question: string, state?: string): string {
-  const stateRef = state ? ` in ${state.toUpperCase()}` : '';
+  const stateRef = state ? ` in ${state.toUpperCase()} ` : '';
 
   if (question.toLowerCase().includes('law') || question.toLowerCase().includes('legal')) {
-    return `I can help you understand smoking and vaping laws${stateRef}. However, I'm currently running in demo mode without a connected AI service.\n\nFor accurate legal information, please:\n1. Browse our state law guides at /search\n2. Check the legislation tracker for recent changes\n3. Consult a local attorney for specific legal advice\n\nTo enable full AI responses, add OPENAI_API_KEY or ANTHROPIC_API_KEY to your environment variables.`;
+    return `I can help you understand smoking and vaping laws${stateRef}.However, I'm currently running in demo mode without a connected AI service.\n\nFor accurate legal information, please:\n1. Browse our state law guides at /search\n2. Check the legislation tracker for recent changes\n3. Consult a local attorney for specific legal advice\n\nTo enable full AI responses, add OPENAI_API_KEY or ANTHROPIC_API_KEY to your environment variables.`;
   }
 
   if (question.toLowerCase().includes('product') || question.toLowerCase().includes('vape') || question.toLowerCase().includes('tobacco')) {

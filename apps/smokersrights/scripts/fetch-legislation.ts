@@ -17,11 +17,13 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const STATES = ['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'];
 
-// Keywords to filter tobacco/smoking/vaping bills
+// Keywords to filter tobacco/smoking/vaping/hemp/marijuana bills
 const KEYWORDS = [
   'tobacco', 'smoking', 'vape', 'vaping', 'e-cigarette', 'electronic cigarette',
   'nicotine', 'flavor', 'flavored', 'smoke', 'cigar', 'hookah', 'snuff',
-  'chewing tobacco', 'smokeless tobacco', 'alternative tobacco'
+  'chewing tobacco', 'smokeless tobacco', 'alternative tobacco',
+  'hemp', 'marijuana', 'cannabis', 'cbd', 'delta-8', 'delta-9', 'thc',
+  'edible', 'gummy', 'gummies', 'infused', 'dispensary', 'recreational'
 ];
 
 async function fetchLegiScanBill(billId: number): Promise<any> {
@@ -146,7 +148,13 @@ function generateMockBill(state: string): LegislationBill {
     'Flavor Ban',
     'Indoor Smoking Restrictions',
     'Retail License Requirements',
-    'Age Verification Enhancement'
+    'Age Verification Enhancement',
+    'Hemp Product Regulations',
+    'CBD Sales Licensing',
+    'Marijuana Dispensary Zoning',
+    'Edibles Packaging Requirements',
+    'Delta-8 THC Restrictions',
+    'Cannabis Social Consumption'
   ];
   const topic = topics[Math.floor(Math.random() * topics.length)];
 
