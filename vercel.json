@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "cd apps/prognostication && npm install && npm run build",
-  "outputDirectory": "apps/prognostication/.next",
-  "installCommand": "cd apps/prognostication && npm install"
+  "buildCommand": "cd apps/camper-assistant && npm install && npm run build",
+  "outputDirectory": "apps/camper-assistant/.next",
+  "installCommand": "cd apps/camper-assistant && npm install"
 }
