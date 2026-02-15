@@ -2,7 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope
+  Sun,
+  Battery,
+  CloudRain,
+  Thermometer,
+  Wind,
+  Utensils,
+  MessageCircle,
+  Backpack,
+  Bell,
+  Music,
+  Tv,
+  AlertTriangle,
+  ChevronRight,
+  MapPin,
+  Clock,
+  MapPinned,
+  Wrench,
+  Telescope,
+  ShoppingCart
 } from 'lucide-react';
 import SolarPanel from './components/SolarPanel';
 import WeatherWidget from './components/WeatherWidget';
@@ -15,6 +33,7 @@ import TVGuide from './components/TVGuide';
 import LocalAttractions from './components/LocalAttractions';
 import MaintenanceLog from './components/MaintenanceLog';
 import StarMap from './components/StarMap';
+import SmartShoppingList from './components/SmartShoppingList';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -38,6 +57,7 @@ export default function Home() {
     { id: 'attractions', label: 'Local Explorer', icon: MapPinned },
     { id: 'maintenance', label: 'Maintenance', icon: Wrench },
     { id: 'stars', label: 'Night Sky', icon: Telescope },
+    { id: 'shopping', label: 'AI Shopping', icon: ShoppingCart },
   ];
 
   return (
@@ -134,6 +154,7 @@ export default function Home() {
         {activeTab === 'attractions' && <LocalAttractions />}
         {activeTab === 'maintenance' && <MaintenanceLog />}
         {activeTab === 'stars' && <StarMap />}
+        {activeTab === 'shopping' && <SmartShoppingList />}
       </main>
     </div>
   );
