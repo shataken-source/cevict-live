@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell, Clock, Music, Pause, Play, Trash2 } from 'lucide-react';
+import { Bell, Clock, Volume2, Pause, Play, Trash2, Bed, Zap, Eye } from 'lucide-react';
 
 export default function AlarmClock() {
   const [alarms, setAlarms] = useState([
@@ -43,6 +43,27 @@ export default function AlarmClock() {
     return buffer;
   };
 
+  const createColorNoise = (ctx: AudioContext, type: 'white' | 'pink' | 'brown'): AudioBuffer => {
+    const bufferSize = ctx.sampleRate * 2;
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const output = buffer.getChannelData(0);
+
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+
+      if (type === 'white') {
+        output[i] = white;
+      } else if (type === 'pink') {
+        // Pink noise: 1/f spectrum
+        output[i] = (white + (output[i - 1] || 0)) * 0.5;
+      } else {
+        // Brown noise: 1/f² spectrum
+        output[i] = (white + (output[i - 1] || 0) * 0.95) * 0.1;
+      }
+    }
+    return buffer;
+  };
+
   const playSound = (soundId: string) => {
     if (!audioContextRef.current) {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -52,48 +73,69 @@ export default function AlarmClock() {
 
     stopAllSounds();
 
-    if (soundId === 'birds') {
-      // Bird-like chirping using oscillators
-      for (let i = 0; i < 3; i++) {
-        setTimeout(() => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = 2000 + Math.random() * 1000;
-          gain.gain.value = 0.1;
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.1);
-        }, i * 300);
-      }
-    } else if (soundId === 'waves') {
-      // Pink noise for ocean waves
-      const buffer = createNoise(ctx);
+    // Color noise for sound masking
+    if (soundId === 'white' || soundId === 'pink' || soundId === 'brown') {
+      const buffer = createColorNoise(ctx, soundId);
       const noise = ctx.createBufferSource();
       noise.buffer = buffer;
       noise.loop = true;
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = 400;
-      noise.connect(filter);
-      filter.connect(ctx.destination);
+
+      const gain = ctx.createGain();
+      gain.gain.value = 0.3;
+
+      noise.connect(gain);
+      gain.connect(ctx.destination);
       noise.start();
       noiseNodesRef.current.push(noise);
-    } else if (soundId === 'forest') {
-      // Brown noise for forest wind
-      const buffer = createNoise(ctx);
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
-      noise.loop = true;
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = 600;
-      noise.connect(filter);
-      filter.connect(ctx.destination);
-      noise.start();
-      noiseNodesRef.current.push(noise);
+
+    } else if (soundId === 'sleep') {
+      // Delta waves: 2.5Hz difference (174 left, 171.5 right)
+      playBinauralBeat(ctx, 174, 171.5, 0.2);
+    } else if (soundId === 'focus') {
+      // Gamma waves: 40Hz difference (528 left, 568 right)
+      playBinauralBeat(ctx, 528, 568, 0.15);
+    } else if (soundId === 'relax') {
+      // Alpha waves: 10Hz difference (432 left, 442 right)
+      playBinauralBeat(ctx, 432, 442, 0.2);
     }
+  };
+
+  const playBinauralBeat = (ctx: AudioContext, leftFreq: number, rightFreq: number, volume: number) => {
+    // Left ear
+    const leftOsc = ctx.createOscillator();
+    leftOsc.type = 'sine';
+    leftOsc.frequency.value = leftFreq;
+
+    // Right ear
+    const rightOsc = ctx.createOscillator();
+    rightOsc.type = 'sine';
+    rightOsc.frequency.value = rightFreq;
+
+    // Panners
+    const leftPan = ctx.createStereoPanner();
+    leftPan.pan.value = -1;
+
+    const rightPan = ctx.createStereoPanner();
+    rightPan.pan.value = 1;
+
+    // Master gain
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = volume;
+
+    // Connect left
+    leftOsc.connect(leftPan);
+    leftPan.connect(masterGain);
+
+    // Connect right
+    rightOsc.connect(rightPan);
+    rightPan.connect(masterGain);
+
+    masterGain.connect(ctx.destination);
+
+    leftOsc.start();
+    rightOsc.start();
+
+    oscillatorsRef.current.push(leftOsc, rightOsc);
   };
 
   const toggleSound = (soundId: string) => {
@@ -125,11 +167,14 @@ export default function AlarmClock() {
     setAlarms(alarms.map(a => a.id === id ? { ...a, active: !a.active } : a));
   };
 
-  // Sound options for alarm
+  // Sound options - Color noise for masking, Binaural beats for focus/sleep
   const sounds = [
-    { id: 'birds', name: 'Birds Chirping', icon: Music },
-    { id: 'waves', name: 'Ocean Waves', icon: Music },
-    { id: 'forest', name: 'Forest Morning', icon: Music },
+    { id: 'white', name: 'White Noise', icon: Volume2, description: 'Full spectrum masking' },
+    { id: 'pink', name: 'Pink Noise', icon: Volume2, description: 'Balanced, natural' },
+    { id: 'brown', name: 'Brown Noise', icon: Volume2, description: 'Deep, rumbling' },
+    { id: 'sleep', name: 'Deep Sleep', icon: Bed, description: 'Delta 2.5Hz - Headphones' },
+    { id: 'focus', name: 'Focus', icon: Zap, description: 'Gamma 40Hz - Headphones' },
+    { id: 'relax', name: 'Relax', icon: Eye, description: 'Alpha 10Hz - Headphones' },
   ];
 
   return (
@@ -222,23 +267,27 @@ export default function AlarmClock() {
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
         <div className="flex items-center gap-2 mb-4">
           <Clock className="w-5 h-5 text-purple-400" />
-          <h3 className="font-medium">Sleep Timer</h3>
+          <h3 className="font-medium">Sound Masking & Binaural Beats</h3>
         </div>
-        <p className="text-sm text-slate-400 mb-3">Play nature sounds to help you fall asleep</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {sounds.map((sound) => (
-            <button
-              key={sound.id}
-              onClick={() => toggleSound(sound.id)}
-              className={`flex items-center justify-center gap-2 py-3 rounded-lg transition-colors ${playing === sound.id
-                ? 'bg-purple-500 text-white'
-                : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-                }`}
-            >
-              {playing === sound.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              {sound.name}
-            </button>
-          ))}
+        <p className="text-sm text-slate-400 mb-3">Color noise drowns out distractions. Binaural beats require headphones.</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {sounds.map((sound) => {
+            const Icon = sound.icon;
+            return (
+              <button
+                key={sound.id}
+                onClick={() => toggleSound(sound.id)}
+                className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${playing === sound.id
+                    ? 'bg-purple-600/20 border-purple-500 text-purple-300'
+                    : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'
+                  }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-sm font-medium">{sound.name}</span>
+                <span className="text-xs text-slate-400 text-center">{sound.description}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
