@@ -322,14 +322,39 @@ export default function WeatherWidget() {
     }
   };
 
+  const geocodeZip = async (zip: string): Promise<{ lat: number; lon: number; name: string } | null> => {
+    try {
+      // Check hardcoded first
+      if (ZIP_COORDS[zip]) return ZIP_COORDS[zip];
+
+      // Try Zippopotam.us API (free, no key needed)
+      const response = await fetch(`https://api.zippopotam.us/us/${zip}`);
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      if (data.places && data.places[0]) {
+        const place = data.places[0];
+        return {
+          lat: parseFloat(place.latitude),
+          lon: parseFloat(place.longitude),
+          name: `${place['place name']}, ${data['state abbreviation']}`
+        };
+      }
+      return null;
+    } catch (err) {
+      console.error('Geocoding error:', err);
+      return null;
+    }
+  };
+
   const fetchWeather = async () => {
     if (!useRealData) return;
     setLoading(true);
     setError('');
     try {
-      const coords = ZIP_COORDS[zipCode];
+      const coords = await geocodeZip(zipCode);
       if (!coords) {
-        setError('ZIP code not found. Try: 90210, 10001, 33101, or other major cities.');
+        setError('Invalid ZIP code. Please enter a valid US ZIP code (e.g., 90210, 10001, 35950).');
         setLoading(false);
         return;
       }
