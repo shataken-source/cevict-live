@@ -1,5 +1,4 @@
 import { Channel } from '@/types';
-import { useStore } from '@/store/useStore';
 
 export interface FavoriteKeyword {
     id: string;

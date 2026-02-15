@@ -1,0 +1,357 @@
+{
+  "date": "2026-02-15",
+  "generatedAt": "2026-02-15T00:22:30.749Z",
+  "count": 3,
+  "message": "Top 3 picks (of 63 games) — Cevict Flex + Triple Alignment — Regular (0-1 days)",
+  "earlyLines": false,
+  "picks": [
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "East Texas A&M Lions",
+      "away_team": "McNeese Cowboys",
+      "pick": "East Texas A&M Lions",
+      "pick_type": "MONEYLINE",
+      "odds": 3300,
+      "confidence": 92,
+      "game_time": "2026-02-14T23:00:39Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking East Texas A&M Lions with 92% confidence. ⏱️ Slot: Night game, Weekend, Prime time. 📊 1,500 simulations: 98.3% win rate for East Texas A&M Lions. 📈 Predicted score: 94-61. 🤖 AI signals: Sentiment favors away (-14%) Sharp money: backing away 💰 Value detected: moneyline East Texas A&M Lions (+96.3% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "01f47e3de4f6e039c943e3ca0e0295a7",
+      "expected_value_raw": 3241.07,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors away (-14%)",
+        "Sharp money: backing away",
+        "Experimental: Night game, Weekend, Prime time (+7 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.0282,
+      "sentiment_field": -0.1441,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.0345,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 1,
+      "external_pressure": 0,
+      "ai_confidence": "MEDIUM",
+      "mc_win_probability": 0.9827,
+      "mc_predicted_score": {
+        "home": 94,
+        "away": 61,
+        "homeRange": [
+          76,
+          110
+        ],
+        "awayRange": [
+          42,
+          79
+        ]
+      },
+      "mc_spread_probability": 0.564,
+      "mc_total_probability": 0.556,
+      "mc_iterations": 1500,
+      "value_bet_edge": 96.3,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Weekend",
+          "Prime time"
+        ],
+        "confidence_delta": 0.6
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      },
+      "total": {
+        "prediction": "over",
+        "line": 152,
+        "edge": 3.2,
+        "probability": 0.556,
+        "expected_value": 11.2,
+        "average_projected_total": 154.5,
+        "over_probability": 0.556,
+        "under_probability": 0.417,
+        "has_value": true
+      },
+      "all_value_bets": [
+        {
+          "type": "moneyline",
+          "side": "East Texas A&M Lions",
+          "edge": 96.3,
+          "probability": 0.983,
+          "expected_value": 150,
+          "kelly_fraction": 0.05,
+          "confidence": "very_high",
+          "reasoning": "Model: 98.3% vs Market: 2.0%"
+        },
+        {
+          "type": "spread",
+          "side": "East Texas A&M Lions",
+          "line": 31.1,
+          "edge": 4.02,
+          "probability": 0.564,
+          "expected_value": 7.67,
+          "kelly_fraction": 0.021,
+          "confidence": "low",
+          "reasoning": "Model: 56.4% to cover 31.1"
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 152,
+          "edge": 3.22,
+          "probability": 0.556,
+          "expected_value": 6.15,
+          "kelly_fraction": 0.017,
+          "confidence": "low",
+          "reasoning": "Model: 55.6% over 152 (avg: 154.5)"
+        }
+      ]
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Austin Peay Governors",
+      "away_team": "Bellarmine Knights",
+      "pick": "Bellarmine Knights",
+      "pick_type": "MONEYLINE",
+      "odds": 3300,
+      "confidence": 92,
+      "game_time": "2026-02-14T22:37:03Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Bellarmine Knights with 92% confidence. ⏱️ Slot: Night game, Weekend, Prime time. 📊 1,500 simulations: 82.2% win rate for Bellarmine Knights. 📈 Predicted score: 78-90. 🤖 AI signals: Sentiment favors home (14%) Sharp money: backing away 💰 Value detected: moneyline Bellarmine Knights (+80.2% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "bd374771075a78e647b72ffaf2c1ae47",
+      "expected_value_raw": 2694.8,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (14%)",
+        "Sharp money: backing away",
+        "Experimental: Night game, Weekend, Prime time (+7 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.0067,
+      "sentiment_field": 0.1441,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 1,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.178,
+      "mc_predicted_score": {
+        "home": 78,
+        "away": 90,
+        "homeRange": [
+          59,
+          96
+        ],
+        "awayRange": [
+          73,
+          108
+        ]
+      },
+      "mc_spread_probability": 0.594,
+      "mc_total_probability": 0.58,
+      "mc_iterations": 1500,
+      "value_bet_edge": 80.23,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Weekend",
+          "Prime time"
+        ],
+        "confidence_delta": 0.6
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      },
+      "total": {
+        "prediction": "over",
+        "line": 165,
+        "edge": 5.6,
+        "probability": 0.58,
+        "expected_value": 16,
+        "average_projected_total": 168.1,
+        "over_probability": 0.58,
+        "under_probability": 0.396,
+        "has_value": true
+      },
+      "all_value_bets": [
+        {
+          "type": "moneyline",
+          "side": "Bellarmine Knights",
+          "edge": 80.23,
+          "probability": 0.822,
+          "expected_value": 150,
+          "kelly_fraction": 0.05,
+          "confidence": "very_high",
+          "reasoning": "Model: 82.2% vs Market: 2.0%"
+        },
+        {
+          "type": "spread",
+          "side": "Austin Peay Governors",
+          "line": -16.3,
+          "edge": 7.02,
+          "probability": 0.594,
+          "expected_value": 13.4,
+          "kelly_fraction": 0.037,
+          "confidence": "high",
+          "reasoning": "Model: 59.4% to cover -16.3"
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 165,
+          "edge": 5.62,
+          "probability": 0.58,
+          "expected_value": 10.73,
+          "kelly_fraction": 0.03,
+          "confidence": "medium",
+          "reasoning": "Model: 58.0% over 165 (avg: 168.1)"
+        }
+      ]
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Alabama A&M Bulldogs",
+      "away_team": "Miss Valley St Delta Devils",
+      "pick": "Miss Valley St Delta Devils",
+      "pick_type": "MONEYLINE",
+      "odds": 3300,
+      "confidence": 92,
+      "game_time": "2026-02-14T22:41:44Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Miss Valley St Delta Devils with 92% confidence. ⏱️ Slot: Night game, Weekend, Prime time. 📊 1,500 simulations: 75.8% win rate for Miss Valley St Delta Devils. 📈 Predicted score: 65-76. 🤖 AI signals: Sentiment favors home (14%) Sharp money: backing away 💰 Value detected: moneyline Miss Valley St Delta Devils (+73.8% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "c2ac88375a38769061c49225728232a5",
+      "expected_value_raw": 2477.2,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (14%)",
+        "Sharp money: backing away",
+        "Experimental: Night game, Weekend, Prime time (+7 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.0067,
+      "sentiment_field": 0.1441,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 1,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.242,
+      "mc_predicted_score": {
+        "home": 65,
+        "away": 76,
+        "homeRange": [
+          47,
+          84
+        ],
+        "awayRange": [
+          58,
+          93
+        ]
+      },
+      "mc_spread_probability": 0.5827,
+      "mc_total_probability": 0.5653,
+      "mc_iterations": 1500,
+      "value_bet_edge": 73.83,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": true,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Weekend",
+          "Prime time"
+        ],
+        "confidence_delta": 0.6
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      },
+      "total": {
+        "prediction": "over",
+        "line": 138,
+        "edge": 4.13,
+        "probability": 0.565,
+        "expected_value": 13.07,
+        "average_projected_total": 141.1,
+        "over_probability": 0.565,
+        "under_probability": 0.408,
+        "has_value": true
+      },
+      "all_value_bets": [
+        {
+          "type": "moneyline",
+          "side": "Miss Valley St Delta Devils",
+          "edge": 73.83,
+          "probability": 0.758,
+          "expected_value": 150,
+          "kelly_fraction": 0.05,
+          "confidence": "very_high",
+          "reasoning": "Model: 75.8% vs Market: 2.0%"
+        },
+        {
+          "type": "spread",
+          "side": "Alabama A&M Bulldogs",
+          "line": -13.166666666666666,
+          "edge": 5.89,
+          "probability": 0.583,
+          "expected_value": 11.24,
+          "kelly_fraction": 0.031,
+          "confidence": "medium",
+          "reasoning": "Model: 58.3% to cover -13.166666666666666"
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 138,
+          "edge": 4.15,
+          "probability": 0.565,
+          "expected_value": 7.93,
+          "kelly_fraction": 0.022,
+          "confidence": "low",
+          "reasoning": "Model: 56.5% over 138 (avg: 141.1)"
+        }
+      ]
+    }
+  ]
+}

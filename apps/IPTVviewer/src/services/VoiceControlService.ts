@@ -1,5 +1,3 @@
-import {Channel} from '@/types';
-
 export interface VoiceCommand {
   phrase: string;
   action: string;
@@ -9,36 +7,36 @@ export interface VoiceCommand {
 export class VoiceControlService {
   private isListening: boolean = false;
   private commands: Map<string, (params?: any) => void> = new Map();
-  
+
   // Register voice commands
   registerCommands(commandMap: Record<string, (params?: any) => void>) {
     Object.entries(commandMap).forEach(([command, action]) => {
       this.commands.set(command.toLowerCase(), action);
     });
   }
-  
+
   // Start listening for voice commands
-  async startListening(onCommand: (command: string) => void) {
+  async startListening(_onCommand: (command: string) => void) {
     this.isListening = true;
     console.log('🎤 Voice control activated - say a command!');
-    
+
     // In production, use @react-native-voice/voice
     // Voice.start('en-US');
     // Voice.onSpeechResults = (e) => this.processCommand(e.value[0], onCommand);
   }
-  
+
   stopListening() {
     this.isListening = false;
     console.log('🔇 Voice control deactivated');
-    
+
     // Voice.stop();
   }
-  
+
   // Process voice command
   processCommand(spokenText: string, onCommand: (command: string) => void) {
     const text = spokenText.toLowerCase().trim();
     console.log(`🎤 Heard: "${text}"`);
-    
+
     // Simple command matching
     if (text.includes('previous channel') || text.includes('go back')) {
       onCommand('previous-channel');
@@ -76,7 +74,7 @@ export class VoiceControlService {
       console.log('❓ Command not recognized');
     }
   }
-  
+
   // Get available commands
   getAvailableCommands(): string[] {
     return [

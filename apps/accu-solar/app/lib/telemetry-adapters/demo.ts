@@ -26,6 +26,29 @@ export const demoAdapter: TelemetryAdapter = {
     const battV = clamp(51.2 + 1.4 * (batterySoc / 100) + 0.2 * Math.sin(t / 25), 48, 58);
     const battTemp = clamp(27 + 3 * Math.sin(t / 70) + 1.2 * Math.sin(t / 17), 12, 48);
 
+    // Generate realistic cell-level data for 16S LiFePO4 battery (51.2V nominal)
+    const cellsPerPack = 16;
+    const nominalCellV = 3.2; // LiFePO4 nominal
+    const currentCellV = battV / cellsPerPack;
+    const cellVoltageSpread = 0.08; // ±40mV max spread
+    const batteryCells = Array.from({ length: cellsPerPack }, (_, i) => {
+      // Cell 4 is an outlier (slightly lower voltage, needs balancing)
+      const isOutlier = i === 3;
+      const outlierOffset = isOutlier ? -0.025 : 0;
+      // Small random variation per cell (±20mV typical)
+      const randomVar = (Math.sin(t / 13 + i * 0.5) * 0.02);
+      const voltage = clamp(currentCellV + randomVar + outlierOffset, 2.8, 3.65);
+
+      return {
+        id: i + 1,
+        voltage: Math.round(voltage * 1000) / 1000, // 3 decimal places
+        temp_c: Math.round((battTemp + (Math.sin(t / 25 + i * 0.3) * 2)) * 10) / 10,
+        soc_pct: Math.round((voltage - 2.8) / (3.6 - 2.8) * 100),
+        soh_pct: Math.round((96.5 - i * 0.2) * 10) / 10,
+        balance_active: isOutlier || voltage > 3.45, // Balance high cells and the outlier
+      };
+    });
+
     const remainingKwh = (batterySoc / 100) * 10;
     const ttg =
       netW < -100 ? clamp((remainingKwh / (Math.abs(netW) / 1000)) * 0.9, 0, 96) : null;
@@ -57,6 +80,9 @@ export const demoAdapter: TelemetryAdapter = {
       daily_grid_export_kwh: Math.round(exportKwh * 100) / 100,
       self_consumption_pct: selfConsumption == null ? null : Math.round(selfConsumption * 10) / 10,
       savings_today_usd: null,
+      // Cell-level data
+      battery_cells: batteryCells,
+      battery_pack_temp: Math.round((battTemp + 2) * 10) / 10, // Slightly warmer at pack level
     };
   },
 };

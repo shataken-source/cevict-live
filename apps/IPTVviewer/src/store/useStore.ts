@@ -95,7 +95,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   setPlaying: (playing: boolean) => set({ isPlaying: playing }),
 
-  setVolume: (volume: number) => set((state) => ({
+  setVolume: (volume: number) => set((_state) => ({
     volume,
     // Only set isMuted based on volume if user is adjusting volume
     // If volume > 0, unmute. If volume === 0, mute (unless already muted for other reasons)

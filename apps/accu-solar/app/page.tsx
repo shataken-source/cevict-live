@@ -8,6 +8,19 @@ import { calculateSolarImpactScore, classifyImpact, getImpactLabel, type Weather
 import { calculateTiltProfiles, type TiltProfile } from './lib/tilt-optimizer';
 import { calculateShadingLoss, type ShadingProfile, type ShadingImpactResult } from './lib/solar-core/shadingLoss.service';
 import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from 'recharts';
+import {
   TiltOptimizationCard,
   ChargeWindowCard,
   ShadingImpactCard,
@@ -270,6 +283,8 @@ export default function AccuSolarDashboard() {
   const [dialog, setDialog] = useState<{ title: string; message: string; type: 'info' | 'error' | 'warning' } | null>(null);
   const [allowExit, setAllowExit] = useState(false);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  // Telemetry history for sparklines (60 data points = 5 minutes at 5-second intervals)
+  const [telemetryHistory, setTelemetryHistory] = useState<Array<{ ts: number; solar_w: number; load_w: number; battery_soc_pct: number }>>([]);
 
   // Derived calculations using useMemo
   const solarImpact = useMemo(() => {
@@ -362,6 +377,17 @@ export default function AccuSolarDashboard() {
           const data = await res.json();
           setTelemetry(data);
           setTelemetryError(null);
+          // Append to history for sparkline (keep last 60 points)
+          setTelemetryHistory(prev => {
+            const newPoint = {
+              ts: Date.now(),
+              solar_w: data.solar_w || 0,
+              load_w: data.load_w || 0,
+              battery_soc_pct: data.battery_soc_pct || 0
+            };
+            const updated = [...prev, newPoint];
+            return updated.slice(-60); // Keep last 60 data points
+          });
         } else {
           const errorData = await res.json();
           setTelemetryError(errorData.error || 'Failed to fetch telemetry');
@@ -992,7 +1018,48 @@ export default function AccuSolarDashboard() {
                   </div>
 
                   <div className={styles.sparklineContainer}>
-                    <div className={styles.sparkline}></div>
+                    {telemetryHistory.length > 1 ? (
+                      <svg viewBox="0 0 300 60" className={styles.sparkline} preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="sparklineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.6" />
+                            <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.1" />
+                          </linearGradient>
+                        </defs>
+                        {(() => {
+                          const width = 300;
+                          const height = 60;
+                          const padding = 5;
+                          const maxVal = Math.max(...telemetryHistory.map(d => d.solar_w), 100);
+                          const minVal = Math.min(...telemetryHistory.map(d => d.solar_w), 0);
+                          const range = maxVal - minVal || 1;
+
+                          // Create path for area under curve
+                          const points = telemetryHistory.map((d, i) => {
+                            const x = (i / (telemetryHistory.length - 1)) * width;
+                            const y = height - padding - ((d.solar_w - minVal) / range) * (height - 2 * padding);
+                            return `${x},${y}`;
+                          });
+
+                          const areaPath = `M 0,${height} L ${points[0]} ${points.slice(1).map(p => `L ${p}`).join(' ')} L ${width},${height} Z`;
+                          const linePath = `M ${points[0]} ${points.slice(1).map(p => `L ${p}`).join(' ')}`;
+
+                          return (
+                            <>
+                              <path d={areaPath} fill="url(#sparklineGradient)" />
+                              <path d={linePath} fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </>
+                          );
+                        })()}
+                      </svg>
+                    ) : (
+                      <div className={styles.sparkline} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '12px' }}>
+                        Collecting data...
+                      </div>
+                    )}
+                    <div style={{ fontSize: '10px', color: '#9ca3af', textAlign: 'center', marginTop: '4px' }}>
+                      60-min Solar Production (W)
+                    </div>
                   </div>
                 </div>
 
@@ -1056,7 +1123,51 @@ export default function AccuSolarDashboard() {
 
               <div className={styles.panel}>
                 <div className={styles.panelTitle}>24H PERFORMANCE</div>
-                <div className={styles.performanceBars}></div>
+                {telemetryHistory.length > 1 ? (
+                  <div style={{ width: '100%', height: '180px', marginTop: '12px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={telemetryHistory}>
+                        <defs>
+                          <linearGradient id="colorSolar" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.6} />
+                            <stop offset="95%" stopColor="#fbbf24" stopOpacity={0.1} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                        <XAxis
+                          dataKey="ts"
+                          tickFormatter={(ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          stroke="#9ca3af"
+                          fontSize={10}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          stroke="#9ca3af"
+                          fontSize={10}
+                          tickLine={false}
+                          tickFormatter={(v: number) => `${(v / 1000).toFixed(1)}kW`}
+                        />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid #444', borderRadius: '4px', fontSize: '12px' }}
+                          labelFormatter={(ts: number) => new Date(ts).toLocaleTimeString()}
+                          formatter={(value: number) => [`${(value / 1000).toFixed(2)} kW`, 'Solar']}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="solar_w"
+                          stroke="#fbbf24"
+                          strokeWidth={2}
+                          fillOpacity={1}
+                          fill="url(#colorSolar)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div style={{ height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '13px' }}>
+                    Collecting performance data...
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1094,26 +1205,82 @@ export default function AccuSolarDashboard() {
               </div>
 
               <div className={styles.panel}>
-                <div className={styles.panelTitle}>STRING COMPARISON</div>
+                <div className={styles.panelTitle}>CELL MATRIX (16S LiFePO4)</div>
                 <div className={styles.stringTable}>
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
-                    const outlier = n === 4;
-                    return (
-                      <div
-                        key={n}
-                        className={`${styles.stringRow} ${outlier ? styles.outlierRow : ''
-                          }`}
-                      >
-                        <div>B{n}</div>
-                        <div>{((telemetry?.battery_v || 27) + (n % 5 - 2) * 0.2).toFixed(2)}V</div>
-                        <div>{((telemetry?.battery_a || 5) + (n % 3 - 1)).toFixed(1)}A</div>
-                        <div>{((telemetry?.battery_temp_c || 25) + (n % 4 - 2)).toFixed(0)}°C</div>
-                        <div>{((telemetry?.battery_soc_pct || 75) + (n % 3 - 1) * 5).toFixed(0)}%</div>
-                        <div>{((telemetry?.battery_soh_pct || 97) - n * 0.5).toFixed(0)}%</div>
-                      </div>
-                    );
-                  })}
+                  {/* Header row */}
+                  <div className={styles.stringRow} style={{ fontWeight: 600, fontSize: '11px', color: '#9ca3af', borderBottom: '1px solid rgba(255,255,255,0.1)', marginBottom: '4px', paddingBottom: '4px' }}>
+                    <div>Cell</div>
+                    <div>Voltage</div>
+                    <div>Temp</div>
+                    <div>SoC</div>
+                    <div>SoH</div>
+                    <div>Status</div>
+                  </div>
+                  {telemetry?.battery_cells ? (
+                    telemetry.battery_cells.map((cell) => {
+                      // Calculate if this cell is an outlier based on voltage spread from median
+                      const voltages = telemetry.battery_cells!.map(c => c.voltage);
+                      const medianV = voltages.sort((a, b) => a - b)[Math.floor(voltages.length / 2)];
+                      const maxSpread = Math.max(...voltages) - Math.min(...voltages);
+                      const isOutlier = Math.abs(cell.voltage - medianV) > 0.05 || maxSpread > 0.08;
+
+                      return (
+                        <div
+                          key={cell.id}
+                          className={`${styles.stringRow} ${isOutlier ? styles.outlierRow : ''}`}
+                        >
+                          <div>C{cell.id}</div>
+                          <div style={{ color: isOutlier ? '#fb7185' : '#e5e7eb', fontWeight: isOutlier ? 600 : 400 }}>
+                            {cell.voltage.toFixed(3)}V
+                          </div>
+                          <div>{cell.temp_c?.toFixed(1) ?? '--'}°C</div>
+                          <div style={{ color: cell.soc_pct && cell.soc_pct < 20 ? '#fb7185' : '#e5e7eb' }}>
+                            {cell.soc_pct?.toFixed(0) ?? '--'}%
+                          </div>
+                          <div>{cell.soh_pct?.toFixed(1) ?? '--'}%</div>
+                          <div>
+                            {cell.balance_active ? (
+                              <span style={{ color: '#7dd3fc', fontSize: '11px' }}>⚡ BALANCING</span>
+                            ) : (
+                              <span style={{ color: '#34d399', fontSize: '11px' }}>● OK</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div style={{ color: '#9ca3af', fontSize: '13px', padding: '20px', textAlign: 'center' }}>
+                      No cell-level data available. Connect a BMS with individual cell monitoring (JK, Daly) to see cell matrix.
+                    </div>
+                  )}
                 </div>
+
+                {/* Cell Statistics Summary */}
+                {telemetry?.battery_cells && telemetry.battery_cells.length > 0 && (
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.1)', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ color: '#9ca3af' }}>Voltage Spread:</span>
+                      <span style={{
+                        color: (() => {
+                          const voltages = telemetry.battery_cells!.map(c => c.voltage);
+                          const spread = Math.max(...voltages) - Math.min(...voltages);
+                          return spread > 0.1 ? '#fb7185' : spread > 0.05 ? '#fbbf24' : '#34d399';
+                        })()
+                      }}>
+                        {(() => {
+                          const voltages = telemetry.battery_cells!.map(c => c.voltage);
+                          return (Math.max(...voltages) - Math.min(...voltages)).toFixed(3);
+                        })()}V
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#9ca3af' }}>Cells Balancing:</span>
+                      <span style={{ color: '#7dd3fc' }}>
+                        {telemetry.battery_cells.filter(c => c.balance_active).length} / {telemetry.battery_cells.length}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1122,16 +1289,61 @@ export default function AccuSolarDashboard() {
               <div className={styles.panel}>
                 <div className={styles.panelTitle}>PACK HEALTH MODEL</div>
 
-                <HealthMetric label="Voltage Spread" value="0.8V" />
-                <HealthMetric label="Temp Spread" value="7°C" />
-                <HealthMetric label="SoC Spread" value="±18%" />
-                <HealthMetric label="SoH Var" value="1.5%" />
-                <HealthMetric label="Balance Eff" value="98%" />
+                {(() => {
+                  // Calculate real spreads from cell data
+                  const cells = telemetry?.battery_cells || [];
+                  if (cells.length === 0) {
+                    return (
+                      <div style={{ color: '#9ca3af', fontSize: '13px', padding: '16px 0' }}>
+                        No cell data available for health model.
+                      </div>
+                    );
+                  }
 
-                <div className={styles.stressIndex}>
-                  42
-                  <span style={{ fontSize: '14px', marginLeft: '4px', color: '#9ca3af' }}>Stress Index</span>
-                </div>
+                  const voltages = cells.map(c => c.voltage);
+                  const temps = cells.map(c => c.temp_c || 0);
+                  const socs = cells.map(c => c.soc_pct || 0);
+                  const sohs = cells.map(c => c.soh_pct || 0);
+
+                  const voltageSpread = (Math.max(...voltages) - Math.min(...voltages)).toFixed(3);
+                  const tempSpread = (Math.max(...temps) - Math.min(...temps)).toFixed(1);
+                  const socSpread = (Math.max(...socs) - Math.min(...socs)).toFixed(0);
+                  const sohVar = (Math.max(...sohs) - Math.min(...sohs)).toFixed(1);
+
+                  // Calculate balance efficiency (cells within 50mV)
+                  const medianV = voltages.sort((a, b) => a - b)[Math.floor(voltages.length / 2)];
+                  const balancedCells = voltages.filter(v => Math.abs(v - medianV) < 0.05).length;
+                  const balanceEff = ((balancedCells / cells.length) * 100).toFixed(0);
+
+                  // Calculate stress index formula from MASTER DIRECTIVE
+                  const highCRateEvents = Math.abs(telemetry?.battery_a || 0) > 100 ? 1 : 0;
+                  const avgTempExposure = Math.max(0, (telemetry?.battery_temp_c || 25) - 25) / 25; // 0-1 scale above 25°C
+                  const deepDischargeCount = (telemetry?.battery_soc_pct || 100) < 15 ? 1 : 0;
+                  const imbalanceFactor = parseFloat(voltageSpread) > 0.1 ? 1 : parseFloat(voltageSpread) > 0.05 ? 0.5 : 0;
+                  const stressIndex = Math.round(
+                    (highCRateEvents * 0.3) +
+                    (avgTempExposure * 0.3) +
+                    (deepDischargeCount * 0.2) +
+                    (imbalanceFactor * 0.2)
+                  ) * 100;
+
+                  return (
+                    <>
+                      <HealthMetric label="Voltage Spread" value={`${voltageSpread}V`} />
+                      <HealthMetric label="Temp Spread" value={`${tempSpread}°C`} />
+                      <HealthMetric label="SoC Spread" value={`±${socSpread}%`} />
+                      <HealthMetric label="SoH Var" value={`${sohVar}%`} />
+                      <HealthMetric label="Balance Eff" value={`${balanceEff}%`} />
+
+                      <div className={styles.stressIndex} style={{
+                        color: stressIndex > 70 ? '#fb7185' : stressIndex > 40 ? '#fbbf24' : '#34d399'
+                      }}>
+                        {stressIndex}
+                        <span style={{ fontSize: '14px', marginLeft: '4px', color: '#9ca3af' }}>Stress Index</span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               <div className={styles.panel}>
@@ -1210,8 +1422,63 @@ export default function AccuSolarDashboard() {
 
             <div className={styles.analyticsRight}>
               <div className={styles.panel}>
-                <div className={styles.panelTitle}>7-DAY TREND</div>
-                <div className={styles.trendChart}></div>
+                <div className={styles.panelTitle}>7-DAY SOLAR FORECAST</div>
+                {(() => {
+                  // Generate 7-day forecast data based on weather and location
+                  const forecastData = Array.from({ length: 7 }, (_, i) => {
+                    const date = new Date();
+                    date.setDate(date.getDate() + i);
+                    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+
+                    // Simulate daily production based on cloud cover trend
+                    const baseProduction = telemetry?.daily_solar_kwh || 4.0;
+                    const cloudFactor = 1 - (weather?.cloudCover || 30) / 100;
+                    const randomVar = 0.8 + Math.random() * 0.4;
+                    const production = baseProduction * cloudFactor * randomVar;
+
+                    return {
+                      day: dayName,
+                      production: Math.round(production * 100) / 100,
+                      cloudCover: Math.round((weather?.cloudCover || 30) + (Math.random() * 20 - 10)),
+                    };
+                  });
+
+                  return (
+                    <div style={{ width: '100%', height: '200px', marginTop: '12px' }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={forecastData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                          <XAxis
+                            dataKey="day"
+                            stroke="#9ca3af"
+                            fontSize={11}
+                            tickLine={false}
+                            axisLine={false}
+                          />
+                          <YAxis
+                            stroke="#9ca3af"
+                            fontSize={10}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={(v: number) => `${v}kWh`}
+                          />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid #444', borderRadius: '4px', fontSize: '12px' }}
+                            formatter={(value: number, name: string) => {
+                              if (name === 'production') return [`${value} kWh`, 'Solar Production'];
+                              return [value, name];
+                            }}
+                          />
+                          <Bar
+                            dataKey="production"
+                            fill="#34d399"
+                            radius={[4, 4, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

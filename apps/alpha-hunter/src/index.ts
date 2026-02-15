@@ -16,6 +16,16 @@ import { UnifiedFundManager } from './fund-manager';
 import { SMSNotifier } from './sms-notifier';
 import { KalshiTrader } from './intelligence/kalshi-trader';
 import { PrognoIntegration } from './intelligence/progno-integration';
+import { checkSetup } from './setup-check';
+
+// Validate setup before starting
+const setup = checkSetup();
+if (!setup.ok) {
+  console.log('\n🔧 Alpha Hunter Setup Required:\n');
+  setup.issues.forEach(issue => console.log(`  ${issue}`));
+  console.log('\n📖 See README.md for setup instructions\n');
+  process.exit(1);
+}
 
 class AlphaHunter {
   private brain: AIBrain;

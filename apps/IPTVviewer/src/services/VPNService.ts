@@ -27,12 +27,11 @@ import {
   wireGuardRequestPermission,
   wireGuardConnect,
   wireGuardDisconnect,
-  wireGuardGetStatus,
 } from './WireGuardNative';
 
 export class VPNService {
   private config: VPNConfig;
-  private status: VPNStatus = {connected: false};
+  private status: VPNStatus = { connected: false };
   private usedWireGuard = false;
 
   constructor(config?: VPNConfig) {

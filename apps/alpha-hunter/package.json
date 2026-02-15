@@ -4,6 +4,8 @@
   "description": "Autonomous profit-hunting AI agent with fund management",
   "private": true,
   "scripts": {
+    "setup:check": "tsx src/setup-check.ts",
+    "postinstall": "echo '✅ Dependencies installed. Run: npm run setup:check'",
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "train": "tsx src/crypto-trainer.ts",
