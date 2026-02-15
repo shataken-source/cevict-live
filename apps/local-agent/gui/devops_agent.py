@@ -1357,6 +1357,94 @@ class DevOpsWindow(QMainWindow):
         code, body = self._cochran_api("POST", "/search/rebuild")
         self.cochran_output.setPlainText(f"Status: {code}\n{body}")
 
+    def _show_todays_picks(self):
+        """Show today's picks from progno picks-response.json"""
+        picks_file = APPS_DIR / "progno" / "picks-response.json"
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("📊 Today's Picks - Progno")
+        dialog.setMinimumSize(600, 400)
+        layout = QVBoxLayout(dialog)
+
+        if not picks_file.exists():
+            label = QLabel("No picks file found. Run progno analysis first.")
+            label.setStyleSheet(f"color: {RED}; font-size: 14px;")
+            layout.addWidget(label)
+        else:
+            try:
+                data = json.loads(picks_file.read_text('utf-8'))
+
+                # Header
+                header = QLabel(f"<h2>🎯 Progno Picks - {datetime.now().strftime('%B %d, %Y')}</h2>")
+                layout.addWidget(header)
+
+                # Summary
+                count = data.get('count', 0)
+                total = data.get('total_games', 0)
+                premium = data.get('premium_count', 0)
+                value = data.get('value_bets_count', 0)
+
+                summary = QLabel(f"""
+                <table style='font-size: 13px;'>
+                <tr><td><b>Games Analyzed:</b></td><td>{total}</td></tr>
+                <tr><td><b>Picks Found:</b></td><td><span style='color: {GREEN};'>{count}</span></td></tr>
+                <tr><td><b>Premium Picks:</b></td><td><span style='color: {AMBER};'>{premium}</span></td></tr>
+                <tr><td><b>Value Bets:</b></td><td><span style='color: {PURPLE};'>{value}</span></td></tr>
+                </table>
+                """)
+                layout.addWidget(summary)
+
+                # Message if no picks
+                if count == 0:
+                    msg = QLabel(f"<p style='color: {TEXT_DIM}; font-style: italic;'>{data.get('message', 'No games found today')}</p>")
+                    layout.addWidget(msg)
+
+                # Picks list
+                picks = data.get('picks', [])
+                if picks:
+                    picks_label = QLabel("<h3>📋 Selected Picks:</h3>")
+                    layout.addWidget(picks_label)
+
+                    picks_text = QPlainTextEdit()
+                    picks_text.setReadOnly(True)
+                    picks_text.setMaximumHeight(200)
+
+                    picks_list = []
+                    for i, pick in enumerate(picks[:10], 1):
+                        sport = pick.get('sport', 'Unknown')
+                        matchup = pick.get('matchup', 'Unknown')
+                        pick_type = pick.get('pick', 'N/A')
+                        confidence = pick.get('confidence', 0)
+                        picks_list.append(f"{i}. [{sport}] {matchup} → {pick_type} (Confidence: {confidence}%)")
+
+                    picks_text.setPlainText("\n".join(picks_list))
+                    layout.addWidget(picks_text)
+
+                # Technology used
+                tech = data.get('technology', {})
+                if tech:
+                    tech_label = QLabel("<h3>🧠 Technology:</h3>")
+                    layout.addWidget(tech_label)
+
+                    tech_text = QPlainTextEdit()
+                    tech_text.setReadOnly(True)
+                    tech_text.setMaximumHeight(100)
+                    tech_lines = [f"• {k.replace('_', ' ').title()}: {v}" for k, v in tech.items()]
+                    tech_text.setPlainText("\n".join(tech_lines))
+                    layout.addWidget(tech_text)
+
+            except Exception as e:
+                error = QLabel(f"Error reading picks: {e}")
+                error.setStyleSheet(f"color: {RED};")
+                layout.addWidget(error)
+
+        # Close button
+        btn = QPushButton("Close")
+        btn.clicked.connect(dialog.accept)
+        layout.addWidget(btn)
+
+        dialog.exec()
+
     # ---- Window behavior ----
     def closeEvent(self, event):
         event.ignore()
@@ -1415,6 +1503,10 @@ def main():
     action_cochran = QAction("Cochran AI Status", menu)
     action_cochran.triggered.connect(lambda: (window.show(), window.tabs.setCurrentIndex(5), window._check_cochran()))
     menu.addAction(action_cochran)
+
+    action_picks = QAction("📊 Today's Picks (Progno)", menu)
+    action_picks.triggered.connect(window._show_todays_picks)
+    menu.addAction(action_picks)
 
     menu.addSeparator()
 
