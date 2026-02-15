@@ -147,6 +147,12 @@ irm http://localhost:8471/git/commit-and-push -Method POST -Body '{"message":"fe
 # Deploy app
 irm http://localhost:8471/vercel/deploy -Method POST -Body '{"app":"my-app","production":true}' -ContentType "application/json"
 
+# Check for package.json changes and auto-install dependencies
+irm http://localhost:8471/watch/package-json -Method POST -Body '{"app":"my-app","auto_install":true}' -ContentType "application/json"
+
+# Watch package.json without installing (dry run)
+irm http://localhost:8471/watch/package-json -Method POST -Body '{"app":"my-app","dry_run":true}' -ContentType "application/json"
+
 # Check ports
 irm http://localhost:8471/tools/ports-scan | ConvertTo-Json -Depth 2
 
