@@ -1088,18 +1088,123 @@ export default function AccuSolarDashboard() {
                 </div>
               </div>
 
-              {/* POWER FLOW */}
+              {/* POWER FLOW SVG DIAGRAM */}
               <div className={styles.panel}>
-                <div className={styles.panelTitle}>POWER FLOW</div>
+                <div className={styles.panelTitle}>⚡ POWER FLOW</div>
 
-                <div className={styles.flowDiagram}>
-                  <div className={styles.node}>☀<span>{solarKW.toFixed(2)}kW</span></div>
-                  <div className={styles.flowLine}></div>
-                  <div className={styles.node}>🔋<span>{batteryKW.toFixed(2)}kW</span></div>
-                  <div className={styles.flowLine}></div>
-                  <div className={styles.node}>🏠<span>{loadKW.toFixed(2)}kW</span></div>
-                  <div className={styles.flowLine}></div>
-                  <div className={styles.node}>⚡<span>{Math.abs(gridKW).toFixed(2)}kW</span></div>
+                <div style={{ width: '100%', height: '220px', position: 'relative' }}>
+                  <svg viewBox="0 0 400 220" style={{ width: '100%', height: '100%' }}>
+                    {/* Definitions for gradients and arrows */}
+                    <defs>
+                      <linearGradient id="solarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#fbbf24" />
+                        <stop offset="100%" stopColor="#f59e0b" />
+                      </linearGradient>
+                      <linearGradient id="batteryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#34d399" />
+                        <stop offset="100%" stopColor="#10b981" />
+                      </linearGradient>
+                      <linearGradient id="homeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#7dd3fc" />
+                        <stop offset="100%" stopColor="#38bdf8" />
+                      </linearGradient>
+                      <linearGradient id="gridGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#a78bfa" />
+                        <stop offset="100%" stopColor="#8b5cf6" />
+                      </linearGradient>
+                      <marker id="arrowhead-solar" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" />
+                      </marker>
+                      <marker id="arrowhead-battery" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+                      </marker>
+                      <marker id="arrowhead-grid" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+                      </marker>
+                    </defs>
+
+                    {/* Solar Panel Node - Top Left */}
+                    <g transform="translate(60, 40)">
+                      <rect x="-40" y="-30" width="80" height="60" rx="8" fill="url(#solarGrad)" opacity="0.2" stroke="#fbbf24" strokeWidth="2" />
+                      <rect x="-35" y="-25" width="24" height="20" fill="#fbbf24" opacity="0.6" />
+                      <rect x="-9" y="-25" width="24" height="20" fill="#fbbf24" opacity="0.6" />
+                      <rect x="-35" y="-3" width="24" height="20" fill="#fbbf24" opacity="0.6" />
+                      <rect x="-9" y="-3" width="24" height="20" fill="#fbbf24" opacity="0.6" />
+                      <text x="0" y="45" textAnchor="middle" fill="#fbbf24" fontSize="12" fontWeight="600">SOLAR</text>
+                      <text x="0" y="60" textAnchor="middle" fill="#e5e7eb" fontSize="14" fontWeight="700">{solarKW.toFixed(2)} kW</text>
+                    </g>
+
+                    {/* Battery Node - Top Right */}
+                    <g transform="translate(340, 40)">
+                      <rect x="-35" y="-30" width="70" height="60" rx="8" fill="url(#batteryGrad)" opacity="0.2" stroke="#34d399" strokeWidth="2" />
+                      <rect x="-25" y="-20" width="50" height="40" rx="4" fill="#34d399" opacity="0.3" stroke="#34d399" strokeWidth="1" />
+                      <rect x="-4" y="-25" width="8" height="6" rx="1" fill="#34d399" />
+                      <text x="0" y="45" textAnchor="middle" fill="#34d399" fontSize="12" fontWeight="600">BATTERY</text>
+                      <text x="0" y="60" textAnchor="middle" fill="#e5e7eb" fontSize="14" fontWeight="700">{Math.abs(batteryKW).toFixed(2)} kW</text>
+                      <text x="0" y="75" textAnchor="middle" fill={batteryKW >= 0 ? '#34d399' : '#fbbf24'} fontSize="10">{batteryKW >= 0 ? 'CHARGING' : 'DISCHARGING'}</text>
+                    </g>
+
+                    {/* Home/Load Node - Center */}
+                    <g transform="translate(200, 170)">
+                      <polygon points="0,-35 -35,0 -25,15 -35,25 0,25 35,25 25,15 35,0" fill="url(#homeGrad)" opacity="0.2" stroke="#7dd3fc" strokeWidth="2" />
+                      <rect x="-15" y="-5" width="30" height="20" rx="2" fill="#7dd3fc" opacity="0.4" />
+                      <rect x="-8" y="-12" width="16" height="12" rx="1" fill="#7dd3fc" opacity="0.6" />
+                      <rect x="-3" y="-18" width="6" height="8" rx="1" fill="#fbbf24" opacity="0.8" />
+                      <text x="0" y="45" textAnchor="middle" fill="#7dd3fc" fontSize="12" fontWeight="600">HOME</text>
+                      <text x="0" y="60" textAnchor="middle" fill="#e5e7eb" fontSize="14" fontWeight="700">{loadKW.toFixed(2)} kW</text>
+                    </g>
+
+                    {/* Grid Node - Bottom Left */}
+                    <g transform="translate(60, 170)">
+                      <circle cx="0" cy="0" r="35" fill="url(#gridGrad)" opacity="0.2" stroke="#a78bfa" strokeWidth="2" />
+                      <circle cx="0" cy="0" r="20" fill="#a78bfa" opacity="0.3" />
+                      <text x="0" y="5" textAnchor="middle" fill="#a78bfa" fontSize="16" fontWeight="700">⚡</text>
+                      <text x="0" y="55" textAnchor="middle" fill="#a78bfa" fontSize="12" fontWeight="600">GRID</text>
+                      <text x="0" y="70" textAnchor="middle" fill="#e5e7eb" fontSize="14" fontWeight="700">{Math.abs(gridKW).toFixed(2)} kW</text>
+                      <text x="0" y="85" textAnchor="middle" fill={gridKW >= 0 ? '#fb7185' : '#34d399'} fontSize="10">{gridKW >= 0 ? 'IMPORTING' : 'EXPORTING'}</text>
+                    </g>
+
+                    {/* Flow Lines */}
+                    {/* Solar to Home */}
+                    {solarKW > 0.1 && (
+                      <g>
+                        <path d="M 60 70 Q 120 120 170 145" fill="none" stroke="#fbbf24" strokeWidth={Math.max(2, solarKW * 3)} strokeOpacity="0.6" markerEnd="url(#arrowhead-solar)" />
+                        <text x="115" y="105" fill="#fbbf24" fontSize="10" fontWeight="500">{solarKW.toFixed(1)} kW</text>
+                      </g>
+                    )}
+
+                    {/* Solar to Battery */}
+                    {batteryKW > 0.1 && solarKW > batteryKW && (
+                      <g>
+                        <path d="M 100 40 Q 200 10 300 40" fill="none" stroke="#34d399" strokeWidth={Math.max(2, batteryKW * 3)} strokeOpacity="0.6" markerEnd="url(#arrowhead-battery)" />
+                        <text x="200" y="18" fill="#34d399" fontSize="10" fontWeight="500">{batteryKW.toFixed(1)} kW</text>
+                      </g>
+                    )}
+
+                    {/* Battery to Home */}
+                    {batteryKW < -0.1 && (
+                      <g>
+                        <path d="M 340 100 Q 280 140 230 165" fill="none" stroke="#fbbf24" strokeWidth={Math.max(2, Math.abs(batteryKW) * 3)} strokeOpacity="0.6" markerEnd="url(#arrowhead-battery)" />
+                        <text x="295" y="140" fill="#fbbf24" fontSize="10" fontWeight="500">{Math.abs(batteryKW).toFixed(1)} kW</text>
+                      </g>
+                    )}
+
+                    {/* Grid to Home */}
+                    {gridKW > 0.1 && (
+                      <g>
+                        <path d="M 95 170 L 165 170" fill="none" stroke="#fb7185" strokeWidth={Math.max(2, gridKW * 3)} strokeOpacity="0.6" markerEnd="url(#arrowhead-grid)" />
+                        <text x="130" y="165" fill="#fb7185" fontSize="10" fontWeight="500">{gridKW.toFixed(1)} kW</text>
+                      </g>
+                    )}
+
+                    {/* Home to Grid (Export) */}
+                    {gridKW < -0.1 && (
+                      <g>
+                        <path d="M 165 185 L 95 185" fill="none" stroke="#34d399" strokeWidth={Math.max(2, Math.abs(gridKW) * 3)} strokeOpacity="0.6" markerEnd="url(#arrowhead-grid)" />
+                        <text x="130" y="205" fill="#34d399" fontSize="10" fontWeight="500">{Math.abs(gridKW).toFixed(1)} kW</text>
+                      </g>
+                    )}
+                  </svg>
                 </div>
               </div>
 
