@@ -7,25 +7,27 @@ import toast from 'react-hot-toast'
 interface BuyMeACoffeeProps {
   username?: string
   variant?: 'button' | 'card' | 'floating'
+  kofiUrl?: string
 }
 
 /**
- * Buy Me a Coffee / Tip Jar Component
- * 
+ * Ko-fi / Tip Jar Component
+ *
  * Quick monetization - visitors can support the site
- * Sign up at https://www.buymeacoffee.com
+ * Uses Ko-fi: https://ko-fi.com/cevict
  */
-export default function BuyMeACoffee({ 
-  username = 'popthepopcorn',
-  variant = 'button' 
+export default function BuyMeACoffee({
+  username = 'cevict',
+  variant = 'button',
+  kofiUrl = 'https://ko-fi.com/cevict?ref=onboarding_email_founderwelcome'
 }: BuyMeACoffeeProps) {
   const [showOptions, setShowOptions] = useState(false)
 
   const handleSupport = (amount?: number) => {
-    const url = amount 
-      ? `https://www.buymeacoffee.com/${username}?amount=${amount}`
-      : `https://www.buymeacoffee.com/${username}`
-    
+    const url = amount
+      ? `${kofiUrl}&amount=${amount}`
+      : kofiUrl
+
     window.open(url, '_blank')
     toast.success('Thanks for supporting PopThePopcorn! 🍿')
   }
@@ -38,7 +40,7 @@ export default function BuyMeACoffee({
           className="bg-amber-500 hover:bg-amber-400 text-black font-bold py-3 px-4 rounded-full shadow-lg flex items-center gap-2 transition-all hover:scale-105"
         >
           <Coffee className="w-5 h-5" />
-          <span className="hidden sm:inline">Buy us popcorn</span>
+          <span className="hidden sm:inline">Support Us</span>
         </button>
       </div>
     )
@@ -52,7 +54,7 @@ export default function BuyMeACoffee({
         <p className="text-slate-400 text-sm mb-4">
           Help us keep the popcorn popping. Your support keeps the news flowing!
         </p>
-        
+
         {showOptions ? (
           <div className="flex gap-2 justify-center">
             <button
@@ -94,7 +96,7 @@ export default function BuyMeACoffee({
       className="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-400 hover:text-amber-300 py-2 px-4 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
     >
       <Coffee className="w-4 h-4" />
-      Buy us popcorn
+      Support Us
     </button>
   )
 }
