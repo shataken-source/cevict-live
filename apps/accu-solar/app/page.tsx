@@ -34,6 +34,9 @@ interface WeatherData {
   temperatureC: number;
   windSpeed: number;
   shortwave_radiation: number;
+  irradiance?: number;
+  humidity?: number;
+  uvIndex?: number;
 }
 interface BatteryBankConfig {
   banks: number;
@@ -292,6 +295,9 @@ export default function AccuSolarDashboard() {
     const snapshot: WeatherSnapshotInput = {
       cloudCover: weather.cloudCover,
       temperatureC: weather.temperatureC,
+      irradiance: weather.irradiance ?? weather.shortwave_radiation,
+      humidity: weather.humidity ?? 50,
+      uvIndex: weather.uvIndex ?? 5,
     };
     const score = calculateSolarImpactScore(snapshot);
     return {
@@ -423,6 +429,9 @@ export default function AccuSolarDashboard() {
             temperatureC: data.temperatureC || 20,
             windSpeed: data.windSpeed || 0,
             shortwave_radiation: data.ghi || 200,
+            irradiance: data.ghi || data.dni || data.shortwave_radiation || 200,
+            humidity: data.humidity || 50,
+            uvIndex: data.uvIndex || data.uv_index || 5,
           });
         }
       } catch (err) {

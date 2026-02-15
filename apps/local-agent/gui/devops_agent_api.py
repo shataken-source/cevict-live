@@ -2164,8 +2164,267 @@ if HAS_FLASK:
             "remaining": len(inbox_messages),
         })
 
+    # -------------------------------------------------------------------------
+    # AI Health Monitoring & Watchdog
+    # -------------------------------------------------------------------------
+    ai_status: dict = {
+        "last_heartbeat": None,
+        "status": "unknown",  # active, idle, stuck, error, stopped
+        "current_task": None,
+        "start_time": None,
+        "last_activity": None,
+        "alerts_sent": [],
+        "stuck_detection": {
+            "last_progress": None,
+            "same_output_count": 0,
+            "loop_detected": False,
+        }
+    }
+
+    @app.route('/ai/heartbeat', methods=['POST'])
+    def ai_heartbeat():
+        """AI calls this to report it's active and working."""
+        data = request.get_json() or {}
+
+        ai_status["last_heartbeat"] = datetime.now().isoformat()
+        ai_status["status"] = data.get('status', 'active')
+        ai_status["current_task"] = data.get('task', ai_status.get('current_task'))
+        ai_status["last_activity"] = data.get('activity', 'working')
+
+        # Detect potential loops
+        current_output = data.get('output_signature', '')
+        if current_output:
+            if current_output == ai_status["stuck_detection"]["last_progress"]:
+                ai_status["stuck_detection"]["same_output_count"] += 1
+                if ai_status["stuck_detection"]["same_output_count"] > 3:
+                    ai_status["stuck_detection"]["loop_detected"] = True
+                    ai_status["status"] = "stuck"
+            else:
+                ai_status["stuck_detection"]["same_output_count"] = 0
+                ai_status["stuck_detection"]["loop_detected"] = False
+            ai_status["stuck_detection"]["last_progress"] = current_output
+
+        return jsonify({
+            "success": True,
+            "status": ai_status["status"],
+            "warning": ai_status["stuck_detection"]["loop_detected"],
+            "message": "Keep working, I'll watch for issues" if not ai_status["stuck_detection"]["loop_detected"] else "⚠️ Loop detected - consider changing approach"
+        })
+
+    @app.route('/ai/status', methods=['GET'])
+    def ai_get_status():
+        """Get current AI status and health."""
+        now = datetime.now()
+        last_heartbeat = ai_status.get("last_heartbeat")
+
+        health = {
+            "status": ai_status.get("status", "unknown"),
+            "current_task": ai_status.get("current_task"),
+            "last_activity": ai_status.get("last_activity"),
+        }
+
+        # Calculate idle time
+        if last_heartbeat:
+            last = datetime.fromisoformat(last_heartbeat)
+            idle_seconds = (now - last).total_seconds()
+            health["idle_seconds"] = idle_seconds
+            health["idle_minutes"] = round(idle_seconds / 60, 1)
+
+            if idle_seconds > 300:  # 5 minutes
+                health["status"] = "idle"
+                health["warning"] = "AI appears idle - no heartbeat for 5+ minutes"
+            elif idle_seconds > 60:  # 1 minute
+                health["warning"] = "AI quiet for 1+ minutes"
+            else:
+                health["healthy"] = True
+        else:
+            health["status"] = "unknown"
+            health["warning"] = "No heartbeat received yet"
+
+        # Check for stuck condition
+        if ai_status["stuck_detection"]["loop_detected"]:
+            health["stuck"] = True
+            health["warning"] = "Possible infinite loop detected"
+
+        return jsonify({
+            "success": True,
+            "health": health,
+            "ai_status": ai_status,
+            "timestamp": now.isoformat(),
+        })
+
+    @app.route('/ai/alert', methods=['POST'])
+    def ai_alert():
+        """Send alert to AI when something is wrong."""
+        data = request.get_json() or {}
+        alert_type = data.get('type', 'info')  # info, warning, error, critical
+        message = data.get('message', '')
+        details = data.get('details', {})
+
+        if not message:
+            return jsonify({"success": False, "error": "message required"}), 400
+
+        alert = {
+            "id": f"alert-{datetime.now().strftime('%H%M%S')}",
+            "sent_at": datetime.now().isoformat(),
+            "type": alert_type,
+            "message": message,
+            "details": details,
+            "read": False,
+        }
+
+        ai_status["alerts_sent"].append(alert)
+
+        # Also add to inbox for guaranteed delivery
+        inbox_messages.append({
+            "id": alert["id"],
+            "sent_at": alert["sent_at"],
+            "message": f"[ALERT: {alert_type.upper()}] {message}",
+            "priority": "urgent" if alert_type in ['error', 'critical'] else "high",
+            "category": "alert",
+            "read": False,
+            "details": details,
+        })
+
+        return jsonify({
+            "success": True,
+            "alert_id": alert["id"],
+            "message": f"Alert sent to AI: {message[:50]}...",
+            "delivered_to_inbox": True,
+        })
+
+    @app.route('/ai/check', methods=['GET'])
+    def ai_check():
+        """Quick health check - call this to see if AI needs attention."""
+        now = datetime.now()
+        last_heartbeat = ai_status.get("last_heartbeat")
+        issues = []
+
+        if not last_heartbeat:
+            issues.append("No heartbeat - AI may not be running")
+        else:
+            last = datetime.fromisoformat(last_heartbeat)
+            idle_seconds = (now - last).total_seconds()
+
+            if idle_seconds > 600:  # 10 minutes
+                issues.append(f"AI idle for {idle_seconds/60:.1f} minutes - may be stuck")
+            elif idle_seconds > 120:  # 2 minutes
+                issues.append(f"AI quiet for {idle_seconds:.0f} seconds")
+
+        # Check for unread alerts
+        unread_alerts = [a for a in ai_status["alerts_sent"] if not a.get("read", False)]
+        if unread_alerts:
+            issues.append(f"{len(unread_alerts)} unread alerts waiting")
+
+        # Check for loop detection
+        if ai_status["stuck_detection"]["loop_detected"]:
+            issues.append("Loop detected in previous work")
+
+        status = "needs_attention" if issues else "healthy"
+
+        return jsonify({
+            "success": True,
+            "status": status,
+            "issues": issues,
+            "unread_alerts": len(unread_alerts),
+            "recommendation": "Check inbox and review status" if issues else "Continue working",
+        })
+
+    @app.route('/ai/recovery', methods=['POST'])
+    def ai_recovery():
+        """Attempt to recover AI - clear stuck state and prepare for restart."""
+        data = request.get_json() or {}
+        reason = data.get('reason', 'manual')
+
+        # Reset stuck detection
+        ai_status["stuck_detection"] = {
+            "last_progress": None,
+            "same_output_count": 0,
+            "loop_detected": False,
+        }
+
+        # Clear status but keep alerts
+        previous_status = ai_status["status"]
+        ai_status["status"] = "recovering"
+        ai_status["current_task"] = None
+        ai_status["last_activity"] = f"Recovery initiated: {reason}"
+
+        return jsonify({
+            "success": True,
+            "message": "AI recovery prepared",
+            "previous_status": previous_status,
+            "recovery_reason": reason,
+            "instructions": [
+                "1. Check inbox for any pending alerts",
+                "2. Review what you were working on",
+                "3. Continue from last successful checkpoint",
+                "4. Report heartbeat when ready to resume"
+            ],
+            "ready": True,
+        })
+
     def run_api():
         print(f"DevOps Agent API running on http://localhost:{API_PORT}")
+
+        # Start background watchdog thread
+        def watchdog():
+            """Background thread to monitor AI health and auto-alert on issues."""
+            import time
+            while True:
+                try:
+                    time.sleep(60)  # Check every minute
+
+                    # Check if AI has been idle
+                    last_heartbeat = ai_status.get("last_heartbeat")
+                    if last_heartbeat:
+                        last = datetime.fromisoformat(last_heartbeat)
+                        idle_seconds = (datetime.now() - last).total_seconds()
+
+                        # Auto-alert if AI idle for 5 minutes
+                        if idle_seconds > 300 and ai_status.get("status") != "idle_alert_sent":
+                            ai_status["status"] = "idle_alert_sent"
+
+                            # Send alert to inbox
+                            inbox_messages.append({
+                                "id": f"watchdog-{datetime.now().strftime('%H%M%S')}",
+                                "sent_at": datetime.now().isoformat(),
+                                "message": "⚠️ WATCHDOG ALERT: No AI activity detected for 5+ minutes. IDE may have stopped you or you're stuck. Check /ai/status for details.",
+                                "priority": "urgent",
+                                "category": "alert",
+                                "read": False,
+                                "details": {
+                                    "idle_minutes": idle_seconds / 60,
+                                    "last_task": ai_status.get("current_task"),
+                                    "last_activity": ai_status.get("last_activity"),
+                                    "suggestion": "Check IDE, look for errors, continue from last checkpoint"
+                                }
+                            })
+                            print(f"[WATCHDOG] Idle alert sent - AI inactive for {idle_seconds/60:.1f} minutes")
+
+                        # Check for loop detected but not addressed
+                        if ai_status["stuck_detection"]["loop_detected"] and idle_seconds > 180:
+                            inbox_messages.append({
+                                "id": f"watchdog-loop-{datetime.now().strftime('%H%M%S')}",
+                                "sent_at": datetime.now().isoformat(),
+                                "message": "🔄 LOOP DETECTED: You may be stuck in an infinite loop. Same output repeated 3+ times. Consider changing your approach.",
+                                "priority": "high",
+                                "category": "alert",
+                                "read": False,
+                                "details": {
+                                    "loop_count": ai_status["stuck_detection"]["same_output_count"],
+                                    "suggestion": "Try a different approach or ask for help"
+                                }
+                            })
+                            ai_status["stuck_detection"]["loop_detected"] = False  # Reset after alerting
+
+                except Exception as e:
+                    print(f"[WATCHDOG] Error: {e}")
+
+        import threading
+        watchdog_thread = threading.Thread(target=watchdog, daemon=True)
+        watchdog_thread.start()
+        print("[WATCHDOG] AI health monitoring started - checking every 60 seconds")
+
         app.run(host='127.0.0.1', port=API_PORT, debug=False, threaded=True)
 
 # =============================================================================

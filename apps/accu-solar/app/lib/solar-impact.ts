@@ -13,6 +13,12 @@ export interface WeatherSnapshotInput {
   snowDepthCm?: number;
   /** AQI 0–500+ (optional) */
   airQualityIndex?: number;
+  /** Irradiance in W/m² (GHI/POA) */
+  irradiance?: number;
+  /** Humidity 0–100% */
+  humidity?: number;
+  /** UV Index 0–11+ */
+  uvIndex?: number;
 }
 
 export function clamp(value: number, min: number, max: number): number {
@@ -21,22 +27,16 @@ export function clamp(value: number, min: number, max: number): number {
 
 /**
  * Compute solar impact score 0–100 from current weather.
- * Penalties: cloud, heat above ~25°C, snow, AQI.
+ * MASTER DIRECTIVE FORMULA:
+ * score = ((1 - cloudCover/100) * 0.5 + (irradiance/1000) * 0.3 + (1 - humidity/100) * 0.1 + (uvIndex/10) * 0.1) * 100
  */
 export function calculateSolarImpactScore(weather: WeatherSnapshotInput): number {
-  let score = 100;
+  const cloudFactor = (1 - (weather.cloudCover ?? 0) / 100) * 0.5;
+  const irradianceFactor = ((weather.irradiance ?? 800) / 1000) * 0.3;
+  const humidityFactor = (1 - (weather.humidity ?? 50) / 100) * 0.1;
+  const uvFactor = ((weather.uvIndex ?? 5) / 10) * 0.1;
 
-  score -= (weather.cloudCover ?? 0) * 0.4;
-
-  if (weather.temperatureC > 25) {
-    score -= (weather.temperatureC - 25) * 0.8;
-  }
-
-  score -= (weather.snowDepthCm ?? 0) * 5;
-
-  if (weather.airQualityIndex != null && weather.airQualityIndex > 0) {
-    score -= weather.airQualityIndex * 0.05;
-  }
+  const score = (cloudFactor + irradianceFactor + humidityFactor + uvFactor) * 100;
 
   return clamp(score, 0, 100);
 }

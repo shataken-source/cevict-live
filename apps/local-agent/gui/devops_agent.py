@@ -1539,6 +1539,131 @@ class DevOpsWindow(QMainWindow):
 
         dialog.exec()
 
+    def _check_ai_status(self):
+        """Check AI health status and show alerts."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("AI Health Status")
+        dialog.setMinimumSize(450, 300)
+        layout = QVBoxLayout(dialog)
+
+        try:
+            import urllib.request
+            import json
+
+            # Fetch AI status
+            with urllib.request.urlopen("http://localhost:8471/ai/status", timeout=5) as response:
+                status = json.loads(response.read().decode('utf-8'))
+
+            health = status.get('health', {})
+            ai_status = status.get('ai_status', {})
+
+            # Status header
+            status_color = GREEN if health.get('healthy') else (AMBER if health.get('status') == 'idle' else RED)
+            status_text = health.get('status', 'unknown').upper()
+
+            header = QLabel(f"<h2 style='color: {status_color}'>AI Status: {status_text}</h2>")
+            layout.addWidget(header)
+
+            # Current task
+            if health.get('current_task'):
+                task_label = QLabel(f"<b>Current Task:</b> {health['current_task']}")
+                layout.addWidget(task_label)
+
+            if health.get('last_activity'):
+                activity_label = QLabel(f"<b>Last Activity:</b> {health['last_activity']}")
+                layout.addWidget(activity_label)
+
+            # Idle time
+            if health.get('idle_minutes') is not None:
+                idle_label = QLabel(f"<b>Idle Time:</b> {health['idle_minutes']} minutes")
+                idle_label.setStyleSheet(f"color: {AMBER if health['idle_minutes'] > 2 else 'white'};")
+                layout.addWidget(idle_label)
+
+            # Warnings
+            if health.get('warning'):
+                warning_box = QLabel(f"<div style='background-color: {RED}22; padding: 10px; border-radius: 5px;'><b>⚠️ Warning:</b> {health['warning']}</div>")
+                warning_box.setWordWrap(True)
+                layout.addWidget(warning_box)
+
+            # Stuck detection
+            stuck = ai_status.get('stuck_detection', {})
+            if stuck.get('loop_detected'):
+                loop_box = QLabel(f"<div style='background-color: {RED}22; padding: 10px; border-radius: 5px;'><b>🔄 Loop Detected!</b><br>Same output repeated {stuck.get('same_output_count', 0)} times. You may be stuck in an infinite loop.</div>")
+                loop_box.setWordWrap(True)
+                layout.addWidget(loop_box)
+
+            # Check for alerts in inbox
+            with urllib.request.urlopen("http://localhost:8471/inbox", timeout=5) as response:
+                inbox = json.loads(response.read().decode('utf-8'))
+
+            unread = inbox.get('unread_count', 0)
+            if unread > 0:
+                alerts_box = QLabel(f"<div style='background-color: {AMBER}22; padding: 10px; border-radius: 5px;'><b>📬 {unread} unread alert(s) in inbox</b><br>Call irm http://localhost:8471/inbox to read them</div>")
+                alerts_box.setWordWrap(True)
+                layout.addWidget(alerts_box)
+
+            # Heartbeat info
+            if health.get('last_heartbeat'):
+                heartbeat_label = QLabel(f"<small>Last heartbeat: {health['last_heartbeat'][:19]}</small>")
+                heartbeat_label.setStyleSheet("color: #9ca3af;")
+                layout.addWidget(heartbeat_label)
+
+            # Actions
+            layout.addSpacing(10)
+            actions_label = QLabel("<b>Quick Actions:</b>")
+            layout.addWidget(actions_label)
+
+            button_layout = QHBoxLayout()
+
+            def send_ping():
+                try:
+                    data = json.dumps({"status": "active", "task": "manual check", "activity": "user ping"}).encode('utf-8')
+                    req = urllib.request.Request(
+                        "http://localhost:8471/ai/heartbeat",
+                        data=data,
+                        headers={'Content-Type': 'application/json'},
+                        method='POST'
+                    )
+                    with urllib.request.urlopen(req, timeout=5) as response:
+                        result = json.loads(response.read().decode('utf-8'))
+                        QMessageBox.information(dialog, "Ping Sent", f"AI heartbeat updated!\nStatus: {result.get('status', 'unknown')}")
+                except Exception as e:
+                    QMessageBox.critical(dialog, "Error", f"Failed to ping: {str(e)}")
+
+            ping_btn = QPushButton("📡 Ping AI (I'm Active)")
+            ping_btn.clicked.connect(send_ping)
+            button_layout.addWidget(ping_btn)
+
+            def check_health():
+                try:
+                    with urllib.request.urlopen("http://localhost:8471/ai/check", timeout=5) as response:
+                        check = json.loads(response.read().decode('utf-8'))
+                        issues = check.get('issues', [])
+                        if issues:
+                            QMessageBox.warning(dialog, "Health Check", "Issues found:\n\n• " + "\n• ".join(issues))
+                        else:
+                            QMessageBox.information(dialog, "Health Check", "✅ AI is healthy - no issues detected")
+                except Exception as e:
+                    QMessageBox.critical(dialog, "Error", f"Health check failed: {str(e)}")
+
+            health_btn = QPushButton("🏥 Health Check")
+            health_btn.clicked.connect(check_health)
+            button_layout.addWidget(health_btn)
+
+            layout.addLayout(button_layout)
+
+        except Exception as e:
+            error_label = QLabel(f"<div style='color: {RED};'>❌ Error checking AI status: {str(e)}</div>")
+            error_label.setWordWrap(True)
+            layout.addWidget(error_label)
+
+        # Close button
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+
+        dialog.exec()
+
     # ---- Window behavior ----
     def closeEvent(self, event):
         event.ignore()
@@ -1605,6 +1730,10 @@ def main():
     action_send_msg = QAction("✉️ Send Message to AI", menu)
     action_send_msg.triggered.connect(window._send_message_to_ai)
     menu.addAction(action_send_msg)
+
+    action_ai_status = QAction("🤖 Check AI Status", menu)
+    action_ai_status.triggered.connect(window._check_ai_status)
+    menu.addAction(action_ai_status)
 
     menu.addSeparator()
 
