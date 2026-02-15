@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WildReady - Your Off-Grid Command Center</title>
+  <meta name="description" content="The ultimate off-grid camping app. Solar monitoring, weather, wildlife tracking, federal campsites, air quality, fishing intelligence, and more.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+    
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    
+    .hero-content {
+      position: relative;
+      z-index: 1;
+    }
+    
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    
+    .logo-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+    }
+    
+    .logo-text {
+      font-size: 32px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #fff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .tagline {
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .tagline span {
+      background: linear-gradient(135deg, #10b981, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .subtitle {
+      font-size: 20px;
+      color: #94a3b8;
+      max-width: 600px;
+      margin: 0 auto 48px;
+    }
+    
+    .cta-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 32px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      box-shadow: 0 4px 24px rgba(16, 185, 129, 0.3);
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(16, 185, 129, 0.4);
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    
+    /* Stats */
+    .stats {
+      display: flex;
+      gap: 48px;
+      justify-content: center;
+      margin-top: 64px;
+      flex-wrap: wrap;
+    }
+    
+    .stat {
+      text-align: center;
+    }
+    
+    .stat-number {
+      font-size: 36px;
+      font-weight: 800;
+      color: #10b981;
+    }
+    
+    .stat-label {
+      font-size: 14px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    /* Features */
+    .features {
+      padding: 120px 0;
+      background: #0f172a;
+    }
+    
+    .section-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+    
+    .section-title {
+      font-size: 40px;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+    
+    .section-subtitle {
+      font-size: 18px;
+      color: #94a3b8;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    
+    .feature-card {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s ease;
+    }
+    
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(16, 185, 129, 0.3);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    
+    .feature-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    
+    .feature-desc {
+      font-size: 15px;
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+    
+    /* How It Works */
+    .how-it-works {
+      padding: 120px 0;
+      background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    }
+    
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 32px;
+      margin-top: 64px;
+    }
+    
+    .step {
+      text-align: center;
+      padding: 32px;
+    }
+    
+    .step-number {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 auto 24px;
+    }
+    
+    .step-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    
+    .step-desc {
+      font-size: 15px;
+      color: #94a3b8;
+    }
+    
+    /* Screenshots */
+    .screenshots {
+      padding: 120px 0;
+      background: #0f172a;
+    }
+    
+    .screenshot-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-top: 64px;
+    }
+    
+    .screenshot {
+      background: linear-gradient(135deg, #1e293b, #334155);
+      border-radius: 16px;
+      padding: 24px;
+      aspect-ratio: 16/10;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .screenshot-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .screenshot-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    
+    .screenshot-desc {
+      font-size: 14px;
+      color: #94a3b8;
+    }
+    
+    /* Download */
+    .download {
+      padding: 120px 0;
+      background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
+      text-align: center;
+    }
+    
+    .download-title {
+      font-size: 48px;
+      font-weight: 800;
+      margin-bottom: 24px;
+    }
+    
+    .download-subtitle {
+      font-size: 20px;
+      opacity: 0.9;
+      max-width: 600px;
+      margin: 0 auto 48px;
+    }
+    
+    .download-options {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .download-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      padding: 32px;
+      min-width: 280px;
+      transition: all 0.3s ease;
+    }
+    
+    .download-card:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-4px);
+    }
+    
+    .download-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+    
+    .download-platform {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    
+    .download-version {
+      font-size: 14px;
+      opacity: 0.8;
+      margin-bottom: 24px;
+    }
+    
+    .download-btn {
+      display: inline-block;
+      background: white;
+      color: #059669;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+    
+    .download-btn:hover {
+      background: #f0fdf4;
+      transform: scale(1.05);
+    }
+    
+    /* Footer */
+    .footer {
+      padding: 64px 0;
+      background: #020617;
+      text-align: center;
+    }
+    
+    .footer-logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    
+    .footer-links {
+      display: flex;
+      gap: 32px;
+      justify-content: center;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    
+    .footer-links a {
+      color: #64748b;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+    
+    .footer-links a:hover {
+      color: #10b981;
+    }
+    
+    .footer-copy {
+      color: #475569;
+      font-size: 14px;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .tagline {
+        font-size: 36px;
+      }
+      
+      .subtitle {
+        font-size: 18px;
+      }
+      
+      .stats {
+        gap: 32px;
+      }
+      
+      .section-title {
+        font-size: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-content">
+        <div class="logo">
+          <div class="logo-icon">☀️</div>
+          <span class="logo-text">WildReady</span>
+        </div>
+        
+        <h1 class="tagline">
+          Your <span>Off-Grid</span> Command Center
+        </h1>
+        
+        <p class="subtitle">
+          The ultimate camping companion. Solar monitoring, wildlife tracking, federal campsites, air quality alerts, fishing intelligence, and off-grid communication—all in one powerful app.
+        </p>
+        
+        <div class="cta-buttons">
+          <a href="#download" class="btn btn-primary">
+            📱 Get WildReady Free
+          </a>
+          <a href="#features" class="btn btn-secondary">
+            Explore Features
+          </a>
+        </div>
+        
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-number">20+</div>
+            <div class="stat-label">Features</div>
+          </div>
+          <div class="stat">
+            <div class="stat-number">5</div>
+            <div class="stat-label">Live APIs</div>
+          </div>
+          <div class="stat">
+            <div class="stat-number">100%</div>
+            <div class="stat-label">Free</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Everything You Need Off-Grid</h2>
+        <p class="section-subtitle">
+          From solar monitoring to wildlife tracking, WildReady keeps you informed, safe, and connected in the backcountry.
+        </p>
+      </div>
+      
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">☀️</div>
+          <h3 class="feature-title">Solar Monitoring</h3>
+          <p class="feature-desc">Real-time solar production tracking, optimal tilt angle calculator, and energy forecasting for your off-grid power system.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🌤️</div>
+          <h3 class="feature-title">Weather & Air Quality</h3>
+          <p class="feature-desc">Live weather data with EPA AirNow integration. AQI alerts, 5-day forecasts, and health recommendations for outdoor activities.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🔋</div>
+          <h3 class="feature-title">Battery Intelligence</h3>
+          <p class="feature-desc">Track battery levels, voltage, and remaining time. Smart alerts when power runs low so you're never caught off guard.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🏕️</div>
+          <h3 class="feature-title">Federal Campsites</h3>
+          <p class="feature-desc">Search 2,000+ national parks and forests via Recreation.gov. Find campsites with amenities and book directly.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🦅</div>
+          <h3 class="feature-title">Wildlife Spotter</h3>
+          <p class="feature-desc">Live bird sightings from eBird/Cornell Lab. Track rare bird alerts and identify species near your campsite.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">📡</div>
+          <h3 class="feature-title">Cell Signal Mapper</h3>
+          <p class="feature-desc">Find nearest cell towers from FCC database. Estimate signal strength and get emergency communication tips.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🔥</div>
+          <h3 class="feature-title">Wildfire Tracker</h3>
+          <p class="feature-desc">Real-time wildfire monitoring with InciWeb integration. Air quality impact alerts and evacuation resources.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🎣</div>
+          <h3 class="feature-title">Fishing Intelligence</h3>
+          <p class="feature-desc">AI-powered fishing recommendations based on solunar tables, moon phase, water temp, and species behavior patterns.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🍳</div>
+          <h3 class="feature-title">Camp Recipes</h3>
+          <p class="feature-desc">Search 2M+ recipes filtered by camping-friendly cooking methods. Nutritional info and ingredient lists for meal planning.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🌟</div>
+          <h3 class="feature-title">Night Sky Map</h3>
+          <p class="feature-desc">Interactive star map showing constellations, planets, and deep-sky objects. Perfect for stargazing at your campsite.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">🛒</div>
+          <h3 class="feature-title">AI Gear Recommendations</h3>
+          <p class="feature-desc">Smart shopping lists based on your trip, weather, and activities. Price comparisons across 6 major retailers.</p>
+        </div>
+        
+        <div class="feature-card">
+          <div class="feature-icon">📻</div>
+          <h3 class="feature-title">Mesh Network</h3>
+          <p class="feature-desc">Off-grid communication with Meshtastic integration. Chat with your group, share waypoints, and track locations without cell service.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">How WildReady Works</h2>
+        <p class="section-subtitle">
+          From planning to execution, WildReady guides you through every stage of your off-grid adventure.
+        </p>
+      </div>
+      
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3 class="step-title">Plan Your Trip</h3>
+          <p class="step-desc">Search federal campsites, check wildfire status, and get AI gear recommendations based on weather and activities.</p>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3 class="step-title">Monitor Conditions</h3>
+          <p class="step-desc">Track solar production, battery levels, air quality, and cell signal strength—all from your dashboard.</p>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3 class="step-title">Explore & Discover</h3>
+          <p class="step-desc">Identify wildlife with eBird integration, find local attractions, and get fishing recommendations based on conditions.</p>
+        </div>
+        
+        <div class="step">
+          <div class="step-number">4</div>
+          <h3 class="step-title">Stay Connected</h3>
+          <p class="step-desc">Use mesh network features to communicate with your group, even when you're miles from cell towers.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots -->
+  <section class="screenshots">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">Built for the Wild</h2>
+        <p class="section-subtitle">
+          A powerful, intuitive interface that works offline and keeps you informed in the backcountry.
+        </p>
+      </div>
+      
+      <div class="screenshot-grid">
+        <div class="screenshot">
+          <div class="screenshot-icon">📊</div>
+          <div class="screenshot-title">Dashboard</div>
+          <div class="screenshot-desc">At-a-glance view of solar, battery, weather, and alerts</div>
+        </div>
+        
+        <div class="screenshot">
+          <div class="screenshot-icon">🗺️</div>
+          <div class="screenshot-title">Local Explorer</div>
+          <div class="screenshot-desc">Find fuel, food, trails, and services near your campsite</div>
+        </div>
+        
+        <div class="screenshot">
+          <div class="screenshot-icon">🎯</div>
+          <div class="screenshot-title">Trip Planner</div>
+          <div class="screenshot-desc">Plan routes, packing lists, and TV/radio station info</div>
+        </div>
+        
+        <div class="screenshot">
+          <div class="screenshot-icon">🔊</div>
+          <div class="screenshot-title">Sound Generator</div>
+          <div class="screenshot-desc">Nature sounds and binaural beats for sleep & focus</div>
+        </div>
+        
+        <div class="screenshot">
+          <div class="screenshot-icon">🔧</div>
+          <div class="screenshot-title">Maintenance Log</div>
+          <div class="screenshot-desc">Track RV/vehicle maintenance and service intervals</div>
+        </div>
+        
+        <div class="screenshot">
+          <div class="screenshot-icon">⏰</div>
+          <div class="screenshot-title">Smart Alarm</div>
+          <div class="screenshot-desc">Wake up naturally with sleep timer and ambient sounds</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download -->
+  <section class="download" id="download">
+    <div class="container">
+      <h2 class="download-title">Ready to Go Off-Grid?</h2>
+      <p class="download-subtitle">
+        WildReady is completely free and open source. Download it now and take command of your next outdoor adventure.
+      </p>
+      
+      <div class="download-options">
+        <div class="download-card">
+          <div class="download-icon">💻</div>
+          <div class="download-platform">Web App</div>
+          <div class="download-version">Run in browser</div>
+          <a href="#" class="download-btn">Launch Now</a>
+        </div>
+        
+        <div class="download-card">
+          <div class="download-icon">📱</div>
+          <div class="download-platform">PWA</div>
+          <div class="download-version">Install on device</div>
+          <a href="#" class="download-btn">Install App</a>
+        </div>
+        
+        <div class="download-card">
+          <div class="download-icon">⚙️</div>
+          <div class="download-platform">Self-Host</div>
+          <div class="download-version">Open source</div>
+          <a href="https://github.com/cevict/wildready" class="download-btn">View on GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-logo">
+        <div class="logo-icon" style="width: 40px; height: 40px; font-size: 20px;">☀️</div>
+        <span style="font-size: 24px; font-weight: 700;">WildReady</span>
+      </div>
+      
+      <div class="footer-links">
+        <a href="#features">Features</a>
+        <a href="#download">Download</a>
+        <a href="https://github.com/cevict/wildready">GitHub</a>
+        <a href="mailto:hello@wildready.app">Contact</a>
+      </div>
+      
+      <p class="footer-copy">
+        © 2026 WildReady — Made for the off-grid community. Open source under MIT License.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
