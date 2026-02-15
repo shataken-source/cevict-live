@@ -344,6 +344,15 @@ irm http://localhost:8471/schedule/list
 | `/notify/poll` | GET | Poll for notifications |
 | `/schedule/add` | POST | Scheduled jobs |
 
+### AI Health & Monitoring
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/ai/heartbeat` | POST | Report AI activity (call every 60s while working) |
+| `/ai/status` | GET | Check AI health and idle time |
+| `/ai/check` | GET | Quick health check with issues list |
+| `/ai/alert` | POST | Send alert to AI inbox |
+| `/ai/recovery` | POST | Reset stuck state, prepare for restart |
+
 ## Usage Patterns for Maximum Efficiency
 
 ### Pattern 1: Pre-Flight Check
