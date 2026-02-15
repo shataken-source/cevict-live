@@ -183,7 +183,11 @@ export default function RecipeManager() {
   const [dietFilter, setDietFilter] = useState<string>('all');
 
   // Fetch recipes from Edamam API
-  const fetchEdamamRecipes = async (query: string) => {
+  const fetchEdamamRecipes = async (query: string): Promise<Recipe[] | null> => {
+    console.log('Edamam API keys:', {
+      APP_ID: EDAMAM_CONFIG.APP_ID ? 'Set' : 'Empty',
+      APP_KEY: EDAMAM_CONFIG.APP_KEY ? 'Set' : 'Empty'
+    });
     try {
       const params = new URLSearchParams({
         type: 'public',
@@ -197,10 +201,16 @@ export default function RecipeManager() {
         params.append('health', dietFilter);
       }
 
-      const response = await fetch(`${EDAMAM_CONFIG.BASE_URL}?${params}`);
+      const response = await fetch(`${EDAMAM_CONFIG.BASE_URL}?${params}`, {
+        headers: {
+          'Edamam-Account-User': 'wildready-user',
+        },
+      });
 
       if (!response.ok) {
-        throw new Error(`Edamam API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error('Edamam API error details:', response.status, errorText);
+        throw new Error(`Edamam API error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
