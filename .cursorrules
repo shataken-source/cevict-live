@@ -35,9 +35,91 @@ git status
 
 1. **Git Operations** - Always use /git/* endpoints
 2. **Vercel Deploys** - Always use /vercel/deploy
-3. **File Audits** - Always use /audit/* endpoints  
+3. **File Audits** - Always use /audit/* endpoints
 4. **Port Management** - Always use /tools/port/*
 5. **Cochran Management** - Always use /cochran/*
+
+### Multi-Instance Coordination (Prevent Cascade Collisions)
+
+Multiple Cascade instances can coordinate through Cochran to avoid working on the same files/branches simultaneously.
+
+| Task | Use Cochran Endpoint | Purpose |
+|------|---------------------|---------|
+| Register activity | POST /cascade/heartbeat | Tell other instances what you're working on |
+| Check other instances | GET /cascade/active | See who's working on what |
+| Check for collisions | POST /cascade/check-collision | Detect if another instance is on same branch/file |
+| Save context | POST /cascade/context | Persist work context for later |
+| Load context | GET /cascade/context/{key} | Resume previous work |
+| Work summary | GET /cascade/work-summary | Recent work across all instances |
+
+### Coordination Pattern
+
+```powershell
+# 1. At session start, check what others are doing
+$others = irm http://localhost:8471/cascade/active
+if ($others.count -gt 1) { "Warning: $others.count active Cascade instances" }
+
+# 2. Before starting work, check for collisions
+$collision = irm http://localhost:8471/cascade/check-collision -Method POST -Body '{
+    "instance_id": "cascade-001",
+    "branch": "gcc-vessels",
+    "files": ["apps/web/page.tsx"]
+}' -ContentType "application/json"
+if (-not $collision.safe_to_proceed) { "COLLISION: Another instance working on same branch" }
+
+# 3. During work, heartbeat every 60 seconds
+irm http://localhost:8471/cascade/heartbeat -Method POST -Body '{
+    "instance_id": "cascade-001",
+    "current_work": {
+        "branch": "gcc-vessels",
+        "files": ["apps/web/page.tsx"],
+        "operation": "editing"
+    }
+}' -ContentType "application/json"
+
+# 4. Save context before ending session
+irm http://localhost:8471/cascade/context -Method POST -Body '{
+    "key": "web-ui-rewrite",
+    "context": {
+        "todo": ["Fix header", "Add footer"],
+        "in_progress": "Refactoring components",
+        "branch": "gcc-vessels",
+        "files_modified": ["apps/web/page.tsx"]
+    }
+}' -ContentType "application/json"
+
+# 5. Next session, resume context
+$ctx = irm http://localhost:8471/cascade/context/web-ui-rewrite
+if ($ctx.success) { "Resuming: $($ctx.context.in_progress)" }
+```
+
+### Instance ID Convention
+
+Use descriptive instance IDs:
+- `cascade-main` - Primary workspace
+- `cascade-web` - Web-focused session
+- `cascade-ai` - AI/ML work session
+- `cascade-fix-{bug}` - Specific bug fix session
+
+### Collision Handling
+
+If collision detected:
+1. Warn user about other active instance
+2. Show what the other instance is working on
+3. Recommend: wait, coordinate, or switch branches
+4. Never proceed with commit/push if collision on same branch
+
+### Context Persistence
+
+Save context when:
+- Ending a session with work incomplete
+- Switching to different task
+- User says "we'll continue later"
+
+Load context when:
+- Starting new session
+- User references previous work
+- Resuming after interruption
 
 ### PowerShell One-Liners for Common Tasks
 

@@ -428,21 +428,27 @@ if HAS_FLASK:
     # -------------------------------------------------------------------------
     @app.route('/tools/port/<int:port>', methods=['GET'])
     def tools_check_port(port):
+        # Use simple CSV format to avoid JSON escaping hell in PowerShell
         code, out = run_cmd(
             ["pwsh", "-NoProfile", "-Command",
              f"$c = Get-NetTCPConnection -LocalPort {port} -ErrorAction SilentlyContinue | Select-Object -First 1; "
              f"if($c) {{ $p = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue; "
-             f"if($p) {{ \"{{\\\"pid\\\": $($c.OwningProcess), \\\"process\\\": \\\"$($p.ProcessName)\\\"}}\" }} "
-             f"else {{ \"{{\\\"pid\\\": $($c.OwningProcess), \\\"process\\\": \\\"unknown\\\"}}\" }} }} "
-             f"else {{ \"{{\\\"free\\\": true}}\" }}"],
+             f"Write-Output \"pid=$($c.OwningProcess),process=$($p.ProcessName),inuse=1\" }} "
+             f"else {{ Write-Output \"pid=,process=,inuse=0\" }}"],
             timeout=10,
         )
         try:
-            data = json.loads(out)
-            if "free" in data:
-                return jsonify({"port": port, "in_use": False, "pid": None, "process": None})
-            return jsonify({"port": port, "in_use": True, "pid": data.get("pid"), "process": data.get("process")})
-        except json.JSONDecodeError:
+            # Parse CSV format: pid=1234,process=node,inuse=1
+            parts = dict(p.split('=', 1) for p in out.strip().split(',') if '=' in p)
+            if parts.get('inuse') == '1':
+                return jsonify({
+                    "port": port,
+                    "in_use": True,
+                    "pid": parts.get('pid') or None,
+                    "process": parts.get('process') or None
+                })
+            return jsonify({"port": port, "in_use": False, "pid": None, "process": None})
+        except Exception:
             return jsonify({"port": port, "in_use": False, "pid": None, "process": None, "raw": out})
 
     @app.route('/tools/ports-scan', methods=['GET'])
@@ -576,6 +582,153 @@ if HAS_FLASK:
                 return jsonify({"success": True, **body})
         except Exception as e:
             return jsonify({"success": False, "error": str(e)})
+
+    # -------------------------------------------------------------------------
+    # Cascade Coordination Endpoints (Multi-Instance Memory)
+    # -------------------------------------------------------------------------
+
+    # In-memory store for active Cascade instances
+    cascade_instances: dict[str, dict] = {}
+
+    @app.route('/cascade/heartbeat', methods=['POST'])
+    def cascade_heartbeat():
+        """Cascade instances ping this to register their activity"""
+        data = request.get_json() or {}
+        instance_id = data.get('instance_id', 'unknown')
+        current_work = data.get('current_work', {})
+
+        cascade_instances[instance_id] = {
+            "last_seen": datetime.now().isoformat(),
+            "current_work": current_work,
+            "branch": current_work.get('branch'),
+            "files": current_work.get('files', []),
+            "operation": current_work.get('operation'),
+        }
+
+        # Clean up stale instances (>5 minutes old)
+        now = datetime.now()
+        stale = []
+        for iid, info in cascade_instances.items():
+            last = datetime.fromisoformat(info['last_seen'])
+            if (now - last).seconds > 300:
+                stale.append(iid)
+        for iid in stale:
+            del cascade_instances[iid]
+
+        return jsonify({
+            "success": True,
+            "active_instances": len(cascade_instances),
+            "other_work": {k: v for k, v in cascade_instances.items() if k != instance_id}
+        })
+
+    @app.route('/cascade/active', methods=['GET'])
+    def cascade_active():
+        """Get all currently active Cascade instances and what they're doing"""
+        return jsonify({
+            "success": True,
+            "instances": cascade_instances,
+            "count": len(cascade_instances),
+            "timestamp": datetime.now().isoformat(),
+        })
+
+    @app.route('/cascade/check-collision', methods=['POST'])
+    def cascade_check_collision():
+        """Check if another instance is working on same branch/files"""
+        data = request.get_json() or {}
+        my_branch = data.get('branch')
+        my_files = data.get('files', [])
+        my_instance = data.get('instance_id', 'unknown')
+
+        collisions = []
+        for iid, info in cascade_instances.items():
+            if iid == my_instance:
+                continue
+            # Check branch collision
+            if my_branch and info.get('branch') == my_branch:
+                collisions.append({
+                    "instance": iid,
+                    "type": "branch",
+                    "detail": f"Also working on branch: {my_branch}"
+                })
+            # Check file collision
+            their_files = info.get('files', [])
+            for f in my_files:
+                if f in their_files:
+                    collisions.append({
+                        "instance": iid,
+                        "type": "file",
+                        "detail": f"Also editing: {f}"
+                    })
+
+        return jsonify({
+            "success": True,
+            "collision_detected": len(collisions) > 0,
+            "collisions": collisions,
+            "safe_to_proceed": len(collisions) == 0,
+        })
+
+    @app.route('/cascade/context', methods=['POST'])
+    def cascade_save_context():
+        """Save context about current work for later retrieval"""
+        data = request.get_json() or {}
+        context_key = data.get('key', 'default')
+        context_data = data.get('context', {})
+
+        # Save to a JSON file for persistence across restarts
+        context_dir = Path(os.environ.get('DEVOPS_DATA_DIR', r'C:\Cevict_Vault\devops-agent')) / 'contexts'
+        context_dir.mkdir(parents=True, exist_ok=True)
+
+        context_file = context_dir / f"{context_key}.json"
+        context_file.write_text(json.dumps({
+            "saved_at": datetime.now().isoformat(),
+            "context": context_data,
+        }, indent=2))
+
+        return jsonify({"success": True, "key": context_key, "saved": True})
+
+    @app.route('/cascade/context/<key>', methods=['GET'])
+    def cascade_get_context(key):
+        """Retrieve saved context"""
+        context_dir = Path(os.environ.get('DEVOPS_DATA_DIR', r'C:\Cevict_Vault\devops-agent')) / 'contexts'
+        context_file = context_dir / f"{key}.json"
+
+        if not context_file.exists():
+            return jsonify({"success": False, "error": "Context not found"}), 404
+
+        try:
+            data = json.loads(context_file.read_text())
+            return jsonify({"success": True, **data})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route('/cascade/work-summary', methods=['GET'])
+    def cascade_work_summary():
+        """Get summary of recent work across all instances"""
+        # Query Cochran for recent sessions
+        try:
+            import urllib.request
+            req = urllib.request.Request(f"http://localhost:{COCHRAN_PORT}/refresher?last=10", method='GET')
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                cochran_data = json.loads(resp.read().decode())
+        except Exception:
+            cochran_data = {"sessions": []}
+
+        # Combine with active instances
+        active_work = []
+        for iid, info in cascade_instances.items():
+            if info.get('current_work'):
+                active_work.append({
+                    "instance": iid,
+                    "work": info['current_work'],
+                    "since": info['last_seen'],
+                })
+
+        return jsonify({
+            "success": True,
+            "recent_sessions": cochran_data.get('sessions', []),
+            "active_work": active_work,
+            "total_active_instances": len(cascade_instances),
+        })
 
     def run_api():
         print(f"DevOps Agent API running on http://localhost:{API_PORT}")
