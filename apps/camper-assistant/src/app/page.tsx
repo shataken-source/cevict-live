@@ -168,7 +168,7 @@ export default function Home() {
             © 2026 WildReady — Made for the off-grid community
           </div>
           <a
-            href="https://ko-fi.com/wildready"
+            href="https://ko-fi.com/cevict"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-colors"
