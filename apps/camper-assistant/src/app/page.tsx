@@ -14,7 +14,7 @@ import LocalAttractions from './components/LocalAttractions';
 import MaintenanceLog from './components/MaintenanceLog';
 import StarMap from './components/StarMap';
 import SmartShoppingList from './components/SmartShoppingList';
-import CampsiteFinder from './components/CampsiteFinder';
+import FederalCampsites from './components/FederalCampsites';
 import WildlifeSpotter from './components/WildlifeSpotter';
 import CellSignalMapper from './components/CellSignalMapper';
 import AirQualityMonitor from './components/AirQualityMonitor';
@@ -47,7 +47,7 @@ export default function Home() {
     { id: 'maintenance', label: 'Maintenance', icon: Wrench },
     { id: 'stars', label: 'Night Sky', icon: Telescope },
     { id: 'shopping', label: 'AI Shopping', icon: ShoppingCart },
-    { id: 'campsites', label: 'Campsites', icon: Tent },
+    { id: 'campsites', label: 'Federal Campsites', icon: Tent },
     { id: 'wildlife', label: 'Wildlife', icon: Bird },
     { id: 'signal', label: 'Cell Signal', icon: Signal },
     { id: 'air', label: 'Air Quality', icon: WindIcon },
@@ -152,7 +152,7 @@ export default function Home() {
         {activeTab === 'maintenance' && <MaintenanceLog />}
         {activeTab === 'stars' && <StarMap />}
         {activeTab === 'shopping' && <SmartShoppingList />}
-        {activeTab === 'campsites' && <CampsiteFinder />}
+        {activeTab === 'campsites' && <FederalCampsites />}
         {activeTab === 'wildlife' && <WildlifeSpotter />}
         {activeTab === 'signal' && <CellSignalMapper />}
         {activeTab === 'air' && <AirQualityMonitor />}
