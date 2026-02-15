@@ -77,7 +77,7 @@ export default function Home() {
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4" />
-                <span>{currentTime.toLocaleTimeString()}</span>
+                <span suppressHydrationWarning>{currentTime.toLocaleTimeString()}</span>
               </div>
             </div>
           </div>
