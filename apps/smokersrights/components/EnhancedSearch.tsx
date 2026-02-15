@@ -17,7 +17,7 @@ interface SearchResult {
 }
 
 interface EnhancedSearchProps {
-  onSearch: (query: string) => void;
+  onSearch?: (query: string) => void;
   placeholder?: string;
 }
 
@@ -66,7 +66,7 @@ export default function EnhancedSearch({ onSearch, placeholder = 'Search laws, s
   };
 
   const handleSelect = (result: SearchResult) => {
-    onSearch(result.title);
+    if (onSearch) onSearch(result.title);
     setQuery(result.title);
     setIsOpen(false);
 

@@ -49,7 +49,7 @@ export default function HomePage() {
 
         {/* Enhanced Search */}
         <div className="max-w-2xl mx-auto mb-12">
-          <EnhancedSearch onSearch={(q) => console.log('Search:', q)} />
+          <EnhancedSearch />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
           <div className="bg-white rounded-lg shadow-lg p-6 text-center">
