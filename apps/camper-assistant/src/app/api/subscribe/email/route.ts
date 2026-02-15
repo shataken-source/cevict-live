@@ -1,25 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization - Resend is only loaded when API key is available
+let resend: any = null;
 
 export async function POST(request: NextRequest) {
-  try {
-    const { email, name = '' } = await request.json();
-
-    if (!email || !email.includes('@')) {
-      return NextResponse.json(
-        { error: 'Valid email required' },
-        { status: 400 }
-      );
+  // Lazy load Resend only when needed
+  if (!resend) {
+    try {
+      const { Resend } = await import('resend');
+      if (process.env.RESEND_API_KEY) {
+        resend = new Resend(process.env.RESEND_API_KEY);
+      }
+    } catch {
+      // Resend not available
     }
+  }
 
-    // Send welcome email via Resend
-    const { data, error } = await resend.emails.send({
-      from: 'WildReady <updates@wildready.app>',
-      to: [email],
-      subject: 'Welcome to WildReady! 🏕️',
-      html: `
+  // Check if Resend is configured
+  if (!resend) {
+    return NextResponse.json(
+      { error: 'Email service not configured. Add RESEND_API_KEY to environment.' },
+      { status: 503 }
+    );
+  }
+
+  const { email, name = '' } = await request.json();
+
+  if (!email || !email.includes('@')) {
+    return NextResponse.json(
+      { error: 'Valid email required' },
+      { status: 400 }
+    );
+  }
+
+  // Send welcome email via Resend
+  const { data, error } = await resend.emails.send({
+    from: 'WildReady <updates@wildready.app>',
+    to: [email],
+    subject: 'Welcome to WildReady! 🏕️',
+    html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #10b981;">Welcome to WildReady! 🏕️</h1>
           <p>Hi ${name || 'there'},</p>
@@ -38,29 +57,22 @@ export async function POST(request: NextRequest) {
           </p>
         </div>
       `,
-    });
+  });
 
-    if (error) {
-      console.error('Resend error:', error);
-      return NextResponse.json(
-        { error: 'Failed to send welcome email' },
-        { status: 500 }
-      );
-    }
-
-    // TODO: Store email in database (Supabase, PlanetScale, etc.)
-    console.log('📧 Email subscription:', email);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Successfully subscribed! Check your email.',
-      emailId: data?.id,
-    });
-  } catch (err) {
-    console.error('Subscribe error:', err);
+  if (error) {
+    console.error('Resend error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to send welcome email' },
       { status: 500 }
     );
   }
+
+  // TODO: Store email in database (Supabase, PlanetScale, etc.)
+  console.log('📧 Email subscription:', email);
+
+  return NextResponse.json({
+    success: true,
+    message: 'Successfully subscribed! Check your email.',
+    emailId: data?.id,
+  });
 }
