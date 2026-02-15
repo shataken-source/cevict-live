@@ -48,19 +48,41 @@ export default function TripPlanner() {
     ],
   };
 
+  const geocodeZip = async (zip: string): Promise<{ lat: number; lon: number } | null> => {
+    try {
+      const response = await fetch(`https://api.zippopotam.us/us/${zip}`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      if (data.places && data.places[0]) {
+        return {
+          lat: parseFloat(data.places[0].latitude),
+          lon: parseFloat(data.places[0].longitude),
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   const fetchWeatherForTrip = async () => {
     if (!tripDate || !zipCode) return;
     setLoading(true);
     try {
-      // Calculate days from today to trip date
+      const coords = await geocodeZip(zipCode);
+      if (!coords) {
+        console.error('Could not geocode ZIP');
+        setLoading(false);
+        return;
+      }
+
       const today = new Date();
       const trip = new Date(tripDate);
       const diffTime = trip.getTime() - today.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       if (diffDays >= 0 && diffDays <= 14) {
-        // Fetch forecast for that day
-        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=40.7&longitude=-74&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=14`);
+        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=14`);
         const data = await response.json();
 
         if (data.daily) {
