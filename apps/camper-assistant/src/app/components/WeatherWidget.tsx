@@ -334,10 +334,11 @@ export default function WeatherWidget() {
       const data = await response.json();
       if (data.places && data.places[0]) {
         const place = data.places[0];
+        const state = data['state abbreviation'] || place['state abbreviation'] || '';
         return {
           lat: parseFloat(place.latitude),
           lon: parseFloat(place.longitude),
-          name: `${place['place name']}, ${data['state abbreviation']}`
+          name: `${place['place name']}${state ? ', ' + state : ''}`
         };
       }
       return null;
