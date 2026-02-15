@@ -50,7 +50,8 @@ function Read-KeyVaultJsonFile {
   # PowerShell 5.1 compatibility: ConvertFrom-Json may not support -Depth
   try {
     return ($raw | ConvertFrom-Json -Depth 50)
-  } catch {
+  }
+  catch {
     return ($raw | ConvertFrom-Json)
   }
 }
@@ -175,8 +176,8 @@ function Sync-KeyVaultEnvFromManifest {
 
   $appFull = (Resolve-Path -LiteralPath $AppPath).Path
   $manifestFull =
-    if ($ManifestPath) { (Resolve-Path -LiteralPath $ManifestPath).Path }
-    else { Join-Path $appFull 'env.manifest.json' }
+  if ($ManifestPath) { (Resolve-Path -LiteralPath $ManifestPath).Path }
+  else { Join-Path $appFull 'env.manifest.json' }
 
   if (-not (Test-Path -LiteralPath $manifestFull)) {
     throw "KeyVault manifest not found: $manifestFull"
@@ -256,7 +257,8 @@ function Sync-KeyVaultAllApps {
   $apps = Join-Path $root 'apps'
   if (-not (Test-Path -LiteralPath $apps)) { throw "Apps folder not found: $apps" }
 
-  $manifests = Get-ChildItem -Path $apps -Recurse -File -Filter 'env.manifest.json' -ErrorAction SilentlyContinue
+  $manifests = Get-ChildItem -Path $apps -Recurse -File -Filter 'env.manifest.json' -ErrorAction SilentlyContinue |
+  Where-Object { $_.FullName -notmatch '\.worktrees' -and $_.FullName -notmatch '_wt_' }
   foreach ($m in $manifests) {
     Sync-KeyVaultEnvFromManifest -AppPath $m.Directory.FullName -ManifestPath $m.FullName -DryRun:$DryRun -IncludeMissingOptional:$IncludeMissingOptional
   }
