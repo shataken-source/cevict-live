@@ -81,7 +81,7 @@ export interface ExpertConsensus {
 // Live Odds API
 export async function fetchLiveOdds(league: string): Promise<LiveOdds[]> {
   const apiKey = process.env.ODDS_API_KEY || process.env.NEXT_PUBLIC_ODDS_API_KEY;
-  
+
   if (!apiKey) {
     console.warn('No ODDS_API_KEY configured, using sample data');
     return getSampleLiveOdds(league);
@@ -94,6 +94,7 @@ export async function fetchLiveOdds(league: string): Promise<LiveOdds[]> {
     NCAAB: 'basketball_ncaab',
     NHL: 'icehockey_nhl',
     MLB: 'baseball_mlb',
+    NASCAR: 'motorsports_nascar',
   };
 
   const sportKey = sportKeys[league] || sportKeys.NFL;
@@ -135,11 +136,11 @@ function transformOddsData(apiData: any[], league: string): LiveOdds[] {
     }) || [];
 
     // Calculate consensus line
-    const avgSpread = books.length > 0 
-      ? books.reduce((sum, b) => sum + b.spread, 0) / books.length 
+    const avgSpread = books.length > 0
+      ? books.reduce((sum, b) => sum + b.spread, 0) / books.length
       : 0;
-    const avgTotal = books.length > 0 
-      ? books.reduce((sum, b) => sum + b.total, 0) / books.length 
+    const avgTotal = books.length > 0
+      ? books.reduce((sum, b) => sum + b.total, 0) / books.length
       : 0;
 
     return {
@@ -149,20 +150,20 @@ function transformOddsData(apiData: any[], league: string): LiveOdds[] {
       league,
       startTime: game.commence_time,
       odds: {
-        spread: { 
-          home: -avgSpread, 
-          away: avgSpread, 
-          homeOdds: -110, 
-          awayOdds: -110 
+        spread: {
+          home: -avgSpread,
+          away: avgSpread,
+          homeOdds: -110,
+          awayOdds: -110
         },
-        moneyline: { 
-          home: books[0]?.moneyline || -150, 
-          away: books[1]?.moneyline || 130 
+        moneyline: {
+          home: books[0]?.moneyline || -150,
+          away: books[1]?.moneyline || 130
         },
-        total: { 
-          line: avgTotal, 
-          over: -110, 
-          under: -110 
+        total: {
+          line: avgTotal,
+          over: -110,
+          under: -110
         },
       },
       movement: {
@@ -188,9 +189,9 @@ export async function fetchPublicBetting(gameId: string): Promise<PublicBetting>
     moneylinePublic: { home: homeMl, away: 100 - homeMl },
     totalPublic: { over, under: 100 - over },
     ticketCount: Math.floor(Math.random() * 50000) + 10000,
-    moneyPercentage: { 
-      home: homeSpread + Math.floor(Math.random() * 20 - 10), 
-      away: 100 - homeSpread - Math.floor(Math.random() * 20 - 10) 
+    moneyPercentage: {
+      home: homeSpread + Math.floor(Math.random() * 20 - 10),
+      away: 100 - homeSpread - Math.floor(Math.random() * 20 - 10)
     },
   };
 }
@@ -267,8 +268,8 @@ export async function fetchExpertConsensus(gameId: string, homeTeam: string, awa
     { name: 'Chalk Eater', pick: Math.random() > 0.5 ? homeTeam : awayTeam, record: '156-134', roi: 6.8 },
   ];
 
-  const consensusPick = homeExperts > awayExperts 
-    ? `${homeTeam} spread` 
+  const consensusPick = homeExperts > awayExperts
+    ? `${homeTeam} spread`
     : `${awayTeam} spread`;
 
   return {
@@ -313,6 +314,11 @@ function getSampleLiveOdds(league: string): LiveOdds[] {
     MLB: [
       { home: 'Yankees', away: 'Red Sox', spread: -1.5, ml: { home: -145, away: 125 }, total: 8.5 },
     ],
+    NASCAR: [
+      { home: 'Kyle Larson', away: 'William Byron', spread: -1.5, ml: { home: -125, away: 105 }, total: 2.5 },
+      { home: 'Denny Hamlin', away: 'Joey Logano', spread: -0.5, ml: { home: -115, away: -105 }, total: 2.5 },
+      { home: 'Chase Elliott', away: 'Ryan Blaney', spread: -1, ml: { home: -120, away: 100 }, total: 2.5 },
+    ],
   };
 
   const games = sampleGames[league] || sampleGames.NFL;
@@ -324,11 +330,11 @@ function getSampleLiveOdds(league: string): LiveOdds[] {
     league,
     startTime: new Date(Date.now() + Math.random() * 86400000 * 3).toISOString(),
     odds: {
-      spread: { 
-        home: game.spread, 
-        away: -game.spread, 
-        homeOdds: -110, 
-        awayOdds: -110 
+      spread: {
+        home: game.spread,
+        away: -game.spread,
+        homeOdds: -110,
+        awayOdds: -110
       },
       moneyline: game.ml,
       total: { line: game.total, over: -110, under: -110 },
@@ -373,7 +379,7 @@ export async function saveOddsSnapshot(odds: LiveOdds[]): Promise<void> {
 
 // Real-time subscription for odds changes
 export function subscribeToOddsChanges(
-  league: string, 
+  league: string,
   callback: (odds: LiveOdds[]) => void
 ): () => void {
   let interval: NodeJS.Timeout;

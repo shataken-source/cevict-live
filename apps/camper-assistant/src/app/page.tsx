@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope, ShoppingCart, Tent, Bird } from 'lucide-react';
+import { Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope, ShoppingCart, Tent, Bird, Signal, Wind as WindIcon, Flame as FlameIcon } from 'lucide-react';
 import SolarPanel from './components/SolarPanel';
 import WeatherWidget from './components/WeatherWidget';
 import BatteryMonitor from './components/BatteryMonitor';
@@ -16,6 +16,9 @@ import StarMap from './components/StarMap';
 import SmartShoppingList from './components/SmartShoppingList';
 import CampsiteFinder from './components/CampsiteFinder';
 import WildlifeSpotter from './components/WildlifeSpotter';
+import CellSignalMapper from './components/CellSignalMapper';
+import AirQualityMonitor from './components/AirQualityMonitor';
+import WildfireTracker from './components/WildfireTracker';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -42,6 +45,9 @@ export default function Home() {
     { id: 'shopping', label: 'AI Shopping', icon: ShoppingCart },
     { id: 'campsites', label: 'Campsites', icon: Tent },
     { id: 'wildlife', label: 'Wildlife', icon: Bird },
+    { id: 'signal', label: 'Cell Signal', icon: Signal },
+    { id: 'air', label: 'Air Quality', icon: WindIcon },
+    { id: 'wildfire', label: 'Wildfire', icon: FlameIcon },
   ];
 
   return (
@@ -141,6 +147,9 @@ export default function Home() {
         {activeTab === 'shopping' && <SmartShoppingList />}
         {activeTab === 'campsites' && <CampsiteFinder />}
         {activeTab === 'wildlife' && <WildlifeSpotter />}
+        {activeTab === 'signal' && <CellSignalMapper />}
+        {activeTab === 'air' && <AirQualityMonitor />}
+        {activeTab === 'wildfire' && <WildfireTracker />}
       </main>
     </div>
   );
