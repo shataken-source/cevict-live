@@ -154,7 +154,8 @@ const convertEBirdObservation = (obs: eBirdObservation): BirdSighting => {
 };
 
 export default function WildlifeSpotter() {
-  const [location, setLocation] = useState('US-WY-029'); // Yellowstone area
+  const [locationInput, setLocationInput] = useState('Yellowstone');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [sightings, setSightings] = useState<BirdSighting[]>(MOCK_SIGHTINGS);
   const [isLoading, setIsLoading] = useState(false);
   const [useLiveData, setUseLiveData] = useState(false);
@@ -162,12 +163,38 @@ export default function WildlifeSpotter() {
   const [expandedSighting, setExpandedSighting] = useState<string | null>(null);
   const [filterRarity, setFilterRarity] = useState<'all' | 'common' | 'uncommon' | 'rare'>('all');
   const [daysBack, setDaysBack] = useState(7);
+  const [isGeocoding, setIsGeocoding] = useState(false);
 
-  // Fetch recent observations from eBird
-  const fetchEBirdSightings = async () => {
+  // Geocode location name to coordinates using Nominatim (OpenStreetMap)
+  const geocodeLocation = async (query: string): Promise<{ lat: number; lng: number; name: string } | null> => {
     try {
-      // Build URL without API key in query string (use header only)
-      const url = `${EBIRD_CONFIG.BASE_URL}/data/obs/${location}/recent?back=${daysBack}`;
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', USA')}&limit=1`;
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'WildReady/1.0' }
+      });
+
+      if (!response.ok) throw new Error('Geocoding failed');
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+          name: data[0].display_name
+        };
+      }
+      return null;
+    } catch (err) {
+      console.error('Geocoding error:', err);
+      return null;
+    }
+  };
+
+  // Fetch recent observations from eBird using coordinates
+  const fetchEBirdSightings = async (lat: number, lng: number) => {
+    try {
+      // eBird API: get observations within 25km of lat/lng
+      const url = `${EBIRD_CONFIG.BASE_URL}/data/obs/geo/recent?lat=${lat}&lng=${lng}&dist=25&back=${daysBack}`;
 
       const response = await fetch(url, {
         headers: {
@@ -201,9 +228,24 @@ export default function WildlifeSpotter() {
     }
 
     setIsLoading(true);
+    setIsGeocoding(true);
     setApiError(null);
 
-    const eBirdSightings = await fetchEBirdSightings();
+    // First geocode the location
+    const geoResult = await geocodeLocation(locationInput);
+    setIsGeocoding(false);
+
+    if (!geoResult) {
+      setApiError('Could not find location. Try a city name or ZIP code.');
+      setSightings(MOCK_SIGHTINGS);
+      setIsLoading(false);
+      return;
+    }
+
+    setCoords({ lat: geoResult.lat, lng: geoResult.lng });
+
+    // Then fetch eBird data using coordinates
+    const eBirdSightings = await fetchEBirdSightings(geoResult.lat, geoResult.lng);
 
     if (eBirdSightings) {
       const filtered = filterRarity === 'all'
@@ -287,18 +329,18 @@ export default function WildlifeSpotter() {
       <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="text-sm text-slate-400 mb-2 block">Location (eBird Region)</label>
+            <label className="text-sm text-slate-400 mb-2 block">Location (City, Park, or Address)</label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="e.g., US-WY-029"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g., Yellowstone, Guntersville State Park"
+                value={locationInput}
+                onChange={(e) => setLocationInput(e.target.value)}
                 className="w-full bg-slate-700 border border-slate-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-slate-500"
               />
             </div>
-            <p className="text-xs text-slate-500 mt-1">Try: US-WY-029 (Yellowstone), US-CA-075 (SF)</p>
+            <p className="text-xs text-slate-500 mt-1">Try: Yellowstone, Grand Canyon, or your city name</p>
           </div>
 
           <div>
