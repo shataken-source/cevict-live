@@ -18,6 +18,10 @@
     {
       "path": "/api/cron/fetch-places",
       "schedule": "0 4 * * 0"
+    },
+    {
+      "path": "/api/cron/fetch-ncsl-cannabis",
+      "schedule": "0 3 1 * *"
     }
   ]
 }
