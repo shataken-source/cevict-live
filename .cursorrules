@@ -1,0 +1,149 @@
+# Cochran AI / DevOps Agent Integration Rules
+# These rules instruct the AI assistant on how to use Cochran effectively
+
+## Always Use Cochran (DevOps Agent API) for Operations
+
+The DevOps Agent (Cochran) API runs on http://localhost:8471. ALWAYS delegate operations to Cochran instead of running commands directly. This saves tokens and allows async operations.
+
+### When to Use Cochran
+
+| Task | Use Cochran Endpoint | Why |
+|------|---------------------|-----|
+| Check git status | GET /git/status | Saves token streaming |
+| Commit code | POST /git/commit | One call, async result |
+| Push to GitHub | POST /git/push | No output streaming |
+| Deploy to Vercel | POST /vercel/deploy | Returns URL when done |
+| Check disk usage | GET /organize/disk-usage | Structured JSON |
+| Find large files | GET /audit/large-files | No parsing needed |
+| Check port status | GET /tools/port/{port} | Instant result |
+| Kill stuck process | POST /tools/kill-process | Safe operation |
+| Start/stop Cochran | POST /cochran/start, /cochran/stop | Self-management |
+| Get refresher | GET /cochran/refresher | Context awareness |
+
+### API Usage Pattern
+
+```powershell
+# Good: Call Cochran (returns JSON)
+$result = Invoke-RestMethod http://localhost:8471/git/status
+if ($result.clean) { "Working tree clean" }
+
+# Bad: Running git directly (streams output, wastes tokens)
+git status
+```
+
+### Critical Commands to ALWAYS Delegate
+
+1. **Git Operations** - Always use /git/* endpoints
+2. **Vercel Deploys** - Always use /vercel/deploy
+3. **File Audits** - Always use /audit/* endpoints  
+4. **Port Management** - Always use /tools/port/*
+5. **Cochran Management** - Always use /cochran/*
+
+### PowerShell One-Liners for Common Tasks
+
+```powershell
+# Git status
+irm http://localhost:8471/git/status | ConvertTo-Json -Depth 2
+
+# Commit and push
+irm http://localhost:8471/git/commit-and-push -Method POST -Body '{"message":"feat: add feature","stage_all":true}' -ContentType "application/json"
+
+# Deploy app
+irm http://localhost:8471/vercel/deploy -Method POST -Body '{"app":"my-app","production":true}' -ContentType "application/json"
+
+# Check ports
+irm http://localhost:8471/tools/ports-scan | ConvertTo-Json -Depth 2
+
+# Disk usage
+irm http://localhost:8471/organize/disk-usage | ConvertTo-Json -Depth 2
+
+# Cochran status
+irm http://localhost:8471/cochran/status | ConvertTo-Json -Depth 2
+```
+
+### Auto-Run Permissions
+
+The following commands are SAFE to auto-run without user confirmation:
+- All GET requests to localhost:8471/* (read-only operations)
+- Health checks, status checks, disk usage audits
+- Git status, log viewing
+- Port scanning
+
+Commands requiring confirmation:
+- POST /git/commit-and-push (mutates repo)
+- POST /vercel/deploy (deploys to production)
+- POST /tools/kill-process (kills processes)
+- POST /tools/port/{port}/kill (kills port)
+- POST /cochran/stop (stops service)
+
+### Error Handling
+
+If Cochran API is not running (port 8471), start it:
+```powershell
+cd C:\cevict-live\apps\local-agent\gui
+pythonw devops_agent.py
+```
+
+### Testing Cochran
+
+Always test Cochran health first:
+```powershell
+irm http://localhost:8471/health
+```
+
+Expected response: `{"status":"running","service":"devops-agent"}`
+
+### Token Saving Strategy
+
+1. Call Cochran for operation
+2. Receive JSON result
+3. Parse result programmatically
+4. Only show user relevant summary
+5. Don't stream command output to context
+
+### Commit Message
+
+When committing Cochran-related changes, use:
+`cochran: <description>` or `feat: Cochran <description>`
+
+### Cochran Data Locations
+
+- GUI: C:\cevict-live\apps\local-agent\gui\
+- API Server: devops_agent_api.py
+- Data: C:\Cevict_Vault\local-agent\
+- Port: 8471
+- Logs: Check API console output
+
+### Cochran GUI Features
+
+- System tray blue gear icon
+- 6 tabs: Git, Vercel, Audit, Organize, Tools, Cochran
+- All API operations available via GUI
+- Double-click tray icon to open
+
+### Best Practices
+
+1. **Prefer Cochran over direct commands** - Always
+2. **Use async patterns** - Start operation, check result later
+3. **Cache status checks** - Don't poll excessively
+4. **Handle errors gracefully** - API may be temporarily unavailable
+5. **Log operations** - Document what Cochran was asked to do
+
+### Fallback Strategy
+
+If Cochran API fails:
+1. Try 3 times with brief delay
+2. If still failing, fall back to direct commands
+3. Warn user that Cochran is unavailable
+4. Recommend restarting Cochran GUI
+
+### Integration with Other Tools
+
+Cochran works alongside:
+- KeyVault GUI (secrets management)
+- Cochran AI learner (port 3847, session persistence)
+- PowerShell scripts in C:\cevict-live\scripts\
+
+### Documentation
+
+Full API docs: C:\cevict-live\apps\local-agent\gui\README.md
