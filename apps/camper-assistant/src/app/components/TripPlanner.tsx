@@ -1,10 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Backpack, Shirt, Thermometer, Wind, CloudRain, Check } from 'lucide-react';
+import { Backpack, Shirt, Thermometer, Wind, CloudRain, Check, Calendar, MapPin } from 'lucide-react';
 
 export default function TripPlanner() {
   const [days, setDays] = useState(3);
+  const [tripDate, setTripDate] = useState('');
+  const [zipCode, setZipCode] = useState('90210');
+  const [loading, setLoading] = useState(false);
   const [weather, setWeather] = useState({
     high: 75,
     low: 50,
@@ -45,6 +48,37 @@ export default function TripPlanner() {
     ],
   };
 
+  const fetchWeatherForTrip = async () => {
+    if (!tripDate || !zipCode) return;
+    setLoading(true);
+    try {
+      // Calculate days from today to trip date
+      const today = new Date();
+      const trip = new Date(tripDate);
+      const diffTime = trip.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays >= 0 && diffDays <= 14) {
+        // Fetch forecast for that day
+        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=40.7&longitude=-74&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=14`);
+        const data = await response.json();
+
+        if (data.daily) {
+          const dayIndex = diffDays;
+          setWeather({
+            high: Math.round(data.daily.temperature_2m_max[dayIndex] * 9 / 5 + 32),
+            low: Math.round(data.daily.temperature_2m_min[dayIndex] * 9 / 5 + 32),
+            rain: data.daily.precipitation_probability_max[dayIndex] > 30,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch weather:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
@@ -58,6 +92,46 @@ export default function TripPlanner() {
       {/* Trip Settings */}
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
         <h3 className="font-medium mb-4">Trip Details</h3>
+
+        {/* Date and Location Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="text-sm text-slate-400 block mb-2 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Trip Start Date
+            </label>
+            <input
+              type="date"
+              value={tripDate}
+              onChange={(e) => setTripDate(e.target.value)}
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+            />
+          </div>
+          <div>
+            <label className="text-sm text-slate-400 block mb-2 flex items-center gap-2">
+              <MapPin className="w-4 h-4" />
+              ZIP Code
+            </label>
+            <input
+              type="text"
+              value={zipCode}
+              onChange={(e) => setZipCode(e.target.value.slice(0, 5))}
+              placeholder="90210"
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={fetchWeatherForTrip}
+              disabled={loading || !tripDate}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              {loading ? 'Loading...' : 'Get Weather Forecast'}
+            </button>
+          </div>
+        </div>
+
+        {/* Weather Settings Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-sm text-slate-400 block mb-2">Number of Days</label>
@@ -65,7 +139,7 @@ export default function TripPlanner() {
               type="number"
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
-              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
           <div>
@@ -75,8 +149,8 @@ export default function TripPlanner() {
               <input
                 type="number"
                 value={weather.high}
-                onChange={(e) => setWeather({...weather, high: Number(e.target.value)})}
-                className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                onChange={(e) => setWeather({ ...weather, high: Number(e.target.value) })}
+                className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <span>°F</span>
             </div>
@@ -88,8 +162,8 @@ export default function TripPlanner() {
               <input
                 type="number"
                 value={weather.low}
-                onChange={(e) => setWeather({...weather, low: Number(e.target.value)})}
-                className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                onChange={(e) => setWeather({ ...weather, low: Number(e.target.value) })}
+                className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <span>°F</span>
             </div>
@@ -99,7 +173,7 @@ export default function TripPlanner() {
           <input
             type="checkbox"
             checked={weather.rain}
-            onChange={(e) => setWeather({...weather, rain: e.target.checked})}
+            onChange={(e) => setWeather({ ...weather, rain: e.target.checked })}
             className="w-4 h-4"
           />
           <label className="flex items-center gap-2">
