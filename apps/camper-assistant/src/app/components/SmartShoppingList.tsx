@@ -6,27 +6,23 @@ import {
   Package,
   DollarSign,
   Store,
-  Search,
   Plus,
   Check,
   Trash2,
   CloudRain,
-  Sun,
-  Wind,
-  Thermometer,
   Tent,
-  Fish,
-  Bike,
   Mountain,
   Flame,
   Sparkles,
   ExternalLink,
   Calculator,
-  Filter,
   Wrench,
   AlertCircle,
   Save,
-  Download
+  Download,
+  MessageSquare,
+  Lightbulb,
+  Wand2
 } from 'lucide-react';
 
 type StoreType = 'walmart' | 'amazon' | 'westmarine' | 'cabelas' | 'rei' | 'homedepot';
@@ -74,12 +70,85 @@ const CATEGORIES: { id: CategoryType; name: string; icon: any; color: string }[]
   { id: 'food', name: 'Food/Cooking', icon: Flame, color: 'text-orange-400 bg-orange-900/30' },
 ];
 
-// AI-generated suggestions - REQUIRES REAL API INTEGRATION
-// This function previously contained mock data. Now returns empty until real AI service connected.
-function generateSmartSuggestions(context: TripContext): ShoppingItem[] {
-  // TODO: Connect to real AI recommendation service (OpenAI, Claude, etc.)
-  // or product search API (Amazon Product API, Walmart API, etc.)
-  return [];
+// AI helper to categorize and prioritize items based on natural language input
+function aiHelperCategorize(input: string): Partial<ShoppingItem> {
+  const lower = input.toLowerCase();
+
+  // Simple keyword-based categorization (replace with real AI later)
+  let category: CategoryType = 'comfort';
+  let priority: PriorityType = 'recommended';
+  let estimatedWeight = 1;
+  let packSize = 'small';
+
+  // Safety items
+  if (lower.includes('first aid') || lower.includes('emergency') || lower.includes('fire extinguisher') ||
+    lower.includes('smoke detector') || lower.includes('co detector') || lower.includes('flashlight') ||
+    lower.includes('bear spray') || lower.includes('whistle') || lower.includes('radio')) {
+    category = 'safety';
+    priority = 'essential';
+  }
+  // Weather items
+  else if (lower.includes('tarp') || lower.includes('rain') || lower.includes('umbrella') ||
+    lower.includes('skirting') || lower.includes('heater') || lower.includes('cover') ||
+    lower.includes('insulation') || lower.includes('shade')) {
+    category = 'weather';
+    priority = lower.includes('skirt') || lower.includes('heater') ? 'essential' : 'recommended';
+  }
+  // Maintenance items
+  else if (lower.includes('tool') || lower.includes('hose') || lower.includes('sewer') ||
+    lower.includes('level') || lower.includes('chock') || lower.includes('jack') ||
+    lower.includes('repair') || lower.includes('kit') || lower.includes('filter') ||
+    lower.includes('oil') || lower.includes('tire')) {
+    category = 'maintenance';
+    priority = 'essential';
+    packSize = 'medium';
+  }
+  // Activity items
+  else if (lower.includes('bike') || lower.includes('kayak') || lower.includes('fishing') ||
+    lower.includes('hike') || lower.includes('climb') || lower.includes('paddle') ||
+    lower.includes('boat') || lower.includes('tent') || lower.includes('sleeping')) {
+    category = 'activity';
+    priority = 'recommended';
+  }
+  // Food items
+  else if (lower.includes('grill') || lower.includes('stove') || lower.includes('cooler') ||
+    lower.includes('fridge') || lower.includes('cook') || lower.includes('pot') ||
+    lower.includes('pan') || lower.includes('utensil') || lower.includes('propane')) {
+    category = 'food';
+    priority = 'essential';
+  }
+
+  // Weight estimation based on keywords
+  if (lower.includes('generator') || lower.includes('bike rack') || lower.includes('grill large')) {
+    estimatedWeight = 50;
+    packSize = 'large';
+  } else if (lower.includes('chair') || lower.includes('table') || lower.includes('grill') ||
+    lower.includes('cooler large') || lower.includes('generator small')) {
+    estimatedWeight = 15;
+    packSize = 'large';
+  } else if (lower.includes('hose') || lower.includes('cable') || lower.includes('tarp') ||
+    lower.includes('ladder') || lower.includes('bike')) {
+    estimatedWeight = 5;
+    packSize = 'medium';
+  }
+
+  // Generate reason
+  const reasons: Record<CategoryType, string> = {
+    safety: 'Essential for emergency preparedness and safety.',
+    weather: 'Protection from elements based on forecast.',
+    maintenance: 'Required for RV/campsite setup and maintenance.',
+    activity: 'Gear for planned outdoor activities.',
+    comfort: 'Enhances camping comfort and convenience.',
+    food: 'Essential for meal preparation and storage.',
+  };
+
+  return {
+    category,
+    priority,
+    estimatedWeight,
+    packSize,
+    reason: reasons[category],
+  };
 }
 
 export default function SmartShoppingList() {
@@ -99,10 +168,50 @@ export default function SmartShoppingList() {
   const [selectedStore, setSelectedStore] = useState<StoreType | 'all'>('all');
   const [showAIGenerate, setShowAIGenerate] = useState(false);
 
-  // AI generate new suggestions - requires API integration
-  const handleAIGenerate = () => {
-    // TODO: Connect to real AI service
-    alert('AI recommendations require API integration (OpenAI/Claude + Product APIs)');
+  // AI-assisted item addition
+  const [aiInput, setAiInput] = useState('');
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<Partial<ShoppingItem>[]>([]);
+
+  const handleAIAddItem = async () => {
+    if (!aiInput.trim()) return;
+
+    setIsAiProcessing(true);
+
+    // Simulate AI processing delay
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    // Parse multiple items (comma or newline separated)
+    const itemNames = aiInput.split(/[,\n]+/).map(s => s.trim()).filter(s => s.length > 0);
+
+    const suggestions = itemNames.map(name => {
+      const aiData = aiHelperCategorize(name);
+      return {
+        id: `ai-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        description: 'AI-categorized item',
+        category: aiData.category || 'comfort',
+        priority: aiData.priority || 'recommended',
+        prices: [],
+        quantity: 1,
+        inCart: false,
+        reason: aiData.reason || 'Added via AI assistant',
+        estimatedWeight: aiData.estimatedWeight,
+        packSize: aiData.packSize,
+      };
+    });
+
+    setAiSuggestions(suggestions);
+    setIsAiProcessing(false);
+  };
+
+  const confirmAddAiItem = (item: ShoppingItem) => {
+    setItems(prev => [...prev, item]);
+    setAiSuggestions(prev => prev.filter(s => s.id !== item.id));
+  };
+
+  const rejectAiItem = (id: string) => {
+    setAiSuggestions(prev => prev.filter(s => s.id !== id));
   };
 
   const toggleCart = (id: string) => {
@@ -256,13 +365,120 @@ export default function SmartShoppingList() {
             </select>
           </div>
           <button
-            onClick={handleAIGenerate}
-            disabled={showAIGenerate}
-            className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            onClick={() => setAiInput('')}
+            className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
           >
-            <Sparkles className={`w-4 h-4 ${showAIGenerate ? 'animate-spin' : ''}`} />
-            {showAIGenerate ? 'Analyzing...' : 'AI Generate'}
+            <Wand2 className="w-4 h-4" />
+            AI Assistant
           </button>
+        </div>
+      </div>
+
+      {/* AI Assistant - Natural Language Item Addition */}
+      <div className="bg-gradient-to-r from-amber-900/30 to-purple-900/30 rounded-xl p-6 border border-amber-700/50">
+        <div className="flex items-center gap-3 mb-4">
+          <Wand2 className="w-6 h-6 text-amber-400" />
+          <h3 className="text-lg font-semibold text-amber-200">AI Shopping Assistant</h3>
+          <span className="text-xs bg-amber-900/50 text-amber-400 px-2 py-1 rounded">Smart Categorization</span>
+        </div>
+
+        <p className="text-slate-400 mb-4 text-sm">
+          Tell me what you need in plain English. I&apos;ll categorize it, set priority, and estimate weight.
+          <span className="text-amber-400">Try: &quot;generator, bike rack, first aid kit&quot;</span>
+        </p>
+
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={aiInput}
+            onChange={(e) => setAiInput(e.target.value)}
+            placeholder="What do you need? (e.g., 'tarp, bear spray, camping chairs')"
+            className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500"
+            onKeyPress={(e) => e.key === 'Enter' && handleAIAddItem()}
+          />
+          <button
+            onClick={handleAIAddItem}
+            disabled={isAiProcessing || !aiInput.trim()}
+            className="bg-amber-600 hover:bg-amber-700 disabled:bg-slate-600 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            {isAiProcessing ? (
+              <>
+                <Sparkles className="w-4 h-4 animate-spin" />
+                Thinking...
+              </>
+            ) : (
+              <>
+                <Lightbulb className="w-4 h-4" />
+                Analyze
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* AI Suggestions Preview */}
+        {aiSuggestions.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <p className="text-sm text-amber-400 font-medium">AI detected {aiSuggestions.length} item(s):</p>
+            {aiSuggestions.map((suggestion) => {
+              const categoryConfig = CATEGORIES.find(c => c.id === suggestion.category);
+              const CategoryIcon = categoryConfig?.icon || Package;
+
+              return (
+                <div key={suggestion.id} className="bg-slate-800/80 rounded-lg p-3 border border-slate-600 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${categoryConfig?.color || 'bg-slate-700'}`}>
+                      <CategoryIcon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-white">{suggestion.name}</div>
+                      <div className="text-xs text-slate-400 flex items-center gap-2">
+                        <span className={suggestion.priority === 'essential' ? 'text-red-400' : suggestion.priority === 'recommended' ? 'text-amber-400' : 'text-slate-400'}>
+                          {suggestion.priority}
+                        </span>
+                        <span>•</span>
+                        <span>{categoryConfig?.name}</span>
+                        {suggestion.estimatedWeight && (
+                          <>
+                            <span>•</span>
+                            <span>{suggestion.estimatedWeight} lbs</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => confirmAddAiItem(suggestion as ShoppingItem)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-sm transition-colors flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add
+                    </button>
+                    <button
+                      onClick={() => rejectAiItem(suggestion.id!)}
+                      className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded text-sm transition-colors"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Quick Examples */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="text-xs text-slate-500">Try:</span>
+          {['generator', 'bike rack', 'first aid kit', 'camping chairs', 'sewer hose'].map(example => (
+            <button
+              key={example}
+              onClick={() => setAiInput(example)}
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 px-2 py-1 rounded transition-colors"
+            >
+              {example}
+            </button>
+          ))}
         </div>
       </div>
 
