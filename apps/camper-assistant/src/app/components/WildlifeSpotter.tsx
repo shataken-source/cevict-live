@@ -166,8 +166,9 @@ export default function WildlifeSpotter() {
   // Fetch recent observations from eBird
   const fetchEBirdSightings = async () => {
     try {
-      const url = `${EBIRD_CONFIG.BASE_URL}/data/obs/${location}/recent?back=${daysBack}&key=${EBIRD_CONFIG.API_KEY}`;
-      
+      // Build URL without API key in query string (use header only)
+      const url = `${EBIRD_CONFIG.BASE_URL}/data/obs/${location}/recent?back=${daysBack}`;
+
       const response = await fetch(url, {
         headers: {
           'X-eBirdApiToken': EBIRD_CONFIG.API_KEY,
@@ -175,7 +176,9 @@ export default function WildlifeSpotter() {
       });
 
       if (!response.ok) {
-        throw new Error(`eBird API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error('eBird API error response:', errorText);
+        throw new Error(`eBird API error: ${response.status} - ${errorText}`);
       }
 
       const data: eBirdObservation[] = await response.json();
@@ -190,7 +193,7 @@ export default function WildlifeSpotter() {
   const handleSearch = async () => {
     if (!useLiveData) {
       // Filter mock data
-      const filtered = MOCK_SIGHTINGS.filter(s => 
+      const filtered = MOCK_SIGHTINGS.filter(s =>
         filterRarity === 'all' || s.rarity === filterRarity
       );
       setSightings(filtered);
@@ -203,8 +206,8 @@ export default function WildlifeSpotter() {
     const eBirdSightings = await fetchEBirdSightings();
 
     if (eBirdSightings) {
-      const filtered = filterRarity === 'all' 
-        ? eBirdSightings 
+      const filtered = filterRarity === 'all'
+        ? eBirdSightings
         : eBirdSightings.filter(s => s.rarity === filterRarity);
       setSightings(filtered.length > 0 ? filtered : MOCK_SIGHTINGS);
     } else {
@@ -249,22 +252,20 @@ export default function WildlifeSpotter() {
             <Bird className="w-6 h-6 text-emerald-400" />
             <h2 className="text-xl font-semibold">Wildlife Spotter</h2>
           </div>
-          
+
           {/* Live/Demo Toggle */}
           <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1">
             <button
               onClick={() => setUseLiveData(false)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                !useLiveData ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
-              }`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${!useLiveData ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white'
+                }`}
             >
               Demo Data
             </button>
             <button
               onClick={() => setUseLiveData(true)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                useLiveData ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
-              }`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${useLiveData ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
             >
               Live eBird API
             </button>
@@ -299,7 +300,7 @@ export default function WildlifeSpotter() {
             </div>
             <p className="text-xs text-slate-500 mt-1">Try: US-WY-029 (Yellowstone), US-CA-075 (SF)</p>
           </div>
-          
+
           <div>
             <label className="text-sm text-slate-400 mb-2 block">Days Back</label>
             <select
@@ -369,7 +370,7 @@ export default function WildlifeSpotter() {
       <div className="grid grid-cols-1 gap-3">
         {sightings.map((sighting) => {
           const isExpanded = expandedSighting === sighting.id;
-          
+
           return (
             <div
               key={sighting.id}
@@ -404,7 +405,7 @@ export default function WildlifeSpotter() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-1 rounded capitalize ${getRarityColor(sighting.rarity)}`}>
                       {sighting.rarity}
@@ -427,7 +428,7 @@ export default function WildlifeSpotter() {
                         <p><span className="text-slate-500">Count:</span> {sighting.count} {sighting.count === 1 ? 'bird' : 'birds'}</p>
                       </div>
                     </div>
-                    
+
                     <div>
                       <h4 className="text-sm font-medium text-slate-400 mb-2">Actions</h4>
                       <div className="space-y-2">
@@ -452,12 +453,12 @@ export default function WildlifeSpotter() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 pt-4 border-t border-slate-700">
                     <div className="flex items-start gap-2 text-xs text-slate-500">
                       <Info className="w-4 h-4 mt-0.5" />
                       <span>
-                        Data from eBird/Cornell Lab of Ornithology. 
+                        Data from eBird/Cornell Lab of Ornithology.
                         Observations are submitted by birders worldwide.
                       </span>
                     </div>
@@ -500,8 +501,8 @@ export default function WildlifeSpotter() {
               <li>Submit your own sightings via eBird app</li>
             </ul>
             <p className="mt-2 text-slate-500">
-              {useLiveData ? 
-                "Live data from eBird API" : 
+              {useLiveData ?
+                "Live data from eBird API" :
                 "Switch to 'Live eBird API' for real sightings"
               }
             </p>
