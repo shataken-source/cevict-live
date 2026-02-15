@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope, ShoppingCart, Tent, Bird, Signal, Wind as WindIcon, Flame as FlameIcon, Radio, Fish, Leaf } from 'lucide-react';
+import { Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope, ShoppingCart, Tent, Bird, Signal, Wind as WindIcon, Flame as FlameIcon, Radio, Fish, Leaf, Volume2 } from 'lucide-react';
 import SolarPanel from './components/SolarPanel';
 import WeatherWidget from './components/WeatherWidget';
 import BatteryMonitor from './components/BatteryMonitor';
@@ -22,6 +22,7 @@ import WildfireTracker from './components/WildfireTracker';
 import MeshNetwork from './components/MeshNetwork';
 import FishingIntelligence from './components/FishingIntelligence';
 import ForagingGuide from './components/ForagingGuide';
+import SoundGenerator from './components/SoundGenerator';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -53,7 +54,7 @@ export default function Home() {
     { id: 'wildfire', label: 'Wildfire', icon: FlameIcon },
     { id: 'mesh', label: 'Mesh Network', icon: Radio },
     { id: 'fishing', label: 'Fishing', icon: Fish },
-    { id: 'foraging', label: 'Foraging', icon: Leaf },
+    { id: 'sound', label: 'Sounds', icon: Volume2 },
   ];
 
   return (
@@ -158,7 +159,7 @@ export default function Home() {
         {activeTab === 'wildfire' && <WildfireTracker />}
         {activeTab === 'mesh' && <MeshNetwork />}
         {activeTab === 'fishing' && <FishingIntelligence />}
-        {activeTab === 'foraging' && <ForagingGuide />}
+        {activeTab === 'sound' && <SoundGenerator />}
       </main>
 
       {/* Footer */}
