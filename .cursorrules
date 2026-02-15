@@ -153,6 +153,9 @@ irm http://localhost:8471/watch/package-json -Method POST -Body '{"app":"my-app"
 # Watch package.json without installing (dry run)
 irm http://localhost:8471/watch/package-json -Method POST -Body '{"app":"my-app","dry_run":true}' -ContentType "application/json"
 
+# Research topic on the web
+irm http://localhost:8471/research -Method POST -Body '{"query":"Next.js 15 features","depth":3}' -ContentType "application/json"
+
 # Check ports
 irm http://localhost:8471/tools/ports-scan | ConvertTo-Json -Depth 2
 
