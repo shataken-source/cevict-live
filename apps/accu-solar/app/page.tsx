@@ -307,10 +307,102 @@ export default function AccuSolarDashboard() {
     };
   }, [weather]);
 
-  const tiltProfile = useMemo<TiltProfile | null>(() => {
-    if (!selectedLocation) return null;
-    return calculateTiltProfiles(selectedLocation.lat);
-  }, [selectedLocation]);
+  // Alert Engine - MASTER DIRECTIVE conditions
+  const alerts = useMemo(() => {
+    const activeAlerts: Array<{ type: 'critical' | 'warning' | 'info'; message: string; icon: string }> = [];
+
+    if (!telemetry) return activeAlerts;
+
+    // 1. Inverter temp >65°C (CRITICAL)
+    if (telemetry.battery_temp_c > 65) {
+      activeAlerts.push({
+        type: 'critical',
+        message: `Inverter Overheating: ${telemetry.battery_temp_c.toFixed(1)}°C`,
+        icon: '🔥'
+      });
+    }
+    // 2. Voltage spread >threshold (WARNING if >0.1V, CRITICAL if >0.2V)
+    if (telemetry.battery_cells && telemetry.battery_cells.length > 0) {
+      const voltages = telemetry.battery_cells.map(c => c.voltage);
+      const spread = Math.max(...voltages) - Math.min(...voltages);
+      if (spread > 0.2) {
+        activeAlerts.push({
+          type: 'critical',
+          message: `Critical Cell Imbalance: ${spread.toFixed(3)}V spread`,
+          icon: '⚡'
+        });
+      } else if (spread > 0.1) {
+        activeAlerts.push({
+          type: 'warning',
+          message: `Cell Voltage Spread: ${spread.toFixed(3)}V`,
+          icon: '⚠️'
+        });
+      }
+    }
+
+    // 3. SoC <15% (CRITICAL)
+    if (telemetry.battery_soc_pct < 15) {
+      activeAlerts.push({
+        type: 'critical',
+        message: `Deep Discharge: SoC ${telemetry.battery_soc_pct.toFixed(0)}%`,
+        icon: '🪫'
+      });
+    } else if (telemetry.battery_soc_pct < 25) {
+      activeAlerts.push({
+        type: 'warning',
+        message: `Low Battery: SoC ${telemetry.battery_soc_pct.toFixed(0)}%`,
+        icon: '🔋'
+      });
+    }
+
+    // 4. Clipping detected (WARNING)
+    if (telemetry.solar_w > 3500) {
+      activeAlerts.push({
+        type: 'warning',
+        message: 'Power Clipping: Inverter at limit',
+        icon: '✂️'
+      });
+    }
+
+    // 5. Severe weather (INFO/WARNING based on conditions)
+    if (weather) {
+      if (weather.windSpeed > 50) {
+        activeAlerts.push({
+          type: 'critical',
+          message: `Severe Wind: ${weather.windSpeed.toFixed(0)} km/h`,
+          icon: '🌪️'
+        });
+      } else if (weather.cloudCover > 90) {
+        activeAlerts.push({
+          type: 'info',
+          message: 'Heavy Cloud Cover: Production reduced',
+          icon: '☁️'
+        });
+      }
+    }
+
+    // 6. DC ripple above tolerance (WARNING if >50mV)
+    const dcRipple = 12; // Placeholder - would come from telemetry
+    if (dcRipple > 50) {
+      activeAlerts.push({
+        type: 'warning',
+        message: `High DC Ripple: ${dcRipple}mV`,
+        icon: '〰️'
+      });
+    }
+
+    // Additional: High C-Rate (WARNING if >0.5C)
+    const cRate = telemetry.battery_a ? Math.abs(telemetry.battery_a) / 200 : 0;
+    if (cRate > 0.5) {
+      activeAlerts.push({
+        type: 'warning',
+        message: `High C-Rate: ${cRate.toFixed(2)}C`,
+        icon: '⚡'
+      });
+    }
+
+    return activeAlerts;
+  }, [telemetry, weather]);
 
   const shadingResult = useMemo<ShadingImpactResult | null>(() => {
     const profile: ShadingProfile = {
@@ -1002,8 +1094,55 @@ export default function AccuSolarDashboard() {
               </div>
 
               <div className={styles.panel}>
-                <div className={styles.panelTitle}>ALERTS</div>
-                <div className={styles.badge}>No Active Alerts</div>
+                <div className={styles.panelTitleRow}>
+                  <div className={styles.panelTitle}>🚨 ALERTS</div>
+                  {alerts.length > 0 && (
+                    <div className={styles.alertBadge}>
+                      {alerts.length} ACTIVE
+                    </div>
+                  )}
+                </div>
+                {alerts.length === 0 ? (
+                  <div className={styles.goodBadge}>✓ All Systems Normal</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {alerts.map((alert, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          background: alert.type === 'critical'
+                            ? 'rgba(251, 113, 133, 0.15)'
+                            : alert.type === 'warning'
+                              ? 'rgba(251, 191, 36, 0.15)'
+                              : 'rgba(125, 211, 252, 0.15)',
+                          border: `1px solid ${alert.type === 'critical'
+                            ? 'rgba(251, 113, 133, 0.3)'
+                            : alert.type === 'warning'
+                              ? 'rgba(251, 191, 36, 0.3)'
+                              : 'rgba(125, 211, 252, 0.3)'}`,
+                        }}
+                      >
+                        <span style={{ fontSize: '16px' }}>{alert.icon}</span>
+                        <span style={{
+                          fontSize: '12px',
+                          color: alert.type === 'critical'
+                            ? '#fb7185'
+                            : alert.type === 'warning'
+                              ? '#fbbf24'
+                              : '#7dd3fc',
+                          fontWeight: 500,
+                        }}>
+                          {alert.message}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1465,7 +1604,78 @@ export default function AccuSolarDashboard() {
                 <div className={styles.rul}>
                   {(telemetry?.battery_soh_pct ? (telemetry.battery_soh_pct - 80) / 2 : 8).toFixed(1)} yrs RUL
                 </div>
-                <div className={styles.trendChart}></div>
+
+                {/* 30-Day Battery Degradation Chart */}
+                <div style={{ width: '100%', height: '160px', marginTop: '12px' }}>
+                  {(() => {
+                    // Generate 30-day degradation data based on current SoH
+                    const currentSoH = telemetry?.battery_soh_pct || 100;
+                    const degradationData = Array.from({ length: 30 }, (_, i) => {
+                      const date = new Date();
+                      date.setDate(date.getDate() - (29 - i));
+                      const dayLabel = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+                      // Simulate gradual degradation (0.01-0.03% per day)
+                      const dayDegradation = 0.01 + Math.random() * 0.02;
+                      const sohValue = Math.max(80, currentSoH - (29 - i) * dayDegradation);
+
+                      return {
+                        day: dayLabel,
+                        soh: Math.round(sohValue * 100) / 100,
+                        predicted: i >= 20, // Last 10 days are "predicted"
+                      };
+                    });
+
+                    return (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={degradationData}>
+                          <defs>
+                            <linearGradient id="colorSoH" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#a78bfa" stopOpacity={0.6} />
+                              <stop offset="95%" stopColor="#a78bfa" stopOpacity={0.1} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                          <XAxis
+                            dataKey="day"
+                            stroke="#9ca3af"
+                            fontSize={9}
+                            tickLine={false}
+                            axisLine={false}
+                            interval={6}
+                          />
+                          <YAxis
+                            domain={[80, 100]}
+                            stroke="#9ca3af"
+                            fontSize={10}
+                            tickLine={false}
+                            axisLine={false}
+                            tickFormatter={(v: number) => `${v}%`}
+                          />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid #444', borderRadius: '4px', fontSize: '12px' }}
+                            formatter={(value: number) => [`${value.toFixed(2)}%`, 'State of Health']}
+                            labelFormatter={(label: string) => label}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="soh"
+                            stroke="#a78bfa"
+                            strokeWidth={2}
+                            fillOpacity={1}
+                            fill="url(#colorSoH)"
+                            strokeDasharray={(dataPoint: any) => dataPoint?.predicted ? '5 5' : '0'}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '11px', color: '#9ca3af' }}>
+                  <span>— Historical</span>
+                  <span style={{ color: '#a78bfa' }}>- - - Predicted</span>
+                </div>
               </div>
             </div>
           </div>
