@@ -19,8 +19,8 @@ import {
 
 // Edamam API Keys
 const EDAMAM_CONFIG = {
-  APP_ID: process.env.NEXT_PUBLIC_EDAMAM_APP_ID || 'c4b30b72',
-  APP_KEY: process.env.NEXT_PUBLIC_EDAMAM_APP_KEY || '4933d3ff963880b40c348abeee860496',
+  APP_ID: process.env.NEXT_PUBLIC_EDAMAM_APP_ID || '',
+  APP_KEY: process.env.NEXT_PUBLIC_EDAMAM_APP_KEY || '',
   BASE_URL: 'https://api.edamam.com/api/recipes/v2',
 };
 
