@@ -143,6 +143,132 @@ irm http://localhost:8471/organize/disk-usage | ConvertTo-Json -Depth 2
 irm http://localhost:8471/cochran/status | ConvertTo-Json -Depth 2
 ```
 
+## Advanced Cochran Capabilities (Go Crazy Mode)
+
+### 1. KeyVault Secrets (No More Asking for Keys)
+
+Cochran can retrieve secrets from KeyVault without user intervention:
+
+```powershell
+# List available secrets
+irm http://localhost:8471/keyvault/secrets
+
+# Get a secret (masked by default)
+irm http://localhost:8471/keyvault/secret/VERCEL_TOKEN
+
+# Get full secret value (use sparingly)
+irm http://localhost:8471/keyvault/secret/VERCEL_TOKEN?reveal=true
+```
+
+**When to use:** When deploying, building, or any operation needs API keys. Cochran fetches them securely without exposing in chat.
+
+### 2. File/Code Search (Find Anything Instantly)
+
+```powershell
+# Find files by pattern
+irm http://localhost:8471/search/files -Method POST -Body '{"pattern": "*.tsx", "directory": "C:\\cevict-live\\apps"}' -ContentType "application/json"
+
+# Grep code for pattern
+irm http://localhost:8471/search/grep -Method POST -Body '{"query": "useState", "extensions": [".tsx", ".ts"]}' -ContentType "application/json"
+```
+
+**When to use:** Searching for components, finding references, auditing code patterns.
+
+### 3. Background Task Execution (Fire and Forget)
+
+```powershell
+# Start a long-running task
+$task = irm http://localhost:8471/tasks/run -Method POST -Body '{"command": ["npx", "build"], "timeout": 600}' -ContentType "application/json"
+
+# Poll for completion
+irm http://localhost:8471/tasks/status/$task.task_id
+
+# List all running tasks
+irm http://localhost:8471/tasks/list
+```
+
+**When to use:** Long builds, deployments, audits that take time. Start it, check back later.
+
+### 4. System Monitoring (Know Your Machine)
+
+```powershell
+# Disk usage
+irm http://localhost:8471/system/disk
+
+# Memory info
+irm http://localhost:8471/system/memory
+
+# Running processes (top 50)
+irm http://localhost:8471/system/processes
+
+# Find specific processes
+irm http://localhost:8471/system/processes?filter=node
+
+# System uptime
+irm http://localhost:8471/system/uptime
+```
+
+**When to use:** Check if disk is full, memory pressure, find zombie processes.
+
+### 5. Webhooks / Async Notifications
+
+```powershell
+# Register a webhook for task completion
+irm http://localhost:8471/notify/webhook -Method POST -Body '{"url": "http://localhost:3000/cochran-callback", "events": ["task_complete", "deploy_complete"]}' -ContentType "application/json"
+```
+
+**When to use:** Long operations that need notification when done.
+
+### 6. Scheduled Jobs (Cron-like)
+
+```powershell
+# Schedule a recurring task
+irm http://localhost:8471/schedule/add -Method POST -Body '{"name": "git-backup", "interval_minutes": 60, "command": ["git", "commit", "-am", "auto: hourly backup"]}' -ContentType "application/json"
+
+# List scheduled jobs
+irm http://localhost:8471/schedule/list
+```
+
+**When to use:** Automated backups, periodic audits, scheduled deployments.
+
+## Usage Patterns for Maximum Efficiency
+
+### Pattern 1: Pre-Flight Check
+Before any major operation, do a system check:
+```powershell
+$disk = irm http://localhost:8471/system/disk
+if ($disk.percent_used -gt 90) { "⚠️ Disk almost full!" }
+```
+
+### Pattern 2: Secret Injection
+When deploying without hardcoding keys:
+```powershell
+$token = (irm http://localhost:8471/keyvault/secret/VERCEL_TOKEN?reveal=true).value
+# Use $token in deployment command
+```
+
+### Pattern 3: Async Deploy with Polling
+```powershell
+$deploy = irm http://localhost:8471/vercel/deploy -Method POST -Body '{"app":"my-app","production":true}' -ContentType "application/json"
+# ... do other work ...
+$status = irm http://localhost:8471/tasks/status/$deploy.task_id
+```
+
+### Pattern 4: Code Search Before Edit
+```powershell
+$refs = irm http://localhost:8471/search/grep -Method POST -Body '{"query": "oldFunctionName"}' -ContentType "application/json"
+# Show user all files that need updating
+```
+
+### Pattern 5: Self-Healing
+```powershell
+# If port blocked, auto-kill
+$port = irm http://localhost:8471/tools/port/3000
+if ($port.in_use -and $port.process -eq "node") {
+    irm http://localhost:8471/tools/port/3000/kill -Method POST
+}
+```
+
 ### Auto-Run Permissions
 
 The following commands are SAFE to auto-run without user confirmation:

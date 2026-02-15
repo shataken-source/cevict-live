@@ -730,6 +730,355 @@ if HAS_FLASK:
             "total_active_instances": len(cascade_instances),
         })
 
+    # -------------------------------------------------------------------------
+    # KeyVault Integration (Secrets Retrieval)
+    # -------------------------------------------------------------------------
+    KEYVAULT_STORE_PATH = Path(os.environ.get('KEYVAULT_STORE_PATH', r'C:\Cevict_Vault\env-store.json'))
+
+    def _get_keyvault_store() -> dict:
+        """Load the KeyVault store JSON."""
+        if not KEYVAULT_STORE_PATH.exists():
+            # Try alternative locations
+            alternatives = [
+                Path(r'C:\Cevict_Vault\vault\secrets\env-store.json'),
+                REPO_ROOT / 'vault' / 'secrets' / 'env-store.json',
+            ]
+            for alt in alternatives:
+                if alt.exists():
+                    return json.loads(alt.read_text('utf-8'))
+            return {}
+        return json.loads(KEYVAULT_STORE_PATH.read_text('utf-8'))
+
+    @app.route('/keyvault/secret/<name>', methods=['GET'])
+    def keyvault_get_secret(name):
+        """Get a secret value from KeyVault (masked by default)."""
+        try:
+            store = _get_keyvault_store()
+            secret = store.get(name)
+            if secret is None:
+                return jsonify({"success": False, "error": "Secret not found"}), 404
+
+            # Mask the value: show first/last 4 chars only
+            value = str(secret)
+            if len(value) > 8:
+                masked = value[:4] + '*' * (len(value) - 8) + value[-4:]
+            else:
+                masked = '*' * len(value)
+
+            reveal = request.args.get('reveal', 'false').lower() == 'true'
+            return jsonify({
+                "success": True,
+                "name": name,
+                "value": value if reveal else masked,
+                "masked": not reveal,
+                "length": len(value),
+            })
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route('/keyvault/secrets', methods=['GET'])
+    def keyvault_list_secrets():
+        """List all secret names (not values)."""
+        try:
+            store = _get_keyvault_store()
+            return jsonify({
+                "success": True,
+                "secrets": list(store.keys()),
+                "count": len(store),
+                "store_path": str(KEYVAULT_STORE_PATH),
+            })
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    # -------------------------------------------------------------------------
+    # File/Code Search (Grep/File Find)
+    # -------------------------------------------------------------------------
+    @app.route('/search/files', methods=['POST'])
+    def search_files():
+        """Search for files matching pattern."""
+        data = request.get_json() or {}
+        pattern = data.get('pattern', '*')
+        directory = data.get('directory', str(REPO_ROOT))
+        max_depth = data.get('max_depth', 10)
+
+        try:
+            target = Path(directory)
+            matches = []
+            for i, f in enumerate(target.rglob(pattern)):
+                if i > 1000:  # Limit results
+                    break
+                if 'node_modules' in f.parts or '.git' in f.parts:
+                    continue
+                if len(f.relative_to(target).parts) > max_depth:
+                    continue
+                matches.append(str(f.relative_to(REPO_ROOT)) if f.is_relative_to(REPO_ROOT) else str(f))
+
+            return jsonify({
+                "success": True,
+                "pattern": pattern,
+                "matches": matches[:200],
+                "total_found": len(matches),
+                "truncated": len(matches) > 200,
+            })
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route('/search/grep', methods=['POST'])
+    def search_grep():
+        """Search file contents for pattern (rg-style)."""
+        data = request.get_json() or {}
+        query = data.get('query', '')
+        directory = data.get('directory', str(REPO_ROOT))
+        extensions = data.get('extensions', ['.ts', '.tsx', '.js', '.jsx', '.py', '.json'])
+
+        if not query:
+            return jsonify({"success": False, "error": "Query required"}), 400
+
+        results = []
+        try:
+            target = Path(directory)
+            for f in target.rglob('*'):
+                if f.suffix not in extensions:
+                    continue
+                if 'node_modules' in f.parts or '.git' in f.parts:
+                    continue
+                try:
+                    content = f.read_text('utf-8', errors='ignore')
+                    lines = content.split('\n')
+                    for i, line in enumerate(lines, 1):
+                        if query in line:
+                            results.append({
+                                "file": str(f.relative_to(REPO_ROOT)) if f.is_relative_to(REPO_ROOT) else str(f),
+                                "line": i,
+                                "text": line[:200],  # Truncate long lines
+                            })
+                            if len(results) >= 100:
+                                break
+                    if len(results) >= 100:
+                        break
+                except Exception:
+                    continue
+
+            return jsonify({
+                "success": True,
+                "query": query,
+                "results": results,
+                "total": len(results),
+                "truncated": len(results) >= 100,
+            })
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    # -------------------------------------------------------------------------
+    # Background Task Execution
+    # -------------------------------------------------------------------------
+    background_tasks: dict[str, dict] = {}
+
+    @app.route('/tasks/run', methods=['POST'])
+    def tasks_run():
+        """Run a command in the background and get a task ID."""
+        data = request.get_json() or {}
+        command = data.get('command', [])
+        cwd = data.get('cwd', str(REPO_ROOT))
+        timeout = data.get('timeout', 300)
+
+        if not command:
+            return jsonify({"success": False, "error": "Command required"}), 400
+
+        import uuid
+        import threading
+
+        task_id = str(uuid.uuid4())[:8]
+
+        def run_task():
+            try:
+                proc = subprocess.Popen(
+                    command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    cwd=cwd, text=True,
+                )
+                background_tasks[task_id]['pid'] = proc.pid
+                output, _ = proc.communicate(timeout=timeout)
+                background_tasks[task_id].update({
+                    'status': 'completed' if proc.returncode == 0 else 'failed',
+                    'exit_code': proc.returncode,
+                    'output': output,
+                    'completed_at': datetime.now().isoformat(),
+                })
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                background_tasks[task_id].update({
+                    'status': 'timeout',
+                    'output': 'Command timed out',
+                    'completed_at': datetime.now().isoformat(),
+                })
+            except Exception as e:
+                background_tasks[task_id].update({
+                    'status': 'error',
+                    'output': str(e),
+                    'completed_at': datetime.now().isoformat(),
+                })
+
+        background_tasks[task_id] = {
+            'id': task_id,
+            'command': ' '.join(command),
+            'status': 'running',
+            'started_at': datetime.now().isoformat(),
+            'pid': None,
+        }
+
+        thread = threading.Thread(target=run_task)
+        thread.daemon = True
+        thread.start()
+
+        return jsonify({
+            "success": True,
+            "task_id": task_id,
+            "status": "running",
+            "poll_url": f"/tasks/status/{task_id}",
+        })
+
+    @app.route('/tasks/status/<task_id>', methods=['GET'])
+    def tasks_status(task_id):
+        """Check status of a background task."""
+        task = background_tasks.get(task_id)
+        if not task:
+            return jsonify({"success": False, "error": "Task not found"}), 404
+        return jsonify({"success": True, **task})
+
+    @app.route('/tasks/list', methods=['GET'])
+    def tasks_list():
+        """List all background tasks."""
+        return jsonify({
+            "success": True,
+            "tasks": list(background_tasks.values()),
+            "count": len(background_tasks),
+        })
+
+    # -------------------------------------------------------------------------
+    # System Monitoring (Disk, Memory, Processes)
+    # -------------------------------------------------------------------------
+    @app.route('/system/disk', methods=['GET'])
+    def system_disk():
+        """Get disk usage information."""
+        try:
+            import shutil
+            usage = shutil.disk_usage('C:\\')
+            return jsonify({
+                "success": True,
+                "total": usage.total,
+                "used": usage.used,
+                "free": usage.free,
+                "total_formatted": format_size(usage.total),
+                "used_formatted": format_size(usage.used),
+                "free_formatted": format_size(usage.free),
+                "percent_used": round((usage.used / usage.total) * 100, 1),
+            })
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route('/system/memory', methods=['GET'])
+    def system_memory():
+        """Get memory usage information."""
+        try:
+            code, out = run_cmd(['wmic', 'computersystem', 'get', 'totalphysicalmemory,availablephysicalmemory', '/value'], timeout=10)
+            return jsonify({
+                "success": code == 0,
+                "raw": out,
+            })
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route('/system/processes', methods=['GET'])
+    def system_processes():
+        """Get list of running processes (summary)."""
+        name_filter = request.args.get('filter', '')
+        try:
+            if name_filter:
+                code, out = run_cmd(['pwsh', '-Command', f'Get-Process | Where-Object {{ $_.ProcessName -like "*{name_filter}*" }} | Select-Object Id, ProcessName, CPU, WorkingSet | ConvertTo-Json'], timeout=15)
+            else:
+                code, out = run_cmd(['pwsh', '-Command', 'Get-Process | Select-Object -First 50 Id, ProcessName, CPU, WorkingSet | ConvertTo-Json'], timeout=15)
+            return jsonify({
+                "success": code == 0,
+                "processes": json.loads(out) if code == 0 else [],
+            })
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route('/system/uptime', methods=['GET'])
+    def system_uptime():
+        """Get system uptime."""
+        try:
+            code, out = run_cmd(['pwsh', '-Command', '(Get-Date) - (Get-CimInstance Win32_OperatingSystem).LastBootUpTime | Select-Object Days, Hours, Minutes | ConvertTo-Json'], timeout=10)
+            return jsonify({
+                "success": code == 0,
+                "uptime": json.loads(out) if code == 0 else out,
+            })
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    # -------------------------------------------------------------------------
+    # Scheduled Tasks / Cron-like Jobs
+    # -------------------------------------------------------------------------
+    scheduled_jobs: dict[str, dict] = {}
+
+    @app.route('/schedule/add', methods=['POST'])
+    def schedule_add():
+        """Add a scheduled job (simple interval-based for now)."""
+        data = request.get_json() or {}
+        name = data.get('name', 'job')
+        interval_minutes = data.get('interval_minutes', 60)
+        command = data.get('command', [])
+
+        if not command:
+            return jsonify({"success": False, "error": "Command required"}), 400
+
+        job_id = f"{name}_{datetime.now().strftime('%H%M%S')}"
+        scheduled_jobs[job_id] = {
+            'id': job_id,
+            'name': name,
+            'interval_minutes': interval_minutes,
+            'command': command,
+            'last_run': None,
+            'run_count': 0,
+            'created_at': datetime.now().isoformat(),
+        }
+
+        return jsonify({
+            "success": True,
+            "job_id": job_id,
+            "next_run": "Not implemented yet - use Windows Task Scheduler for now",
+        })
+
+    @app.route('/schedule/list', methods=['GET'])
+    def schedule_list():
+        """List scheduled jobs."""
+        return jsonify({
+            "success": True,
+            "jobs": list(scheduled_jobs.values()),
+        })
+
+    # -------------------------------------------------------------------------
+    # Notifications / Webhooks (Async Callbacks)
+    # -------------------------------------------------------------------------
+    @app.route('/notify/webhook', methods=['POST'])
+    def notify_webhook():
+        """Register a webhook for notifications."""
+        data = request.get_json() or {}
+        url = data.get('url', '')
+        events = data.get('events', ['task_complete', 'deploy_complete'])
+
+        # Store webhook config
+        webhook_file = Path(os.environ.get('DEVOPS_DATA_DIR', r'C:\Cevict_Vault\devops-agent')) / 'webhooks.json'
+        webhooks = json.loads(webhook_file.read_text()) if webhook_file.exists() else []
+        webhooks.append({'url': url, 'events': events, 'registered': datetime.now().isoformat()})
+        webhook_file.write_text(json.dumps(webhooks, indent=2))
+
+        return jsonify({
+            "success": True,
+            "webhook_count": len(webhooks),
+            "events": events,
+        })
+
     def run_api():
         print(f"DevOps Agent API running on http://localhost:{API_PORT}")
         app.run(host='127.0.0.1', port=API_PORT, debug=False, threaded=True)
