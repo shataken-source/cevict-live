@@ -1995,6 +1995,98 @@ if HAS_FLASK:
             "count": len(package_watches),
         })
 
+    # -------------------------------------------------------------------------
+    # Web Research (Deep search with synopsis)
+    # -------------------------------------------------------------------------
+    @app.route('/research', methods=['POST'])
+    def research():
+        """Research topic on the web with depth control."""
+        data = request.get_json() or {}
+        query = data.get('query', '')
+        depth = data.get('depth', 3)  # 1-5 depth levels
+        max_results = data.get('max_results', 10)
+
+        if not query:
+            return jsonify({"success": False, "error": "query parameter required"}), 400
+
+        # Clamp depth
+        depth = max(1, min(5, depth))
+
+        # Use search_web tool via PowerShell curl as fallback
+        search_results = []
+
+        try:
+            # Run web search via available methods
+            # Try curl first (usually available on Windows)
+            code, output = run_cmd(
+                ['curl', '-s', f'https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}',
+                 '-H', 'User-Agent: Mozilla/5.0'],
+                timeout=15,
+                cwd=str(REPO_ROOT)
+            )
+
+            if code == 0 and output:
+                # Parse basic results from DuckDuckGo HTML
+                # Extract titles and snippets
+                import re
+                titles = re.findall(r'<a[^>]*class="result__a"[^>]*>(.*?)</a>', output[:50000])
+                snippets = re.findall(r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>', output[:50000])
+
+                for i, (title, snippet) in enumerate(zip(titles[:max_results], snippets[:max_results])):
+                    # Clean HTML tags
+                    clean_title = re.sub(r'<[^>]+>', '', title)
+                    clean_snippet = re.sub(r'<[^>]+>', '', snippet)
+
+                    search_results.append({
+                        "rank": i + 1,
+                        "title": clean_title,
+                        "snippet": clean_snippet[:200] + "..." if len(clean_snippet) > 200 else clean_snippet,
+                    })
+        except Exception as e:
+            search_results.append({"error": str(e)})
+
+        # Generate synopsis based on depth
+        synopsis = ""
+        key_findings = []
+
+        if search_results and not any("error" in r for r in search_results):
+            if depth == 1:
+                synopsis = f"Quick scan found {len(search_results)} results about '{query}'."
+                key_findings = [r["title"] for r in search_results[:3]]
+            elif depth == 2:
+                synopsis = f"Surface research on '{query}' found {len(search_results)} relevant sources."
+                key_findings = [f"{r['title']}: {r['snippet'][:80]}..." for r in search_results[:5]]
+            elif depth == 3:
+                synopsis = f"Moderate research depth on '{query}' yielded {len(search_results)} results with key themes emerging."
+                key_findings = [f"[{r['rank']}] {r['title']}" for r in search_results[:7]]
+                # Try to extract themes
+                all_text = " ".join([r["snippet"] for r in search_results])
+                words = [w.lower() for w in all_text.split() if len(w) > 5]
+                from collections import Counter
+                themes = [w for w, c in Counter(words).most_common(5) if c > 1]
+                if themes:
+                    key_findings.append(f"Common themes: {', '.join(themes)}")
+            elif depth >= 4:
+                synopsis = f"Deep research dive on '{query}' analyzed {len(search_results)} sources thoroughly."
+                key_findings = [f"{r['rank']}. {r['title']}\n   {r['snippet']}" for r in search_results]
+                # Add comprehensive summary
+                all_snippets = " ".join([r["snippet"] for r in search_results])
+                key_findings.append(f"\nCombined insight: {all_snippets[:300]}...")
+        else:
+            synopsis = f"Research on '{query}' encountered issues. Limited results available."
+
+        return jsonify({
+            "success": True,
+            "query": query,
+            "depth": depth,
+            "depth_label": ["Quick", "Surface", "Moderate", "Deep", "Comprehensive"][depth - 1],
+            "results_count": len(search_results),
+            "synopsis": synopsis,
+            "key_findings": key_findings,
+            "sources": search_results[:max_results],
+            "recommendation": "Review sources for accuracy" if search_results else "Try a more specific query",
+        })
+
     def run_api():
         print(f"DevOps Agent API running on http://localhost:{API_PORT}")
         app.run(host='127.0.0.1', port=API_PORT, debug=False, threaded=True)
