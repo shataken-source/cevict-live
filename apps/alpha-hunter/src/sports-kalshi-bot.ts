@@ -15,7 +15,11 @@ import Anthropic from '@anthropic-ai/sdk';
 // CONFIGURATION
 // ============================================================================
 
-const THE_ODDS_API_KEY = process.env.THE_ODDS_API_KEY || '77f1fd90090fafba88359aff2da200a3';
+const THE_ODDS_API_KEY = process.env.THE_ODDS_API_KEY;
+if (!THE_ODDS_API_KEY) {
+  console.error('THE_ODDS_API_KEY environment variable is required');
+  process.exit(1);
+}
 const MAX_BET_SIZE = 5; // $5 max per bet
 
 const SPORT_KEYS: Record<string, string> = {
@@ -174,7 +178,7 @@ async function findKalshiSportsMarkets(kalshi: KalshiTrader): Promise<any[]> {
 
   // Filter for sports-related markets
   const sportsKeywords = ['nfl', 'nba', 'ncaa', 'football', 'basketball', 'super bowl',
-                          'playoff', 'championship', 'game', 'win', 'score', 'points'];
+    'playoff', 'championship', 'game', 'win', 'score', 'points'];
 
   const sportsMarkets = markets.filter((m: any) => {
     const title = m.title.toLowerCase();

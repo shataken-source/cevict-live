@@ -1,6 +1,6 @@
 /**
  * Prognostication Homepage Sync
- * 
+ *
  * Pushes high-confidence Kalshi probabilities to the Prognostication homepage
  * after every market analysis cycle (even if no trades are executed).
  */
@@ -46,7 +46,7 @@ export class PrognosticationSync {
   constructor() {
     // Prognostication API endpoint (runs on port 3005 by default)
     this.prognoBaseUrl = process.env.PROGNOSTICATION_URL || 'http://localhost:3005';
-    this.prognoApiKey = process.env.PROGNO_INTERNAL_API_KEY || 'dev-key-12345';
+    this.prognoApiKey = process.env.PROGNO_INTERNAL_API_KEY || '';
   }
 
   /**

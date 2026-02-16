@@ -58,10 +58,10 @@ export class AIBrain {
     if (sportsOnly) {
       console.log('🧠 AI Brain (sports only) — fetching Progno picks...\n');
       const picks = await this.progno.getTodaysPicks();
-      const prognoOpps = this.progno.convertToOpportunities(picks);
+      const prognoOpps = await this.progno.convertToOpportunities(picks);
       console.log(`🎯 Found ${prognoOpps.length} PROGNO sports picks`);
       const allOpportunities = prognoOpps.filter(
-        opp => opp.confidence >= this.config.minConfidence && opp.expectedValue >= this.config.minExpectedValue
+        (opp: Opportunity) => opp.confidence >= this.config.minConfidence && opp.expectedValue >= this.config.minExpectedValue
       );
       return this.rankOpportunities(allOpportunities, []);
     }

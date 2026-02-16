@@ -65,7 +65,7 @@ export class PrognoIntegration {
 
       if (!response.ok) {
         console.error('PROGNO API error:', response.status);
-        return this.getSamplePicks();
+        return [];
       }
 
       const data = await response.json();
@@ -73,7 +73,7 @@ export class PrognoIntegration {
       return raw.map((p: any) => mapPrognoPickToShape(p));
     } catch (error) {
       console.error('Error fetching PROGNO picks:', error);
-      return this.getSamplePicks();
+      return [];
     }
   }
 
@@ -237,12 +237,12 @@ export class PrognoIntegration {
 
   private calculateStake(pick: PrognoPick): number {
     // Kelly Criterion simplified
-    const impliedProb = pick.odds > 0 
-      ? 100 / (pick.odds + 100) 
+    const impliedProb = pick.odds > 0
+      ? 100 / (pick.odds + 100)
       : Math.abs(pick.odds) / (Math.abs(pick.odds) + 100);
     const edge = (pick.confidence / 100) - impliedProb;
     const kelly = edge / (1 - impliedProb);
-    
+
     // Use quarter Kelly for safety, max $50
     return Math.min(Math.max(kelly * 0.25 * 100, 10), 50);
   }
@@ -294,44 +294,6 @@ export class PrognoIntegration {
     }
 
     return points;
-  }
-
-  private getSamplePicks(): PrognoPick[] {
-    return [
-      {
-        gameId: 'nfl-1',
-        league: 'NFL',
-        homeTeam: 'Chiefs',
-        awayTeam: 'Raiders',
-        pick: 'Chiefs -10.5',
-        pickType: 'spread',
-        odds: -110,
-        confidence: 72,
-        expectedValue: 8.5,
-        reasoning: [
-          'Chiefs 8-0 at home this season',
-          'Raiders QB questionable',
-          'Sharp money on Chiefs',
-          'Weather favors home team',
-        ],
-      },
-      {
-        gameId: 'nba-1',
-        league: 'NBA',
-        homeTeam: 'Lakers',
-        awayTeam: 'Warriors',
-        pick: 'Over 228.5',
-        pickType: 'total',
-        odds: -110,
-        confidence: 68,
-        expectedValue: 5.2,
-        reasoning: [
-          'Both teams averaging 115+ PPG',
-          'No key defenders out',
-          'Pace favors over',
-        ],
-      },
-    ];
   }
 }
 

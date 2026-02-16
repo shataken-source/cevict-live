@@ -167,7 +167,7 @@ class AlphaHunter {
   }
 
   async runDailyHunt(): Promise<void> {
-    const { runDailyHunt: run } = await import('./daily-hunter');
+    const { runDailyHunt: run } = await import('./daily-hunter.js');
     await run();
   }
 

@@ -122,7 +122,7 @@ export function matchKalshiMarketToProgno(
   marketTitle: string,
   category: string | undefined,
   prognoEvents: PrognoEventProbability[]
-): { modelProbability: number; side: 'yes' | 'no'; label: string } | null {
+): { modelProbability: number; side: 'yes' | 'no'; label: string; league?: string } | null {
   const title = (marketTitle || '').toLowerCase();
   if (NON_SPORTS_TITLE.test(title)) return null;
 

@@ -55,7 +55,7 @@ export async function runHealthCheck(): Promise<HealthResult> {
   const kalshiEnv = (process.env.KALSHI_ENV || "").toLowerCase();
   if (kalshiKey && kalshiEnv !== "production") {
     try {
-      const { KalshiTrader } = await import("./intelligence/kalshi-trader");
+      const { KalshiTrader } = await import('./intelligence/kalshi-trader.js');
       const trader = new KalshiTrader();
       const balance = await trader.getBalance();
       kalshi = balance >= 0 ? "ok" : "fail";
