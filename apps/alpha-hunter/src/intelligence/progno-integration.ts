@@ -52,12 +52,47 @@ export class PrognoIntegration {
   private baseUrl: string;
   private apiKey?: string;
 
+  // Smart cache for picks (5 minute TTL)
+  private picksCache: { data: PrognoPick[]; timestamp: number; expiresAt: number } | null = null;
+  private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+  // Tomorrow's picks cache (longer TTL since they don't change)
+  private tomorrowCache: { data: PrognoPick[]; timestamp: number; expiresAt: number } | null = null;
+  private readonly TOMORROW_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
   constructor() {
     this.baseUrl = process.env.PROGNO_BASE_URL || 'https://prognoultimatev2-cevict-projects.vercel.app';
     this.apiKey = process.env.BOT_API_KEY;
   }
 
-  async getTodaysPicks(): Promise<PrognoPick[]> {
+  /**
+   * Clear cache - useful after placing bets to get fresh data
+   */
+  clearCache(): void {
+    this.picksCache = null;
+    this.tomorrowCache = null;
+    console.log('   🗑️ Progno cache cleared');
+  }
+
+  /**
+   * Get cached picks if valid, otherwise null
+   */
+  private getCachedPicks(useCache: boolean): PrognoPick[] | null {
+    if (!useCache || !this.picksCache) return null;
+    if (Date.now() > this.picksCache.expiresAt) {
+      this.picksCache = null;
+      return null;
+    }
+    const age = Math.round((Date.now() - this.picksCache.timestamp) / 1000);
+    console.log(`   📦 Using cached picks (${age}s old, expires in ${Math.round((this.picksCache.expiresAt - Date.now()) / 1000)}s)`);
+    return this.picksCache.data;
+  }
+
+  async getTodaysPicks(useCache = true): Promise<PrognoPick[]> {
+    // Check cache first
+    const cached = this.getCachedPicks(useCache);
+    if (cached) return cached;
+
     const maxRetries = 3;
     const baseDelay = 1000; // 1 second
 
@@ -88,7 +123,16 @@ export class PrognoIntegration {
           console.log(`   ✅ Loaded ${raw.length} picks from Progno`);
         }
 
-        return raw.map((p: any) => mapPrognoPickToShape(p));
+        const picks = raw.map((p: any) => mapPrognoPickToShape(p));
+
+        // Cache the results
+        this.picksCache = {
+          data: picks,
+          timestamp: Date.now(),
+          expiresAt: Date.now() + this.CACHE_TTL_MS
+        };
+
+        return picks;
       } catch (error) {
         const isLastAttempt = attempt === maxRetries;
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -113,6 +157,46 @@ export class PrognoIntegration {
     }
 
     return []; // Should never reach here
+  }
+
+  /**
+   * Get tomorrow's picks for pre-market opportunities
+   */
+  async getTomorrowsPicks(useCache = true): Promise<PrognoPick[]> {
+    // Check cache first
+    if (useCache && this.tomorrowCache && Date.now() < this.tomorrowCache.expiresAt) {
+      const age = Math.round((Date.now() - this.tomorrowCache.timestamp) / 1000);
+      console.log(`   📦 Using cached tomorrow picks (${age}s old)`);
+      return this.tomorrowCache.data;
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/picks/tomorrow`, {
+        headers: this.apiKey ? { 'x-api-key': this.apiKey } : {},
+      });
+
+      if (!response.ok) {
+        console.warn('PROGNO tomorrow API error:', response.status);
+        return [];
+      }
+
+      const data = await response.json();
+      const raw = data.picks || [];
+      const picks = raw.map((p: any) => mapPrognoPickToShape(p));
+
+      // Cache with longer TTL
+      this.tomorrowCache = {
+        data: picks,
+        timestamp: Date.now(),
+        expiresAt: Date.now() + this.TOMORROW_CACHE_TTL_MS
+      };
+
+      console.log(`   🔮 Loaded ${picks.length} tomorrow picks`);
+      return picks;
+    } catch (error) {
+      console.error('Error fetching PROGNO tomorrow picks:', error);
+      return [];
+    }
   }
 
   async getLiveOdds(league: string): Promise<any[]> {

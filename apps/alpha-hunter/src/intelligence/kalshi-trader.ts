@@ -40,7 +40,7 @@ export class KalshiTrader {
   private privateKeyPathExists: boolean = false;
   private privateKeyPathLooksPartialDownload: boolean = false;
   private privateKeyPathBytes: number | null = null;
-  
+
   // Network error throttling
   private networkErrorCount = 0;
   private lastNetworkErrorTime = 0;
@@ -52,10 +52,10 @@ export class KalshiTrader {
     maxPerSecond: number;
     lastRequestTime: number;
   } = {
-    requests: [],
-    maxPerSecond: 8, // Conservative: 8 req/sec to stay under 10 limit
-    lastRequestTime: 0,
-  };
+      requests: [],
+      maxPerSecond: 8, // Conservative: 8 req/sec to stay under 10 limit
+      lastRequestTime: 0,
+    };
 
   // Orderbook cache (5 second TTL to reduce API calls)
   private orderbookCache: Map<string, { data: any; timestamp: number }> = new Map();
@@ -173,25 +173,62 @@ export class KalshiTrader {
   }
 
   // --- SMART MARKET FETCHING ---
-  async getMarkets(category?: string): Promise<PredictionMarket[]> {
-    if (!this.apiKeyId || !this.keyConfigured) return [];
 
+  /**
+   * Get markets with parallel pagination for faster fetching
+   * Fetches multiple pages concurrently instead of sequentially
+   */
+  private async getMarketsParallel(limitPerPage: number = 100, maxPages: number = 3): Promise<any[]> {
+    // First, fetch page 1 to get total count
+    const firstPage = await this.getMarketsPage(limitPerPage, 0);
+    if (!firstPage || firstPage.length === 0) return [];
+
+    // Calculate remaining pages to fetch
+    const remainingPages = Math.min(maxPages - 1, 4); // Max 4 more pages
+
+    if (remainingPages <= 0) {
+      return firstPage;
+    }
+
+    // Fetch remaining pages in parallel
+    const pagePromises: Promise<any[]>[] = [];
+    for (let i = 1; i <= remainingPages; i++) {
+      pagePromises.push(this.getMarketsPage(limitPerPage, i * limitPerPage));
+    }
+
+    const remainingResults = await Promise.allSettled(pagePromises);
+
+    // Combine all markets
+    let allMarkets = [...firstPage];
+    for (const result of remainingResults) {
+      if (result.status === 'fulfilled' && result.value.length > 0) {
+        allMarkets = allMarkets.concat(result.value);
+      }
+    }
+
+    console.log(`   📊 Parallel fetch: ${allMarkets.length} markets from ${maxPages} pages`);
+    return allMarkets;
+  }
+
+  /**
+   * Fetch a single page of markets
+   */
+  private async getMarketsPage(limit: number, offset: number): Promise<any[]> {
     try {
-      // 1. CALCULATE TIME WINDOW (Next 2 Days / 48 Hours)
-      const now = Math.floor(Date.now() / 1000);
-      const twoDaysLater = now + (2 * 24 * 60 * 60);
+      const qs = new URLSearchParams({
+        limit: String(limit),
+        cursor: String(offset),
+        status: 'active',
+        min_end_date: new Date().toISOString(), // Only markets that haven't closed
+      });
 
-      // 2. BUILD QUERY
-      let fullPath = `/trade-api/v2/markets?status=open&limit=1000&max_close_ts=${twoDaysLater}`;
-      if (category) fullPath += `&series_ticker=${category}`;
-
-      console.log(`   📡 API Query: fetching markets expiring before ${new Date(twoDaysLater * 1000).toLocaleDateString()}...`);
-
+      const fullPath = `/trade-api/v2/markets?${qs.toString()}`;
       const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
       if (!signature) return [];
 
       const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
       assertKalshiRequestUrlIsDemo(apiUrl);
+
       const response = await fetch(apiUrl, {
         headers: {
           'KALSHI-ACCESS-KEY': this.apiKeyId,
@@ -202,30 +239,18 @@ export class KalshiTrader {
 
       if (!response.ok) return [];
       const data = await response.json();
-      return this.transformMarkets(data.markets || []);
-    } catch (error: any) {
-      // Detect and throttle network errors
-      const errorMessage = error?.message || String(error);
-      const isNetworkError = errorMessage.includes('ENOTFOUND') || 
-                            errorMessage.includes('getaddrinfo') ||
-                            errorMessage.includes('fetch failed') ||
-                            errorMessage.includes('ECONNREFUSED') ||
-                            errorMessage.includes('ETIMEDOUT');
-      
-      if (isNetworkError) {
-        this.networkErrorCount++;
-        const now = Date.now();
-        if (now - this.lastNetworkErrorTime > KalshiTrader.NETWORK_ERROR_THROTTLE_MS) {
-          console.error(`🌐 Network connectivity issue: Cannot reach Kalshi API (demo-api.kalshi.co)`);
-          console.error(`   Error: ${errorMessage}`);
-          console.error(`   Total network errors: ${this.networkErrorCount} (checking internet connection, DNS, firewall)`);
-          this.lastNetworkErrorTime = now;
-        }
-      } else {
-        console.error('Error fetching markets:', error);
-      }
+      return data.markets || [];
+    } catch (error) {
       return [];
     }
+  }
+
+  /**
+   * Get markets (now uses parallel fetching by default)
+   */
+  async getMarkets(): Promise<PredictionMarket[]> {
+    const apiMarkets = await this.getMarketsParallel(100, 3); // 3 pages = 300 markets max
+    return this.transformMarkets(apiMarkets);
   }
 
   async getBalance(): Promise<number> {
@@ -388,7 +413,7 @@ export class KalshiTrader {
   /**
    * Get orderbook for a market to calculate Maker prices
    * Returns best bid/ask for YES and NO sides
-   * 
+   *
    * RATE LIMIT SAFE:
    * - Caches orderbook for 5 seconds to reduce API calls
    * - Enforces 500ms delay between fetches
@@ -414,7 +439,7 @@ export class KalshiTrader {
       const fullPath = `/trade-api/v2/markets/${ticker}/orderbook`;
       const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
       if (!signature) return null;
-      
+
       const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
       assertKalshiRequestUrlIsDemo(apiUrl);
       let response: Response | null = null;
@@ -459,15 +484,15 @@ export class KalshiTrader {
       }
 
       if (!response || !response.ok) return null;
-      
+
       const data = await response.json();
-      
+
       // Extract best bid/ask from orderbook
       const yesBids = data.yes?.bids || [];
       const yesAsks = data.yes?.asks || [];
       const noBids = data.no?.bids || [];
       const noAsks = data.no?.asks || [];
-      
+
       const orderbookData = {
         yes: {
           bid: yesBids.length > 0 ? yesBids[0].price : 50,
@@ -666,12 +691,12 @@ export class KalshiTrader {
     const bestBid = market.bid;
     const bestAsk = market.ask;
     const spread = bestAsk - bestBid;
-    
+
     // Skip if spread is too tight (< 2 cents) - not profitable after fees
     if (spread < 2) {
       return null;
     }
-    
+
     // Calculate maker price: 1 cent inside spread
     let makerPrice: number;
     if (action === 'buy') {
@@ -681,7 +706,7 @@ export class KalshiTrader {
       // Selling: place at best_ask - 1 cent (better than current best ask)
       makerPrice = Math.max(1, bestAsk - 1);
     }
-    
+
     return {
       price: Math.round(makerPrice),
       spread: spread,
@@ -689,11 +714,11 @@ export class KalshiTrader {
   }
 
   async placeOrder(order: any): Promise<any> {
-      return this.executeTrade(order.ticker, order.side, order.count);
+    return this.executeTrade(order.ticker, order.side, order.count);
   }
 
   async buy(ticker: string, count: number, side: string): Promise<any> {
-      return this.executeTrade(ticker, side, count);
+    return this.executeTrade(ticker, side, count);
   }
 
   /**
@@ -718,7 +743,7 @@ export class KalshiTrader {
    */
   async placeLimitOrderContracts(ticker: string, side: 'yes' | 'no', contracts: number, limitPrice: number): Promise<any> {
     if (!this.keyConfigured) return { status: 'simulated' };
-    
+
     // CRITICAL: Verify count is a rounded integer derived from $5 notional allocation
     const countInteger = Math.round(contracts);
     if (countInteger <= 0) {
@@ -726,13 +751,13 @@ export class KalshiTrader {
     }
 
     const fullPath = '/trade-api/v2/portfolio/orders';
-    
+
     // CRITICAL: Ensure limitPrice is strictly an integer (cents, 0-100)
     const priceInCents = Math.round(limitPrice);
     if (priceInCents < 0 || priceInCents > 100) {
       throw new Error(`Invalid price: ${priceInCents} cents (must be 0-100)`);
     }
-    
+
     // SURGICAL PAYLOAD: Required fields for Kalshi API
     // ticker, side, action, count, type, and EITHER yes_price OR no_price
     // MAKER STRATEGY: Always use 'limit' orders (not 'market') to qualify for liquidity rebates
@@ -750,19 +775,19 @@ export class KalshiTrader {
     } else {
       body.no_price = priceInCents; // Integer price in cents (0-100)
     }
-    
+
     // CRITICAL: Manually delete dollar fields immediately before fetch
     // Use delete operator to ensure they are completely removed
     delete body.yes_price_dollars;
     delete body.no_price_dollars;
-    
+
     // DELETE THE GARBAGE: Explicitly remove any field with "dollars" in the name
     Object.keys(body).forEach(key => {
       if (key.toLowerCase().includes('dollar')) {
         delete body[key];
       }
     });
-    
+
     // CRITICAL VERIFICATION: Ensure payload contains ONLY allowed fields
     const allowedFields = ['ticker', 'side', 'action', 'count', 'type', 'yes_price', 'no_price'];
     const bodyKeys = Object.keys(body);
@@ -770,7 +795,7 @@ export class KalshiTrader {
     if (invalidFields.length > 0) {
       throw new Error(`CRITICAL: Invalid fields in payload: ${invalidFields.join(', ')}. Only allowed: ${allowedFields.join(', ')}`);
     }
-    
+
     // Verify exactly one price field is set
     const hasYesPrice = body.yes_price !== undefined;
     const hasNoPrice = body.no_price !== undefined;
@@ -780,7 +805,7 @@ export class KalshiTrader {
     if (!hasYesPrice && !hasNoPrice) {
       throw new Error('CRITICAL: No price field set! Must set either yes_price or no_price.');
     }
-    
+
     // Final check: ensure no dollar fields exist
     if (bodyKeys.some(key => key.toLowerCase().includes('dollar'))) {
       throw new Error('CRITICAL: Dollar fields still present after cleanup!');
@@ -789,7 +814,7 @@ export class KalshiTrader {
     // PRE-FLIGHT CHECK: Log exact JSON string being sent to Kalshi
     const payloadJson = JSON.stringify(body);
     console.log(`   🔍 [PRE-FLIGHT CHECK] Kalshi API Payload: ${payloadJson}`);
-    
+
     // Verify payload is strictly integer-based
     if (typeof body.count !== 'number' || !Number.isInteger(body.count)) {
       throw new Error(`CRITICAL: count must be integer, got: ${typeof body.count} ${body.count}`);
@@ -800,7 +825,7 @@ export class KalshiTrader {
     if (body.no_price !== undefined && (!Number.isInteger(body.no_price) || body.no_price < 0 || body.no_price > 100)) {
       throw new Error(`CRITICAL: no_price must be integer 0-100, got: ${body.no_price}`);
     }
-    
+
     const { signature, timestamp } = await this.signRequestWithTimestamp('POST', fullPath, body);
     if (!signature) throw new Error("Signature failed");
 
@@ -843,35 +868,35 @@ export class KalshiTrader {
   }
 
   private async executeTrade(ticker: string, side: string, count: number) {
-      if (!this.keyConfigured) return { status: 'simulated' };
-      const fullPath = '/trade-api/v2/portfolio/orders';
-      const body = {
-        ticker: ticker,
-        client_order_id: `bot_${Date.now()}`,
-        side: side.toLowerCase(),
-        action: 'buy',
-        count: count,
-        type: 'market'
-      };
+    if (!this.keyConfigured) return { status: 'simulated' };
+    const fullPath = '/trade-api/v2/portfolio/orders';
+    const body = {
+      ticker: ticker,
+      client_order_id: `bot_${Date.now()}`,
+      side: side.toLowerCase(),
+      action: 'buy',
+      count: count,
+      type: 'market'
+    };
 
-      const { signature, timestamp } = await this.signRequestWithTimestamp('POST', fullPath, body);
-      if (!signature) throw new Error("Signature failed");
+    const { signature, timestamp } = await this.signRequestWithTimestamp('POST', fullPath, body);
+    if (!signature) throw new Error("Signature failed");
 
-      assertKalshiRequestUrlIsDemo(`${this.baseUrl}/portfolio/orders`);
-      const response = await fetch(`${this.baseUrl}/portfolio/orders`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'KALSHI-ACCESS-KEY': this.apiKeyId,
-            'KALSHI-ACCESS-SIGNATURE': signature,
-            'KALSHI-ACCESS-TIMESTAMP': timestamp
-        },
-        body: JSON.stringify(body)
-      });
+    assertKalshiRequestUrlIsDemo(`${this.baseUrl}/portfolio/orders`);
+    const response = await fetch(`${this.baseUrl}/portfolio/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'KALSHI-ACCESS-KEY': this.apiKeyId,
+        'KALSHI-ACCESS-SIGNATURE': signature,
+        'KALSHI-ACCESS-TIMESTAMP': timestamp
+      },
+      body: JSON.stringify(body)
+    });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(JSON.stringify(data));
-      return data;
+    const data = await response.json();
+    if (!response.ok) throw new Error(JSON.stringify(data));
+    return data;
   }
 
   private transformMarkets(apiMarkets: any[]): PredictionMarket[] {
