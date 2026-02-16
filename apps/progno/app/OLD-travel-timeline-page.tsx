@@ -1,7 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { predictTravelTimeline, TravelTimelinePrediction } from "./travel-timeline-predictor";
+// import { predictTravelTimeline, TravelTimelinePrediction } from "./travel-timeline-predictor";
+
+// Stub types
+interface TravelTimelinePrediction {
+  location: string;
+  dates: string[];
+  confidence: number;
+}
+
+const predictTravelTimeline = async (_loc: string, _start: string, _end: string, _opts: any): Promise<TravelTimelinePrediction> => ({
+  location: _loc,
+  dates: [_start, _end],
+  confidence: 0.5
+});
 
 export default function TravelTimelinePage() {
   const [location, setLocation] = useState("Panama City, FL");
