@@ -213,7 +213,7 @@ export default function WeatherWidget() {
       const data = await response.json();
 
       const current = data.current;
-      const hourlyData = data.hourly;
+      const apiHourly = data.hourly;
       const dailyData = data.daily;
 
       // Convert Celsius to Fahrenheit
@@ -225,7 +225,7 @@ export default function WeatherWidget() {
         condition: getConditionText(current.weather_code),
         humidity: current.relative_humidity_2m,
         windSpeed: Math.round(current.wind_speed_10m * 0.621371), // km/h to mph
-        pressure: (current.pressure_msl * 0.02953).toFixed(2), // hPa to inHg
+        pressure: current.pressure_msl * 0.02953, // hPa to inHg
         feelsLike: cToF(current.apparent_temperature),
         sunrise: new Date(dailyData.sunrise[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
         sunset: new Date(dailyData.sunset[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
@@ -249,15 +249,14 @@ export default function WeatherWidget() {
       }
       setForecast(newForecast);
 
-      const hourlyData = data.hourly;
       const currentHour = new Date().getHours();
       const newHourly: HourlyData[] = [];
-      for (let i = currentHour; i < currentHour + 6 && i < hourlyData.time.length; i++) {
-        const time = new Date(hourlyData.time[i]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      for (let i = currentHour; i < currentHour + 6 && i < apiHourly.time.length; i++) {
+        const time = new Date(apiHourly.time[i]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         newHourly.push({
-          time, temp: Math.round(hourlyData.temperature_2m[i]),
-          precip: hourlyData.precipitation_probability[i],
-          windSpeed: Math.round(hourlyData.wind_speed_10m[i]),
+          time, temp: Math.round(apiHourly.temperature_2m[i]),
+          precip: apiHourly.precipitation_probability[i],
+          windSpeed: Math.round(apiHourly.wind_speed_10m[i]),
         });
       }
       setHourly(newHourly);
