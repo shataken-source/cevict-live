@@ -34,23 +34,36 @@ export default function CatProbabilityMap({
 
   async function fetchWeatherAndCalculate() {
     try {
-      // Fetch current weather (OpenWeatherMap or similar)
-      // For now, use mock data
-      const mockWeather: WeatherData = {
-        tempF: 65,
-        conditions: 'clear',
-        windSpeedMph: 5,
-      };
+      // Fetch real weather data from OpenWeatherMap API
+      const apiKey = process.env.NEXT_PUBLIC_OPENWEATHER_API_KEY;
+      let weatherData: WeatherData;
 
-      // Mock terrain data (in production, fetch from OpenStreetMap)
-      const mockTerrain: TerrainFeatures = {
-        hasEngineBlocks: true,
-        hasCrawlspaces: true,
-        hasDecks: true,
-        hasGarages: true,
-        hasWoods: false,
-        hidingDensity: 0.7, // 0-1 scale
-      };
+      if (apiKey && lastSeenLat && lastSeenLng) {
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/weather?lat=${lastSeenLat}&lon=${lastSeenLng}&appid=${apiKey}&units=imperial`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          weatherData = {
+            tempF: Math.round(data.main.temp),
+            conditions: data.weather[0]?.main?.toLowerCase() || 'clear',
+            windSpeedMph: Math.round(data.wind.speed),
+          };
+        } else {
+          throw new Error('Weather API failed');
+        }
+      } else {
+        // Fallback to default values if no API key or location
+        weatherData = {
+          tempF: 65,
+          conditions: 'clear',
+          windSpeedMph: 5,
+        };
+      }
+
+      // Fetch real terrain data from OpenStreetMap/Overpass API
+      // Using default terrain analysis based on location type
+      const terrainData = await fetchTerrainFeatures(lastSeenLat, lastSeenLng);
 
       const catProfile: CatProfile = {
         name: petName,
@@ -63,24 +76,89 @@ export default function CatProbabilityMap({
 
       const calculatedZones = CatPhysicsEngine.generateSearchZones(
         catProfile,
-        mockWeather,
-        mockTerrain
+        weatherData,
+        terrainData
       );
 
       const log = CatPhysicsEngine.generateTransparencyLog(
         catProfile,
-        mockWeather,
-        mockTerrain,
+        weatherData,
+        terrainData,
         calculatedZones
       );
 
       setZones(calculatedZones);
-      setWeather(mockWeather);
+      setWeather(weatherData);
       setTransparencyLog(log);
       setLoading(false);
     } catch (error) {
       console.error('Error calculating probability zones:', error);
       setLoading(false);
+    }
+  }
+
+  // Helper function to fetch terrain features from OpenStreetMap
+  async function fetchTerrainFeatures(lat: number, lng: number): Promise<TerrainFeatures> {
+    try {
+      // Overpass API query for nearby features
+      const query = `[out:json][timeout:25];
+        (
+          node["building"="garage"](around:100,${lat},${lng});
+          way["building"="garage"](around:100,${lat},${lng});
+          node["man_made"="deck"](around:100,${lat},${lng});
+          way["man_made"="deck"](around:100,${lat},${lng});
+          node["covered"="yes"](around:100,${lat},${lng});
+          way["natural"="wood"](around:200,${lat},${lng});
+          relation["natural"="wood"](around:200,${lat},${lng});
+        );
+        out body;`;
+
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `data=${encodeURIComponent(query)}`,
+      });
+
+      if (!response.ok) {
+        throw new Error('Overpass API failed');
+      }
+
+      const data = await response.json();
+      const elements = data.elements || [];
+
+      // Analyze terrain features
+      const hasGarages = elements.some((e: any) => e.tags?.building === 'garage');
+      const hasDecks = elements.some((e: any) => e.tags?.man_made === 'deck');
+      const hasCrawlspaces = elements.some((e: any) => e.tags?.covered === 'yes');
+      const hasWoods = elements.some((e: any) => e.tags?.natural === 'wood');
+
+      // Calculate hiding density based on features
+      let hidingDensity = 0.5; // base
+      if (hasWoods) hidingDensity += 0.2;
+      if (hasGarages) hidingDensity += 0.15;
+      if (hasDecks) hidingDensity += 0.1;
+      if (hasCrawlspaces) hidingDensity += 0.05;
+      hidingDensity = Math.min(hidingDensity, 1.0);
+
+      return {
+        hasEngineBlocks: hasGarages || hasDecks, // engines often found near garages/decks
+        hasCrawlspaces,
+        hasDecks,
+        hasGarages,
+        hasWoods,
+        hidingDensity,
+      };
+    } catch (error) {
+      console.warn('Failed to fetch terrain data, using defaults:', error);
+      // Return default terrain features
+      return {
+        hasEngineBlocks: true,
+        hasCrawlspaces: true,
+        hasDecks: true,
+        hasGarages: true,
+        hasWoods: false,
+        hidingDensity: 0.7,
+      };
     }
   }
 
@@ -116,13 +194,12 @@ export default function CatProbabilityMap({
         {zones.map((zone, idx) => (
           <div
             key={zone.name}
-            className={`border-2 rounded-lg p-4 ${
-              idx === 0
+            className={`border-2 rounded-lg p-4 ${idx === 0
                 ? 'border-green-500 bg-green-50'
                 : idx === 1
-                ? 'border-yellow-500 bg-yellow-50'
-                : 'border-orange-500 bg-orange-50'
-            }`}
+                  ? 'border-yellow-500 bg-yellow-50'
+                  : 'border-orange-500 bg-orange-50'
+              }`}
           >
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-bold text-gray-900">

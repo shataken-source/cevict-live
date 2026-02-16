@@ -190,20 +190,9 @@ export async function syncShelterPets(integrationId: string): Promise<number> {
 // ============================================================================
 
 export async function generateImageEmbedding(imageUrl: string): Promise<number[] | null> {
-  try {
-    // TODO: Integrate @xenova/transformers CLIP model
-    // const { pipeline } = await import('@xenova/transformers');
-    // const clipModel = await pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32');
-    // const embedding = await clipModel(imageUrl);
-    // return Array.from(embedding.data);
-
-    // Placeholder: Return mock embedding
-    console.warn('⚠️  CLIP embedding generation not yet implemented');
-    return null;
-  } catch (e: any) {
-    console.error('❌ Exception generating embedding:', e.message);
-    return null;
-  }
+  // CLIP embedding generation requires @xenova/transformers
+  // Returns null until implemented - visual matching will use database embeddings only
+  return null;
 }
 
 // ============================================================================
