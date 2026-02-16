@@ -40,6 +40,14 @@ export interface PerformanceMetrics {
   bestSport: string | null;
   worstSport: string | null;
   lastUpdated: Date;
+  last7Days: {
+    winRate: number;
+    picks: number;
+  };
+  streak: {
+    current: number;
+    type: 'win' | 'loss';
+  };
 }
 
 class AccuracyTracker {
@@ -164,7 +172,15 @@ class AccuracyTracker {
         kellyEfficiency: 0, // Placeholder
         bestSport,
         worstSport,
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
+        last7Days: {
+          winRate: period === '7d' ? winRate : 0,
+          picks: totalPicks
+        },
+        streak: {
+          current: 0,
+          type: 'win'
+        }
       };
 
       this.metricsCache = metrics;

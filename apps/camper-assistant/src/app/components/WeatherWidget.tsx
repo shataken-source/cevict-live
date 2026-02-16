@@ -240,8 +240,8 @@ export default function WeatherWidget() {
         const dayName = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : days[date.getDay()];
         newForecast.push({
           day: dayName,
-          high: Math.round(daily.temperature_2m_max[i]),
-          low: Math.round(daily.temperature_2m_min[i]),
+          high: cToF(daily.temperature_2m_max[i]),
+          low: cToF(daily.temperature_2m_min[i]),
           condition: getConditionText(daily.weather_code[i]),
           icon: getConditionIcon(daily.weather_code[i]),
           precipitation: daily.precipitation_probability_max[i],
@@ -254,7 +254,7 @@ export default function WeatherWidget() {
       for (let i = currentHour; i < currentHour + 6 && i < apiHourly.time.length; i++) {
         const time = new Date(apiHourly.time[i]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         newHourly.push({
-          time, temp: Math.round(apiHourly.temperature_2m[i]),
+          time, temp: cToF(apiHourly.temperature_2m[i]),
           precip: apiHourly.precipitation_probability[i],
           windSpeed: Math.round(apiHourly.wind_speed_10m[i]),
         });
@@ -267,9 +267,14 @@ export default function WeatherWidget() {
   };
 
   const fetchOpenUV = async (lat: number, lon: number) => {
+    const apiKey = process.env.NEXT_PUBLIC_OPENUV_API_KEY;
+    if (!apiKey) {
+      // Silently skip OpenUV if no API key - WeatherAPI provides UV data
+      return;
+    }
     try {
       const response = await fetch(`https://api.openuv.io/api/v1/uv?lat=${lat}&lng=${lon}`, {
-        headers: { 'x-access-token': process.env.NEXT_PUBLIC_OPENUV_API_KEY || '' }
+        headers: { 'x-access-token': apiKey }
       });
       if (!response.ok) throw new Error('UV fetch failed');
       const data = await response.json();
@@ -282,20 +287,41 @@ export default function WeatherWidget() {
       });
       setWeather(prev => ({ ...prev, uvIndex: Math.round(data.result.uv) }));
     } catch (err) {
-      console.error('OpenUV error:', err);
+      // Silently fail - WeatherAPI UV data is sufficient
+      console.log('OpenUV fetch failed, using WeatherAPI UV data');
     }
   };
 
   const API_KEYS = {
-    WEATHERAPI: process.env.WEATHER_API_KEY || process.env.NEXT_PUBLIC_WEATHER_API_KEY || '',
+    WEATHERAPI: process.env.NEXT_PUBLIC_WEATHERAPI_KEY || '',
   };
+  console.log('API KEY CHECK:', API_KEYS.WEATHERAPI ? 'KEY EXISTS' : 'KEY MISSING');
 
   const fetchWeatherAPI = async (zip: string) => {
+    console.log('STEP 1: fetchWeatherAPI called with zip:', zip);
     try {
-      if (!API_KEYS.WEATHERAPI) return;
-      const response = await fetch(`https://api.weatherapi.com/v1/forecast.json?key=${API_KEYS.WEATHERAPI}&q=${zip}&days=7`);
-      if (!response.ok) throw new Error('WeatherAPI fetch failed');
+      console.log('STEP 2: Checking API key...');
+      if (!API_KEYS.WEATHERAPI) {
+        console.log('STEP 2 FAILED: No API key');
+        throw new Error('No WeatherAPI key');
+      }
+      console.log('STEP 3: API key exists, building URL...');
+      const url = `https://api.weatherapi.com/v1/forecast.json?key=${API_KEYS.WEATHERAPI}&q=${zip}&days=7&aqi=no&alerts=no`;
+
+      console.log('STEP 4: Fetching...');
+      const response = await fetch(url);
+      console.log('STEP 5: Response received, status:', response.status);
+
+      if (!response.ok) {
+        console.log('STEP 5 FAILED: Response not ok');
+        throw new Error(`WeatherAPI failed: ${response.status}`);
+      }
+
+      console.log('STEP 6: Parsing JSON...');
       const data = await response.json();
+      console.log('STEP 7: JSON parsed, temp_f:', data.current?.temp_f);
+
+      console.log('STEP 8: Calling setWeather with temp:', Math.round(data.current.temp_f));
       setWeather(prev => ({
         ...prev,
         temp: Math.round(data.current.temp_f),
@@ -305,9 +331,46 @@ export default function WeatherWidget() {
         pressure: data.current.pressure_in,
         feelsLike: Math.round(data.current.feelslike_f),
         visibility: data.current.vis_miles,
+        uvIndex: Math.round(data.current.uv),
       }));
+      console.log('STEP 9: setWeather called successfully');
+
+      // Set forecast
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const newForecast: ForecastDay[] = data.forecast.forecastday.map((day: any, i: number) => {
+        const date = new Date(day.date);
+        const dayName = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : days[date.getDay()];
+        return {
+          day: dayName,
+          high: Math.round(day.day.maxtemp_f),
+          low: Math.round(day.day.mintemp_f),
+          condition: day.day.condition.text,
+          icon: getConditionIcon(day.day.condition.code, day.day.daily_will_it_rain === 0),
+          precipitation: day.day.daily_chance_of_rain,
+        };
+      });
+      setForecast(newForecast);
+
+      // Set hourly for today
+      const currentHour = new Date().getHours();
+      const todayHourly = data.forecast.forecastday[0].hour;
+      const newHourly: HourlyData[] = [];
+      for (let i = currentHour; i < currentHour + 6 && i < todayHourly.length; i++) {
+        const hourData = todayHourly[i];
+        const time = new Date(hourData.time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        newHourly.push({
+          time,
+          temp: Math.round(hourData.temp_f),
+          precip: hourData.chance_of_rain,
+          windSpeed: Math.round(hourData.wind_mph),
+        });
+      }
+      setHourly(newHourly);
+
+      console.log('STEP 10: Done!');
     } catch (err) {
-      console.log('WeatherAPI not available');
+      console.log('ERROR in fetchWeatherAPI:', err);
+      throw err;
     }
   };
 
@@ -344,16 +407,22 @@ export default function WeatherWidget() {
     try {
       const coords = await geocodeZip(zipCode);
       if (!coords) {
-        setError('Invalid ZIP code. Please enter a valid US ZIP code (e.g., 90210, 10001, 35950).');
+        setError('Invalid ZIP code. Please enter a valid US ZIP code.');
         setLoading(false);
         return;
       }
       setLocation(coords.name);
-      await Promise.all([
-        fetchOpenMeteo(coords.lat, coords.lon),
-        fetchOpenUV(coords.lat, coords.lon),
-        fetchWeatherAPI(zipCode),
-      ]);
+
+      // Try WeatherAPI first (Fahrenheit)
+      try {
+        await fetchWeatherAPI(zipCode);
+        await fetchOpenUV(coords.lat, coords.lon);
+      } catch (weatherApiErr) {
+        // Fallback to Open-Meteo (Celsius, converted)
+        console.log('Falling back to Open-Meteo');
+        await fetchOpenMeteo(coords.lat, coords.lon);
+        await fetchOpenUV(coords.lat, coords.lon);
+      }
     } catch (err) {
       setError('Failed to fetch weather data. Please try again.');
     } finally {

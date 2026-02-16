@@ -84,6 +84,7 @@ export const SYNC_SPORTS = [
   { alias: 'mlb', key: 'baseball_mlb', name: 'MLB' },
   { alias: 'ncaab', key: 'basketball_ncaab', name: 'NCAAB' },
   { alias: 'ncaaf', key: 'americanfootball_ncaaf', name: 'NCAAF' },
+  { alias: 'cbb', key: 'baseball_ncaa', name: 'College Baseball' },
 ] as const;
 
 export type SyncSport = typeof SYNC_SPORTS[number]['alias'];

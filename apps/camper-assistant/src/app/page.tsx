@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope, ShoppingCart, Tent, Bird, Signal, Wind as WindIcon, Flame as FlameIcon, Radio, Fish, Leaf, Volume2 } from 'lucide-react';
+import { Sun, Battery, CloudRain, Thermometer, Wind, Utensils, MessageCircle, Backpack, Bell, Music, Tv, AlertTriangle, ChevronRight, MapPin, Clock, MapPinned, Wrench, Telescope, ShoppingCart, Tent, Bird, Signal, Wind as WindIcon, Flame as FlameIcon, Radio, Fish, Leaf, Volume2, Search } from 'lucide-react';
+import { useLocation } from './context/LocationContext';
+import { useProfiles } from './context/ProfileContext';
+import ProfileSwitcher from './components/ProfileSwitcher';
 import SolarPanel from './components/SolarPanel';
 import WeatherWidget from './components/WeatherWidget';
 import BatteryMonitor from './components/BatteryMonitor';
@@ -26,13 +29,29 @@ import SoundGenerator from './components/SoundGenerator';
 import NewsletterSignup from './components/NewsletterSignup';
 
 export default function Home() {
+  const { zipCode, setZipCode, locationName, setLocationName, setCoordinates } = useLocation();
+  const { activeProfile } = useProfiles();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [tempZip, setTempZip] = useState(zipCode);
+
+  // Sync with active profile
+  useEffect(() => {
+    if (activeProfile) {
+      setTempZip(activeProfile.zipCode);
+    }
+  }, [activeProfile]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleZipUpdate = () => {
+    if (tempZip.length === 5 && /^\d+$/.test(tempZip)) {
+      setZipCode(tempZip);
+    }
+  };
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: Sun },
@@ -72,14 +91,34 @@ export default function Home() {
                 <p className="text-xs text-slate-400">Your Off-Grid Command Center</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 text-sm text-slate-300">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                <span>Current Location</span>
+            <div className="flex items-center gap-4">
+              <ProfileSwitcher />
+              <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-1">
+                <input
+                  type="text"
+                  value={tempZip}
+                  onChange={(e) => setTempZip(e.target.value)}
+                  onBlur={handleZipUpdate}
+                  onKeyPress={(e) => e.key === 'Enter' && handleZipUpdate()}
+                  placeholder="ZIP Code"
+                  className="w-20 bg-transparent text-sm text-white px-2 py-1 focus:outline-none"
+                  maxLength={5}
+                />
+                <button
+                  onClick={handleZipUpdate}
+                  className="p-1.5 bg-emerald-500 rounded-md hover:bg-emerald-600 transition-colors"
+                >
+                  <Search className="w-4 h-4 text-white" />
+                </button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <MapPin className="w-4 h-4 text-emerald-400" />
+                <span className="hidden sm:inline">{locationName || `ZIP: ${zipCode}`}</span>
+                <span className="sm:hidden">{zipCode}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-slate-300">
                 <Clock className="w-4 h-4" />
-                <span suppressHydrationWarning>{currentTime.toLocaleTimeString()}</span>
+                <span suppressHydrationWarning>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
           </div>

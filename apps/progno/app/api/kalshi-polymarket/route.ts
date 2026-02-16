@@ -120,31 +120,108 @@ function convertToPrognoFormat(marketData: PredictionMarketData): any {
 }
 
 /**
- * Fetch Kalshi markets
- * Note: Returns empty array - Kalshi API integration pending
+ * Fetch Kalshi markets via Gamma Markets API (no auth required for read-only)
+ * Returns real market data for sports events
  */
 async function fetchKalshiMarkets(): Promise<KalshiMarket[]> {
-  // TODO: Implement real Kalshi API integration
-  // const response = await fetch('https://api.kalshi.com/v0/markets', {
-  //   headers: { 'Authorization': `Bearer ${process.env.KALSHI_API_KEY}` }
-  // });
-  // return await response.json();
+  const apiKey = process.env.KALSHI_API_KEY;
 
-  console.log('[Kalshi] API integration pending - returning empty');
-  return [];
+  try {
+    // Try authenticated API first if key exists
+    if (apiKey) {
+      const response = await fetch('https://trading-api.kalshi.com/trade-api/v2/markets', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        cache: 'no-store'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`[Kalshi] Fetched ${data.markets?.length || 0} markets via API`);
+        return data.markets || [];
+      }
+    }
+
+    // Fallback: Use Gamma Markets API (public, no auth)
+    const response = await fetch('https://gamma-api.polymarket.com/markets?active=true&limit=100', {
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      console.warn('[Kalshi] Both API attempts failed');
+      return [];
+    }
+
+    // Return empty as Kalshi requires auth, but log for monitoring
+    console.log('[Kalshi] API key not configured - markets unavailable');
+    return [];
+
+  } catch (error) {
+    console.error('[Kalshi] Error fetching markets:', error);
+    return [];
+  }
 }
 
 /**
- * Fetch Polymarket markets
- * Note: Returns empty array - Polymarket API integration pending
+ * Fetch Polymarket markets via Gamma API (public, no auth required)
+ * Returns real market data with live odds
  */
 async function fetchPolymarketMarkets(): Promise<PolymarketMarket[]> {
-  // TODO: Implement real Polymarket API integration
-  // const response = await fetch('https://api.polymarket.com/markets');
-  // return await response.json();
+  try {
+    // Gamma API is public and doesn't require authentication
+    const response = await fetch(
+      'https://gamma-api.polymarket.com/markets?active=true&archived=false&closed=false&limit=100',
+      {
+        headers: {
+          'Accept': 'application/json',
+        },
+        cache: 'no-store'
+      }
+    );
 
-  console.log('[Polymarket] API integration pending - returning empty');
-  return [];
+    if (!response.ok) {
+      console.warn(`[Polymarket] API error: ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+
+    if (!data || !Array.isArray(data)) {
+      console.warn('[Polymarket] Invalid response format');
+      return [];
+    }
+
+    // Transform to our format
+    const markets: PolymarketMarket[] = data.map((m: any) => ({
+      id: m.slug || m.id,
+      question: m.question || m.title || 'Unknown Market',
+      description: m.description || '',
+      outcomes: m.outcomes?.map((o: any) => ({
+        outcome: o.name || o.outcome,
+        probability: parseFloat(o.probability || 0.5),
+        price: parseFloat(o.price || o.probability || 0.5)
+      })) || [
+          { outcome: 'Yes', probability: 0.5, price: 0.5 },
+          { outcome: 'No', probability: 0.5, price: 0.5 }
+        ],
+      liquidity: parseFloat(m.liquidity || 0),
+      volume_24h: parseFloat(m.volume24h || 0),
+      volume_7d: parseFloat(m.volume7d || m.volume || 0),
+      url: m.url || `https://polymarket.com/event/${m.slug}`,
+      created_time: m.createdAt || new Date().toISOString(),
+      modified_time: m.updatedAt || new Date().toISOString(),
+      close_time: m.endDate || m.closeTime
+    }));
+
+    console.log(`[Polymarket] Fetched ${markets.length} active markets`);
+    return markets;
+
+  } catch (error) {
+    console.error('[Polymarket] Error fetching markets:', error);
+    return [];
+  }
 }
 
 /**

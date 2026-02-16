@@ -92,58 +92,81 @@ export async function GET(request: Request) {
     console.log(`[CRON daily-predictions] Wrote ${picks.length} picks to ${filePath}`)
 
     // Syndicate to Prognostication if configured
-    const webhookUrl = process.env.PROGNOSTICATION_WEBHOOK_URL
-    const apiKey = process.env.PROGNO_API_KEY
+    const webhookBaseUrl = process.env.PROGNOSTICATION_URL || process.env.NEXT_PUBLIC_PROGNOSTICATION_URL || 'https://prognostication.com'
+    const webhookUrl = `${webhookBaseUrl}/api/webhooks/progno`
+    const apiKey = process.env.PROGNO_INTERNAL_API_KEY || process.env.PROGNO_API_KEY
 
-    if (webhookUrl && picks.length > 0) {
+    if (apiKey && picks.length > 0) {
       console.log('[CRON daily-predictions] Syndicating to Prognostication...')
 
       const syndicationResults = []
       const tiers = ['free', 'premium', 'elite'] as const
 
       for (const tier of tiers) {
-        try {
-          const syndicationRes = await fetch(`${baseUrl}/api/syndication`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              tier,
-              picks,
-              webhookUrl,
-              apiKey
-            })
-          })
+        let retries = 3
+        let success = false
+        let lastError = ''
 
-          if (syndicationRes.ok) {
-            const result = await syndicationRes.json()
-            syndicationResults.push({
-              tier,
-              status: 'success',
-              count: result.stats?.syndicatedPicks || 0
+        while (retries > 0 && !success) {
+          try {
+            const batchId = `${today}-${tier}-${Date.now()}`
+
+            const syndicationRes = await fetch(webhookUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-progno-api-key': apiKey,
+                'x-batch-id': batchId,
+              },
+              body: JSON.stringify({
+                tier,
+                picks,
+                batchId,
+                timestamp: new Date().toISOString(),
+                source: 'progno-daily-cron',
+              })
             })
-            console.log(`[CRON daily-predictions] ✓ ${tier}: ${result.stats?.syndicatedPicks || 0} picks syndicated`)
-          } else {
-            const error = await syndicationRes.text()
-            syndicationResults.push({
-              tier,
-              status: 'error',
-              error: error.slice(0, 100)
-            })
-            console.error(`[CRON daily-predictions] ✗ ${tier}: ${error.slice(0, 100)}`)
+
+            if (syndicationRes.ok) {
+              const result = await syndicationRes.json()
+              syndicationResults.push({
+                tier,
+                status: 'success',
+                count: result.processed || 0,
+                batchId,
+                duration: result.duration,
+              })
+              console.log(`[CRON daily-predictions] ✓ ${tier}: ${result.processed || 0} picks syndicated`)
+              success = true
+            } else {
+              lastError = await syndicationRes.text()
+              throw new Error(`HTTP ${syndicationRes.status}: ${lastError.slice(0, 100)}`)
+            }
+          } catch (err: any) {
+            retries--
+            lastError = err.message || 'Unknown error'
+            console.error(`[CRON daily-predictions] ✗ ${tier} attempt failed (${retries} retries left):`, lastError)
+
+            if (retries > 0) {
+              // Exponential backoff: 1s, 2s, 4s
+              await new Promise(resolve => setTimeout(resolve, (4 - retries) * 1000))
+            }
           }
-        } catch (err) {
+        }
+
+        if (!success) {
           syndicationResults.push({
             tier,
             status: 'error',
-            error: err instanceof Error ? err.message : 'Unknown'
+            error: lastError.slice(0, 200),
           })
-          console.error(`[CRON daily-predictions] ✗ ${tier} syndication failed:`, err)
+          console.error(`[CRON daily-predictions] ✗ ${tier} syndication failed after all retries`)
         }
       }
 
       console.log('[CRON daily-predictions] Syndication complete:', syndicationResults)
     } else {
-      console.log('[CRON daily-predictions] Skipping syndication (no webhook URL or no picks)')
+      console.log(`[CRON daily-predictions] Skipping syndication: ${!apiKey ? 'No API key configured' : 'No picks to syndicate'}`)
     }
     return NextResponse.json({
       success: true,

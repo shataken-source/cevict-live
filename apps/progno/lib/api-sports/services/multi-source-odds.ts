@@ -27,9 +27,9 @@ export interface OddsComparison {
   gameId: string;
   timestamp: string;
   sources: {
-    apiSports: OddsData | null;
-    oddsApi: OddsData | null;
-    sportsBlaze: OddsData | null;
+    apiSports: any;
+    oddsApi: any;
+    sportsBlaze: any;
     // Add more sources as needed
   };
   consensus: {
@@ -44,7 +44,7 @@ export interface OddsComparison {
     homeOdds: number;
     awayOdds: number;
   };
-  sharpMoneyIndicator: 'sharp_home' | 'sharp_away' | 'sharp_total_over' | 'sharp_total_under' | 'none';
+  sharpMoneyIndicator: 'sharp_home' | 'sharp_away' | 'sharp_total_over' | 'sharp_total_under' | 'neutral';
   marketEfficiencyScore: number; // 0-1 (1 = highly efficient)
 }
 
@@ -71,6 +71,10 @@ export class MultiSourceOddsService {
     }
 
     return result;
+  }
+
+  async getMultiSourceOdds(sport: string, gameId: string): Promise<OddsComparison | null> {
+    return MultiSourceOddsService.getGameOdds(gameId, sport);
   }
 
   private static async fetchWithRetry<T>(
@@ -153,7 +157,7 @@ export class MultiSourceOddsService {
   }
   private static _oddsFailWarned = false;
 
-  private static calculateConsensus(sources: any): any {
+  private static calculateConsensus(sources: Record<string, any>): any {
     let homeOddsSum = 0, awayOddsSum = 0, spreadSum = 0, totalSum = 0;
     let count = 0;
 
@@ -180,16 +184,16 @@ export class MultiSourceOddsService {
     return { spread: 0.5, total: 0.8, homeOdds: 0.3, awayOdds: 0.4 };
   }
 
-  private static detectSharpMoney(sources: any, consensus: any): 'sharp_home' | 'sharp_away' | 'sharp_total_over' | 'sharp_total_under' | 'none' {
+  private static detectSharpMoney(sources: any, consensus: any): 'sharp_home' | 'sharp_away' | 'sharp_total_over' | 'sharp_total_under' | 'neutral' {
     // Placeholder sharp money detection
-    return 'none';
+    return 'neutral';
   }
 
   private static calculateMarketEfficiency(variance: any, sharpIndicator: string): number {
     let score = 1.0;
     score -= variance.spread * 0.2;
     score -= variance.total * 0.15;
-    if (sharpIndicator !== 'none') score -= 0.3;
+    if (sharpIndicator !== 'neutral') score -= 0.3;
     return Math.max(0, Math.min(1, score));
   }
 

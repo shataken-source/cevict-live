@@ -170,6 +170,7 @@ export class ArbitrageDetector {
         'NFL': ['nfl', 'football'],
         'NHL': ['nhl', 'hockey'],
         'MLB': ['mlb', 'baseball'],
+        'CBB': ['cbb', 'college baseball', 'ncaa baseball'],
         'NCAA': ['ncaa', 'college'],
         'SOCCER': ['soccer', 'premier', 'uefa']
       };

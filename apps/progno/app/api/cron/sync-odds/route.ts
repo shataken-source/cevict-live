@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   const oddsService = new MultiSourceOddsService()
   const today = new Date().toISOString().split('T')[0]
-  const sports = ['nba', 'nfl', 'nhl', 'mlb', 'ncaab', 'ncaaf']
+  const sports = ['nba', 'nfl', 'nhl', 'mlb', 'ncaab', 'ncaaf', 'cbb']
   const results: any[] = []
   const extraResults = {
     sportsblaze: [] as any[],

@@ -222,6 +222,35 @@ class LiveGameTracker {
     return Array.from(this.activeGames.values());
   }
 
+  async updateLiveGames(sport: string): Promise<LiveGameState[]> {
+    const client = getClientForSport(sport);
+    if (!client) return [];
+
+    try {
+      const games = await this.fetchWithRetry(
+        () => client.getGames({ date: new Date().toISOString().split('T')[0] }),
+        10000,
+        2
+      );
+
+      if (!games || !Array.isArray(games)) return [];
+
+      const states: LiveGameState[] = [];
+      for (const game of games) {
+        const statusLong = game.status?.long?.toLowerCase() || '';
+        if (statusLong.includes('live') || statusLong.includes('in progress') || statusLong.includes('qtr') || statusLong.includes('period')) {
+          const state = await this.updateGameState(game.id.toString(), sport);
+          if (state) states.push(state);
+        }
+      }
+
+      return states;
+    } catch (error: any) {
+      console.error(`[LiveTracker] Failed to update live games for ${sport}: ${error.message}`);
+      return [];
+    }
+  }
+
   getAlerts(): LiveAlert[] {
     return this.alerts;
   }

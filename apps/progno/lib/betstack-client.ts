@@ -141,3 +141,8 @@ export function convertBetStackToOddsService(odds: BetStackOdds[]): any[] {
     })),
   }];
 }
+
+export const betstackApi = {
+  fetchNASCAROdds: fetchBetStackNASCAROdds,
+  convertToOddsService: convertBetStackToOddsService,
+};

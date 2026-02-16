@@ -84,8 +84,8 @@ const STATUS_MULTIPLIERS: Record<string, number> = {
 export class InjuryImpactAnalyzer {
   private scraper: ScrapingBeeService;
 
-  constructor(scrapingBeeApiKey: string) {
-    this.scraper = new ScrapingBeeService(scrapingBeeApiKey);
+  constructor(scrapingBeeApiKey?: string) {
+    this.scraper = new ScrapingBeeService(scrapingBeeApiKey || '');
   }
 
   /**

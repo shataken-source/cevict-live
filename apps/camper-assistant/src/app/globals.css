@@ -24,3 +24,128 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Landscape Tablet Layout (60/40 split) */
+.analyticsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) and (orientation: landscape) {
+  .analyticsGrid {
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 1.5rem;
+  }
+}
+
+.analyticsLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.analyticsRight {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Hero Panel Styling */
+.heroPanel {
+  background: rgba(30, 41, 59, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.panel {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.panelTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.panelTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Mobile Slim Layout (no graphics) */
+@media (max-width: 640px) {
+
+  .mobile-slim .heroPanel,
+  .mobile-slim .panel {
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+  }
+
+  .mobile-slim img,
+  .mobile-slim svg.decorative,
+  .mobile-slim .decorative {
+    display: none !important;
+  }
+
+  .mobile-slim .kpiValueLarge {
+    font-size: 1.5rem;
+  }
+}
+
+/* KPI Tiles */
+.kpiTile {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.kpiValueLarge {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* Badge System */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.alertBadge {
+  background: rgba(251, 113, 133, 0.2);
+  color: #fb7185;
+}
+
+.statusBadge {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+}
+
+/* Tab Content Container */
+.tabContent {
+  height: calc(100vh - 200px);
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+@media (min-width: 1024px) and (orientation: landscape) {
+  .tabContent {
+    height: calc(100vh - 180px);
+  }
+}

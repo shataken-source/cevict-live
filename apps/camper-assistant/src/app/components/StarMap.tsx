@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Star,
   Moon,
@@ -15,7 +15,10 @@ import {
   Compass,
   Eye,
   Sparkles,
-  MapPin
+  MapPin,
+  Sunrise,
+  Sunset,
+  Loader2
 } from 'lucide-react';
 
 interface Star {
@@ -219,6 +222,35 @@ export default function StarMap() {
   const [selectedConstellation, setSelectedConstellation] = useState<string | null>(null);
   const [selectedStar, setSelectedStar] = useState<Star | null>(null);
   const [location, setLocation] = useState('Camping Location');
+  const [zipCode, setZipCode] = useState('82190');
+  const [astronomyData, setAstronomyData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch astronomy data
+  useEffect(() => {
+    const fetchAstronomy = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Get coordinates from ZIP (simplified mapping)
+        const coords = getZipCoords(zipCode);
+        const response = await fetch(`/api/astronomy?lat=${coords.lat}&lon=${coords.lon}`);
+        if (response.ok) {
+          const data = await response.json();
+          setAstronomyData(data);
+        } else {
+          throw new Error('Failed to fetch astronomy data');
+        }
+      } catch (err) {
+        setError('Could not load astronomy data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAstronomy();
+  }, [zipCode, selectedDate]);
 
   const moonPhase = useMemo(() => getMoonPhase(selectedDate), [selectedDate]);
 
@@ -296,7 +328,18 @@ export default function StarMap() {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Your campsite"
-                className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white w-48"
+                className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white w-40"
+              />
+              <input
+                type="text"
+                value={zipCode}
+                onChange={(e) => {
+                  const val = e.target.value.slice(0, 5).replace(/\D/g, '');
+                  setZipCode(val);
+                }}
+                placeholder="ZIP"
+                className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white w-20 text-center"
+                maxLength={5}
               />
             </div>
           </div>
@@ -460,27 +503,109 @@ export default function StarMap() {
 
         {/* Info Panel */}
         <div className="space-y-4">
-          {/* Moon Phase */}
+          {/* Moon Phase - Real Data */}
           <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-            <div className="flex items-center gap-2 mb-3">
-              <Moon className="w-5 h-5 text-slate-300" />
-              <h3 className="font-semibold">Moon Phase</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Moon className="w-5 h-5 text-slate-300" />
+                <h3 className="font-semibold">Moon Phase</h3>
+              </div>
+              {loading && <Loader2 className="w-4 h-4 animate-spin text-slate-500" />}
             </div>
-            <div className="flex items-center gap-4">
-              <div className="text-6xl">{moonPhase.icon}</div>
-              <div>
-                <div className="font-medium text-white">{moonPhase.name}</div>
-                <div className="text-sm text-slate-400">{moonPhase.illumination}% illuminated</div>
-                <div className="text-xs text-slate-500 mt-1">
-                  {moonPhase.illumination > 50
-                    ? '🌑 Best for faint objects'
-                    : moonPhase.illumination > 20
-                      ? '🌗 Some light interference'
-                      : '🌕 Avoid faint objects'}
+
+            {astronomyData ? (
+              <div className="flex items-center gap-4">
+                <div className="text-6xl">{astronomyData.moon.phase.emoji}</div>
+                <div>
+                  <div className="font-medium text-white">{astronomyData.moon.phase.name}</div>
+                  <div className="text-sm text-slate-400">{astronomyData.moon.illumination}% illuminated</div>
+                  <div className="text-xs mt-1">
+                    {astronomyData.moon.phase.isDarkSky ? (
+                      <span className="text-emerald-400">✓ Dark sky conditions</span>
+                    ) : (
+                      <span className="text-amber-400">⚠ Moon interference</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    {astronomyData.moon.illumination > 50
+                      ? '🌑 Avoid faint objects'
+                      : astronomyData.moon.illumination > 20
+                        ? '🌗 Some light interference'
+                        : '🌕 Perfect for deep sky'}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : error ? (
+              <div className="text-sm text-red-400">{error}</div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="text-6xl">{moonPhase.icon}</div>
+                <div>
+                  <div className="font-medium text-white">{moonPhase.name}</div>
+                  <div className="text-sm text-slate-400">{moonPhase.illumination}% illuminated</div>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Stargazing Window - Real Astronomy Data */}
+          {astronomyData && (
+            <div className="bg-gradient-to-br from-indigo-900/50 to-purple-900/50 rounded-xl p-4 border border-indigo-700/50">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Telescope className="w-5 h-5 text-indigo-400" />
+                  <h3 className="font-semibold text-indigo-200">Stargazing Window</h3>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full ${astronomyData.stargazing.quality === 'excellent' ? 'bg-emerald-500/20 text-emerald-400' :
+                    astronomyData.stargazing.quality === 'good' ? 'bg-blue-500/20 text-blue-400' :
+                      astronomyData.stargazing.quality === 'fair' ? 'bg-amber-500/20 text-amber-400' :
+                        'bg-red-500/20 text-red-400'
+                  }`}>
+                  {astronomyData.stargazing.quality}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="bg-slate-900/50 rounded-lg p-2">
+                  <div className="flex items-center gap-1 text-xs text-slate-400">
+                    <Sunrise className="w-3 h-3" />
+                    Sunset
+                  </div>
+                  <div className="text-sm font-medium text-white">{astronomyData.sun.sunset}</div>
+                </div>
+                <div className="bg-slate-900/50 rounded-lg p-2">
+                  <div className="flex items-center gap-1 text-xs text-slate-400">
+                    <Sunset className="w-3 h-3" />
+                    Sunrise
+                  </div>
+                  <div className="text-sm font-medium text-white">{astronomyData.sun.sunrise}</div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900/30 rounded-lg p-3 mb-2">
+                <div className="text-xs text-slate-400 mb-1">Best Viewing Time</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-bold text-emerald-400">{astronomyData.stargazing.start}</span>
+                  <span className="text-slate-500">→</span>
+                  <span className="text-lg font-bold text-emerald-400">{astronomyData.stargazing.end}</span>
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {astronomyData.stargazing.duration} hours of dark skies
+                </div>
+              </div>
+
+              {astronomyData.moon.rise && (
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>Moon rise: {astronomyData.moon.rise}</span>
+                  {astronomyData.moon.set && <span>Moon set: {astronomyData.moon.set}</span>}
+                </div>
+              )}
+
+              <div className="text-xs text-indigo-300 mt-2">
+                {astronomyData.stargazing.bestTime}
+              </div>
+            </div>
+          )}
 
           {/* Selected Star Info */}
           {selectedStar ? (
@@ -543,9 +668,9 @@ export default function StarMap() {
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-white">{obj.name}</span>
                     <span className={`text-xs px-2 py-0.5 rounded ${obj.type === 'Planet' ? 'bg-blue-900/50 text-blue-400' :
-                        obj.type === 'Event' ? 'bg-red-900/50 text-red-400' :
-                          obj.type === 'Galaxy' ? 'bg-purple-900/50 text-purple-400' :
-                            'bg-amber-900/50 text-amber-400'
+                      obj.type === 'Event' ? 'bg-red-900/50 text-red-400' :
+                        obj.type === 'Galaxy' ? 'bg-purple-900/50 text-purple-400' :
+                          'bg-amber-900/50 text-amber-400'
                       }`}>
                       {obj.type}
                     </span>
@@ -575,4 +700,37 @@ export default function StarMap() {
       </div>
     </div>
   );
+}
+
+// ZIP to coordinates mapping (simplified)
+function getZipCoords(zip: string) {
+  const zipPrefix = parseInt(zip.substring(0, 3));
+
+  // Major camping regions
+  if (zipPrefix >= 820 && zipPrefix <= 831) return { lat: 44.5, lon: -110.0 }; // Yellowstone
+  if (zipPrefix >= 247 && zipPrefix <= 268) return { lat: 38.5, lon: -80.5 };  // West Virginia
+  if (zipPrefix >= 377 && zipPrefix <= 379) return { lat: 35.6, lon: -83.5 };  // Smokies
+  if (zipPrefix >= 900 && zipPrefix <= 961) return { lat: 36.7, lon: -119.4 }; // California
+  if (zipPrefix >= 850 && zipPrefix <= 865) return { lat: 34.0, lon: -111.0 }; // Arizona
+  if (zipPrefix >= 800 && zipPrefix <= 816) return { lat: 39.0, lon: -105.5 }; // Colorado
+  if (zipPrefix >= 598 && zipPrefix <= 599) return { lat: 47.0, lon: -110.0 }; // Montana
+  if (zipPrefix >= 830 && zipPrefix <= 831) return { lat: 43.5, lon: -110.5 }; // Jackson Hole
+  if (zipPrefix >= 321 && zipPrefix <= 329) return { lat: 28.5, lon: -81.5 };  // Florida
+  if (zipPrefix >= 100 && zipPrefix <= 149) return { lat: 40.7, lon: -74.0 };   // NYC
+  if (zipPrefix >= 200 && zipPrefix <= 205) return { lat: 38.9, lon: -77.0 };  // DC
+  if (zipPrefix >= 300 && zipPrefix <= 319) return { lat: 33.7, lon: -84.3 };  // Atlanta
+  if (zipPrefix >= 600 && zipPrefix <= 629) return { lat: 41.8, lon: -87.6 };  // Chicago
+  if (zipPrefix >= 750 && zipPrefix <= 799) return { lat: 32.7, lon: -96.8 };  // Dallas
+  if (zipPrefix >= 980 && zipPrefix <= 994) return { lat: 47.6, lon: -122.3 }; // Seattle
+  if (zipPrefix >= 850 && zipPrefix <= 860) return { lat: 33.4, lon: -112.0 }; // Phoenix
+  if (zipPrefix >= 870 && zipPrefix <= 884) return { lat: 35.1, lon: -106.6 }; // Albuquerque
+  if (zipPrefix >= 450 && zipPrefix <= 458) return { lat: 39.1, lon: -84.5 };  // Cincinnati
+  if (zipPrefix >= 441 && zipPrefix <= 447) return { lat: 41.5, lon: -81.7 };  // Cleveland
+  if (zipPrefix >= 150 && zipPrefix <= 196) return { lat: 40.0, lon: -75.0 };  // Pennsylvania
+  if (zipPrefix >= 400 && zipPrefix <= 427) return { lat: 38.2, lon: -85.7 };  // Kentucky
+  if (zipPrefix >= 700 && zipPrefix <= 714) return { lat: 30.0, lon: -91.0 };  // Louisiana
+  if (zipPrefix >= 850 && zipPrefix <= 855) return { lat: 32.2, lon: -110.9 }; // Tucson
+
+  // Default to middle US
+  return { lat: 39.8, lon: -98.6 };
 }

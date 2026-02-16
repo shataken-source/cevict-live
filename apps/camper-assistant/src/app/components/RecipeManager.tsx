@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useLocation } from '../context/LocationContext';
 import {
   Utensils,
   Flame,
@@ -10,11 +11,10 @@ import {
   Users,
   Leaf,
   WheatOff,
-  Info,
   ExternalLink,
   Loader2,
-  AlertCircle,
-  FireExtinguisher
+  FireExtinguisher,
+  X
 } from 'lucide-react';
 
 // Edamam API Keys
@@ -173,6 +173,7 @@ const DEFAULT_RECIPES: Recipe[] = [
 ];
 
 export default function RecipeManager() {
+  const { zipCode, locationName } = useLocation();
   const [ingredients, setIngredients] = useState('');
   const [cookingMethod, setCookingMethod] = useState('all');
   const [recipes, setRecipes] = useState<Recipe[]>(DEFAULT_RECIPES);
@@ -292,7 +293,10 @@ export default function RecipeManager() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             <Utensils className="w-6 h-6 text-orange-400" />
-            <h2 className="text-xl font-semibold">Camping Recipe Manager</h2>
+            <div>
+              <h2 className="text-xl font-semibold">Camping Recipe Manager</h2>
+              <p className="text-sm text-slate-400">{locationName || `ZIP: ${zipCode}`}</p>
+            </div>
           </div>
 
           {/* Live/Demo Toggle */}
@@ -467,6 +471,144 @@ export default function RecipeManager() {
           </div>
         </div>
       </div>
+
+      {/* Recipe Detail Modal */}
+      {selectedRecipe && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-700">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-slate-800 border-b border-slate-700 p-6 flex items-start justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-white">{selectedRecipe.name}</h2>
+                <div className="flex items-center gap-3 mt-2 text-sm text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    {selectedRecipe.time} min
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    {selectedRecipe.servings} servings
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-xs ${getDifficultyColor(selectedRecipe.difficulty)}`}>
+                    {selectedRecipe.difficulty}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedRecipe(null)}
+                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              {/* Cooking Methods */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-400">Cooking Methods:</span>
+                <div className="flex gap-2">
+                  {selectedRecipe.cookingMethods.map(method => (
+                    <span key={method} className="flex items-center gap-1 px-2 py-1 bg-slate-700 rounded-lg text-sm text-slate-300">
+                      {getMethodIcon(method)}
+                      {method === 'fire' ? 'Open Fire' : method === 'stove' ? 'Camp Stove' : 'No Cook'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Diet & Health Labels */}
+              <div className="flex flex-wrap gap-2">
+                {selectedRecipe.dietLabels.map(label => (
+                  <span key={label} className="px-3 py-1 bg-emerald-900/50 text-emerald-400 rounded-full text-sm">
+                    {label}
+                  </span>
+                ))}
+                {selectedRecipe.healthLabels.slice(0, 4).map(label => (
+                  <span key={label} className="px-3 py-1 bg-blue-900/50 text-blue-400 rounded-full text-sm">
+                    {label}
+                  </span>
+                ))}
+              </div>
+
+              {/* Ingredients */}
+              <div>
+                <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                  <Utensils className="w-5 h-5 text-orange-400" />
+                  Ingredients
+                </h3>
+                <ul className="space-y-2">
+                  {selectedRecipe.ingredients.map((ingredient, idx) => (
+                    <li key={idx} className="flex items-start gap-3 text-slate-300">
+                      <span className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-xs text-slate-400 flex-shrink-0">
+                        {idx + 1}
+                      </span>
+                      {ingredient}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Instructions Placeholder */}
+              <div>
+                <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+                  <ChefHat className="w-5 h-5 text-orange-400" />
+                  Instructions
+                </h3>
+                <div className="bg-slate-700/50 rounded-lg p-4 text-slate-400 text-sm">
+                  <p className="mb-2">Full instructions available at source:</p>
+                  <a
+                    href={selectedRecipe.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-orange-400 hover:text-orange-300 transition-colors"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    View on {selectedRecipe.source}
+                  </a>
+                </div>
+              </div>
+
+              {/* Nutrition Info */}
+              <div className="bg-slate-700/30 rounded-lg p-4">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-white">{selectedRecipe.calories}</div>
+                    <div className="text-xs text-slate-400">cal/serving</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{selectedRecipe.servings}</div>
+                    <div className="text-xs text-slate-400">servings</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-white">{selectedRecipe.time}</div>
+                    <div className="text-xs text-slate-400">minutes</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-slate-800 border-t border-slate-700 p-6 flex gap-3">
+              <button
+                onClick={() => setSelectedRecipe(null)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg font-medium transition-colors"
+              >
+                Close
+              </button>
+              <a
+                href={selectedRecipe.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                View Full Recipe
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

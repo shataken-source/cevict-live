@@ -1,7 +1,18 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Tv, Radio, Wifi, AlertCircle, Compass, Navigation } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Tv, Radio, Wifi, AlertCircle, Compass, Navigation, Loader2, X, Maximize2 } from 'lucide-react';
+
+// Channel type from API
+interface Channel {
+  number: string;
+  name: string;
+  affiliate?: string;
+  type: string;
+  signal: string;
+  show: string;
+  logo?: string | null;
+}
 
 // Antenna direction database for common camping areas
 const ANTENNA_DIRECTIONS: Record<string, { direction: string; degrees: number; tips: string[]; towers: string }> = {
@@ -130,7 +141,117 @@ function getAntennaDirection(zipCode: string) {
   };
 }
 
-// Compass SVG component
+// Transmitter Radar Map - Shows colorful tower locations
+function TransmitterMap({ degrees, onCenterClick, size = 'normal' }: { degrees: number; onCenterClick?: () => void; size?: 'normal' | 'large' }) {
+  // Simulated transmitter data with channel numbers matching the list below
+  const transmitters = [
+    { name: 'CBS', channel: '2.1', angle: degrees + 5, distance: 38, color: '#3b82f6', strength: 'good' },
+    { name: 'NBC', channel: '4.1', angle: degrees - 25, distance: 52, color: '#f97316', strength: 'fair' },
+    { name: 'ABC', channel: '5.1', angle: degrees - 15, distance: 45, color: '#ef4444', strength: 'good' },
+    { name: 'PBS', channel: '7.1', angle: degrees - 5, distance: 35, color: '#a855f7', strength: 'excellent' },
+    { name: 'FOX', channel: '11.1', angle: degrees + 12, distance: 41, color: '#eab308', strength: 'fair' },
+    { name: 'MeTV', channel: '14.1', angle: degrees + 20, distance: 48, color: '#06b6d4', strength: 'good' },
+    { name: 'Weather', channel: '20.1', angle: degrees - 30, distance: 33, color: '#10b981', strength: 'excellent' },
+    { name: 'Movies', channel: '25.1', angle: degrees + 25, distance: 55, color: '#f59e0b', strength: 'fair' },
+  ];
+
+  const isLarge = size === 'large';
+  const containerClass = isLarge ? 'w-80 h-80' : 'w-40 h-40';
+  const centerDotSize = isLarge ? 'w-6 h-6' : 'w-4 h-4';
+  const pulseSize = isLarge ? 'w-12 h-12' : 'w-8 h-8';
+  const fontSize = isLarge ? 'text-sm' : 'text-[8px]';
+  const labelOffset = isLarge ? 20 : 14;
+
+  return (
+    <div className={`relative ${containerClass} mx-auto`}>
+      {/* Radar background circles */}
+      <div className="absolute inset-0 rounded-full border-2 border-slate-600/30 bg-slate-800/30" />
+      <div className="absolute inset-4 rounded-full border border-slate-600/20" />
+      <div className="absolute inset-8 rounded-full border border-slate-600/10" />
+
+      {/* Crosshairs */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-full h-px bg-slate-600/20" />
+      </div>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-px h-full bg-slate-600/20" />
+      </div>
+
+      {/* You are here - center - NOW CLICKABLE */}
+      <div
+        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${centerDotSize} bg-emerald-500 rounded-full border-2 border-emerald-300 shadow-lg shadow-emerald-500/50 z-20 cursor-pointer hover:scale-110 transition-transform`}
+        onClick={onCenterClick}
+        title="Click to enlarge"
+      />
+      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${pulseSize} bg-emerald-500/20 rounded-full animate-pulse`} />
+      <div className={`absolute top-[60%] left-1/2 -translate-x-1/2 ${fontSize} text-emerald-400 font-bold`}>YOU</div>
+
+      {/* Transmitters as colorful dots */}
+      {transmitters.map((tower, i) => {
+        const rad = ((tower.angle - 90) * Math.PI) / 180;
+        const x = 50 + (tower.distance / 60) * 35 * Math.cos(rad);
+        const y = 50 + (tower.distance / 60) * 35 * Math.sin(rad);
+
+        return (
+          <div key={i}>
+            {/* Tower dot */}
+            <div
+              className="absolute w-3 h-3 rounded-full border border-white/50 shadow-lg transition-all hover:scale-125 cursor-pointer"
+              style={{
+                left: `${x}%`,
+                top: `${y}%`,
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: tower.color,
+                boxShadow: `0 0 8px ${tower.color}`,
+              }}
+              title={`${tower.name} - ${tower.distance} mi - ${tower.strength}`}
+            />
+            {/* Tower label with channel number */}
+            <div
+              className="absolute text-[7px] font-bold text-white bg-slate-900/90 px-1 rounded border border-white/20"
+              style={{
+                left: `${x}%`,
+                top: `${y - labelOffset}%`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              {tower.channel}
+            </div>
+            {/* Network name below */}
+            <div
+              className="absolute text-[6px] text-white/70"
+              style={{
+                left: `${x}%`,
+                top: `${y + 10}%`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              {tower.name}
+            </div>
+            {/* Signal ring */}
+            <div
+              className="absolute w-6 h-6 rounded-full border opacity-30"
+              style={{
+                left: `${x}%`,
+                top: `${y}%`,
+                transform: 'translate(-50%, -50%)',
+                borderColor: tower.color,
+              }}
+            />
+          </div>
+        );
+      })}
+
+      {/* Range rings legend */}
+      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-1">
+        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
+        <span className="text-[7px] text-slate-400">25mi</span>
+        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/30" />
+        <span className="text-[7px] text-slate-400">50mi</span>
+      </div>
+    </div>
+  );
+}
 function CompassRose({ degrees }: { degrees: number }) {
   return (
     <div className="relative w-32 h-32 mx-auto">
@@ -164,29 +285,196 @@ function CompassRose({ degrees }: { degrees: number }) {
 export default function TVGuide() {
   const [zipCode, setZipCode] = useState('82190'); // Yellowstone area
   const [showDigital, setShowDigital] = useState(true);
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [dataSource, setDataSource] = useState<'real' | 'mock'>('mock');
 
   const antennaInfo = useMemo(() => getAntennaDirection(zipCode), [zipCode]);
 
-  // Simulated TV channels for remote camping areas
-  const channels = [
-    { number: '2.1', name: 'CBS', type: 'network', signal: 'good', show: 'Evening News 6:00 PM' },
-    { number: '4.1', name: 'NBC', type: 'network', signal: 'fair', show: 'Nightly News 6:30 PM' },
-    { number: '5.1', name: 'ABC', type: 'network', signal: 'good', show: 'World News 5:30 PM' },
-    { number: '7.1', name: 'PBS', type: 'network', signal: 'excellent', show: 'Nature Documentary 7:00 PM' },
-    { number: '11.1', name: 'FOX', type: 'network', signal: 'fair', show: 'Local News 9:00 PM' },
-    { number: '14.1', name: 'MeTV', type: 'digital', signal: 'good', show: 'Classic Sitcoms' },
-    { number: '20.1', name: 'Weather', type: 'digital', signal: 'excellent', show: '24/7 Weather Radar' },
-    { number: '25.1', name: 'Movies!', type: 'digital', signal: 'fair', show: 'Classic Movies' },
-  ];
+  // State for enlarged map modal
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
-  const radioStations = [
-    { freq: '91.1', name: 'NPR', type: 'FM', genre: 'News/Talk' },
-    { freq: '93.5', name: 'K-LOVE', type: 'FM', genre: 'Christian' },
-    { freq: '96.7', name: 'Country FM', type: 'FM', genre: 'Country' },
-    { freq: '100.3', name: 'Rock Radio', type: 'FM', genre: 'Rock' },
-    { freq: '104.5', name: 'Classical', type: 'FM', genre: 'Classical' },
-    { freq: '162.4', name: 'NOAA Weather', type: 'WX', genre: 'Weather Alerts' },
-  ];
+  // Fetch TV guide data when ZIP changes
+  useEffect(() => {
+    fetchChannels(zipCode);
+  }, [zipCode]);
+
+  const fetchChannels = async (zip: string) => {
+    if (!zip || zip.length < 5) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`/api/tv-guide?zip=${zip}`);
+      const data = await response.json();
+
+      if (data.channels) {
+        setChannels(data.channels);
+        setDataSource(data.source === 'schedules-direct' ? 'real' : 'mock');
+        if (data.message) {
+          console.log('TV Guide:', data.message);
+        }
+      } else {
+        setError('No channels found for this area');
+      }
+    } catch (err) {
+      setError('Failed to load TV guide data');
+      console.error('TV Guide fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleZipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newZip = e.target.value.slice(0, 5);
+    setZipCode(newZip);
+    if (newZip.length === 5) {
+      fetchChannels(newZip);
+    }
+  };
+
+  const [radioStations, setRadioStations] = useState<RadioStation[]>([]);
+  const [wildfires, setWildfires] = useState<WildfireData[]>([]);
+  const [weatherAlerts, setWeatherAlerts] = useState<WeatherAlert[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(false);
+
+  interface RadioStation {
+    id: string;
+    name: string;
+    genre: string;
+    location: string;
+    url: string;
+    logo: string | null;
+    bitrate: number;
+    codec?: string;
+    isPopular: boolean;
+  }
+
+  interface WildfireData {
+    id: string;
+    lat: number;
+    lon: number;
+    distance: number;
+    direction: string;
+    intensity: string;
+    threat: string;
+    confidence: string;
+    detected: string;
+  }
+
+  interface WeatherAlert {
+    id: string;
+    title: string;
+    headline: string;
+    description: string;
+    severity: string;
+    isFireRelated: boolean;
+    category: string;
+    area: string;
+    expires: string;
+  }
+
+  // Fetch radio stations, wildfires, and alerts when ZIP changes
+  useEffect(() => {
+    fetchChannels(zipCode);
+    fetchRadioStations(zipCode);
+    fetchWildfireAndAlerts(zipCode);
+  }, [zipCode]);
+
+  const fetchRadioStations = async (zip: string) => {
+    if (!zip || zip.length < 5) return;
+
+    try {
+      const response = await fetch(`/api/radio?zip=${zip}`);
+      const data = await response.json();
+
+      if (data.stations) {
+        setRadioStations(data.stations);
+      }
+    } catch (err) {
+      console.error('Radio fetch error:', err);
+    }
+  };
+
+  const fetchWildfireAndAlerts = async (zip: string) => {
+    if (!zip || zip.length < 5) return;
+
+    setAlertsLoading(true);
+
+    try {
+      // Get coordinates from ZIP (simplified - would use geocoding in production)
+      const coords = getZipCoords(zip);
+
+      // Fetch wildfire data
+      const [fireResponse, alertsResponse] = await Promise.all([
+        fetch(`/api/wildfire?lat=${coords.lat}&lon=${coords.lon}&radius=100`),
+        fetch(`/api/weather-alerts?lat=${coords.lat}&lon=${coords.lon}`)
+      ]);
+
+      if (fireResponse.ok) {
+        const fireData = await fireResponse.json();
+        setWildfires(fireData.fires || []);
+      }
+
+      if (alertsResponse.ok) {
+        const alertsData = await alertsResponse.json();
+        setWeatherAlerts(alertsData.alerts || []);
+      }
+    } catch (err) {
+      console.error('Wildfire/Alerts fetch error:', err);
+    } finally {
+      setAlertsLoading(false);
+    }
+  };
+
+  const getZipState = (zip: string): string | null => {
+    if (!zip || zip.length < 3) return null;
+    const prefix = parseInt(zip.substring(0, 3));
+
+    // ZIP to state mapping
+    if (prefix >= 350 && prefix <= 369) return 'Alabama';
+    if (prefix >= 995 && prefix <= 999) return 'Alaska';
+    if (prefix >= 850 && prefix <= 865) return 'Arizona';
+    if (prefix >= 716 && prefix <= 729) return 'Arkansas';
+    if (prefix >= 900 && prefix <= 961) return 'California';
+    if (prefix >= 800 && prefix <= 816) return 'Colorado';
+    if (prefix >= 600 && prefix <= 629) return 'Illinois';
+    if (prefix >= 460 && prefix <= 479) return 'Indiana';
+    if (prefix >= 500 && prefix <= 528) return 'Iowa';
+    if (prefix >= 660 && prefix <= 679) return 'Kansas';
+    if (prefix >= 400 && prefix <= 427) return 'Kentucky';
+    if (prefix >= 700 && prefix <= 715) return 'Louisiana';
+    if (prefix >= 390 && prefix <= 399) return 'Mississippi';
+    if (prefix >= 630 && prefix <= 658) return 'Missouri';
+    if (prefix >= 590 && prefix <= 599) return 'Montana';
+    if (prefix >= 680 && prefix <= 693) return 'Nebraska';
+    if (prefix >= 889 && prefix <= 898) return 'Nevada';
+    if (prefix >= 100 && prefix <= 149) return 'New York';
+    if (prefix >= 150 && prefix <= 196) return 'Pennsylvania';
+    if (prefix >= 300 && prefix <= 319) return 'Georgia';
+    if (prefix >= 320 && prefix <= 349) return 'Florida';
+    if (prefix >= 820 && prefix <= 831) return 'Wyoming';
+    if (prefix >= 247 && prefix <= 268) return 'West Virginia';
+    if (prefix >= 377 && prefix <= 379) return 'Tennessee';
+
+    return null;
+  };
+
+  const getZipCoords = (zip: string): { lat: string; lon: string } => {
+    // Simplified ZIP to coord mapping for common camping areas
+    const zipPrefix = parseInt(zip.substring(0, 3));
+
+    const coordMap: Record<number, { lat: string; lon: string }> = {
+      821: { lat: '44.5', lon: '-110.0' }, // Yellowstone
+      259: { lat: '38.5', lon: '-80.5' }, // WV
+      902: { lat: '34.0', lon: '-118.2' }, // LA
+      377: { lat: '35.7', lon: '-83.5' }, // Smokies
+    };
+
+    return coordMap[zipPrefix] || { lat: '39.8', lon: '-98.5' }; // US center default
+  };
 
   const signalColor = (signal: string) => {
     switch (signal) {
@@ -215,7 +503,7 @@ export default function TVGuide() {
             <input
               type="text"
               value={zipCode}
-              onChange={(e) => setZipCode(e.target.value)}
+              onChange={handleZipChange}
               placeholder="Enter ZIP"
               className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white w-32"
             />
@@ -226,9 +514,16 @@ export default function TVGuide() {
               checked={showDigital}
               onChange={(e) => setShowDigital(e.target.checked)}
               className="w-4 h-4"
+              id="showDigital"
             />
-            <label>Show Digital Channels</label>
+            <label htmlFor="showDigital">Show Digital Channels</label>
           </div>
+          {loading && (
+            <div className="flex items-center gap-2 mt-6 text-blue-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Loading...</span>
+            </div>
+          )}
         </div>
 
         {/* Antenna Direction Card */}
@@ -238,22 +533,37 @@ export default function TVGuide() {
             <h3 className="font-semibold text-blue-300">Antenna Direction</h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             {/* Compass */}
-            <div className="flex flex-col items-center justify-center">
+            <div className="flex flex-col items-center justify-center px-2">
               <CompassRose degrees={antennaInfo.degrees} />
               <div className="mt-2 text-center">
-                <div className="text-2xl font-bold text-white">{antennaInfo.direction}</div>
+                <div className="text-xl font-bold text-white">{antennaInfo.direction}</div>
                 <div className="text-sm text-slate-400">{antennaInfo.degrees}°</div>
               </div>
             </div>
 
+            {/* Transmitter Radar Map */}
+            <div className="flex flex-col items-center justify-center px-2">
+              <TransmitterMap
+                degrees={antennaInfo.degrees}
+                onCenterClick={() => setIsMapModalOpen(true)}
+              />
+              <div className="mt-2 text-center">
+                <div className="text-sm text-slate-400">Nearby Transmitters</div>
+                <div className="text-xs text-slate-500 flex items-center gap-1 justify-center">
+                  <Maximize2 className="w-3 h-3" />
+                  Click center to enlarge
+                </div>
+              </div>
+            </div>
+
             {/* Tips */}
-            <div>
+            <div className="px-2">
               <div className="text-sm text-blue-300 mb-2 font-medium">
                 Target: {antennaInfo.towers}
               </div>
-              <ul className="space-y-1.5">
+              <ul className="space-y-1">
                 {antennaInfo.tips.map((tip, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
                     <Navigation className="w-3 h-3 mt-1 text-blue-400 flex-shrink-0" />
@@ -261,8 +571,8 @@ export default function TVGuide() {
                   </li>
                 ))}
               </ul>
-              <div className="mt-3 text-xs text-slate-500">
-                💡 Use a compass app or visit{' '}
+              <div className="mt-2 text-xs text-slate-500">
+                💡{' '}
                 <a
                   href={`https://www.antennaweb.org`}
                   target="_blank"
@@ -271,7 +581,6 @@ export default function TVGuide() {
                 >
                   AntennaWeb.org
                 </a>
-                {' '}for precise bearing
               </div>
             </div>
           </div>
@@ -280,10 +589,23 @@ export default function TVGuide() {
 
       {/* TV Channels */}
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <div className="flex items-center gap-2 mb-4">
-          <Tv className="w-5 h-5 text-blue-400" />
-          <h3 className="font-semibold">Over-the-Air TV Channels</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Tv className="w-5 h-5 text-blue-400" />
+            <h3 className="font-semibold">Over-the-Air TV Channels</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs px-2 py-1 rounded ${dataSource === 'real' ? 'bg-emerald-900 text-emerald-400' : 'bg-amber-900 text-amber-400'}`}>
+              {dataSource === 'real' ? 'Live Data' : 'Sample Data'}
+            </span>
+          </div>
         </div>
+
+        {error && (
+          <div className="mb-4 bg-red-900/30 border border-red-700/50 rounded-lg p-3">
+            <div className="text-sm text-red-200">{error}</div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {channels.filter(c => showDigital || c.type === 'network').map((channel) => (
@@ -293,7 +615,7 @@ export default function TVGuide() {
                   {channel.number}
                 </div>
                 <div>
-                  <div className="font-medium">{channel.name}</div>
+                  <div className="font-medium">{channel.affiliate || channel.name}</div>
                   <div className="text-xs text-slate-400">{channel.show}</div>
                 </div>
               </div>
@@ -303,6 +625,12 @@ export default function TVGuide() {
             </div>
           ))}
         </div>
+
+        {channels.length === 0 && !loading && (
+          <div className="text-center py-8 text-slate-500">
+            No channels available. Enter a ZIP code to see local channels.
+          </div>
+        )}
 
         <div className="mt-4 bg-amber-900/30 border border-amber-700/50 rounded-lg p-3">
           <div className="flex items-start gap-2">
@@ -314,43 +642,226 @@ export default function TVGuide() {
         </div>
       </div>
 
-      {/* Radio Stations */}
+      {/* Radio Stations - Real Data */}
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <div className="flex items-center gap-2 mb-4">
-          <Radio className="w-5 h-5 text-emerald-400" />
-          <h3 className="font-semibold">Radio Stations</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Radio className="w-5 h-5 text-emerald-400" />
+            <h3 className="font-semibold">Local Radio Stations</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            {radioStations.length > 0 && (
+              <span className="text-xs px-2 py-1 rounded bg-emerald-900 text-emerald-400">
+                {getZipState(zipCode) || 'National'}
+              </span>
+            )}
+            <span className="text-xs text-slate-400">via Radio Browser</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {radioStations.map((station) => (
-            <div key={station.freq} className="bg-slate-700 rounded-lg p-3">
+            <div key={station.id} className="bg-slate-700 rounded-lg p-3 hover:bg-slate-600 transition-colors cursor-pointer">
               <div className="flex items-center justify-between mb-1">
-                <div className="text-lg font-bold font-mono">{station.freq}</div>
-                <span className={`text-xs px-2 py-0.5 rounded ${station.type === 'WX' ? 'bg-red-900 text-red-400' : 'bg-slate-600'
+                <div className="text-lg font-bold text-emerald-400">📻</div>
+                <span className={`text-xs px-2 py-0.5 rounded ${station.isPopular ? 'bg-emerald-900 text-emerald-400' : 'bg-slate-600'
                   }`}>
-                  {station.type}
+                  {station.genre}
                 </span>
               </div>
-              <div className="font-medium">{station.name}</div>
-              <div className="text-xs text-slate-400">{station.genre}</div>
+              <div className="font-medium truncate">{station.name}</div>
+              <div className="text-xs text-slate-400">{station.location}</div>
+              {station.bitrate > 0 && (
+                <div className="text-xs text-slate-500 mt-1">{station.bitrate}kbps {station.codec}</div>
+              )}
             </div>
           ))}
         </div>
+
+        {radioStations.length === 0 && (
+          <div className="text-center py-8 text-slate-500">
+            Enter ZIP code to find local radio stations
+          </div>
+        )}
       </div>
 
-      {/* Emergency Info */}
-      <div className="bg-red-900/30 border border-red-700/50 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <Wifi className="w-5 h-5 text-red-400" />
-          <div>
-            <div className="font-semibold text-red-400 mb-1">Emergency Broadcast</div>
-            <div className="text-sm text-red-200">
-              NOAA Weather Radio (162.4 MHz) provides continuous weather updates and emergency alerts.
+      {/* Wildfire Monitor */}
+      <div className="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-full bg-orange-500 animate-pulse" />
+            <h3 className="font-semibold text-sm sm:text-base">Active Wildfire Monitor</h3>
+          </div>
+          <span className="text-xs text-slate-400">via NASA FIRMS</span>
+        </div>
+
+        {alertsLoading ? (
+          <div className="flex items-center justify-center py-6 sm:py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-orange-400" />
+          </div>
+        ) : wildfires.length > 0 ? (
+          <div className="space-y-2 sm:space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+              {wildfires.slice(0, 6).map((fire) => (
+                <div key={fire.id} className={`rounded-lg p-2 sm:p-3 border ${fire.threat === 'critical' ? 'bg-red-900/50 border-red-600' :
+                  fire.threat === 'high' ? 'bg-orange-900/50 border-orange-600' :
+                    fire.threat === 'moderate' ? 'bg-amber-900/50 border-amber-600' :
+                      'bg-slate-700 border-slate-600'
+                  }`}>
+                  <div className="flex items-center justify-between mb-1 sm:mb-2">
+                    <span className={`text-xs font-bold uppercase ${fire.threat === 'critical' ? 'text-red-400' :
+                      fire.threat === 'high' ? 'text-orange-400' :
+                        fire.threat === 'moderate' ? 'text-amber-400' :
+                          'text-slate-400'
+                      }`}>
+                      {fire.threat.toUpperCase()}
+                    </span>
+                    <span className="text-xs text-slate-400">{fire.direction} {fire.distance}km</span>
+                  </div>
+                  <div className="text-xs sm:text-sm text-slate-200">
+                    Intensity: {fire.intensity} • Confidence: {fire.confidence}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-1">
+                    Detected: {fire.detected}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 sm:mt-4 bg-orange-900/30 border border-orange-700/50 rounded-lg p-2 sm:p-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-orange-400 mt-0.5 flex-shrink-0" />
+                <div className="text-xs sm:text-sm text-orange-200">
+                  {wildfires.filter(f => f.threat === 'critical' || f.threat === 'high').length} active fires within 100km.
+                  Stay informed and be prepared to evacuate if conditions worsen.
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-6 sm:py-8 text-slate-500 text-sm">
+            No active fires detected in your area. Stay safe!
+          </div>
+        )}
+      </div>
+
+      {/* Weather Alerts - Fire Weather */}
+      <div className="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="flex items-center gap-2">
+            <Wifi className="w-5 h-5 text-red-400" />
+            <h3 className="font-semibold text-sm sm:text-base">Weather Alerts</h3>
+          </div>
+          <span className="text-xs text-slate-400">via NWS</span>
+        </div>
+
+        {weatherAlerts.length > 0 ? (
+          <div className="space-y-2 sm:space-y-3">
+            {weatherAlerts.slice(0, 3).map((alert) => (
+              <div key={alert.id} className={`rounded-lg p-2 sm:p-3 border ${alert.isFireRelated ? 'bg-red-900/30 border-red-700' :
+                alert.severity === 'critical' ? 'bg-red-900/20 border-red-600' :
+                  alert.severity === 'severe' ? 'bg-orange-900/20 border-orange-600' :
+                    'bg-slate-700 border-slate-600'
+                }`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium flex items-center gap-2 text-sm">
+                      {alert.isFireRelated && <span className="text-red-400">🔥</span>}
+                      <span className="truncate">{alert.title}</span>
+                    </div>
+                    <div className="text-xs sm:text-sm text-slate-400 mt-1">{alert.headline}</div>
+                    <div className="text-xs text-slate-500 mt-2">{alert.area}</div>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded shrink-0 ${alert.severity === 'critical' ? 'bg-red-900 text-red-400' :
+                    alert.severity === 'severe' ? 'bg-orange-900 text-orange-400' :
+                      'bg-slate-600'
+                    }`}>
+                    {alert.severity}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-6 sm:py-8 text-slate-500 text-sm">
+            No active weather alerts for your area.
+          </div>
+        )}
+
+        <div className="mt-3 sm:mt-4 bg-red-900/30 border border-red-700/50 rounded-lg p-2 sm:p-3">
+          <div className="flex items-start gap-2">
+            <Wifi className="w-4 h-4 text-red-400 mt-0.5" />
+            <div className="text-xs sm:text-sm text-red-200">
+              NOAA Weather Radio provides continuous weather updates and emergency alerts.
               Essential for camping safety.
             </div>
           </div>
         </div>
       </div>
+
+      {/* Enlarged Map Modal */}
+      {isMapModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setIsMapModalOpen(false)}
+        >
+          <div
+            className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Compass className="w-6 h-6 text-blue-400" />
+                <h3 className="text-xl font-semibold text-white">Transmitter Radar Map</h3>
+              </div>
+              <button
+                onClick={() => setIsMapModalOpen(false)}
+                className="p-2 hover:bg-slate-800 rounded-full transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            {/* Large Map */}
+            <div className="flex flex-col items-center">
+              <TransmitterMap
+                degrees={antennaInfo.degrees}
+                size="large"
+              />
+
+              {/* Legend */}
+              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                {[
+                  { name: 'CBS', color: '#3b82f6', ch: '2.1' },
+                  { name: 'NBC', color: '#f97316', ch: '4.1' },
+                  { name: 'ABC', color: '#ef4444', ch: '5.1' },
+                  { name: 'PBS', color: '#a855f7', ch: '7.1' },
+                  { name: 'FOX', color: '#eab308', ch: '11.1' },
+                  { name: 'MeTV', color: '#06b6d4', ch: '14.1' },
+                  { name: 'Weather', color: '#10b981', ch: '20.1' },
+                  { name: 'Movies', color: '#f59e0b', ch: '25.1' },
+                ].map((station) => (
+                  <div key={station.ch} className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: station.color, boxShadow: `0 0 6px ${station.color}` }}
+                    />
+                    <span className="text-slate-300">{station.name} {station.ch}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Info */}
+              <div className="mt-4 text-center text-sm text-slate-400">
+                <p>Direction: <span className="text-blue-400 font-semibold">{antennaInfo.direction}</span> ({antennaInfo.degrees}°)</p>
+                <p className="mt-1">Target: {antennaInfo.towers}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

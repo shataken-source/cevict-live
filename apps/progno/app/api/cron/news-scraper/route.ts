@@ -147,7 +147,7 @@ function extractTeamMentions(text: string): string[] {
   const teams = new Set<string>();
   for (const pattern of teamPatterns) {
     const matches = text.match(pattern) || [];
-    matches.forEach(m => teams.add(m.toLowerCase()));
+    matches.forEach((m: string) => teams.add(m.toLowerCase()));
   }
 
   return Array.from(teams);

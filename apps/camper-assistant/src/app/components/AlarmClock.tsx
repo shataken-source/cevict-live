@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell, Clock, Volume2, Pause, Play, Trash2, Bed, Zap, Eye } from 'lucide-react';
+import { Bell, Clock, Volume2, Pause, Play, Trash2, Bed, Zap, Eye, Sun, Moon, CloudRain, Wind, Newspaper, Telescope, Thermometer, CloudSun } from 'lucide-react';
+import { useLocation } from '../context/LocationContext';
 
 export default function AlarmClock() {
   const [alarms, setAlarms] = useState([
@@ -12,6 +13,13 @@ export default function AlarmClock() {
   const [newLabel, setNewLabel] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [playing, setPlaying] = useState<string | null>(null);
+
+  const { zipCode, locationName } = useLocation();
+  const [wakeUpMode, setWakeUpMode] = useState<'standard' | 'weather' | 'stargazing' | 'news'>('standard');
+  const [weatherData, setWeatherData] = useState<any>(null);
+  const [newsData, setNewsData] = useState<any[]>([]);
+  const [stargazingData, setStargazingData] = useState<any>(null);
+  const [showWakeUpInfo, setShowWakeUpInfo] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const oscillatorsRef = useRef<OscillatorNode[]>([]);
@@ -167,6 +175,81 @@ export default function AlarmClock() {
     setAlarms(alarms.map(a => a.id === id ? { ...a, active: !a.active } : a));
   };
 
+  // Fetch weather data for wake-up
+  const fetchWeatherForAlarm = async () => {
+    try {
+      // Mock weather data - would integrate with WeatherAPI
+      setWeatherData({
+        temp: 62,
+        condition: 'Partly Cloudy',
+        high: 75,
+        low: 58,
+        precipitation: 20,
+        wind: 8,
+        humidity: 65,
+        sunrise: '06:42 AM',
+        sunset: '07:15 PM',
+        icon: 'partly-cloudy'
+      });
+    } catch (err) {
+      console.error('Weather fetch error:', err);
+    }
+  };
+
+  // Fetch stargazing data
+  const fetchStargazingData = async () => {
+    try {
+      // Mock astronomy data - would integrate with astronomy API
+      const tonight = new Date();
+      tonight.setHours(tonight.getHours() + 12); // Tonight
+
+      setStargazingData({
+        moonPhase: 'Waxing Crescent',
+        moonIllumination: 23,
+        moonRise: '09:23 AM',
+        moonSet: '10:45 PM',
+        sunset: '07:15 PM',
+        astronomicalTwilight: '09:30 PM',
+        bestStargazing: '09:30 PM - 02:00 AM',
+        visibility: 'Good',
+        visiblePlanets: ['Jupiter', 'Saturn', 'Mars'],
+        meteorShower: 'None expected',
+        cloudCover: 15
+      });
+    } catch (err) {
+      console.error('Stargazing fetch error:', err);
+    }
+  };
+
+  // Fetch news headlines
+  const fetchNewsData = async () => {
+    try {
+      // Mock news data - would integrate with news API
+      setNewsData([
+        { title: 'Local weather: Clear skies expected through weekend', source: 'NWS', time: '2h ago' },
+        { title: 'Trail conditions update: All paths open', source: 'Park Service', time: '4h ago' },
+        { title: 'Meteor shower visible tonight after 10 PM', source: 'Astronomy Daily', time: '6h ago' },
+        { title: 'Wildfire risk remains low in region', source: 'Fire Dept', time: '8h ago' },
+      ]);
+    } catch (err) {
+      console.error('News fetch error:', err);
+    }
+  };
+
+  // Handle alarm triggering with wake-up mode
+  const triggerAlarm = (alarm: any) => {
+    if (wakeUpMode === 'weather') {
+      fetchWeatherForAlarm();
+      setShowWakeUpInfo(true);
+    } else if (wakeUpMode === 'stargazing') {
+      fetchStargazingData();
+      setShowWakeUpInfo(true);
+    } else if (wakeUpMode === 'news') {
+      fetchNewsData();
+      setShowWakeUpInfo(true);
+    }
+  };
+
   // Sound options - Color noise for masking, Binaural beats for focus/sleep
   const sounds = [
     { id: 'white', name: 'White Noise', icon: Volume2, description: 'Full spectrum masking' },
@@ -278,8 +361,8 @@ export default function AlarmClock() {
                 key={sound.id}
                 onClick={() => toggleSound(sound.id)}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${playing === sound.id
-                    ? 'bg-purple-600/20 border-purple-500 text-purple-300'
-                    : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'
+                  ? 'bg-purple-600/20 border-purple-500 text-purple-300'
+                  : 'bg-slate-700/50 border-slate-600 hover:border-slate-500'
                   }`}
               >
                 <Icon className="w-5 h-5" />
@@ -290,6 +373,150 @@ export default function AlarmClock() {
           })}
         </div>
       </div>
+
+      {/* Wake-Up Mode Selector */}
+      <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+        <h3 className="font-medium mb-3">Wake-Up Information</h3>
+        <p className="text-sm text-slate-400 mb-4">Choose what to see when your alarm goes off</p>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { id: 'standard', label: 'Standard', icon: Bell, color: 'bg-slate-600' },
+            { id: 'weather', label: 'Weather', icon: CloudSun, color: 'bg-blue-500' },
+            { id: 'stargazing', label: 'Stargazing', icon: Telescope, color: 'bg-purple-500' },
+            { id: 'news', label: 'News Brief', icon: Newspaper, color: 'bg-emerald-500' },
+          ].map((mode) => {
+            const Icon = mode.icon;
+            return (
+              <button
+                key={mode.id}
+                onClick={() => setWakeUpMode(mode.id as any)}
+                className={`p-3 rounded-lg border transition-all ${wakeUpMode === mode.id
+                    ? `${mode.color} text-white border-transparent`
+                    : 'bg-slate-700 border-slate-600 text-slate-400 hover:border-slate-500'
+                  }`}
+              >
+                <Icon className="w-5 h-5 mx-auto mb-1" />
+                <span className="text-sm font-medium">{mode.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Demo button */}
+        <button
+          onClick={() => triggerAlarm({ id: 1 })}
+          className="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm text-slate-300 transition-colors"
+        >
+          👆 Test Wake-Up Display
+        </button>
+      </div>
+
+      {/* Wake-Up Info Display */}
+      {showWakeUpInfo && (
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-slate-700">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-lg">
+              {wakeUpMode === 'weather' && '☀️ Good Morning!'}
+              {wakeUpMode === 'stargazing' && '🌌 Tonight\'s Sky'}
+              {wakeUpMode === 'news' && '📰 Morning Brief'}
+            </h3>
+            <button
+              onClick={() => setShowWakeUpInfo(false)}
+              className="text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Weather Info */}
+          {wakeUpMode === 'weather' && weatherData && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                <Thermometer className="w-8 h-8 mx-auto mb-2 text-orange-400" />
+                <div className="text-3xl font-bold">{weatherData.temp}°</div>
+                <div className="text-sm text-slate-400">{weatherData.condition}</div>
+              </div>
+              <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                <Sun className="w-8 h-8 mx-auto mb-2 text-yellow-400" />
+                <div className="text-lg font-semibold">{weatherData.high}° / {weatherData.low}°</div>
+                <div className="text-sm text-slate-400">High / Low</div>
+              </div>
+              <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                <CloudRain className="w-8 h-8 mx-auto mb-2 text-blue-400" />
+                <div className="text-lg font-semibold">{weatherData.precipitation}%</div>
+                <div className="text-sm text-slate-400">Rain chance</div>
+              </div>
+              <div className="text-center p-4 bg-slate-800/50 rounded-lg">
+                <Wind className="w-8 h-8 mx-auto mb-2 text-cyan-400" />
+                <div className="text-lg font-semibold">{weatherData.wind} mph</div>
+                <div className="text-sm text-slate-400">Wind</div>
+              </div>
+              <div className="col-span-2 md:col-span-4 mt-2 p-3 bg-blue-900/30 rounded-lg text-sm text-blue-200">
+                🌅 Sunrise: {weatherData.sunrise} | 🌇 Sunset: {weatherData.sunset}
+              </div>
+            </div>
+          )}
+
+          {/* Stargazing Info */}
+          {wakeUpMode === 'stargazing' && stargazingData && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 p-4 bg-slate-800/50 rounded-lg">
+                <Moon className="w-12 h-12 text-yellow-200" />
+                <div>
+                  <div className="font-semibold text-lg">{stargazingData.moonPhase}</div>
+                  <div className="text-sm text-slate-400">{stargazingData.moonIllumination}% illuminated</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-slate-800/50 rounded-lg">
+                  <div className="text-sm text-slate-400">Best Stargazing</div>
+                  <div className="font-semibold text-emerald-400">{stargazingData.bestStargazing}</div>
+                </div>
+                <div className="p-3 bg-slate-800/50 rounded-lg">
+                  <div className="text-sm text-slate-400">Visibility</div>
+                  <div className="font-semibold">{stargazingData.visibility}</div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-800/50 rounded-lg">
+                <div className="text-sm text-slate-400 mb-2">Visible Planets Tonight</div>
+                <div className="flex gap-2 flex-wrap">
+                  {stargazingData.visiblePlanets.map((planet: string) => (
+                    <span key={planet} className="px-2 py-1 bg-purple-900/50 text-purple-200 rounded text-sm">{planet}</span>
+                  ))}
+                </div>
+              </div>
+
+              {stargazingData.meteorShower !== 'None expected' && (
+                <div className="p-3 bg-yellow-900/30 border border-yellow-700/50 rounded-lg text-yellow-200">
+                  🌠 {stargazingData.meteorShower}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* News Info */}
+          {wakeUpMode === 'news' && newsData.length > 0 && (
+            <div className="space-y-3">
+              {newsData.map((news, idx) => (
+                <div key={idx} className="p-3 bg-slate-800/50 rounded-lg flex items-start gap-3">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full mt-2 flex-shrink-0" />
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{news.title}</div>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                      <span className="text-emerald-400">{news.source}</span>
+                      <span>•</span>
+                      <span>{news.time}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quick Presets */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

@@ -23,7 +23,7 @@ import { BettingSplitsMonitor } from '../../../lib/betting-splits-monitor'
 import { LineMovementTracker } from '../../../lib/line-movement-tracker'
 import { InjuryImpactAnalyzer } from '../../../lib/injury-impact-analyzer'
 import { WeatherImpactAnalysisService } from '../../../lib/weather-impact-service'
-import { ArbitrageDetector } from '../../../lib/arbitrage-detector'
+import { ArbitrageDetector, ArbitrageOpportunity } from '../../../lib/arbitrage-detector'
 import { LiveBettingMonitor } from '../../../lib/live-betting-monitor'
 import { ParlayBuilder } from '../../../lib/parlay-builder'
 import { BankrollManagementService } from '../../../lib/bankroll-management-service'
@@ -46,6 +46,7 @@ const SPORT_TO_API_SPORTS: Record<string, string> = {
   'americanfootball_nfl': 'nfl',
   'icehockey_nhl': 'nhl',
   'americanfootball_ncaaf': 'ncaaf',
+  'baseball_ncaa': 'cbb',  // College Baseball
   // Also accept short form (UI sends these)
   'ncaab': 'ncaab',
   'mlb': 'mlb',
@@ -53,6 +54,7 @@ const SPORT_TO_API_SPORTS: Record<string, string> = {
   'nfl': 'nfl',
   'nhl': 'nhl',
   'ncaaf': 'ncaaf',
+  'cbb': 'cbb',  // College Baseball short form
 }
 
 /**
@@ -207,7 +209,7 @@ export async function GET(request: Request) {
       )
     }
 
-    // All 6 sports (NFL, NBA, NHL, MLB, NCAAF, NCAAB)
+    // All 7 sports (NFL, NBA, NHL, MLB, NCAAF, NCAAB, CBB = College Baseball)
     const sports = [
       'basketball_nba',
       'americanfootball_nfl',
@@ -215,6 +217,7 @@ export async function GET(request: Request) {
       'baseball_mlb',
       'americanfootball_ncaaf',
       'basketball_ncaab',
+      'baseball_ncaa',  // College Baseball (CBB)
     ]
 
     const allPicks: any[] = []
@@ -941,8 +944,7 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
 
   // Check for arbitrage opportunities
   try {
-    const arbDetector = new ArbitrageDetector()
-    const arbs = await arbDetector.findOpportunities({ sport, minProfit: 0.5 })
+    const arbs = await ArbitrageDetector.findOpportunities({ sport, minProfit: 0.5 })
     const gameArb = arbs.find(a => a.gameId === gameId)
     if (gameArb) {
       arbitrageOpportunity = {

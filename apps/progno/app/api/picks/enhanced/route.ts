@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { 
-  getClientForSport, 
+import {
+  getClientForSport,
   getLeagueId,
   getClaudeEffectEngine,
   getAccuracyTracker,
@@ -17,7 +17,7 @@ const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) return null
-  
+
   const { createClient } = require('@supabase/supabase-js')
   return createClient(url, key)
 }
@@ -94,8 +94,8 @@ export async function GET(request: NextRequest) {
 }
 
 async function generateEnhancedPicks(
-  sports: string[], 
-  date: string, 
+  sports: string[],
+  date: string,
   supabase: any
 ): Promise<any[]> {
   const claudeEffect = getClaudeEffectEngine()
@@ -106,7 +106,7 @@ async function generateEnhancedPicks(
     try {
       const client = getClientForSport(sport)
       const leagueId = getLeagueId(sport)
-      
+
       if (!client || !leagueId) continue
 
       // Get games for the date
@@ -155,7 +155,7 @@ async function generateEnhancedPicks(
 
           // Get multi-source odds
           const oddsComparison = await oddsService.getMultiSourceOdds(
-            sport, 
+            sport,
             game.id.toString()
           )
 
@@ -174,7 +174,7 @@ async function generateEnhancedPicks(
 
           // Build pick
           const pickTeam = result.adjustedProbability > 0.5 ? homeTeam.name : awayTeam.name
-          
+
           const pick = {
             id: game.id,
             sport: sport.toUpperCase(),
@@ -219,8 +219,8 @@ async function generateEnhancedPicks(
               sentiment_field: result.dimensions.sentimentField,
               narrative_momentum: result.dimensions.narrativeMomentum,
               information_asymmetry: result.dimensions.informationAsymmetry,
-              ai_confidence: pick.recommendation === 'strong_bet' ? 'HIGH' : 
-                            pick.recommendation === 'moderate_bet' ? 'MEDIUM' : 'LOW',
+              ai_confidence: pick.recommendation === 'strong_bet' ? 'HIGH' :
+                pick.recommendation === 'moderate_bet' ? 'MEDIUM' : 'LOW',
               api_sports_game_id: game.id,
               injury_impact: result.dimensions.chaosSensitivity,
               sharp_signal_strength: oddsComparison.sharpMoneyIndicator !== 'neutral' ? 0.7 : 0,

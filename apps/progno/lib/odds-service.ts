@@ -20,12 +20,11 @@ const SPORT_MAP: Record<string, string> = {
   nhl: 'icehockey_nhl',
   mlb: 'baseball_mlb',
   ncaab: 'basketball_ncaab',
-  cbb: 'basketball_ncaab',
   cfb: 'americanfootball_ncaaf',
   ncaaf: 'americanfootball_ncaaf',
   nascar: 'motorsports_nascar',
   'college-baseball': 'baseball_ncaa',
-  ncaabaseball: 'baseball_ncaa',
+  cbb: 'baseball_ncaa',
 };
 
 /** Normalize team names per sport when the API returns wrong or alternate names. Official NHL list includes Utah Mammoth. */
@@ -155,8 +154,8 @@ export class OddsService {
       return getHardcodedNASCAROdds();
     }
 
-    // Priority 3: College Baseball fallback
-    if (lowerSport === 'college-baseball' || lowerSport === 'ncaab') {
+    // Priority 3: College Baseball fallback (CBB)
+    if (lowerSport === 'cbb' || lowerSport === 'college-baseball') {
       console.log('[OddsService] College Baseball detected, trying DraftKings...');
       try {
         const dkGames = await fetchDraftKingsCollegeBaseball();

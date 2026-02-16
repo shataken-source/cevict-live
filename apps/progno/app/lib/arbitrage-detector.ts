@@ -21,13 +21,15 @@ export interface ArbitrageOpportunity {
     odds: number;
     stake: number;
   };
+  stakeHome: number;
+  stakeAway: number;
   totalStake: number;
   guaranteedProfit: number;
   profitPercentage: number;
   confidence: number;
-  freshnessTimestamp: Date; // When this opportunity was detected
-  isStale: boolean; // True if data is older than maxAge
-  ageSeconds: number; // Age of the opportunity in seconds
+  freshnessTimestamp: Date;
+  isStale: boolean;
+  ageSeconds: number;
 }
 
 export class ArbitrageDetector {
