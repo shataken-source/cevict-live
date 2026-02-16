@@ -1,5 +1,4 @@
 {
-  "rootDirectory": "apps/camper-assistant",
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
