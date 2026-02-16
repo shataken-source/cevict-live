@@ -5,10 +5,10 @@
 // import { findBestKalshiMatch, kalshiToPrognoConfidence } from './kalshi-fetcher';
 
 // Stub functions to fix build
-const findKnowledgeMatch = async (_q: string) => null;
+const findKnowledgeMatch = (_q: string, _cat?: string): string | null => null;
 const getKnowledgeCategories = () => [];
 const findBestKalshiMatch = async (_q: string) => null;
-const kalshiToPrognoConfidence = (_k: any) => 0.5;
+const kalshiToPrognoConfidence = (_k: any, _c?: any) => 0.5;
 
 export interface AnythingInput {
   question: string;
