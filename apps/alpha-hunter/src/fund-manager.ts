@@ -77,6 +77,103 @@ export class UnifiedFundManager {
     if (config) {
       this.allocation = { ...this.allocation, ...config };
     }
+    // Auto-initialize from database if Supabase is available
+    this.initialize().catch(() => {
+      // Silent fail - will use defaults
+    });
+  }
+
+  /**
+   * Initialize from Supabase - load existing account and trades
+   * CRITICAL FIX: Hydrates in-memory state from database on startup
+   */
+  async initialize(): Promise<void> {
+    if (!this.supabase) {
+      console.log('   ℹ️ Supabase not available - using in-memory-only mode');
+      return;
+    }
+
+    try {
+      console.log('   🔄 Hydrating fund manager from Supabase...');
+
+      // Load account data
+      const { data: accountData, error: accountError } = await this.supabase
+        .from('alpha_hunter_accounts')
+        .select('*')
+        .eq('id', 'alpha_hunter_main')
+        .single();
+
+      if (accountError && accountError.code !== 'PGRST116') {
+        console.warn('   ⚠️ Could not load account:', accountError.message);
+      }
+
+      if (accountData) {
+        // Restore cumulative P&L from account
+        const totalProfit = parseFloat(accountData.total_profit || '0');
+        this.kalshiCumulativePnL = totalProfit * 0.5; // Estimate split
+        this.cryptoCumulativePnL = totalProfit * 0.5;
+        console.log(`   ✅ Restored total P&L: $${totalProfit.toFixed(2)}`);
+      }
+
+      // Load open trades into memory
+      const { data: tradesData, error: tradesError } = await this.supabase
+        .from('alpha_hunter_trades')
+        .select('*')
+        .in('status', ['pending', 'active']);
+
+      if (tradesError) {
+        console.warn('   ⚠️ Could not load trades:', tradesError.message);
+      }
+
+      if (tradesData && tradesData.length > 0) {
+        for (const t of tradesData) {
+          const trade: Trade = {
+            id: t.id,
+            opportunityId: t.opportunity_id,
+            type: t.type,
+            platform: t.platform,
+            amount: parseFloat(t.amount),
+            target: t.target,
+            entryPrice: t.entry_price ? parseFloat(t.entry_price) : undefined,
+            exitPrice: t.exit_price ? parseFloat(t.exit_price) : undefined,
+            status: t.status,
+            profit: parseFloat(t.profit || '0'),
+            reasoning: t.reasoning || '',
+            executedAt: t.executed_at,
+            settledAt: t.settled_at || undefined
+          };
+          this.trades.set(trade.id, trade);
+          this.allocatedFunds.set(trade.opportunityId, trade.amount);
+        }
+        console.log(`   ✅ Loaded ${tradesData.length} open trades`);
+      }
+
+      // Load historical stats from trade_history (bot_* schema)
+      const { data: historyData } = await this.supabase
+        .from('trade_history')
+        .select('*')
+        .in('outcome', ['win', 'loss'])
+        .order('closed_at', { ascending: false })
+        .limit(100);
+
+      if (historyData && historyData.length > 0) {
+        const kalshiTrades = historyData.filter(t => t.platform === 'kalshi');
+        const wins = kalshiTrades.filter(t => t.outcome === 'win').length;
+        const losses = kalshiTrades.filter(t => t.outcome === 'loss').length;
+        const pnl = kalshiTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+
+        this.kalshiTotalTrades = wins + losses;
+        this.kalshiWins = wins;
+        this.kalshiLosses = losses;
+        this.kalshiCumulativePnL = pnl;
+
+        console.log(`   ✅ Loaded ${historyData.length} historical trades (${wins}W/${losses}L, $${pnl.toFixed(2)} P&L)`);
+      }
+
+      console.log('   ✅ Fund manager hydrated successfully');
+    } catch (e) {
+      console.warn('   ⚠️ Fund manager hydration failed:', (e as Error).message);
+    }
   }
 
   /**
@@ -812,7 +909,7 @@ class ExtendedFundManager extends UnifiedFundManager {
     const existingPending = this.rebalanceRequests.find(r =>
       (r.status === 'pending' || r.status === 'initiated') &&
       ((suggestion.from === 'Kalshi' && r.from === 'kalshi') ||
-       (suggestion.from.includes('Crypto') && r.from === 'crypto'))
+        (suggestion.from.includes('Crypto') && r.from === 'crypto'))
     );
 
     if (existingPending) {

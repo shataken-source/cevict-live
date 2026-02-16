@@ -58,23 +58,61 @@ export class PrognoIntegration {
   }
 
   async getTodaysPicks(): Promise<PrognoPick[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/picks/today`, {
-        headers: this.apiKey ? { 'x-api-key': this.apiKey } : {},
-      });
+    const maxRetries = 3;
+    const baseDelay = 1000; // 1 second
 
-      if (!response.ok) {
-        console.error('PROGNO API error:', response.status);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await fetch(`${this.baseUrl}/api/picks/today`, {
+          headers: this.apiKey ? { 'x-api-key': this.apiKey } : {},
+        });
+
+        if (!response.ok) {
+          // Only retry on 5xx errors or network issues, not 4xx
+          if (response.status >= 500 && attempt < maxRetries) {
+            const delay = baseDelay * Math.pow(2, attempt - 1);
+            console.warn(`   ⚠️ Progno API error ${response.status}, retrying in ${delay}ms (attempt ${attempt}/${maxRetries})...`);
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+          console.error('PROGNO API error:', response.status);
+          return [];
+        }
+
+        const data = await response.json();
+        const raw = data.picks || [];
+
+        if (raw.length === 0) {
+          console.log('   ℹ️ Progno returned 0 picks - no games today or data unavailable');
+        } else {
+          console.log(`   ✅ Loaded ${raw.length} picks from Progno`);
+        }
+
+        return raw.map((p: any) => mapPrognoPickToShape(p));
+      } catch (error) {
+        const isLastAttempt = attempt === maxRetries;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        // Check for network errors that are worth retrying
+        const isNetworkError =
+          errorMessage.includes('fetch') ||
+          errorMessage.includes('ENOTFOUND') ||
+          errorMessage.includes('ECONNREFUSED') ||
+          errorMessage.includes('ETIMEDOUT');
+
+        if (isNetworkError && !isLastAttempt) {
+          const delay = baseDelay * Math.pow(2, attempt - 1);
+          console.warn(`   ⚠️ Progno network error, retrying in ${delay}ms (attempt ${attempt}/${maxRetries}): ${errorMessage}`);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+
+        console.error('Error fetching PROGNO picks:', errorMessage);
         return [];
       }
-
-      const data = await response.json();
-      const raw = data.picks || [];
-      return raw.map((p: any) => mapPrognoPickToShape(p));
-    } catch (error) {
-      console.error('Error fetching PROGNO picks:', error);
-      return [];
     }
+
+    return []; // Should never reach here
   }
 
   async getLiveOdds(league: string): Promise<any[]> {
