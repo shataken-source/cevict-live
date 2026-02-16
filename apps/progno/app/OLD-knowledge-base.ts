@@ -1,6 +1,9 @@
 // Comprehensive Knowledge Base for Progno "Predict Anything" Feature
 
-import { SPORTS_KNOWLEDGE, CAMPING_KNOWLEDGE } from './knowledge-base-sports-camping';
+// TODO: Fix - knowledge-base-sports-camping doesn't exist
+// import { SPORTS_KNOWLEDGE, CAMPING_KNOWLEDGE } from './knowledge-base-sports-camping';
+const SPORTS_KNOWLEDGE: Record<string, string> = {};
+const CAMPING_KNOWLEDGE: Record<string, string> = {};
 
 export interface KnowledgeResponse {
   answer: string;
