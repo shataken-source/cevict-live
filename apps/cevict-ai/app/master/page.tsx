@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 
 export default function MasterDashboard() {
-  const [configs, setConfigs] = useState([]);
+  const [configs, setConfigs] = useState<any[]>([]);
 
   const fetchConfigs = () => {
     fetch('/api/master-settings')
@@ -15,7 +15,7 @@ export default function MasterDashboard() {
     fetchConfigs();
   }, []);
 
-  const toggleFeature = async (project_id, feature_key, current_state) => {
+  const toggleFeature = async (project_id: string, feature_key: string, current_state: boolean) => {
     await fetch('/api/master-settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -41,11 +41,10 @@ export default function MasterDashboard() {
               </span>
             </div>
             <h2 className="text-xl font-semibold mb-4">{cfg.feature_key.replace(/_/g, ' ')}</h2>
-            <button 
+            <button
               onClick={() => toggleFeature(cfg.project_id, cfg.feature_key, cfg.is_enabled)}
-              className={`w-full py-2 rounded font-bold transition-all ${
-                cfg.is_enabled ? "bg-red-900/50 text-red-200 border border-red-500" : "bg-cyan-900/50 text-cyan-200 border border-cyan-500"
-              }`}
+              className={`w-full py-2 rounded font-bold transition-all ${cfg.is_enabled ? "bg-red-900/50 text-red-200 border border-red-500" : "bg-cyan-900/50 text-cyan-200 border border-cyan-500"
+                }`}
             >
               {cfg.is_enabled ? "SHUT DOWN" : "ACTIVATE"}
             </button>
