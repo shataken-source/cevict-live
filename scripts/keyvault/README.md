@@ -41,8 +41,19 @@ cd C:\cevict-live\scripts\keyvault
 # Create store (once)
 .\init-store.ps1 -StorePath "C:\Cevict_Vault\env-store.json"
 
+# Check what keys are in the store (view all)
+$store = Get-Content 'C:\Cevict_Vault\env-store.json' | ConvertFrom-Json
+$store.secrets | ConvertTo-Json -Depth 5
+
+# Check if a specific key exists
+$store.secrets.API_SPORTS_KEY  # Returns value or blank if not set
+$store.secrets.POLYMARKET_API_KEY
+
 # Set a secret
 .\set-secret.ps1 -Name SINCH_API_TOKEN -Value "your-token"
+
+# Update an existing secret (just set it again)
+.\set-secret.ps1 -Name API_SPORTS_KEY -Value "your-new-key"
 
 # Check one app (required keys only)
 .\doctor.ps1 -AppPath ..\..\apps\monitor
@@ -51,8 +62,42 @@ cd C:\cevict-live\scripts\keyvault
 .\list-missing-keys.ps1
 .\list-missing-keys.ps1 -ShowValues
 
-# Sync app env from store
+# Sync app env from store (writes .env.local)
 .\sync-env.ps1 -AppPath ..\..\apps\petreunion
+.\sync-env.ps1 -All
+```
+
+## Common KeyVault Tasks
+
+### Check if a key exists in the store
+```powershell
+cd C:\cevict-live\scripts\keyvault
+
+# Method 1: Direct JSON read (quickest)
+$store = Get-Content 'C:\Cevict_Vault\env-store.json' | ConvertFrom-Json
+$store.secrets.API_SPORTS_KEY        # Shows value or blank
+$store.secrets.POLYMARKET_API_KEY     # Shows value or blank
+
+# Method 2: List all secrets
+$store.secrets | Format-List
+
+# Method 3: Check for specific pattern
+$store.secrets.PSObject.Properties | Where-Object { $_.Name -like '*POLY*' }
+```
+
+### Add or update a key
+```powershell
+cd C:\cevict-live\scripts\keyvault
+
+# Set a new key or update existing
+.\set-secret.ps1 -Name API_SPORTS_KEY -Value "569e365fcb04b201ead4055ec8b359a9"
+
+# Set Polymarket keys (for trading)
+.\set-secret.ps1 -Name POLYMARKET_API_KEY -Value "your-api-key"
+.\set-secret.ps1 -Name POLYMARKET_WALLET -Value "your-wallet-address"
+.\set-secret.ps1 -Name POLYMARKET_PRIVATE_KEY -Value "your-private-key"
+
+# Sync to update .env.local files
 .\sync-env.ps1 -All
 ```
 
@@ -102,9 +147,9 @@ Cochran reads the **same KeyVault store** when running tasks (e.g. Supabase migr
 **Keystore key names for Cochran:**
 
 - **`COCHRAN_RUN_MODE`** — `test` or `prod`. Defaults to `test` if unset.
-- **`SUPABASE_PROJECT_REF_<ENV>`** — Supabase project ref for each task’s `env`.  
-  Examples:  
-  - Accu-Solar: `SUPABASE_PROJECT_REF_SUPABASE_ACCU_SOLAR` = your Accu-Solar Pro project ref (e.g. `rdbuwyefbgnbuhmjrizo`).  
+- **`SUPABASE_PROJECT_REF_<ENV>`** — Supabase project ref for each task’s `env`.
+  Examples:
+  - Accu-Solar: `SUPABASE_PROJECT_REF_SUPABASE_ACCU_SOLAR` = your Accu-Solar Pro project ref (e.g. `rdbuwyefbgnbuhmjrizo`).
   - WTV test: `SUPABASE_PROJECT_REF_SUPABASE_WTV_TEST` = your WTV test project ref.
 
 **Add to keystore:**
