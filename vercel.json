@@ -1,7 +1,16 @@
 {
   "framework": "nextjs",
-  "rootDirectory": "apps/cevict-ai",
-  "buildCommand": "pnpm build",
+  "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "installCommand": "pnpm install"
+  "installCommand": "npm install",
+  "crons": [
+    {
+      "path": "/api/cron/sync-odds",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-odds",
+      "schedule": "0 18 * * *"
+    }
+  ]
 }
