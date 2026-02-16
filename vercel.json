@@ -1,16 +1,7 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build",
+  "rootDirectory": "apps/alpha-hunter",
+  "buildCommand": "next build",
   "outputDirectory": ".next",
-  "installCommand": "npm install",
-  "crons": [
-    {
-      "path": "/api/cron/sync-odds",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/sync-odds",
-      "schedule": "0 18 * * *"
-    }
-  ]
+  "installCommand": "npm install"
 }

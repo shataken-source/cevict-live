@@ -13,7 +13,8 @@
     "microcap": "tsx src/microcap-crypto-trainer.ts",
     "unified": "tsx src/unified-trader.ts",
     "expert": "tsx src/massager-expert.ts",
-    "build": "tsc",
+    "build": "next build",
+    "vercel-build": "next build",
     "scan": "tsx src/scanner.ts",
     "daily": "tsx src/daily-hunter.ts",
     "test": "tsx src/test-run.ts",
@@ -60,6 +61,9 @@
     "paper": "tsx paper-trading.ts"
   },
   "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18",
+    "react-dom": "^18",
     "@anthropic-ai/sdk": "^0.24.0",
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.0",
