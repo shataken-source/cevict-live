@@ -22,6 +22,27 @@ export default function SolarPanel() {
 
   return (
     <div className="space-y-6">
+      {/* Demo Mode Toggle - shown when hardware is simulated */}
+      {hasHardware && (
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-amber-500 animate-pulse" />
+              <div>
+                <div className="font-medium text-amber-400">Demo Mode Active</div>
+                <div className="text-sm text-slate-400">Simulated solar data is being displayed</div>
+              </div>
+            </div>
+            <button
+              onClick={() => setHasHardware(false)}
+              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-colors"
+            >
+              Turn Off Demo
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
         <div className="flex items-center gap-3 mb-6">
           <Sun className="w-6 h-6 text-amber-400" />

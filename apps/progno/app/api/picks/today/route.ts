@@ -18,7 +18,7 @@ import { predictScoreComprehensive } from '../../../score-prediction-service'
 import { OddsService } from '../../../../lib/odds-service'
 import { fetchApiSportsOdds, ApiSportsGame } from '../../../../lib/api-sports-client'
 
-const API_SPORTS_KEY = process.env.API_SPORTS_KEY || '55ec5171c639766087f9fea40d9cb215'
+const API_SPORTS_KEY = process.env.API_SPORTS_KEY
 
 const SPORT_TO_API_SPORTS: Record<string, string> = {
   'basketball_ncaab': 'ncaab',

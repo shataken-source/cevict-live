@@ -90,6 +90,61 @@ export async function GET(request: Request) {
     fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf8')
 
     console.log(`[CRON daily-predictions] Wrote ${picks.length} picks to ${filePath}`)
+
+    // Syndicate to Prognostication if configured
+    const webhookUrl = process.env.PROGNOSTICATION_WEBHOOK_URL
+    const apiKey = process.env.PROGNO_API_KEY
+
+    if (webhookUrl && picks.length > 0) {
+      console.log('[CRON daily-predictions] Syndicating to Prognostication...')
+
+      const syndicationResults = []
+      const tiers = ['free', 'premium', 'elite'] as const
+
+      for (const tier of tiers) {
+        try {
+          const syndicationRes = await fetch(`${baseUrl}/api/syndication`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tier,
+              picks,
+              webhookUrl,
+              apiKey
+            })
+          })
+
+          if (syndicationRes.ok) {
+            const result = await syndicationRes.json()
+            syndicationResults.push({
+              tier,
+              status: 'success',
+              count: result.stats?.syndicatedPicks || 0
+            })
+            console.log(`[CRON daily-predictions] ✓ ${tier}: ${result.stats?.syndicatedPicks || 0} picks syndicated`)
+          } else {
+            const error = await syndicationRes.text()
+            syndicationResults.push({
+              tier,
+              status: 'error',
+              error: error.slice(0, 100)
+            })
+            console.error(`[CRON daily-predictions] ✗ ${tier}: ${error.slice(0, 100)}`)
+          }
+        } catch (err) {
+          syndicationResults.push({
+            tier,
+            status: 'error',
+            error: err instanceof Error ? err.message : 'Unknown'
+          })
+          console.error(`[CRON daily-predictions] ✗ ${tier} syndication failed:`, err)
+        }
+      }
+
+      console.log('[CRON daily-predictions] Syndication complete:', syndicationResults)
+    } else {
+      console.log('[CRON daily-predictions] Skipping syndication (no webhook URL or no picks)')
+    }
     return NextResponse.json({
       success: true,
       date: today,

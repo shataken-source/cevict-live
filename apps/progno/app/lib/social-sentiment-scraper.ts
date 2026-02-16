@@ -42,7 +42,7 @@ export class SocialSentimentScraper {
   ): Promise<TeamMomentum | null> {
     const cacheKey = `${sport}_${team}_${hoursBack}`;
     const cached = this.cache.get(cacheKey);
-    
+
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return cached.data;
     }
@@ -61,9 +61,9 @@ export class SocialSentimentScraper {
       );
 
       const momentum = this.processSentimentResults(team, results);
-      
+
       this.cache.set(cacheKey, { data: momentum, timestamp: Date.now() });
-      
+
       return momentum;
     } catch (error) {
       console.error('[Sentiment] Error analyzing sentiment:', error);
@@ -88,7 +88,7 @@ export class SocialSentimentScraper {
 
     for (const team of teams) {
       const sentiment = await this.analyzeTeamSentiment(team, sport, 2); // Last 2 hours
-      
+
       if (!sentiment) continue;
 
       // Check for injury spikes
@@ -154,7 +154,7 @@ export class SocialSentimentScraper {
     }
 
     const differential = sentimentA.sentimentScore - sentimentB.sentimentScore;
-    
+
     let advantage: string | null = null;
     let confidence = 0;
     let reasoning = '';
@@ -179,18 +179,10 @@ export class SocialSentimentScraper {
   ): Promise<SentimentAnalysis> {
     // TODO: Replace with actual Twitter API v2 call
     // For now, returns mock data structure
-    
+
     if (!this.twitterApiKey) {
-      console.log('[Sentiment] No Twitter API key, returning mock data');
-      return {
-        query,
-        overallSentiment: 'neutral',
-        score: Math.random() * 0.4 - 0.2,
-        volume: Math.floor(Math.random() * 100),
-        trending: false,
-        keyTerms: [],
-        lastUpdate: new Date().toISOString(),
-      };
+      console.log('[Sentiment] No Twitter API key, skipping social sentiment analysis');
+      return null;
     }
 
     try {
@@ -249,11 +241,11 @@ export class SocialSentimentScraper {
 
     for (const tweet of tweets) {
       const text = tweet.text?.toLowerCase() || '';
-      
+
       positiveWords.forEach(word => {
         if (text.includes(word)) score += 0.1;
       });
-      
+
       negativeWords.forEach(word => {
         if (text.includes(word)) score -= 0.1;
       });
@@ -286,11 +278,11 @@ export class SocialSentimentScraper {
   private processSentimentResults(team: string, results: SentimentAnalysis[]): TeamMomentum {
     const avgScore = results.reduce((sum, r) => sum + r.score, 0) / results.length;
     const totalVolume = results.reduce((sum, r) => sum + r.volume, 0);
-    
+
     const injuryMentions = results
       .filter(r => r.query.includes('injury'))
       .reduce((sum, r) => sum + r.keyTerms.filter(t => t === 'injury').length, 0);
-    
+
     const lineupMentions = results
       .filter(r => r.query.includes('lineup'))
       .reduce((sum, r) => sum + r.keyTerms.filter(t => t === 'lineup').length, 0);

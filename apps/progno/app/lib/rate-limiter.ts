@@ -151,7 +151,7 @@ export function getApiKeyInfo(apiKey: string | null): ApiKeyInfo {
   // TODO: Check database for API key info in production
   // For now, check environment variable or default to free
   const tier = process.env[`API_KEY_TIER_${apiKey}`] as RateLimitTier;
-  const validTier = tier && ['free', 'pro', 'elite', 'enterprise'].includes(tier)
+  const validTier = tier && ['free', 'premium', 'elite', 'enterprise'].includes(tier)
     ? tier
     : 'free';
 

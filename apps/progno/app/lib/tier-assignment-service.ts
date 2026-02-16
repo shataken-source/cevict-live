@@ -3,7 +3,7 @@
  * Automatically assigns picks to correct tiers based on confidence and other factors
  */
 
-export type Tier = 'free' | 'pro' | 'elite' | 'early' | 'arbitrage';
+export type Tier = 'free' | 'premium' | 'elite' | 'early' | 'arbitrage';
 
 export interface Pick {
   id: string;
@@ -58,12 +58,12 @@ export const TIER_CONFIGS: Record<Tier, TierConfig> = {
     maxPicks: 5,
     description: 'Elite tier picks (80%+ confidence, top 5)',
   },
-  pro: {
-    name: 'pro',
+  premium: {
+    name: 'premium',
     minConfidence: 65,
     maxConfidence: 80,
     maxPicks: 3,
-    description: 'Pro tier picks (65-80% confidence, top 3)',
+    description: 'Premium tier picks (65-80% confidence, top 3)',
   },
   free: {
     name: 'free',
@@ -107,7 +107,7 @@ export class TierAssignmentService {
     if (pick.confidence >= 80) {
       return 'elite';
     } else if (pick.confidence >= 65) {
-      return 'pro';
+      return 'premium';
     } else {
       return 'free';
     }
@@ -139,19 +139,19 @@ export class TierAssignmentService {
       assignedIds.add(pick.id);
     }
 
-    // Phase 2: Assign Pro picks (65-85% confidence, max 5)
-    const proCandidates = sortedPicks.filter(p =>
+    // Phase 2: Assign Premium picks (65-85% confidence, max 5)
+    const premiumCandidates = sortedPicks.filter(p =>
       !assignedIds.has(p.id) &&
       p.confidence >= 65 &&
       p.confidence < 85
     );
 
-    let proCount = 0;
-    for (const pick of proCandidates) {
-      if (proCount >= (TIER_CONFIGS.pro.maxPicks || 5)) break;
-      assigned.push({ ...pick, tier: 'pro' });
+    let premiumCount = 0;
+    for (const pick of premiumCandidates) {
+      if (premiumCount >= (TIER_CONFIGS.premium.maxPicks || 5)) break;
+      assigned.push({ ...pick, tier: 'premium' });
       assignedIds.add(pick.id);
-      proCount++;
+      premiumCount++;
     }
 
     // Phase 3: Assign Free picks (≤65% confidence, max 2)
@@ -193,7 +193,7 @@ export class TierAssignmentService {
       arbitrage: 1,
       early: 2,
       elite: 3,
-      pro: 4,
+      premium: 4,
       free: 5,
     };
     return priorities[tier] || 99;

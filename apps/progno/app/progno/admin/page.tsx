@@ -24,9 +24,18 @@ const ENV_VARS = [
 ];
 
 const VIEWERS = [
-  { name: 'Cevict Arb Tool', path: 'C:\\Users\\cevict\\Desktop\\CevictArbTool\\index.html', url: 'file:///C:/Users/cevict/Desktop/CevictArbTool/index.html' },
-  { name: 'Cevict Picks Viewer', path: 'C:\\Users\\cevict\\Desktop\\CevictPicksViewer\\index.html', url: 'file:///C:/Users/cevict/Desktop/CevictPicksViewer/index.html' },
-];
+  // Local viewer tools - paths configured via environment variables
+  process.env.ARBITRAGE_TOOL_PATH && {
+    name: 'Cevict Arb Tool',
+    path: process.env.ARBITRAGE_TOOL_PATH,
+    url: `file:///${process.env.ARBITRAGE_TOOL_PATH}`
+  },
+  process.env.PICKS_VIEWER_PATH && {
+    name: 'Cevict Picks Viewer',
+    path: process.env.PICKS_VIEWER_PATH,
+    url: `file:///${process.env.PICKS_VIEWER_PATH}`
+  },
+].filter(Boolean);
 
 // Date utility functions
 function getToday(): string {

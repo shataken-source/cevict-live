@@ -27,7 +27,7 @@ export interface AutonomousConfig {
   includeArbitrage: boolean;
   includeEarlyBets: boolean;
   maxFreePicks: number;
-  maxProPicks: number;
+  maxPremiumPicks: number;
   maxElitePicks: number;
   minConfidence: number;
   autoPost: boolean;
@@ -42,7 +42,7 @@ export class AutonomousPostingService {
     includeArbitrage: true,
     includeEarlyBets: true,
     maxFreePicks: 3,
-    maxProPicks: 5,
+    maxPremiumPicks: 5,
     maxElitePicks: 3,
     minConfidence: 60,
     autoPost: true,
@@ -125,7 +125,7 @@ export class AutonomousPostingService {
         picks: [],
         earlyBets: [],
         arbitrageOpportunities: [],
-        tierBreakdown: { free: 0, pro: 0, elite: 0, early: 0, arbitrage: 0 },
+        tierBreakdown: { free: 0, premium: 0, elite: 0, early: 0, arbitrage: 0 },
         status: 'failed',
         error: error instanceof Error ? error.message : 'Unknown error',
       };
@@ -216,9 +216,9 @@ export class AutonomousPostingService {
     // Apply limits
     const limits: Record<Tier, number> = {
       free: this.config.maxFreePicks,
-      pro: this.config.maxProPicks,
+      premium: this.config.maxPremiumPicks,
       elite: this.config.maxElitePicks,
-      early: this.config.maxProPicks,
+      early: this.config.maxPremiumPicks,
       arbitrage: 10, // Unlimited arbitrage
     };
 
@@ -237,7 +237,7 @@ export class AutonomousPostingService {
   private calculateTierBreakdown(picks: Pick[]): Record<Tier, number> {
     const breakdown: Record<Tier, number> = {
       free: 0,
-      pro: 0,
+      premium: 0,
       elite: 0,
       early: 0,
       arbitrage: 0,

@@ -53,67 +53,9 @@ interface PredictionMarketData {
   lastUpdated: string;
 }
 
-// Mock data for development (replace with real API calls)
-const MOCK_KALSHI_DATA = [
-  {
-    event_id: 'KELLY-RAIN-2026-02-13T12:00:00Z',
-    title: 'Will it rain in New York on Feb 13, 2026?',
-    description: 'Rainfall in New York City on February 13, 2026',
-    yes_question: 'Yes',
-    no_question: 'No',
-    end_date: '2026-02-13T20:00:00Z',
-    status: 'open',
-    volume_24h: 1500000,
-    volume_7d: 8000000,
-    volume_24h_change: 0.05,
-    volume_7d_change: 0.12,
-    yes_bid: 0.65,
-    no_bid: 0.35,
-    last_trade_price: 0.64,
-    last_updated: '2026-02-13T18:00:00Z',
-    strike_price: 50,
-    settlement_price: 0,
-    implied_probability: 65
-  },
-  {
-    event_id: 'KELLY-TEMP-2026-02-13T12:00:00Z',
-    title: 'NYC temperature above 40°F on Feb 13, 2026?',
-    description: 'Temperature in New York City exceeding 40°F on February 13, 2026',
-    yes_question: 'Yes',
-    no_question: 'No',
-    end_date: '2026-02-13T20:00:00Z',
-    status: 'open',
-    volume_24h: 2000000,
-    volume_7d: 1200000,
-    volume_24h_change: 0.08,
-    volume_7d_change: 0.15,
-    yes_bid: 0.72,
-    no_bid: 0.28,
-    last_trade_price: 0.68,
-    last_updated: '2026-02-13T18:00:00Z',
-    strike_price: 50,
-    settlement_price: 0,
-    implied_probability: 72
-  }
-];
-
-const MOCK_POLYMARKET_DATA = [
-  {
-    id: '0x1234567890abcdef',
-    question: 'Will the Dow Jones Industrial Average close above 40,000 on Feb 13, 2026?',
-    description: 'Dow Jones Industrial Average closing above 40,000 on February 13, 2026',
-    outcomes: [
-      { outcome: 'Yes', probability: 0.35, price: 0.65 },
-      { outcome: 'No', probability: 0.65, price: 0.35 }
-    ],
-    liquidity: 500000,
-    volume_24h: 1000000,
-    volume_7d: 7000000,
-    url: 'https://polymarket.com/market/0x1234567890abcdef',
-    created_time: '2026-02-13T10:00:00Z',
-    modified_time: '2026-02-13T15:00:00Z'
-  }
-];
+// No mock data - production API only
+const MOCK_KALSHI_DATA: any[] = [];
+const MOCK_POLYMARKET_DATA: any[] = [];
 
 /**
  * Convert prediction market to Progno format
@@ -178,25 +120,31 @@ function convertToPrognoFormat(marketData: PredictionMarketData): any {
 }
 
 /**
- * Fetch Kalshi markets (mock implementation)
+ * Fetch Kalshi markets
+ * Note: Returns empty array - Kalshi API integration pending
  */
 async function fetchKalshiMarkets(): Promise<KalshiMarket[]> {
-  // In production, replace with actual Kalshi API call
-  // const response = await fetch('https://api.kalshi.com/v0/markets');
-  // const data = await response.json();
+  // TODO: Implement real Kalshi API integration
+  // const response = await fetch('https://api.kalshi.com/v0/markets', {
+  //   headers: { 'Authorization': `Bearer ${process.env.KALSHI_API_KEY}` }
+  // });
+  // return await response.json();
 
-  return MOCK_KALSHI_DATA as unknown as Promise<KalshiMarket[]>;
+  console.log('[Kalshi] API integration pending - returning empty');
+  return [];
 }
 
 /**
- * Fetch Polymarket markets (mock implementation)
+ * Fetch Polymarket markets
+ * Note: Returns empty array - Polymarket API integration pending
  */
 async function fetchPolymarketMarkets(): Promise<PolymarketMarket[]> {
-  // In production, replace with actual Polymarket API call
+  // TODO: Implement real Polymarket API integration
   // const response = await fetch('https://api.polymarket.com/markets');
-  // const data = await response.json();
+  // return await response.json();
 
-  return MOCK_POLYMARKET_DATA as unknown as Promise<PolymarketMarket[]>;
+  console.log('[Polymarket] API integration pending - returning empty');
+  return [];
 }
 
 /**

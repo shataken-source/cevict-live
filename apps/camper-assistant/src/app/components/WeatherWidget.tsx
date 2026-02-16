@@ -213,18 +213,23 @@ export default function WeatherWidget() {
       const data = await response.json();
 
       const current = data.current;
+      const hourlyData = data.hourly;
+      const dailyData = data.daily;
+
+      // Convert Celsius to Fahrenheit
+      const cToF = (c: number) => Math.round((c * 9 / 5) + 32);
+
       setWeather(prev => ({
         ...prev,
-        temp: Math.round(current.temperature_2m),
+        temp: cToF(current.temperature_2m),
         condition: getConditionText(current.weather_code),
         humidity: current.relative_humidity_2m,
-        windSpeed: Math.round(current.wind_speed_10m),
-        pressure: Math.round(current.pressure_msl / 33.864 * 100) / 100,
-        feelsLike: Math.round(current.apparent_temperature),
-        sunrise: new Date(data.daily.sunrise[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-        sunset: new Date(data.daily.sunset[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-        precipitation: current.precipitation,
-        visibility: Math.round((current.visibility || 10000) / 1609 * 10) / 10,
+        windSpeed: Math.round(current.wind_speed_10m * 0.621371), // km/h to mph
+        pressure: (current.pressure_msl * 0.02953).toFixed(2), // hPa to inHg
+        feelsLike: cToF(current.apparent_temperature),
+        sunrise: new Date(dailyData.sunrise[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        sunset: new Date(dailyData.sunset[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        visibility: Math.round((current.visibility || 10000) / 1609.34), // m to miles
       }));
 
       const daily = data.daily;

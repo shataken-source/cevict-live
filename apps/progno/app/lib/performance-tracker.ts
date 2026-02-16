@@ -36,8 +36,9 @@ export interface CLVCalculation {
 }
 
 export class PerformanceTracker {
-  private static readonly HMAC_SECRET = process.env.PERFORMANCE_TRACKER_SECRET || 'default-secret-change-in-production';
-  private static readonly ANONYMIZATION_SALT = process.env.PII_ANONYMIZATION_SALT || 'default-salt-change-in-production';
+  // Generate secure random secrets in production
+  const HMAC_SECRET = process.env.PERFORMANCE_TRACKER_SECRET || crypto.randomBytes(32).toString('hex');
+  const ANONYMIZATION_SALT = process.env.PII_ANONYMIZATION_SALT || crypto.randomBytes(16).toString('hex');
 
   /**
    * Generate HMAC signature for performance data
@@ -55,6 +56,7 @@ export class PerformanceTracker {
    */
   private static verifyHMAC(data: string, signature: string): boolean {
     const expectedSignature = this.generateHMAC(data);
+    const validTier = tier && ['free', 'premium', 'elite', 'enterprise'].includes(tier);
     return crypto.timingSafeEqual(
       Buffer.from(signature),
       Buffer.from(expectedSignature)
@@ -196,7 +198,7 @@ export class PerformanceTracker {
     const signed = this.signPerformanceData(trackingData);
 
     // Store in database (with anonymized IDs)
-    await recordOutcome(predictionId, { 
+    await recordOutcome(predictionId, {
       status: result === 'win' ? 'correct' : result === 'loss' ? 'incorrect' : 'partial',
       outcome_data: { result, profit },
       profit,

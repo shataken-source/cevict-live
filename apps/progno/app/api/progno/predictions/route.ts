@@ -76,97 +76,9 @@ export async function GET(request: NextRequest) {
       console.warn('[PREDICTIONS] Could not fetch real picks:', err);
     }
 
-    // If no real picks, generate realistic mock data
+    // If no real picks available, return empty array (no mock data in production)
     if (realPicks.length === 0) {
-      realPicks = [
-        {
-          id: 'pred_1',
-          gameDate: date,
-          league: 'NHL',
-          sport: 'nhl',
-          homeTeam: 'Rangers',
-          awayTeam: 'Islanders',
-          gameTime: new Date().toISOString(),
-          venue: 'Madison Square Garden',
-          prediction: {
-            winner: 'Rangers',
-            confidence: 0.75,
-            score: { home: 3, away: 1 }, // Fixed: realistic NHL scores
-            edge: 3.2,
-            keyFactors: [
-              'Strong home record (8-2)',
-              'Goaltender advantage',
-              'Recent form: W-W-W-L',
-              'Power play efficiency'
-            ]
-          },
-          odds: {
-            moneyline: { home: -150, away: +130 },
-            spread: { home: -1.5, away: +1.5 },
-            total: 5.5
-          },
-          isLive: false,
-          isCompleted: false
-        },
-        {
-          id: 'pred_2',
-          gameDate: date,
-          league: 'NBA',
-          sport: 'nba',
-          homeTeam: 'Lakers',
-          awayTeam: 'Celtics',
-          gameTime: new Date(Date.now() + 3600000).toISOString(),
-          venue: 'TD Garden',
-          prediction: {
-            winner: 'Lakers',
-            confidence: 0.68,
-            score: { home: 112, away: 108 }, // Fixed: realistic NBA scores
-            edge: 2.1,
-            keyFactors: [
-              'Home court advantage',
-              'Recent scoring trends',
-              'Injury report favorable',
-              'Matchup history edge'
-            ]
-          },
-          odds: {
-            moneyline: { home: -110, away: -110 },
-            spread: { home: -2.5, away: +2.5 },
-            total: 235.5
-          },
-          isLive: false,
-          isCompleted: false
-        },
-        {
-          id: 'pred_3',
-          gameDate: date,
-          league: 'NFL',
-          sport: 'nfl',
-          homeTeam: 'Chiefs',
-          awayTeam: 'Bills',
-          gameTime: new Date(Date.now() + 7200000).toISOString(),
-          venue: 'Arrowhead Stadium',
-          prediction: {
-            winner: 'Chiefs',
-            confidence: 0.72,
-            score: { home: 27, away: 21 }, // Fixed: realistic NFL scores
-            edge: 4.5,
-            keyFactors: [
-              'Home field advantage',
-              'QB performance edge',
-              'Defensive strength',
-              'Recent offensive momentum'
-            ]
-          },
-          odds: {
-            moneyline: { home: -180, away: +155 },
-            spread: { home: -3.5, away: +3.5 },
-            total: 48.5
-          },
-          isLive: false,
-          isCompleted: false
-        }
-      ];
+      console.log('[PREDICTIONS] No real picks available for date:', date);
     }
 
     // Filter by sport if specified
