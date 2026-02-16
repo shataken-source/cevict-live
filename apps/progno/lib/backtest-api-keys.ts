@@ -1,11 +1,11 @@
 /**
  * Backtesting API Key Management
- * 
+ *
  * Handles validation and management of API keys for users
  * who purchase access to PROGNO backtesting data.
  */
 
-import { getSupabase } from '@/lib/supabase-client';
+import { getSupabase } from './supabase-client';
 
 export interface BacktestApiKeyValidation {
   valid: boolean;
@@ -46,12 +46,12 @@ export async function validateBacktestApiKey(
 ): Promise<BacktestApiKeyValidation> {
   try {
     const supabase = getSupabase();
-    
+
     const { data, error } = await supabase
       .rpc('validate_backtest_api_key', {
         p_api_key: apiKey
       });
-    
+
     if (error) {
       console.error('[BacktestAPIKey] Validation error:', error);
       return {
@@ -59,16 +59,16 @@ export async function validateBacktestApiKey(
         message: 'Validation system error'
       };
     }
-    
+
     if (!data || data.length === 0) {
       return {
         valid: false,
         message: 'Invalid API key'
       };
     }
-    
+
     const result = data[0];
-    
+
     return {
       valid: result.valid,
       keyId: result.key_id,
@@ -79,7 +79,7 @@ export async function validateBacktestApiKey(
       historicalYears: result.historical_years,
       message: result.message
     };
-    
+
   } catch (error) {
     console.error('[BacktestAPIKey] Unexpected error:', error);
     return {
@@ -99,7 +99,7 @@ export function hasSportAccess(
   if (!validation.valid || !validation.allowedSports) {
     return false;
   }
-  
+
   return validation.allowedSports.includes(sport.toLowerCase());
 }
 
@@ -113,10 +113,10 @@ export function hasHistoricalAccess(
   if (!validation.valid || !validation.historicalYears) {
     return false;
   }
-  
+
   const currentYear = new Date().getFullYear();
   const yearsBack = currentYear - year;
-  
+
   return yearsBack <= validation.historicalYears;
 }
 
@@ -128,17 +128,17 @@ export async function getBacktestKeyDetails(
 ): Promise<BacktestApiKeyRecord | null> {
   try {
     const supabase = getSupabase();
-    
+
     const { data, error } = await supabase
       .from('backtest_api_keys')
       .select('*')
       .eq('api_key', apiKey)
       .single();
-    
+
     if (error || !data) {
       return null;
     }
-    
+
     return {
       id: data.id,
       apiKey: data.api_key,
@@ -157,7 +157,7 @@ export async function getBacktestKeyDetails(
       purchaseReference: data.purchase_reference,
       notes: data.notes
     };
-    
+
   } catch (error) {
     console.error('[BacktestAPIKey] Error fetching key details:', error);
     return null;
@@ -172,24 +172,24 @@ export async function validateRequestApiKey(
   request: Request
 ): Promise<BacktestApiKeyValidation> {
   const authHeader = request.headers.get('Authorization');
-  
+
   if (!authHeader) {
     return {
       valid: false,
       message: 'Authorization header required'
     };
   }
-  
+
   // Support "Bearer KEY" or just "KEY"
   const apiKey = authHeader.replace(/^Bearer\s+/i, '').trim();
-  
+
   if (!apiKey) {
     return {
       valid: false,
       message: 'API key required'
     };
   }
-  
+
   return validateBacktestApiKey(apiKey);
 }
 
@@ -203,11 +203,11 @@ export async function getKeyUsageStats(apiKey: string): Promise<{
   remainingToday: number;
 } | null> {
   const details = await getBacktestKeyDetails(apiKey);
-  
+
   if (!details) {
     return null;
   }
-  
+
   return {
     dailyUsed: details.requestsUsedToday,
     dailyLimit: details.requestsPerDay,
@@ -229,7 +229,7 @@ export async function createBacktestApiKey(
 ): Promise<string | null> {
   try {
     const supabase = getSupabase();
-    
+
     const { data, error } = await supabase
       .rpc('create_backtest_api_key', {
         p_user_email: userEmail,
@@ -238,14 +238,14 @@ export async function createBacktestApiKey(
         p_historical_years: historicalYears,
         p_purchase_reference: purchaseReference
       });
-    
+
     if (error) {
       console.error('[BacktestAPIKey] Error creating key:', error);
       return null;
     }
-    
+
     return data;
-    
+
   } catch (error) {
     console.error('[BacktestAPIKey] Unexpected error creating key:', error);
     return null;
@@ -261,7 +261,7 @@ export async function revokeBacktestApiKey(
 ): Promise<boolean> {
   try {
     const supabase = getSupabase();
-    
+
     const { error } = await supabase
       .from('backtest_api_keys')
       .update({
@@ -269,14 +269,14 @@ export async function revokeBacktestApiKey(
         notes: reason || 'Revoked by admin'
       })
       .eq('api_key', apiKey);
-    
+
     if (error) {
       console.error('[BacktestAPIKey] Error revoking key:', error);
       return false;
     }
-    
+
     return true;
-    
+
   } catch (error) {
     console.error('[BacktestAPIKey] Unexpected error revoking key:', error);
     return false;
@@ -289,17 +289,17 @@ export async function revokeBacktestApiKey(
 export async function listActiveBacktestKeys(): Promise<BacktestApiKeyRecord[]> {
   try {
     const supabase = getSupabase();
-    
+
     const { data, error } = await supabase
       .from('backtest_api_keys')
       .select('*')
       .eq('status', 'active')
       .order('created_at', { ascending: false });
-    
+
     if (error || !data) {
       return [];
     }
-    
+
     return data.map(record => ({
       id: record.id,
       apiKey: record.api_key,
@@ -318,7 +318,7 @@ export async function listActiveBacktestKeys(): Promise<BacktestApiKeyRecord[]> 
       purchaseReference: record.purchase_reference,
       notes: record.notes
     }));
-    
+
   } catch (error) {
     console.error('[BacktestAPIKey] Error listing keys:', error);
     return [];
