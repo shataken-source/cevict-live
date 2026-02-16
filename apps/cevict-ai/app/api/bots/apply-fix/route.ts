@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   }
   try {
     const fullPath = path.join('C:/cevict-live', filePath);
-    fs.copyFileSync(fullPath, \\.bak\);
+    fs.copyFileSync(fullPath, `${fullPath}.bak`);
     fs.writeFileSync(fullPath, newCode, 'utf8');
     return NextResponse.json({ status: 'success', path: filePath });
   } catch (err) {

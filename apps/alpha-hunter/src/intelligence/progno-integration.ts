@@ -358,23 +358,42 @@ export class PrognoIntegration {
   }
 
   private calculateStake(pick: PrognoPick): number {
-    // Kelly Criterion simplified
-    const impliedProb = pick.odds > 0
-      ? 100 / (pick.odds + 100)
-      : Math.abs(pick.odds) / (Math.abs(pick.odds) + 100);
-    const edge = (pick.confidence / 100) - impliedProb;
+    // Convert American odds to implied probability (decimal 0-1)
+    let impliedProb: number;
+    if (pick.odds > 0) {
+      // Positive odds: +1600 → 100/(1600+100) = 0.0588 (5.88%)
+      impliedProb = 100 / (pick.odds + 100);
+    } else {
+      // Negative odds: -196 → 196/(196+100) = 0.662 (66.2%)
+      impliedProb = Math.abs(pick.odds) / (Math.abs(pick.odds) + 100);
+    }
+
+    // Edge calculation: model probability (0-1) vs implied probability (0-1)
+    const modelProb = pick.confidence / 100;
+    const edge = modelProb - impliedProb;
+
+    // No edge = no bet
+    if (edge <= 0) return 0;
+
+    // Kelly Criterion: edge / (1 - impliedProb)
+    // For +1600 with 90% model prob: edge = 0.90 - 0.0588 = 0.8412
+    // Kelly = 0.8412 / (1 - 0.0588) = 0.8937
     const kelly = edge / (1 - impliedProb);
 
-    // Use quarter Kelly for safety, max $50
+    // Quarter Kelly for safety, max $50, min $10 if edge exists
     return Math.min(Math.max(kelly * 0.25 * 100, 10), 50);
   }
 
   private calculateReturn(pick: PrognoPick): number {
     const stake = this.calculateStake(pick);
+    if (stake <= 0) return 0;
+
     if (pick.odds > 0) {
-      return stake * (1 + pick.odds / 100);
+      // Positive odds: stake + (stake * odds/100)
+      return stake + (stake * pick.odds / 100);
     }
-    return stake * (1 + 100 / Math.abs(pick.odds));
+    // Negative odds: stake + (stake * 100/|odds|)
+    return stake + (stake * 100 / Math.abs(pick.odds));
   }
 
   private buildDataPoints(pick: PrognoPick): DataPoint[] {
@@ -418,4 +437,6 @@ export class PrognoIntegration {
     return points;
   }
 }
+
+export const progno = new PrognoIntegration();
 

@@ -218,8 +218,6 @@ export class KalshiTrader {
       const qs = new URLSearchParams({
         limit: String(limit),
         cursor: String(offset),
-        status: 'active',
-        min_end_date: new Date().toISOString(), // Only markets that haven't closed
       });
 
       const fullPath = `/trade-api/v2/markets?${qs.toString()}`;
@@ -237,10 +235,16 @@ export class KalshiTrader {
         },
       });
 
-      if (!response.ok) return [];
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        console.log(`   ⚠️ Markets API error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText.slice(0, 100) : ''}`);
+        return [];
+      }
       const data = await response.json();
+      console.log(`   📡 Markets API response: ${data.markets?.length || 0} markets`);
       return data.markets || [];
     } catch (error) {
+      console.log(`   ⚠️ Markets fetch error: ${error}`);
       return [];
     }
   }
@@ -915,3 +919,5 @@ export class KalshiTrader {
     }));
   }
 }
+
+export const kalshiTrader = new KalshiTrader();

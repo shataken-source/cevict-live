@@ -615,12 +615,21 @@ export class MonteCarloEngine {
     // Kelly = (bp - q) / b; b = decimal odds - 1
     const decimalOdds = o > 0 ? (o / 100) + 1 : (100 / Math.abs(o)) + 1;
     const b = decimalOdds - 1;
-    const p = probability;
+
+    // CAP EDGE AT 30%: Prevent reckless betting on longshots (e.g., +1600 with 90% model prob = 84% edge)
+    const impliedProb = 1 / decimalOdds;
+    const rawEdge = probability - impliedProb;
+    const cappedEdge = Math.min(Math.max(rawEdge, -0.3), 0.3); // Cap edge at ±30%
+    const adjustedProb = impliedProb + cappedEdge;
+
+    const p = adjustedProb;
     const q = 1 - p;
 
     const kelly = (b * p - q) / b;
     // Quarter-Kelly for safety; absolute cap 5% of bankroll (audit: avoid aggressive stakes)
-    return Math.max(0, Math.min(kelly * 0.25, 0.05));
+    // USE HALF-KELLY (0.125) for edges > 20% to be more conservative on longshots
+    const kellyFraction = rawEdge > 0.2 ? 0.125 : 0.25;
+    return Math.max(0, Math.min(kelly * kellyFraction, 0.05));
   }
 
   private edgeToConfidence(edge: number): 'low' | 'medium' | 'high' | 'very_high' {

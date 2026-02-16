@@ -31,12 +31,13 @@ export interface DataPoint {
 }
 
 export interface RecommendedAction {
-  platform: 'kalshi' | 'progno' | 'manual' | 'crypto_exchange';
+  platform: 'kalshi' | 'progno' | 'manual' | 'crypto_exchange' | 'polymarket';
   actionType: 'buy' | 'sell' | 'bet' | 'wait';
   amount: number;
   target: string;
   instructions: string[];
   autoExecute: boolean;
+  metadata?: Record<string, any>; // For additional data like token IDs
 }
 
 export interface FundAccount {

@@ -1,17 +1,13 @@
 /**
- * BetStack API Client for NASCAR Odds
- * Uses BetStack API for real-time sports betting odds
+ * BetStack API Integration
+ * Comprehensive sports data with global CDN
+ * Base URL: https://api.betstack.dev
+ * Rate Limit: 1 request per 60 seconds
+ * Docs: api.betstack.dev/docs
  */
 
-const BETSTACK_API_KEY = process.env.BETSTACK_API_KEY || '68059a48f052f3f6cb3687a67fc03f3cce36f1c896810cf46f23f380802a6d49';
-// Try multiple possible BetStack API endpoints
-const BETSTACK_BASE_URLS = [
-  'https://api.betstack.com/v1',
-  'https://api.betstack.io/v1',
-  'https://betstack.com/api/v1',
-  'https://www.betstack.com/api/v1',
-  'https://api.betstack.co/v1',
-];
+const BETSTACK_API_KEY = process.env.BETSTACK_API_KEY || '';
+const BETSTACK_BASE_URL = 'https://api.betstack.dev';
 
 export interface BetStackOdds {
   id: string;
@@ -29,59 +25,39 @@ export interface BetStackOdds {
  * Tries multiple endpoints until one works
  */
 export async function fetchBetStackNASCAROdds(): Promise<BetStackOdds[]> {
-  for (const baseUrl of BETSTACK_BASE_URLS) {
-    try {
-      console.log(`[BetStack] Trying ${baseUrl}...`);
-
-      const response = await fetch(`${baseUrl}/odds/nascar`, {
-        headers: {
-          'Authorization': `Bearer ${BETSTACK_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        next: { revalidate: 300 },
-      });
-
-      if (!response.ok) {
-        console.warn(`[BetStack] ${baseUrl} HTTP ${response.status}`);
-        continue;
-      }
-
-      const data = await response.json();
-      console.log(`[BetStack] ${baseUrl} success:`, JSON.stringify(data).slice(0, 200));
-      return parseBetStackResponse(data);
-
-    } catch (error) {
-      console.warn(`[BetStack] ${baseUrl} failed:`, (error as Error).message);
-    }
+  if (!BETSTACK_API_KEY) {
+    console.log('[BetStack] No API key configured');
+    return [];
   }
 
-  console.error('[BetStack] All endpoints failed');
-  return [];
+  try {
+    const response = await fetch(`${BETSTACK_BASE_URL}/api/v1/events?sport=motorsports`, {
+      headers: {
+        'X-API-Key': BETSTACK_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      next: { revalidate: 60 },
+    });
+
+    if (!response.ok) {
+      console.warn(`[BetStack] HTTP ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    return parseBetStackResponse(data);
+
+  } catch (error) {
+    console.warn('[BetStack] Error:', error);
+    return [];
+  }
 }
 
 /**
  * Try alternative motorsports endpoint on all base URLs
  */
 async function fetchBetStackRacingOdds(): Promise<BetStackOdds[]> {
-  for (const baseUrl of BETSTACK_BASE_URLS) {
-    try {
-      const response = await fetch(`${baseUrl}/odds/motorsports`, {
-        headers: {
-          'Authorization': `Bearer ${BETSTACK_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        next: { revalidate: 300 },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return parseBetStackResponse(data);
-      }
-    } catch (error) {
-      // Continue to next URL
-    }
-  }
-  return [];
+  return fetchBetStackNASCAROdds();
 }
 
 /**

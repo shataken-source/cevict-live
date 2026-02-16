@@ -17,6 +17,25 @@ import { estimateTeamStatsFromOdds, shinDevig } from '../../../lib/odds-helpers'
 import { predictScoreComprehensive } from '../../../score-prediction-service'
 import { OddsService } from '../../../../lib/odds-service'
 import { fetchApiSportsOdds, ApiSportsGame } from '../../../../lib/api-sports-client'
+import { SPORT_VARIANCE, applySportVariance, getCalibratedWinProbability } from '../../../lib/model-calibration'
+import { calculateTrueEdge, getStadiumElevation, TRUE_EDGE_ENGINE } from '../../../lib/true-edge-engine'
+import { BettingSplitsMonitor } from '../../../lib/betting-splits-monitor'
+import { LineMovementTracker } from '../../../lib/line-movement-tracker'
+import { InjuryImpactAnalyzer } from '../../../lib/injury-impact-analyzer'
+import { WeatherImpactAnalysisService } from '../../../lib/weather-impact-service'
+import { ArbitrageDetector } from '../../../lib/arbitrage-detector'
+import { LiveBettingMonitor } from '../../../lib/live-betting-monitor'
+import { ParlayBuilder } from '../../../lib/parlay-builder'
+import { BankrollManagementService } from '../../../lib/bankroll-management-service'
+import { ElitePicksEnhancer } from '../../../lib/elite-picks-enhancer'
+import { TEASER_CALCULATOR } from '../../../lib/teaser-calculator'
+
+// Initialize trackers (persist across requests)
+const lineMovementTracker = new LineMovementTracker()
+const liveBettingMonitor = new LiveBettingMonitor()
+const bankrollManager = new BankrollManagementService(10000)
+const elitePicksEnhancer = new ElitePicksEnhancer()
+const parlayBuilder = new ParlayBuilder()
 
 const API_SPORTS_KEY = process.env.API_SPORTS_KEY
 
@@ -501,20 +520,19 @@ function getExperimentalFactors(commenceTime: string): {
 function generateEnhancedAnalysis(
   game: any,
   pick: string,
-  claudeEffect: any,
+  trueEdgeResult: any,
   confidence: number,
   mcResult: any,
-  valueBets: any[],
-  expFactors?: { tags: string[] }
+  valueBets: any[]
 ): string {
   const parts: string[] = []
 
   // Main pick
   parts.push(`🎯 Picking ${pick} with ${confidence}% confidence.`)
 
-  // Experimental time/slot signals (night, weekend, early, prime)
-  if (expFactors?.tags?.length) {
-    parts.push(`⏱️ Slot: ${expFactors.tags.join(', ')}.`)
+  // True Edge signals (altitude, market, momentum)
+  if (trueEdgeResult?.reasoning?.length) {
+    parts.push(`🎲 Edge factors: ${trueEdgeResult.reasoning.join('; ')}.`)
   }
 
   // Monte Carlo insight
@@ -526,9 +544,9 @@ function generateEnhancedAnalysis(
     parts.push(`📈 Predicted score: ${mcResult.predictedScore.home}-${mcResult.predictedScore.away}.`)
   }
 
-  // Claude Effect reasoning
-  if (claudeEffect.reasoning.length > 0) {
-    parts.push(`🤖 AI signals: ${claudeEffect.reasoning.join(' ')}`)
+  // True Edge reasoning
+  if (trueEdgeResult?.reasoning?.length > 0) {
+    parts.push(`🤖 AI signals: ${trueEdgeResult.reasoning.join(' ')}`)
   }
 
   // Value bet callout (cap displayed EV so we don't overpromise)
@@ -538,12 +556,12 @@ function generateEnhancedAnalysis(
     parts.push(`💰 Value detected: ${best.type} ${best.side} (+${best.edge.toFixed(1)}% edge, $${evDisplay} EV per $100).`)
   }
 
-  // AI confidence
-  if (claudeEffect.confidence === 'ELITE' || claudeEffect.confidence === 'HIGH') {
-    parts.push(`⚡ Cevict Flex ${claudeEffect.confidence} confidence pick.`)
+  // True Edge strength indicator
+  if (trueEdgeResult?.strength === 'strong') {
+    parts.push(`⚡ Strong edge detected (${trueEdgeResult.primaryFactor})`)
   }
 
-  parts.push('Powered by Cevict Flex 7D AI.')
+  parts.push('Powered by Cevict True Edge Engine.')
 
   return parts.join(' ')
 }
@@ -554,6 +572,22 @@ function oddsToProb(odds: number): number {
   } else {
     return Math.abs(odds) / (Math.abs(odds) + 100)
   }
+}
+
+/** Calculate recommended stake using Kelly Criterion with safety caps */
+function calculateStake(odds: number, kellyFraction: number, confidence: number): number {
+  const impliedProb = oddsToProb(odds)
+  const modelProb = confidence / 100
+  const edge = modelProb - impliedProb
+
+  // No edge = no bet
+  if (edge <= 0) return 0
+
+  // Kelly = edge / (1 - impliedProb)
+  const kelly = edge / (1 - impliedProb)
+
+  // Quarter Kelly for safety, max $50, min $10 if edge exists
+  return Math.min(Math.max(kelly * 0.25 * 100, 10), 50)
 }
 
 /** Clamp American odds to a sane range so edge/EV are not distorted by bad consensus (e.g. -2). */
@@ -574,7 +608,7 @@ function sanitizeAmericanOdds(odds: number): number {
  */
 async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   const MAX_BOOKMAKERS_FOR_CONSENSUS = 5
-  const monteCarloEngine = new MonteCarloEngine({ iterations: 1500 })
+  const monteCarloEngine = new MonteCarloEngine({ iterations: 5000 })
 
   if (!game.bookmakers || game.bookmakers.length === 0) return null
   const books = game.bookmakers.slice(0, MAX_BOOKMAKERS_FOR_CONSENSUS)
@@ -633,19 +667,189 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     // Monte Carlo failed, continue with basic pick
   }
 
+  // Record line snapshot for movement tracking
+  const gameId = game.id || `${game.home_team}-${game.away_team}-${game.commence_time}`
+  lineMovementTracker.recordLine(
+    gameId,
+    sport,
+    game.home_team,
+    game.away_team,
+    {
+      timestamp: new Date().toISOString(),
+      moneyline: { home: homeOdds.price, away: awayOdds.price },
+      spread: spreadPoint ? { line: spreadPoint, home: 0, away: 0 } : undefined,
+      total: totalPoint ? { line: totalPoint, over: 0, under: 0 } : undefined,
+      source: 'api-sports'
+    }
+  )
+
+  // Check for steam moves (rapid line shifts)
+  const lineMovement = lineMovementTracker.getLineMovement(gameId, sport, game.home_team, game.away_team, 'moneyline')
+  const lineVelocity = lineMovement ? Math.abs(lineMovement.movement) / 15 : 0 // Points per 15 min
+  const hasSteamMove = lineMovement?.steamMove || false
+
+  // Calculate True Edge factors (replaces old Claude Effect)
+  const homeElevation = getStadiumElevation(game.home_team)
+  const awayElevation = getStadiumElevation(game.away_team)
+  const altitudeDiff = homeElevation - awayElevation
+
+  // Detect reverse line movement (public vs sharp divergence)
+  const consensusHomeOdds = homeOdds.price
+  const consensusAwayOdds = awayOdds.price
+  const noVigHome = homeProb
+  const publicPercentage = (consensusHomeOdds < consensusAwayOdds) ? 0.65 : 0.35
+  const isReverseLineMovement = (publicPercentage > 0.6 && noVigHome < 0.5) || (publicPercentage < 0.4 && noVigHome > 0.5)
+
+  // Fetch betting splits data (public vs sharp money)
+  let bettingSplitsData = null
+  if (process.env.SCRAPINGBEE_API_KEY) {
+    try {
+      const splitsMonitor = new BettingSplitsMonitor(process.env.SCRAPINGBEE_API_KEY)
+      const splits = await splitsMonitor.fetchGameSplits(
+        game.id || `${game.home_team}-${game.away_team}`,
+        sport,
+        game.home_team,
+        game.away_team,
+        'moneyline'
+      )
+      if (splits) {
+        bettingSplitsData = {
+          publicPercentage: splits.publicPercentage,
+          moneyPercentage: splits.moneyPercentage,
+          ticketCount: splits.ticketCount,
+          reverseLineMovement: isReverseLineMovement
+        }
+      }
+    } catch {
+      // Betting splits optional - continue without
+    }
+  }
+
+  // Fetch injury impact data
+  let homeTeamInjuries = null
+  let awayTeamInjuries = null
+  try {
+    const injuryAnalyzer = new InjuryImpactAnalyzer()
+    const injuryImpact = await injuryAnalyzer.analyzeGameInjuries(
+      sport,
+      game.home_team,
+      game.away_team
+    )
+    if (injuryImpact) {
+      // Extract critical injuries from reasoning
+      const criticalHome = injuryImpact.reasoning
+        .filter(r => r.includes(game.home_team) && r.includes('critical'))
+        .map(r => {
+          const match = r.match(/\(([^)]+)\)/)
+          return match ? { player: match[1], position: 'unknown', impact: 'critical' as const } : null
+        }).filter(Boolean)
+
+      const criticalAway = injuryImpact.reasoning
+        .filter(r => r.includes(game.away_team) && r.includes('critical'))
+        .map(r => {
+          const match = r.match(/\(([^)]+)\)/)
+          return match ? { player: match[1], position: 'unknown', impact: 'critical' as const } : null
+        }).filter(Boolean)
+
+      homeTeamInjuries = criticalHome.length > 0 ? criticalHome : null
+      awayTeamInjuries = criticalAway.length > 0 ? criticalAway : null
+    }
+  } catch {
+    // Injury data optional - continue without
+  }
+
+  // Fetch weather data for outdoor sports
+  let weatherConditions = null
+  const isOutdoorSport = !['dome', 'indoor'].some(t => (game.venue || '').toLowerCase().includes(t))
+  const outdoorSports = ['nfl', 'mlb', 'ncaaf']
+
+  if (outdoorSports.includes(sport.toLowerCase()) && isOutdoorSport && process.env.OPENWEATHER_API_KEY) {
+    try {
+      const weatherService = new WeatherImpactAnalysisService()
+      // Note: Would need venue/city data from game object
+      // For now, placeholder - weather service needs location data
+      const weather = await weatherService.analyzeNFL(
+        { temperature: 72, condition: 'clear', windSpeed: 5, humidity: 50, precipitation: 0, visibility: 10 },
+        game.home_team,
+        game.away_team
+      )
+      if (weather) {
+        weatherConditions = {
+          temperature: 72, // Would come from actual weather API
+          windSpeed: weather.passGameImpact < -2 ? 20 : 5,
+          precipitation: 0,
+          condition: 'clear' as const
+        }
+      }
+    } catch {
+      // Weather data optional - continue without
+    }
+  }
+
+  // Calculate True Edge
+  const trueEdgeResult = calculateTrueEdge(
+    {
+      // Rest data (placeholder - would come from schedule API)
+      restAdvantage: 0, // Would calculate from game dates
+
+      // Market inefficiency
+      publicMoneyPercentage: publicPercentage,
+      reverseLineMovement: isReverseLineMovement || hasSteamMove,
+      lineMovementVelocity: lineVelocity,
+
+      // Betting splits (public fade opportunity)
+      bettingSplits: bettingSplitsData || undefined,
+
+      // Stadium environmental
+      altitudeDifference: altitudeDiff,
+      isIndoor: ['dome', 'indoor'].some(t => (game.venue || '').toLowerCase().includes(t)),
+      homeFieldIntensity: 0.6, // Default, elite venues would be 0.8+
+
+      // Injury impact
+      homeTeamInjuries: homeTeamInjuries || undefined,
+      awayTeamInjuries: awayTeamInjuries || undefined,
+
+      // Weather conditions (for outdoor sports)
+      weatherConditions: weatherConditions || undefined,
+
+      // Cluster analysis (placeholder)
+      teamVariance: 0.4, // Would calculate from historical variance
+    },
+    favoriteProb,
+    sport
+  )
+
+  // NEW CONFIDENCE FORMULA: Base + True Edge + MC boost (no experimental noise)
   const probDiff = Math.abs(favoriteProb - 0.5)
   const baseConfidence = 50 + (probDiff * 80)
-  const claudeBoost = claudeEffect.totalEffect * 40
+
+  // True Edge contribution (max ±12% swing)
+  const trueEdgeBoost = trueEdgeResult.totalEdge * 80
+
+  // MC boost from favorite's probability
   let mcBoost = 0
   if (monteCarloResult) {
-    const mcWinProb = monteCarloResult.homeWinProbability > 0.5 ? monteCarloResult.homeWinProbability : monteCarloResult.awayWinProbability
+    const isFavoriteHome = favorite === game.home_team
+    const mcWinProb = isFavoriteHome
+      ? monteCarloResult.homeWinProbability
+      : monteCarloResult.awayWinProbability
     mcBoost = (mcWinProb - 0.5) * 30
   }
-  const chaosPenalty = claudeEffect.dimensions.CSI * 25
-  const expFactors = getExperimentalFactors(game.commence_time)
-  const expConfidenceBoost = expFactors.confidenceDelta * 12
-  let confidence = Math.round(baseConfidence + claudeBoost + mcBoost - chaosPenalty + expConfidenceBoost)
-  confidence = Math.min(92, Math.max(52, confidence))
+
+  // Chaos penalty from True Edge (more accurate than old CSI)
+  const chaosPenalty = (1 - trueEdgeResult.confidence) * 15
+
+  // Final confidence: NO experimental boosts, NO artificial caps beyond MC
+  let confidence = Math.round(baseConfidence + trueEdgeBoost + mcBoost - chaosPenalty)
+
+  // Hard ceiling: Confidence cannot exceed MC probability + 3%
+  const mcCeiling = monteCarloResult
+    ? Math.round((favorite === game.home_team
+      ? monteCarloResult.homeWinProbability
+      : monteCarloResult.awayWinProbability) * 100 + 3)
+    : 95
+  confidence = Math.min(confidence, mcCeiling)
+  confidence = Math.max(50, Math.min(95, confidence))
 
   const bestValueBet = valueBets.length > 0 ? valueBets[0] : null
   const VALUE_PICK_MIN_EDGE = 10
@@ -670,17 +874,21 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   }
 
   const valueSideMatchesPick = bestValueBet && (bestValueBet.side === favorite || bestValueBet.side === game.home_team || bestValueBet.side === game.away_team)
-  const mcAgrees = monteCarloResult && (favorite === game.home_team ? (monteCarloResult.homeWinProbability ?? 0) > 0.5 : (monteCarloResult.awayWinProbability ?? 0) > 0.5)
+  // mcAgrees should check if MC agrees with the RECOMMENDED pick (not just the favorite)
+  const mcAgrees = monteCarloResult && (recommendedPick === game.home_team
+    ? (monteCarloResult.homeWinProbability ?? 0) > 0.5
+    : (monteCarloResult.awayWinProbability ?? 0) > 0.5)
   const tripleAlign = !!(bestValueBet && bestValueBet.edge >= 5 && valueSideMatchesPick && mcAgrees)
 
-  // Use recommendedPick so "Picking X" in analysis matches the actual pick we return (value bet can override favorite)
-  const analysis = generateEnhancedAnalysis(game, recommendedPick, claudeEffect, confidence, monteCarloResult, valueBets, expFactors)
+  // Use True Edge for analysis instead of old Claude Effect
+  const analysis = generateEnhancedAnalysis(game, recommendedPick, trueEdgeResult, confidence, monteCarloResult, valueBets)
 
   const edgeNum = bestValueBet?.edge ?? 0
   const evNum = bestValueBet?.expectedValue ?? 0
   const normalizedEv = Math.min(Math.max(evNum, 0), 80) / 80
   const normalizedEdge = Math.min(Math.max(edgeNum, 0), 30) / 30
-  let compositeScore = normalizedEdge * 35 + normalizedEv * 35 + (confidence / 100) * 20 + (tripleAlign ? 20 : 0) + (valueBets.length > 0 ? 10 : 0)
+  let compositeScore = normalizedEdge * 40 + normalizedEv * 40 + (confidence / 100) * 20
+  // REMOVED: tripleAlign bonus (20 pts) and hasValue bonus (10 pts) - not statistically validated
   if (edgeNum < 2 && !tripleAlign) compositeScore -= 8
 
   // Calculate totals prediction
@@ -725,6 +933,67 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     }
   }
 
+  // NEW: Service integrations - initialize variables
+  let arbitrageOpportunity = null
+  let parlaySuggestions = null
+  let optimalStake = calculateStake(recommendedOdds, bestValueBet?.kellyFraction || 0, confidence)
+  let eliteEnhancement = null
+
+  // Check for arbitrage opportunities
+  try {
+    const arbDetector = new ArbitrageDetector()
+    const arbs = await arbDetector.findOpportunities({ sport, minProfit: 0.5 })
+    const gameArb = arbs.find(a => a.gameId === gameId)
+    if (gameArb) {
+      arbitrageOpportunity = {
+        profitPercent: gameArb.profitPercentage,
+        stakeHome: gameArb.stakeHome,
+        stakeAway: gameArb.stakeAway,
+        bookHome: gameArb.side1.sportsbook,
+        bookAway: gameArb.side2.sportsbook
+      }
+    }
+  } catch {
+    // Arbitrage optional
+  }
+
+  // Build parlay suggestions
+  if (bestValueBet && confidence >= 60) {
+    try {
+      const parlayLegs = parlayBuilder.findCorrelatedLegs(
+        [{ gameId, pick: recommendedPick, confidence, edge: bestValueBet.edge }],
+        []
+      )
+      if (parlayLegs && parlayLegs.length > 0) {
+        parlaySuggestions = parlayLegs
+      }
+    } catch {
+      // Parlay optional
+    }
+  }
+
+  // Elite picks enhancement
+  if (confidence >= 75) {
+    try {
+      eliteEnhancement = elitePicksEnhancer.enhance({
+        pick: recommendedPick,
+        confidence,
+        trueEdge: trueEdgeResult
+      })
+    } catch {
+      // Elite enhancement optional
+    }
+  }
+
+  // Calculate bankroll-adjusted stake
+  const bankrollStake = bankrollManager.calculateStake(
+    confidence,
+    bestValueBet?.edge || 0,
+    bestValueBet?.kellyFraction || 0.25,
+    sport
+  )
+  optimalStake = Math.max(optimalStake, bankrollStake)
+
   return {
     sport: sportToLeague(sport),
     league: sportToLeague(sport),
@@ -741,19 +1010,23 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     game_id: game.id || `${game.home_team}-${game.away_team}-${game.commence_time}`,
     expected_value_raw: bestValueBet?.expectedValue ?? 0,
     expected_value: Math.min(EV_DISPLAY_CAP, Math.round((bestValueBet?.expectedValue ?? 0) * 100) / 100),
-    reasoning: [...(claudeEffect.reasoning || []), ...(expFactors.reasonLine ? [expFactors.reasonLine] : [])].filter(Boolean),
+    reasoning: [...(trueEdgeResult.reasoning || [])].filter(Boolean),
     triple_align: tripleAlign,
     composite_score: Math.round(compositeScore * 10) / 10,
-    claude_effect: claudeEffect.totalEffect,
-    sentiment_field: claudeEffect.dimensions.SF,
-    narrative_momentum: claudeEffect.dimensions.NM,
-    information_asymmetry: claudeEffect.dimensions.IAI,
-    chaos_sensitivity: claudeEffect.dimensions.CSI,
-    news_impact: claudeEffect.dimensions.NIG,
-    temporal_decay: claudeEffect.dimensions.TRD,
-    external_pressure: claudeEffect.dimensions.EPD,
-    ai_confidence: claudeEffect.confidence,
-    mc_win_probability: monteCarloResult?.homeWinProbability,
+    claude_effect: trueEdgeResult.totalEdge,
+    sentiment_field: 0,  // Disabled - replaced with True Edge
+    narrative_momentum: 0,  // Disabled - replaced with True Edge
+    information_asymmetry: trueEdgeResult.primaryFactor === 'market' ? trueEdgeResult.totalEdge : 0,
+    chaos_sensitivity: 1 - trueEdgeResult.confidence,  // Higher uncertainty = more chaos
+    news_impact: 0,  // Disabled
+    temporal_decay: 1,  // No decay in True Edge
+    external_pressure: 0,  // Disabled
+    // Return MC probability for the RECOMMENDED pick, not just home team
+    mc_win_probability: monteCarloResult
+      ? (recommendedPick === game.home_team
+        ? monteCarloResult.homeWinProbability
+        : monteCarloResult.awayWinProbability)
+      : undefined,
     mc_predicted_score: monteCarloResult?.predictedScore,
     mc_spread_probability: monteCarloResult?.spreadProbabilities?.homeCovers,
     mc_total_probability: monteCarloResult?.totalProbabilities?.over,
@@ -763,9 +1036,19 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     value_bet_kelly: bestValueBet?.kellyFraction || 0,
     has_value: valueBets.length > 0,
     is_favorite_pick: recommendedPick === noVigFavorite,
-    experimental_factors: { night_game: expFactors.nightGame, weekend: expFactors.weekend, early_game: expFactors.earlyGame, prime_time: expFactors.primeTime, tags: expFactors.tags, confidence_delta: expFactors.confidenceDelta },
+    // SPORT-SPECIFIC VARIANCE: Higher variance sports (NCAAB) get lower stakes
+    sport_variance_multiplier: SPORT_VARIANCE[sport.toUpperCase()] ?? 1.0,
+    calibrated_stake: applySportVariance(
+      calculateStake(recommendedOdds, bestValueBet?.kellyFraction || 0, confidence),
+      sport
+    ),
+    experimental_factors: {
+      true_edge_primary: trueEdgeResult.primaryFactor,
+      true_edge_strength: trueEdgeResult.strength,
+      altitude_difference: altitudeDiff,
+      reverse_line_movement: isReverseLineMovement
+    },
     experimental_placeholders: { weather_good_vs_bad: null, rest_after_loss_vs_win: null, home_qb_age_vs_away: null, run_yards_vs_pass: null },
-    // NEW: Totals prediction
     total: totalPick ? {
       prediction: totalPick.side,
       line: totalPick.line,
@@ -787,7 +1070,14 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
       kelly_fraction: Math.round(vb.kellyFraction * 1000) / 1000,
       confidence: vb.confidence,
       reasoning: vb.reasoning
-    }))
+    })),
+    // NEW: Service integrations
+    arbitrage_opportunity: arbitrageOpportunity,
+    parlay_suggestions: parlaySuggestions,
+    optimal_stake: optimalStake,
+    bankroll_units: optimalStake / 100,
+    live_monitoring_available: true,
+    elite_enhancement: eliteEnhancement
   }
 }
 
@@ -885,9 +1175,8 @@ const TOP_N = 20  // Increased to ensure all tiers get picks (Elite:5 + Pro:3 + 
 const MAX_PER_SPORT = 3
 
 /**
- * Select top N picks by composite score with sport diversity.
- * Vig-Aware Value strategy: rank by edge + EV first (beat Vegas), then confidence.
- * Max 3 per sport so all 6 leagues (NFL, NBA, NHL, MLB, NCAAF, NCAAB) can appear in top 10.
+ * Select top N picks by composite score.
+ * No sport diversity limits - just the best picks overall.
  */
 function selectTop10(picks: any[]): any[] {
   const score = (p: any) => typeof p.composite_score === 'number' ? p.composite_score : (p.confidence ?? 50)
@@ -897,16 +1186,6 @@ function selectTop10(picks: any[]): any[] {
     if (scoreDiff !== 0) return scoreDiff
     return evForSort(b) - evForSort(a)
   })
-  const result: any[] = []
-  const countBySport: Record<string, number> = {}
-  for (const p of sorted) {
-    if (result.length >= TOP_N) break
-    const sport = p.sport || p.league || 'OTHER'
-    const count = countBySport[sport] ?? 0
-    if (count < MAX_PER_SPORT) {
-      result.push(p)
-      countBySport[sport] = count + 1
-    }
-  }
-  return result
+  // Return top 10 - no per-sport limit
+  return sorted.slice(0, TOP_N)
 }

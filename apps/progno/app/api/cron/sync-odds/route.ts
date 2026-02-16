@@ -7,12 +7,14 @@
 import { NextResponse } from 'next/server'
 import { MultiSourceOddsService } from '@/lib/api-sports/services/multi-source-odds'
 import { getClientForSport, getLeagueId } from '@/lib/api-sports/client'
+import { sportsblazeApi } from '@/lib/sportsblaze-client'
+import { betstackApi } from '@/lib/betstack-client'
 
 const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) return null
-  
+
   const { createClient } = require('@supabase/supabase-js')
   return createClient(url, key)
 }
@@ -29,8 +31,12 @@ export async function GET(request: Request) {
 
   const oddsService = new MultiSourceOddsService()
   const today = new Date().toISOString().split('T')[0]
-  const sports = ['nba', 'nfl', 'nhl']
+  const sports = ['nba', 'nfl', 'nhl', 'mlb', 'ncaab', 'ncaaf']
   const results: any[] = []
+  const extraResults = {
+    sportsblaze: [] as any[],
+    betstack: [] as any[]
+  }
 
   try {
     console.log('[CRON] Starting odds sync...')
@@ -39,7 +45,7 @@ export async function GET(request: Request) {
       try {
         const client = getClientForSport(sport)
         const leagueId = getLeagueId(sport)
-        
+
         if (!client || !leagueId) continue
 
         // Get today's games
@@ -91,7 +97,7 @@ export async function GET(request: Request) {
   } catch (error: any) {
     console.error('[CRON] Odds sync error:', error)
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: error.message,
         timestamp: new Date().toISOString()

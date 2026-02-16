@@ -58,9 +58,21 @@ export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]
       // Model probability: prefer Monte Carlo win prob for picked side, else confidence
       let modelProbability = typeof p.confidence === 'number' ? p.confidence : 50;
       if (typeof p.mc_win_probability === 'number') {
-        const isHomePick = pick === homeTeam;
-        const mcProb = isHomePick ? p.mc_win_probability : 1 - p.mc_win_probability;
-        modelProbability = Math.round(mcProb * 100);
+        // Use normalized team tokens to properly identify which side is picked
+        const homeTokens = teamSearchTokens(homeTeam);
+        const awayTokens = teamSearchTokens(awayTeam);
+        const pickTokens = teamSearchTokens(pick);
+
+        // Check if pick matches home team (use primary token, usually the mascot/location)
+        const pickPrimary = pickTokens[0] || pick.toLowerCase();
+        const isHomePick = homeTokens.some(t => pickPrimary.includes(t) || t.includes(pickPrimary));
+        const isAwayPick = awayTokens.some(t => pickPrimary.includes(t) || t.includes(pickPrimary));
+
+        // Only use MC probability if we can identify which side is picked
+        if (isHomePick || isAwayPick) {
+          const mcProb = isHomePick ? p.mc_win_probability : 1 - p.mc_win_probability;
+          modelProbability = Math.round(mcProb * 100);
+        }
       }
       modelProbability = Math.max(1, Math.min(99, modelProbability));
       const teamNames = [homeTeam, awayTeam].filter(Boolean);

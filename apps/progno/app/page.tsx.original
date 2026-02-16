@@ -95,6 +95,14 @@ export default function PrognoHome() {
       glow: 'shadow-cyan-500/30',
     },
     {
+      title: 'Promo Tools',
+      desc: 'Find bonuses & convert to profit',
+      icon: '🎁',
+      href: '/promo-tools',
+      gradient: 'from-emerald-600 to-teal-500',
+      glow: 'shadow-emerald-500/30',
+    },
+    {
       title: 'Enhanced Picks',
       desc: 'Premium picks with full analysis',
       icon: '🏆',
@@ -142,7 +150,7 @@ export default function PrognoHome() {
               </p>
             </div>
           </div>
-          
+
           <p className="text-gray-400 max-w-2xl mx-auto text-lg">
             Powered by the 7-Dimensional Claude Effect™ with Monte Carlo simulations,
             sentiment analysis, and autonomous machine learning.
@@ -230,7 +238,7 @@ export default function PrognoHome() {
             <div>
               <h3 className="text-lg font-bold text-white mb-2">API Access</h3>
               <p className="text-gray-400 text-sm mb-3">
-                Access the Progno API programmatically. Full Claude Effect integration, 
+                Access the Progno API programmatically. Full Claude Effect integration,
                 real-time predictions, and comprehensive documentation.
               </p>
               <div className="flex gap-3">

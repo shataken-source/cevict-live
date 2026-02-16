@@ -74,7 +74,7 @@ export class ArbitrageDetector {
             yesEdge,
             noEdge,
             recommendedSide,
-            recommendedStake: this.calculateStake(edge, pick.confidence),
+            recommendedStake: this.calculateStake(edge, pick.confidence, recommendedSide === 'yes' ? match.yesPrice : match.noPrice),
             expectedProfit: edge
           });
         }
@@ -196,20 +196,24 @@ export class ArbitrageDetector {
 
   /**
    * Calculate recommended stake using Kelly Criterion
+   * Uses actual market odds, not hardcoded 50%
    */
-  private calculateStake(edge: number, confidence: number): number {
-    // Kelly formula: (edge / odds) * bankroll
-    // Simplified for binary markets
-    const impliedProb = 50; // Market implied 50%
-    const modelProb = confidence;
-    const b = (100 - impliedProb) / impliedProb; // Decimal odds
-    const p = modelProb / 100; // Probability of win
-    const q = 1 - p;
+  private calculateStake(edge: number, confidence: number, marketPrice: number): number {
+    // Market implied probability from Kalshi price (cents → probability)
+    const impliedProb = marketPrice / 100; // e.g., 45¢ → 0.45 (45%)
+    const modelProb = confidence / 100;
 
-    const kellyFraction = (b * p - q) / b;
+    // Decimal odds from implied probability: odds = (1 - p) / p
+    // e.g., 45% implied → 1.22 decimal odds (risk $1 to win $0.22)
+    const decimalOdds = (1 - impliedProb) / impliedProb;
+
+    // Kelly formula: (bp - q) / b where b=odds, p=model prob, q=1-p
+    // Edge = modelProb - impliedProb
+    const kellyFraction = (decimalOdds * modelProb - (1 - modelProb)) / decimalOdds;
 
     // Quarter Kelly for safety, clamp to reasonable range
-    const stake = kellyFraction * 0.25 * 100; // Assuming $100 bankroll per bet
+    // Assuming $100 bankroll per bet
+    const stake = kellyFraction * 0.25 * 100;
 
     return Math.min(Math.max(stake, 5), 50); // $5-$50 range
   }

@@ -53,7 +53,11 @@
     "progno-picks": "tsx src/fetch-progno-picks.ts",
     "backtest-progno": "tsx src/backtest-progno-vs-results.ts",
     "cevict-flex": "tsx src/cevict-flex-kalshi-bot.ts",
-    "flex": "tsx src/cevict-flex-kalshi-bot.ts"
+    "flex": "tsx src/cevict-flex-kalshi-bot.ts",
+    "test-polymarket": "tsx test-polymarket.ts",
+    "test-kalshi": "tsx test-kalshi.ts",
+    "backtest": "tsx backtest-progno.ts",
+    "paper": "tsx paper-trading.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",
@@ -62,6 +66,7 @@
     "cheerio": "^1.0.0-rc.12",
     "cron": "^3.1.0",
     "dotenv": "^16.3.1",
+    "ethers": "^6.9.0",
     "jose": "^6.1.3",
     "node-fetch": "^3.3.0",
     "rss-parser": "^3.13.0",

@@ -1,0 +1,354 @@
+{
+  "date": "2026-02-16",
+  "generatedAt": "2026-02-16T03:29:46.583Z",
+  "count": 3,
+  "message": "Top 3 picks (of 24 games) — Cevict Flex + Triple Alignment — Regular (0-1 days)",
+  "earlyLines": false,
+  "picks": [
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Duke Blue Devils",
+      "away_team": "Syracuse Orange",
+      "pick": "Syracuse Orange",
+      "pick_type": "MONEYLINE",
+      "odds": 1600,
+      "confidence": 92,
+      "game_time": "2026-02-17T00:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Syracuse Orange with 92% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 89.9% win rate for Syracuse Orange. 📈 Predicted score: 64-82. 🤖 AI signals: Sentiment favors home (14%) Sharp money: backing away 💰 Value detected: moneyline Syracuse Orange (+85.9% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "15b2457a3d50c0ac836f826be9804c00",
+      "expected_value_raw": 1428.87,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (14%)",
+        "Sharp money: backing away",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.0072,
+      "sentiment_field": 0.1379,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 0.97,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.1007,
+      "mc_predicted_score": {
+        "home": 64,
+        "away": 82,
+        "homeRange": [
+          46,
+          82
+        ],
+        "awayRange": [
+          65,
+          100
+        ]
+      },
+      "mc_spread_probability": 0.5733,
+      "mc_total_probability": 0.5733,
+      "mc_iterations": 1500,
+      "value_bet_edge": 85.91,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      },
+      "total": {
+        "prediction": "over",
+        "line": 143,
+        "edge": 4.93,
+        "probability": 0.573,
+        "expected_value": 14.67,
+        "average_projected_total": 146.2,
+        "over_probability": 0.573,
+        "under_probability": 0.399,
+        "has_value": true
+      },
+      "all_value_bets": [
+        {
+          "type": "moneyline",
+          "side": "Syracuse Orange",
+          "edge": 85.91,
+          "probability": 0.899,
+          "expected_value": 150,
+          "kelly_fraction": 0.05,
+          "confidence": "very_high",
+          "reasoning": "Model: 89.9% vs Market: 4.0%"
+        },
+        {
+          "type": "spread",
+          "side": "Duke Blue Devils",
+          "line": -21,
+          "edge": 4.95,
+          "probability": 0.573,
+          "expected_value": 9.45,
+          "kelly_fraction": 0.026,
+          "confidence": "low",
+          "reasoning": "Model: 57.3% to cover -21"
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 143,
+          "edge": 4.95,
+          "probability": 0.573,
+          "expected_value": 9.45,
+          "kelly_fraction": 0.026,
+          "confidence": "low",
+          "reasoning": "Model: 57.3% over 143 (avg: 146.2)"
+        }
+      ]
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Alabama St Hornets",
+      "away_team": "Miss Valley St Delta Devils",
+      "pick": "Miss Valley St Delta Devils",
+      "pick_type": "MONEYLINE",
+      "odds": 800,
+      "confidence": 92,
+      "game_time": "2026-02-17T00:00:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Miss Valley St Delta Devils with 92% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 79.7% win rate for Miss Valley St Delta Devils. 📈 Predicted score: 65-78. 🤖 AI signals: Sentiment favors home (12%) Sharp money: backing away 💰 Value detected: moneyline Miss Valley St Delta Devils (+70.7% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "2a1afce731c08fe7a727dbc68e490f82",
+      "expected_value_raw": 617,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors home (12%)",
+        "Sharp money: backing away",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": -0.0089,
+      "sentiment_field": 0.1232,
+      "narrative_momentum": 0,
+      "information_asymmetry": -0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 0.97,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.2033,
+      "mc_predicted_score": {
+        "home": 65,
+        "away": 78,
+        "homeRange": [
+          47,
+          83
+        ],
+        "awayRange": [
+          60,
+          96
+        ]
+      },
+      "mc_spread_probability": 0.574,
+      "mc_total_probability": 0.558,
+      "mc_iterations": 1500,
+      "value_bet_edge": 70.74,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      },
+      "total": {
+        "prediction": "over",
+        "line": 140,
+        "edge": 3.4,
+        "probability": 0.558,
+        "expected_value": 11.6,
+        "average_projected_total": 143.6,
+        "over_probability": 0.558,
+        "under_probability": 0.416,
+        "has_value": true
+      },
+      "all_value_bets": [
+        {
+          "type": "moneyline",
+          "side": "Miss Valley St Delta Devils",
+          "edge": 70.74,
+          "probability": 0.797,
+          "expected_value": 150,
+          "kelly_fraction": 0.05,
+          "confidence": "very_high",
+          "reasoning": "Model: 79.7% vs Market: 8.9%"
+        },
+        {
+          "type": "spread",
+          "side": "Alabama St Hornets",
+          "line": -15.5,
+          "edge": 5.02,
+          "probability": 0.574,
+          "expected_value": 9.58,
+          "kelly_fraction": 0.026,
+          "confidence": "medium",
+          "reasoning": "Model: 57.4% to cover -15.5"
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 140,
+          "edge": 3.42,
+          "probability": 0.558,
+          "expected_value": 6.53,
+          "kelly_fraction": 0.018,
+          "confidence": "low",
+          "reasoning": "Model: 55.8% over 140 (avg: 143.6)"
+        }
+      ]
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Northwestern St Demons",
+      "away_team": "McNeese Cowboys",
+      "pick": "Northwestern St Demons",
+      "pick_type": "MONEYLINE",
+      "odds": 650,
+      "confidence": 92,
+      "game_time": "2026-02-17T00:30:00Z",
+      "is_premium": true,
+      "analysis": "🎯 Picking Northwestern St Demons with 92% confidence. ⏱️ Slot: Night game, Prime time. 📊 1,500 simulations: 85.0% win rate for Northwestern St Demons. 📈 Predicted score: 79-62. 🤖 AI signals: Sentiment favors away (-12%) Sharp money: backing home 💰 Value detected: moneyline Northwestern St Demons (+74.2% edge, $150.00+ EV per $100). Powered by Cevict Flex 7D AI.",
+      "game_id": "95db878b9094b46a028b86e2cd489415",
+      "expected_value_raw": 537.5,
+      "expected_value": 150,
+      "reasoning": [
+        "Sentiment favors away (-12%)",
+        "Sharp money: backing home",
+        "Experimental: Night game, Prime time (+4 conf)"
+      ],
+      "triple_align": false,
+      "composite_score": 98.4,
+      "claude_effect": 0.0018,
+      "sentiment_field": -0.1176,
+      "narrative_momentum": 0,
+      "information_asymmetry": 0.1,
+      "chaos_sensitivity": 0.04,
+      "news_impact": 0,
+      "temporal_decay": 0.97,
+      "external_pressure": 0,
+      "ai_confidence": "LOW",
+      "mc_win_probability": 0.85,
+      "mc_predicted_score": {
+        "home": 79,
+        "away": 62,
+        "homeRange": [
+          61,
+          97
+        ],
+        "awayRange": [
+          43,
+          79
+        ]
+      },
+      "mc_spread_probability": 0.5933,
+      "mc_total_probability": 0.5633,
+      "mc_iterations": 1500,
+      "value_bet_edge": 74.19,
+      "value_bet_ev": 150,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": false,
+      "experimental_factors": {
+        "night_game": true,
+        "weekend": false,
+        "early_game": false,
+        "prime_time": true,
+        "tags": [
+          "Night game",
+          "Prime time"
+        ],
+        "confidence_delta": 0.3
+      },
+      "experimental_placeholders": {
+        "weather_good_vs_bad": null,
+        "rest_after_loss_vs_win": null,
+        "home_qb_age_vs_away": null,
+        "run_yards_vs_pass": null
+      },
+      "total": {
+        "prediction": "over",
+        "line": 138,
+        "edge": 3.93,
+        "probability": 0.563,
+        "expected_value": 12.67,
+        "average_projected_total": 140.6,
+        "over_probability": 0.563,
+        "under_probability": 0.413,
+        "has_value": true
+      },
+      "all_value_bets": [
+        {
+          "type": "moneyline",
+          "side": "Northwestern St Demons",
+          "edge": 74.19,
+          "probability": 0.85,
+          "expected_value": 150,
+          "kelly_fraction": 0.05,
+          "confidence": "very_high",
+          "reasoning": "Model: 85.0% vs Market: 10.8%"
+        },
+        {
+          "type": "spread",
+          "side": "Northwestern St Demons",
+          "line": 13.6,
+          "edge": 6.95,
+          "probability": 0.593,
+          "expected_value": 13.27,
+          "kelly_fraction": 0.037,
+          "confidence": "medium",
+          "reasoning": "Model: 59.3% to cover 13.6"
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 138,
+          "edge": 3.95,
+          "probability": 0.563,
+          "expected_value": 7.55,
+          "kelly_fraction": 0.021,
+          "confidence": "low",
+          "reasoning": "Model: 56.3% over 138 (avg: 140.6)"
+        }
+      ]
+    }
+  ]
+}

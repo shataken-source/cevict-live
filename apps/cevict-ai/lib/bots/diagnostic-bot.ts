@@ -5,10 +5,10 @@ export class DiagnosticBot {
   private masterContextPath = 'C:/Users/shata/Desktop/CEVICT_MASTER_CONTEXT.txt';
 
   async analyzeBottleneck(service: string) {
-    console.log(\🔍 Scanning Master Context for \ bottlenecks...\);
+    console.log(`🔍 Scanning Master Context for ${service} bottlenecks...`);
     const context = fs.readFileSync(this.masterContextPath, 'utf8');
-    
-    // In a full implementation, this context is sent to Claude/Gemini 
+
+    // In a full implementation, this context is sent to Claude/Gemini
     // to identify the specific code lines causing the slowdown.
     return {
       issue: 'Massager queue concurrency limit hit',
