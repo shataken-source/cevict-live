@@ -1,18 +1,6 @@
 {
-  "framework": null,
-  "buildCommand": "tsc",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
-  "devCommand": "tsx src/index.ts",
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/api/index"
-    }
-  ],
-  "functions": {
-    "api/**/*.ts": {
-      "maxDuration": 30
-    }
-  }
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install"
 }
