@@ -22,6 +22,10 @@ export interface ScrapeOptions {
   timeout?: number;
   retries?: number;
   proxy?: string;
+  executeScript?: string; // JavaScript to execute on page
+  waitForNetworkIdle?: boolean; // Wait for all network requests to complete
+  extractTable?: string; // CSS selector for table to extract
+  followRedirects?: boolean;
 }
 
 export interface ScrapeResult {
@@ -32,6 +36,8 @@ export interface ScrapeResult {
   title?: string;
   screenshot?: Buffer;
   metadata?: PageMetadata;
+  scriptResult?: any; // Result from custom JavaScript execution
+  tableData?: TableExtractResult; // Extracted table data
   error?: string;
   duration: number;
   timestamp: string;
@@ -52,12 +58,18 @@ export interface ExtractOptions {
   selector: string;
   attribute?: string;
   multiple?: boolean;
-  type?: 'text' | 'html' | 'attribute' | 'href' | 'src';
+  type?: 'text' | 'html' | 'attribute' | 'href' | 'src' | 'table' | 'json';
+}
+
+export interface TableExtractResult {
+  headers: string[];
+  rows: string[][];
+  rowCount: number;
 }
 
 export interface ExtractResult {
   selector: string;
-  data: string | string[] | null;
+  data: string | string[] | null | TableExtractResult;
   count: number;
 }
 

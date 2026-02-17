@@ -1,6 +1,6 @@
 /**
  * CevictScraper - Core Playwright-based Scraping Service
- * 
+ *
  * Features:
  * - Browser pool management for efficiency
  * - Automatic retries with exponential backoff
@@ -78,12 +78,12 @@ export class CevictScraper extends EventEmitter {
    */
   async initialize(): Promise<void> {
     this.emit('init', { message: 'Initializing CevictScraper...' });
-    
+
     // Pre-launch browsers based on pool options
     for (let i = 0; i < (this.poolOptions.maxBrowsers || 1); i++) {
       await this.createBrowser(`browser-${i}`);
     }
-    
+
     this.startQueueProcessor();
     this.emit('ready', { message: 'CevictScraper ready' });
   }
@@ -109,7 +109,7 @@ export class CevictScraper extends EventEmitter {
     this.browsers.set(id, browser);
     this.stats.activeBrowsers = this.browsers.size;
     this.emit('browser:created', { id });
-    
+
     return browser;
   }
 
@@ -118,7 +118,7 @@ export class CevictScraper extends EventEmitter {
    */
   private async getContext(browserId: string, options?: any): Promise<BrowserContext> {
     const contextKey = `${browserId}-${JSON.stringify(options)}`;
-    
+
     if (this.contexts.has(contextKey)) {
       return this.contexts.get(contextKey)!;
     }
@@ -146,14 +146,14 @@ export class CevictScraper extends EventEmitter {
     for (const [browserId, browser] of this.browsers) {
       const browserPages = Array.from(this.pages.entries())
         .filter(([_, page]) => page.context().browser() === browser);
-      
+
       if (browserPages.length < (this.poolOptions.maxPagesPerBrowser || 5)) {
         const context = await this.getContext(browserId);
         const page = await context.newPage();
         const pageId = `page-${crypto.randomUUID()}`;
         this.pages.set(pageId, page);
         this.stats.activePages = this.pages.size;
-        
+
         return {
           page,
           release: () => {
@@ -210,9 +210,9 @@ export class CevictScraper extends EventEmitter {
           });
         }
 
-        // Navigate to URL
+        // Navigate to URL with optional network idle waiting
         const response = await page.goto(options.url, {
-          waitUntil: 'networkidle',
+          waitUntil: options.waitForNetworkIdle ? 'networkidle' : 'domcontentloaded',
           timeout: options.timeout || this.config.jobTimeout
         });
 
@@ -231,11 +231,23 @@ export class CevictScraper extends EventEmitter {
           }
         }
 
+        // Execute custom JavaScript if provided
+        let scriptResult: any = null;
+        if (options.executeScript) {
+          scriptResult = await page.evaluate(options.executeScript);
+        }
+
         // Extract content
         const html = await page.content();
         const text = await page.evaluate(() => document.body.innerText);
         const title = await page.title();
         const metadata = await this.extractMetadata(page);
+
+        // Extract table if selector provided
+        let tableData: { headers: string[]; rows: string[][]; rowCount: number } | undefined;
+        if (options.extractTable) {
+          tableData = await this.extractTable(page, options.extractTable);
+        }
 
         // Take screenshot if requested
         let screenshot: Buffer | undefined;
@@ -262,6 +274,8 @@ export class CevictScraper extends EventEmitter {
           title,
           screenshot,
           metadata,
+          scriptResult,
+          tableData,
           duration,
           timestamp: new Date().toISOString()
         };
@@ -273,7 +287,7 @@ export class CevictScraper extends EventEmitter {
     } catch (error: any) {
       const duration = Date.now() - startTime;
       this.stats.failedJobs++;
-      
+
       this.emit('scrape:error', { url: options.url, error: error.message, jobId });
 
       // Retry logic
@@ -294,11 +308,21 @@ export class CevictScraper extends EventEmitter {
   }
 
   /**
-   * Extract data using selectors
+   * Extract data using selectors with enhanced types including table extraction
    */
   async extract(page: Page, options: ExtractOptions): Promise<ExtractResult> {
     try {
-      const locator: Locator = options.multiple 
+      // Handle table extraction specially
+      if (options.type === 'table') {
+        const tableData = await this.extractTable(page, options.selector);
+        return {
+          selector: options.selector,
+          data: tableData,
+          count: tableData.rowCount
+        };
+      }
+
+      const locator: Locator = options.multiple
         ? page.locator(options.selector)
         : page.locator(options.selector).first();
 
@@ -306,7 +330,7 @@ export class CevictScraper extends EventEmitter {
 
       switch (options.type || 'text') {
         case 'text':
-          data = options.multiple 
+          data = options.multiple
             ? await locator.allTextContents()
             : await locator.textContent();
           break;
@@ -331,6 +355,11 @@ export class CevictScraper extends EventEmitter {
             ? await locator.evaluateAll(els => els.map(el => (el as HTMLImageElement).src))
             : await locator.evaluate(el => (el as HTMLImageElement).src);
           break;
+        case 'json':
+          data = options.multiple
+            ? await locator.evaluateAll(els => els.map(el => el.textContent ? JSON.parse(el.textContent) : null))
+            : await locator.evaluate(el => el.textContent ? JSON.parse(el.textContent) : null);
+          break;
       }
 
       const count = Array.isArray(data) ? data.length : (data ? 1 : 0);
@@ -351,15 +380,32 @@ export class CevictScraper extends EventEmitter {
   }
 
   /**
+   * Extract table data from a page
+   */
+  private async extractTable(page: Page, selector: string): Promise<{ headers: string[]; rows: string[][]; rowCount: number }> {
+    return await page.evaluate((sel) => {
+      const table = document.querySelector(sel);
+      if (!table) return { headers: [], rows: [], rowCount: 0 };
+
+      const headers = Array.from(table.querySelectorAll('th, thead td')).map(th => th.textContent?.trim() || '');
+      const rows = Array.from(table.querySelectorAll('tbody tr, tr')).map(row =>
+        Array.from(row.querySelectorAll('td')).map(td => td.textContent?.trim() || '')
+      ).filter(row => row.length > 0);
+
+      return { headers, rows, rowCount: rows.length };
+    }, selector);
+  }
+
+  /**
    * Fill a form field
    */
   async fillForm(page: Page, options: FormFillOptions): Promise<void> {
     const locator = page.locator(options.selector);
-    
+
     if (options.clear !== false) {
       await locator.fill('');
     }
-    
+
     await locator.fill(options.value);
   }
 
@@ -368,7 +414,7 @@ export class CevictScraper extends EventEmitter {
    */
   async click(page: Page, options: ClickOptions): Promise<void> {
     const locator = page.locator(options.selector);
-    
+
     if (options.waitForNavigation) {
       await Promise.all([
         page.waitForNavigation({ timeout: options.timeout || 10000 }),
@@ -384,7 +430,7 @@ export class CevictScraper extends EventEmitter {
    */
   async scroll(page: Page, options: ScrollOptions): Promise<void> {
     const amount = options.amount || 500;
-    
+
     if (options.selector) {
       await page.locator(options.selector).scrollIntoViewIfNeeded();
     } else {

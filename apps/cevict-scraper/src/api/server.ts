@@ -35,13 +35,13 @@ app.get('/health', (req, res) => {
 app.post('/scrape', async (req, res) => {
   try {
     const options: ScrapeOptions = req.body;
-    
+
     if (!options.url) {
       return res.status(400).json({ error: 'URL is required' });
     }
 
     const result = await scraper.scrape(options);
-    
+
     if (result.success) {
       res.json(result);
     } else {
@@ -60,14 +60,14 @@ app.post('/scrape', async (req, res) => {
 app.post('/extract', async (req, res) => {
   try {
     const { url, selector, options }: { url: string; selector: string; options: ExtractOptions } = req.body;
-    
+
     if (!url || !selector) {
       return res.status(400).json({ error: 'URL and selector are required' });
     }
 
     // First scrape to get page
     const scrapeResult = await scraper.scrape({ url });
-    
+
     if (!scrapeResult.success) {
       return res.status(500).json(scrapeResult);
     }
@@ -97,13 +97,13 @@ app.post('/screenshot', async (req, res) => {
       ...req.body,
       screenshot: true
     };
-    
+
     if (!options.url) {
       return res.status(400).json({ error: 'URL is required' });
     }
 
     const result = await scraper.scrape(options);
-    
+
     if (result.success && result.screenshot) {
       res.set('Content-Type', 'image/png');
       res.send(result.screenshot);
@@ -129,7 +129,7 @@ app.get('/stats', (req, res) => {
 app.post('/batch', async (req, res) => {
   try {
     const { urls, options }: { urls: string[]; options: ScrapeOptions } = req.body;
-    
+
     if (!urls || !Array.isArray(urls)) {
       return res.status(400).json({ error: 'urls array is required' });
     }
@@ -155,11 +155,87 @@ app.post('/batch', async (req, res) => {
   }
 });
 
+// Table extraction endpoint
+app.post('/extract-table', async (req, res) => {
+  try {
+    const { url, selector, waitFor }: { url: string; selector: string; waitFor?: string | number } = req.body;
+
+    if (!url || !selector) {
+      return res.status(400).json({ error: 'URL and selector are required' });
+    }
+
+    const result = await scraper.scrape({
+      url,
+      waitFor,
+      extractTable: selector
+    });
+
+    if (result.success && result.tableData) {
+      res.json({
+        success: true,
+        url,
+        selector,
+        tableData: result.tableData,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        url,
+        selector,
+        error: result.error || 'Failed to extract table',
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Execute JavaScript endpoint
+app.post('/execute', async (req, res) => {
+  try {
+    const { url, script, waitFor }: { url: string; script: string; waitFor?: string | number } = req.body;
+
+    if (!url || !script) {
+      return res.status(400).json({ error: 'URL and script are required' });
+    }
+
+    const result = await scraper.scrape({
+      url,
+      waitFor,
+      executeScript: script,
+      waitForNetworkIdle: true
+    });
+
+    if (result.success) {
+      res.json({
+        success: true,
+        url,
+        scriptResult: result.scriptResult,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(500).json(result);
+    }
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Initialize and start server
 async function startServer() {
   try {
     await scraper.initialize();
-    
+
     app.listen(PORT, () => {
       console.log(`🚀 CevictScraper API running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);

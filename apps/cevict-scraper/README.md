@@ -4,7 +4,7 @@
 
 ## Overview
 
-CevictScraper is a powerful browser automation and scraping tool built on Playwright. It provides both a standalone API server and a reusable library for other projects in the Cevict ecosystem.
+CevictScraper is a powerful browser automation and scraping tool built on Playwright. It provides both a standalone API server and a reusable library for other projects in the Cevict ecosystem. Enhanced for sports data extraction including injury reports, odds, and weather.
 
 ## Features
 
@@ -14,6 +14,9 @@ CevictScraper is a powerful browser automation and scraping tool built on Playwr
 - **Screenshot Capture** - Full-page or element-specific screenshots
 - **Form Interaction** - Fill forms, click buttons, scroll pages
 - **Data Extraction** - Extract data using CSS selectors
+- **Table Extraction** - Parse HTML tables into structured data (NEW)
+- **JavaScript Execution** - Run custom scripts on pages (NEW)
+- **Network Idle Waiting** - Wait for AJAX requests to complete (NEW)
 - **Proxy Support** - Route requests through proxies
 - **Batch Processing** - Scrape multiple URLs concurrently
 
@@ -80,14 +83,54 @@ await scraper.shutdown();
 ## API Endpoints
 
 ### `POST /scrape`
-Scrape a single URL.
+Scrape a single URL with enhanced options.
 
 ```json
 {
   "url": "https://example.com",
   "waitFor": ".content",
   "screenshot": true,
-  "fullPage": false
+  "fullPage": false,
+  "executeScript": "document.querySelector('.data').textContent",
+  "waitForNetworkIdle": true,
+  "extractTable": "table.injury-report"
+}
+```
+
+### `POST /extract-table`
+Extract data from HTML tables.
+
+```json
+{
+  "url": "https://sportsbook.example.com/injuries",
+  "selector": "table.injury-table",
+  "waitFor": 2000
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "tableData": {
+    "headers": ["Player", "Position", "Status", "Injury"],
+    "rows": [
+      ["John Smith", "QB", "Out", "Shoulder"],
+      ["Mike Jones", "RB", "Questionable", "Ankle"]
+    ],
+    "rowCount": 2
+  }
+}
+```
+
+### `POST /execute`
+Execute custom JavaScript on a page.
+
+```json
+{
+  "url": "https://example.com",
+  "script": "JSON.parse(document.querySelector('#__NEXT_DATA__').textContent)",
+  "waitFor": "#data-loaded"
 }
 ```
 
@@ -130,13 +173,31 @@ interface ScrapeOptions {
   fullPage?: boolean;             // Full page screenshot
   viewport?: { width: number; height: number };
   userAgent?: string;             // Custom user agent
-  cookies?: Array<{ name: string; value: string }>;
+  cookies?: Array<{ name: string; value: string; domain?: string }>;
   headers?: Record<string, string>;
   timeout?: number;               // Request timeout (ms)
   retries?: number;               // Retry attempts
   proxy?: string;                 // Proxy URL
+  executeScript?: string;         // JavaScript to execute on page
+  waitForNetworkIdle?: boolean;   // Wait for all network requests
+  extractTable?: string;          // CSS selector for table extraction
+  followRedirects?: boolean;      // Follow redirects (default: true)
 }
 ```
+
+## Extract Types
+
+```typescript
+type ExtractType = 'text' | 'html' | 'attribute' | 'href' | 'src' | 'table' | 'json';
+```
+
+- **text** - Extract text content
+- **html** - Extract HTML markup
+- **attribute** - Extract element attribute
+- **href** - Extract link URLs
+- **src** - Extract image sources
+- **table** - Parse HTML tables into structured data
+- **json** - Parse JSON from text content
 
 ## Environment Variables
 
@@ -188,10 +249,47 @@ cevict-scraper/
 
 1. **Odds Scraping** - Extract live odds from sportsbooks
 2. **Injury Reports** - Scrape injury data from team sites
+   ```typescript
+   // Extract injury table from ESPN
+   const result = await scraper.scrape({
+     url: 'https://www.espn.com/nfl/team/injuries/_/name/phi',
+     waitFor: 'table',
+     extractTable: 'table',
+     waitForNetworkIdle: true
+   });
+
+   // result.tableData contains structured injury data
+   ```
 3. **Weather Data** - Get detailed weather for game locations
 4. **Line Movement** - Track betting line changes
 5. **News Aggregation** - Collect relevant sports news
 6. **Social Monitoring** - Track Twitter/Reddit sentiment
+
+## Injury Report Extraction Example
+
+```typescript
+// Extract injury reports from ESPN
+const response = await fetch('http://localhost:3009/extract-table', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    url: 'https://www.espn.com/nba/team/injuries/_/name/gs',
+    selector: 'table',
+    waitFor: 3000
+  })
+});
+
+const data = await response.json();
+console.log(data.tableData);
+// {
+//   headers: ['Player', 'Position', 'Status', 'Injury'],
+//   rows: [
+//     ['Stephen Curry', 'PG', 'Out', 'Shoulder'],
+//     ['Andrew Wiggins', 'SF', 'Questionable', 'Ankle']
+//   ],
+//   rowCount: 2
+// }
+```
 
 ## Comparison with ScrapingBee
 
