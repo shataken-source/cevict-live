@@ -1,0 +1,16 @@
+{
+  "id": "example-module",
+  "name": "Example Module",
+  "version": "1.0.0",
+  "description": "A sample module demonstrating the extensible architecture",
+  "author": "NextTV Team",
+  "entryPoint": "ExampleModule.tsx",
+  "permissions": [
+    "navigation",
+    "storage"
+  ],
+  "dependencies": {
+    "react": "18.2.0",
+    "react-native": "0.73.2"
+  }
+}
