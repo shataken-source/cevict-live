@@ -38,7 +38,7 @@ interface SDProgram {
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const zipCode = searchParams.get('zip');
-  
+
   if (!zipCode) {
     return NextResponse.json(
       { error: 'ZIP code required' },
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
   }
 
   const apiKey = process.env.SCHEDULES_DIRECT_API_KEY;
-  
+
   if (!apiKey) {
     // Fallback to mock data if no API key
     return NextResponse.json({
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     }
 
     const lineups: SDLineup[] = await lineupResponse.json();
-    
+
     if (!lineups || lineups.length === 0) {
       return NextResponse.json({
         channels: getMockChannels(zipCode),
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
     // Step 3: Get current program schedules
     const now = new Date();
     const endTime = new Date(now.getTime() + 6 * 60 * 60 * 1000); // 6 hours ahead
-    
+
     const scheduleRequest = {
       stationIDs: stations.slice(0, 20).map(s => s.stationID), // Limit to first 20 stations
       date: now.toISOString().split('T')[0].replace(/-/g, '-')
@@ -130,8 +130,9 @@ export async function GET(request: NextRequest) {
     });
 
     let programs: SDProgram[] = [];
+    let schedules: any[] = [];
     if (scheduleResponse.ok) {
-      const schedules = await scheduleResponse.json();
+      schedules = await scheduleResponse.json();
       // Extract unique programs
       const programIDs = new Set<string>();
       schedules.forEach((schedule: any) => {
@@ -139,7 +140,7 @@ export async function GET(request: NextRequest) {
           programIDs.add(p.programID);
         });
       });
-      
+
       // Fetch program details
       if (programIDs.size > 0) {
         const programsResponse = await fetch(`${SD_API_BASE}/programs`, {
@@ -150,7 +151,7 @@ export async function GET(request: NextRequest) {
           },
           body: JSON.stringify(Array.from(programIDs).slice(0, 50))
         });
-        
+
         if (programsResponse.ok) {
           programs = await programsResponse.json();
         }
@@ -159,9 +160,9 @@ export async function GET(request: NextRequest) {
 
     // Map stations to our channel format
     const channels = stations.slice(0, 16).map((station, index) => {
-      const program = programs.find(p => 
-        schedules.find((s: any) => 
-          s.programs?.find((sp: any) => 
+      const program = programs.find(p =>
+        schedules.find((s: any) =>
+          s.programs?.find((sp: any) =>
             sp.programID === p.programID && sp.stationID === station.stationID
           )
         )
@@ -187,7 +188,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Schedules Direct API error:', error);
-    
+
     // Fallback to mock data on error
     return NextResponse.json({
       channels: getMockChannels(zipCode),
@@ -222,20 +223,20 @@ function getDefaultShow(callsign?: string): string {
     'Weather': '24/7 Weather Radar',
     'Movies!': 'Classic Movies'
   };
-  
+
   if (!callsign) return 'Local Programming';
-  
+
   for (const [network, show] of Object.entries(shows)) {
     if (callsign.includes(network)) return show;
   }
-  
+
   return 'Local Programming';
 }
 
 function getMockChannels(zipCode: string) {
   // Return context-appropriate mock channels based on ZIP
   const zipPrefix = zipCode.substring(0, 3);
-  
+
   // Mountain West (Yellowstone area)
   if (zipPrefix >= '820' && zipPrefix <= '831') {
     return [
@@ -257,7 +258,7 @@ function getMockChannels(zipCode: string) {
       { number: '32.1', name: 'KXLH', type: 'digital', signal: 'fair', show: 'Local Programming', logo: null }
     ];
   }
-  
+
   // Default channels for other areas
   return [
     { number: '2.1', name: 'CBS', affiliate: 'CBS', type: 'network', signal: 'good', show: 'Evening News 6:00 PM', logo: null },
