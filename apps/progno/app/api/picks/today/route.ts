@@ -233,6 +233,11 @@ export async function GET(request: Request) {
         const games = await response.json()
         if (!Array.isArray(games)) continue
 
+        // Check odds freshness and write to Supabase if stale
+        if (supabase && games.length > 0) {
+          await checkAndStoreOdds(games, sport)
+        }
+
         const now = new Date()
         const inWindow = (commence: Date) => {
           if (earlyLines) {
@@ -1400,4 +1405,132 @@ function selectTop10(picks: any[]): any[] {
   })
   // Return top 10 - no per-sport limit
   return sorted.slice(0, TOP_N)
+}
+
+/**
+ * Check if odds in Supabase are stale and write fresh odds if needed.
+ * Stale = older than 30 minutes
+ */
+async function checkAndStoreOdds(games: any[], sport: string): Promise<void> {
+  try {
+    if (!supabase) return
+
+    const gameIds = games.map(g => g.id)
+
+    // Check the most recent odds for these games in Supabase
+    const { data: existingOdds, error } = await supabase
+      .from('historical_odds')
+      .select('game_id, captured_at')
+      .in('game_id', gameIds)
+      .eq('sport', sport)
+      .order('captured_at', { ascending: false })
+      .limit(1)
+
+    if (error) {
+      console.error('[Picks API] Error checking existing odds:', error)
+    }
+
+    // Determine if odds are stale (older than 30 minutes)
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    let oddsAreStale = true
+
+    if (existingOdds && existingOdds.length > 0) {
+      const latestTimestamp = existingOdds[0].captured_at
+      oddsAreStale = latestTimestamp < thirtyMinutesAgo
+      console.log(`[Picks API] Latest odds for ${sport}: ${latestTimestamp}, stale: ${oddsAreStale}`)
+    } else {
+      console.log(`[Picks API] No existing odds found for ${sport}, treating as stale`)
+    }
+
+    // If stale, write fresh odds to Supabase
+    if (oddsAreStale) {
+      console.log(`[Picks API] Writing fresh odds to Supabase for ${sport} (${games.length} games)`)
+
+      const records: any[] = []
+      const timestamp = new Date().toISOString()
+
+      for (const game of games) {
+        for (const bookmaker of game.bookmakers || []) {
+          for (const market of bookmaker.markets || []) {
+            if (market.key === 'h2h') {
+              const homeOutcome = market.outcomes?.find((o: any) => o.name === game.home_team)
+              const awayOutcome = market.outcomes?.find((o: any) => o.name === game.away_team)
+              if (homeOutcome && awayOutcome) {
+                records.push({
+                  game_id: game.id,
+                  sport: sport,
+                  home_team: game.home_team,
+                  away_team: game.away_team,
+                  commence_time: game.commence_time,
+                  bookmaker: bookmaker.key,
+                  market_type: 'moneyline',
+                  home_odds: homeOutcome.price,
+                  away_odds: awayOutcome.price,
+                  captured_at: timestamp
+                })
+              }
+            } else if (market.key === 'spreads') {
+              const homeOutcome = market.outcomes?.find((o: any) => o.name === game.home_team)
+              const awayOutcome = market.outcomes?.find((o: any) => o.name === game.away_team)
+              if (homeOutcome && awayOutcome) {
+                records.push({
+                  game_id: game.id,
+                  sport: sport,
+                  home_team: game.home_team,
+                  away_team: game.away_team,
+                  commence_time: game.commence_time,
+                  bookmaker: bookmaker.key,
+                  market_type: 'spreads',
+                  home_spread: homeOutcome.point,
+                  away_spread: awayOutcome.point,
+                  home_odds: homeOutcome.price,
+                  away_odds: awayOutcome.price,
+                  captured_at: timestamp
+                })
+              }
+            } else if (market.key === 'totals') {
+              const overOutcome = market.outcomes?.find((o: any) => o.name === 'Over')
+              const underOutcome = market.outcomes?.find((o: any) => o.name === 'Under')
+              if (overOutcome && underOutcome) {
+                records.push({
+                  game_id: game.id,
+                  sport: sport,
+                  home_team: game.home_team,
+                  away_team: game.away_team,
+                  commence_time: game.commence_time,
+                  bookmaker: bookmaker.key,
+                  market_type: 'totals',
+                  total_line: overOutcome.point,
+                  over_odds: overOutcome.price,
+                  under_odds: underOutcome.price,
+                  captured_at: timestamp
+                })
+              }
+            }
+          }
+        }
+      }
+
+      // Batch insert to Supabase
+      if (records.length > 0) {
+        const { error: insertError } = await supabase
+          .from('historical_odds')
+          .upsert(records, {
+            onConflict: 'game_id,bookmaker,market_type,captured_at',
+            ignoreDuplicates: true
+          })
+
+        if (insertError) {
+          console.error(`[Picks API] Error storing odds in Supabase:`, insertError)
+        } else {
+          console.log(`[Picks API] Successfully stored ${records.length} odds records in Supabase`)
+        }
+      }
+    } else {
+      console.log(`[Picks API] Odds for ${sport} are fresh, skipping Supabase write`)
+    }
+  } catch (error) {
+    console.error('[Picks API] Error in checkAndStoreOdds:', error)
+    // Don't throw - this is a background operation
+  }
 }
