@@ -732,12 +732,16 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   let homeTeamInjuries = null
   let awayTeamInjuries = null
   try {
-    const injuryAnalyzer = new InjuryImpactAnalyzer()
+    console.log(`[Injury] Analyzing injuries for ${game.home_team} vs ${game.away_team} (${sport})`)
+    const scrapingBeeKey = process.env.SCRAPINGBEE_API_KEY || ''
+    console.log(`[Injury] ScrapingBee key present: ${scrapingBeeKey ? 'YES' : 'NO'}`)
+    const injuryAnalyzer = new InjuryImpactAnalyzer(scrapingBeeKey)
     const injuryImpact = await injuryAnalyzer.analyzeGameInjuries(
       sport,
       game.home_team,
       game.away_team
     )
+    console.log(`[Injury] Analysis result:`, injuryImpact?.reasoning?.length || 0, 'reasoning items')
     if (injuryImpact) {
       // Extract critical injuries from reasoning
       const criticalHome = injuryImpact.reasoning
@@ -756,8 +760,10 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
 
       homeTeamInjuries = criticalHome.length > 0 ? criticalHome : null
       awayTeamInjuries = criticalAway.length > 0 ? criticalAway : null
+      console.log(`[Injury] Found: ${homeTeamInjuries?.length || 0} home, ${awayTeamInjuries?.length || 0} away critical injuries`)
     }
-  } catch {
+  } catch (err: any) {
+    console.error(`[Injury] ERROR analyzing injuries:`, err.message || err)
     // Injury data optional - continue without
   }
 
@@ -768,24 +774,49 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
 
   if (outdoorSports.includes(sport.toLowerCase()) && isOutdoorSport && process.env.OPENWEATHER_API_KEY) {
     try {
-      const weatherService = new WeatherImpactAnalysisService()
-      // Note: Would need venue/city data from game object
-      // For now, placeholder - weather service needs location data
-      const weather = await weatherService.analyzeNFL(
-        { temperature: 72, condition: 'clear', windSpeed: 5, humidity: 50, precipitation: 0, visibility: 10 },
-        game.home_team,
-        game.away_team
-      )
-      if (weather) {
-        weatherConditions = {
-          temperature: 72, // Would come from actual weather API
-          windSpeed: weather.passGameImpact < -2 ? 20 : 5,
-          precipitation: 0,
-          condition: 'clear' as const
+      console.log(`[Weather] Fetching for ${game.home_team} vs ${game.away_team} (${sport})`)
+
+      // Map team to city for weather lookup
+      const teamToCity = getTeamCity(sport, game.home_team)
+      console.log(`[Weather] Looking up city: ${teamToCity}`)
+
+      if (teamToCity) {
+        const weatherData = await fetchWeatherFromOpenWeather(teamToCity)
+        console.log(`[Weather] API response:`, weatherData ? 'SUCCESS' : 'FAILED')
+
+        if (weatherData) {
+          const weatherService = new WeatherImpactAnalysisService()
+          const weather = await weatherService.analyzeNFL(
+            weatherData,
+            game.home_team,
+            game.away_team
+          )
+          if (weather) {
+            weatherConditions = {
+              temperature: weatherData.temperature,
+              windSpeed: weatherData.windSpeed,
+              precipitation: weatherData.precipitation,
+              condition: weatherData.condition
+            }
+            console.log(`[Weather] Conditions: ${weatherData.temperature}°F, ${weatherData.windSpeed}mph wind, ${weatherData.condition}`)
+            if (weather.reasoning.length > 0) {
+              console.log(`[Weather] Impact:`, weather.reasoning.join('; '))
+            }
+          }
         }
+      } else {
+        console.log(`[Weather] No city mapping found for ${game.home_team}`)
       }
-    } catch {
-      // Weather data optional - continue without
+    } catch (err: any) {
+      console.error(`[Weather] ERROR fetching weather:`, err.message || err)
+    }
+  } else {
+    if (!outdoorSports.includes(sport.toLowerCase())) {
+      console.log(`[Weather] Skipping - ${sport} is not an outdoor sport`)
+    } else if (!isOutdoorSport) {
+      console.log(`[Weather] Skipping - indoor/dome venue detected`)
+    } else if (!process.env.OPENWEATHER_API_KEY) {
+      console.log(`[Weather] Skipping - no OPENWEATHER_API_KEY`)
     }
   }
 
@@ -1170,6 +1201,186 @@ function sportToLeague(sport: string): string {
     'basketball_ncaab': 'NCAAB',
   }
   return map[sport] || sport.toUpperCase()
+}
+
+/**
+ * Map team name to city for weather lookup
+ */
+function getTeamCity(sport: string, teamName: string): string | null {
+  // NFL team cities
+  const nflCities: Record<string, string> = {
+    'Arizona Cardinals': 'Phoenix,AZ,US',
+    'Atlanta Falcons': 'Atlanta,GA,US',
+    'Baltimore Ravens': 'Baltimore,MD,US',
+    'Buffalo Bills': 'Buffalo,NY,US',
+    'Carolina Panthers': 'Charlotte,NC,US',
+    'Chicago Bears': 'Chicago,IL,US',
+    'Cincinnati Bengals': 'Cincinnati,OH,US',
+    'Cleveland Browns': 'Cleveland,OH,US',
+    'Dallas Cowboys': 'Dallas,TX,US',
+    'Denver Broncos': 'Denver,CO,US',
+    'Detroit Lions': 'Detroit,MI,US',
+    'Green Bay Packers': 'Green Bay,WI,US',
+    'Houston Texans': 'Houston,TX,US',
+    'Indianapolis Colts': 'Indianapolis,IN,US',
+    'Jacksonville Jaguars': 'Jacksonville,FL,US',
+    'Kansas City Chiefs': 'Kansas City,MO,US',
+    'Las Vegas Raiders': 'Las Vegas,NV,US',
+    'Los Angeles Chargers': 'Los Angeles,CA,US',
+    'Los Angeles Rams': 'Los Angeles,CA,US',
+    'Miami Dolphins': 'Miami,FL,US',
+    'Minnesota Vikings': 'Minneapolis,MN,US',
+    'New England Patriots': 'Boston,MA,US',
+    'New Orleans Saints': 'New Orleans,LA,US',
+    'New York Giants': 'New York,NY,US',
+    'New York Jets': 'New York,NY,US',
+    'Philadelphia Eagles': 'Philadelphia,PA,US',
+    'Pittsburgh Steelers': 'Pittsburgh,PA,US',
+    'San Francisco 49ers': 'San Francisco,CA,US',
+    'Seattle Seahawks': 'Seattle,WA,US',
+    'Tampa Bay Buccaneers': 'Tampa,FL,US',
+    'Tennessee Titans': 'Nashville,TN,US',
+    'Washington Commanders': 'Washington,DC,US',
+  }
+
+  // MLB team cities
+  const mlbCities: Record<string, string> = {
+    'Arizona Diamondbacks': 'Phoenix,AZ,US',
+    'Atlanta Braves': 'Atlanta,GA,US',
+    'Baltimore Orioles': 'Baltimore,MD,US',
+    'Boston Red Sox': 'Boston,MA,US',
+    'Chicago Cubs': 'Chicago,IL,US',
+    'Chicago White Sox': 'Chicago,IL,US',
+    'Cincinnati Reds': 'Cincinnati,OH,US',
+    'Cleveland Guardians': 'Cleveland,OH,US',
+    'Colorado Rockies': 'Denver,CO,US',
+    'Detroit Tigers': 'Detroit,MI,US',
+    'Houston Astros': 'Houston,TX,US',
+    'Kansas City Royals': 'Kansas City,MO,US',
+    'Los Angeles Angels': 'Los Angeles,CA,US',
+    'Los Angeles Dodgers': 'Los Angeles,CA,US',
+    'Miami Marlins': 'Miami,FL,US',
+    'Milwaukee Brewers': 'Milwaukee,WI,US',
+    'Minnesota Twins': 'Minneapolis,MN,US',
+    'New York Mets': 'New York,NY,US',
+    'New York Yankees': 'New York,NY,US',
+    'Oakland Athletics': 'Oakland,CA,US',
+    'Philadelphia Phillies': 'Philadelphia,PA,US',
+    'Pittsburgh Pirates': 'Pittsburgh,PA,US',
+    'San Diego Padres': 'San Diego,CA,US',
+    'San Francisco Giants': 'San Francisco,CA,US',
+    'Seattle Mariners': 'Seattle,WA,US',
+    'St. Louis Cardinals': 'St. Louis,MO,US',
+    'Tampa Bay Rays': 'Tampa,FL,US',
+    'Texas Rangers': 'Arlington,TX,US',
+    'Toronto Blue Jays': 'Toronto,CA',
+    'Washington Nationals': 'Washington,DC,US',
+  }
+
+  // NCAAF - major programs (simplified, would need expansion)
+  const ncaafCities: Record<string, string> = {
+    'Alabama Crimson Tide': 'Tuscaloosa,AL,US',
+    'Ohio State Buckeyes': 'Columbus,OH,US',
+    'Georgia Bulldogs': 'Athens,GA,US',
+    'Clemson Tigers': 'Clemson,SC,US',
+    'Michigan Wolverines': 'Ann Arbor,MI,US',
+    'Notre Dame Fighting Irish': 'South Bend,IN,US',
+    'Oklahoma Sooners': 'Norman,OK,US',
+    'Texas Longhorns': 'Austin,TX,US',
+    'Florida Gators': 'Gainesville,FL,US',
+    'LSU Tigers': 'Baton Rouge,LA,US',
+    'Penn State Nittany Lions': 'State College,PA,US',
+    'USC Trojans': 'Los Angeles,CA,US',
+    'Oregon Ducks': 'Eugene,OR,US',
+    'Florida State Seminoles': 'Tallahassee,FL,US',
+    'Miami Hurricanes': 'Miami,FL,US',
+    'Auburn Tigers': 'Auburn,AL,US',
+    'Wisconsin Badgers': 'Madison,WI,US',
+    'Texas A&M Aggies': 'College Station,TX,US',
+    'Tennessee Volunteers': 'Knoxville,TN,US',
+    'Nebraska Cornhuskers': 'Lincoln,NE,US',
+  }
+
+  const sportKey = sport.toLowerCase().replace(/^basketball_|^americanfootball_|^icehockey_|^baseball_/, '')
+
+  if (sportKey === 'nfl') return nflCities[teamName] || null
+  if (sportKey === 'mlb') return mlbCities[teamName] || null
+  if (sportKey === 'ncaaf') return ncaafCities[teamName] || null
+
+  return null
+}
+
+/**
+ * Fetch real weather data from OpenWeather API
+ */
+async function fetchWeatherFromOpenWeather(city: string): Promise<{
+  temperature: number
+  condition: 'clear' | 'cloudy' | 'rain' | 'snow' | 'windy' | 'fog' | 'extreme'
+  windSpeed: number
+  humidity: number
+  precipitation: number
+  visibility: number
+} | null> {
+  const apiKey = process.env.OPENWEATHER_API_KEY
+  if (!apiKey) {
+    console.log('[Weather] No OPENWEATHER_API_KEY available')
+    return null
+  }
+
+  try {
+    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=imperial`
+    console.log(`[Weather] Calling OpenWeather API for: ${city}`)
+
+    const response = await fetch(url, { cache: 'no-store' })
+
+    if (!response.ok) {
+      console.error(`[Weather] OpenWeather API error: ${response.status} ${response.statusText}`)
+      return null
+    }
+
+    const data = await response.json()
+
+    if (!data.main || !data.weather || !data.weather[0]) {
+      console.error('[Weather] Invalid response from OpenWeather API')
+      return null
+    }
+
+    // Map OpenWeather condition to our format
+    const weatherId = data.weather[0].id
+    let condition: 'clear' | 'cloudy' | 'rain' | 'snow' | 'windy' | 'fog' | 'extreme' = 'clear'
+
+    if (weatherId >= 200 && weatherId < 300) condition = 'extreme' // Thunderstorm
+    else if (weatherId >= 300 && weatherId < 600) condition = 'rain' // Drizzle/Rain
+    else if (weatherId >= 600 && weatherId < 700) condition = 'snow' // Snow
+    else if (weatherId >= 700 && weatherId < 800) condition = 'fog' // Atmosphere (fog, mist, etc.)
+    else if (weatherId === 800) condition = 'clear' // Clear
+    else if (weatherId > 800) condition = 'cloudy' // Clouds
+
+    // Check for high winds
+    const windSpeed = data.wind?.speed || 0
+    if (windSpeed > 20) condition = 'windy'
+
+    const result = {
+      temperature: Math.round(data.main.temp),
+      condition,
+      windSpeed: Math.round(windSpeed),
+      humidity: data.main.humidity || 50,
+      precipitation: data.rain ? (data.rain['1h'] || 0) : 0, // Rain in last hour
+      visibility: (data.visibility || 10000) / 1609.34, // Convert meters to miles
+    }
+
+    console.log(`[Weather] Raw OpenWeather data:`, {
+      temp: data.main.temp,
+      condition: data.weather[0].main,
+      wind: data.wind?.speed,
+      humidity: data.main.humidity
+    })
+
+    return result
+  } catch (error: any) {
+    console.error(`[Weather] Error fetching weather:`, error.message || error)
+    return null
+  }
 }
 
 /** All 6 leagues for diversity */
