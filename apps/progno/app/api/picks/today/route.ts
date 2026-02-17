@@ -712,15 +712,13 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
         game.id || `${game.home_team}-${game.away_team}`,
         sport,
         game.home_team,
-        game.away_team,
-        'moneyline'
+        game.away_team
       )
       if (splits) {
         bettingSplitsData = {
           publicPercentage: splits.publicPercentage,
-          moneyPercentage: splits.moneyPercentage,
-          ticketCount: splits.ticketCount,
-          reverseLineMovement: isReverseLineMovement
+          sharpPercentage: splits.sharpPercentage,
+          lineMovement: splits.lineMovement
         }
       }
     } catch {
@@ -728,14 +726,14 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     }
   }
 
-  // Fetch injury impact data
+  // Fetch injury impact data using CevictScraper
   let homeTeamInjuries = null
   let awayTeamInjuries = null
   try {
     console.log(`[Injury] Analyzing injuries for ${game.home_team} vs ${game.away_team} (${sport})`)
-    const scrapingBeeKey = process.env.SCRAPINGBEE_API_KEY || ''
-    console.log(`[Injury] ScrapingBee key present: ${scrapingBeeKey ? 'YES' : 'NO'}`)
-    const injuryAnalyzer = new InjuryImpactAnalyzer(scrapingBeeKey)
+    const cevictScraperUrl = process.env.CEVICT_SCRAPER_URL || 'http://localhost:3009'
+    console.log(`[Injury] Using CevictScraper at: ${cevictScraperUrl}`)
+    const injuryAnalyzer = new InjuryImpactAnalyzer(cevictScraperUrl)
     const injuryImpact = await injuryAnalyzer.analyzeGameInjuries(
       sport,
       game.home_team,

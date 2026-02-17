@@ -1,9 +1,10 @@
 /**
  * Injury Impact Analyzer Service
  * Analyzes injury reports and adjusts prediction confidence accordingly
+ * Uses CevictScraper (Playwright) instead of ScrapingBee
  */
 
-import { ScrapingBeeService } from './scrapingbee-service';
+import { CevictScraperService } from './cevict-scraper-service';
 
 export interface PlayerInjury {
   player: string;
@@ -82,10 +83,11 @@ const STATUS_MULTIPLIERS: Record<string, number> = {
 };
 
 export class InjuryImpactAnalyzer {
-  private scraper: ScrapingBeeService;
+  private scraper: CevictScraperService;
 
-  constructor(scrapingBeeApiKey?: string) {
-    this.scraper = new ScrapingBeeService(scrapingBeeApiKey || '');
+  constructor(cevictScraperUrl?: string) {
+    // Use CevictScraper (localhost:3009) instead of ScrapingBee
+    this.scraper = new CevictScraperService(cevictScraperUrl || 'http://localhost:3009');
   }
 
   /**
