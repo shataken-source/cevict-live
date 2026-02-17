@@ -9,7 +9,8 @@
     "web": "expo start --web",
     "test": "jest",
     "tsc": "tsc --noEmit",
-    "build:preview": "eas build --platform android --profile preview --non-interactive",
+    "build:web": "expo export:web",
+    "export:web": "expo export:web",
     "build:prod": "eas build --platform android --profile production --non-interactive",
     "build:dev": "eas build --platform android --profile development --non-interactive"
   },
