@@ -1,0 +1,40 @@
+{
+  "cli": {
+    "version": ">= 18.0.1",
+    "appVersionSource": "remote",
+    "promptToConfigurePushNotifications": false
+  },
+  "build": {
+    "base": {
+      "node": "18.20.5"
+    },
+    "development": {
+      "extends": "base",
+      "workingDirectory": "apps/IPTVviewer",
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "preview": {
+      "extends": "base",
+      "workingDirectory": "apps/IPTVviewer",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "extends": "base",
+      "workingDirectory": "apps/IPTVviewer",
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

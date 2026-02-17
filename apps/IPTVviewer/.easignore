@@ -1,13 +1,31 @@
-# Local EAS ignore for IPTVviewer app directory only
-# Repo-level exclusions are handled by ../../.easignore
+# IPTVviewer EAS Build Ignore - Self-contained
+# This file MUST exclude everything not needed for build
 
 # Build directories
 android/
 ios/
 build/
+dist/
 .expo/
+.next/
+.gradle/
 .snapshots/
 .worktrees/
+
+# Node modules (installed fresh on server)
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
 
 # Test files
 __tests__/
@@ -23,3 +41,20 @@ __tests__/
 .env
 .env.local
 .env.*.local
+
+# Git
+.git/
+
+# Temp files
+.tmp*
+*.tmp
+*.temp
+
+# Large media
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.zip
+*.tar.gz
+*.rar
