@@ -9,6 +9,10 @@
 import { NextResponse } from 'next/server'
 import fs from 'node:fs'
 import path from 'node:path'
+import { ElitePicksEnhancer } from '../../../lib/elite-picks-enhancer'
+
+// Initialize enhancer for Elite tier
+const eliteEnhancer = new ElitePicksEnhancer()
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -111,6 +115,19 @@ export async function GET(request: Request) {
           try {
             const batchId = `${today}-${tier}-${Date.now()}`
 
+            // For Elite tier, enhance picks with advanced analysis
+            let tierPicks = picks
+            if (tier === 'elite') {
+              console.log('[CRON daily-predictions] Enhancing Elite picks...')
+              try {
+                const enhanced = await eliteEnhancer.enhance(picks.map(p => ({ ...p, tier: 'elite' })))
+                tierPicks = enhanced
+                console.log(`[CRON daily-predictions] Enhanced ${enhanced.length} Elite picks`)
+              } catch (err) {
+                console.error('[CRON daily-predictions] Elite enhancement failed, using regular picks:', err)
+              }
+            }
+
             const syndicationRes = await fetch(webhookUrl, {
               method: 'POST',
               headers: {
@@ -120,7 +137,7 @@ export async function GET(request: Request) {
               },
               body: JSON.stringify({
                 tier,
-                picks,
+                picks: tierPicks,
                 batchId,
                 timestamp: new Date().toISOString(),
                 source: 'progno-daily-cron',

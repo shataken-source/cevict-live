@@ -89,16 +89,9 @@ function filterPicksForTier(picks: PrognoPick[], tier: string): PrognoPick[] {
   const freeAllocation = [];
   const usedPicks = new Set<string>();
 
-  // ELITE: Top 5 picks, uses premium/free if needed
+  // ELITE: Gets ALL picks with enhanced analysis
   if (tier === 'elite') {
-    let elitePicksToTake = sorted.filter(p => (p.prediction.confidence || 0) * 100 >= 80);
-    if (elitePicksToTake.length < 5) {
-      const needed = 5 - elitePicksToTake.length;
-      const premiumPicks = sorted.filter(p => (p.prediction.confidence || 0) * 100 >= 65 && (p.prediction.confidence || 0) * 100 < 80);
-      elitePicksToTake = [...elitePicksToTake, ...premiumPicks.slice(0, needed)];
-    }
-    elitePicksToTake.slice(0, 5).forEach(pick => usedPicks.add(pick.id || ''));
-    eliteAllocation.push(...elitePicksToTake);
+    return picks; // Return all picks, no filtering
   }
 
   // PREMIUM: Top 3 picks (excluding elite picks), uses free if needed
