@@ -89,10 +89,9 @@ export default function SportsbookPage() {
 
     fetchPicks()
 
-    // NOTE: Auto-refresh disabled to prevent API token burn during testing
-    // Re-enable by uncommenting below (requires USE_LIVE_ODDS=true in API)
-    // const interval = setInterval(fetchPicks, 5 * 60 * 1000)
-    // return () => clearInterval(interval)
+    // Auto-refresh every 5 minutes for live Progno picks
+    const interval = setInterval(fetchPicks, 5 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [])
 
   // Get all available picks based on tier

@@ -5,8 +5,8 @@ import Stripe from 'stripe';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Feature flag - set USE_LIVE_ODDS=true to enable live API calls
-const USE_LIVE_ODDS = process.env.USE_LIVE_ODDS === 'true';
+// Feature flag - set USE_LIVE_ODDS=false to disable live API calls
+const USE_LIVE_ODDS = process.env.USE_LIVE_ODDS !== 'false';
 const PROGNO_BASE_URL = process.env.PROGNO_BASE_URL || 'http://localhost:3008';
 
 const stripe = process.env.STRIPE_SECRET_KEY
