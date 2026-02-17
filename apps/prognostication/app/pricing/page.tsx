@@ -1,362 +1,282 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import Link from 'next/link';
+import { Check, Sparkles, Zap, Shield } from 'lucide-react';
 
-type BillingType = 'weekly' | 'monthly';
-type Tier = 'pro' | 'elite';
+type BillingCycle = 'monthly' | 'annual';
+
+interface Tier {
+  name: string;
+  description: string;
+  price: number | null;
+  period: string;
+  savings: string | null;
+  cta: string;
+  features: string[];
+  highlight: boolean;
+  fundTier?: boolean;
+}
 
 export default function PricingPage() {
-  const [email, setEmail] = useState('');
-  const [loadingButton, setLoadingButton] = useState<string | null>(null);
-  const [error, setError] = useState('');
-  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
+  const [isLoading, setIsLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    setLoadingButton(null);
-    setCurrentTime(new Date());
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const tiers: Tier[] = [
+    {
+      name: 'Pro',
+      description: 'For active probability traders',
+      price: billingCycle === 'monthly' ? 19 : 15,
+      period: billingCycle === 'monthly' ? '/month' : '/month, billed annually',
+      savings: billingCycle === 'annual' ? 'Save $48/year' : null,
+      cta: 'Start 7-Day Trial',
+      features: [
+        '5 AI picks per day',
+        'All 6 market categories',
+        'Edge calculation',
+        'AI reasoning summaries',
+        'Email alerts',
+        'Basic analytics',
+      ],
+      highlight: false,
+    },
+    {
+      name: 'Elite',
+      description: 'For serious edge operators',
+      price: billingCycle === 'monthly' ? 49 : 39,
+      period: billingCycle === 'monthly' ? '/month' : '/month, billed annually',
+      savings: billingCycle === 'annual' ? 'Save $120/year' : null,
+      cta: 'Start 7-Day Trial',
+      features: [
+        'Unlimited daily picks',
+        'Full historical patterns',
+        'SMS + Email alerts',
+        'Discord access',
+        'Strategy calls',
+        'Entertainment expert',
+        'Priority support',
+        'Arbitrage detection',
+      ],
+      highlight: true,
+    },
+    {
+      name: 'Fund',
+      description: 'Managed strategy access',
+      price: null,
+      period: '',
+      savings: '2/20 fee structure',
+      cta: 'Request Access',
+      features: [
+        'Everything in Elite',
+        'Early signal access',
+        'Auto-sizing (Kelly)',
+        'Execution layer',
+        'Risk engine',
+        'Quarterly reports',
+        'White-glove onboarding',
+        '$100K minimum',
+      ],
+      highlight: false,
+      fundTier: true,
+    },
+  ];
 
-  const isValidEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email) && email.length <= 254;
-  };
-
-  const handleCheckout = async (tier: Tier, billingType: BillingType) => {
-    setError('');
-
-    if (!email || !isValidEmail(email)) {
-      setError('INVALID_EMAIL_FORMAT');
+  const handleCheckout = async (tierName: string) => {
+    if (tierName === 'Fund') {
+      window.location.href = '/contact';
       return;
     }
 
-    if (loadingButton) return;
-
-    const buttonId = `${tier}-${billingType}`;
-    setLoadingButton(buttonId);
-
+    setIsLoading(tierName);
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          tier,
-          billingType
+          tier: tierName.toLowerCase(),
+          billingCycle,
         }),
       });
 
-      const contentType = response.headers.get('content-type');
-      let data;
-
-      if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        setError('SERVER_ERROR');
-        setLoadingButton(null);
-        return;
-      }
-
-      if (response.ok && data.url) {
+      const data = await response.json();
+      if (data.url) {
         window.location.href = data.url;
-      } else {
-        const msg = data.details ? `${data.error || 'Error'}: ${data.details}` : (data.error || 'CHECKOUT_FAILED');
-        setError(msg);
-        setLoadingButton(null);
       }
-    } catch (err: any) {
-      setError('NETWORK_ERROR');
-      setLoadingButton(null);
+    } catch (error) {
+      console.error('Checkout error:', error);
+    } finally {
+      setIsLoading(null);
     }
   };
 
-  const isLoading = (tier: Tier, billingType: BillingType) => {
-    return loadingButton === `${tier}-${billingType}`;
-  };
-
   return (
-    <div className="min-h-screen bg-black text-green-400 overflow-hidden">
-      {/* Grid overlay */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-5"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(0, 255, 0, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 255, 0, 0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: '50px 50px',
-        }}
-      />
-
-      {/* Scanline effect */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-[0.03]"
-        style={{
-          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.3) 2px, rgba(0, 0, 0, 0.3) 4px)',
-        }}
-      />
-
-      {/* Vignette */}
-      <div className="fixed inset-0 pointer-events-none" style={{
-        background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.6) 100%)',
-      }} />
-
-      {/* Header */}
-      <header className="relative z-10 border-b border-green-900/50 backdrop-blur-sm bg-black/50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <a href="/" className="flex items-center gap-4">
-              <div className="w-10 h-10 border-2 border-green-500 rounded flex items-center justify-center text-xl animate-pulse shadow-lg shadow-green-500/30">
-                ◈
-              </div>
-              <div>
-                <div className="font-mono text-xs text-green-600">SYSTEM.ONLINE</div>
-                <div className="font-bold text-green-400 tracking-wider">PROGNOSTICATION</div>
-              </div>
-            </a>
-            <div className="font-mono text-xs text-green-600" suppressHydrationWarning>
-              {currentTime != null ? currentTime.toLocaleTimeString('en-US', { hour12: false }) : '--:--:--'}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
-      <div className="relative z-10 max-w-5xl mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <div className="font-mono text-green-600 text-sm mb-4">
-            {'>'} ACCESS_CONTROL
-          </div>
-          <h1 className="text-4xl md:text-5xl font-black text-green-400 mb-4 tracking-tight">
-            SELECT YOUR TIER
-          </h1>
-          <p className="text-green-600 font-mono text-sm mb-8">
-            UNLOCK AI-POWERED KALSHI PREDICTION INTELLIGENCE
-          </p>
-
-          {/* Email Input */}
-          <div className="max-w-md mx-auto">
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-green-700 font-mono text-sm">{'>'}</span>
-              <input
-                type="email"
-                placeholder="ENTER_EMAIL@DOMAIN.COM"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                disabled={!!loadingButton}
-                className="w-full pl-8 pr-4 py-4 font-mono text-sm bg-black border border-green-800 text-green-400 placeholder-green-800 focus:outline-none focus:border-green-500 rounded disabled:opacity-50"
-              />
-            </div>
-          </div>
-
-          {error && (
-            <div className="max-w-md mx-auto mt-4 p-3 bg-red-950/50 border border-red-800 rounded font-mono text-sm text-red-400">
-              ⚠ ERROR: {error}
-            </div>
-          )}
-
-          {loadingButton && (
-            <div className="max-w-md mx-auto mt-4 p-3 bg-green-950/50 border border-green-800 rounded font-mono text-sm text-green-400 animate-pulse">
-              ◌ PROCESSING... REDIRECTING TO SECURE CHECKOUT
-            </div>
-          )}
-        </div>
-
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 gap-8 mb-12" style={{ opacity: loadingButton ? 0.6 : 1 }}>
-
-          {/* PRO Tier */}
-          <div className="bg-black/80 border border-green-900 rounded-lg overflow-hidden hover:border-green-700 transition-all">
-            {/* Terminal Header */}
-            <div className="bg-green-950/50 border-b border-green-900 px-4 py-2 flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500/80" />
-              <span className="font-mono text-xs text-green-600">TIER_PRO.exe</span>
-            </div>
-
-            <div className="p-6">
-              <div className="font-mono text-xs text-green-700 mb-2">LEVEL_01</div>
-              <h2 className="text-2xl font-bold text-green-400 mb-4">PRO</h2>
-
-              {/* Weekly */}
-              <div className="bg-green-950/30 border border-green-900 rounded p-4 mb-4">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-3xl font-bold text-green-400 font-mono">$9</span>
-                  <span className="text-green-700 font-mono text-sm">// 7_DAYS</span>
-                </div>
-                <button
-                  onClick={() => handleCheckout('pro', 'weekly')}
-                  disabled={!!loadingButton}
-                  className="w-full mt-3 py-3 font-mono text-sm bg-green-900/50 border border-green-700 text-green-400 rounded hover:bg-green-800/50 hover:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {isLoading('pro', 'weekly') ? '◌ PROCESSING...' : '▶ INITIALIZE_TRIAL'}
-                </button>
-              </div>
-
-              {/* Monthly */}
-              <div className="bg-cyan-950/30 border border-cyan-800 rounded p-4 relative">
-                <div className="absolute -top-2 right-4 bg-cyan-600 text-black font-mono text-xs px-2 py-0.5 rounded">
-                  -24%
-                </div>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-3xl font-bold text-cyan-400 font-mono">$19</span>
-                  <span className="text-cyan-700 font-mono text-sm">// MONTH</span>
-                </div>
-                <button
-                  onClick={() => handleCheckout('pro', 'monthly')}
-                  disabled={!!loadingButton}
-                  className="w-full mt-3 py-3 font-mono text-sm bg-cyan-900/50 border border-cyan-700 text-cyan-400 rounded hover:bg-cyan-800/50 hover:border-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {isLoading('pro', 'monthly') ? '◌ PROCESSING...' : '▶ SUBSCRIBE_MONTHLY'}
-                </button>
-              </div>
-
-              {/* Features */}
-              <div className="mt-6 space-y-2 font-mono text-sm">
-                <div className="text-green-700 text-xs mb-3">// FEATURES</div>
-                {[
-                  '[✓] 5 PICKS/DAY',
-                  '[✓] ALL 6 CATEGORIES',
-                  '[✓] EDGE CALCULATION',
-                  '[✓] AI REASONING',
-                  '[✓] EMAIL ALERTS',
-                ].map((feature, i) => (
-                  <div key={i} className="text-green-500">{feature}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* ELITE Tier */}
-          <div className="bg-black/80 border-2 border-amber-700 rounded-lg overflow-hidden shadow-lg shadow-amber-900/20 relative">
-            {/* Badge */}
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-black font-mono text-xs font-bold px-4 py-1 rounded">
-              RECOMMENDED
-            </div>
-
-            {/* Terminal Header */}
-            <div className="bg-amber-950/50 border-b border-amber-900 px-4 py-2 flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-amber-500/80 animate-pulse" />
-              <span className="font-mono text-xs text-amber-600">TIER_ELITE.exe</span>
-            </div>
-
-            <div className="p-6">
-              <div className="font-mono text-xs text-amber-700 mb-2">LEVEL_MAX</div>
-              <h2 className="text-2xl font-bold text-amber-400 mb-4">ELITE</h2>
-
-              {/* Weekly */}
-              <div className="bg-amber-950/30 border border-amber-900 rounded p-4 mb-4">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-3xl font-bold text-amber-400 font-mono">$29</span>
-                  <span className="text-amber-700 font-mono text-sm">// 7_DAYS</span>
-                </div>
-                <button
-                  onClick={() => handleCheckout('elite', 'weekly')}
-                  disabled={!!loadingButton}
-                  className="w-full mt-3 py-3 font-mono text-sm bg-amber-900/50 border border-amber-700 text-amber-400 rounded hover:bg-amber-800/50 hover:border-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {isLoading('elite', 'weekly') ? '◌ PROCESSING...' : '▶ INITIALIZE_TRIAL'}
-                </button>
-              </div>
-
-              {/* Monthly */}
-              <div className="bg-gradient-to-r from-amber-950/50 to-orange-950/50 border border-amber-600 rounded p-4 relative">
-                <div className="absolute -top-2 right-4 bg-amber-500 text-black font-mono text-xs font-bold px-2 py-0.5 rounded">
-                  BEST VALUE
-                </div>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-3xl font-bold text-amber-300 font-mono">$49</span>
-                  <span className="text-amber-700 font-mono text-sm">// MONTH</span>
-                </div>
-                <button
-                  onClick={() => handleCheckout('elite', 'monthly')}
-                  disabled={!!loadingButton}
-                  className="w-full mt-3 py-3 font-mono text-sm bg-amber-600 text-black font-bold rounded hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber-600/30"
-                >
-                  {isLoading('elite', 'monthly') ? '◌ PROCESSING...' : '▶ SUBSCRIBE_ELITE'}
-                </button>
-              </div>
-
-              {/* Features */}
-              <div className="mt-6 space-y-2 font-mono text-sm">
-                <div className="text-amber-700 text-xs mb-3">// FULL_ACCESS</div>
-                {[
-                  '[✓] UNLIMITED PICKS',
-                  '[✓] ALL 6 CATEGORIES',
-                  '[✓] HISTORICAL PATTERNS',
-                  '[✓] SMS + EMAIL ALERTS',
-                  '[✓] DISCORD ACCESS',
-                  '[✓] STRATEGY CALLS',
-                  '[✓] ENTERTAINMENT EXPERT',
-                  '[✓] PRIORITY SUPPORT',
-                ].map((feature, i) => (
-                  <div key={i} className="text-amber-500">{feature}</div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Comparison Terminal */}
-        <div className="bg-black/80 border border-green-900 rounded-lg overflow-hidden mb-12">
-          <div className="bg-green-950/50 border-b border-green-900 px-4 py-2 flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500/80" />
-            <span className="font-mono text-xs text-green-600">COMPARE_TIERS.log</span>
-          </div>
-          <div className="p-6 font-mono text-sm overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-green-700 border-b border-green-900">
-                  <th className="text-left py-2">FEATURE</th>
-                  <th className="text-center py-2">PRO</th>
-                  <th className="text-center py-2 text-amber-500">ELITE</th>
-                </tr>
-              </thead>
-              <tbody className="text-green-500">
-                {[
-                  { feature: 'Picks per day', pro: '5', elite: '∞' },
-                  { feature: 'Market categories', pro: '6', elite: '6' },
-                  { feature: 'AI reasoning', pro: '✓', elite: '✓' },
-                  { feature: 'Edge calculation', pro: '✓', elite: '✓' },
-                  { feature: 'Historical patterns', pro: 'BASIC', elite: 'FULL' },
-                  { feature: 'SMS alerts', pro: '—', elite: '✓' },
-                  { feature: 'Discord access', pro: '—', elite: '✓' },
-                  { feature: 'Entertainment expert', pro: '—', elite: '✓' },
-                ].map((row, i) => (
-                  <tr key={i} className="border-b border-green-900/50">
-                    <td className="py-2 text-green-600">{row.feature}</td>
-                    <td className="text-center py-2">{row.pro}</td>
-                    <td className="text-center py-2 text-amber-400">{row.elite}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Trust Signals */}
-        <div className="text-center font-mono text-xs text-green-700 space-y-2">
-          <p>🔒 SECURE_CHECKOUT VIA STRIPE</p>
-          <p>💳 ALL_MAJOR_CARDS ACCEPTED</p>
-          <p>❌ CANCEL_ANYTIME // NO_HIDDEN_FEES</p>
+    <div className="min-h-screen bg-background">
+      {/* Trust Bar */}
+      <div className="border-b border-border">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-center gap-8 text-xs text-text-muted">
+          <span className="flex items-center gap-1">
+            <Shield size={14} className="text-success" />
+            Secure Stripe Checkout
+          </span>
+          <span>•</span>
+          <span>Cancel Anytime</span>
+          <span>•</span>
+          <span>12,481 Active Traders</span>
+          <span>•</span>
+          <span>$48M+ Volume Tracked</span>
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-green-900/50 py-8 bg-black/50">
-        <div className="max-w-7xl mx-auto px-4 text-center font-mono text-xs text-green-800">
-          <p>© {new Date().getFullYear()} PROGNOSTICATION.COM // THE FUTURE, CALCULATED.</p>
-        </div>
-      </footer>
+      {/* Header */}
+      <div className="max-w-7xl mx-auto px-6 py-16 text-center">
+        <h1 className="text-4xl md:text-5xl font-semibold text-text-primary mb-4">
+          Simple, Transparent Pricing
+        </h1>
+        <p className="text-xl text-text-secondary max-w-2xl mx-auto">
+          Choose your edge level. Upgrade or downgrade anytime.
+        </p>
 
-      {/* Custom Styles */}
-      <style jsx global>{`
-        @keyframes pulse-glow {
-          0%, 100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
-          50% { box-shadow: 0 0 40px rgba(34, 197, 94, 0.5); }
-        }
-      `}</style>
+        {/* Billing Toggle */}
+        <div className="flex items-center justify-center gap-4 mt-8">
+          <button
+            onClick={() => setBillingCycle('monthly')}
+            className={`px-4 py-2 rounded-lg text-sm transition ${billingCycle === 'monthly'
+              ? 'bg-primary text-white'
+              : 'text-text-secondary hover:text-text-primary'
+              }`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setBillingCycle('annual')}
+            className={`px-4 py-2 rounded-lg text-sm transition flex items-center gap-2 ${billingCycle === 'annual'
+              ? 'bg-primary text-white'
+              : 'text-text-secondary hover:text-text-primary'
+              }`}
+          >
+            Annual
+            <span className="px-2 py-0.5 bg-success/20 text-success text-xs rounded-full">
+              Save 20%
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* Pricing Cards */}
+      <div className="max-w-7xl mx-auto px-6 pb-16">
+        <div className="grid md:grid-cols-3 gap-8">
+          {tiers.map((tier) => (
+            <div
+              key={tier.name}
+              className={`relative rounded-2xl p-8 ${tier.highlight
+                ? 'bg-panel border-2 border-primary shadow-glow'
+                : 'bg-panel border border-border'
+                } ${tier.fundTier ? 'bg-gradient-to-b from-panel to-surface' : ''}`}
+            >
+              {/* Badge */}
+              {tier.highlight && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <span className="px-4 py-1 bg-primary text-white text-sm font-medium rounded-full flex items-center gap-1">
+                    <Sparkles size={14} />
+                    Most Popular
+                  </span>
+                </div>
+              )}
+              {tier.fundTier && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <span className="px-4 py-1 bg-accent text-white text-sm font-medium rounded-full flex items-center gap-1">
+                    <Zap size={14} />
+                    Institutional
+                  </span>
+                </div>
+              )}
+
+              {/* Tier Header */}
+              <div className="mb-6">
+                <h3 className="text-2xl font-semibold text-text-primary mb-2">
+                  {tier.name}
+                </h3>
+                <p className="text-text-muted">{tier.description}</p>
+              </div>
+
+              {/* Price */}
+              <div className="mb-6">
+                {tier.price ? (
+                  <>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold text-text-primary">
+                        ${tier.price}
+                      </span>
+                      <span className="text-text-muted">{tier.period}</span>
+                    </div>
+                    {tier.savings && (
+                      <p className="text-sm text-success mt-1">{tier.savings}</p>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-2xl font-bold text-text-primary">
+                    Custom Pricing
+                  </div>
+                )}
+              </div>
+
+              {/* CTA */}
+              <button
+                onClick={() => handleCheckout(tier.name)}
+                disabled={isLoading === tier.name}
+                className={`block w-full py-4 rounded-xl font-medium text-center transition mb-6 ${tier.highlight
+                  ? 'bg-primary text-white hover:bg-primary-hover shadow-glow-sm'
+                  : tier.fundTier
+                    ? 'bg-accent text-white hover:opacity-90'
+                    : 'bg-surface border border-border text-text-primary hover:border-primary'
+                  } ${isLoading === tier.name ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                {isLoading === tier.name ? 'Loading...' : tier.cta}
+              </button>
+
+              {/* Features */}
+              <ul className="space-y-3">
+                {tier.features.map((feature, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm text-text-secondary">
+                    <Check size={16} className="text-success mt-0.5 shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* FAQ Link */}
+        <div className="text-center mt-12">
+          <p className="text-text-muted">
+            Questions?{' '}
+            <Link href="/contact" className="text-primary hover:underline">
+              Contact our team
+            </Link>
+          </p>
+        </div>
+      </div>
+
+      {/* Trust Footer */}
+      <div className="border-t border-border">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="grid md:grid-cols-3 gap-6 text-center text-sm text-text-muted">
+            <div>
+              <p className="font-medium text-text-primary mb-1">Secure Payments</p>
+              <p>Stripe PCI compliant</p>
+            </div>
+            <div>
+              <p className="font-medium text-text-primary mb-1">Cancel Anytime</p>
+              <p>No long-term contracts</p>
+            </div>
+            <div>
+              <p className="font-medium text-text-primary mb-1">24/7 Support</p>
+              <p>Email & Discord access</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
