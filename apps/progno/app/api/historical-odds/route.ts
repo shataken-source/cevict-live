@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
   // Validate date range (limit based on tier)
   const maxDays = tier === 3 ? 365 : tier === 2 ? 90 : 30;
   const daysRequested = (new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24);
-  
+
   if (daysRequested > maxDays) {
     return NextResponse.json(
       { error: `Date range too large. Tier ${tier} max: ${maxDays} days. Upgrade for more.` },
@@ -91,14 +91,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Build query
+    // Build query - query from historical_odds table where track-odds cron stores data
     let query = supabase
-      .from('odds_cache')
-      .select(includeLines ? '*' : 'id,external_id,sport,home_team,away_team,commence_time,game_date,home_moneyline,away_moneyline,home_spread,away_spread,spread_line,total_line,source')
+      .from('historical_odds')
+      .select(includeLines ? '*' : 'game_id,sport,home_team,away_team,commence_time,bookmaker,market_type,home_odds,away_odds,home_spread,away_spread,total_line,over_odds,under_odds,captured_at')
       .eq('sport', sport)
-      .gte('game_date', startDate)
-      .lte('game_date', endDate)
-      .order('game_date', { ascending: true });
+      .gte('captured_at', `${startDate}T00:00:00Z`)
+      .lte('captured_at', `${endDate}T23:59:59Z`)
+      .order('captured_at', { ascending: true });
 
     // Tier 1 gets limited fields and fewer records
     if (tier === 1) {
@@ -120,15 +120,15 @@ export async function GET(req: NextRequest) {
 
     const responseTime = Date.now() - startTime;
 
-    // Format response
     const response = {
       meta: {
         sport,
         dateRange: { startDate, endDate },
-        gamesReturned: data?.length || 0,
+        recordsReturned: data?.length || 0,
         tier,
         responseTimeMs: responseTime,
         timestamp: new Date().toISOString(),
+        note: 'Historical odds data from track-odds cron - updated every 30 minutes'
       },
       data: data || [],
     };
@@ -166,10 +166,11 @@ export async function OPTIONS(req: NextRequest) {
   }
 
   try {
+    // Query from historical_odds table
     const { data, error } = await supabase
-      .from('odds_cache')
-      .select('sport, game_date')
-      .order('game_date', { ascending: true });
+      .from('historical_odds')
+      .select('sport, captured_at')
+      .order('captured_at', { ascending: true });
 
     if (error) throw error;
 
@@ -178,20 +179,22 @@ export async function OPTIONS(req: NextRequest) {
       if (!acc[row.sport]) {
         acc[row.sport] = {
           sport: row.sport,
-          firstDate: row.game_date,
-          lastDate: row.game_date,
-          totalGames: 0,
+          firstDate: row.captured_at?.split('T')[0],
+          lastDate: row.captured_at?.split('T')[0],
+          totalRecords: 0,
         };
       }
-      acc[row.sport].totalGames++;
-      acc[row.sport].lastDate = row.game_date > acc[row.sport].lastDate ? row.game_date : acc[row.sport].lastDate;
+      acc[row.sport].totalRecords++;
+      const currentDate = row.captured_at?.split('T')[0];
+      if (currentDate > acc[row.sport].lastDate) acc[row.sport].lastDate = currentDate;
       return acc;
     }, {});
 
     return NextResponse.json({
       tier,
       sports: Object.values(sportStats),
-      totalGames: data?.length || 0,
+      totalRecords: data?.length || 0,
+      note: 'Historical odds data from track-odds cron'
     });
 
   } catch (error) {
@@ -204,8 +207,8 @@ function convertToCSV(data: any[]): string {
   if (data.length === 0) return '';
 
   const headers = Object.keys(data[0]).join(',');
-  const rows = data.map(row => 
-    Object.values(row).map(v => 
+  const rows = data.map(row =>
+    Object.values(row).map(v =>
       typeof v === 'string' && v.includes(',') ? `"${v}"` : v
     ).join(',')
   );
