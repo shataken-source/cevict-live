@@ -128,7 +128,7 @@ export class WeatherService {
         const cacheKey = `forecast_${latitude}_${longitude}`;
 
         const cached = this.getCached(cacheKey);
-        if (cached) return cached.slice(0, 5);
+        if (cached) return cached.forecast.slice(0, 5);
 
         if (!this.isConfigured()) {
             return this.getDemoForecast();

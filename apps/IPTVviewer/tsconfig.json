@@ -6,7 +6,7 @@
       "dom",
       "esnext"
     ],
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "noEmit": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
@@ -18,7 +18,8 @@
       "@/*": [
         "src/*"
       ]
-    }
+    },
+    "types": []
   },
   "include": [
     "src/**/*"

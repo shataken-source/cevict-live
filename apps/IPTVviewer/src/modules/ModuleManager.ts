@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export class ModuleManager {
   private static instance: ModuleManager;
   private modules: Map<string, TVModule> = new Map();
-  private context: ModuleContext;
+  private context!: ModuleContext;
   private MODULES_KEY = '@modules';
 
   private constructor() { }

@@ -8,6 +8,7 @@ import {
   Platform,
   Pressable,
 } from 'react-native';
+// @ts-ignore - react-native-video types not available
 import Video from 'react-native-video';
 import { useStore } from '@/store/useStore';
 import { Channel } from '@/types';
@@ -213,7 +214,7 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
         resizeMode="contain"
         volume={isMuted ? 0 : volume / 100}
         paused={false}
-        onError={(error) => console.error('Video error:', error)}
+        onError={(error: any) => console.error('Video error:', error)}
       />
 
       {showControls && (

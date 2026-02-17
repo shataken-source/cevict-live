@@ -298,7 +298,8 @@ class SmartFavoritesServiceImpl {
      */
     generateShareUrl(baseUrl: string, userId: string): string {
         const config = this.exportConfig();
-        const encoded = Buffer.from(config).toString('base64url');
+        // Use btoa for base64 encoding (Browser/React Native compatible)
+        const encoded = btoa(config).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
         return `${baseUrl}/favorites/import?data=${encoded}&from=${userId}`;
     }
 
@@ -310,7 +311,8 @@ class SmartFavoritesServiceImpl {
             const urlObj = new URL(url);
             const data = urlObj.searchParams.get('data');
             if (data) {
-                const decoded = Buffer.from(data, 'base64url').toString('utf-8');
+                // Use atob for base64 decoding (Browser/React Native compatible)
+                const decoded = atob(data.replace(/-/g, '+').replace(/_/g, '/'));
                 return this.importConfig(decoded);
             }
             return false;

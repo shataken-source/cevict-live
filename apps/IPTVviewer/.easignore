@@ -1,70 +1,25 @@
-# Exclude other apps from build - keep only IPTVviewer
-# Note: This file is in apps/IPTVviewer/, so apps/ is already included
-# Only exclude sibling directories
+# Local EAS ignore for IPTVviewer app directory only
+# Repo-level exclusions are handled by ../../.easignore
 
-auspicio-20260204T071354Z-3-001/
-banner-generator/
-brain/
-cds-demo/
-cevict/
-cevict-ai/
-cevict-scraper/
-clawbot/
-clawbot-gui/
-empire-c2/
-gcc/
-gulfcoastcharters/
-kalshi-dash/
-launchpad/
-monitor/
-progno/
-prognostication/
-SwitchbackSimple/
-SwitchbackTV/
-praxis/
-supershopper/
-camper-assistant/
-alpha-hunter/
-accu-solar/
-solar-weather/
-Fishy/
-NBA-Machine-Learning-Sports-Betting-20260204T071602Z-3-001/
-Polymarket-Kalshi-Arbitrage-bot/
-Polymarket-Kalshi-Arbitrage-bot-original/
-local-agent/
-local-agent-20260204T073255Z-3-001/
-petrescue-mobile/
-petreunion/
-petreunion_v2/
-popthepopcorn/
-smokersrights/
-task-bot/
-tiktok-automation/
-trading-dashboard/
-twitter/
-wheretovacation-reference/
-alexa-skill/
-google-assistant/
-moltbook-viewer/
-ai-orchestrator/
-gateway/
-keeks/
-clerk-nextjs/
-cochran-tray/
-deployer/
-shared/
-auspicio/
-
-# Exclude build artifacts
+# Build directories
+android/
+ios/
 build/
-.gradle/
-.next/
-.turbo/
+.expo/
+.snapshots/
+.worktrees/
 
-# Exclude large files at root
-*.mp4
-*.mov
-*.avi
-*.mkv
-*.apk
-*.zip
+# Test files
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local

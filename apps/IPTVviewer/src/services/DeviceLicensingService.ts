@@ -26,8 +26,10 @@ export interface LicenseInfo {
 
 // Get Supabase client
 const getSupabase = () => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    // @ts-ignore - process.env is injected by build system
+    const supabaseUrl = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL ? process.env.NEXT_PUBLIC_SUPABASE_URL : '';
+    // @ts-ignore
+    const supabaseKey = typeof process !== 'undefined' && process.env.SUPABASE_SERVICE_ROLE_KEY ? process.env.SUPABASE_SERVICE_ROLE_KEY : '';
     return createClient(supabaseUrl, supabaseKey);
 };
 

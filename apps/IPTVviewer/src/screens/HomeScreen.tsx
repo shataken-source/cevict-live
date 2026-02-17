@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { useStore } from '@/store/useStore';
-import { Channel } from '@/types';
+import { Channel, Playlist } from '@/types';
 import { M3UParser } from '@/services/M3UParser';
 import { PlaylistManager } from '@/services/PlaylistManager';
 import { SAMPLE_PLAYLIST } from '@/data/sampleData';
@@ -78,11 +78,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   const loadSamplePlaylist = async () => {
     try {
-      const playlist = await M3UParser.parse(
-        SAMPLE_PLAYLIST,
-        'sample-playlist',
-        'Sample Channels'
-      );
+      // SAMPLE_PLAYLIST is already Channel[], create playlist directly
+      const playlist: Playlist = {
+        id: 'sample-playlist',
+        name: 'Sample Channels',
+        url: '',
+        channels: SAMPLE_PLAYLIST,
+        lastUpdated: new Date(),
+      };
 
       addPlaylist(playlist);
       if (!currentPlaylist) {
@@ -258,6 +261,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <Text style={styles.title}>Switchback TV</Text>
         <View style={styles.headerButtons}>
           <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => navigation.navigate('Favorites')}>
+            <Text style={styles.headerButtonText}>★ Favorites</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => navigation.navigate('History')}>
+            <Text style={styles.headerButtonText}>↩ History</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.guideButton}
             onPress={() => navigation.navigate('EPG')}>
             <Text style={styles.guideButtonText}>Guide</Text>
@@ -265,7 +278,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <TouchableOpacity
             style={styles.sampleButton}
             onPress={handleLoadSampleData}>
-            <Text style={styles.sampleButtonText}>Sample Data</Text>
+            <Text style={styles.sampleButtonText}>Sample</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.settingsButton}
@@ -360,6 +373,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
+  headerButton: {
+    backgroundColor: '#8E8E93',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  headerButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   guideButton: {
     backgroundColor: '#5856D6',
     paddingHorizontal: 15,
@@ -452,26 +476,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#2a2a2a',
-    padding: 20,
-    marginBottom: 10,
-    borderRadius: 8,
+    padding: 24,
+    marginBottom: 12,
+    borderRadius: 12,
+    minHeight: 72,
   },
   channelInfo: {
     flex: 1,
   },
   channelName: {
-    fontSize: 18,
+    fontSize: 20,
     color: '#fff',
     fontWeight: '600',
   },
   channelGroup: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#999',
-    marginTop: 4,
+    marginTop: 6,
   },
   favoriteIcon: {
-    fontSize: 24,
+    fontSize: 28,
     color: '#FFD700',
+    padding: 12,
   },
   emptyState: {
     flex: 1,

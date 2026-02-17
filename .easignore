@@ -1,0 +1,127 @@
+# EAS Build Ignore - Repo Root Level
+# This file controls what gets uploaded to EAS build servers
+# Place this file at: c:
+c:
+\cevict-live\.easignore
+
+# === AI/Development folders ===
+ai-inboxes/
+ai-orchestrator/
+brain/
+claude/
+code-exports/
+cursor/
+gemini/
+human/
+
+# === Other apps (keep only IPTVviewer) ===
+accu-solar/
+alpha-hunter/
+alexa-skill/
+auspicio/
+auspicio-20260204T071354Z-3-001/
+banner-generator/
+calmcast/
+camper-assistant/
+cds-demo/
+cevict/
+cevict-ai/
+cevict-scraper/
+clawbot/
+clawbot-gui/
+cochran-tray/
+deployer/
+empire-c2/
+Fishy/
+gateway/
+gcc/
+google-assistant/
+gulfcoastcharters/
+kalshi-dash/
+keeks/
+launchpad/
+local-agent/
+local-agent-20260204T073255Z-3-001/
+moltbook-viewer/
+monitor/
+NBA-Machine-Learning-Sports-Betting-20260204T071602Z-3-001/
+petrescue-mobile/
+petreunion/
+petreunion_v2/
+polymarket/
+Polymarket-Kalshi-Arbitrage-bot/
+Polymarket-Kalshi-Arbitrage-bot-original/
+popthepopcorn/
+praxis/
+progno/
+prognostication/
+shared/
+smokersrights/
+solar-weather/
+supershopper/
+SwitchbackSimple/
+SwitchbackTV/
+task-bot/
+tiktok-automation/
+trading-dashboard/
+twitter/
+wheretovacation-reference/
+
+# === Build artifacts ===
+build/
+dist/
+.next/
+.turbo/
+.gradle/
+*.apk
+*.aab
+*.ipa
+
+# === Large media files ===
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.zip
+*.tar.gz
+*.rar
+
+# === IDE and editor files ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# === Git ===
+.git/
+
+# === Logs ===
+*.log
+logs/
+
+# === Test files ===
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# === Node modules (will be installed fresh) ===
+**/node_modules/
+
+# === Docs and metadata ===
+*.md
+LICENSE
+CHANGELOG
+
+# === Snapshots and cache ===
+.snapshots/
+.worktrees/
+.snap/
+
+# === Temp files ===
+.tmp*
+*.tmp
+*.temp

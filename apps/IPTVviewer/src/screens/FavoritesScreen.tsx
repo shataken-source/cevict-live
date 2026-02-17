@@ -188,7 +188,8 @@ export function FavoritesScreen({ onChannelSelect, onClose }: FavoritesScreenPro
                     <Text style={styles.tabText}>All Favorites</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    style={[styles.tab, selectedCategory && styles.tabActive]}
+                    // @ts-ignore - style type issue
+                    style={[styles.tab, selectedCategory ? styles.tabActive : null]}
                     onPress={() => setSelectedCategory('smart')}
                 >
                     <Text style={styles.tabText}>Smart Categories</Text>
