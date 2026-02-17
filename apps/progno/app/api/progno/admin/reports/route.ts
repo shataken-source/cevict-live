@@ -17,6 +17,9 @@ interface BetResult {
 }
 
 function verifySecret(secret: string): boolean {
+  // If no secret is configured, allow all requests (for dev/local use)
+  if (!SECRET || SECRET === '') return true;
+  // Allow if secret matches
   return secret === SECRET;
 }
 
