@@ -1,53 +1,47 @@
-import RNFS from 'react-native-fs';
-import {Playlist} from '@/types';
+import { Playlist } from '@/types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface AppSettings {
   epgUrl: string;
 }
 
 export class PlaylistManager {
-  private static readonly PLAYLISTS_FILE = `${RNFS.DocumentDirectoryPath}/playlists.json`;
-  private static readonly FAVORITES_FILE = `${RNFS.DocumentDirectoryPath}/favorites.json`;
-  private static readonly SETTINGS_FILE = `${RNFS.DocumentDirectoryPath}/settings.json`;
-  
+  private static readonly PLAYLISTS_KEY = '@playlists';
+  private static readonly FAVORITES_KEY = '@favorites';
+  private static readonly SETTINGS_KEY = '@settings';
+
   static async savePlaylists(playlists: Playlist[]): Promise<void> {
     try {
-      await RNFS.writeFile(this.PLAYLISTS_FILE, JSON.stringify(playlists), 'utf8');
+      await AsyncStorage.setItem(this.PLAYLISTS_KEY, JSON.stringify(playlists));
     } catch (error) {
       console.error('Error saving playlists:', error);
       throw error;
     }
   }
-  
+
   static async loadPlaylists(): Promise<Playlist[]> {
     try {
-      const exists = await RNFS.exists(this.PLAYLISTS_FILE);
-      if (!exists) return [];
-      
-      const content = await RNFS.readFile(this.PLAYLISTS_FILE, 'utf8');
-      return JSON.parse(content);
+      const data = await AsyncStorage.getItem(this.PLAYLISTS_KEY);
+      return data ? JSON.parse(data) : [];
     } catch (error) {
       console.error('Error loading playlists:', error);
       return [];
     }
   }
-  
+
   static async saveFavorites(favorites: string[]): Promise<void> {
     try {
-      await RNFS.writeFile(this.FAVORITES_FILE, JSON.stringify(favorites), 'utf8');
+      await AsyncStorage.setItem(this.FAVORITES_KEY, JSON.stringify(favorites));
     } catch (error) {
       console.error('Error saving favorites:', error);
       throw error;
     }
   }
-  
+
   static async loadFavorites(): Promise<string[]> {
     try {
-      const exists = await RNFS.exists(this.FAVORITES_FILE);
-      if (!exists) return [];
-
-      const content = await RNFS.readFile(this.FAVORITES_FILE, 'utf8');
-      return JSON.parse(content);
+      const data = await AsyncStorage.getItem(this.FAVORITES_KEY);
+      return data ? JSON.parse(data) : [];
     } catch (error) {
       console.error('Error loading favorites:', error);
       return [];
@@ -56,11 +50,10 @@ export class PlaylistManager {
 
   static async loadSettings(): Promise<AppSettings> {
     try {
-      const exists = await RNFS.exists(this.SETTINGS_FILE);
-      if (!exists) return { epgUrl: '' };
-      const content = await RNFS.readFile(this.SETTINGS_FILE, 'utf8');
-      const data = JSON.parse(content);
-      return { epgUrl: data.epgUrl || '' };
+      const data = await AsyncStorage.getItem(this.SETTINGS_KEY);
+      if (!data) return { epgUrl: '' };
+      const parsed = JSON.parse(data);
+      return { epgUrl: parsed.epgUrl || '' };
     } catch (error) {
       console.error('Error loading settings:', error);
       return { epgUrl: '' };
@@ -69,7 +62,7 @@ export class PlaylistManager {
 
   static async saveSettings(settings: AppSettings): Promise<void> {
     try {
-      await RNFS.writeFile(this.SETTINGS_FILE, JSON.stringify(settings), 'utf8');
+      await AsyncStorage.setItem(this.SETTINGS_KEY, JSON.stringify(settings));
     } catch (error) {
       console.error('Error saving settings:', error);
       throw error;
