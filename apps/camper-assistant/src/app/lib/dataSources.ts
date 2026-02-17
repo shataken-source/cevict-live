@@ -1,5 +1,7 @@
 // Multi-source data fetching manager
-// Tries data sources in order: WiFi → Cell → Bluetooth → Meshtastic
+// Tries// Data source detection utilities
+// Force rebuild: 2025-02-17
+// WiFi → Cell → Bluetooth → Meshtastic
 
 export type DataSource = 'wifi' | 'cell' | 'bluetooth' | 'meshtastic';
 
