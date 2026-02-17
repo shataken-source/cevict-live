@@ -64,8 +64,8 @@ export class CevictScraperService {
   }
 
   /**
-   * Scrape injury reports for a team
-   * Looks for injury data from various sports sources
+   * Scrape injury reports for a team using enhanced ESPN support
+   * Uses table extraction and multiple parsing strategies
    */
   async scrapeInjuryReports(sport: string, team: string): Promise<Array<{
     player: string;
@@ -81,20 +81,47 @@ export class CevictScraperService {
 
     // Map to injury report URLs
     const urls = this.getInjuryReportUrls(sportKey, team);
-    
+
     for (const url of urls) {
       try {
         console.log(`[CevictScraper] Scraping injuries from: ${url}`);
+
+        // Use the /extract-table endpoint for better table parsing
+        const response = await fetch(`${this.baseUrl}/extract-table`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url,
+            selector: 'table',
+            waitFor: 3000
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.tableData && data.tableData.rows.length > 0) {
+            console.log(`[CevictScraper] Found table with ${data.tableData.rowCount} rows`);
+
+            // Parse table data into injury format
+            const injuries = this.parseTableData(data.tableData, team);
+            if (injuries.length > 0) {
+              console.log(`[CevictScraper] Extracted ${injuries.length} injuries from table for ${team}`);
+              return injuries;
+            }
+          }
+        }
+
+        // Fallback to regular scrape if table extraction fails
         const result = await this.scrape(url, {
-          waitFor: '.injury-report, .injuries, [data-testid="injury"], table, .roster, .player-list, #injuries, .team-injuries',
+          waitFor: 'table, .injury-report, .injuries, [data-testid="injury"], .roster, .player-list',
           timeout: 15000,
           retries: 2
         });
 
         if (result.success && result.text) {
-          const injuries = this.parseInjuryData(result.text, team);
+          const injuries = this.parseInjuryData(result.html || result.text, team);
           if (injuries.length > 0) {
-            console.log(`[CevictScraper] Found ${injuries.length} injuries for ${team}`);
+            console.log(`[CevictScraper] Found ${injuries.length} injuries for ${team} from HTML`);
             return injuries;
           }
         }
@@ -104,6 +131,47 @@ export class CevictScraperService {
     }
 
     return [];
+  }
+
+  /**
+   * Parse table data into injury format
+   */
+  private parseTableData(tableData: { headers: string[]; rows: string[][]; rowCount: number }, team: string): Array<{
+    player: string;
+    position: string;
+    status: string;
+    injury: string;
+  }> {
+    const injuries: Array<{ player: string; position: string; status: string; injury: string }> = [];
+
+    const headers = tableData.headers.map(h => h.toLowerCase());
+
+    // Find column indices
+    const playerIdx = headers.findIndex(h => h.includes('player') || h.includes('name'));
+    const positionIdx = headers.findIndex(h => h.includes('position') || h.includes('pos'));
+    const statusIdx = headers.findIndex(h => h.includes('status'));
+    const injuryIdx = headers.findIndex(h => h.includes('injury') || h.includes('reason') || h.includes('type'));
+
+    // If we have at least player and status columns
+    if (playerIdx >= 0 && statusIdx >= 0) {
+      for (const row of tableData.rows) {
+        const player = row[playerIdx]?.trim();
+        const position = positionIdx >= 0 ? row[positionIdx]?.trim() : 'Unknown';
+        const status = row[statusIdx]?.trim() || 'unknown';
+        const injury = injuryIdx >= 0 ? row[injuryIdx]?.trim() : 'Not specified';
+
+        if (player && player.length > 2 && !player.toLowerCase().includes('player') && !player.toLowerCase().includes('name')) {
+          injuries.push({
+            player,
+            position: this.normalizePosition(position),
+            status: this.normalizeStatus(status.toLowerCase()),
+            injury
+          });
+        }
+      }
+    }
+
+    return injuries;
   }
 
   /**
@@ -165,8 +233,8 @@ export class CevictScraperService {
   }
 
   /**
-   * Parse injury data from scraped text
-   * Uses pattern matching to extract player, position, status, injury
+   * Parse injury data from scraped text with enhanced ESPN support
+   * Uses multiple pattern matching strategies for different site formats
    */
   private parseInjuryData(text: string, team: string): Array<{
     player: string;
@@ -181,30 +249,86 @@ export class CevictScraperService {
       injury: string;
     }> = [];
 
-    // Common patterns for injury reports
-    const patterns = [
-      // Player Name - Position - Status - Injury
-      /([A-Z][a-z]+\s[A-Z][a-z]+)\s*[-–]\s*(\w+)\s*[-–]\s*(out|doubtful|questionable|probable)\s*[-–]\s*([\w\s]+)/gi,
-      // Table row patterns
-      /<tr[^>]*>.*?<td[^>]*>([^<]+)<\/td>.*?<td[^>]*>(\w+)<\/td>.*?<td[^>]*>(out|doubtful|questionable|probable)<\/td>.*?<td[^>]*>([^<]+)<\/td>.*?<\/tr>/gi,
-    ];
+    // Strategy 1: ESPN injury table format (common on ESPN pages)
+    // Look for table rows with player injury data
+    const espnTablePattern = /<tr[^>]*>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<\/tr>/gi;
 
-    for (const pattern of patterns) {
-      let match;
-      while ((match = pattern.exec(text)) !== null) {
-        const player = match[1].trim();
-        const position = match[2].trim();
-        const status = match[3].toLowerCase();
-        const injury = match[4].trim();
+    // Strategy 2: ESPN list format with divs
+    const espnDivPattern = /<div[^>]*class="[^"]*injury[^"]*"[^>]*>.*?<span[^>]*>([^<]+)<\/span>.*?<span[^>]*>([^<]+)<\/span>.*?<span[^>]*>([^<]+)<\/span>.*?<span[^>]*>([^<]+)<\/span>.*?<\/div>/gi;
 
-        if (player && player.length > 3 && !player.includes('<')) {
-          injuries.push({
-            player,
-            position: this.normalizePosition(position),
-            status,
-            injury
-          });
-        }
+    // Strategy 3: Generic player - position - status - injury pattern
+    const genericPattern = /([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\s*[-–:]\s*(\w+)\s*[-–:]\s*(out|doubtful|questionable|probable)\s*[-–:]\s*([\w\s]+?)(?=\n|$|<)/gi;
+
+    // Strategy 4: Pattern with HTML tags removed (for text content)
+    const cleanText = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    const textPattern = /([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\s+(QB|RB|WR|TE|OL|DL|LB|DB|K|P|SP|RP|C|1B|2B|3B|SS|LF|CF|RF|OF|DH|PG|SG|SF|PF|G|F|C|LW|RW)\s+(Out|Doubtful|Questionable|Probable)\s+([\w\s]+?)(?=\d{1,2}\/\d{1,2}|$|\n)/gi;
+
+    // Try ESPN table pattern first
+    let match;
+    while ((match = espnTablePattern.exec(text)) !== null) {
+      const player = match[1].trim();
+      const position = match[2].trim();
+      const status = match[3].trim().toLowerCase();
+      const injury = match[4].trim();
+
+      if (player && player.length > 2 && !player.includes('Player') && !player.includes('Name')) {
+        injuries.push({
+          player,
+          position: this.normalizePosition(position),
+          status: this.normalizeStatus(status),
+          injury
+        });
+      }
+    }
+
+    // Try ESPN div pattern
+    while ((match = espnDivPattern.exec(text)) !== null) {
+      const player = match[1].trim();
+      const position = match[2].trim();
+      const status = match[3].trim().toLowerCase();
+      const injury = match[4].trim();
+
+      if (player && player.length > 2) {
+        injuries.push({
+          player,
+          position: this.normalizePosition(position),
+          status: this.normalizeStatus(status),
+          injury
+        });
+      }
+    }
+
+    // Try generic pattern
+    while ((match = genericPattern.exec(text)) !== null) {
+      const player = match[1].trim();
+      const position = match[2].trim();
+      const status = match[3].trim().toLowerCase();
+      const injury = match[4].trim();
+
+      if (player && player.length > 2 && !injuries.find(i => i.player === player)) {
+        injuries.push({
+          player,
+          position: this.normalizePosition(position),
+          status: this.normalizeStatus(status),
+          injury
+        });
+      }
+    }
+
+    // Try text pattern on cleaned content
+    while ((match = textPattern.exec(cleanText)) !== null) {
+      const player = match[1].trim();
+      const position = match[2].trim();
+      const status = match[3].trim().toLowerCase();
+      const injury = match[4].trim();
+
+      if (player && player.length > 2 && !injuries.find(i => i.player === player)) {
+        injuries.push({
+          player,
+          position: this.normalizePosition(position),
+          status: this.normalizeStatus(status),
+          injury
+        });
       }
     }
 
@@ -212,26 +336,38 @@ export class CevictScraperService {
   }
 
   /**
+   * Normalize status to standard format
+   */
+  private normalizeStatus(status: string): string {
+    const s = status.toLowerCase().trim();
+    if (s.includes('out')) return 'out';
+    if (s.includes('doubt')) return 'doubtful';
+    if (s.includes('quest')) return 'questionable';
+    if (s.includes('prob')) return 'probable';
+    return 'unknown';
+  }
+
+  /**
    * Normalize position codes
    */
   private normalizePosition(pos: string): string {
     const normalized = pos.toUpperCase().trim();
-    
+
     // NFL positions
     if (['QB', 'RB', 'WR', 'TE', 'OT', 'OG', 'C', 'DE', 'DT', 'LB', 'CB', 'S', 'K', 'P'].includes(normalized)) {
       return normalized;
     }
-    
+
     // NBA positions
     if (['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F'].includes(normalized)) {
       return normalized === 'G' ? 'PG' : normalized === 'F' ? 'SF' : normalized;
     }
-    
+
     // MLB positions
     if (['SP', 'RP', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'OF'].includes(normalized)) {
       return normalized === 'OF' ? 'LF' : normalized;
     }
-    
+
     // NHL positions
     if (['G', 'D', 'C', 'LW', 'RW', 'F'].includes(normalized)) {
       return normalized === 'F' ? 'C' : normalized;
