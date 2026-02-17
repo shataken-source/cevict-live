@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - gcc-vessels
     paths:
       - 'apps/IPTVviewer/**'
 
