@@ -852,7 +852,8 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
       : monteCarloResult.awayWinProbability) * 100 + 3)
     : 95
   confidence = Math.min(confidence, mcCeiling)
-  confidence = Math.max(50, Math.min(95, confidence))
+  // Allow confidence to go as low as 30% for true toss-ups, max 95%
+  confidence = Math.max(30, Math.min(95, confidence))
 
   const bestValueBet = valueBets.length > 0 ? valueBets[0] : null
   const VALUE_PICK_MIN_EDGE = 10

@@ -83,7 +83,7 @@ export default function PicksDisplayPage() {
     autoSync: false
   });
 
-  const sports = ['all', 'nhl', 'nba', 'nfl', 'mlb', 'ncaab', 'ncaaf', 'nascar'];
+  const sports = ['all', 'nhl', 'nba', 'nfl', 'mlb', 'ncaab', 'ncaaf', 'cbb', 'nascar'];
 
   useEffect(() => {
     loadPicks();
@@ -368,7 +368,7 @@ export default function PicksDisplayPage() {
                     )}
 
                     {/* Odds */}
-                    {pick.odds.moneyline && (
+                    {pick.odds?.moneyline && (
                       <div className="border-t pt-3">
                         <div className="text-sm font-semibold mb-2">Odds:</div>
                         <div className="flex justify-between text-sm">
