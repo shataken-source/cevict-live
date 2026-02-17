@@ -232,8 +232,7 @@ async function loadPreviousSnapshot(gameId: string): Promise<OddsSnapshot | null
 }
 
 async function storeOddsSnapshots(snapshots: OddsSnapshot[]): Promise<void> {
-  // Store in local file for now
-  // In production, would store in Supabase
+  // Store in local file for backup
   if (typeof window === 'undefined' && typeof process !== 'undefined') {
     try {
       const fs = require('fs');
@@ -248,8 +247,98 @@ async function storeOddsSnapshots(snapshots: OddsSnapshot[]): Promise<void> {
         fs.writeFileSync(file, JSON.stringify(snapshot, null, 2), 'utf8');
       }
     } catch (e) {
-      console.warn('Failed to store odds snapshots:', e);
+      console.warn('Failed to store odds snapshots locally:', e);
     }
+  }
+
+  // Store in Supabase for historical database
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.warn('[Odds Tracker] Supabase credentials not configured, skipping DB storage');
+      return;
+    }
+
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    for (const snapshot of snapshots) {
+      // Flatten bookmaker data for storage
+      const records: any[] = [];
+
+      for (const [bookmaker, data] of Object.entries(snapshot.bookmakers)) {
+        // Moneyline odds
+        if (data.moneyline) {
+          records.push({
+            game_id: snapshot.gameId,
+            sport: snapshot.sport,
+            home_team: snapshot.homeTeam,
+            away_team: snapshot.awayTeam,
+            commence_time: snapshot.commenceTime,
+            bookmaker: bookmaker,
+            market_type: 'moneyline',
+            home_odds: data.moneyline.home,
+            away_odds: data.moneyline.away,
+            captured_at: snapshot.timestamp
+          });
+        }
+
+        // Spread odds
+        if (data.spreads) {
+          records.push({
+            game_id: snapshot.gameId,
+            sport: snapshot.sport,
+            home_team: snapshot.homeTeam,
+            away_team: snapshot.awayTeam,
+            commence_time: snapshot.commenceTime,
+            bookmaker: bookmaker,
+            market_type: 'spreads',
+            home_spread: data.spreads.home,
+            away_spread: data.spreads.away,
+            home_odds: data.spreads.homeOdds,
+            away_odds: data.spreads.awayOdds,
+            captured_at: snapshot.timestamp
+          });
+        }
+
+        // Totals odds
+        if (data.totals) {
+          records.push({
+            game_id: snapshot.gameId,
+            sport: snapshot.sport,
+            home_team: snapshot.homeTeam,
+            away_team: snapshot.awayTeam,
+            commence_time: snapshot.commenceTime,
+            bookmaker: bookmaker,
+            market_type: 'totals',
+            total_line: data.totals.line,
+            over_odds: data.totals.overOdds,
+            under_odds: data.totals.underOdds,
+            captured_at: snapshot.timestamp
+          });
+        }
+      }
+
+      // Batch insert to Supabase
+      if (records.length > 0) {
+        const { error } = await supabase
+          .from('historical_odds')
+          .upsert(records, {
+            onConflict: 'game_id,bookmaker,market_type,captured_at',
+            ignoreDuplicates: true
+          });
+
+        if (error) {
+          console.error(`[Odds Tracker] Supabase insert error for ${snapshot.gameId}:`, error);
+        } else {
+          console.log(`[Odds Tracker] Stored ${records.length} odds records for ${snapshot.gameId}`);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[Odds Tracker] Failed to store odds in Supabase:', e);
   }
 }
 
