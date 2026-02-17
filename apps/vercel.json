@@ -1,9 +1,8 @@
 {
-    "rootDirectory": "apps/camper-assistant",
     "rewrites": [
         {
             "source": "/",
-            "destination": "/index.html"
+            "destination": "/switchback-downloader.html"
         }
     ],
     "redirects": [
@@ -19,6 +18,11 @@
         },
         {
             "source": "/install",
+            "destination": "/switchback-tv.apk",
+            "permanent": false
+        },
+        {
+            "source": "/tv",
             "destination": "/switchback-tv.apk",
             "permanent": false
         }
