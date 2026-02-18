@@ -1,92 +1,78 @@
-# EAS Build Ignore - Repo Root Level
-# This file controls what gets uploaded to EAS build servers
-# Place this file at: c:
-c:
-\cevict-live\.easignore
+# CRITICAL - Exclude all node_modules FIRST
+node_modules
+**/node_modules
+**/node_modules/
 
-# === AI/Development folders ===
-ai-inboxes/
-ai-orchestrator/
-brain/
-claude/
-code-exports/
-cursor/
-gemini/
-human/
+# ROOT LEVEL - Only include IPTVviewer app
+# Exclude all other apps
+apps/Alpha_Hunter_Bundle/
+apps/Fishy/
+apps/NBA-Machine-Learning-Sports-Betting*/
+apps/camper-assistant/
+apps/prognostication/
+apps/brain/
+apps/calmcast/
+apps/cds-demo/
+_ai-inboxes/
+_wt_petreunion_push/
 
-# === Other apps (keep only IPTVviewer) ===
-accu-solar/
-alpha-hunter/
-alexa-skill/
-auspicio/
-auspicio-20260204T071354Z-3-001/
-banner-generator/
-calmcast/
-camper-assistant/
-cds-demo/
-cevict/
-cevict-ai/
-cevict-scraper/
-clawbot/
-clawbot-gui/
-cochran-tray/
-deployer/
-empire-c2/
-Fishy/
-gateway/
-gcc/
-google-assistant/
-gulfcoastcharters/
-kalshi-dash/
-keeks/
-launchpad/
-local-agent/
-local-agent-20260204T073255Z-3-001/
-moltbook-viewer/
-monitor/
-NBA-Machine-Learning-Sports-Betting-20260204T071602Z-3-001/
-petrescue-mobile/
-petreunion/
-petreunion_v2/
-polymarket/
+# ROOT LEVEL - Large non-app directories (CRITICAL)
 Polymarket-Kalshi-Arbitrage-bot/
-Polymarket-Kalshi-Arbitrage-bot-original/
-popthepopcorn/
-praxis/
-progno/
-prognostication/
-shared/
-smokersrights/
-solar-weather/
-supershopper/
-SwitchbackSimple/
-SwitchbackTV/
-task-bot/
-tiktok-automation/
-trading-dashboard/
-twitter/
-wheretovacation-reference/
+old-cevict-monorepo/
+.turbo/
+.cache/
 
-# === Build artifacts ===
+# Exclude root level files not needed
+*.md
+.github/
+archive/
+backups/
+claude-updates/
+config/
+data/
+docs/
+lib/
+memory/
+reviews/
+scripts/
+secrets/
+sports-aggregator/
+sports-hub/
+supabase/
+vault/
+watch/
+
+# IPTVviewer exclusions - node_modules inside IPTVviewer
+apps/IPTVviewer/node_modules/
+apps/IPTVviewer/.expo/
+apps/IPTVviewer/android/
+apps/IPTVviewer/ios/
+apps/IPTVviewer/.next/
+apps/IPTVviewer/build/
+apps/IPTVviewer/dist/
+
+# Lock files
+**/pnpm-lock.yaml
+**/package-lock.json
+**/yarn.lock
+
+# Build artifacts
+**/*.apk
+**/*.aab
+**/*.ipa
+
+# Build directories
+android/
+ios/
 build/
 dist/
+.expo/
 .next/
-.turbo/
 .gradle/
-*.apk
-*.aab
-*.ipa
+.snapshots/
+.worktrees/
 
-# === Large media files ===
-*.mp4
-*.mov
-*.avi
-*.mkv
-*.zip
-*.tar.gz
-*.rar
-
-# === IDE and editor files ===
+# IDE
 .idea/
 .vscode/
 *.swp
@@ -94,34 +80,72 @@ dist/
 *~
 .DS_Store
 
-# === Git ===
-.git/
-
-# === Logs ===
+# Logs
 *.log
 logs/
 
-# === Test files ===
+# Test files
 __tests__/
 *.test.ts
 *.test.tsx
 *.spec.ts
 *.spec.tsx
 
-# === Node modules (will be installed fresh) ===
-**/node_modules/
+# TypeScript cache
+*.tsbuildinfo
 
-# === Docs and metadata ===
-*.md
-LICENSE
-CHANGELOG
+# Environment files
+.env
+.env.local
+.env.*.local
 
-# === Snapshots and cache ===
-.snapshots/
-.worktrees/
-.snap/
+# Git
+.git/
 
-# === Temp files ===
+# Temp files
 .tmp*
 *.tmp
 *.temp
+
+# Large lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Cache directories
+*.cache/
+.cache/
+npm-cache/
+
+# EAS/expo
+.eas/
+
+# pnpm store (MASSIVE - must exclude)
+node_modules/.pnpm/
+node_modules/.ignored/
+
+# Native binaries
+*.node
+*.dll
+*.so
+*.dylib
+
+# Android AAR files
+*.aar
+
+# Java archives
+*.jar
+
+# Hermes/JS engines
+hermes
+hermesc
+jsc-android/
+
+# Next.js native deps
+@next+swc-*/
+@img+sharp-*/
+lightningcss-*/
+
+# Source maps
+*.js.map
+*.css.map
