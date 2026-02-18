@@ -1,60 +1,48 @@
-# IPTVviewer EAS Build Ignore - Self-contained
-# This file MUST exclude everything not needed for build
-
-# Build directories
-android/
-ios/
-build/
-dist/
-.expo/
-.next/
-.gradle/
-.snapshots/
-.worktrees/
-
-# Node modules (installed fresh on server)
-node_modules/
-
-# IDE
+# IDE and editor files
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
-.DS_Store
 
-# Logs
+# Native directories (EAS handles these)
+android/
+ios/
+android_new/
+
+# Development files
+.worktrees/
+.snapshots/
+docs/
+plans/
+
+# Logs and temporary files
 *.log
-logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Version control
+.git/
+.gitignore
 
 # Test files
-__tests__/
-*.test.ts
-*.test.tsx
-*.spec.ts
-*.spec.tsx
+**/__tests__/
+**/*.test.js
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.js
+**/*.spec.ts
 
-# TypeScript cache
-*.tsbuildinfo
+# Lock files (EAS uses its own)
+# pnpm-lock.yaml
 
-# Environment files
-.env
+# Environment files (keep these out of builds)
+.env*
 .env.local
 .env.*.local
 
-# Git
-.git/
-
-# Temp files
-.tmp*
-*.tmp
-*.temp
-
-# Large media
-*.mp4
-*.mov
-*.avi
-*.mkv
-*.zip
-*.tar.gz
-*.rar
+# Misc
+*.md
+!README.md
+.DS_Store
