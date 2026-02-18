@@ -69,7 +69,8 @@ export function getKeyByLabel(label: string): string | undefined {
 }
 
 export function getSportsBlazeKey(): string | undefined {
-  const fromEnv = process.env.SPORTSBLAZE_API_KEY;
+  // Handle both naming conventions: SPORTSBLAZE_API_KEY and SPORTS_BLAZE_API_KEY
+  const fromEnv = process.env.SPORTSBLAZE_API_KEY || process.env.SPORTS_BLAZE_API_KEY;
   if (fromEnv) return fromEnv;
   // Allow a couple of common labels in the admin panel.
   return getKeyByLabel("SportsBlaze") || getKeyByLabel("sportsblaze") || getKeyByLabel("SPORTSBLAZE");

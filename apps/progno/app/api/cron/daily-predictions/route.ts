@@ -94,6 +94,45 @@ export async function GET(request: Request) {
     const filePath = path.join(appRoot, fileName)
     fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf8')
 
+    // Persist picks to Supabase for queryable history, backtest API, and admin panel
+    const _supUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const _supKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (_supUrl && _supKey && picks.length > 0) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js')
+        const _sb = createClient(_supUrl, _supKey)
+        const pickRows = picks.map((p: any) => ({
+          game_id: p.game_id || p.id || null,
+          game_date: today,
+          game_time: p.commence_time || null,   // verify-results cron reads this
+          home_team: p.home_team,
+          away_team: p.away_team,
+          sport: (p.sport || 'unknown').toLowerCase(),
+          league: (p.league || p.sport || 'unknown').toUpperCase(),
+          pick: p.pick,
+          confidence: typeof p.confidence === 'number' ? p.confidence : null,
+          odds: p.odds ?? null,
+          is_home: typeof p.is_home === 'boolean' ? p.is_home : (p.pick === p.home_team),
+          early_lines: earlyLines,
+          commence_time: p.commence_time || null,
+          expected_value: typeof p.expected_value === 'number' ? p.expected_value : null,
+          kelly_fraction: typeof p.value_bet_kelly === 'number' ? p.value_bet_kelly : null,
+          status: 'pending',
+          result: null,                         // verify-results reads .is('result', null)
+        }))
+        const { error: _pErr } = await _sb
+          .from('picks')
+          .upsert(pickRows, { onConflict: 'game_date,home_team,away_team,early_lines', ignoreDuplicates: true })
+        if (_pErr) {
+          console.warn(`[CRON daily-predictions] Supabase picks write:`, _pErr.message)
+        } else {
+          console.log(`[CRON daily-predictions] Persisted ${pickRows.length} picks to Supabase`)
+        }
+      } catch (_e: any) {
+        console.warn(`[CRON daily-predictions] Supabase picks write skipped:`, _e?.message)
+      }
+    }
+
     console.log(`[CRON daily-predictions] Wrote ${picks.length} picks to ${filePath}`)
 
     // Syndicate to Prognostication if configured

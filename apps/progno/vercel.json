@@ -13,16 +13,16 @@
       "schedule": "0 8 * * *"
     },
     {
-      "path": "/api/cron/daily-results",
+      "path": "/api/cron/daily-results?attempt=2",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/capture-odds",
+      "schedule": "30 22 * * *"
     },
     {
       "path": "/api/progno/weekly-learning",
       "schedule": "0 2 * * 1"
-    },
-    {
-      "path": "/api/admin/thursday",
-      "schedule": "0 12 * * 4"
     },
     {
       "path": "/api/cron/sync-odds",
@@ -31,10 +31,6 @@
     {
       "path": "/api/cron/sync-injuries",
       "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/cron/news-scraper",
-      "schedule": "0 */4 * * *"
     },
     {
       "path": "/api/cron/track-odds",
