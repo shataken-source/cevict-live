@@ -109,7 +109,7 @@ export async function GET(request: Request) {
     const apiKey = process.env.PROGNO_INTERNAL_API_KEY || process.env.PROGNO_API_KEY
 
     if (apiKey && picks.length > 0) {
-      console.log('[CRON daily-predictions] Syndicating to Prognostication...')
+      console.log(`[CRON daily-predictions] Syndicating to Prognostication at: ${webhookUrl}`)
 
       const syndicationResults = []
       const tiers = ['free', 'premium', 'elite'] as const

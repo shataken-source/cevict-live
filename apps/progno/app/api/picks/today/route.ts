@@ -138,7 +138,7 @@ const FILTER_STRATEGY = (process.env.FILTER_STRATEGY || 'best') as 'baseline' | 
 
 const ODDS_FILTER: Record<string, { minOdds: number; maxOdds: number; minConfidence: number }> = {
   baseline: { minOdds: -10000, maxOdds: 10000, minConfidence: 0 },
-  best: { minOdds: -130, maxOdds: 200, minConfidence: 80 },
+  best: { minOdds: -200, maxOdds: 500, minConfidence: 70 }, // Relaxed to ensure volume: allow favorites up to -200, underdogs up to +500, conf 70%+
   balanced: { minOdds: -150, maxOdds: 150, minConfidence: 75 },
 }
 
