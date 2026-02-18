@@ -1,6 +1,19 @@
 /**
  * Tier Assignment Service
- * Automatically assigns picks to correct tiers based on confidence and other factors
+ * Assigns picks to tiers based on backtest-validated confidence bands.
+ *
+ * V3 backtest results (2024 season, best+all enhancements):
+ *   Elite (85-95%): 108.1% ROI, 64.7% accuracy — best-in-class
+ *   High  (80-84%): 51.5% ROI, 49.5% accuracy — solid edge
+ *   All V3 picks:   82.0% ROI overall (min confidence floor = 80%)
+ *
+ * Home picks: +112.4% ROI vs Away: -18.2% ROI
+ * → Home picks are prioritised for Elite tier.
+ *
+ * Distribution (~6 picks/day from V3 filters):
+ *   Free:    3 picks — lowest-ranked picks that still pass V3 filters (80%+)
+ *   Premium: 5 picks — mid-range quality (80-87% confidence band)
+ *   Elite:   All remaining — top picks, home-biased, 85%+ preferred
  */
 
 export type Tier = 'free' | 'premium' | 'elite' | 'early' | 'arbitrage';
@@ -36,6 +49,7 @@ export interface Pick {
   earlyLine?: number;
   currentLine?: number;
   lineMovement?: number;
+  isHomePick?: boolean;
   createdAt: string;
   tier?: Tier;
 }
@@ -53,31 +67,31 @@ export interface TierConfig {
 export const TIER_CONFIGS: Record<Tier, TierConfig> = {
   elite: {
     name: 'elite',
-    minConfidence: 80,
+    minConfidence: 85,
     maxConfidence: 100,
-    maxPicks: 5,
-    description: 'Elite tier picks (80%+ confidence, top 5)',
+    maxPicks: 10,
+    description: 'Elite tier — top picks, home-biased, 85%+ confidence (108% ROI in backtest)',
   },
   premium: {
     name: 'premium',
-    minConfidence: 65,
-    maxConfidence: 80,
-    maxPicks: 3,
-    description: 'Premium tier picks (65-80% confidence, top 3)',
+    minConfidence: 80,
+    maxConfidence: 85,
+    maxPicks: 5,
+    description: 'Premium tier — solid picks, 80-84% confidence (51% ROI in backtest)',
   },
   free: {
     name: 'free',
     minConfidence: 0,
-    maxConfidence: 65,
-    maxPicks: 2,
-    description: 'Free tier picks (≤65% confidence, max 2)',
+    maxConfidence: 100,
+    maxPicks: 3,
+    description: 'Free tier — 3 quality picks per day (all still 80%+ from V3 filters)',
   },
   early: {
     name: 'early',
-    minConfidence: 65,
+    minConfidence: 80,
     maxConfidence: 100,
     requiresEarlyLine: true,
-    description: 'Early line picks with value',
+    description: 'Early line picks with value (80%+ confidence after decay)',
   },
   arbitrage: {
     name: 'arbitrage',
@@ -89,24 +103,18 @@ export const TIER_CONFIGS: Record<Tier, TierConfig> = {
 };
 
 export class TierAssignmentService {
-  /**
-   * Assign tier to a single pick based on its characteristics
-   */
   static assignTier(pick: Pick): Tier {
-    // Check for arbitrage first (highest priority)
     if (pick.isArbitrage && (pick.arbitrageProfit ?? 0) > 0) {
       return 'arbitrage';
     }
 
-    // Check for early line value
     if (pick.isEarlyBet && (pick.lineMovement ?? 0) > 2) {
       return 'early';
     }
 
-    // Assign based on confidence (aligned with new system)
-    if (pick.confidence >= 80) {
+    if (pick.confidence >= 85) {
       return 'elite';
-    } else if (pick.confidence >= 65) {
+    } else if (pick.confidence >= 80) {
       return 'premium';
     } else {
       return 'free';
@@ -114,80 +122,81 @@ export class TierAssignmentService {
   }
 
   /**
-   * Assign tiers to all picks in reverse order (Elite → Pro → Free)
-   * This ensures highest quality picks get premium tiers first
+   * Assign tiers to all picks: Elite → Premium → Free
+   * Home picks are prioritised for Elite (backtest: +112% ROI home vs -18% away)
    */
   static assignTiers(picks: Pick[]): Pick[] {
-    // Sort all picks by quality score (highest first)
     const sortedPicks = [...picks].sort((a, b) => {
-      const qualityA = this.calculateQualityScore(a);
-      const qualityB = this.calculateQualityScore(b);
-      return qualityB - qualityA;
+      return this.calculateQualityScore(b) - this.calculateQualityScore(a);
     });
 
     const assigned: Pick[] = [];
     const assignedIds = new Set<string>();
 
-    // Phase 1: Assign Elite picks (85-95% confidence + all arbitrage)
-    const elitePicks = sortedPicks.filter(p =>
+    // Phase 1: Elite — confidence 85+ OR arbitrage, home picks first
+    const eliteCandidates = sortedPicks.filter(p =>
       !assignedIds.has(p.id) &&
-      ((p.confidence >= 85 && p.confidence <= 95) || p.isArbitrage)
+      ((p.confidence >= 85) || p.isArbitrage)
     );
+    const eliteHome = eliteCandidates.filter(p => p.isHomePick || p.pick === p.homeTeam);
+    const eliteAway = eliteCandidates.filter(p => !p.isHomePick && p.pick !== p.homeTeam);
+    const eliteSorted = [...eliteHome, ...eliteAway];
+    const eliteMax = TIER_CONFIGS.elite.maxPicks || 10;
 
-    for (const pick of elitePicks) {
+    let eliteCount = 0;
+    for (const pick of eliteSorted) {
+      if (eliteCount >= eliteMax) break;
       assigned.push({ ...pick, tier: 'elite' });
       assignedIds.add(pick.id);
+      eliteCount++;
     }
 
-    // Phase 2: Assign Premium picks (65-85% confidence, max 5)
+    // Phase 2: Premium — confidence 80-84, max 5
     const premiumCandidates = sortedPicks.filter(p =>
       !assignedIds.has(p.id) &&
-      p.confidence >= 65 &&
+      p.confidence >= 80 &&
       p.confidence < 85
     );
 
     let premiumCount = 0;
+    const premMax = TIER_CONFIGS.premium.maxPicks || 5;
     for (const pick of premiumCandidates) {
-      if (premiumCount >= (TIER_CONFIGS.premium.maxPicks || 5)) break;
+      if (premiumCount >= premMax) break;
       assigned.push({ ...pick, tier: 'premium' });
       assignedIds.add(pick.id);
       premiumCount++;
     }
 
-    // Phase 3: Assign Free picks (≤65% confidence, max 2)
-    const freeCandidates = sortedPicks.filter(p =>
-      !assignedIds.has(p.id) &&
-      p.confidence <= 65
-    );
+    // Phase 3: Free — lowest-ranked remaining picks, max 3
+    // These still passed V3 filters (80%+ confidence), so they're quality picks
+    const freeCandidates = sortedPicks
+      .filter(p => !assignedIds.has(p.id))
+      .reverse();
 
     let freeCount = 0;
+    const freeMax = TIER_CONFIGS.free.maxPicks || 3;
     for (const pick of freeCandidates) {
-      if (freeCount >= (TIER_CONFIGS.free.maxPicks || 2)) break;
+      if (freeCount >= freeMax) break;
       assigned.push({ ...pick, tier: 'free' });
       assignedIds.add(pick.id);
       freeCount++;
     }
 
-    // Phase 4: Mark remaining as unassigned (or overflow)
-    const remaining = sortedPicks.filter(p => !assignedIds.has(p.id));
-    for (const pick of remaining) {
-      assigned.push({ ...pick, tier: undefined }); // Unassigned/overflow
+    // Phase 4: Overflow elite/premium picks that didn't fit caps
+    const overflow = sortedPicks.filter(p => !assignedIds.has(p.id));
+    for (const pick of overflow) {
+      assigned.push({ ...pick, tier: pick.confidence >= 85 ? 'elite' : 'premium' });
+      assignedIds.add(pick.id);
     }
 
-    // Final sort: Elite → Pro → Free → Unassigned
     return assigned.sort((a, b) => {
       const priorityA = this.getTierPriority(a.tier || 'free');
       const priorityB = this.getTierPriority(b.tier || 'free');
       if (priorityA !== priorityB) return priorityA - priorityB;
-
-      // Within same tier, sort by quality
       return this.calculateQualityScore(b) - this.calculateQualityScore(a);
     });
   }
 
-  /**
-   * Get tier priority (lower = higher priority)
-   */
   private static getTierPriority(tier: Tier): number {
     const priorities: Record<Tier, number> = {
       arbitrage: 1,
@@ -200,27 +209,29 @@ export class TierAssignmentService {
   }
 
   /**
-   * Calculate quality score for sorting within tiers
+   * Quality score for sorting — home picks get a significant boost
+   * based on backtest: home ROI +112% vs away -18%
    */
   private static calculateQualityScore(pick: Pick): number {
     let score = pick.confidence * 10;
 
-    // Boost for edge
     if (pick.edge) {
       score += pick.edge * 5;
     }
 
-    // Boost for arbitrage
     if (pick.isArbitrage && pick.arbitrageProfit) {
       score += pick.arbitrageProfit * 100;
     }
 
-    // Boost for early line movement
     if (pick.isEarlyBet && pick.lineMovement) {
       score += pick.lineMovement * 5;
     }
 
-    // Time decay - games happening sooner get slight boost
+    // Home-pick boost: backtest shows +130% ROI gap (home vs away)
+    if (pick.isHomePick || pick.pick === pick.homeTeam) {
+      score += 80;
+    }
+
     const hoursUntilGame = (new Date(pick.gameTime).getTime() - Date.now()) / (1000 * 60 * 60);
     if (hoursUntilGame > 0 && hoursUntilGame < 24) {
       score += (24 - hoursUntilGame) * 0.5;
@@ -229,16 +240,10 @@ export class TierAssignmentService {
     return score;
   }
 
-  /**
-   * Filter picks by tier
-   */
   static filterByTier(picks: Pick[], tier: Tier): Pick[] {
     return picks.filter(pick => pick.tier === tier);
   }
 
-  /**
-   * Get tier statistics
-   */
   static getTierStats(picks: Pick[]): Record<Tier, { count: number; avgConfidence: number; avgEdge: number }> {
     const stats = {} as Record<Tier, { count: number; avgConfidence: number; avgEdge: number }>;
 
@@ -258,13 +263,10 @@ export class TierAssignmentService {
     return stats;
   }
 
-  /**
-   * Validate that a pick meets tier requirements
-   */
   static validateTierAssignment(pick: Pick, tier: Tier): boolean {
     const config = TIER_CONFIGS[tier];
 
-    if (pick.confidence < config.minConfidence || pick.confidence > config.maxConfidence) {
+    if (tier !== 'free' && (pick.confidence < config.minConfidence || pick.confidence > config.maxConfidence)) {
       return false;
     }
 
@@ -279,9 +281,6 @@ export class TierAssignmentService {
     return true;
   }
 
-  /**
-   * Reassign pick to different tier (manual override)
-   */
   static reassignTier(pick: Pick, newTier: Tier): Pick {
     if (!this.validateTierAssignment(pick, newTier)) {
       console.warn(`[Tier Service] Warning: Reassigning ${pick.id} to ${newTier} does not meet tier requirements`);

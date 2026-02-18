@@ -134,6 +134,91 @@ const EARLY_LINES_MAX_DAYS = 5
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+const FILTER_STRATEGY = (process.env.FILTER_STRATEGY || 'best') as 'baseline' | 'best' | 'balanced'
+
+const ODDS_FILTER: Record<string, { minOdds: number; maxOdds: number; minConfidence: number }> = {
+  baseline: { minOdds: -10000, maxOdds: 10000, minConfidence: 0 },
+  best: { minOdds: -130, maxOdds: 200, minConfidence: 80 },
+  balanced: { minOdds: -150, maxOdds: 150, minConfidence: 75 },
+}
+
+const HOME_ONLY_MODE = process.env.HOME_ONLY_MODE === '1' || process.env.HOME_ONLY_MODE === 'true'
+
+const HOME_BIAS_BOOST = 5
+const AWAY_BIAS_PENALTY = 5
+
+const LEAGUE_STAKE_MULTIPLIER: Record<string, number> = {
+  ncaaf: 0.5,
+  ncaab: 0.75,
+  cbb: 0.75,
+  nba: 1.0,
+  nfl: 1.0,
+  nhl: 1.0,
+  mlb: 1.0,
+}
+
+const LEAGUE_CONFIDENCE_FLOOR: Record<string, number> = {
+  ncaaf: 80,
+  ncaab: 75,
+  cbb: 75,
+  nba: 70,
+  nfl: 75,
+  nhl: 70,
+  mlb: 70,
+}
+
+const SPORT_SEASONS: Record<string, { start: number; end: number }> = {
+  'basketball_nba':        { start: 10, end: 6 },   // Oct–Jun
+  'americanfootball_nfl':  { start: 9,  end: 2 },   // Sep–Feb
+  'icehockey_nhl':         { start: 10, end: 6 },   // Oct–Jun
+  'baseball_mlb':          { start: 3,  end: 10 },  // Mar–Oct
+  'americanfootball_ncaaf':{ start: 8,  end: 1 },   // Aug–Jan
+  'basketball_ncaab':      { start: 11, end: 4 },   // Nov–Apr
+  'baseball_ncaa':         { start: 2,  end: 6 },   // Feb–Jun
+}
+
+function isSportInSeason(sportKey: string): boolean {
+  const season = SPORT_SEASONS[sportKey]
+  if (!season) return true
+  const month = new Date().getMonth() + 1
+  if (season.start <= season.end) {
+    return month >= season.start && month <= season.end
+  }
+  return month >= season.start || month <= season.end
+}
+
+const STREAK_TRACKER = { wins: 0, losses: 0 }
+
+function getStreakMultiplier(): number {
+  if (STREAK_TRACKER.wins >= 5) return 1.25
+  if (STREAK_TRACKER.wins >= 3) return 1.1
+  if (STREAK_TRACKER.losses >= 5) return 0.5
+  if (STREAK_TRACKER.losses >= 3) return 0.75
+  return 1.0
+}
+
+function updateStreak(won: boolean) {
+  if (won) {
+    STREAK_TRACKER.wins++
+    STREAK_TRACKER.losses = 0
+  } else {
+    STREAK_TRACKER.losses++
+    STREAK_TRACKER.wins = 0
+  }
+}
+
+function getEarlyLineDecay(commenceTime: string): number {
+  const gameDate = new Date(commenceTime)
+  const now = new Date()
+  const daysAhead = (gameDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  if (daysAhead <= 1) return 1.0
+  if (daysAhead <= 2) return 0.97
+  if (daysAhead <= 3) return 0.93
+  if (daysAhead <= 4) return 0.88
+  if (daysAhead <= 5) return 0.82
+  return 0.75
+}
+
 // Claude Effect weights (7 dimensions)
 const CLAUDE_EFFECT_WEIGHTS = {
   SF: 0.12,   // Sentiment Field
@@ -223,6 +308,10 @@ export async function GET(request: Request) {
     const allPicks: any[] = []
 
     for (const sport of sports) {
+      if (!isSportInSeason(sport)) {
+        console.log(`[Season] Skipping ${sport} — out of season (month ${new Date().getMonth() + 1})`)
+        continue
+      }
       try {
         const response = await fetch(
           `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${oddsApiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
@@ -582,20 +671,21 @@ function oddsToProb(odds: number): number {
   }
 }
 
-/** Calculate recommended stake using Kelly Criterion with safety caps */
-function calculateStake(odds: number, kellyFraction: number, confidence: number): number {
+/** Calculate recommended stake using Kelly Criterion with per-league caps */
+function calculateStake(odds: number, kellyFraction: number, confidence: number, sport?: string): number {
   const impliedProb = oddsToProb(odds)
   const modelProb = confidence / 100
   const edge = modelProb - impliedProb
 
-  // No edge = no bet
   if (edge <= 0) return 0
 
-  // Kelly = edge / (1 - impliedProb)
   const kelly = edge / (1 - impliedProb)
+  const baseStake = Math.min(Math.max(kelly * 0.25 * 100, 10), 50)
 
-  // Quarter Kelly for safety, max $50, min $10 if edge exists
-  return Math.min(Math.max(kelly * 0.25 * 100, 10), 50)
+  const leagueKey = sport?.toLowerCase().replace(/^basketball_|^americanfootball_|^icehockey_|^baseball_/, '') || ''
+  const leagueMultiplier = LEAGUE_STAKE_MULTIPLIER[leagueKey] ?? 1.0
+  const streakMultiplier = getStreakMultiplier()
+  return Math.round(baseStake * leagueMultiplier * streakMultiplier * 100) / 100
 }
 
 /** Clamp American odds to a sane range so edge/EV are not distorted by bad consensus (e.g. -2). */
@@ -641,6 +731,13 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   const totalPoint = totalCount > 0 ? Math.round(totalSum / totalCount) : 44
   if (!homeOdds || !awayOdds) return null
 
+  const activeFilter = ODDS_FILTER[FILTER_STRATEGY] || ODDS_FILTER.balanced
+  const minFavOdds = Math.min(homeOdds.price, awayOdds.price)
+  if (minFavOdds < activeFilter.minOdds || Math.max(homeOdds.price, awayOdds.price) > activeFilter.maxOdds) {
+    console.log(`[Odds Filter] Skipping ${game.home_team} vs ${game.away_team}: odds [${homeOdds.price}, ${awayOdds.price}] outside [${activeFilter.minOdds}, ${activeFilter.maxOdds}] (strategy: ${FILTER_STRATEGY})`)
+    return null
+  }
+
   const homeImplied = oddsToProb(homeOdds.price)
   const awayImplied = oddsToProb(awayOdds.price)
   const { home: homeProb, away: awayProb } = shinDevig(homeImplied, awayImplied)
@@ -649,6 +746,12 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   const adjustedHomeProb = homeProb * (1 + claudeEffect.homeAdjustment)
   const adjustedAwayProb = awayProb * (1 + claudeEffect.awayAdjustment)
   const favorite = adjustedHomeProb > adjustedAwayProb ? game.home_team : game.away_team
+
+  if (HOME_ONLY_MODE && favorite !== game.home_team) {
+    console.log(`[Home Only] Skipping ${game.home_team} vs ${game.away_team}: away pick filtered (HOME_ONLY_MODE)`)
+    return null
+  }
+
   const noVigFavorite = homeProb > awayProb ? game.home_team : game.away_team
   const favoriteOdds = favorite === game.home_team ? homeOdds.price : awayOdds.price
   const favoriteProb = Math.max(adjustedHomeProb, adjustedAwayProb)
@@ -856,38 +959,67 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     sport
   )
 
-  // NEW CONFIDENCE FORMULA: Base + True Edge + MC boost (no experimental noise)
+  // CONFIDENCE FORMULA v3: MC-anchored with True Edge and home bias
+  // The MC win probability is the strongest signal — use it as the anchor
   const probDiff = Math.abs(favoriteProb - 0.5)
-  const baseConfidence = 50 + (probDiff * 80)
+  const marketBaseConf = 50 + (probDiff * 80)
 
-  // True Edge contribution (max ±12% swing)
-  const trueEdgeBoost = trueEdgeResult.totalEdge * 80
-
-  // MC boost from favorite's probability
-  let mcBoost = 0
+  let mcAnchoredConf = marketBaseConf
   if (monteCarloResult) {
     const isFavoriteHome = favorite === game.home_team
     const mcWinProb = isFavoriteHome
       ? monteCarloResult.homeWinProbability
       : monteCarloResult.awayWinProbability
-    mcBoost = (mcWinProb - 0.5) * 30
+    // Anchor confidence to MC probability (stronger signal than market-only base)
+    mcAnchoredConf = Math.max(marketBaseConf, mcWinProb * 100 - 5)
   }
 
-  // Chaos penalty from True Edge (more accurate than old CSI)
-  const chaosPenalty = (1 - trueEdgeResult.confidence) * 15
+  // True Edge contribution (max ±12% swing)
+  const trueEdgeBoost = trueEdgeResult.totalEdge * 80
 
-  // Final confidence: NO experimental boosts, NO artificial caps beyond MC
-  let confidence = Math.round(baseConfidence + trueEdgeBoost + mcBoost - chaosPenalty)
+  // Chaos penalty from True Edge
+  const chaosPenalty = (1 - trueEdgeResult.confidence) * 10
 
-  // Hard ceiling: Confidence cannot exceed MC probability + 3%
+  let confidence = Math.round(mcAnchoredConf + trueEdgeBoost - chaosPenalty)
+
+  // Home/away bias from backtest: home picks +67.3% ROI vs away -19.4% ROI
+  const isHomePick = favorite === game.home_team
+  if (isHomePick) {
+    confidence += HOME_BIAS_BOOST
+  } else {
+    confidence -= AWAY_BIAS_PENALTY
+  }
+
+  // Early-line confidence decay: reduce confidence for games far in the future
+  const earlyDecay = getEarlyLineDecay(game.commence_time)
+  if (earlyDecay < 1.0) {
+    const before = confidence
+    confidence = Math.round(confidence * earlyDecay)
+    console.log(`[Early Decay] ${game.home_team} vs ${game.away_team}: ${before}% → ${confidence}% (decay ${earlyDecay})`)
+  }
+
+  // Hard ceiling: MC probability + 8% (relaxed from +3 to allow True Edge to matter)
   const mcCeiling = monteCarloResult
     ? Math.round((favorite === game.home_team
       ? monteCarloResult.homeWinProbability
-      : monteCarloResult.awayWinProbability) * 100 + 3)
+      : monteCarloResult.awayWinProbability) * 100 + 8)
     : 95
   confidence = Math.min(confidence, mcCeiling)
-  // Allow confidence to go as low as 30% for true toss-ups, max 95%
   confidence = Math.max(30, Math.min(95, confidence))
+
+  // Filter strategy confidence floor
+  if (confidence < activeFilter.minConfidence) {
+    console.log(`[Filter] Skipping ${game.home_team} vs ${game.away_team}: confidence ${confidence}% below ${activeFilter.minConfidence}% minimum (strategy: ${FILTER_STRATEGY})`)
+    return null
+  }
+
+  // Per-league confidence floor (stricter than strategy floor for volatile leagues)
+  const leagueKey = sport.toLowerCase().replace(/^basketball_|^americanfootball_|^icehockey_|^baseball_/, '')
+  const leagueConfFloor = LEAGUE_CONFIDENCE_FLOOR[leagueKey] ?? 70
+  if (confidence < leagueConfFloor) {
+    console.log(`[League Filter] Skipping ${game.home_team} vs ${game.away_team}: confidence ${confidence}% below ${leagueKey} floor of ${leagueConfFloor}%`)
+    return null
+  }
 
   const bestValueBet = valueBets.length > 0 ? valueBets[0] : null
   const VALUE_PICK_MIN_EDGE = 10
@@ -909,6 +1041,12 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     recommendedType = bestValueBet.type.toUpperCase()
     recommendedOdds = -110
     if (bestValueBet.line != null) recommendedLine = bestValueBet.line
+  }
+
+  // Post-selection odds filter: catch value bets that exceed strategy limits
+  if (recommendedOdds > activeFilter.maxOdds || recommendedOdds < activeFilter.minOdds) {
+    console.log(`[Rec Pick Filter] Skipping ${game.home_team} vs ${game.away_team}: recommended odds ${recommendedOdds} outside [${activeFilter.minOdds}, ${activeFilter.maxOdds}] (strategy: ${FILTER_STRATEGY})`)
+    return null
   }
 
   const valueSideMatchesPick = bestValueBet && (bestValueBet.side === favorite || bestValueBet.side === game.home_team || bestValueBet.side === game.away_team)
@@ -974,7 +1112,7 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   // NEW: Service integrations - initialize variables
   let arbitrageOpportunity = null
   let parlaySuggestions = null
-  let optimalStake = calculateStake(recommendedOdds, bestValueBet?.kellyFraction || 0, confidence)
+  let optimalStake = calculateStake(recommendedOdds, bestValueBet?.kellyFraction || 0, confidence, sport)
   let eliteEnhancement = null
 
   // Check for arbitrage opportunities
@@ -1073,10 +1211,17 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     value_bet_kelly: bestValueBet?.kellyFraction || 0,
     has_value: valueBets.length > 0,
     is_favorite_pick: recommendedPick === noVigFavorite,
+    is_home_pick: isHomePick,
+    filter_strategy: FILTER_STRATEGY,
+    home_only_mode: HOME_ONLY_MODE,
+    league_stake_multiplier: LEAGUE_STAKE_MULTIPLIER[sport.toLowerCase().replace(/^basketball_|^americanfootball_|^icehockey_|^baseball_/, '')] ?? 1.0,
+    league_confidence_floor: leagueConfFloor,
+    early_line_decay: earlyDecay,
+    streak_multiplier: getStreakMultiplier(),
     // SPORT-SPECIFIC VARIANCE: Higher variance sports (NCAAB) get lower stakes
     sport_variance_multiplier: SPORT_VARIANCE[sport.toUpperCase()] ?? 1.0,
     calibrated_stake: applySportVariance(
-      calculateStake(recommendedOdds, bestValueBet?.kellyFraction || 0, confidence),
+      calculateStake(recommendedOdds, bestValueBet?.kellyFraction || 0, confidence, sport),
       sport
     ),
     experimental_factors: {

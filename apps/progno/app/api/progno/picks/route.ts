@@ -133,6 +133,8 @@ export async function GET(request: NextRequest) {
       picks = TierAssignmentService.assignTiers(picks.map((p: any) => ({
         ...p,
         confidence: p.confidence || 65,
+        homeTeam: p.homeTeam || p.home_team,
+        isHomePick: p.isHomePick ?? p.is_home_pick ?? (p.pick === (p.homeTeam || p.home_team)),
         createdAt: p.created_at || new Date().toISOString(),
       })));
 

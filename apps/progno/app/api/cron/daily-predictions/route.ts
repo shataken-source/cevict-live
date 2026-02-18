@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server'
 import fs from 'node:fs'
 import path from 'node:path'
 import { ElitePicksEnhancer } from '../../../lib/elite-picks-enhancer'
+import { TierAssignmentService } from '../../../lib/tier-assignment-service'
 
 // Initialize enhancer for Elite tier
 const eliteEnhancer = new ElitePicksEnhancer()
@@ -113,21 +114,45 @@ export async function GET(request: Request) {
       const syndicationResults = []
       const tiers = ['free', 'premium', 'elite'] as const
 
+      // Assign tiers to picks using the backtest-validated tier service
+      const tieredPicks = TierAssignmentService.assignTiers(picks.map((p: any) => ({
+        ...p,
+        id: p.id || `${p.home_team}-${p.away_team}-${p.commence_time}`,
+        homeTeam: p.home_team,
+        awayTeam: p.away_team,
+        isHomePick: p.is_home_pick ?? (p.pick === p.home_team),
+        pickType: (p.recommended_type || 'moneyline').toLowerCase(),
+        gameTime: p.commence_time || new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      })))
+      console.log(`[CRON daily-predictions] Tier breakdown: Elite=${TierAssignmentService.filterByTier(tieredPicks, 'elite').length}, Premium=${TierAssignmentService.filterByTier(tieredPicks, 'premium').length}, Free=${TierAssignmentService.filterByTier(tieredPicks, 'free').length}`)
+
       for (const tier of tiers) {
         let retries = 3
         let success = false
         let lastError = ''
 
+        // Get picks for this tier (cumulative: free=free, premium=free+prem, elite=all)
+        let tierPicks: any[]
+        if (tier === 'free') {
+          tierPicks = TierAssignmentService.filterByTier(tieredPicks, 'free')
+        } else if (tier === 'premium') {
+          tierPicks = [
+            ...TierAssignmentService.filterByTier(tieredPicks, 'free'),
+            ...TierAssignmentService.filterByTier(tieredPicks, 'premium'),
+          ]
+        } else {
+          tierPicks = tieredPicks
+        }
+
         while (retries > 0 && !success) {
           try {
             const batchId = `${today}-${tier}-${Date.now()}`
 
-            // For Elite tier, enhance picks with advanced analysis
-            let tierPicks = picks
             if (tier === 'elite') {
               console.log('[CRON daily-predictions] Enhancing Elite picks...')
               try {
-                const enhanced = await eliteEnhancer.enhance(picks.map(p => ({ ...p, tier: 'elite' })))
+                const enhanced = await eliteEnhancer.enhance(tierPicks.map(p => ({ ...p, tier: 'elite' })))
                 tierPicks = enhanced
                 console.log(`[CRON daily-predictions] Enhanced ${enhanced.length} Elite picks`)
               } catch (err) {

@@ -21,6 +21,10 @@ const ENV_VARS = [
   'SUPABASE_SERVICE_ROLE_KEY',
   'CRON_APP_URL',
   'NEXT_PUBLIC_PROGNO_URL',
+  'FILTER_STRATEGY',
+  'HOME_ONLY_MODE',
+  'OPENWEATHER_API_KEY',
+  'WEATHERAPI_KEY',
 ];
 
 const VIEWER_CONFIGS = [
@@ -78,7 +82,9 @@ function ResultsTable({ rows }: { rows: any[] }) {
           <th style={{ ...th, width: '28px' }}>#</th>
           <th style={th}>Match</th>
           <th style={th}>Pick</th>
+          <th style={{ ...th, width: '44px' }}>H/A</th>
           <th style={{ ...th, width: '64px' }}>Conf%</th>
+          <th style={{ ...th, width: '64px' }}>Odds</th>
           <th style={{ ...th, width: '72px' }}>Status</th>
           <th style={{ ...th, width: '80px' }}>Score</th>
         </tr>
@@ -89,7 +95,9 @@ function ResultsTable({ rows }: { rows: any[] }) {
             <td style={cell}>{i + 1}</td>
             <td style={cell}>{r.home_team} vs {r.away_team}</td>
             <td style={cell}>{r.pick}</td>
+            <td style={{ ...cell, color: r.is_home_pick ? '#0070f3' : '#e67e22', fontWeight: 600 }}>{r.is_home_pick ? 'H' : 'A'}</td>
             <td style={cell}>{r.confidence != null ? (Number(r.confidence) > 1 ? Math.round(Number(r.confidence)) : Math.round(Number(r.confidence) * 100)) : '—'}</td>
+            <td style={cell}>{r.odds != null ? (r.odds > 0 ? `+${r.odds}` : r.odds) : '—'}</td>
             <td style={{ ...cell, color: r.status === 'win' ? '#0a0' : r.status === 'lose' ? '#c00' : '#666' }}>{r.status}</td>
             <td style={cell}>{r.actualScore ? `${r.actualScore.home}-${r.actualScore.away}` : '—'}</td>
           </tr>
@@ -522,6 +530,63 @@ export default function PrognoAdminPage() {
                 <code style={{ background: '#e9ecef', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
                   results-{resultsDate}.json
                 </code>
+              </div>
+            </div>
+          </div>
+
+          {/* Backtest-Driven Strategy Settings (read-only display) */}
+          <div style={{
+            marginBottom: '24px',
+            padding: '16px 20px',
+            background: '#f0f8ff',
+            borderRadius: '12px',
+            border: '1px solid #b8d4f0',
+            fontSize: '13px'
+          }}>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '1rem' }}>Strategy Settings (from backtest)</h3>
+            <p style={{ color: '#555', margin: '0 0 10px 0' }}>
+              Configured via env vars in <code>.env.local</code>. <code>FILTER_STRATEGY</code>: <code>baseline</code> | <code>best</code> (default) | <code>balanced</code>. <code>HOME_ONLY_MODE=1</code> to filter away picks.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Filter strategy</span>
+                <div style={{ fontWeight: 600, marginTop: '2px' }}>best</div>
+              </div>
+              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odds range</span>
+                <div style={{ fontWeight: 600, marginTop: '2px' }}>-130 to +200</div>
+              </div>
+              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Min confidence</span>
+                <div style={{ fontWeight: 600, marginTop: '2px' }}>80%</div>
+              </div>
+              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Home bias</span>
+                <div style={{ fontWeight: 600, marginTop: '2px' }}>+5% / Away -5%</div>
+              </div>
+              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Home only mode</span>
+                <div style={{ fontWeight: 600, marginTop: '2px' }}>Off (set HOME_ONLY_MODE=1)</div>
+              </div>
+              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Season-aware</span>
+                <div style={{ fontWeight: 600, marginTop: '2px' }}>On (skips out-of-season)</div>
+              </div>
+              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Streak modifier</span>
+                <div style={{ fontWeight: 600, marginTop: '2px' }}>Win 3+ → 1.1x, Loss 3+ → 0.75x</div>
+              </div>
+              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Early-line decay</span>
+                <div style={{ fontWeight: 600, marginTop: '2px' }}>1d: 100%, 3d: 93%, 5d+: 75%</div>
+              </div>
+              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>League conf floors</span>
+                <div style={{ fontWeight: 600, marginTop: '2px' }}>NCAAF 80 / NCAA 75 / NBA 70</div>
+              </div>
+              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
+                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stake caps</span>
+                <div style={{ fontWeight: 600, marginTop: '2px' }}>NCAAF 50% / NCAAB 75%</div>
               </div>
             </div>
           </div>
