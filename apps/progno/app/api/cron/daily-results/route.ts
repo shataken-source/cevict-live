@@ -15,7 +15,7 @@ import path from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { getPrimaryKey } from '../../../keys-store'
 import { fetchPreviousDayResultsFromProviders } from '../../../../lib/data-sources/results-apis'
-import { throttledFetch, recordRateLimitHit } from '../../../lib/external-api-throttle'
+import { throttledFetch, recordRateLimitHit, ThrottleLimitError } from '../../../lib/external-api-throttle'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

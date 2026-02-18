@@ -8,6 +8,11 @@
  *   Starter   — 500 req/day, last 30 days, full pick details       $29/mo
  *   Pro       — 5000 req/day, full history, + ROI analytics        $99/mo
  *   Enterprise— unlimited,    full history, raw data + webhooks    $299/mo
+ *
+ * Security:
+ *   - Uses anon key (RLS-bound) for all Supabase queries, never service-role.
+ *   - Rate limits enforced in Supabase (api_usage_quota table) for cross-instance accuracy.
+ *   - In-memory counters used as a fast soft guard only.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -61,34 +66,79 @@ const TIER_CONFIGS: Record<string, TierConfig> = {
   },
 }
 
-// ── In-memory usage counters (reset daily) ──
-const usageCounters = new Map<string, { count: number; resetAt: number }>()
+// ── Supabase client — anon key only, relies on RLS ──
+function getAnonSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  return createClient(url, key)
+}
 
-function checkUsage(apiKey: string, tier: string): { allowed: boolean; remaining: number } {
-  const config = TIER_CONFIGS[tier] || TIER_CONFIGS.free
+// ── In-memory soft guard (fast path; NOT source of truth) ──
+const softCounters = new Map<string, { count: number; resetAt: number }>()
+
+function softGuardCheck(apiKey: string, maxPerDay: number): boolean {
   const now = Date.now()
-  const entry = usageCounters.get(apiKey) || { count: 0, resetAt: now + 86400000 }
-
+  const entry = softCounters.get(apiKey) || { count: 0, resetAt: now + 86400000 }
   if (now >= entry.resetAt) {
     entry.count = 0
     entry.resetAt = now + 86400000
   }
-
-  if (entry.count >= config.maxRequestsPerDay) {
-    usageCounters.set(apiKey, entry)
-    return { allowed: false, remaining: 0 }
-  }
-
+  if (entry.count >= maxPerDay) return false
   entry.count++
-  usageCounters.set(apiKey, entry)
-  return { allowed: true, remaining: config.maxRequestsPerDay - entry.count }
+  softCounters.set(apiKey, entry)
+  return true
 }
 
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) return null
-  return createClient(url, key)
+// ── Supabase-backed rate limit (source of truth) ──
+async function checkAndIncrementUsage(
+  supabase: ReturnType<typeof createClient>,
+  apiKeyHash: string,
+  tier: string,
+  maxPerDay: number
+): Promise<{ allowed: boolean; used: number; remaining: number }> {
+  const today = new Date().toISOString().split('T')[0]
+
+  try {
+    const { data: existing } = await supabase
+      .from('api_usage_quota')
+      .select('request_count')
+      .eq('api_key_hash', apiKeyHash)
+      .eq('date', today)
+      .single()
+
+    const currentCount = existing?.request_count || 0
+
+    if (currentCount >= maxPerDay) {
+      return { allowed: false, used: currentCount, remaining: 0 }
+    }
+
+    if (existing) {
+      await supabase
+        .from('api_usage_quota')
+        .update({ request_count: currentCount + 1, updated_at: new Date().toISOString() })
+        .eq('api_key_hash', apiKeyHash)
+        .eq('date', today)
+    } else {
+      await supabase
+        .from('api_usage_quota')
+        .insert({ api_key_hash: apiKeyHash, date: today, request_count: 1, tier })
+    }
+
+    return { allowed: true, used: currentCount + 1, remaining: maxPerDay - currentCount - 1 }
+  } catch {
+    return { allowed: true, used: 0, remaining: maxPerDay }
+  }
+}
+
+function hashApiKey(key: string): string {
+  let hash = 0
+  for (let i = 0; i < key.length; i++) {
+    const char = key.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash |= 0
+  }
+  return 'k_' + Math.abs(hash).toString(36)
 }
 
 function extractApiKey(req: NextRequest): string | null {
@@ -97,8 +147,10 @@ function extractApiKey(req: NextRequest): string | null {
   return req.nextUrl.searchParams.get('api_key')
 }
 
-async function validateApiKey(key: string): Promise<{ valid: boolean; tier: string; userId?: string }> {
-  const supabase = getSupabase()
+async function validateApiKey(
+  supabase: ReturnType<typeof createClient>,
+  key: string
+): Promise<{ valid: boolean; tier: string; userId?: string }> {
   if (!supabase) {
     if (key === process.env.CRON_SECRET || key === process.env.ADMIN_PASSWORD) {
       return { valid: true, tier: 'enterprise' }
@@ -119,11 +171,15 @@ async function validateApiKey(key: string): Promise<{ valid: boolean; tier: stri
   return { valid: true, tier: data.tier || 'free', userId: data.user_id }
 }
 
-async function logApiUsage(apiKey: string, tier: string, endpoint: string, userId?: string) {
-  const supabase = getSupabase()
-  if (!supabase) return
+async function logApiUsage(
+  supabase: ReturnType<typeof createClient>,
+  apiKeyHash: string,
+  tier: string,
+  endpoint: string,
+  userId?: string
+) {
   await supabase.from('api_usage_log').insert({
-    api_key: apiKey.slice(0, 8) + '...',
+    api_key_hash: apiKeyHash,
     tier,
     endpoint,
     user_id: userId || null,
@@ -132,10 +188,7 @@ async function logApiUsage(apiKey: string, tier: string, endpoint: string, userI
 }
 
 // ── Data readiness check ──
-async function getDataReadiness(): Promise<{ totalRows: number; estimatedCapacity: number; percentFull: number; ready: boolean }> {
-  const supabase = getSupabase()
-  if (!supabase) return { totalRows: 0, estimatedCapacity: 10000, percentFull: 0, ready: false }
-
+async function getDataReadiness(supabase: ReturnType<typeof createClient>) {
   const { count } = await supabase
     .from('prediction_results')
     .select('*', { count: 'exact', head: true })
@@ -170,8 +223,11 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  const supabase = getAnonSupabase()
+
   if (action === 'status') {
-    const readiness = await getDataReadiness()
+    if (!supabase) return NextResponse.json({ error: 'Database unavailable' }, { status: 503 })
+    const readiness = await getDataReadiness(supabase)
     return NextResponse.json({
       dataReadiness: readiness,
       message: readiness.ready
@@ -190,32 +246,43 @@ export async function GET(req: NextRequest) {
     )
   }
 
-  const auth = await validateApiKey(apiKey)
+  if (!supabase) {
+    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 })
+  }
+
+  const auth = await validateApiKey(supabase, apiKey)
   if (!auth.valid) {
     return NextResponse.json({ error: 'Invalid or deactivated API key' }, { status: 403 })
   }
 
   const tierConfig = TIER_CONFIGS[auth.tier] || TIER_CONFIGS.free
-  const usage = checkUsage(apiKey, auth.tier)
-  if (!usage.allowed) {
+  const keyHash = hashApiKey(apiKey)
+
+  // Fast soft guard (in-memory)
+  if (!softGuardCheck(apiKey, tierConfig.maxRequestsPerDay)) {
     return NextResponse.json(
       { error: 'Daily request limit reached', tier: auth.tier, limit: tierConfig.maxRequestsPerDay,
-        upgrade: 'Contact sales or upgrade tier at /api/progno/backtest?action=pricing' },
+        upgrade: '/api/progno/backtest?action=pricing' },
       { status: 429, headers: { 'X-RateLimit-Remaining': '0', 'X-RateLimit-Limit': String(tierConfig.maxRequestsPerDay) } }
     )
   }
 
-  await logApiUsage(apiKey, auth.tier, action, auth.userId)
+  // Authoritative Supabase-backed check
+  const usage = await checkAndIncrementUsage(supabase, keyHash, auth.tier, tierConfig.maxRequestsPerDay)
+  if (!usage.allowed) {
+    return NextResponse.json(
+      { error: 'Daily request limit reached', tier: auth.tier, limit: tierConfig.maxRequestsPerDay,
+        used: usage.used, upgrade: '/api/progno/backtest?action=pricing' },
+      { status: 429, headers: { 'X-RateLimit-Remaining': '0', 'X-RateLimit-Limit': String(tierConfig.maxRequestsPerDay) } }
+    )
+  }
+
+  await logApiUsage(supabase, keyHash, auth.tier, action, auth.userId)
 
   const headers = {
     'X-RateLimit-Remaining': String(usage.remaining),
     'X-RateLimit-Limit': String(tierConfig.maxRequestsPerDay),
     'X-Tier': auth.tier,
-  }
-
-  const supabase = getSupabase()
-  if (!supabase) {
-    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 })
   }
 
   // ── action: results — historical prediction results ──
@@ -323,7 +390,6 @@ export async function GET(req: NextRequest) {
     const wins = picks.filter((p: any) => p.status === 'win').length
     const winRate = total > 0 ? Math.round((wins / total) * 1000) / 10 : 0
 
-    // By sport
     const bySport: Record<string, { total: number; wins: number; winRate: number }> = {}
     for (const p of picks) {
       const s = (p as any).sport || 'unknown'
@@ -335,7 +401,6 @@ export async function GET(req: NextRequest) {
       bySport[s].winRate = Math.round((bySport[s].wins / bySport[s].total) * 1000) / 10
     }
 
-    // By confidence bucket
     const byConfidence: Record<string, { total: number; wins: number; winRate: number }> = {}
     const buckets = ['30-50', '50-65', '65-80', '80-90', '90-100']
     for (const b of buckets) byConfidence[b] = { total: 0, wins: 0, winRate: 0 }
@@ -354,7 +419,6 @@ export async function GET(req: NextRequest) {
       bc.winRate = bc.total > 0 ? Math.round((bc.wins / bc.total) * 1000) / 10 : 0
     }
 
-    // Streak analysis
     const sortedByDate = [...picks].sort((a: any, b: any) => a.date.localeCompare(b.date))
     let currentStreak = 0
     let maxWinStreak = 0
