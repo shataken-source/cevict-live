@@ -26,6 +26,7 @@ const SPORT_KEY_MAP: Record<string, string> = {
   NHL: 'icehockey_nhl',
   NCAAF: 'americanfootball_ncaaf',
   NCAAB: 'basketball_ncaab',
+  CBB: 'baseball_ncaa',
 }
 
 /** Aggressive normalization: strip diacritics, punctuation, spaces; lowercase. */
@@ -151,7 +152,10 @@ export async function GET(request: Request) {
 
   let payload: any
   try {
-    payload = JSON.parse(fs.readFileSync(predictionsPath, 'utf8'))
+    const raw = fs.readFileSync(predictionsPath, 'utf8')
+    // Strip UTF-8 BOM if present so JSON.parse succeeds on files written with BOM.
+    const clean = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw
+    payload = JSON.parse(clean)
   } catch (e) {
     return NextResponse.json({ success: false, error: 'Invalid predictions JSON' }, { status: 400 })
   }
@@ -177,7 +181,12 @@ export async function GET(request: Request) {
 
   if (picks.length === 0) {
     const outPath = path.join(appRoot, `results-${date}.json`)
-    const emptyResult = { date, gradedAt: new Date().toISOString(), results: [], summary: { total: 0, correct: 0, pending: 0, winRate: 0 } }
+    const emptyResult = {
+      date,
+      gradedAt: new Date().toISOString(),
+      results: [],
+      summary: { total: 0, correct: 0, pending: 0, graded: 0, winRate: 0 }
+    }
     fs.writeFileSync(outPath, JSON.stringify(emptyResult, null, 2), 'utf8')
     const msg = rawPicks.length === 0
       ? 'No picks to grade'

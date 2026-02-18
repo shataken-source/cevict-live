@@ -193,16 +193,28 @@ export default function ReportsSection({ secret, date }: ReportsSectionProps) {
       )}
       
       {report && (
-        <div style={{ 
-          padding: '20px', 
-          background: '#f8f9fa', 
+        <div style={{
+          padding: '20px',
+          background: '#f8f9fa',
           borderRadius: '8px',
           border: '1px solid #dee2e6'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-            <h3 style={{ margin: 0, textTransform: 'capitalize' }}>
-              {report.type.replace(/-/g, ' ')}
-            </h3>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '16px',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div>
+              <h3 style={{ margin: 0, textTransform: 'capitalize' }}>
+                {report.type.replace(/-/g, ' ')}
+              </h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
+                Generated {new Date(report.generatedAt).toLocaleString()}
+              </p>
+            </div>
             <button
               onClick={exportToCSV}
               style={{
@@ -215,24 +227,185 @@ export default function ReportsSection({ secret, date }: ReportsSectionProps) {
                 fontSize: '13px'
               }}
             >
-              ⬇️ Export CSV
+              Export CSV
             </button>
           </div>
-          
-          <pre style={{ 
-            background: 'white', 
-            padding: '16px', 
-            borderRadius: '4px',
-            overflow: 'auto',
-            fontSize: '13px',
-            maxHeight: '400px'
-          }}>
-            {JSON.stringify(report.data, null, 2)}
-          </pre>
-          
-          <p style={{ marginTop: '12px', fontSize: '12px', color: '#666' }}>
-            Generated: {new Date(report.generatedAt).toLocaleString()}
-          </p>
+
+          {report.type === 'performance-by-sport' && (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#e9ecef' }}>
+                    <th style={{ textAlign: 'left', padding: '8px' }}>Sport</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Wins</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Losses</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Pushes</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Win rate</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Bets</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.data.sports.map((s: any) => (
+                    <tr key={s.sport} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '8px' }}>{s.sport}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{s.wins}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{s.losses}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{s.pushes}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{s.winRate}%</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{s.total}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>${s.profit.toFixed?.(2) ?? s.profit}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {report.type === 'value-bets-analysis' && (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#e9ecef' }}>
+                    <th style={{ textAlign: 'left', padding: '8px' }}>Edge band</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Wins</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Losses</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Win rate</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Bets</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.data.ranges.map((r: any) => (
+                    <tr key={r.range} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '8px' }}>{r.range}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.wins}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.losses}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.winRate}%</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.total}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>${r.profit.toFixed?.(2) ?? r.profit}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {report.type === 'confidence-vs-results' && (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#e9ecef' }}>
+                    <th style={{ textAlign: 'left', padding: '8px' }}>Confidence band</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Wins</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Losses</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Win rate</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Bets</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.data.ranges.map((r: any) => (
+                    <tr key={r.range} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '8px' }}>{r.range}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.wins}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.losses}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.winRate}%</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {report.type === 'monthly-summary' && (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#e9ecef' }}>
+                    <th style={{ textAlign: 'left', padding: '8px' }}>Month</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Bets</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Wins</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Losses</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Win rate</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Profit</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Avg profit / bet</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.data.months?.map((m: any) => (
+                    <tr key={m.month} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '8px' }}>{m.month}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{m.bets}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{m.wins}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{m.losses}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{m.winRate}%</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>${m.profit.toFixed?.(2) ?? m.profit}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>${m.avgProfitPerBet}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {report.type === 'streak-analysis' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', fontSize: '13px' }}>
+              <div style={{ background: 'white', padding: '12px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Current streak</div>
+                <div style={{ fontSize: '18px', fontWeight: 600 }}>{report.data.currentStreak} {report.data.currentStreakType || ''}</div>
+              </div>
+              <div style={{ background: 'white', padding: '12px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Max win streak</div>
+                <div style={{ fontSize: '18px', fontWeight: 600 }}>{report.data.maxWinStreak}</div>
+              </div>
+              <div style={{ background: 'white', padding: '12px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Max loss streak</div>
+                <div style={{ fontSize: '18px', fontWeight: 600 }}>{report.data.maxLossStreak}</div>
+              </div>
+              <div style={{ background: 'white', padding: '12px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Last 5</div>
+                <div>W {report.data.last5.wins} / L {report.data.last5.losses}</div>
+                <div>Profit ${report.data.last5.profit}</div>
+              </div>
+              <div style={{ background: 'white', padding: '12px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Last 10</div>
+                <div>W {report.data.last10.wins} / L {report.data.last10.losses}</div>
+                <div>Profit ${report.data.last10.profit}</div>
+              </div>
+            </div>
+          )}
+
+          {report.type === 'roi-by-odds-range' && (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ background: '#e9ecef' }}>
+                    <th style={{ textAlign: 'left', padding: '8px' }}>Odds band</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Wins</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Losses</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Win rate</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Bets</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>Profit</th>
+                    <th style={{ textAlign: 'right', padding: '8px' }}>ROI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.data.ranges.map((r: any) => (
+                    <tr key={r.range} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '8px' }}>{r.range}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.wins}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.losses}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.winRate}%</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.total}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>${r.profit.toFixed?.(2) ?? r.profit}</td>
+                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.roi}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -105,6 +105,7 @@ export default function LiveDashboard() {
           <option value="ncaab">NCAAB</option>
           <option value="ncaaf">NCAAF</option>
           <option value="mlb">MLB</option>
+          <option value="cbb">CBB</option>
           <option value="nascar">NASCAR</option>
         </select>
         <a href="/progno/admin" style={{ marginLeft: '20px', fontSize: '14px', color: '#666' }}>Admin</a>

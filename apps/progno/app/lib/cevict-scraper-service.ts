@@ -73,10 +73,12 @@ export class CevictScraperService {
     status: string;
     injury: string;
   }>> {
-    // Normalize sport key - handle baseball_ncaa -> cbb
+    // Normalize sport key - handle baseball_ncaa -> cbb (college baseball, NOT college basketball)
     let sportKey = sport.toLowerCase().replace(/^basketball_|^americanfootball_|^icehockey_|^baseball_/, '');
     if (sportKey === 'ncaa' || sportKey === 'baseball_ncaa') {
-      sportKey = 'cbb'; // College baseball
+      // NOTE: In this codebase "cbb" means college baseball (not college basketball).
+      // College basketball uses "ncaab". This matches the Odds API sport mapping.
+      sportKey = 'cbb';
     }
 
     // Map to injury report URLs
@@ -211,21 +213,45 @@ export class CevictScraperService {
         );
         break;
       case 'ncaaf':
-        urls.push(
-          `https://www.espn.com/college-football/team/injuries/_/id/${this.getCollegeTeamId(team)}`,
-          `https://www.ncaa.com/injury-reports`
-        );
+        {
+          const id = this.getCollegeTeamId(team);
+          if (id) {
+            urls.push(
+              `https://www.espn.com/college-football/team/injuries/_/id/${id}`
+            );
+          } else {
+            console.log(`[CevictScraper] No ESPN college ID for ${team} (ncaaf), skipping ESPN injuries URL`);
+          }
+          // NCAA.com generic injury page; may not have structured per-team data.
+        }
         break;
       case 'ncaab':
-        urls.push(
-          `https://www.espn.com/mens-college-basketball/team/injuries/_/id/${this.getCollegeTeamId(team)}`
-        );
+        {
+          const id = this.getCollegeTeamId(team);
+          if (id) {
+            urls.push(
+              `https://www.espn.com/mens-college-basketball/team/injuries/_/id/${id}`
+            );
+          } else {
+            console.log(`[CevictScraper] No ESPN college ID for ${team} (ncaab), skipping ESPN injuries URL`);
+          }
+        }
         break;
-      case 'cbb': // College baseball
-        urls.push(
-          `https://www.ncaa.com/sports/baseball/teams/${normalizedTeam}`,
-          `https://www.espn.com/college-baseball/team/injuries/_/id/${this.getCollegeTeamId(team)}`
-        );
+      // NOTE: "cbb" = college baseball in this codebase (college basketball = "ncaab").
+      case 'cbb':
+        {
+          // College baseball injuries are extremely sparse; ESPN IDs are incomplete.
+          // Only call ESPN when we have a known mapping to avoid spamming /id/ with no ID.
+          const id = this.getCollegeTeamId(team);
+          if (id) {
+            urls.push(
+              `https://www.espn.com/college-baseball/team/injuries/_/id/${id}`
+            );
+          } else {
+            console.log(`[CevictScraper] No ESPN college ID for ${team} (cbb/college baseball), skipping ESPN injuries URL`);
+          }
+          // NCAA team roster page is a best-effort fallback; it rarely has injury data.
+        }
         break;
     }
 
@@ -413,7 +439,6 @@ export class CevictScraperService {
    * Get ESPN college team ID
    */
   private getCollegeTeamId(team: string): string {
-    // Major college programs - would need full mapping for all teams
     const ids: Record<string, string> = {
       'Alabama Crimson Tide': '333', 'Ohio State Buckeyes': '194',
       'Georgia Bulldogs': '61', 'Clemson Tigers': '228',
@@ -427,23 +452,22 @@ export class CevictScraperService {
       'Tennessee Volunteers': '2633', 'Nebraska Cornhuskers': '158',
       'Kentucky Wildcats': '96', 'UCLA Bruins': '26',
       'Arizona State Sun Devils': '9', 'Texas Tech Red Raiders': '2641',
-      'Oregon Ducks': '2483', 'Minnesota Golden Gophers': '135',
+      'Minnesota Golden Gophers': '135',
       'Virginia Tech Hokies': '259', 'Michigan St Spartans': '127',
       'Kansas St Wildcats': '2306', 'Baylor Bears': '239',
-      'Georgia Bulldogs': '61', 'Iowa Hawkeyes': '66',
-      'Nebraska Cornhuskers': '158', 'LSU Tigers': '99',
-      'Texas Longhorns': '251', 'Kent State Golden Flashes': '2309',
+      'Iowa Hawkeyes': '66',
+      'Kent State Golden Flashes': '2309',
       'Louisville Cardinals': '97', 'Xavier Musketeers': '2752',
       'South Carolina Upstate Spartans': '2534', 'Western Carolina Catamounts': '2697',
       'Duke Blue Devils': '150', 'Appalachian St Mountaineers': '2026',
       'Coastal Carolina Chanticleers': '324', 'Charleston Cougars': '232',
-      'Clemson Tigers': '228', 'Charlotte 49ers': '2429',
+      'Charlotte 49ers': '2429',
       'East Tennessee St Buccaneers': '2016', 'Wake Forest Demon Deacons': '154',
       'High Point Panthers': '2272', 'SIU-Edwardsville Cougars': '79',
       'Illinois St Redbirds': '2280', 'Tennessee Tech Golden Eagles': '2635',
       'Lipscomb Bisons': '288', 'SE Missouri St Redhawks': '2540',
       'Saint Louis Billikens': '139', 'Samford Bulldogs': '2535',
-      'Alabama Crimson Tide': '333', 'Ole Miss Rebels': '145',
+      'Ole Miss Rebels': '145',
       'Arkansas St Red Wolves': '2032', 'Mississippi St Bulldogs': '344',
       'Troy Trojans': '2653', 'Memphis Tigers': '235',
       'Arkansas-Little Rock Trojans': '2031', 'Davidson Wildcats': '218',
@@ -453,21 +477,21 @@ export class CevictScraperService {
       'Charleston Southern Buccaneers': '2325', 'Jacksonville Dolphins': '256',
       'Florida St Seminoles': '52', 'Georgia Southern Eagles': '290',
       'Georgia Tech Yellow Jackets': '59', 'Lamar Cardinals': '2320',
-      'Miami Hurricanes': '2390', 'UCF Knights': '2116',
+      'UCF Knights': '2116',
       'Florida Atlantic Owls': '2226', 'Missouri Tigers': '142',
-      'Stetson Hatters': '56', 'Florida Gators': '57',
-      'Auburn Tigers': '2', 'Cincinnati Bearcats': '2132',
+      'Stetson Hatters': '56',
+      'Cincinnati Bearcats': '2132',
       'Nicholls St Colonels': '2447', 'South Alabama Jaguars': '6',
       'SE Louisiana Lions': '2545', 'Southern Miss Golden Eagles': '2572',
-      'Baylor Bears': '239', 'Texas State Bobcats': '326',
+      'Texas State Bobcats': '326',
       'Houston Baptist Huskies': '2277', 'Sam Houston St Bearkats': '2534',
-      'UT Rio Grande Valley Vaqueros': '292', 'Texas Tech Red Raiders': '2641',
+      'UT Rio Grande Valley Vaqueros': '292',
       'Dallas Baptist Patriots': '1001', 'Abilene Christian Wildcats': '2000',
       'Rice Owls': '242', 'Louisiana Ragin\' Cajuns': '309',
       'TCU Horned Frogs': '2628', 'UT-Arlington Mavericks': '250',
-      'UCLA Bruins': '26', 'Tulane Green Wave': '2655',
+      'Tulane Green Wave': '2655',
       'Arizona St Sun Devils': '9', 'UConn Huskies': '41',
-      'USC Trojans': '30', 'Loyola Marymount Lions': '2351',
+      'Loyola Marymount Lions': '2351',
       'Long Beach State Dirtbags': '2349', 'San Diego Toreros': '21',
     };
 

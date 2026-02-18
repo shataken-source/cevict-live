@@ -30,11 +30,11 @@ export interface ProbabilityAnalysis {
     reliabilityIndex: number;
   };
   confidenceDistribution: {
-    excellent: number;
-    good: number;
-    average: number;
-    poor: number;
-    terrible: number;
+    excellent: { min: number; max: number; count: number };
+    good: { min: number; max: number; count: number };
+    average: { min: number; max: number; count: number };
+    poor: { min: number; max: number; count: number };
+    terrible: { min: number; max: number; count: number };
   };
   byConfidence: Record<string, ConfidenceLevelStats>;
   bySport: Record<string, SportStats>;
@@ -89,6 +89,7 @@ export class CevictProbabilityAnalyzer {
       bySport: metrics.bySport || {}
     };
   }
+}
 
 /**
  * Get probability analysis for admin dashboard

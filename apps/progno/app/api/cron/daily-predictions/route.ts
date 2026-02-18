@@ -96,8 +96,15 @@ export async function GET(request: Request) {
     console.log(`[CRON daily-predictions] Wrote ${picks.length} picks to ${filePath}`)
 
     // Syndicate to Prognostication if configured
-    const webhookBaseUrl = process.env.PROGNOSTICATION_URL || process.env.NEXT_PUBLIC_PROGNOSTICATION_URL || 'https://prognostication.com'
-    const webhookUrl = `${webhookBaseUrl}/api/webhooks/progno`
+    // Prefer a full webhook URL when provided; otherwise fall back to base URL + default path.
+    const rawBaseUrl =
+      process.env.PROGNOSTICATION_URL ||
+      process.env.NEXT_PUBLIC_PROGNOSTICATION_URL ||
+      'https://prognostication.com'
+    const webhookBaseUrl = rawBaseUrl.replace(/\/+$/, '')
+    const webhookUrl =
+      process.env.PROGNOSTICATION_WEBHOOK_URL ||
+      `${webhookBaseUrl}/api/webhooks/progno`
     const apiKey = process.env.PROGNO_INTERNAL_API_KEY || process.env.PROGNO_API_KEY
 
     if (apiKey && picks.length > 0) {

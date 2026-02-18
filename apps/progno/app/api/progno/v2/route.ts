@@ -15,7 +15,7 @@ const SPORT_TO_ODDS_KEY: Record<string, string> = {
   ncaaf: 'americanfootball_ncaaf',
   cfb: 'americanfootball_ncaaf',
   ncaab: 'basketball_ncaab',
-  cbb: 'basketball_ncaab',
+  cbb: 'baseball_ncaa',
 };
 
 function toOddsApiSportKey(sport: string): string {
