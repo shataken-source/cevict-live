@@ -1,8 +1,3 @@
-# CRITICAL - Exclude all node_modules FIRST
-node_modules
-**/node_modules
-**/node_modules/
-
 # ROOT LEVEL - Only include IPTVviewer app
 # Exclude all other apps
 apps/Alpha_Hunter_Bundle/
@@ -15,12 +10,6 @@ apps/calmcast/
 apps/cds-demo/
 _ai-inboxes/
 _wt_petreunion_push/
-
-# ROOT LEVEL - Large non-app directories (CRITICAL)
-Polymarket-Kalshi-Arbitrage-bot/
-old-cevict-monorepo/
-.turbo/
-.cache/
 
 # Exclude root level files not needed
 *.md
@@ -56,6 +45,9 @@ apps/IPTVviewer/dist/
 **/package-lock.json
 **/yarn.lock
 
+# All node_modules everywhere
+**/node_modules/
+
 # Build artifacts
 **/*.apk
 **/*.aab
@@ -67,10 +59,14 @@ ios/
 build/
 dist/
 .expo/
+.expo/
 .next/
 .gradle/
 .snapshots/
 .worktrees/
+
+# Node modules (installed fresh on server)
+node_modules/
 
 # IDE
 .idea/
@@ -106,6 +102,49 @@ __tests__/
 .tmp*
 *.tmp
 *.temp
+
+# Large lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Cache directories
+*.cache/
+.cache/
+npm-cache/
+
+# EAS/expo
+.eas/
+
+# pnpm store (MASSIVE - must exclude)
+node_modules/.pnpm/
+node_modules/.ignored/
+
+# Native binaries
+*.node
+*.dll
+*.so
+*.dylib
+
+# Android AAR files
+*.aar
+
+# Java archives
+*.jar
+
+# Hermes/JS engines
+hermes
+hermesc
+jsc-android/
+
+# Next.js native deps
+@next+swc-*/
+@img+sharp-*/
+lightningcss-*/
+
+# Source maps
+*.js.map
+*.css.map
 
 # Large lock files
 pnpm-lock.yaml
