@@ -1,12 +1,20 @@
 {
   "crons": [
     {
+      "path": "/api/cron/daily-predictions?earlyLines=1",
+      "schedule": "0 12 * * *"
+    },
+    {
       "path": "/api/cron/daily-predictions",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/daily-results",
       "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/daily-results",
-      "schedule": "0 6 * * *"
+      "schedule": "0 14 * * *"
     },
     {
       "path": "/api/progno/weekly-learning",

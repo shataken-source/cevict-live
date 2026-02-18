@@ -1185,7 +1185,26 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     game_id: game.id || `${game.home_team}-${game.away_team}-${game.commence_time}`,
     expected_value_raw: bestValueBet?.expectedValue ?? 0,
     expected_value: Math.min(EV_DISPLAY_CAP, Math.round((bestValueBet?.expectedValue ?? 0) * 100) / 100),
-    reasoning: [...(trueEdgeResult.reasoning || [])].filter(Boolean),
+    reasoning: (() => {
+      const factors = [...(trueEdgeResult.reasoning || [])].filter(Boolean);
+      if (monteCarloResult) {
+        const mcWin = recommendedPick === game.home_team
+          ? monteCarloResult.homeWinProbability
+          : monteCarloResult.awayWinProbability;
+        factors.push(`MC simulation: ${(mcWin * 100).toFixed(1)}% win probability (${monteCarloResult.iterations.toLocaleString()} iterations)`);
+      }
+      if (spreadPoint && spreadPoint !== 0) {
+        const favTeam = spreadPoint < 0 ? game.home_team : game.away_team;
+        factors.push(`Spread: ${favTeam} favored by ${Math.abs(spreadPoint)}`);
+      }
+      if (bestValueBet && bestValueBet.edge >= 5) {
+        factors.push(`Value bet: ${bestValueBet.type} ${bestValueBet.side} (+${bestValueBet.edge.toFixed(1)}% edge)`);
+      }
+      if (isHomePick) {
+        factors.push('Home-team pick (historically +67% ROI)');
+      }
+      return factors;
+    })(),
     triple_align: tripleAlign,
     composite_score: Math.round(compositeScore * 10) / 10,
     claude_effect: trueEdgeResult.totalEdge,

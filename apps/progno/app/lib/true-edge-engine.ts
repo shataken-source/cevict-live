@@ -317,23 +317,60 @@ export function calculateTrueEdge(
 
   // Add basic key factors if reasoning is empty
   if (reasoning.length === 0) {
-    // Add edge-based reasoning
-    if (Math.abs(totalEdge) > 0.05) {
-      reasoning.push(`${strength === 'strong' ? 'Strong' : 'Moderate'} ${totalEdge > 0 ? 'home' : 'away'} edge (${(Math.abs(totalEdge) * 100).toFixed(1)}%)`);
-    }
-
-    // Add confidence-based reasoning
-    if (confidence > 0.7) {
-      reasoning.push('High prediction confidence from model consensus');
-    } else if (confidence > 0.5) {
-      reasoning.push('Moderate confidence - consider bankroll management');
+    // Market-derived probability insight
+    if (baseProbability > 0.7) {
+      reasoning.push(`Heavy favorite (${(baseProbability * 100).toFixed(0)}% implied probability)`);
+    } else if (baseProbability > 0.6) {
+      reasoning.push(`Clear favorite (${(baseProbability * 100).toFixed(0)}% implied probability)`);
+    } else if (baseProbability > 0.52) {
+      reasoning.push(`Slight favorite (${(baseProbability * 100).toFixed(0)}% implied probability)`);
     } else {
-      reasoning.push('Lower confidence - small stakes recommended');
+      reasoning.push(`Pick-em matchup (${(baseProbability * 100).toFixed(0)}% implied probability)`);
     }
 
-    // Add sport-specific baseline
-    const sportName = sport.replace(/^(basketball_|americanfootball_|icehockey_|baseball_)/, '').toUpperCase();
-    reasoning.push(`${sportName} baseline factors applied`);
+    // Home field context
+    if (factors.altitudeDifference && Math.abs(factors.altitudeDifference) > 500) {
+      reasoning.push(`Altitude factor: ${factors.altitudeDifference > 0 ? 'home' : 'away'} team has elevation edge`);
+    } else if (factors.homeFieldIntensity && factors.homeFieldIntensity >= 0.7) {
+      reasoning.push('Strong home-court advantage expected');
+    } else {
+      reasoning.push('Standard home-court advantage applied');
+    }
+
+    // Injury context
+    const homeInjCount = factors.homeTeamInjuries?.length || 0;
+    const awayInjCount = factors.awayTeamInjuries?.length || 0;
+    if (homeInjCount > 0 || awayInjCount > 0) {
+      const critHome = factors.homeTeamInjuries?.filter(i => i.impact === 'critical').length || 0;
+      const critAway = factors.awayTeamInjuries?.filter(i => i.impact === 'critical').length || 0;
+      if (critHome > 0) reasoning.push(`Home team: ${critHome} critical injury(s) impacting lineup`);
+      if (critAway > 0) reasoning.push(`Away team: ${critAway} critical injury(s) impacting lineup`);
+      if (critHome === 0 && critAway === 0) reasoning.push(`Minor injuries noted (${homeInjCount} home, ${awayInjCount} away)`);
+    }
+
+    // Weather context
+    if (factors.weatherConditions) {
+      const w = factors.weatherConditions;
+      if (w.condition === 'extreme' || w.condition === 'snow') {
+        reasoning.push(`Extreme weather: ${w.condition}, ${w.temperature}°F, ${w.windSpeed}mph wind`);
+      } else if (w.windSpeed > 15 || w.precipitation > 0.3) {
+        reasoning.push(`Weather impact: ${w.condition}, ${w.windSpeed}mph wind`);
+      }
+    }
+
+    // Edge strength summary
+    if (Math.abs(totalEdge) > 0.05) {
+      reasoning.push(`${strength === 'strong' ? 'Strong' : 'Moderate'} edge detected (${(Math.abs(totalEdge) * 100).toFixed(1)}%)`);
+    }
+
+    // Confidence tier
+    if (confidence >= 0.7) {
+      reasoning.push('High model confidence — strong play');
+    } else if (confidence >= 0.5) {
+      reasoning.push('Moderate confidence — standard unit size');
+    } else {
+      reasoning.push('Lower confidence — reduce stake');
+    }
   }
 
   return {

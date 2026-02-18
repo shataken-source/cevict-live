@@ -12,8 +12,10 @@
 import { NextResponse } from 'next/server'
 import fs from 'node:fs'
 import path from 'node:path'
+import { createClient } from '@supabase/supabase-js'
 import { getPrimaryKey } from '../../../keys-store'
 import { fetchPreviousDayResultsFromProviders } from '../../../../lib/data-sources/results-apis'
+import { throttledFetch, recordRateLimitHit } from '../../../lib/external-api-throttle'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -199,7 +201,7 @@ export async function GET(request: Request) {
   for (const [league, sportKey] of Object.entries(SPORT_KEY_MAP)) {
     try {
       const scoreUrl = `https://api.the-odds-api.com/v4/sports/${sportKey}/scores/?daysFrom=2&apiKey=${apiKey}`
-      const res = await fetch(scoreUrl, { cache: 'no-store' })
+      const res = await throttledFetch('the-odds-api', scoreUrl, { cache: 'no-store' })
       if (!res.ok) continue
       const data = await res.json()
       if (!Array.isArray(data)) continue
@@ -249,12 +251,13 @@ export async function GET(request: Request) {
       if (!host || !leagueId) continue
       try {
         const url = `https://${host}/games?league=${leagueId}&date=${date}&timezone=America/New_York`
-        const res = await fetch(url, {
+        const res = await throttledFetch('api-sports', url, {
           headers: { 'x-apisports-key': apiSportsKey },
           cache: 'no-store',
         })
         if (!res.ok) {
           const errText = await res.text().catch(() => '')
+          if (res.status === 429) recordRateLimitHit('api-sports')
           console.warn(`[CRON daily-results] API-Sports ${league} ${res.status}: ${errText}`)
           fallbackSummary[league] = `${res.status}${errText ? ` ${errText.slice(0, 40)}` : ''}`
           continue
@@ -379,6 +382,66 @@ export async function GET(request: Request) {
   const outPath = path.join(appRoot, `results-${date}.json`)
   fs.writeFileSync(outPath, JSON.stringify(out, null, 2), 'utf8')
 
+  // Persist graded results to Supabase for historical tracking
+  let dbInserted = 0
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (supabaseUrl && supabaseKey) {
+    try {
+      const supabase = createClient(supabaseUrl, supabaseKey)
+      const gradedRows = results
+        .filter(r => r.status === 'win' || r.status === 'lose')
+        .map(r => ({
+          date,
+          home_team: r.home_team,
+          away_team: r.away_team,
+          pick: r.pick,
+          confidence: r.confidence,
+          sport: r.sport || r.league || 'unknown',
+          league: r.league || r.sport || 'unknown',
+          game_id: r.game_id || null,
+          status: r.status,
+          actual_winner: (r as any).actualWinner || null,
+          actual_home_score: (r as any).actualScore?.home ?? null,
+          actual_away_score: (r as any).actualScore?.away ?? null,
+          graded_at: new Date().toISOString(),
+        }))
+
+      if (gradedRows.length > 0) {
+        const { error } = await supabase
+          .from('prediction_results')
+          .upsert(gradedRows, { onConflict: 'date,home_team,away_team' })
+
+        if (error) {
+          console.warn(`[CRON daily-results] Supabase insert error:`, error.message)
+        } else {
+          dbInserted = gradedRows.length
+          console.log(`[CRON daily-results] Stored ${dbInserted} graded results in Supabase`)
+        }
+      }
+
+      // Also store daily summary
+      const { error: summaryError } = await supabase
+        .from('prediction_daily_summary')
+        .upsert({
+          date,
+          total_picks: total,
+          correct,
+          wrong: graded.length - correct,
+          pending,
+          graded: graded.length,
+          win_rate: out.summary.winRate,
+          graded_at: new Date().toISOString(),
+        }, { onConflict: 'date' })
+
+      if (summaryError) {
+        console.warn(`[CRON daily-results] Summary insert error:`, summaryError.message)
+      }
+    } catch (e) {
+      console.warn(`[CRON daily-results] DB persistence failed:`, (e as Error).message)
+    }
+  }
+
   // Per-league score counts and source (Odds API vs API-Sports fallback) for admin UI
   const scoresByLeague: Record<string, { count: number; source: 'odds' | 'fallback' }> = {}
   for (const league of Object.keys(SPORT_KEY_MAP)) {
@@ -391,13 +454,14 @@ export async function GET(request: Request) {
   const message =
     graded.length === 0 && pending > 0
       ? `${total} picks for ${date} — all pending. Games for this date may not have been played yet or scores not yet available from the Odds API. Re-run after games are complete.`
-      : `Graded ${total} picks: ${correct} correct, ${graded.length - correct} wrong, ${pending} pending. Win rate ${out.summary.winRate}%.`
+      : `Graded ${total} picks: ${correct} correct, ${graded.length - correct} wrong, ${pending} pending. Win rate ${out.summary.winRate}%.${dbInserted > 0 ? ` ${dbInserted} results saved to database.` : ''}`
   return NextResponse.json({
     success: true,
     date,
     file: outPath,
     summary: out.summary,
     message,
+    dbInserted,
     results: out.results,
     fallbackSummary: Object.keys(fallbackSummary).length > 0 ? fallbackSummary : undefined,
     scoresByLeague,

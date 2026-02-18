@@ -177,9 +177,11 @@ export function estimateTeamStatsFromOdds(odds: { home: number; away: number; sp
   const spread = odds.spread || 0;
   const total = odds.total || scoring.avgTotal;
 
-  // Home team expected points = (total + spread) / 2
-  const homeExpectedPoints = (total + spread) / 2;
-  const awayExpectedPoints = (total - spread) / 2;
+  // spread is from the home team perspective: negative = home favored
+  // Home -16.5 means home expected to win by 16.5 → home scores more
+  // homeExpected = (total - spread) / 2, awayExpected = (total + spread) / 2
+  const homeExpectedPoints = (total - spread) / 2;
+  const awayExpectedPoints = (total + spread) / 2;
 
   // Estimate points for/against based on expected points and win percentage
   const homePointsFor = homeExpectedPoints * scoring.gamesPerSeason;

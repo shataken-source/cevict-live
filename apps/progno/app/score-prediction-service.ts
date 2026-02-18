@@ -17,7 +17,7 @@ import { H2HHistory } from '../lib/data-sources/h2h-history';
 import { getTeamResults, getH2HResults, getRecentTeamPerformance, GameResult } from '../lib/data-sources/historical-results';
 import { fetchPreviousDayResultsFromProviders } from '../lib/data-sources/results-apis';
 import { massagerBridge } from './massager-bridge';
-s
+
 export interface ScorePredictionInput {
   homeTeam: string;
   awayTeam: string;
