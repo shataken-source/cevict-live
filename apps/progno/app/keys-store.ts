@@ -50,10 +50,16 @@ export function deleteKey(id: string): boolean {
 }
 
 export function getPrimaryKey(): string | undefined {
-  const fromEnv = process.env.ODDS_API_KEY || process.env.NEXT_PUBLIC_ODDS_API_KEY;
-  if (fromEnv) return fromEnv;
-  const keys = loadKeys();
-  return keys[0]?.value;
+  const key1 = process.env.ODDS_API_KEY || process.env.NEXT_PUBLIC_ODDS_API_KEY
+  const key2 = process.env.ODDS_API_KEY_2
+  const available = [key1, key2].filter(Boolean) as string[]
+  if (available.length === 0) {
+    const keys = loadKeys()
+    return keys[0]?.value
+  }
+  // Time-based rotation (1-minute buckets) — consistent across cold starts and instances
+  const bucketIndex = Math.floor(Date.now() / 60000) % available.length
+  return available[bucketIndex]
 }
 
 export function getKeyByLabel(label: string): string | undefined {
@@ -67,6 +73,12 @@ export function getSportsBlazeKey(): string | undefined {
   if (fromEnv) return fromEnv;
   // Allow a couple of common labels in the admin panel.
   return getKeyByLabel("SportsBlaze") || getKeyByLabel("sportsblaze") || getKeyByLabel("SPORTSBLAZE");
+}
+
+export function getBetStackKey(): string | undefined {
+  const fromEnv = process.env.BETSTACK_API_KEY
+  if (fromEnv) return fromEnv
+  return getKeyByLabel('BetStack') || getKeyByLabel('betstack') || getKeyByLabel('BETSTACK')
 }
 
 export function getAnthropicKey(): string | undefined {

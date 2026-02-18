@@ -1,6 +1,6 @@
 {
   "date": "2026-02-05",
-  "gradedAt": "2026-02-06T14:04:54.521Z",
+  "gradedAt": "2026-02-18T18:49:52.383Z",
   "results": [
     {
       "home_team": "Tampa Bay Lightning",
@@ -55,12 +55,7 @@
       "sport": "NCAAB",
       "league": "NCAAB",
       "game_id": "4c39604056fc5a080263e18c15c17cd7",
-      "status": "lose",
-      "actualWinner": "Michigan Wolverines",
-      "actualScore": {
-        "home": 110,
-        "away": 69
-      }
+      "status": "pending"
     },
     {
       "home_team": "Marist Red Foxes",
@@ -70,12 +65,7 @@
       "sport": "NCAAB",
       "league": "NCAAB",
       "game_id": "bdf3436b90a378ff22f380746c850f6d",
-      "status": "lose",
-      "actualWinner": "Marist Red Foxes",
-      "actualScore": {
-        "home": 81,
-        "away": 52
-      }
+      "status": "pending"
     },
     {
       "home_team": "Utah Valley Wolverines",
@@ -85,12 +75,7 @@
       "sport": "NCAAB",
       "league": "NCAAB",
       "game_id": "a84fcf932cb30834688b1cfa54f9d216",
-      "status": "lose",
-      "actualWinner": "Utah Valley Wolverines",
-      "actualScore": {
-        "home": 68,
-        "away": 55
-      }
+      "status": "pending"
     },
     {
       "home_team": "Detroit Pistons",
@@ -141,8 +126,8 @@
   "summary": {
     "total": 9,
     "correct": 4,
-    "pending": 0,
-    "graded": 9,
-    "winRate": 44.4
+    "pending": 3,
+    "graded": 6,
+    "winRate": 66.7
   }
 }

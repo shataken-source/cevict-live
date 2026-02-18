@@ -1,0 +1,83 @@
+{
+  "date": "2026-02-11",
+  "gradedAt": "2026-02-18T18:54:32.954Z",
+  "results": [
+    {
+      "home_team": "Western Carolina Catamounts",
+      "away_team": "The Citadel Bulldogs",
+      "pick": "The Citadel Bulldogs",
+      "confidence": 92,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "game_id": "767f1df6f8864eda193d94ee54a57501",
+      "status": "pending"
+    },
+    {
+      "home_team": "Saint Mary's Gaels",
+      "away_team": "Pepperdine Waves",
+      "pick": "Pepperdine Waves",
+      "confidence": 92,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "game_id": "0eca9e653250e1c78dfb71afa036a390",
+      "status": "pending"
+    },
+    {
+      "home_team": "Gardner-Webb Bulldogs",
+      "away_team": "Winthrop Eagles",
+      "pick": "Gardner-Webb Bulldogs",
+      "confidence": 92,
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "game_id": "807a75ef0e64ad954b61a995289651d7",
+      "status": "pending"
+    },
+    {
+      "home_team": "Cleveland Cavaliers",
+      "away_team": "Washington Wizards",
+      "pick": "Washington Wizards",
+      "confidence": 92,
+      "sport": "NBA",
+      "league": "NBA",
+      "game_id": "1e29ea38e9c7789166418c9a3544bff9",
+      "status": "lose",
+      "actualWinner": "Cleveland Cavaliers",
+      "actualScore": {
+        "home": 138,
+        "away": 113
+      }
+    },
+    {
+      "home_team": "Oklahoma City Thunder",
+      "away_team": "Milwaukee Bucks",
+      "pick": "Milwaukee Bucks",
+      "confidence": 89,
+      "sport": "NBA",
+      "league": "NBA",
+      "game_id": "1c3809071b6a6e313c87dee15e46bdc1",
+      "status": "pending"
+    },
+    {
+      "home_team": "Denver Nuggets",
+      "away_team": "Memphis Grizzlies",
+      "pick": "Memphis Grizzlies",
+      "confidence": 88,
+      "sport": "NBA",
+      "league": "NBA",
+      "game_id": "72e90971d6ffe7bcc9ce0c5c15a12ece",
+      "status": "lose",
+      "actualWinner": "Denver Nuggets",
+      "actualScore": {
+        "home": 122,
+        "away": 116
+      }
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "correct": 0,
+    "pending": 4,
+    "graded": 2,
+    "winRate": 0
+  }
+}

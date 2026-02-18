@@ -181,23 +181,14 @@ export async function GET(request: Request) {
     return { ...p, home_team, away_team, pick }
   }).filter((p: any) => p.pick && p.home_team && p.away_team)
 
-  if (picks.length === 0) {
-    const outPath = path.join(appRoot, `results-${date}.json`)
-    const emptyResult = {
-      date,
-      gradedAt: new Date().toISOString(),
-      results: [],
-      summary: { total: 0, correct: 0, pending: 0, graded: 0, winRate: 0 }
-    }
-    fs.writeFileSync(outPath, JSON.stringify(emptyResult, null, 2), 'utf8')
-    const msg = rawPicks.length === 0
-      ? 'No picks to grade'
-      : `No valid picks to grade (file had ${rawPicks.length} entries but missing home_team/away_team or pick; use daily-predictions cron format).`
-    return NextResponse.json({ success: true, date, file: outPath, message: msg, summary: emptyResult.summary })
-  }
+  const noPicksMsg = picks.length === 0
+    ? (rawPicks.length === 0
+        ? 'No picks to grade'
+        : `No valid picks to grade (file had ${rawPicks.length} entries but missing home_team/away_team or pick; use daily-predictions cron format).`)
+    : null
 
   // Fetch scores for all sports (daysFrom=2 to catch games that finished yesterday)
-  const scoresByKey: Record<string, { home: string; away: string; homeScore: number; awayScore: number }[]> = {}
+  const scoresByKey: Record<string, { home: string; away: string; homeScore: number; awayScore: number; gameId?: string }[]> = {}
   for (const [league, sportKey] of Object.entries(SPORT_KEY_MAP)) {
     try {
       const scoreUrl = `https://api.the-odds-api.com/v4/sports/${sportKey}/scores/?daysFrom=2&apiKey=${apiKey}`
@@ -213,7 +204,7 @@ export async function GET(request: Request) {
         const awayEntry = g.scores?.find((s: any) => norm(s.name) === norm(away))
         const homeScore = Number(homeEntry?.score ?? homeEntry?.points ?? 0)
         const awayScore = Number(awayEntry?.score ?? awayEntry?.points ?? 0)
-        return { home, away, homeScore, awayScore }
+        return { home, away, homeScore, awayScore, gameId: g.id as string | undefined }
       }).filter((x: any) => x.homeScore !== undefined && x.awayScore !== undefined)
     } catch {
       scoresByKey[league] = []
@@ -307,6 +298,65 @@ export async function GET(request: Request) {
     }
   }
 
+  // ── Always persist ALL completed games to game_outcomes for backtesting ──
+  // Runs regardless of whether we have picks to grade — so every day's results are captured.
+  let gameOutcomesStored = 0
+  {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    if (supabaseUrl && supabaseKey) {
+      try {
+        const sbClient = createClient(supabaseUrl, supabaseKey)
+        const gameOutcomeRows: any[] = []
+        for (const [league, games] of Object.entries(scoresByKey)) {
+          const sportKey = SPORT_KEY_MAP[league]
+          const usedFallback = league in fallbackSummary
+          for (const game of games) {
+            if (game.homeScore === 0 && game.awayScore === 0) continue
+            const winner = game.homeScore > game.awayScore
+              ? game.home
+              : game.awayScore > game.homeScore
+                ? game.away
+                : 'TIE'
+            gameOutcomeRows.push({
+              game_id: game.gameId || null,
+              game_date: date,
+              sport: sportKey || league.toLowerCase(),
+              league,
+              home_team: game.home,
+              away_team: game.away,
+              home_score: game.homeScore,
+              away_score: game.awayScore,
+              winner,
+              source: usedFallback ? 'api-sports' : 'odds-api',
+            })
+          }
+        }
+        if (gameOutcomeRows.length > 0) {
+          const { error: outcomesError } = await sbClient
+            .from('game_outcomes')
+            .upsert(gameOutcomeRows, { onConflict: 'game_date,home_team,away_team' })
+          if (outcomesError) {
+            console.warn(`[CRON daily-results] game_outcomes insert error:`, outcomesError.message)
+          } else {
+            gameOutcomesStored = gameOutcomeRows.length
+            console.log(`[CRON daily-results] Stored ${gameOutcomesStored} game outcomes for backtesting`)
+          }
+        }
+      } catch (e) {
+        console.warn(`[CRON daily-results] game_outcomes write failed:`, (e as Error).message)
+      }
+    }
+  }
+
+  // If no valid picks, return early now that game_outcomes have been saved
+  if (noPicksMsg) {
+    const outPath = path.join(appRoot, `results-${date}.json`)
+    const emptyResult = { date, gradedAt: new Date().toISOString(), results: [], summary: { total: 0, correct: 0, pending: 0, graded: 0, winRate: 0 } }
+    fs.writeFileSync(outPath, JSON.stringify(emptyResult, null, 2), 'utf8')
+    return NextResponse.json({ success: true, date, file: outPath, message: noPicksMsg, summary: emptyResult.summary, gameOutcomesStored })
+  }
+
   const results: GradedPick[] = []
   let correct = 0
   let pending = 0
@@ -392,7 +442,7 @@ export async function GET(request: Request) {
       const gradedRows = results
         .filter(r => r.status === 'win' || r.status === 'lose')
         .map(r => ({
-          date,
+          game_date: date,
           home_team: r.home_team,
           away_team: r.away_team,
           pick: r.pick,
@@ -410,7 +460,7 @@ export async function GET(request: Request) {
       if (gradedRows.length > 0) {
         const { error } = await supabase
           .from('prediction_results')
-          .upsert(gradedRows, { onConflict: 'date,home_team,away_team' })
+          .upsert(gradedRows, { onConflict: 'game_date,home_team,away_team' })
 
         if (error) {
           console.warn(`[CRON daily-results] Supabase insert error:`, error.message)
@@ -454,7 +504,7 @@ export async function GET(request: Request) {
   const message =
     graded.length === 0 && pending > 0
       ? `${total} picks for ${date} — all pending. Games for this date may not have been played yet or scores not yet available from the Odds API. Re-run after games are complete.`
-      : `Graded ${total} picks: ${correct} correct, ${graded.length - correct} wrong, ${pending} pending. Win rate ${out.summary.winRate}%.${dbInserted > 0 ? ` ${dbInserted} results saved to database.` : ''}`
+      : `Graded ${total} picks: ${correct} correct, ${graded.length - correct} wrong, ${pending} pending. Win rate ${out.summary.winRate}%.${dbInserted > 0 ? ` ${dbInserted} results saved to database.` : ''}${gameOutcomesStored > 0 ? ` ${gameOutcomesStored} game outcomes stored for backtesting.` : ''}`
   return NextResponse.json({
     success: true,
     date,
@@ -462,6 +512,7 @@ export async function GET(request: Request) {
     summary: out.summary,
     message,
     dbInserted,
+    gameOutcomesStored,
     results: out.results,
     fallbackSummary: Object.keys(fallbackSummary).length > 0 ? fallbackSummary : undefined,
     scoresByLeague,

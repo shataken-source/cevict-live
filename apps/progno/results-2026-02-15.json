@@ -1,6 +1,6 @@
 {
   "date": "2026-02-15",
-  "gradedAt": "2026-02-16T05:50:52.405Z",
+  "gradedAt": "2026-02-18T18:58:16.589Z",
   "results": [
     {
       "home_team": "Duke Blue Devils",
@@ -10,7 +10,12 @@
       "sport": "NCAAB",
       "league": "NCAAB",
       "game_id": "15b2457a3d50c0ac836f826be9804c00",
-      "status": "pending"
+      "status": "lose",
+      "actualWinner": "Duke Blue Devils",
+      "actualScore": {
+        "home": 101,
+        "away": 64
+      }
     },
     {
       "home_team": "Dayton Flyers",
@@ -20,12 +25,7 @@
       "sport": "NCAAB",
       "league": "NCAAB",
       "game_id": "7cfecb0c1701ee5b986e281a08fefcc1",
-      "status": "lose",
-      "actualWinner": "Dayton Flyers",
-      "actualScore": {
-        "home": 70,
-        "away": 59
-      }
+      "status": "pending"
     },
     {
       "home_team": "San Diego Toreros",
@@ -35,19 +35,14 @@
       "sport": "NCAAB",
       "league": "NCAAB",
       "game_id": "446049fe26b64ca9e2557a236d184d7d",
-      "status": "lose",
-      "actualWinner": "San Francisco Dons",
-      "actualScore": {
-        "home": 79,
-        "away": 92
-      }
+      "status": "pending"
     }
   ],
   "summary": {
     "total": 3,
     "correct": 0,
-    "pending": 1,
-    "graded": 2,
+    "pending": 2,
+    "graded": 1,
     "winRate": 0
   }
 }

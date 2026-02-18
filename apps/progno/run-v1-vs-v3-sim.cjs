@@ -5,7 +5,7 @@ const data = JSON.parse(fs.readFileSync(path.join(__dirname, 'backtest-all-leagu
 
 const LEAGUES = ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAB', 'NCAAF'];
 
-const LEAGUE_CONFIDENCE_FLOOR = { NCAAF: 80, NCAAB: 75, NBA: 70, NFL: 75, NHL: 70, MLB: 70 };
+const LEAGUE_CONFIDENCE_FLOOR = { NCAAF: 62, NCAAB: 57, NBA: 57, NFL: 62, NHL: 57, MLB: 57 }; // Backtest-calibrated 2024
 const LEAGUE_STAKE_MULT = { NCAAF: 0.5, NCAAB: 0.75, NBA: 1, NFL: 1, NHL: 1, MLB: 1 };
 
 const SPORT_SEASONS = {
@@ -74,6 +74,20 @@ const STRATEGIES = {
     minOdds: -130, maxOdds: 200, minConf: 80,
     homeBias: 5, awayPenalty: 5,
     leagueConfFloors: true, leagueStakeCaps: true, homeOnly: true,
+    seasonAware: true, earlyDecay: true, streakMod: true,
+  },
+  v4_calibrated: {
+    label: 'V4: Backtest-Calibrated (-200/+500/57%) + Home Only',
+    minOdds: -200, maxOdds: 500, minConf: 57,
+    homeBias: 5, awayPenalty: 5,
+    leagueConfFloors: true, leagueStakeCaps: true, homeOnly: true,
+    seasonAware: true, earlyDecay: true, streakMod: true,
+  },
+  v4_both_sides: {
+    label: 'V4: Backtest-Calibrated (-200/+500/57%) Both Sides',
+    minOdds: -200, maxOdds: 500, minConf: 57,
+    homeBias: 5, awayPenalty: 5,
+    leagueConfFloors: true, leagueStakeCaps: true, homeOnly: false,
     seasonAware: true, earlyDecay: true, streakMod: true,
   },
 };
@@ -238,6 +252,8 @@ R += tbl(h1, r1, a1) + '\n';
 // Delta callout
 const v1 = results.v1_baseline.overall;
 const v3 = results.v3_best_full.overall;
+const v4h = results.v4_calibrated.overall;
+const v4b = results.v4_both_sides.overall;
 R += '  V1 → V3 IMPROVEMENT:\n';
 R += `    Picks:       ${v1.picks} → ${v3.picks} (${((v1.picks - v3.picks) / v1.picks * 100).toFixed(0)}% reduction)\n`;
 R += `    Accuracy:    ${v1.accuracy.toFixed(1)}% → ${v3.accuracy.toFixed(1)}% (${pct(v3.accuracy - v1.accuracy)})\n`;
@@ -245,6 +261,14 @@ R += `    ROI:         ${pct(v1.roi)} → ${pct(v3.roi)} (${pct(v3.roi - v1.roi)
 R += `    Profit:      ${$(v1.profit)} → ${$(v3.profit)}\n`;
 R += `    Max DD:      $${Math.round(v1.maxDD)} → $${Math.round(v3.maxDD)} (${((v1.maxDD - v3.maxDD) / v1.maxDD * 100).toFixed(0)}% reduction)\n`;
 R += `    Profit/DD:   ${v1.maxDD > 0 ? (v1.profit / v1.maxDD).toFixed(2) : '∞'} → ${v3.maxDD > 0 ? (v3.profit / v3.maxDD).toFixed(2) : '∞'}\n\n`;
+
+R += '  V3 → V4 IMPROVEMENT (new calibrated filters + home-only):\n';
+R += `    Picks:       ${v3.picks} → ${v4h.picks} (${v4h.picks > v3.picks ? '+' : ''}${((v4h.picks - v3.picks) / Math.max(v3.picks, 1) * 100).toFixed(0)}%)\n`;
+R += `    Accuracy:    ${v3.accuracy.toFixed(1)}% → ${v4h.accuracy.toFixed(1)}%\n`;
+R += `    ROI:         ${pct(v3.roi)} → ${pct(v4h.roi)}\n`;
+R += `    Profit:      ${$(v3.profit)} → ${$(v4h.profit)}\n`;
+R += `    Max DD:      $${Math.round(v3.maxDD)} → $${Math.round(v4h.maxDD)}\n`;
+R += `    V4 Both Sides ROI: ${pct(v4b.roi)} | Picks: ${v4b.picks}\n\n`;
 
 // S2: PER-LEAGUE
 R += '━'.repeat(110) + '\n  2. PER-LEAGUE: V1 BASELINE vs V3 BEST+ALL\n' + '━'.repeat(110) + '\n\n';
@@ -409,3 +433,4 @@ fs.writeFileSync(path.join(__dirname, 'backtest-v1-vs-v3-data.json'), JSON.strin
 console.log('Report written to backtest-v1-vs-v3-report.txt');
 console.log('JSON data written to backtest-v1-vs-v3-data.json');
 console.log(`Report: ${R.length} chars, ${R.split('\n').length} lines`);
+

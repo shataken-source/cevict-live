@@ -1,0 +1,47 @@
+{
+  "name": "accu-solar",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3208",
+    "build": "next build",
+    "start": "next start -p 3208",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "@sendgrid/mail": "^8.1.6",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.89.0",
+    "axios": "^1.7.0",
+    "bullmq": "^5.66.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "decimal.js": "^10.6.0",
+    "ioredis": "^5.8.2",
+    "lucide-react": "^0.344.0",
+    "next": "^16.1.6",
+    "puppeteer-core": "^24.37.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "resend": "^6.9.2",
+    "tailwind-merge": "^3.4.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "18.3.27",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^4.1.1",
+    "eslint-config-next": "^0.2.4",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}

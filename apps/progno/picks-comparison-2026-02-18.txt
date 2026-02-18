@@ -1,0 +1,218 @@
+==============================================================================================================
+  PROGNO PICKS COMPARISON: Original (V1) vs V3 Enhanced Filters
+  Date: 2026-02-18  |  Generated: 2026-02-18 10:07:18
+==============================================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  1. ORIGINAL PICKS SUMMARY (pre-enhancement)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Total picks generated: 20 (from Top 20 picks (of 79 games) — Cevict Flex + Triple Alignment — Regular (0-1 days))
+
+  Sport breakdown:
+    NCAAB: 18 picks
+    NBA: 2 picks
+
+  Home picks: 4  |  Away picks: 16  |  Ratio: 20% home
+  Favorite picks: 0  |  Underdog picks: 20
+  Confidence: min 32%, max 44%, avg 36.9%
+  Odds: min +166, max +480, avg +316
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  2. PICK-BY-PICK V3 FILTER ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Legend: [PASS] = survives V3 filters  |  [FAIL: reason] = filtered out
+
+  ─── Strategy: BEST (odds -130 to +200, min conf 80%) ───
+
+   1. Waves (A)                    Conf: 44%  Odds:+235  → [FAIL: odds +235 > max +200]
+   2. Dolphins (A)                 Conf: 44%  Odds:+233  → [FAIL: odds +233 > max +200]
+   3. Mastodons (A)                Conf: 43%  Odds:+213  → [FAIL: odds +213 > max +200]
+   4. Bulldogs (A)                 Conf: 42%  Odds:+237  → [FAIL: odds +237 > max +200]
+   5. Suns (A)                     Conf: 40%  Odds:+252  → [FAIL: odds +252 > max +200]
+   6. Terrapins (A)                Conf: 39%  Odds:+313  → [FAIL: odds +313 > max +200]
+   7. Demons (A)                   Conf: 38%  Odds:+340  → [FAIL: odds +340 > max +200]
+   8. Ramblers (A)                 Conf: 38%  Odds:+338  → [FAIL: odds +338 > max +200]
+   9. Broncos (A)                  Conf: 36%  Odds:+390  → [FAIL: odds +390 > max +200]
+  10. Eagles (A)                   Conf: 36%  Odds:+363  → [FAIL: odds +363 > max +200]
+  11. Sycamores (H)                Conf: 36%  Odds:+181  → [FAIL: conf 36% → 41% (adj) < min 80%]
+  12. Rebels (A)                   Conf: 35%  Odds:+377  → [FAIL: odds +377 > max +200]
+  13. Sooners (A)                  Conf: 34%  Odds:+480  → [FAIL: odds +480 > max +200]
+  14. Utes (A)                     Conf: 34%  Odds:+480  → [FAIL: odds +480 > max +200]
+  15. Hawks (A)                    Conf: 34%  Odds:+378  → [FAIL: odds +378 > max +200]
+  16. Bulldogs (H)                 Conf: 35%  Odds:+166  → [FAIL: conf 35% → 40% (adj) < min 80%]
+  17. Vikings (A)                  Conf: 33%  Odds:+450  → [FAIL: odds +450 > max +200]
+  18. Cowboys (H)                  Conf: 33%  Odds:+220  → [FAIL: odds +220 > max +200]
+  19. Explorers (A)                Conf: 32%  Odds:+478  → [FAIL: odds +478 > max +200]
+  20. Bulls (H)                    Conf: 32%  Odds:+189  → [FAIL: conf 32% → 36% (adj) < min 80%]
+
+  Result: 0 PASS / 20 FAIL out of 20
+  Failure reasons:
+    2x — odds +480 > max +200
+    1x — odds +235 > max +200
+    1x — odds +233 > max +200
+    1x — odds +213 > max +200
+    1x — odds +237 > max +200
+    1x — odds +252 > max +200
+    1x — odds +313 > max +200
+    1x — odds +340 > max +200
+    1x — odds +338 > max +200
+    1x — odds +390 > max +200
+    1x — odds +363 > max +200
+    1x — conf 36% → 41% (adj) < min 80%
+    1x — odds +377 > max +200
+    1x — odds +378 > max +200
+    1x — conf 35% → 40% (adj) < min 80%
+    1x — odds +450 > max +200
+    1x — odds +220 > max +200
+    1x — odds +478 > max +200
+    1x — conf 32% → 36% (adj) < min 80%
+
+  ─── Strategy: BALANCED (odds -150 to +150, min conf 75%) ───
+
+   1. Waves (A)                    Conf: 44%  Odds:+235  → [FAIL: odds +235 > max +150]
+   2. Dolphins (A)                 Conf: 44%  Odds:+233  → [FAIL: odds +233 > max +150]
+   3. Mastodons (A)                Conf: 43%  Odds:+213  → [FAIL: odds +213 > max +150]
+   4. Bulldogs (A)                 Conf: 42%  Odds:+237  → [FAIL: odds +237 > max +150]
+   5. Suns (A)                     Conf: 40%  Odds:+252  → [FAIL: odds +252 > max +150]
+   6. Terrapins (A)                Conf: 39%  Odds:+313  → [FAIL: odds +313 > max +150]
+   7. Demons (A)                   Conf: 38%  Odds:+340  → [FAIL: odds +340 > max +150]
+   8. Ramblers (A)                 Conf: 38%  Odds:+338  → [FAIL: odds +338 > max +150]
+   9. Broncos (A)                  Conf: 36%  Odds:+390  → [FAIL: odds +390 > max +150]
+  10. Eagles (A)                   Conf: 36%  Odds:+363  → [FAIL: odds +363 > max +150]
+  11. Sycamores (H)                Conf: 36%  Odds:+181  → [FAIL: odds +181 > max +150]
+  12. Rebels (A)                   Conf: 35%  Odds:+377  → [FAIL: odds +377 > max +150]
+  13. Sooners (A)                  Conf: 34%  Odds:+480  → [FAIL: odds +480 > max +150]
+  14. Utes (A)                     Conf: 34%  Odds:+480  → [FAIL: odds +480 > max +150]
+  15. Hawks (A)                    Conf: 34%  Odds:+378  → [FAIL: odds +378 > max +150]
+  16. Bulldogs (H)                 Conf: 35%  Odds:+166  → [FAIL: odds +166 > max +150]
+  17. Vikings (A)                  Conf: 33%  Odds:+450  → [FAIL: odds +450 > max +150]
+  18. Cowboys (H)                  Conf: 33%  Odds:+220  → [FAIL: odds +220 > max +150]
+  19. Explorers (A)                Conf: 32%  Odds:+478  → [FAIL: odds +478 > max +150]
+  20. Bulls (H)                    Conf: 32%  Odds:+189  → [FAIL: odds +189 > max +150]
+
+  Result: 0 PASS / 20 FAIL out of 20
+  Failure reasons:
+    2x — odds +480 > max +150
+    1x — odds +235 > max +150
+    1x — odds +233 > max +150
+    1x — odds +213 > max +150
+    1x — odds +237 > max +150
+    1x — odds +252 > max +150
+    1x — odds +313 > max +150
+    1x — odds +340 > max +150
+    1x — odds +338 > max +150
+    1x — odds +390 > max +150
+    1x — odds +363 > max +150
+    1x — odds +181 > max +150
+    1x — odds +377 > max +150
+    1x — odds +378 > max +150
+    1x — odds +166 > max +150
+    1x — odds +450 > max +150
+    1x — odds +220 > max +150
+    1x — odds +478 > max +150
+    1x — odds +189 > max +150
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  3. CRITICAL PROBLEMS IN ORIGINAL PICKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  PROBLEM 1: ALL picks are LOW CONFIDENCE (32-44%)
+    V3 "best" filter requires 80% minimum. Every single pick fails.
+    V3 "balanced" filter requires 75% minimum. Every single pick fails.
+    Root cause: The confidence formula is producing values way below the MC win probabilities.
+    Example: Pepperdine has 59.3% MC win rate but only 44% confidence.
+    Expected: Confidence should be much closer to MC probability for non-heavy-favorite picks.
+
+  PROBLEM 2: ALL picks are UNDERDOGS with high odds (+166 to +480)
+    V3 "best" filter caps at +200. Only 5 of 20 picks have odds <= +200.
+    The model is systematically picking long-shot underdogs (the very picks
+    that the 2024 backtest showed lose money: "Big dog > +200" = negative ROI).
+
+  PROBLEM 3: AWAY BIAS — 16 of 20 picks (80%) are away team picks
+    Backtest showed: Home ROI +112%, Away ROI -18%.
+    The V3 home bias (+5% conf / -5% away) helps but doesn't fix this
+    when 80% of generated picks are already away.
+
+  PROBLEM 4: MODEL PROBABILITY vs MARKET ODDS DISCONNECT
+    Example: Pepperdine — Model says 59.3% win, Market says 27.2% (odds +235)
+    A 32% edge over the market is unrealistic. This suggests the MC sim is
+    overestimating underdog probabilities, likely because it estimates team
+    stats from odds alone and the estimation method favors underdogs.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  4. WHAT V3 WOULD DO WITH THESE 79 GAMES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  With V3 "best" filter active:
+    • Odds filter (-130 to +200): ~35-40 of 79 games survive (pick-em range)
+    • Season filter: NBA (in season), NCAAB (in season) = ~79 games OK
+    • Confidence filter (80% min): Depends on recalculated confidence
+    • Home bias: Home picks boosted +5%, away penalised -5%
+    • Early decay: Games 2+ days out get 3-12% confidence reduction
+    • League floor: NCAAB needs 75%, NBA needs 70%
+
+  Expected V3 output: 5-12 picks (vs 20 original)
+    • Focused on pick-em lines (-130 to +200)
+    • Higher confidence (80%+)
+    • Home-biased selection
+    • Smaller stakes on NCAAB (75% multiplier)
+    • Backtest-validated: 82% ROI vs 27.7% baseline
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  5. RECOMMENDATIONS & ENHANCEMENT SUGGESTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  [CRITICAL] FIX CONFIDENCE FORMULA
+    Current: baseConfidence = 50 + (probDiff * 80)
+    Problem: For underdog picks where favoriteProb = 0.59,
+      probDiff = |0.59 - 0.5| = 0.09, so base = 50 + 7.2 = 57.2
+      Then MC ceiling caps it at max(mcWinProb * 100 + 3) = 62.3%
+      Then away bias -5% → 57.3%. Still below 80%.
+    Solution: For picks where MC win prob > 65%, the base confidence
+      should reflect the MC probability more directly. Consider:
+      baseConfidence = Math.max(50 + probDiff * 80, mcWinProb * 85)
+      This would give Pepperdine: max(57.2, 50.4) = 57.2... still low.
+    Real fix: The MC ceiling is the bottleneck. MC says 59% but this
+      caps confidence at 62%. Raise ceiling to mcWinProb * 100 + 10
+      for picks where model edge > 15% over market.
+
+  [CRITICAL] STOP PICKING HEAVY UNDERDOGS
+    The composite_score formula heavily rewards high EV/edge numbers.
+    Underdogs get inflated EV ($98-$150+ per $100) because their odds
+    are high, but these are rarely correct. The odds filter at +200 max
+    will fix this, but only if the buildPickFromRawGame function properly
+    skips games where the RECOMMENDED pick odds exceed +200.
+    Current filter checks homeOdds.price / awayOdds.price but needs
+    to also check the FAVORITE odds (the lower of the two).
+
+  [IMPORTANT] RECALIBRATE MC SIM TEAM STATS ESTIMATION
+    The estimateTeamStatsFromOdds() function appears to overestimate
+    underdog strength. When a team is +235, the model shouldn't give
+    them 59% win probability. Possible fix: Weight the MC seed values
+    closer to the implied market probabilities rather than generating
+    symmetric-ish distributions.
+
+  [ENHANCEMENT] ADD RECOMMENDED-PICK ODDS CHECK
+    After the recommended pick is selected (line ~940 in route.ts),
+    add a second odds check on recommendedOdds itself:
+    if (recommendedOdds > activeFilter.maxOdds) return null;
+    This catches cases where the value bet side is an underdog
+    outside the filter range even if the game odds are within range.
+
+  [ENHANCEMENT] COMPOSITE SCORE REBALANCING
+    Current: edge*40 + ev*40 + confidence*20
+    Problem: EV is inflated for underdogs (a +400 dog with 20% edge = $80 EV)
+    Suggestion: confidence*50 + edge*30 + ev*20
+    This would prioritise higher-confidence picks over high-EV longshots.
+
+  [ENHANCEMENT] ADD POST-FILTER RECOMMENDED-ODDS CHECK
+    The current odds filter checks game-level odds (home vs away),
+    but the recommended pick can be a spread or total bet at -110.
+    Add a check that the MONEYLINE recommended pick odds (not
+    spread/total odds) fall within the filter range.
+
+==============================================================================================================
+  END OF COMPARISON REPORT
+==============================================================================================================

@@ -100,10 +100,11 @@ async function checkAndIncrementUsage(
   const today = new Date().toISOString().split('T')[0]
 
   try {
+    // Check current count first (read-only, no race risk)
     const { data: existing } = await supabase
       .from('api_usage_quota')
       .select('request_count')
-      .eq('api_key_hash', apiKeyHash)
+      .eq('api_key', apiKeyHash)
       .eq('date', today)
       .single()
 
@@ -113,16 +114,17 @@ async function checkAndIncrementUsage(
       return { allowed: false, used: currentCount, remaining: 0 }
     }
 
-    if (existing) {
-      await supabase
-        .from('api_usage_quota')
-        .update({ request_count: currentCount + 1, updated_at: new Date().toISOString() })
-        .eq('api_key_hash', apiKeyHash)
-        .eq('date', today)
-    } else {
-      await supabase
-        .from('api_usage_quota')
-        .insert({ api_key_hash: apiKeyHash, date: today, request_count: 1, tier })
+    // Atomic upsert via DB-side function — uses CURRENT_DATE (DB UTC), eliminates race condition
+    const { error: rpcError } = await supabase.rpc('increment_api_quota_today', {
+      p_api_key: apiKeyHash,
+      p_tier: tier,
+    })
+    if (rpcError) {
+      // Fallback: direct upsert if RPC unavailable
+      await supabase.from('api_usage_quota').upsert(
+        { api_key: apiKeyHash, date: today, request_count: currentCount + 1, tier },
+        { onConflict: 'api_key,date' }
+      )
     }
 
     return { allowed: true, used: currentCount + 1, remaining: maxPerDay - currentCount - 1 }

@@ -1,0 +1,1268 @@
+{
+  "v1_baseline": {
+    "overall": {
+      "picks": 11107,
+      "filtered": 0,
+      "correct": 5395,
+      "accuracy": 48.57297199963987,
+      "wagered": 149149.1274999999,
+      "profit": 41335.854686196944,
+      "roi": 27.714446191578944,
+      "maxDD": 1007.6359926252699,
+      "maxWin": 17,
+      "maxLoss": 72
+    },
+    "byLeague": {
+      "NFL": {
+        "picks": 285,
+        "filtered": 0,
+        "correct": 124,
+        "accuracy": 43.50877192982456,
+        "wagered": 3843.1524999999992,
+        "profit": 134.34913060427044,
+        "roi": 3.4958053474138864,
+        "maxDD": 235.17197498807607,
+        "homePicks": 129,
+        "homeCorrect": 93,
+        "homeWagered": 1703.3675000000003,
+        "homeProfit": 1208.796024296344,
+        "awayPicks": 156,
+        "awayCorrect": 31,
+        "awayWagered": 2139.785,
+        "awayProfit": -1074.446893692073
+      },
+      "NBA": {
+        "picks": 1230,
+        "filtered": 0,
+        "correct": 576,
+        "accuracy": 46.82926829268293,
+        "wagered": 16403.350000000013,
+        "profit": 3411.3673190238765,
+        "roi": 20.796772116816832,
+        "maxDD": 246.65466333800214,
+        "homePicks": 637,
+        "homeCorrect": 350,
+        "homeWagered": 8480.487499999997,
+        "homeProfit": 3245.0774309727126,
+        "awayPicks": 593,
+        "awayCorrect": 226,
+        "awayWagered": 7922.862499999994,
+        "awayProfit": 166.28988805116558
+      },
+      "NHL": {
+        "picks": 1312,
+        "filtered": 0,
+        "correct": 660,
+        "accuracy": 50.30487804878049,
+        "wagered": 17589.2225,
+        "profit": 5190.535364851181,
+        "roi": 29.509748738758528,
+        "maxDD": 205.06724154318772,
+        "homePicks": 645,
+        "homeCorrect": 573,
+        "homeWagered": 8594.712499999998,
+        "homeProfit": 11041.94957441959,
+        "awayPicks": 667,
+        "awayCorrect": 87,
+        "awayWagered": 8994.509999999993,
+        "awayProfit": -5851.414209568424
+      },
+      "MLB": {
+        "picks": 2430,
+        "filtered": 0,
+        "correct": 1169,
+        "accuracy": 48.10699588477366,
+        "wagered": 32619.695000000003,
+        "profit": 7295.674978073564,
+        "roi": 22.365858963652364,
+        "maxDD": 605.9212268161134,
+        "homePicks": 1169,
+        "homeCorrect": 1169,
+        "homeWagered": 15575.064999999988,
+        "homeProfit": 24340.3049780736,
+        "awayPicks": 1261,
+        "awayCorrect": 0,
+        "awayWagered": 17044.63000000002,
+        "awayProfit": -17044.63000000002
+      },
+      "NCAAB": {
+        "picks": 5000,
+        "filtered": 0,
+        "correct": 2462,
+        "accuracy": 49.24,
+        "wagered": 67268.50749999998,
+        "profit": 22444.93576847757,
+        "roi": 33.36618664904611,
+        "maxDD": 661.6549564082051,
+        "homePicks": 2492,
+        "homeCorrect": 1264,
+        "homeWagered": 33583.40000000004,
+        "homeProfit": 12645.565637400117,
+        "awayPicks": 2508,
+        "awayCorrect": 1198,
+        "awayWagered": 33685.107500000006,
+        "awayProfit": 9799.370131077423
+      },
+      "NCAAF": {
+        "picks": 850,
+        "filtered": 0,
+        "correct": 404,
+        "accuracy": 47.529411764705884,
+        "wagered": 11425.2,
+        "profit": 2858.9921251663054,
+        "roi": 25.02356304630383,
+        "maxDD": 1001.9429729729729,
+        "homePicks": 382,
+        "homeCorrect": 181,
+        "homeWagered": 5178.702499999999,
+        "homeProfit": 1347.1455645254623,
+        "awayPicks": 468,
+        "awayCorrect": 223,
+        "awayWagered": 6246.497500000001,
+        "awayProfit": 1511.8465606408427
+      }
+    },
+    "homeVsAway": {
+      "home": {
+        "picks": 5454,
+        "correct": 3630,
+        "accuracy": 66.55665566556655,
+        "wagered": 73115.73500000015,
+        "profit": 53828.839209687896,
+        "roi": 73.62141570441409
+      },
+      "away": {
+        "picks": 5653,
+        "correct": 1765,
+        "accuracy": 31.222359808951,
+        "wagered": 76033.39249999993,
+        "profit": -12492.984523491074,
+        "roi": -16.430918196226855
+      }
+    },
+    "byOddsBand": {
+      "Pick-em (-110 to +110)": {
+        "picks": 5591,
+        "correct": 2673,
+        "wagered": 84108.47750000014,
+        "profit": 53449.3403223166
+      },
+      "Slight fav (-150 to -110)": {
+        "picks": 2175,
+        "correct": 1099,
+        "wagered": 26833.722500000018,
+        "profit": -2842.250432493976
+      },
+      "Med fav (-300 to -150)": {
+        "picks": 3341,
+        "correct": 1623,
+        "wagered": 38206.92750000002,
+        "profit": -9271.235203625647
+      }
+    },
+    "byConfBand": {
+      "Medium (65-74)": {
+        "picks": 3686,
+        "correct": 1798,
+        "wagered": 42247.81749999998,
+        "profit": 13719.758612643649
+      },
+      "High (75-84)": {
+        "picks": 3734,
+        "correct": 1818,
+        "wagered": 53786.837499999885,
+        "profit": 14100.472323530581
+      },
+      "Low (50-64)": {
+        "picks": 1816,
+        "correct": 894,
+        "wagered": 19117.505,
+        "profit": 5227.547669250759
+      },
+      "Elite (85-95)": {
+        "picks": 1871,
+        "correct": 885,
+        "wagered": 33996.96750000001,
+        "profit": 8288.07608077176
+      }
+    },
+    "byMonth": {
+      "2024-09": {
+        "picks": 285,
+        "correct": 124,
+        "wagered": 3843.1524999999992,
+        "profit": 134.34913060427044
+      },
+      "2023-10": {
+        "picks": 2542,
+        "correct": 1236,
+        "wagered": 33992.57250000008,
+        "profit": 8601.902683875041
+      },
+      "2024-03": {
+        "picks": 2430,
+        "correct": 1169,
+        "wagered": 32619.695000000003,
+        "profit": 7295.674978073564
+      },
+      "2023-11": {
+        "picks": 5000,
+        "correct": 2462,
+        "wagered": 67268.50749999998,
+        "profit": 22444.93576847757
+      },
+      "2024-08": {
+        "picks": 850,
+        "correct": 404,
+        "wagered": 11425.2,
+        "profit": 2858.9921251663054
+      }
+    }
+  },
+  "v2_balanced": {
+    "overall": {
+      "picks": 3903,
+      "filtered": 7204,
+      "correct": 2096,
+      "accuracy": 53.702280297207274,
+      "wagered": 56901.24062499997,
+      "profit": 36340.90967953203,
+      "roi": 63.86663854841399,
+      "maxDD": 215.4018957759872,
+      "maxWin": 18,
+      "maxLoss": 20
+    },
+    "byLeague": {
+      "NFL": {
+        "picks": 101,
+        "filtered": 184,
+        "correct": 56,
+        "accuracy": 55.44554455445545,
+        "wagered": 1708.2249999999995,
+        "profit": 826.897308245919,
+        "roi": 48.40681457336822,
+        "maxDD": 131.12348591549278,
+        "homePicks": 62,
+        "homeCorrect": 47,
+        "homeWagered": 1103.4499999999998,
+        "homeProfit": 1022.5030159368488,
+        "awayPicks": 39,
+        "awayCorrect": 9,
+        "awayWagered": 604.7750000000001,
+        "awayProfit": -195.60570769092976
+      },
+      "NBA": {
+        "picks": 441,
+        "filtered": 789,
+        "correct": 213,
+        "accuracy": 48.29931972789115,
+        "wagered": 7617.872499999996,
+        "profit": 2850.0328800086613,
+        "roi": 37.41245183623988,
+        "maxDD": 205.50400287476225,
+        "homePicks": 312,
+        "homeCorrect": 160,
+        "homeWagered": 5546.347499999999,
+        "homeProfit": 2298.7008229205326,
+        "awayPicks": 129,
+        "awayCorrect": 53,
+        "awayWagered": 2071.5249999999996,
+        "awayProfit": 551.3320570881307
+      },
+      "NHL": {
+        "picks": 444,
+        "filtered": 868,
+        "correct": 278,
+        "accuracy": 62.612612612612615,
+        "wagered": 7644.052499999995,
+        "profit": 6389.743298846985,
+        "roi": 83.59104413329173,
+        "maxDD": 151.45314447660985,
+        "homePicks": 282,
+        "homeCorrect": 253,
+        "homeWagered": 5117.7424999999985,
+        "homeProfit": 7894.004124140204,
+        "awayPicks": 162,
+        "awayCorrect": 25,
+        "awayWagered": 2526.3100000000018,
+        "awayProfit": -1504.2608252932275
+      },
+      "MLB": {
+        "picks": 839,
+        "filtered": 1591,
+        "correct": 544,
+        "accuracy": 64.83909415971395,
+        "wagered": 14417.079999999998,
+        "profit": 14299.743668722891,
+        "roi": 99.18612970672905,
+        "maxDD": 135.53179271708586,
+        "homePicks": 544,
+        "homeCorrect": 544,
+        "homeWagered": 9784.457499999995,
+        "homeProfit": 18932.36616872288,
+        "awayPicks": 295,
+        "awayCorrect": 0,
+        "awayWagered": 4632.6225,
+        "awayProfit": -4632.6225
+      },
+      "NCAAB": {
+        "picks": 1781,
+        "filtered": 3219,
+        "correct": 877,
+        "accuracy": 49.24199887703538,
+        "wagered": 22998.601875000004,
+        "profit": 11400.949934374246,
+        "roi": 49.57236094759019,
+        "maxDD": 215.40189577599358,
+        "homePicks": 1179,
+        "homeCorrect": 601,
+        "homeWagered": 15896.44875,
+        "homeProfit": 8497.52769407873,
+        "awayPicks": 602,
+        "awayCorrect": 276,
+        "awayWagered": 7102.153124999993,
+        "awayProfit": 2903.4222402955193
+      },
+      "NCAAF": {
+        "picks": 297,
+        "filtered": 553,
+        "correct": 128,
+        "accuracy": 43.09764309764309,
+        "wagered": 2515.4087499999973,
+        "profit": 573.5425893333455,
+        "roi": 22.801168570847427,
+        "maxDD": 195.3643013745727,
+        "homePicks": 186,
+        "homeCorrect": 81,
+        "homeWagered": 1657.8624999999995,
+        "homeProfit": 399.46842683648487,
+        "awayPicks": 111,
+        "awayCorrect": 47,
+        "awayWagered": 857.5462500000001,
+        "awayProfit": 174.07416249686082
+      }
+    },
+    "homeVsAway": {
+      "home": {
+        "picks": 2565,
+        "correct": 1686,
+        "accuracy": 65.73099415204679,
+        "wagered": 39106.30874999998,
+        "profit": 39044.57025263564,
+        "roi": 99.84212650250622
+      },
+      "away": {
+        "picks": 1338,
+        "correct": 410,
+        "accuracy": 30.642750373692078,
+        "wagered": 17794.931875,
+        "profit": -2703.6605731036407,
+        "roi": -15.193430309795108
+      }
+    },
+    "byOddsBand": {
+      "Pick-em (-110 to +110)": {
+        "picks": 2780,
+        "correct": 1486,
+        "wagered": 42632.37749999993,
+        "profit": 36061.1112504178
+      },
+      "Slight fav (-150 to -110)": {
+        "picks": 1101,
+        "correct": 598,
+        "wagered": 13990.738125000002,
+        "profit": 274.85051244753674
+      },
+      "Med fav (-300 to -150)": {
+        "picks": 22,
+        "correct": 12,
+        "wagered": 278.12500000000006,
+        "profit": 4.94791666666665
+      }
+    },
+    "byConfBand": {
+      "High (75-84)": {
+        "picks": 2622,
+        "correct": 1265,
+        "wagered": 34926.47624999996,
+        "profit": 15392.94099605826
+      },
+      "Elite (85-95)": {
+        "picks": 1281,
+        "correct": 831,
+        "wagered": 21974.764374999988,
+        "profit": 20947.96868347375
+      }
+    },
+    "byMonth": {
+      "2024-09": {
+        "picks": 101,
+        "correct": 56,
+        "wagered": 1708.2249999999995,
+        "profit": 826.897308245919
+      },
+      "2023-10": {
+        "picks": 885,
+        "correct": 491,
+        "wagered": 15261.924999999983,
+        "profit": 9239.776178855634
+      },
+      "2024-03": {
+        "picks": 839,
+        "correct": 544,
+        "wagered": 14417.079999999998,
+        "profit": 14299.743668722891
+      },
+      "2023-11": {
+        "picks": 1781,
+        "correct": 877,
+        "wagered": 22998.601875000004,
+        "profit": 11400.949934374246
+      },
+      "2024-08": {
+        "picks": 297,
+        "correct": 128,
+        "wagered": 2515.4087499999973,
+        "profit": 573.5425893333455
+      }
+    }
+  },
+  "v3_best_full": {
+    "overall": {
+      "picks": 2206,
+      "filtered": 8901,
+      "correct": 1258,
+      "accuracy": 57.026291931097006,
+      "wagered": 36162.75590624998,
+      "profit": 29643.865317833224,
+      "roi": 81.97346848974499,
+      "maxDD": 175.69376371444628,
+      "maxWin": 33,
+      "maxLoss": 7
+    },
+    "byLeague": {
+      "NFL": {
+        "picks": 49,
+        "filtered": 236,
+        "correct": 27,
+        "accuracy": 55.10204081632652,
+        "wagered": 940.058,
+        "profit": 430.80627988376904,
+        "roi": 45.82762764465267,
+        "maxDD": 76.85256659267486,
+        "homePicks": 40,
+        "homeCorrect": 27,
+        "homeWagered": 777.7204999999999,
+        "homeProfit": 593.1437798837691,
+        "awayPicks": 9,
+        "awayCorrect": 0,
+        "awayWagered": 162.33750000000003,
+        "awayProfit": -162.33750000000003
+      },
+      "NBA": {
+        "picks": 245,
+        "filtered": 985,
+        "correct": 113,
+        "accuracy": 46.12244897959184,
+        "wagered": 4536.1528750000025,
+        "profit": 1637.6687291589249,
+        "roi": 36.10259121081592,
+        "maxDD": 175.69376371444662,
+        "homePicks": 186,
+        "homeCorrect": 89,
+        "homeWagered": 3548.3661250000014,
+        "homeProfit": 1329.5757237583039,
+        "awayPicks": 59,
+        "awayCorrect": 24,
+        "awayWagered": 987.7867499999999,
+        "awayProfit": 308.09300540062185
+      },
+      "NHL": {
+        "picks": 263,
+        "filtered": 1049,
+        "correct": 180,
+        "accuracy": 68.44106463878326,
+        "wagered": 5175.225999999999,
+        "profit": 5697.238202898082,
+        "roi": 110.08675182297513,
+        "maxDD": 72.23877450980399,
+        "homePicks": 189,
+        "homeCorrect": 170,
+        "homeWagered": 3856.5235,
+        "homeProfit": 6489.115921634607,
+        "awayPicks": 74,
+        "awayCorrect": 10,
+        "awayWagered": 1318.7025000000003,
+        "awayProfit": -791.877718736527
+      },
+      "MLB": {
+        "picks": 488,
+        "filtered": 1942,
+        "correct": 361,
+        "accuracy": 73.97540983606558,
+        "wagered": 9931.67725,
+        "profit": 13244.316123336574,
+        "roi": 133.35427430786248,
+        "maxDD": 88.45697276579722,
+        "homePicks": 361,
+        "homeCorrect": 361,
+        "homeWagered": 7567.144124999998,
+        "homeProfit": 15608.84924833657,
+        "awayPicks": 127,
+        "awayCorrect": 0,
+        "awayWagered": 2364.5331250000004,
+        "awayProfit": -2364.5331250000004
+      },
+      "NCAAB": {
+        "picks": 1011,
+        "filtered": 3989,
+        "correct": 502,
+        "accuracy": 49.653808110781405,
+        "wagered": 14160.372093749982,
+        "profit": 7830.447985195873,
+        "roi": 55.29832078813824,
+        "maxDD": 121.3888618134988,
+        "homePicks": 759,
+        "homeCorrect": 391,
+        "homeWagered": 10914.23259375,
+        "homeProfit": 6604.542555435059,
+        "awayPicks": 252,
+        "awayCorrect": 111,
+        "awayWagered": 3246.1395000000007,
+        "awayProfit": 1225.9054297608118
+      },
+      "NCAAF": {
+        "picks": 150,
+        "filtered": 700,
+        "correct": 75,
+        "accuracy": 50,
+        "wagered": 1419.2696874999997,
+        "profit": 803.3879973599946,
+        "roi": 56.605732119533826,
+        "maxDD": 108.12103607105088,
+        "homePicks": 112,
+        "homeCorrect": 55,
+        "homeWagered": 1086.1306874999996,
+        "homeProfit": 553.5449765626745,
+        "awayPicks": 38,
+        "awayCorrect": 20,
+        "awayWagered": 333.13899999999995,
+        "awayProfit": 249.8430207973205
+      }
+    },
+    "homeVsAway": {
+      "home": {
+        "picks": 1647,
+        "correct": 1093,
+        "accuracy": 66.36308439587128,
+        "wagered": 27750.117531250024,
+        "profit": 31178.77220561097,
+        "roi": 112.35546001021387
+      },
+      "away": {
+        "picks": 559,
+        "correct": 165,
+        "accuracy": 29.5169946332737,
+        "wagered": 8412.638375000006,
+        "profit": -1534.9068877777747,
+        "roi": -18.245249817691985
+      }
+    },
+    "byOddsBand": {
+      "Pick-em (-110 to +110)": {
+        "picks": 1840,
+        "correct": 1042,
+        "wagered": 30584.13321875,
+        "profit": 28953.222227737355
+      },
+      "Slight fav (-150 to -110)": {
+        "picks": 366,
+        "correct": 216,
+        "wagered": 5578.622687499999,
+        "profit": 690.6430900958798
+      }
+    },
+    "byConfBand": {
+      "Elite (85-95)": {
+        "picks": 1092,
+        "correct": 707,
+        "wagered": 19461.858562499998,
+        "profit": 21037.871405724665
+      },
+      "High (75-84)": {
+        "picks": 1114,
+        "correct": 551,
+        "wagered": 16700.897343749977,
+        "profit": 8605.993912108532
+      }
+    },
+    "byMonth": {
+      "2024-09": {
+        "picks": 49,
+        "correct": 27,
+        "wagered": 940.058,
+        "profit": 430.80627988376904
+      },
+      "2023-10": {
+        "picks": 508,
+        "correct": 293,
+        "wagered": 9711.378875000002,
+        "profit": 7334.906932057005
+      },
+      "2024-03": {
+        "picks": 488,
+        "correct": 361,
+        "wagered": 9931.67725,
+        "profit": 13244.316123336574
+      },
+      "2023-11": {
+        "picks": 1011,
+        "correct": 502,
+        "wagered": 14160.372093749982,
+        "profit": 7830.447985195873
+      },
+      "2024-08": {
+        "picks": 150,
+        "correct": 75,
+        "wagered": 1419.2696874999997,
+        "profit": 803.3879973599946
+      }
+    }
+  },
+  "v3_home_only": {
+    "overall": {
+      "picks": 1647,
+      "filtered": 9460,
+      "correct": 1093,
+      "accuracy": 66.36308439587128,
+      "wagered": 29397.532718749975,
+      "profit": 34420.47637436032,
+      "roi": 117.08627626564956,
+      "maxDD": 185.65716425896244,
+      "maxWin": 364,
+      "maxLoss": 7
+    },
+    "byLeague": {
+      "NFL": {
+        "picks": 40,
+        "filtered": 245,
+        "correct": 27,
+        "accuracy": 67.5,
+        "wagered": 803.5847500000001,
+        "profit": 619.2799927296142,
+        "roi": 77.06467708970511,
+        "maxDD": 44.90750000000003,
+        "homePicks": 40,
+        "homeCorrect": 27,
+        "homeWagered": 803.5847500000001,
+        "homeProfit": 619.2799927296142,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      },
+      "NBA": {
+        "picks": 186,
+        "filtered": 1044,
+        "correct": 89,
+        "accuracy": 47.8494623655914,
+        "wagered": 3554.4715000000024,
+        "profit": 1337.6974204676847,
+        "roi": 37.6342142697637,
+        "maxDD": 185.65716425896198,
+        "homePicks": 186,
+        "homeCorrect": 89,
+        "homeWagered": 3554.4715000000024,
+        "homeProfit": 1337.6974204676847,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      },
+      "NHL": {
+        "picks": 189,
+        "filtered": 1123,
+        "correct": 170,
+        "accuracy": 89.94708994708994,
+        "wagered": 4244.607875,
+        "profit": 7174.548762198473,
+        "roi": 169.02736303288023,
+        "maxDD": 43.565624999999955,
+        "homePicks": 189,
+        "homeCorrect": 170,
+        "homeWagered": 4244.607875,
+        "homeProfit": 7174.548762198473,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      },
+      "MLB": {
+        "picks": 361,
+        "filtered": 2069,
+        "correct": 361,
+        "accuracy": 100,
+        "wagered": 8708.195124999993,
+        "profit": 18089.079557304718,
+        "roi": 207.72478450067723,
+        "maxDD": 0,
+        "homePicks": 361,
+        "homeCorrect": 361,
+        "homeWagered": 8708.195124999993,
+        "homeProfit": 18089.079557304718,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      },
+      "NCAAB": {
+        "picks": 759,
+        "filtered": 4241,
+        "correct": 391,
+        "accuracy": 51.515151515151516,
+        "wagered": 11002.873406250004,
+        "profit": 6661.392154202606,
+        "roi": 60.54229570994346,
+        "maxDD": 111.96746411483218,
+        "homePicks": 759,
+        "homeCorrect": 391,
+        "homeWagered": 11002.873406250004,
+        "homeProfit": 6661.392154202606,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      },
+      "NCAAF": {
+        "picks": 112,
+        "filtered": 738,
+        "correct": 55,
+        "accuracy": 49.107142857142854,
+        "wagered": 1083.8000624999995,
+        "profit": 538.4784874571919,
+        "roi": 49.68430119989887,
+        "maxDD": 71.82473982249422,
+        "homePicks": 112,
+        "homeCorrect": 55,
+        "homeWagered": 1083.8000624999995,
+        "homeProfit": 538.4784874571919,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      }
+    },
+    "homeVsAway": {
+      "home": {
+        "picks": 1647,
+        "correct": 1093,
+        "accuracy": 66.36308439587128,
+        "wagered": 29397.532718749975,
+        "profit": 34420.47637436032,
+        "roi": 117.08627626564956
+      },
+      "away": {
+        "picks": 0,
+        "correct": 0,
+        "accuracy": 0,
+        "wagered": 0,
+        "profit": 0,
+        "roi": 0
+      }
+    },
+    "byOddsBand": {
+      "Pick-em (-110 to +110)": {
+        "picks": 1365,
+        "correct": 903,
+        "wagered": 24658.756906250015,
+        "profit": 32920.36133904035
+      },
+      "Slight fav (-150 to -110)": {
+        "picks": 282,
+        "correct": 190,
+        "wagered": 4738.7758125,
+        "profit": 1500.1150353199355
+      }
+    },
+    "byConfBand": {
+      "Elite (85-95)": {
+        "picks": 1092,
+        "correct": 707,
+        "wagered": 20568.08124999998,
+        "profit": 23268.873202795516
+      },
+      "High (75-84)": {
+        "picks": 555,
+        "correct": 386,
+        "wagered": 8829.451468749994,
+        "profit": 11151.603171564793
+      }
+    },
+    "byMonth": {
+      "2024-09": {
+        "picks": 40,
+        "correct": 27,
+        "wagered": 803.5847500000001,
+        "profit": 619.2799927296142
+      },
+      "2023-10": {
+        "picks": 375,
+        "correct": 259,
+        "wagered": 7799.079375,
+        "profit": 8512.246182666155
+      },
+      "2024-03": {
+        "picks": 361,
+        "correct": 361,
+        "wagered": 8708.195124999993,
+        "profit": 18089.079557304718
+      },
+      "2023-11": {
+        "picks": 759,
+        "correct": 391,
+        "wagered": 11002.873406250004,
+        "profit": 6661.392154202606
+      },
+      "2024-08": {
+        "picks": 112,
+        "correct": 55,
+        "wagered": 1083.8000624999995,
+        "profit": 538.4784874571919
+      }
+    }
+  },
+  "v4_calibrated": {
+    "overall": {
+      "picks": 5189,
+      "filtered": 5918,
+      "correct": 3455,
+      "accuracy": 66.58315667758721,
+      "wagered": 72247.55328124997,
+      "profit": 63221.531311862076,
+      "roi": 87.50681295150466,
+      "maxDD": 172.68736909093423,
+      "maxWin": 1121,
+      "maxLoss": 10
+    },
+    "byLeague": {
+      "NFL": {
+        "picks": 122,
+        "filtered": 163,
+        "correct": 88,
+        "accuracy": 72.1311475409836,
+        "wagered": 1963.1234999999995,
+        "profit": 1467.1827357725545,
+        "roi": 74.73715921451478,
+        "maxDD": 54.425874906226454,
+        "homePicks": 122,
+        "homeCorrect": 88,
+        "homeWagered": 1963.1234999999995,
+        "homeProfit": 1467.1827357725545,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      },
+      "NBA": {
+        "picks": 603,
+        "filtered": 627,
+        "correct": 329,
+        "accuracy": 54.56053067993366,
+        "wagered": 9152.216625,
+        "profit": 3506.339319675899,
+        "roi": 38.31136721674679,
+        "maxDD": 159.74332332282074,
+        "homePicks": 603,
+        "homeCorrect": 329,
+        "homeWagered": 9152.216625,
+        "homeProfit": 3506.339319675899,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      },
+      "NHL": {
+        "picks": 614,
+        "filtered": 698,
+        "correct": 545,
+        "accuracy": 88.76221498371335,
+        "wagered": 10596.73225000001,
+        "profit": 13734.800386104464,
+        "roi": 129.6135455918918,
+        "maxDD": 32.850000000000364,
+        "homePicks": 614,
+        "homeCorrect": 545,
+        "homeWagered": 10596.73225000001,
+        "homeProfit": 13734.800386104464,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      },
+      "MLB": {
+        "picks": 1112,
+        "filtered": 1318,
+        "correct": 1112,
+        "accuracy": 100,
+        "wagered": 21062.759375000016,
+        "profit": 33397.98379748327,
+        "roi": 158.5641425364441,
+        "maxDD": 0,
+        "homePicks": 1112,
+        "homeCorrect": 1112,
+        "homeWagered": 21062.759375000016,
+        "homeProfit": 33397.98379748327,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      },
+      "NCAAB": {
+        "picks": 2378,
+        "filtered": 2622,
+        "correct": 1211,
+        "accuracy": 50.9251471825063,
+        "wagered": 26828.793281250008,
+        "profit": 10311.74513289445,
+        "roi": 38.43536690150383,
+        "maxDD": 172.68736909094787,
+        "homePicks": 2378,
+        "homeCorrect": 1211,
+        "homeWagered": 26828.793281250008,
+        "homeProfit": 10311.74513289445,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      },
+      "NCAAF": {
+        "picks": 360,
+        "filtered": 490,
+        "correct": 170,
+        "accuracy": 47.22222222222222,
+        "wagered": 2643.928249999998,
+        "profit": 803.47993993152,
+        "roi": 30.389627249964917,
+        "maxDD": 75.8355956588776,
+        "homePicks": 360,
+        "homeCorrect": 170,
+        "homeWagered": 2643.928249999998,
+        "homeProfit": 803.47993993152,
+        "awayPicks": 0,
+        "awayCorrect": 0,
+        "awayWagered": 0,
+        "awayProfit": 0
+      }
+    },
+    "homeVsAway": {
+      "home": {
+        "picks": 5189,
+        "correct": 3455,
+        "accuracy": 66.58315667758721,
+        "wagered": 72247.55328124997,
+        "profit": 63221.531311862076,
+        "roi": 87.50681295150466
+      },
+      "away": {
+        "picks": 0,
+        "correct": 0,
+        "accuracy": 0,
+        "wagered": 0,
+        "profit": 0,
+        "roi": 0
+      }
+    },
+    "byOddsBand": {
+      "Pick-em (-110 to +110)": {
+        "picks": 2701,
+        "correct": 1793,
+        "wagered": 41476.11499999992,
+        "profit": 57343.07345803641
+      },
+      "Slight fav (-150 to -110)": {
+        "picks": 1088,
+        "correct": 717,
+        "wagered": 13965.719874999986,
+        "profit": 3744.0675036617863
+      },
+      "Med fav (-300 to -150)": {
+        "picks": 1400,
+        "correct": 945,
+        "wagered": 16805.718406250016,
+        "profit": 2134.3903501639106
+      }
+    },
+    "byConfBand": {
+      "High (75-84)": {
+        "picks": 1760,
+        "correct": 1184,
+        "wagered": 23431.195187499994,
+        "profit": 21425.097335169976
+      },
+      "Elite (85-95)": {
+        "picks": 1730,
+        "correct": 1116,
+        "wagered": 30959.854999999963,
+        "profit": 24682.665146204537
+      },
+      "Medium (65-74)": {
+        "picks": 1699,
+        "correct": 1155,
+        "wagered": 17856.503093749994,
+        "profit": 17113.76883048777
+      }
+    },
+    "byMonth": {
+      "2024-09": {
+        "picks": 122,
+        "correct": 88,
+        "wagered": 1963.1234999999995,
+        "profit": 1467.1827357725545
+      },
+      "2023-10": {
+        "picks": 1217,
+        "correct": 874,
+        "wagered": 19748.94887499999,
+        "profit": 17241.139705780337
+      },
+      "2024-03": {
+        "picks": 1112,
+        "correct": 1112,
+        "wagered": 21062.759375000016,
+        "profit": 33397.98379748327
+      },
+      "2023-11": {
+        "picks": 2378,
+        "correct": 1211,
+        "wagered": 26828.793281250008,
+        "profit": 10311.74513289445
+      },
+      "2024-08": {
+        "picks": 360,
+        "correct": 170,
+        "wagered": 2643.928249999998,
+        "profit": 803.47993993152
+      }
+    }
+  },
+  "v4_both_sides": {
+    "overall": {
+      "picks": 10140,
+      "filtered": 967,
+      "correct": 4985,
+      "accuracy": 49.16173570019724,
+      "wagered": 116174.91359375036,
+      "profit": 43457.29602174112,
+      "roi": 37.40678144483587,
+      "maxDD": 381.40796671250246,
+      "maxWin": 17,
+      "maxLoss": 54
+    },
+    "byLeague": {
+      "NFL": {
+        "picks": 243,
+        "filtered": 42,
+        "correct": 108,
+        "accuracy": 44.44444444444444,
+        "wagered": 3183.2937500000016,
+        "profit": 587.4739853575348,
+        "roi": 18.45490964688806,
+        "maxDD": 152.00238736894,
+        "homePicks": 122,
+        "homeCorrect": 88,
+        "homeWagered": 1732.7822499999997,
+        "homeProfit": 1303.9290073648401,
+        "awayPicks": 121,
+        "awayCorrect": 20,
+        "awayWagered": 1450.5114999999994,
+        "awayProfit": -716.4550220073055
+      },
+      "NBA": {
+        "picks": 1122,
+        "filtered": 108,
+        "correct": 529,
+        "accuracy": 47.14795008912656,
+        "wagered": 15034.88850000001,
+        "profit": 3817.129257431873,
+        "roi": 25.388477323472475,
+        "maxDD": 239.76441058242835,
+        "homePicks": 603,
+        "homeCorrect": 329,
+        "homeWagered": 8864.319249999999,
+        "homeProfit": 3521.503412874012,
+        "awayPicks": 519,
+        "awayCorrect": 200,
+        "awayWagered": 6170.569249999998,
+        "awayProfit": 295.6258445578608
+      },
+      "NHL": {
+        "picks": 1220,
+        "filtered": 92,
+        "correct": 627,
+        "accuracy": 51.39344262295082,
+        "wagered": 16528.67874999999,
+        "profit": 7174.547338833241,
+        "roi": 43.406659705533,
+        "maxDD": 145.340972536947,
+        "homePicks": 614,
+        "homeCorrect": 545,
+        "homeWagered": 9185.245499999995,
+        "homeProfit": 11915.472513630666,
+        "awayPicks": 606,
+        "awayCorrect": 82,
+        "awayWagered": 7343.433249999997,
+        "awayProfit": -4740.925174797435
+      },
+      "MLB": {
+        "picks": 2250,
+        "filtered": 180,
+        "correct": 1112,
+        "accuracy": 49.422222222222224,
+        "wagered": 29986.514250000004,
+        "profit": 13650.531894085101,
+        "roi": 45.52223636358501,
+        "maxDD": 381.4079667124929,
+        "homePicks": 1112,
+        "homeCorrect": 1112,
+        "homeWagered": 16865.423,
+        "homeProfit": 26771.62314408511,
+        "awayPicks": 1138,
+        "awayCorrect": 0,
+        "awayWagered": 13121.091249999992,
+        "awayProfit": -13121.091249999992
+      },
+      "NCAAB": {
+        "picks": 4601,
+        "filtered": 399,
+        "correct": 2279,
+        "accuracy": 49.532710280373834,
+        "wagered": 46726.59459375,
+        "profit": 16858.984076035485,
+        "roi": 36.080061520876356,
+        "maxDD": 247.64977460651443,
+        "homePicks": 2378,
+        "homeCorrect": 1211,
+        "homeWagered": 26739.84778124997,
+        "homeProfit": 10335.107947378352,
+        "awayPicks": 2223,
+        "awayCorrect": 1068,
+        "awayWagered": 19986.746812499998,
+        "awayProfit": 6523.876128657138
+      },
+      "NCAAF": {
+        "picks": 704,
+        "filtered": 146,
+        "correct": 330,
+        "accuracy": 46.875,
+        "wagered": 4714.94375,
+        "profit": 1368.6294699980128,
+        "roi": 29.02748245931911,
+        "maxDD": 206.59908842242007,
+        "homePicks": 360,
+        "homeCorrect": 170,
+        "homeWagered": 2744.6718124999998,
+        "homeProfit": 743.7919394441415,
+        "awayPicks": 344,
+        "awayCorrect": 160,
+        "awayWagered": 1970.271937499999,
+        "awayProfit": 624.8375305538715
+      }
+    },
+    "homeVsAway": {
+      "home": {
+        "picks": 5189,
+        "correct": 3455,
+        "accuracy": 66.58315667758721,
+        "wagered": 66132.28959374994,
+        "profit": 54591.42796477708,
+        "roi": 82.54882493881843
+      },
+      "away": {
+        "picks": 4951,
+        "correct": 1530,
+        "accuracy": 30.90284790951323,
+        "wagered": 50042.623999999945,
+        "profit": -11134.13194303583,
+        "roi": -22.249296805530907
+      }
+    },
+    "byOddsBand": {
+      "Pick-em (-110 to +110)": {
+        "picks": 5355,
+        "correct": 2589,
+        "wagered": 67762.01778125,
+        "profit": 49180.81599350971
+      },
+      "Med fav (-300 to -150)": {
+        "picks": 2678,
+        "correct": 1325,
+        "wagered": 26164.65796875001,
+        "profit": -4766.8408311011135
+      },
+      "Slight fav (-150 to -110)": {
+        "picks": 2107,
+        "correct": 1071,
+        "wagered": 22248.237843749983,
+        "profit": -956.6791406674095
+      }
+    },
+    "byConfBand": {
+      "High (75-84)": {
+        "picks": 3572,
+        "correct": 1752,
+        "wagered": 42810.68356250004,
+        "profit": 13694.772972000077
+      },
+      "Medium (65-74)": {
+        "picks": 3525,
+        "correct": 1722,
+        "wagered": 33475.43653124998,
+        "profit": 11294.317363006576
+      },
+      "Elite (85-95)": {
+        "picks": 1730,
+        "correct": 1116,
+        "wagered": 28415.12028125,
+        "profit": 21120.5925245902
+      },
+      "Low (50-64)": {
+        "picks": 1313,
+        "correct": 395,
+        "wagered": 11473.673218750002,
+        "profit": -2652.386837855603
+      }
+    },
+    "byMonth": {
+      "2024-09": {
+        "picks": 243,
+        "correct": 108,
+        "wagered": 3183.2937500000016,
+        "profit": 587.4739853575348
+      },
+      "2023-10": {
+        "picks": 2342,
+        "correct": 1156,
+        "wagered": 31563.56725000004,
+        "profit": 10991.676596265108
+      },
+      "2024-03": {
+        "picks": 2250,
+        "correct": 1112,
+        "wagered": 29986.514250000004,
+        "profit": 13650.531894085101
+      },
+      "2023-11": {
+        "picks": 4601,
+        "correct": 2279,
+        "wagered": 46726.59459375,
+        "profit": 16858.984076035485
+      },
+      "2024-08": {
+        "picks": 704,
+        "correct": 330,
+        "wagered": 4714.94375,
+        "profit": 1368.6294699980128
+      }
+    }
+  }
+}

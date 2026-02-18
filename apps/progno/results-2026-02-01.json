@@ -1,464 +1,461 @@
-[
-  {
-    "League": "nhl",
-    "GameId": "e9422729e63a1abde63521d91e9e5787",
-    "HomeTeam": "Anaheim Ducks",
-    "AwayTeam": "Vegas Golden Knights",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nhl",
-    "GameId": "c2b25c4fa8506ba013f1de715353a6c1",
-    "HomeTeam": "Florida Panthers",
-    "AwayTeam": "Buffalo Sabres",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nhl",
-    "GameId": "b382f70534e344a53cb8e2b91c2fea0c",
-    "HomeTeam": "Washington Capitals",
-    "AwayTeam": "New York Islanders",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nhl",
-    "GameId": "370c2e3a4c49d4537472fa9bc565d3be",
-    "HomeTeam": "Pittsburgh Penguins",
-    "AwayTeam": "Ottawa Senators",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nhl",
-    "GameId": "c651f17277642c30861a49ffa039d32b",
-    "HomeTeam": "Minnesota Wild",
-    "AwayTeam": "Montréal Canadiens",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nhl",
-    "GameId": "afd1cf4f1ae7574fddbd8982be4bcd5d",
-    "HomeTeam": "Nashville Predators",
-    "AwayTeam": "St Louis Blues",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nhl",
-    "GameId": "78700b0248383f97ff2d6e7d5438bbf8",
-    "HomeTeam": "Chicago Blackhawks",
-    "AwayTeam": "San Jose Sharks",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nhl",
-    "GameId": "bce3723c900da967791ac5b5ba57d1f4",
-    "HomeTeam": "Dallas Stars",
-    "AwayTeam": "Winnipeg Jets",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nhl",
-    "GameId": "efa2a0ed1f485bc3b8bb681d2b02e947",
-    "HomeTeam": "Colorado Avalanche",
-    "AwayTeam": "Detroit Red Wings",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nhl",
-    "GameId": "9df41843a5603a8e7a7fe70cb73688b8",
-    "HomeTeam": "Utah Mammoth",
-    "AwayTeam": "Vancouver Canucks",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nhl",
-    "GameId": "9a23b81ffd2d9a53ab3bd6608e7edaeb",
-    "HomeTeam": "Calgary Flames",
-    "AwayTeam": "Toronto Maple Leafs",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "c858d92958b45d48455454a7e70fb62f",
-    "HomeTeam": "Charleston Southern Buccaneers",
-    "AwayTeam": "Gardner-Webb Bulldogs",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "825d4d547f63f91ea114f8903f851ee1",
-    "HomeTeam": "Coppin St Eagles",
-    "AwayTeam": "Howard Bison",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "70aefe50b4ad8affc2b5e0a035c5084a",
-    "HomeTeam": "Alabama St Hornets",
-    "AwayTeam": "Florida A&M Rattlers",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "f345165f741712eff5219b829319ee9c",
-    "HomeTeam": "Holy Cross Crusaders",
-    "AwayTeam": "Boston Univ. Terriers",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "d7298f49662cd0294dd3d64039dd455a",
-    "HomeTeam": "Lamar Cardinals",
-    "AwayTeam": "SE Louisiana Lions",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "1b6742ce1d9318ed59c4e28efca8dc32",
-    "HomeTeam": "North Carolina Tar Heels",
-    "AwayTeam": "Syracuse Orange",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "403c1d067d08b72730ad398001205a73",
-    "HomeTeam": "East Texas A&M Lions",
-    "AwayTeam": "New Orleans Privateers",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "e47a4fac81ec2a72c0ae972d70cf3953",
-    "HomeTeam": "UT Rio Grande Valley Vaqueros",
-    "AwayTeam": "Houston Christian Huskies",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "86fc7d1a36abd3b2a2fbcd8951bc5d36",
-    "HomeTeam": "Stephen F. Austin Lumberjacks",
-    "AwayTeam": "McNeese Cowboys",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "b0d197acc52393cc4bb0eb9b8224b909",
-    "HomeTeam": "Northwestern St Demons",
-    "AwayTeam": "Nicholls St Colonels",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "91053b4306b13a0bbf170800c55edc4e",
-    "HomeTeam": "Alabama A&M Bulldogs",
-    "AwayTeam": "Bethune-Cookman Wildcats",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "1750087049d79855ce7a0161d72191f0",
-    "HomeTeam": "Alcorn St Braves",
-    "AwayTeam": "Grambling St Tigers",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "d78de2587af8fd0672e5179fc0bfda21",
-    "HomeTeam": "Jackson St Tigers",
-    "AwayTeam": "Southern Jaguars",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "33cafcc11e3eed4741b86e57036795f6",
-    "HomeTeam": "North Carolina Central Eagles",
-    "AwayTeam": "Maryland-Eastern Shore Hawks",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "ffb1ad475b71de5c63eaae1b26c37d6f",
-    "HomeTeam": "Tennessee St Tigers",
-    "AwayTeam": "Tennessee Tech Golden Eagles",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "5e671dfbf08175ff23eb8a6a51568152",
-    "HomeTeam": "Texas A&M-CC Islanders",
-    "AwayTeam": "Incarnate Word Cardinals",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "cd0da93a3edd243850e6e63df3efe6bb",
-    "HomeTeam": "Texas Tech Red Raiders",
-    "AwayTeam": "Kansas Jayhawks",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "f00519d0975a2bb424aeea9e76216f89",
-    "HomeTeam": "Portland St Vikings",
-    "AwayTeam": "Idaho State Bengals",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaab",
-    "GameId": "9977dd86d00d46f8d7d87ee2f9a27a43",
-    "HomeTeam": "Sacramento St Hornets",
-    "AwayTeam": "Weber State Wildcats",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nba",
-    "GameId": "1c9f0b84a617632c33b94135b8101897",
-    "HomeTeam": "Denver Nuggets",
-    "AwayTeam": "Oklahoma City Thunder",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nba",
-    "GameId": "88e3150f66c24dc03c1ef472077b7103",
-    "HomeTeam": "Charlotte Hornets",
-    "AwayTeam": "New Orleans Pelicans",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nba",
-    "GameId": "57d17c73bf1c976a13a1c66247513cf7",
-    "HomeTeam": "Indiana Pacers",
-    "AwayTeam": "Houston Rockets",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nba",
-    "GameId": "31a26b08d3d28e056418f330c82bf472",
-    "HomeTeam": "Memphis Grizzlies",
-    "AwayTeam": "Minnesota Timberwolves",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nba",
-    "GameId": "93838984e2cd0b0796d8bab2c603ae55",
-    "HomeTeam": "Los Angeles Clippers",
-    "AwayTeam": "Philadelphia 76ers",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "nfl",
-    "GameId": "b64e3587d7a4cf01a568e7150a2a1aec",
-    "HomeTeam": "New England Patriots",
-    "AwayTeam": "Seattle Seahawks",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaaf",
-    "GameId": "123a238486098cc9e8f71fea0cf4e7b0",
-    "HomeTeam": "Virginia Cavaliers",
-    "AwayTeam": "NC State Wolfpack",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaaf",
-    "GameId": "2c288580da16e12d35355f2548721be6",
-    "HomeTeam": "TCU Horned Frogs",
-    "AwayTeam": "North Carolina Tar Heels",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaaf",
-    "GameId": "525909f6be5e505d076a97eb097528eb",
-    "HomeTeam": "Auburn Tigers",
-    "AwayTeam": "Baylor Bears",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaaf",
-    "GameId": "073bba47dc105fcd66913e74f281ae96",
-    "HomeTeam": "LSU Tigers",
-    "AwayTeam": "Clemson Tigers",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaaf",
-    "GameId": "b460f3aa4235ec2485f25182755304d6",
-    "HomeTeam": "Notre Dame Fighting Irish",
-    "AwayTeam": "Wisconsin Badgers",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
-  },
-  {
-    "League": "ncaaf",
-    "GameId": "08c34029ecc85b4a6d519f90f9082e56",
-    "HomeTeam": "Texas Longhorns",
-    "AwayTeam": "Ohio State Buckeyes",
-    "HomeScore": null,
-    "AwayScore": null,
-    "Winner": "Unknown",
-    "Completed": false,
-    "Timestamp": "2026-02-01 22:42:33"
+{
+  "date": "2026-02-01",
+  "gradedAt": "2026-02-18T18:46:08.257Z",
+  "results": [
+    {
+      "home_team": "Carolina Hurricanes",
+      "away_team": "Los Angeles Kings",
+      "pick": "Los Angeles Kings",
+      "confidence": 0.5026666666666667,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "lose",
+      "actualWinner": "Carolina Hurricanes",
+      "actualScore": {
+        "home": 3,
+        "away": 2
+      }
+    },
+    {
+      "home_team": "Tampa Bay Lightning",
+      "away_team": "Boston Bruins",
+      "pick": "Tampa Bay Lightning",
+      "confidence": 0.5053333333333333,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "win",
+      "actualWinner": "Tampa Bay Lightning",
+      "actualScore": {
+        "home": 6,
+        "away": 5
+      }
+    },
+    {
+      "home_team": "Anaheim Ducks",
+      "away_team": "Vegas Golden Knights",
+      "pick": "Vegas Golden Knights",
+      "confidence": 0.5026666666666667,
+      "sport": "NHL",
+      "league": "NHL",
+      "status": "lose",
+      "actualWinner": "Anaheim Ducks",
+      "actualScore": {
+        "home": 4,
+        "away": 3
+      }
+    },
+    {
+      "home_team": "Florida Panthers",
+      "away_team": "Buffalo Sabres",
+      "pick": "Buffalo Sabres",
+      "confidence": 0.5053333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Washington Capitals",
+      "away_team": "New York Islanders",
+      "pick": "New York Islanders",
+      "confidence": 0.508,
+      "status": "pending"
+    },
+    {
+      "home_team": "Pittsburgh Penguins",
+      "away_team": "Ottawa Senators",
+      "pick": "Pittsburgh Penguins",
+      "confidence": 0.508,
+      "status": "pending"
+    },
+    {
+      "home_team": "Minnesota Wild",
+      "away_team": "MontrÃ©al Canadiens",
+      "pick": "Minnesota Wild",
+      "confidence": 0.5293333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Nashville Predators",
+      "away_team": "St Louis Blues",
+      "pick": "Nashville Predators",
+      "confidence": 0.524,
+      "status": "pending"
+    },
+    {
+      "home_team": "Chicago Blackhawks",
+      "away_team": "San Jose Sharks",
+      "pick": "Chicago Blackhawks",
+      "confidence": 0.5026666666666667,
+      "status": "pending"
+    },
+    {
+      "home_team": "Dallas Stars",
+      "away_team": "Winnipeg Jets",
+      "pick": "Winnipeg Jets",
+      "confidence": 0.5053333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Colorado Avalanche",
+      "away_team": "Detroit Red Wings",
+      "pick": "Detroit Red Wings",
+      "confidence": 0.5133333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Utah Mammoth",
+      "away_team": "Vancouver Canucks",
+      "pick": "Vancouver Canucks",
+      "confidence": 0.5133333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Calgary Flames",
+      "away_team": "Toronto Maple Leafs",
+      "pick": "Calgary Flames",
+      "confidence": 0.532,
+      "status": "pending"
+    },
+    {
+      "home_team": "Duquesne Dukes",
+      "away_team": "Rhode Island Rams",
+      "pick": "Duquesne Dukes",
+      "confidence": 0.5186666666666667,
+      "status": "pending"
+    },
+    {
+      "home_team": "Western Carolina Catamounts",
+      "away_team": "Samford Bulldogs",
+      "pick": "Western Carolina Catamounts",
+      "confidence": 0.5213333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Canisius Golden Griffins",
+      "away_team": "Siena Saints",
+      "pick": "Canisius Golden Griffins",
+      "confidence": 0.5266666666666666,
+      "status": "pending"
+    },
+    {
+      "home_team": "Furman Paladins",
+      "away_team": "Chattanooga Mocs",
+      "pick": "Furman Paladins",
+      "confidence": 0.5133333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Maryland Terrapins",
+      "away_team": "Purdue Boilermakers",
+      "pick": "Maryland Terrapins",
+      "confidence": 0.5053333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Merrimack Warriors",
+      "away_team": "Sacred Heart Pioneers",
+      "pick": "Merrimack Warriors",
+      "confidence": 0.5053333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Florida Gators",
+      "away_team": "Alabama Crimson Tide",
+      "pick": "Florida Gators",
+      "confidence": 0.5346666666666666,
+      "status": "pending"
+    },
+    {
+      "home_team": "UL Monroe Warhawks",
+      "away_team": "Coastal Carolina Chanticleers",
+      "pick": "UL Monroe Warhawks",
+      "confidence": 0.5266666666666666,
+      "status": "pending"
+    },
+    {
+      "home_team": "Colorado Buffaloes",
+      "away_team": "TCU Horned Frogs",
+      "pick": "Colorado Buffaloes",
+      "confidence": 0.5293333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Florida Atlantic Owls",
+      "away_team": "East Carolina Pirates",
+      "pick": "Florida Atlantic Owls",
+      "confidence": 0.5293333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Fairfield Stags",
+      "away_team": "Quinnipiac Bobcats",
+      "pick": "Quinnipiac Bobcats",
+      "confidence": 0.5,
+      "status": "pending"
+    },
+    {
+      "home_team": "Green Bay Phoenix",
+      "away_team": "Wright St Raiders",
+      "pick": "Green Bay Phoenix",
+      "confidence": 0.5266666666666666,
+      "status": "pending"
+    },
+    {
+      "home_team": "Kansas St Wildcats",
+      "away_team": "Iowa State Cyclones",
+      "pick": "Kansas St Wildcats",
+      "confidence": 0.5053333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Mt. St. Mary's Mountaineers",
+      "away_team": "Manhattan Jaspers",
+      "pick": "Manhattan Jaspers",
+      "confidence": 0.508,
+      "status": "pending"
+    },
+    {
+      "home_team": "Niagara Purple Eagles",
+      "away_team": "Marist Red Foxes",
+      "pick": "Niagara Purple Eagles",
+      "confidence": 0.508,
+      "status": "pending"
+    },
+    {
+      "home_team": "Penn State Nittany Lions",
+      "away_team": "Minnesota Golden Gophers",
+      "pick": "Minnesota Golden Gophers",
+      "confidence": 0.5133333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Rider Broncs",
+      "away_team": "Saint Peter's Peacocks",
+      "pick": "Saint Peter's Peacocks",
+      "confidence": 0.5026666666666667,
+      "status": "pending"
+    },
+    {
+      "home_team": "Tulsa Golden Hurricane",
+      "away_team": "Wichita St Shockers",
+      "pick": "Tulsa Golden Hurricane",
+      "confidence": 0.5266666666666666,
+      "status": "pending"
+    },
+    {
+      "home_team": "Milwaukee Panthers",
+      "away_team": "Cleveland St Vikings",
+      "pick": "Milwaukee Panthers",
+      "confidence": 0.5186666666666667,
+      "status": "pending"
+    },
+    {
+      "home_team": "Memphis Tigers",
+      "away_team": "Tulane Green Wave",
+      "pick": "Tulane Green Wave",
+      "confidence": 0.5053333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Oakland Golden Grizzlies",
+      "away_team": "Northern Kentucky Norse",
+      "pick": "Northern Kentucky Norse",
+      "confidence": 0.5106666666666667,
+      "status": "pending"
+    },
+    {
+      "home_team": "Nebraska Cornhuskers",
+      "away_team": "Illinois Fighting Illini",
+      "pick": "Nebraska Cornhuskers",
+      "confidence": 0.524,
+      "status": "pending"
+    },
+    {
+      "home_team": "Wofford Terriers",
+      "away_team": "East Tennessee St Buccaneers",
+      "pick": "East Tennessee St Buccaneers",
+      "confidence": 0.5,
+      "status": "pending"
+    },
+    {
+      "home_team": "Oregon Ducks",
+      "away_team": "Iowa Hawkeyes",
+      "pick": "Oregon Ducks",
+      "confidence": 0.5213333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Detroit Pistons",
+      "away_team": "Brooklyn Nets",
+      "pick": "Detroit Pistons",
+      "confidence": 0.516,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "win",
+      "actualWinner": "Detroit Pistons",
+      "actualScore": {
+        "home": 130,
+        "away": 77
+      }
+    },
+    {
+      "home_team": "Miami Heat",
+      "away_team": "Chicago Bulls",
+      "pick": "Miami Heat",
+      "confidence": 0.5026666666666667,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "win",
+      "actualWinner": "Miami Heat",
+      "actualScore": {
+        "home": 134,
+        "away": 91
+      }
+    },
+    {
+      "home_team": "Washington Wizards",
+      "away_team": "Sacramento Kings",
+      "pick": "Sacramento Kings",
+      "confidence": 0.5053333333333333,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "lose",
+      "actualWinner": "Washington Wizards",
+      "actualScore": {
+        "home": 116,
+        "away": 112
+      }
+    },
+    {
+      "home_team": "Toronto Raptors",
+      "away_team": "Utah Jazz",
+      "pick": "Utah Jazz",
+      "confidence": 0.5,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "lose",
+      "actualWinner": "Toronto Raptors",
+      "actualScore": {
+        "home": 107,
+        "away": 100
+      }
+    },
+    {
+      "home_team": "New York Knicks",
+      "away_team": "Los Angeles Lakers",
+      "pick": "New York Knicks",
+      "confidence": 0.5213333333333333,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "win",
+      "actualWinner": "New York Knicks",
+      "actualScore": {
+        "home": 112,
+        "away": 100
+      }
+    },
+    {
+      "home_team": "San Antonio Spurs",
+      "away_team": "Orlando Magic",
+      "pick": "San Antonio Spurs",
+      "confidence": 0.524,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "win",
+      "actualWinner": "San Antonio Spurs",
+      "actualScore": {
+        "home": 112,
+        "away": 103
+      }
+    },
+    {
+      "home_team": "Phoenix Suns",
+      "away_team": "Los Angeles Clippers",
+      "pick": "Phoenix Suns",
+      "confidence": 0.5053333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Portland Trail Blazers",
+      "away_team": "Cleveland Cavaliers",
+      "pick": "Cleveland Cavaliers",
+      "confidence": 0.5026666666666667,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "win",
+      "actualWinner": "Cleveland Cavaliers",
+      "actualScore": {
+        "home": 111,
+        "away": 130
+      }
+    },
+    {
+      "home_team": "Denver Nuggets",
+      "away_team": "Oklahoma City Thunder",
+      "pick": "Denver Nuggets",
+      "confidence": 0.5106666666666667,
+      "sport": "NBA",
+      "league": "NBA",
+      "status": "lose",
+      "actualWinner": "Oklahoma City Thunder",
+      "actualScore": {
+        "home": 111,
+        "away": 121
+      }
+    },
+    {
+      "home_team": "New England Patriots",
+      "away_team": "Seattle Seahawks",
+      "pick": "New England Patriots",
+      "confidence": 0.5293333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "Virginia Cavaliers",
+      "away_team": "NC State Wolfpack",
+      "pick": "Virginia Cavaliers",
+      "confidence": 0.5133333333333333,
+      "status": "pending"
+    },
+    {
+      "home_team": "TCU Horned Frogs",
+      "away_team": "North Carolina Tar Heels",
+      "pick": "TCU Horned Frogs",
+      "confidence": 0.5026666666666667,
+      "status": "pending"
+    },
+    {
+      "home_team": "Auburn Tigers",
+      "away_team": "Baylor Bears",
+      "pick": "Auburn Tigers",
+      "confidence": 0.5026666666666667,
+      "status": "pending"
+    },
+    {
+      "home_team": "LSU Tigers",
+      "away_team": "Clemson Tigers",
+      "pick": "Clemson Tigers",
+      "confidence": 0.5,
+      "status": "pending"
+    },
+    {
+      "home_team": "Notre Dame Fighting Irish",
+      "away_team": "Wisconsin Badgers",
+      "pick": "Wisconsin Badgers",
+      "confidence": 0.5026666666666667,
+      "status": "pending"
+    },
+    {
+      "home_team": "Texas Longhorns",
+      "away_team": "Ohio State Buckeyes",
+      "pick": "Texas Longhorns",
+      "confidence": 0.516,
+      "status": "pending"
+    }
+  ],
+  "summary": {
+    "total": 53,
+    "correct": 6,
+    "pending": 42,
+    "graded": 11,
+    "winRate": 54.5
   }
-]
+}

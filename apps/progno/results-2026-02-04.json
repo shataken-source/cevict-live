@@ -1,6 +1,6 @@
 {
   "date": "2026-02-04",
-  "gradedAt": "2026-02-05T17:59:08.943Z",
+  "gradedAt": "2026-02-18T18:48:56.648Z",
   "results": [
     {
       "home_team": "Vegas Golden Knights",
@@ -60,12 +60,7 @@
       "sport": "NCAAB",
       "league": "NCAAB",
       "game_id": "5cc0efe1d01a9fdabd1eb89f134ad0d2",
-      "status": "lose",
-      "actualWinner": "Liberty Flames",
-      "actualScore": {
-        "home": 69,
-        "away": 75
-      }
+      "status": "pending"
     },
     {
       "home_team": "Gardner-Webb Bulldogs",
@@ -75,12 +70,7 @@
       "sport": "NCAAB",
       "league": "NCAAB",
       "game_id": "9cc6d941655cadfab877956af9a88e08",
-      "status": "lose",
-      "actualWinner": "Longwood Lancers",
-      "actualScore": {
-        "home": 66,
-        "away": 86
-      }
+      "status": "pending"
     },
     {
       "home_team": "Houston Cougars",
@@ -90,12 +80,7 @@
       "sport": "NCAAB",
       "league": "NCAAB",
       "game_id": "58f4b89182e9921e13ce2b812c8cffc0",
-      "status": "lose",
-      "actualWinner": "Houston Cougars",
-      "actualScore": {
-        "home": 79,
-        "away": 55
-      }
+      "status": "pending"
     },
     {
       "home_team": "LSU Tigers",
@@ -131,8 +116,8 @@
   "summary": {
     "total": 10,
     "correct": 2,
-    "pending": 5,
-    "graded": 5,
-    "winRate": 40
+    "pending": 8,
+    "graded": 2,
+    "winRate": 100
   }
 }

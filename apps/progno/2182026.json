@@ -1,0 +1,6086 @@
+[
+  {
+    "id": "f1bc493f-cc85-4aed-8b42-285b88ac1034",
+    "external_id": "2007c2367cb16289e11f34463016e147",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "New Orleans Pelicans",
+    "away_team": "Milwaukee Bucks",
+    "commence_time": "2026-02-21 01:10:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 224.5
+      },
+      "spread": {
+        "away": 4,
+        "home": -4
+      },
+      "moneyline": {
+        "away": 140,
+        "home": -168
+      }
+    },
+    "home_moneyline": "-168.000",
+    "away_moneyline": "140.000",
+    "home_spread": "-4.00",
+    "away_spread": "4.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "224.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:10.939+00",
+    "updated_at": "2026-02-18 06:00:10.939+00"
+  },
+  {
+    "id": "d3dcc074-7d13-403b-914f-a85f484ae45b",
+    "external_id": "8b76ff37aae273884a7ea6ce7f8d1aa6",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Minnesota Timberwolves",
+    "away_team": "Dallas Mavericks",
+    "commence_time": "2026-02-21 00:40:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 236.5
+      },
+      "spread": {
+        "away": 12.5,
+        "home": -12.5
+      },
+      "moneyline": {
+        "away": 480,
+        "home": -650
+      }
+    },
+    "home_moneyline": "-650.000",
+    "away_moneyline": "480.000",
+    "home_spread": "-12.50",
+    "away_spread": "12.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "236.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:10.818+00",
+    "updated_at": "2026-02-18 06:00:10.818+00"
+  },
+  {
+    "id": "507d4a9c-325d-4689-abd9-626a4d8ee765",
+    "external_id": "fde066653cf72796682157aeae55c1e3",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Memphis Grizzlies",
+    "away_team": "Utah Jazz",
+    "commence_time": "2026-02-21 00:10:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 241.5
+      },
+      "spread": {
+        "away": 4.5,
+        "home": -4.5
+      },
+      "moneyline": {
+        "away": 146,
+        "home": -174
+      }
+    },
+    "home_moneyline": "-174.000",
+    "away_moneyline": "146.000",
+    "home_spread": "-4.50",
+    "away_spread": "4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "241.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:10.617+00",
+    "updated_at": "2026-02-18 06:00:10.617+00"
+  },
+  {
+    "id": "e40afca9-65f6-4668-861a-3144a37641a1",
+    "external_id": "13c088a4f279e674bf80e4cb06d231a9",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Los Angeles Clippers",
+    "away_team": "Denver Nuggets",
+    "commence_time": "2026-02-20 03:40:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 225.5
+      },
+      "spread": {
+        "away": -4,
+        "home": 4
+      },
+      "moneyline": {
+        "away": -180,
+        "home": 152
+      }
+    },
+    "home_moneyline": "152.000",
+    "away_moneyline": "-180.000",
+    "home_spread": "4.00",
+    "away_spread": "-4.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "225.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:10.486+00",
+    "updated_at": "2026-02-18 06:00:10.486+00"
+  },
+  {
+    "id": "261d0ccc-c075-44bb-a60f-42237f054498",
+    "external_id": "fc4ef6fdb917bca80f99940665442e96",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Sacramento Kings",
+    "away_team": "Orlando Magic",
+    "commence_time": "2026-02-20 03:10:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 225.5
+      },
+      "spread": {
+        "away": -11,
+        "home": 11
+      },
+      "moneyline": {
+        "away": -500,
+        "home": 385
+      }
+    },
+    "home_moneyline": "385.000",
+    "away_moneyline": "-500.000",
+    "home_spread": "11.00",
+    "away_spread": "-11.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "225.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:10.317+00",
+    "updated_at": "2026-02-18 06:00:10.317+00"
+  },
+  {
+    "id": "dec38ca7-65c6-4b12-aead-bc38ee72d81f",
+    "external_id": "7bb1dc8e7e0b6a77195533729951d187",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Golden State Warriors",
+    "away_team": "Boston Celtics",
+    "commence_time": "2026-02-20 03:10:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 216.5
+      },
+      "spread": {
+        "away": -3.5,
+        "home": 3.5
+      },
+      "moneyline": {
+        "away": -148,
+        "home": 126
+      }
+    },
+    "home_moneyline": "126.000",
+    "away_moneyline": "-148.000",
+    "home_spread": "3.50",
+    "away_spread": "-3.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "216.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:10.167+00",
+    "updated_at": "2026-02-18 06:00:10.167+00"
+  },
+  {
+    "id": "8967417d-7939-4fbf-815d-9d77e157ee7a",
+    "external_id": "d34f8e76f10dd65a684c9bd6301e667e",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "San Antonio Spurs",
+    "away_team": "Phoenix Suns",
+    "commence_time": "2026-02-20 01:40:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 226.5
+      },
+      "spread": {
+        "away": 7.5,
+        "home": -7.5
+      },
+      "moneyline": {
+        "away": 260,
+        "home": -320
+      }
+    },
+    "home_moneyline": "-320.000",
+    "away_moneyline": "260.000",
+    "home_spread": "-7.50",
+    "away_spread": "7.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "226.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:10.016+00",
+    "updated_at": "2026-02-18 06:00:10.016+00"
+  },
+  {
+    "id": "8d21a0a4-adc9-43b9-a8ee-c2f516f85fd9",
+    "external_id": "537f72a12ccf54596ce42c638bacb485",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Chicago Bulls",
+    "away_team": "Toronto Raptors",
+    "commence_time": "2026-02-20 01:10:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 234.5
+      },
+      "spread": {
+        "away": -6.5,
+        "home": 6.5
+      },
+      "moneyline": {
+        "away": -230,
+        "home": 190
+      }
+    },
+    "home_moneyline": "190.000",
+    "away_moneyline": "-230.000",
+    "home_spread": "6.50",
+    "away_spread": "-6.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "234.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:09.813+00",
+    "updated_at": "2026-02-18 06:00:09.813+00"
+  },
+  {
+    "id": "35ba2276-7ba7-4ef1-9a55-0b1dcac2838b",
+    "external_id": "0ea61c4bb159036d242d6aa077216586",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "New York Knicks",
+    "away_team": "Detroit Pistons",
+    "commence_time": "2026-02-20 00:40:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 222.5
+      },
+      "spread": {
+        "away": 4.5,
+        "home": -4.5
+      },
+      "moneyline": {
+        "away": 152,
+        "home": -180
+      }
+    },
+    "home_moneyline": "-180.000",
+    "away_moneyline": "152.000",
+    "home_spread": "-4.50",
+    "away_spread": "4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "222.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:09.605+00",
+    "updated_at": "2026-02-18 06:00:09.605+00"
+  },
+  {
+    "id": "e6b5a2cd-76b8-4d4d-a915-7470260a4781",
+    "external_id": "97031eee2ea39d890bf5046a1c57c7a7",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Charlotte Hornets",
+    "away_team": "Houston Rockets",
+    "commence_time": "2026-02-20 00:10:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 216.5
+      },
+      "spread": {
+        "away": -2.5,
+        "home": 2.5
+      },
+      "moneyline": {
+        "away": -144,
+        "home": 122
+      }
+    },
+    "home_moneyline": "122.000",
+    "away_moneyline": "-144.000",
+    "home_spread": "2.50",
+    "away_spread": "-2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "216.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:09.403+00",
+    "updated_at": "2026-02-18 06:00:09.403+00"
+  },
+  {
+    "id": "98a7d517-4b00-49fc-b84e-500c1865fa46",
+    "external_id": "24a92d49df82923f29b3e9cda4d57446",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Cleveland Cavaliers",
+    "away_team": "Brooklyn Nets",
+    "commence_time": "2026-02-20 00:10:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 229.5
+      },
+      "spread": {
+        "away": 14.5,
+        "home": -14.5
+      },
+      "moneyline": {
+        "away": 590,
+        "home": -850
+      }
+    },
+    "home_moneyline": "-850.000",
+    "away_moneyline": "590.000",
+    "home_spread": "-14.50",
+    "away_spread": "14.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "229.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:09.198+00",
+    "updated_at": "2026-02-18 06:00:09.198+00"
+  },
+  {
+    "id": "af9047ed-63df-4b2a-ae24-c60bb052456f",
+    "external_id": "d647541d42648749f3bde601547fa1be",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Philadelphia 76ers",
+    "away_team": "Atlanta Hawks",
+    "commence_time": "2026-02-20 00:10:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 237.5
+      },
+      "spread": {
+        "away": 4.5,
+        "home": -4.5
+      },
+      "moneyline": {
+        "away": 164,
+        "home": -196
+      }
+    },
+    "home_moneyline": "-196.000",
+    "away_moneyline": "164.000",
+    "home_spread": "-4.50",
+    "away_spread": "4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "237.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:08.786+00",
+    "updated_at": "2026-02-18 06:00:08.786+00"
+  },
+  {
+    "id": "03e9b6bc-1f76-497f-921d-4665c64f475e",
+    "external_id": "c93f72cb146ef69c7bd4a79f03481123",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Washington Wizards",
+    "away_team": "Indiana Pacers",
+    "commence_time": "2026-02-20 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 234.5
+      },
+      "spread": {
+        "away": -4.5,
+        "home": 4.5
+      },
+      "moneyline": {
+        "away": -190,
+        "home": 160
+      }
+    },
+    "home_moneyline": "160.000",
+    "away_moneyline": "-190.000",
+    "home_spread": "4.50",
+    "away_spread": "-4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "234.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 06:00:08.624+00",
+    "updated_at": "2026-02-18 06:00:08.624+00"
+  },
+  {
+    "id": "106e7437-14b2-4e5c-b248-df1936516e9d",
+    "external_id": "fb88f48aafaaee316979dbe2bf3675d9",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "San Francisco Dons",
+    "away_team": "Gonzaga Bulldogs",
+    "commence_time": "2026-02-19 04:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 149.5
+      },
+      "spread": {
+        "away": -14.5,
+        "home": 14.5
+      },
+      "moneyline": {
+        "away": -1450,
+        "home": 810
+      }
+    },
+    "home_moneyline": "810.000",
+    "away_moneyline": "-1450.000",
+    "home_spread": "14.50",
+    "away_spread": "-14.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "149.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:32.368+00",
+    "updated_at": "2026-02-18 04:44:32.368+00"
+  },
+  {
+    "id": "26f65440-3e18-4c3f-8c9e-7e7f206fca2f",
+    "external_id": "9ff940e26341438aded9e17125d55bb3",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "UNLV Rebels",
+    "away_team": "Colorado St Rams",
+    "commence_time": "2026-02-19 04:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 149.5
+      },
+      "spread": {
+        "away": 1.5,
+        "home": -1.5
+      },
+      "moneyline": {
+        "away": 106,
+        "home": -128
+      }
+    },
+    "home_moneyline": "-128.000",
+    "away_moneyline": "106.000",
+    "home_spread": "-1.50",
+    "away_spread": "1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "149.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:32.233+00",
+    "updated_at": "2026-02-18 04:44:32.233+00"
+  },
+  {
+    "id": "d87655da-fe27-416c-8b0f-e0387f80af25",
+    "external_id": "451961025d2cb0d3bb40fb91f2c45e06",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Utah State Aggies",
+    "away_team": "Boise State Broncos",
+    "commence_time": "2026-02-19 03:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 152.5
+      },
+      "spread": {
+        "away": 9.5,
+        "home": -9.5
+      },
+      "moneyline": {
+        "away": 390,
+        "home": -530
+      }
+    },
+    "home_moneyline": "-530.000",
+    "away_moneyline": "390.000",
+    "home_spread": "-9.50",
+    "away_spread": "9.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "152.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:32.12+00",
+    "updated_at": "2026-02-18 04:44:32.12+00"
+  },
+  {
+    "id": "c9f9d0b8-0c35-4178-9d22-d3b644ef0f30",
+    "external_id": "a1cfe5157c5687c659bc96fc8584c6bb",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "USC Trojans",
+    "away_team": "Illinois Fighting Illini",
+    "commence_time": "2026-02-19 03:00:47+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 152.5
+      },
+      "spread": {
+        "away": -9.5,
+        "home": 9.5
+      },
+      "moneyline": {
+        "away": -520,
+        "home": 385
+      }
+    },
+    "home_moneyline": "385.000",
+    "away_moneyline": "-520.000",
+    "home_spread": "9.50",
+    "away_spread": "-9.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "152.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:32.016+00",
+    "updated_at": "2026-02-18 04:44:32.016+00"
+  },
+  {
+    "id": "338758e3-52af-46b8-a5ff-87ac792b382e",
+    "external_id": "3c95a9f54afc0be01d7b339783b6bd7b",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Portland Pilots",
+    "away_team": "Pepperdine Waves",
+    "commence_time": "2026-02-19 03:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 150.5
+      },
+      "spread": {
+        "away": 6,
+        "home": -6
+      },
+      "moneyline": {
+        "away": 215,
+        "home": -265
+      }
+    },
+    "home_moneyline": "-265.000",
+    "away_moneyline": "215.000",
+    "home_spread": "-6.00",
+    "away_spread": "6.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "150.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:31.852+00",
+    "updated_at": "2026-02-18 04:44:31.852+00"
+  },
+  {
+    "id": "a617d44f-6a11-4fa8-930a-c090cfb0e1a8",
+    "external_id": "03fb20e139d17b3e128a389340b280c6",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Washington St Cougars",
+    "away_team": "Pacific Tigers",
+    "commence_time": "2026-02-19 02:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 145
+      },
+      "spread": {
+        "away": 1.5,
+        "home": -1.5
+      },
+      "moneyline": {
+        "away": 102,
+        "home": -129
+      }
+    },
+    "home_moneyline": "-129.000",
+    "away_moneyline": "102.000",
+    "home_spread": "-1.50",
+    "away_spread": "1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "145.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:31.712+00",
+    "updated_at": "2026-02-18 04:44:31.712+00"
+  },
+  {
+    "id": "926cd69e-a39d-4c8c-ac2e-c1164fad6aaa",
+    "external_id": "2ff9a5457dd1d991c64fd9a228c01359",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Oklahoma St Cowboys",
+    "away_team": "Kansas Jayhawks",
+    "commence_time": "2026-02-19 02:00:55+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 156.5
+      },
+      "spread": {
+        "away": -5.5,
+        "home": 5.5
+      },
+      "moneyline": {
+        "away": -285,
+        "home": 230
+      }
+    },
+    "home_moneyline": "230.000",
+    "away_moneyline": "-285.000",
+    "home_spread": "5.50",
+    "away_spread": "-5.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "156.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:31.604+00",
+    "updated_at": "2026-02-18 04:44:31.604+00"
+  },
+  {
+    "id": "2c1fdfa9-a7ff-466a-b376-34ccc8200c5a",
+    "external_id": "6eb950d25a21f9ae46da73bc6af30fbe",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Georgia Tech Yellow Jackets",
+    "away_team": "Virginia Cavaliers",
+    "commence_time": "2026-02-19 02:00:37+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 145.5
+      },
+      "spread": {
+        "away": -13.5,
+        "home": 13.5
+      },
+      "moneyline": {
+        "away": -1250,
+        "home": 740
+      }
+    },
+    "home_moneyline": "740.000",
+    "away_moneyline": "-1250.000",
+    "home_spread": "13.50",
+    "away_spread": "-13.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "145.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:31.504+00",
+    "updated_at": "2026-02-18 04:44:31.504+00"
+  },
+  {
+    "id": "ef3a22a8-f0d5-42f4-86e3-49d5e45cbedb",
+    "external_id": "ebb4661330b6064d23a2ca299f736786",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Marquette Golden Eagles",
+    "away_team": "St. John's Red Storm",
+    "commence_time": "2026-02-19 02:00:09+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 156.5
+      },
+      "spread": {
+        "away": -9.5,
+        "home": 9.5
+      },
+      "moneyline": {
+        "away": -490,
+        "home": 365
+      }
+    },
+    "home_moneyline": "365.000",
+    "away_moneyline": "-490.000",
+    "home_spread": "9.50",
+    "away_spread": "-9.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "156.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:31.393+00",
+    "updated_at": "2026-02-18 04:44:31.393+00"
+  },
+  {
+    "id": "50b77f23-1ab0-4887-b589-7c93fd46f509",
+    "external_id": "2559889cffd8b9ad716155544e57bf75",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Arizona Wildcats",
+    "away_team": "BYU Cougars",
+    "commence_time": "2026-02-19 02:00:09+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 165.5
+      },
+      "spread": {
+        "away": 12.5,
+        "home": -12.5
+      },
+      "moneyline": {
+        "away": 680,
+        "home": -1100
+      }
+    },
+    "home_moneyline": "-1100.000",
+    "away_moneyline": "680.000",
+    "home_spread": "-12.50",
+    "away_spread": "12.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "165.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:31.272+00",
+    "updated_at": "2026-02-18 04:44:31.272+00"
+  },
+  {
+    "id": "77259cf4-889c-4a50-aeef-815403658007",
+    "external_id": "ebce4748bbfba64453bbc766c1ee582c",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Missouri Tigers",
+    "away_team": "Vanderbilt Commodores",
+    "commence_time": "2026-02-19 02:00:07+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 153.5
+      },
+      "spread": {
+        "away": -4.5,
+        "home": 4.5
+      },
+      "moneyline": {
+        "away": -220,
+        "home": 180
+      }
+    },
+    "home_moneyline": "180.000",
+    "away_moneyline": "-220.000",
+    "home_spread": "4.50",
+    "away_spread": "-4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "153.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:31.157+00",
+    "updated_at": "2026-02-18 04:44:31.157+00"
+  },
+  {
+    "id": "0f954c8a-083d-42d7-815f-632da263e7a3",
+    "external_id": "0c44878b4bf36faebe4582701adfa8ec",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Mississippi St Bulldogs",
+    "away_team": "Auburn Tigers",
+    "commence_time": "2026-02-19 02:00:07+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 154.5
+      },
+      "spread": {
+        "away": -4.5,
+        "home": 4.5
+      },
+      "moneyline": {
+        "away": -210,
+        "home": 172
+      }
+    },
+    "home_moneyline": "172.000",
+    "away_moneyline": "-210.000",
+    "home_spread": "4.50",
+    "away_spread": "-4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "154.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:31.021+00",
+    "updated_at": "2026-02-18 04:44:31.021+00"
+  },
+  {
+    "id": "7db9b397-ffe7-4722-aba3-b48c39005c80",
+    "external_id": "150d7c5fe1855b042719b0db9f4d21ef",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Seattle Redhawks",
+    "away_team": "Saint Mary's Gaels",
+    "commence_time": "2026-02-19 02:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 136
+      },
+      "spread": {
+        "away": -10.5,
+        "home": 10.5
+      },
+      "moneyline": {
+        "away": -710,
+        "home": 490
+      }
+    },
+    "home_moneyline": "490.000",
+    "away_moneyline": "-710.000",
+    "home_spread": "10.50",
+    "away_spread": "-10.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "136.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:30.877+00",
+    "updated_at": "2026-02-18 04:44:30.877+00"
+  },
+  {
+    "id": "36a5328f-14e4-4e0f-b0f8-4db11fbb31fb",
+    "external_id": "2f659ae8a2987848ba29f7e4c121fd90",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Illinois St Redbirds",
+    "away_team": "Murray St Racers",
+    "commence_time": "2026-02-19 02:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 155.5
+      },
+      "spread": {
+        "away": 2.5,
+        "home": -2.5
+      },
+      "moneyline": {
+        "away": 140,
+        "home": -170
+      }
+    },
+    "home_moneyline": "-170.000",
+    "away_moneyline": "140.000",
+    "home_spread": "-2.50",
+    "away_spread": "2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "155.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:30.508+00",
+    "updated_at": "2026-02-18 04:44:30.508+00"
+  },
+  {
+    "id": "62b31e6f-2ebb-4650-b4d2-154b5d584a3a",
+    "external_id": "6a4c1493059a335d14689a5a0fd80b77",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "West Virginia Mountaineers",
+    "away_team": "Utah Utes",
+    "commence_time": "2026-02-19 01:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 131
+      },
+      "spread": {
+        "away": 10,
+        "home": -10
+      },
+      "moneyline": {
+        "away": 480,
+        "home": -690
+      }
+    },
+    "home_moneyline": "-690.000",
+    "away_moneyline": "480.000",
+    "home_spread": "-10.00",
+    "away_spread": "10.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "131.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:30.375+00",
+    "updated_at": "2026-02-18 04:44:30.375+00"
+  },
+  {
+    "id": "d56cf1b8-6f5d-4fa9-8e5e-8db00d0bee47",
+    "external_id": "39b6492f24c22e41cabbbc420ca8c575",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Omaha Mavericks",
+    "away_team": "Oral Roberts Golden Eagles",
+    "commence_time": "2026-02-19 01:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 151
+      },
+      "spread": {
+        "away": 9.5,
+        "home": -9.5
+      },
+      "moneyline": {
+        "away": 350,
+        "home": -455
+      }
+    },
+    "home_moneyline": "-455.000",
+    "away_moneyline": "350.000",
+    "home_spread": "-9.50",
+    "away_spread": "9.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "151.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:30.264+00",
+    "updated_at": "2026-02-18 04:44:30.264+00"
+  },
+  {
+    "id": "54c61ece-6fb8-4029-bdd6-6d48418a8d0f",
+    "external_id": "d34c2cc8a13ae82409732805f2ada1c2",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "South Dakota St Jackrabbits",
+    "away_team": "North Dakota St Bison",
+    "commence_time": "2026-02-19 01:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 147
+      },
+      "spread": {
+        "away": -1,
+        "home": 1
+      },
+      "moneyline": {
+        "away": -118,
+        "home": -102
+      }
+    },
+    "home_moneyline": "-102.000",
+    "away_moneyline": "-118.000",
+    "home_spread": "1.00",
+    "away_spread": "-1.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "147.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:30.15+00",
+    "updated_at": "2026-02-18 04:44:30.15+00"
+  },
+  {
+    "id": "bdceb520-9f5f-422b-8f95-88705c3cff16",
+    "external_id": "76fbe1796858322cf6a2802c15bf2f7f",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "South Carolina St Bulldogs",
+    "away_team": "North Carolina Central Eagles",
+    "commence_time": "2026-02-19 01:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 140
+      },
+      "spread": {
+        "away": -3,
+        "home": 3
+      },
+      "moneyline": {
+        "away": -160,
+        "home": 135
+      }
+    },
+    "home_moneyline": "135.000",
+    "away_moneyline": "-160.000",
+    "home_spread": "3.00",
+    "away_spread": "-3.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "140.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:30.018+00",
+    "updated_at": "2026-02-18 04:44:30.018+00"
+  },
+  {
+    "id": "8bf3394f-35ed-4122-b006-6ebe0e10ed7a",
+    "external_id": "490204db375ef02865e8d222334fabca",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Northwestern Wildcats",
+    "away_team": "Maryland Terrapins",
+    "commence_time": "2026-02-19 01:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 143.5
+      },
+      "spread": {
+        "away": 8,
+        "home": -8
+      },
+      "moneyline": {
+        "away": 310,
+        "home": -400
+      }
+    },
+    "home_moneyline": "-400.000",
+    "away_moneyline": "310.000",
+    "home_spread": "-8.00",
+    "away_spread": "8.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "143.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:29.908+00",
+    "updated_at": "2026-02-18 04:44:29.908+00"
+  },
+  {
+    "id": "628ff463-e78b-42a2-a858-36ab2867bd09",
+    "external_id": "1d143794cb303ad75a4202924e4826dc",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Missouri St Bears",
+    "away_team": "Kennesaw St Owls",
+    "commence_time": "2026-02-19 01:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 153.5
+      },
+      "spread": {
+        "away": 2,
+        "home": -2
+      },
+      "moneyline": {
+        "away": 110,
+        "home": -130
+      }
+    },
+    "home_moneyline": "-130.000",
+    "away_moneyline": "110.000",
+    "home_spread": "-2.00",
+    "away_spread": "2.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "153.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:29.804+00",
+    "updated_at": "2026-02-18 04:44:29.804+00"
+  },
+  {
+    "id": "84a4839b-fe12-4417-9d64-c2541e926107",
+    "external_id": "e7ec5916076fefe093c83c7ea8c93dd8",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "UTSA Roadrunners",
+    "away_team": "Florida Atlantic Owls",
+    "commence_time": "2026-02-19 01:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 157.5
+      },
+      "spread": {
+        "away": -13,
+        "home": 13
+      },
+      "moneyline": {
+        "away": -850,
+        "home": 575
+      }
+    },
+    "home_moneyline": "575.000",
+    "away_moneyline": "-850.000",
+    "home_spread": "13.00",
+    "away_spread": "-13.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "157.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:29.675+00",
+    "updated_at": "2026-02-18 04:44:29.675+00"
+  },
+  {
+    "id": "7e6c1ae6-1d08-4495-bfd4-b873c89ef3a8",
+    "external_id": "6e0112b1ba1b977e22ea2b4b3ef7644b",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Evansville Purple Aces",
+    "away_team": "UIC Flames",
+    "commence_time": "2026-02-19 01:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 139
+      },
+      "spread": {
+        "away": -8,
+        "home": 8
+      },
+      "moneyline": {
+        "away": -400,
+        "home": 300
+      }
+    },
+    "home_moneyline": "300.000",
+    "away_moneyline": "-400.000",
+    "home_spread": "8.00",
+    "away_spread": "-8.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "139.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:29.567+00",
+    "updated_at": "2026-02-18 04:44:29.567+00"
+  },
+  {
+    "id": "cf9ad81f-b75b-4143-b152-c6f33174fb14",
+    "external_id": "8252ab0dd4e3cdd59c7972e329713102",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Seton Hall Pirates",
+    "away_team": "DePaul Blue Demons",
+    "commence_time": "2026-02-19 01:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 130.5
+      },
+      "spread": {
+        "away": 8.5,
+        "home": -8.5
+      },
+      "moneyline": {
+        "away": 340,
+        "home": -450
+      }
+    },
+    "home_moneyline": "-450.000",
+    "away_moneyline": "340.000",
+    "home_spread": "-8.50",
+    "away_spread": "8.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "130.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:29.449+00",
+    "updated_at": "2026-02-18 04:44:29.449+00"
+  },
+  {
+    "id": "6b150eed-e595-4f7a-8da6-545a00fed2c9",
+    "external_id": "b2aa8e7c43429e58f0ec1d90b8a8581c",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Tulsa Golden Hurricane",
+    "away_team": "Charlotte 49ers",
+    "commence_time": "2026-02-19 01:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 149.5
+      },
+      "spread": {
+        "away": 13,
+        "home": -13
+      },
+      "moneyline": {
+        "away": 680,
+        "home": -1100
+      }
+    },
+    "home_moneyline": "-1100.000",
+    "away_moneyline": "680.000",
+    "home_spread": "-13.00",
+    "away_spread": "13.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "149.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:29.318+00",
+    "updated_at": "2026-02-18 04:44:29.318+00"
+  },
+  {
+    "id": "f1f02821-1508-45b9-ad2c-d43b099e4c72",
+    "external_id": "8ab30801fc841279d585a3ed21c64957",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "UL Monroe Warhawks",
+    "away_team": "Troy Trojans",
+    "commence_time": "2026-02-19 00:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 153
+      },
+      "spread": {
+        "away": -15.5,
+        "home": 15.5
+      },
+      "moneyline": {
+        "away": -2000,
+        "home": 850
+      }
+    },
+    "home_moneyline": "850.000",
+    "away_moneyline": "-2000.000",
+    "home_spread": "15.50",
+    "away_spread": "-15.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "153.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:29.177+00",
+    "updated_at": "2026-02-18 04:44:29.177+00"
+  },
+  {
+    "id": "6912960b-9234-476f-8aec-0947731662a6",
+    "external_id": "91a96a5c60f0e1d453516f3f0ae60ece",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Sam Houston St Bearkats",
+    "away_team": "Middle Tennessee Blue Raiders",
+    "commence_time": "2026-02-19 00:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 152.5
+      },
+      "spread": {
+        "away": 5.5,
+        "home": -5.5
+      },
+      "moneyline": {
+        "away": 170,
+        "home": -225
+      }
+    },
+    "home_moneyline": "-225.000",
+    "away_moneyline": "170.000",
+    "home_spread": "-5.50",
+    "away_spread": "5.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "152.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:29.074+00",
+    "updated_at": "2026-02-18 04:44:29.074+00"
+  },
+  {
+    "id": "25b55e21-61fd-4120-9e70-143e04656c2e",
+    "external_id": "39727871937d3e560bfa43f256a2de7e",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Louisiana Tech Bulldogs",
+    "away_team": "Jacksonville St Gamecocks",
+    "commence_time": "2026-02-19 00:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 132.5
+      },
+      "spread": {
+        "away": 2.5,
+        "home": -2.5
+      },
+      "moneyline": {
+        "away": 133,
+        "home": -167
+      }
+    },
+    "home_moneyline": "-167.000",
+    "away_moneyline": "133.000",
+    "home_spread": "-2.50",
+    "away_spread": "2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "132.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:28.96+00",
+    "updated_at": "2026-02-18 04:44:28.96+00"
+  },
+  {
+    "id": "3c266638-2f77-4f5b-b820-cb8501a01801",
+    "external_id": "ff82fc2450a1e576f8548a0d8282f8d3",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Drake Bulldogs",
+    "away_team": "Southern Illinois Salukis",
+    "commence_time": "2026-02-19 00:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 149.5
+      },
+      "spread": {
+        "away": -1.5,
+        "home": 1.5
+      },
+      "moneyline": {
+        "away": -126,
+        "home": 105
+      }
+    },
+    "home_moneyline": "105.000",
+    "away_moneyline": "-126.000",
+    "home_spread": "1.50",
+    "away_spread": "-1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "149.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:28.859+00",
+    "updated_at": "2026-02-18 04:44:28.859+00"
+  },
+  {
+    "id": "ee8c0e8e-5322-4819-a9f2-3c94071120dc",
+    "external_id": "0c08fb614a8b2e90004678d9c27dca96",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Bellarmine Knights",
+    "away_team": "Lipscomb Bisons",
+    "commence_time": "2026-02-19 00:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 158.5
+      },
+      "spread": {
+        "away": -3,
+        "home": 3
+      },
+      "moneyline": {
+        "away": -162,
+        "home": 136
+      }
+    },
+    "home_moneyline": "136.000",
+    "away_moneyline": "-162.000",
+    "home_spread": "3.00",
+    "away_spread": "-3.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "158.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:28.728+00",
+    "updated_at": "2026-02-18 04:44:28.728+00"
+  },
+  {
+    "id": "c7785a9e-0a57-4192-b9ab-3cf893467e64",
+    "external_id": "db7da50a33bce08a284b083de6bd19af",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Texas A&M Aggies",
+    "away_team": "Ole Miss Rebels",
+    "commence_time": "2026-02-19 00:00:53+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 154.5
+      },
+      "spread": {
+        "away": 9.5,
+        "home": -9.5
+      },
+      "moneyline": {
+        "away": 440,
+        "home": -610
+      }
+    },
+    "home_moneyline": "-610.000",
+    "away_moneyline": "440.000",
+    "home_spread": "-9.50",
+    "away_spread": "9.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "154.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:28.613+00",
+    "updated_at": "2026-02-18 04:44:28.613+00"
+  },
+  {
+    "id": "cd392d99-204e-4640-920f-0aa232fbaf8c",
+    "external_id": "f26bc0b95cdc588929bd1c7f073a2ea1",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Wake Forest Demon Deacons",
+    "away_team": "Clemson Tigers",
+    "commence_time": "2026-02-19 00:00:47+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 138.5
+      },
+      "spread": {
+        "away": -3.5,
+        "home": 3.5
+      },
+      "moneyline": {
+        "away": -172,
+        "home": 142
+      }
+    },
+    "home_moneyline": "142.000",
+    "away_moneyline": "-172.000",
+    "home_spread": "3.50",
+    "away_spread": "-3.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "138.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:28.5+00",
+    "updated_at": "2026-02-18 04:44:28.5+00"
+  },
+  {
+    "id": "e38d0909-e6cb-4297-99bd-4e0aaf1dcb4b",
+    "external_id": "f61cd2ad2b2a86db3c9dabc0bd6db3bd",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Alabama Crimson Tide",
+    "away_team": "Arkansas Razorbacks",
+    "commence_time": "2026-02-19 00:00:26+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 183.5
+      },
+      "spread": {
+        "away": 3.5,
+        "home": -3.5
+      },
+      "moneyline": {
+        "away": 168,
+        "home": -205
+      }
+    },
+    "home_moneyline": "-205.000",
+    "away_moneyline": "168.000",
+    "home_spread": "-3.50",
+    "away_spread": "3.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "183.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:28.387+00",
+    "updated_at": "2026-02-18 04:44:28.387+00"
+  },
+  {
+    "id": "565b58ed-8864-4ed1-9671-4e4d0b1504e9",
+    "external_id": "eed1dd3f0dd54c9065e39b43a93dc34d",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "UConn Huskies",
+    "away_team": "Creighton Bluejays",
+    "commence_time": "2026-02-19 00:00:18+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 142.5
+      },
+      "spread": {
+        "away": 16.5,
+        "home": -16.5
+      },
+      "moneyline": {
+        "away": 1160,
+        "home": -2800
+      }
+    },
+    "home_moneyline": "-2800.000",
+    "away_moneyline": "1160.000",
+    "home_spread": "-16.50",
+    "away_spread": "16.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "142.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:28.275+00",
+    "updated_at": "2026-02-18 04:44:28.275+00"
+  },
+  {
+    "id": "f78eaf47-d49f-4802-9064-92c18a4d8299",
+    "external_id": "e936e34ac1812f7eebb763392c5d19a6",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Tennessee Volunteers",
+    "away_team": "Oklahoma Sooners",
+    "commence_time": "2026-02-19 00:00:06+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 149.5
+      },
+      "spread": {
+        "away": 10.5,
+        "home": -10.5
+      },
+      "moneyline": {
+        "away": 520,
+        "home": -750
+      }
+    },
+    "home_moneyline": "-750.000",
+    "away_moneyline": "520.000",
+    "home_spread": "-10.50",
+    "away_spread": "10.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "149.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:28.166+00",
+    "updated_at": "2026-02-18 04:44:28.166+00"
+  },
+  {
+    "id": "62fd3151-a269-4ced-927e-5bf6d7df4623",
+    "external_id": "d3133401121158017952616fd851cbfb",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Western Carolina Catamounts",
+    "away_team": "UNC Greensboro Spartans",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 155.5
+      },
+      "spread": {
+        "away": 5,
+        "home": -5
+      },
+      "moneyline": {
+        "away": 170,
+        "home": -205
+      }
+    },
+    "home_moneyline": "-205.000",
+    "away_moneyline": "170.000",
+    "home_spread": "-5.00",
+    "away_spread": "5.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "155.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:28.055+00",
+    "updated_at": "2026-02-18 04:44:28.055+00"
+  },
+  {
+    "id": "8165a1d7-efc8-44ad-ae8a-6b368ffb2a9a",
+    "external_id": "b304e5b2ab3a29ac76f1820c12db3fc3",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Temple Owls",
+    "away_team": "UAB Blazers",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 146
+      },
+      "spread": {
+        "away": 0,
+        "home": 0
+      },
+      "moneyline": {
+        "away": -104,
+        "home": -115
+      }
+    },
+    "home_moneyline": "-115.000",
+    "away_moneyline": "-104.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "146.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:27.939+00",
+    "updated_at": "2026-02-18 04:44:27.939+00"
+  },
+  {
+    "id": "5cae02d4-f0c4-4e77-87b4-b235365e2769",
+    "external_id": "eb55c28951b39bcbf8b02bf3736498f9",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "St. Bonaventure Bonnies",
+    "away_team": "Saint Joseph's Hawks",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 147
+      },
+      "spread": {
+        "away": 4.5,
+        "home": -4.5
+      },
+      "moneyline": {
+        "away": 176,
+        "home": -215
+      }
+    },
+    "home_moneyline": "-215.000",
+    "away_moneyline": "176.000",
+    "home_spread": "-4.50",
+    "away_spread": "4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "147.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:27.833+00",
+    "updated_at": "2026-02-18 04:44:27.833+00"
+  },
+  {
+    "id": "eb99a48d-2626-4ee8-8588-35fb96816a7a",
+    "external_id": "c84a7b384a440e35aa3161d6ffd3177e",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "North Alabama Lions",
+    "away_team": "Queens University Royals",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 155
+      },
+      "spread": {
+        "away": -8.5,
+        "home": 8.5
+      },
+      "moneyline": {
+        "away": null,
+        "home": null
+      }
+    },
+    "home_moneyline": null,
+    "away_moneyline": null,
+    "home_spread": "8.50",
+    "away_spread": "-8.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "155.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:27.723+00",
+    "updated_at": "2026-02-18 04:44:27.723+00"
+  },
+  {
+    "id": "c69f208e-d0c7-4afb-9c1f-65a14c58cc15",
+    "external_id": "03d9a9cbb2e4a677a348e591911f359c",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Navy Midshipmen",
+    "away_team": "Lehigh Mountain Hawks",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 140
+      },
+      "spread": {
+        "away": 10,
+        "home": -10
+      },
+      "moneyline": {
+        "away": 390,
+        "home": -560
+      }
+    },
+    "home_moneyline": "-560.000",
+    "away_moneyline": "390.000",
+    "home_spread": "-10.00",
+    "away_spread": "10.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "140.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:27.617+00",
+    "updated_at": "2026-02-18 04:44:27.617+00"
+  },
+  {
+    "id": "eedf67fc-eb12-4c02-a452-eb5da0c27eb4",
+    "external_id": "384a50886e3ff4a61eb1c19573244307",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Indiana St Sycamores",
+    "away_team": "Northern Iowa Panthers",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 136.5
+      },
+      "spread": {
+        "away": -4.5,
+        "home": 4.5
+      },
+      "moneyline": {
+        "away": -230,
+        "home": 188
+      }
+    },
+    "home_moneyline": "188.000",
+    "away_moneyline": "-230.000",
+    "home_spread": "4.50",
+    "away_spread": "-4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "136.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:27.499+00",
+    "updated_at": "2026-02-18 04:44:27.499+00"
+  },
+  {
+    "id": "15de091c-b2d7-4607-a41f-a63e49337cec",
+    "external_id": "314fde1b961db1fece47274f944008fa",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Northern Kentucky Norse",
+    "away_team": "Fort Wayne Mastodons",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 151
+      },
+      "spread": {
+        "away": 6,
+        "home": -6
+      },
+      "moneyline": {
+        "away": 210,
+        "home": -258
+      }
+    },
+    "home_moneyline": "-258.000",
+    "away_moneyline": "210.000",
+    "home_spread": "-6.00",
+    "away_spread": "6.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "151.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:27.389+00",
+    "updated_at": "2026-02-18 04:44:27.389+00"
+  },
+  {
+    "id": "d2c7b50e-ecc8-49df-9700-f6b3be27c5f9",
+    "external_id": "5bb4b0623ff8d3263ead6bdc49664ec8",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Fordham Rams",
+    "away_team": "Loyola (Chi) Ramblers",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 138.5
+      },
+      "spread": {
+        "away": 9,
+        "home": -9
+      },
+      "moneyline": {
+        "away": 350,
+        "home": -500
+      }
+    },
+    "home_moneyline": "-500.000",
+    "away_moneyline": "350.000",
+    "home_spread": "-9.00",
+    "away_spread": "9.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "138.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:27.28+00",
+    "updated_at": "2026-02-18 04:44:27.28+00"
+  },
+  {
+    "id": "ddc5a542-2f4f-42dc-97bd-0808f7ecd488",
+    "external_id": "35e167cd8cc67f4539f520d00ff817ed",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Florida Gulf Coast Eagles",
+    "away_team": "Jacksonville Dolphins",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 136.5
+      },
+      "spread": {
+        "away": 6.5,
+        "home": -6.5
+      },
+      "moneyline": {
+        "away": 235,
+        "home": -315
+      }
+    },
+    "home_moneyline": "-315.000",
+    "away_moneyline": "235.000",
+    "home_spread": "-6.50",
+    "away_spread": "6.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "136.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:27.171+00",
+    "updated_at": "2026-02-18 04:44:27.171+00"
+  },
+  {
+    "id": "5228df66-22b8-4cbd-9437-8057f1a66e5a",
+    "external_id": "6c288955def078d9de006fab539bebd4",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Eastern Kentucky Colonels",
+    "away_team": "West Georgia Wolves",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 156
+      },
+      "spread": {
+        "away": 5.5,
+        "home": -5.5
+      },
+      "moneyline": {
+        "away": 185,
+        "home": -225
+      }
+    },
+    "home_moneyline": "-225.000",
+    "away_moneyline": "185.000",
+    "home_spread": "-5.50",
+    "away_spread": "5.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "156.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:27.066+00",
+    "updated_at": "2026-02-18 04:44:27.066+00"
+  },
+  {
+    "id": "a5a55a5b-e461-4fbc-9708-82d4d9ed39db",
+    "external_id": "0b133a0f5611dfb665786b3cda524090",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "East Carolina Pirates",
+    "away_team": "Wichita St Shockers",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 145
+      },
+      "spread": {
+        "away": -8.5,
+        "home": 8.5
+      },
+      "moneyline": {
+        "away": -465,
+        "home": 340
+      }
+    },
+    "home_moneyline": "340.000",
+    "away_moneyline": "-465.000",
+    "home_spread": "8.50",
+    "away_spread": "-8.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "145.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:26.953+00",
+    "updated_at": "2026-02-18 04:44:26.953+00"
+  },
+  {
+    "id": "e3b0f6e0-43cf-492a-a64e-aafe4272da46",
+    "external_id": "779c4061539ff65e9a1f7952ffc3fcd5",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Duquesne Dukes",
+    "away_team": "La Salle Explorers",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 144
+      },
+      "spread": {
+        "away": 11,
+        "home": -11
+      },
+      "moneyline": {
+        "away": 455,
+        "home": -625
+      }
+    },
+    "home_moneyline": "-625.000",
+    "away_moneyline": "455.000",
+    "home_spread": "-11.00",
+    "away_spread": "11.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "144.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:26.85+00",
+    "updated_at": "2026-02-18 04:44:26.85+00"
+  },
+  {
+    "id": "4dfe09c0-69cc-466d-b989-ad10f66944d5",
+    "external_id": "34c7503ea22fca30c9d02e277ba06e08",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Delaware Blue Hens",
+    "away_team": "Western Kentucky Hilltoppers",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 141
+      },
+      "spread": {
+        "away": -4,
+        "home": 4
+      },
+      "moneyline": {
+        "away": -188,
+        "home": 155
+      }
+    },
+    "home_moneyline": "155.000",
+    "away_moneyline": "-188.000",
+    "home_spread": "4.00",
+    "away_spread": "-4.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "141.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:26.739+00",
+    "updated_at": "2026-02-18 04:44:26.739+00"
+  },
+  {
+    "id": "e17ffaa6-b19e-4116-b6a5-34ea0ca5996a",
+    "external_id": "b9ea815b8ab45e07f1a5988750a38a38",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "George Mason Patriots",
+    "away_team": "Dayton Flyers",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 136.5
+      },
+      "spread": {
+        "away": 1.5,
+        "home": -1.5
+      },
+      "moneyline": {
+        "away": 115,
+        "home": -138
+      }
+    },
+    "home_moneyline": "-138.000",
+    "away_moneyline": "115.000",
+    "home_spread": "-1.50",
+    "away_spread": "1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "136.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:26.61+00",
+    "updated_at": "2026-02-18 04:44:26.61+00"
+  },
+  {
+    "id": "e3e596c6-531f-4311-ba68-94b52a4abc1a",
+    "external_id": "0f558db055f0c62c38bb5019fb0f04c6",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Davidson Wildcats",
+    "away_team": "Richmond Spiders",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 142
+      },
+      "spread": {
+        "away": 5.5,
+        "home": -5.5
+      },
+      "moneyline": {
+        "away": 210,
+        "home": -260
+      }
+    },
+    "home_moneyline": "-260.000",
+    "away_moneyline": "210.000",
+    "home_spread": "-5.50",
+    "away_spread": "5.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "142.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:26.497+00",
+    "updated_at": "2026-02-18 04:44:26.497+00"
+  },
+  {
+    "id": "670b859b-e42d-4863-96d2-3c460c085bde",
+    "external_id": "9f913527bbba0a181daf3875a853b7ee",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Coastal Carolina Chanticleers",
+    "away_team": "James Madison Dukes",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 141.5
+      },
+      "spread": {
+        "away": 1,
+        "home": -1
+      },
+      "moneyline": {
+        "away": -105,
+        "home": -115
+      }
+    },
+    "home_moneyline": "-115.000",
+    "away_moneyline": "-105.000",
+    "home_spread": "-1.00",
+    "away_spread": "1.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "141.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:26.362+00",
+    "updated_at": "2026-02-18 04:44:26.362+00"
+  },
+  {
+    "id": "ce07a56f-2897-4937-9bcf-435be7e243d7",
+    "external_id": "e51bd22f96a09a35e493532a231380c0",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Valparaiso Beacons",
+    "away_team": "Bradley Braves",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 142.5
+      },
+      "spread": {
+        "away": -2.5,
+        "home": 2.5
+      },
+      "moneyline": {
+        "away": -150,
+        "home": 125
+      }
+    },
+    "home_moneyline": "125.000",
+    "away_moneyline": "-150.000",
+    "home_spread": "2.50",
+    "away_spread": "-2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "142.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:26.255+00",
+    "updated_at": "2026-02-18 04:44:26.255+00"
+  },
+  {
+    "id": "aae699dd-9593-4954-b41a-41581dc80883",
+    "external_id": "a1036fe0b0754b977e1827278c274d44",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Loyola (MD) Greyhounds",
+    "away_team": "Army Knights",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 147
+      },
+      "spread": {
+        "away": 5,
+        "home": -5
+      },
+      "moneyline": {
+        "away": 165,
+        "home": -200
+      }
+    },
+    "home_moneyline": "-200.000",
+    "away_moneyline": "165.000",
+    "home_spread": "-5.00",
+    "away_spread": "5.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "147.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:26.157+00",
+    "updated_at": "2026-02-18 04:44:26.157+00"
+  },
+  {
+    "id": "5918cef0-7ad5-46c6-895a-08140ab1e3bb",
+    "external_id": "476ad1140ed49d18a1cb1bc4f840c915",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Bucknell Bison",
+    "away_team": "American Eagles",
+    "commence_time": "2026-02-19 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 139
+      },
+      "spread": {
+        "away": -2.5,
+        "home": 2.5
+      },
+      "moneyline": {
+        "away": -152,
+        "home": 123
+      }
+    },
+    "home_moneyline": "123.000",
+    "away_moneyline": "-152.000",
+    "home_spread": "2.50",
+    "away_spread": "-2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "139.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:26.042+00",
+    "updated_at": "2026-02-18 04:44:26.042+00"
+  },
+  {
+    "id": "d953fb83-ec40-48f4-8cfd-4c8345bb6768",
+    "external_id": "4a180d59bb203fe3f1772b3861e10eb4",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Georgetown Hoyas",
+    "away_team": "Butler Bulldogs",
+    "commence_time": "2026-02-18 23:30:44+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 144.5
+      },
+      "spread": {
+        "away": 6.5,
+        "home": -6.5
+      },
+      "moneyline": {
+        "away": 245,
+        "home": -310
+      }
+    },
+    "home_moneyline": "-310.000",
+    "away_moneyline": "245.000",
+    "home_spread": "-6.50",
+    "away_spread": "6.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "144.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:25.93+00",
+    "updated_at": "2026-02-18 04:44:25.93+00"
+  },
+  {
+    "id": "d8f8e5bc-b357-453c-a32e-e6fccd5dcd43",
+    "external_id": "ad2efca37ac0255b25fa4fa9341fca69",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Furman Paladins",
+    "away_team": "East Tennessee St Buccaneers",
+    "commence_time": "2026-02-18 23:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 141
+      },
+      "spread": {
+        "away": -1.5,
+        "home": 1.5
+      },
+      "moneyline": {
+        "away": -108,
+        "home": -111
+      }
+    },
+    "home_moneyline": "-111.000",
+    "away_moneyline": "-108.000",
+    "home_spread": "1.50",
+    "away_spread": "-1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "141.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:25.813+00",
+    "updated_at": "2026-02-18 04:44:25.813+00"
+  },
+  {
+    "id": "815dcf25-1297-41cd-9af5-23b024e8b4fa",
+    "external_id": "a0cded5dfea68d6677f6cd4e2f093954",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Youngstown St Penguins",
+    "away_team": "Cleveland St Vikings",
+    "commence_time": "2026-02-18 23:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 157
+      },
+      "spread": {
+        "away": 10.5,
+        "home": -10.5
+      },
+      "moneyline": {
+        "away": 480,
+        "home": -690
+      }
+    },
+    "home_moneyline": "-690.000",
+    "away_moneyline": "480.000",
+    "home_spread": "-10.50",
+    "away_spread": "10.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "157.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:25.713+00",
+    "updated_at": "2026-02-18 04:44:25.713+00"
+  },
+  {
+    "id": "ebd26ef7-a40b-4157-b30d-05d67630fd35",
+    "external_id": "bb37ce13d0a8bae0e489d0421685f562",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Penn State Nittany Lions",
+    "away_team": "Rutgers Scarlet Knights",
+    "commence_time": "2026-02-18 23:00:37+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 148.5
+      },
+      "spread": {
+        "away": 3.5,
+        "home": -3.5
+      },
+      "moneyline": {
+        "away": 168,
+        "home": -205
+      }
+    },
+    "home_moneyline": "-205.000",
+    "away_moneyline": "168.000",
+    "home_spread": "-3.50",
+    "away_spread": "3.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "148.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:25.591+00",
+    "updated_at": "2026-02-18 04:44:25.591+00"
+  },
+  {
+    "id": "6578673e-aa3d-434d-abdc-0e889db2c720",
+    "external_id": "2a83074109598535d73f91c6857df8ca",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Wofford Terriers",
+    "away_team": "VMI Keydets",
+    "commence_time": "2026-02-18 23:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 154.5
+      },
+      "spread": {
+        "away": 15,
+        "home": -15
+      },
+      "moneyline": {
+        "away": 920,
+        "home": -1800
+      }
+    },
+    "home_moneyline": "-1800.000",
+    "away_moneyline": "920.000",
+    "home_spread": "-15.00",
+    "away_spread": "15.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "154.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:25.495+00",
+    "updated_at": "2026-02-18 04:44:25.495+00"
+  },
+  {
+    "id": "4dedcef2-f933-4245-b284-8c8328b2adef",
+    "external_id": "f410243c7a824572b0fcf886ad3bbac2",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Holy Cross Crusaders",
+    "away_team": "Lafayette Leopards",
+    "commence_time": "2026-02-18 23:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 135.5
+      },
+      "spread": {
+        "away": 1.5,
+        "home": -1.5
+      },
+      "moneyline": {
+        "away": 102,
+        "home": -122
+      }
+    },
+    "home_moneyline": "-122.000",
+    "away_moneyline": "102.000",
+    "home_spread": "-1.50",
+    "away_spread": "1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "135.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:25.387+00",
+    "updated_at": "2026-02-18 04:44:25.387+00"
+  },
+  {
+    "id": "20fa2e7a-6141-47b7-8508-feba46908eb9",
+    "external_id": "f0415f93b38f4f03598cbd79368a4c6d",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Arizona St Sun Devils",
+    "away_team": "Texas Tech Red Raiders",
+    "commence_time": "2026-02-18 04:10:45+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 152.5
+      },
+      "spread": {
+        "away": -9.5,
+        "home": 9.5
+      },
+      "moneyline": {
+        "away": -750,
+        "home": 470
+      }
+    },
+    "home_moneyline": "470.000",
+    "away_moneyline": "-750.000",
+    "home_spread": "9.50",
+    "away_spread": "-9.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "152.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:25.276+00",
+    "updated_at": "2026-02-18 04:44:25.276+00"
+  },
+  {
+    "id": "e31eeb5d-085b-41b8-9a49-e851711dbaaa",
+    "external_id": "08bb7e3d200edc45748efb1dc0c1a910",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Oregon Ducks",
+    "away_team": "Minnesota Golden Gophers",
+    "commence_time": "2026-02-18 03:46:14+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 109.5
+      },
+      "spread": {
+        "away": -2.5,
+        "home": 2.5
+      },
+      "moneyline": {
+        "away": -160,
+        "home": 124
+      }
+    },
+    "home_moneyline": "124.000",
+    "away_moneyline": "-160.000",
+    "home_spread": "2.50",
+    "away_spread": "-2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "109.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:25.165+00",
+    "updated_at": "2026-02-18 04:44:25.165+00"
+  },
+  {
+    "id": "41308901-35ff-460e-b5eb-2639e2d4711d",
+    "external_id": "fba2ac1b8d8689b928fb134a3c29acba",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "San Diego St Aztecs",
+    "away_team": "Grand Canyon Antelopes",
+    "commence_time": "2026-02-18 03:10:57+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 134.5
+      },
+      "spread": {
+        "away": -2.5,
+        "home": 2.5
+      },
+      "moneyline": {
+        "away": -180,
+        "home": 140
+      }
+    },
+    "home_moneyline": "140.000",
+    "away_moneyline": "-180.000",
+    "home_spread": "2.50",
+    "away_spread": "-2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "134.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:25.063+00",
+    "updated_at": "2026-02-18 04:44:25.063+00"
+  },
+  {
+    "id": "d9509398-6305-463a-aa81-95b22bce7389",
+    "external_id": "59ded394d77bbd940d0b3093e639da06",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "San José St Spartans",
+    "away_team": "Nevada Wolf Pack",
+    "commence_time": "2026-02-18 03:05:34+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 164.5
+      },
+      "spread": {
+        "away": 10.5,
+        "home": -10.5
+      },
+      "moneyline": {
+        "away": 1200,
+        "home": -2800
+      }
+    },
+    "home_moneyline": "-2800.000",
+    "away_moneyline": "1200.000",
+    "home_spread": "-10.50",
+    "away_spread": "10.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "164.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:24.953+00",
+    "updated_at": "2026-02-18 04:44:24.953+00"
+  },
+  {
+    "id": "1c9686ae-1041-4f50-95f0-62432ae4e121",
+    "external_id": "08c34029ecc85b4a6d519f90f9082e56",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "Texas Longhorns",
+    "away_team": "Ohio State Buckeyes",
+    "commence_time": "2026-09-12 16:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 47.5
+      },
+      "spread": {
+        "away": 2.5,
+        "home": -2.5
+      },
+      "moneyline": {
+        "away": 114,
+        "home": -137
+      }
+    },
+    "home_moneyline": "-137.000",
+    "away_moneyline": "114.000",
+    "home_spread": "-2.50",
+    "away_spread": "2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "47.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:21.366+00",
+    "updated_at": "2026-02-18 04:44:21.366+00"
+  },
+  {
+    "id": "f19658e1-c505-4115-99bc-d497c555e691",
+    "external_id": "b38f4f63351c15767e64a76a73589574",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "Michigan Wolverines",
+    "away_team": "Oklahoma Sooners",
+    "commence_time": "2026-09-12 16:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 45.5
+      },
+      "spread": {
+        "away": 1.5,
+        "home": -1.5
+      },
+      "moneyline": {
+        "away": -102,
+        "home": -118
+      }
+    },
+    "home_moneyline": "-118.000",
+    "away_moneyline": "-102.000",
+    "home_spread": "-1.50",
+    "away_spread": "1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "45.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:21.244+00",
+    "updated_at": "2026-02-18 04:44:21.244+00"
+  },
+  {
+    "id": "6f6db885-e401-48c7-8a39-c4fb18b0c8b0",
+    "external_id": "b460f3aa4235ec2485f25182755304d6",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "Notre Dame Fighting Irish",
+    "away_team": "Wisconsin Badgers",
+    "commence_time": "2026-09-06 16:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 46.5
+      },
+      "spread": {
+        "away": 16.5,
+        "home": -16.5
+      },
+      "moneyline": {
+        "away": 660,
+        "home": -1050
+      }
+    },
+    "home_moneyline": "-1050.000",
+    "away_moneyline": "660.000",
+    "home_spread": "-16.50",
+    "away_spread": "16.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "46.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:21.125+00",
+    "updated_at": "2026-02-18 04:44:21.125+00"
+  },
+  {
+    "id": "58b9d66d-890b-4855-926c-5774ca0b24b3",
+    "external_id": "073bba47dc105fcd66913e74f281ae96",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "LSU Tigers",
+    "away_team": "Clemson Tigers",
+    "commence_time": "2026-09-05 16:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 51.5
+      },
+      "spread": {
+        "away": 11.5,
+        "home": -11.5
+      },
+      "moneyline": {
+        "away": 350,
+        "home": -465
+      }
+    },
+    "home_moneyline": "-465.000",
+    "away_moneyline": "350.000",
+    "home_spread": "-11.50",
+    "away_spread": "11.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "51.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:21.017+00",
+    "updated_at": "2026-02-18 04:44:21.017+00"
+  },
+  {
+    "id": "7df3fb7b-0d23-419b-ab1e-956059831a8b",
+    "external_id": "1bb9e45b6e7ed1200104ed018eff9093",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "California Golden Bears",
+    "away_team": "UCLA Bruins",
+    "commence_time": "2026-09-05 16:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 53.5
+      },
+      "spread": {
+        "away": 5.5,
+        "home": -5.5
+      },
+      "moneyline": {
+        "away": 168,
+        "home": -205
+      }
+    },
+    "home_moneyline": "-205.000",
+    "away_moneyline": "168.000",
+    "home_spread": "-5.50",
+    "away_spread": "5.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "53.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:20.915+00",
+    "updated_at": "2026-02-18 04:44:20.915+00"
+  },
+  {
+    "id": "374801b4-94a5-4cf1-a77a-bf6b5c9563e0",
+    "external_id": "525909f6be5e505d076a97eb097528eb",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "Auburn Tigers",
+    "away_team": "Baylor Bears",
+    "commence_time": "2026-09-05 16:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 58.5
+      },
+      "spread": {
+        "away": 7.5,
+        "home": -7.5
+      },
+      "moneyline": {
+        "away": 235,
+        "home": -295
+      }
+    },
+    "home_moneyline": "-295.000",
+    "away_moneyline": "235.000",
+    "home_spread": "-7.50",
+    "away_spread": "7.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "58.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:20.796+00",
+    "updated_at": "2026-02-18 04:44:20.796+00"
+  },
+  {
+    "id": "75a2d85d-7c8f-4506-8185-96fe03ce9e9e",
+    "external_id": "2c288580da16e12d35355f2548721be6",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "TCU Horned Frogs",
+    "away_team": "North Carolina Tar Heels",
+    "commence_time": "2026-08-29 16:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 50.5
+      },
+      "spread": {
+        "away": 7.5,
+        "home": -7.5
+      },
+      "moneyline": {
+        "away": 245,
+        "home": -310
+      }
+    },
+    "home_moneyline": "-310.000",
+    "away_moneyline": "245.000",
+    "home_spread": "-7.50",
+    "away_spread": "7.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "50.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:20.588+00",
+    "updated_at": "2026-02-18 04:44:20.588+00"
+  },
+  {
+    "id": "2714c6fc-49e7-4d12-9c8e-30a4985ca1c9",
+    "external_id": "123a238486098cc9e8f71fea0cf4e7b0",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "Virginia Cavaliers",
+    "away_team": "NC State Wolfpack",
+    "commence_time": "2026-08-29 16:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 54.5
+      },
+      "spread": {
+        "away": 3.5,
+        "home": -3.5
+      },
+      "moneyline": {
+        "away": 134,
+        "home": -162
+      }
+    },
+    "home_moneyline": "-162.000",
+    "away_moneyline": "134.000",
+    "home_spread": "-3.50",
+    "away_spread": "3.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "54.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:44:20.429+00",
+    "updated_at": "2026-02-18 04:44:20.429+00"
+  },
+  {
+    "id": "9e48e41f-a472-4a58-a557-bb2468965a5d",
+    "external_id": "70ad639dbfb1b1f17f503857920380dd",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Anaheim Ducks",
+    "away_team": "Edmonton Oilers",
+    "commence_time": "2026-02-26 03:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": -155,
+        "home": 128
+      }
+    },
+    "home_moneyline": "128.000",
+    "away_moneyline": "-155.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:37:29.958+00",
+    "updated_at": "2026-02-18 04:37:29.958+00"
+  },
+  {
+    "id": "add71b06-cff1-4848-8995-ba4379697d6f",
+    "external_id": "c7e030f8824a01e811126ffe9260e414",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Vancouver Canucks",
+    "away_team": "Winnipeg Jets",
+    "commence_time": "2026-02-26 03:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": -141,
+        "home": 117
+      }
+    },
+    "home_moneyline": "117.000",
+    "away_moneyline": "-141.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:37:29.802+00",
+    "updated_at": "2026-02-18 04:37:29.802+00"
+  },
+  {
+    "id": "a72d8673-3009-4279-9bc3-3af24c729c06",
+    "external_id": "ff44e0238a7b844ec02714e7e80fb7ae",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Los Angeles Kings",
+    "away_team": "Vegas Golden Knights",
+    "commence_time": "2026-02-26 03:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": -113,
+        "home": -108
+      }
+    },
+    "home_moneyline": "-108.000",
+    "away_moneyline": "-113.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:37:29.691+00",
+    "updated_at": "2026-02-18 04:37:29.691+00"
+  },
+  {
+    "id": "53c9edd8-2389-41c1-bb07-1741a3ff2ef3",
+    "external_id": "62d3d5c47cb28bbb3fe941b2a372da99",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Utah Mammoth",
+    "away_team": "Colorado Avalanche",
+    "commence_time": "2026-02-26 02:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": -167,
+        "home": 140
+      }
+    },
+    "home_moneyline": "140.000",
+    "away_moneyline": "-167.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:37:29.554+00",
+    "updated_at": "2026-02-18 04:37:29.554+00"
+  },
+  {
+    "id": "2408719b-7cec-4d28-90d7-e6ddae597266",
+    "external_id": "9e0efb6fbebb4688c447b7b8b9510376",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Dallas Stars",
+    "away_team": "Seattle Kraken",
+    "commence_time": "2026-02-26 01:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": 155,
+        "home": -195
+      }
+    },
+    "home_moneyline": "-195.000",
+    "away_moneyline": "155.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:37:29.431+00",
+    "updated_at": "2026-02-18 04:37:29.431+00"
+  },
+  {
+    "id": "9764d499-baf3-4e82-b2e1-d6ed7740ced7",
+    "external_id": "7db784c85f5a8503aae0321813e62475",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Tampa Bay Lightning",
+    "away_team": "Toronto Maple Leafs",
+    "commence_time": "2026-02-26 00:30:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": 175,
+        "home": -215
+      }
+    },
+    "home_moneyline": "-215.000",
+    "away_moneyline": "175.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:37:29.312+00",
+    "updated_at": "2026-02-18 04:37:29.312+00"
+  },
+  {
+    "id": "b70d9889-5771-4b4d-a25b-056e184fd1e8",
+    "external_id": "e8c18f2b16ac22ddc4b6160e03b48432",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Washington Capitals",
+    "away_team": "Philadelphia Flyers",
+    "commence_time": "2026-02-26 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": 170,
+        "home": -210
+      }
+    },
+    "home_moneyline": "-210.000",
+    "away_moneyline": "170.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:37:29.053+00",
+    "updated_at": "2026-02-18 04:37:29.053+00"
+  },
+  {
+    "id": "b70029c4-1bbe-4df8-80b4-bbf926986c27",
+    "external_id": "9d0b725f6e813c43975b6ac5532309a6",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "New Jersey Devils",
+    "away_team": "Buffalo Sabres",
+    "commence_time": "2026-02-26 00:00:00+00",
+    "game_date": "2026-02-18",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": -120,
+        "home": 100
+      }
+    },
+    "home_moneyline": "100.000",
+    "away_moneyline": "-120.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-18 04:37:28.922+00",
+    "updated_at": "2026-02-18 04:37:28.922+00"
+  },
+  {
+    "id": "53694317-b04d-450e-9cf9-8bf2ad51df38",
+    "external_id": "08c34029ecc85b4a6d519f90f9082e56",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "Texas Longhorns",
+    "away_team": "Ohio State Buckeyes",
+    "commence_time": "2026-09-12 16:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 47.5
+      },
+      "spread": {
+        "away": 2.5,
+        "home": -2.5
+      },
+      "moneyline": {
+        "away": 114,
+        "home": -137
+      }
+    },
+    "home_moneyline": "-137.000",
+    "away_moneyline": "114.000",
+    "home_spread": "-2.50",
+    "away_spread": "2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "47.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:21:29.879+00",
+    "updated_at": "2026-02-17 00:21:29.879+00"
+  },
+  {
+    "id": "b7680d48-88f9-48e5-b9f7-a80b965b152f",
+    "external_id": "b38f4f63351c15767e64a76a73589574",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "Michigan Wolverines",
+    "away_team": "Oklahoma Sooners",
+    "commence_time": "2026-09-12 16:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 45.5
+      },
+      "spread": {
+        "away": 1.5,
+        "home": -1.5
+      },
+      "moneyline": {
+        "away": -102,
+        "home": -118
+      }
+    },
+    "home_moneyline": "-118.000",
+    "away_moneyline": "-102.000",
+    "home_spread": "-1.50",
+    "away_spread": "1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "45.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:21:29.795+00",
+    "updated_at": "2026-02-17 00:21:29.795+00"
+  },
+  {
+    "id": "b6ac3d44-e642-4959-8acb-faeccbf02158",
+    "external_id": "b460f3aa4235ec2485f25182755304d6",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "Notre Dame Fighting Irish",
+    "away_team": "Wisconsin Badgers",
+    "commence_time": "2026-09-06 16:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 46.5
+      },
+      "spread": {
+        "away": 16.5,
+        "home": -16.5
+      },
+      "moneyline": {
+        "away": 660,
+        "home": -1050
+      }
+    },
+    "home_moneyline": "-1050.000",
+    "away_moneyline": "660.000",
+    "home_spread": "-16.50",
+    "away_spread": "16.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "46.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:21:29.702+00",
+    "updated_at": "2026-02-17 00:21:29.702+00"
+  },
+  {
+    "id": "905d57b5-73dd-41a9-b0fb-9b1a35ea21fe",
+    "external_id": "073bba47dc105fcd66913e74f281ae96",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "LSU Tigers",
+    "away_team": "Clemson Tigers",
+    "commence_time": "2026-09-05 16:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 51.5
+      },
+      "spread": {
+        "away": 11.5,
+        "home": -11.5
+      },
+      "moneyline": {
+        "away": 350,
+        "home": -465
+      }
+    },
+    "home_moneyline": "-465.000",
+    "away_moneyline": "350.000",
+    "home_spread": "-11.50",
+    "away_spread": "11.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "51.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:21:29.554+00",
+    "updated_at": "2026-02-17 00:21:29.554+00"
+  },
+  {
+    "id": "7f47a192-159d-4cfc-80df-1dd6be0a5322",
+    "external_id": "1bb9e45b6e7ed1200104ed018eff9093",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "California Golden Bears",
+    "away_team": "UCLA Bruins",
+    "commence_time": "2026-09-05 16:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 53.5
+      },
+      "spread": {
+        "away": 5.5,
+        "home": -5.5
+      },
+      "moneyline": {
+        "away": 168,
+        "home": -205
+      }
+    },
+    "home_moneyline": "-205.000",
+    "away_moneyline": "168.000",
+    "home_spread": "-5.50",
+    "away_spread": "5.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "53.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:21:29.434+00",
+    "updated_at": "2026-02-17 00:21:29.434+00"
+  },
+  {
+    "id": "4ecb39c9-0159-47b0-9014-07d501c1d513",
+    "external_id": "525909f6be5e505d076a97eb097528eb",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "Auburn Tigers",
+    "away_team": "Baylor Bears",
+    "commence_time": "2026-09-05 16:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 58.5
+      },
+      "spread": {
+        "away": 7.5,
+        "home": -7.5
+      },
+      "moneyline": {
+        "away": 235,
+        "home": -295
+      }
+    },
+    "home_moneyline": "-295.000",
+    "away_moneyline": "235.000",
+    "home_spread": "-7.50",
+    "away_spread": "7.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "58.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:21:29.323+00",
+    "updated_at": "2026-02-17 00:21:29.323+00"
+  },
+  {
+    "id": "79dcbe93-c0ae-4c01-a227-e28e36e64b08",
+    "external_id": "2c288580da16e12d35355f2548721be6",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "TCU Horned Frogs",
+    "away_team": "North Carolina Tar Heels",
+    "commence_time": "2026-08-29 16:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 50.5
+      },
+      "spread": {
+        "away": 7.5,
+        "home": -7.5
+      },
+      "moneyline": {
+        "away": 255,
+        "home": -320
+      }
+    },
+    "home_moneyline": "-320.000",
+    "away_moneyline": "255.000",
+    "home_spread": "-7.50",
+    "away_spread": "7.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "50.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:21:29.087+00",
+    "updated_at": "2026-02-17 00:21:29.087+00"
+  },
+  {
+    "id": "e0d9d98c-d899-4e7b-b3f0-30c44d5d29ea",
+    "external_id": "123a238486098cc9e8f71fea0cf4e7b0",
+    "sport": "ncaaf",
+    "sport_key": "ncaaf",
+    "home_team": "Virginia Cavaliers",
+    "away_team": "NC State Wolfpack",
+    "commence_time": "2026-08-29 16:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 54.5
+      },
+      "spread": {
+        "away": 3.5,
+        "home": -3.5
+      },
+      "moneyline": {
+        "away": 134,
+        "home": -162
+      }
+    },
+    "home_moneyline": "-162.000",
+    "away_moneyline": "134.000",
+    "home_spread": "-3.50",
+    "away_spread": "3.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "54.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:21:28.989+00",
+    "updated_at": "2026-02-17 00:21:28.989+00"
+  },
+  {
+    "id": "95164e16-783c-44e9-b7aa-9f0c99c1b30d",
+    "external_id": "f0415f93b38f4f03598cbd79368a4c6d",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Arizona St Sun Devils",
+    "away_team": "Texas Tech Red Raiders",
+    "commence_time": "2026-02-18 04:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 153.5
+      },
+      "spread": {
+        "away": -7.5,
+        "home": 7.5
+      },
+      "moneyline": {
+        "away": -450,
+        "home": 340
+      }
+    },
+    "home_moneyline": "340.000",
+    "away_moneyline": "-450.000",
+    "home_spread": "7.50",
+    "away_spread": "-7.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "153.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:42.53+00",
+    "updated_at": "2026-02-17 00:19:42.53+00"
+  },
+  {
+    "id": "a741cb19-1ff9-49a5-b218-b275282ed734",
+    "external_id": "08bb7e3d200edc45748efb1dc0c1a910",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Oregon Ducks",
+    "away_team": "Minnesota Golden Gophers",
+    "commence_time": "2026-02-18 03:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 134.5
+      },
+      "spread": {
+        "away": 2.5,
+        "home": -2.5
+      },
+      "moneyline": {
+        "away": 128,
+        "home": -154
+      }
+    },
+    "home_moneyline": "-154.000",
+    "away_moneyline": "128.000",
+    "home_spread": "-2.50",
+    "away_spread": "2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "134.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:42.333+00",
+    "updated_at": "2026-02-17 00:19:42.333+00"
+  },
+  {
+    "id": "7d5e256d-e7fd-4816-a1e4-f9f13cb02763",
+    "external_id": "59ded394d77bbd940d0b3093e639da06",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "San José St Spartans",
+    "away_team": "Nevada Wolf Pack",
+    "commence_time": "2026-02-18 03:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 141.5
+      },
+      "spread": {
+        "away": -10.5,
+        "home": 10.5
+      },
+      "moneyline": {
+        "away": -690,
+        "home": 480
+      }
+    },
+    "home_moneyline": "480.000",
+    "away_moneyline": "-690.000",
+    "home_spread": "10.50",
+    "away_spread": "-10.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "141.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:42.157+00",
+    "updated_at": "2026-02-17 00:19:42.157+00"
+  },
+  {
+    "id": "2e103394-459f-44d4-b147-a4d4fff1e303",
+    "external_id": "fba2ac1b8d8689b928fb134a3c29acba",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "San Diego St Aztecs",
+    "away_team": "Grand Canyon Antelopes",
+    "commence_time": "2026-02-18 03:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 138.5
+      },
+      "spread": {
+        "away": 7.5,
+        "home": -7.5
+      },
+      "moneyline": {
+        "away": 320,
+        "home": -420
+      }
+    },
+    "home_moneyline": "-420.000",
+    "away_moneyline": "320.000",
+    "home_spread": "-7.50",
+    "away_spread": "7.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "138.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:42.063+00",
+    "updated_at": "2026-02-17 00:19:42.063+00"
+  },
+  {
+    "id": "38a344cb-263b-4cc8-afac-475cde0f3f7f",
+    "external_id": "a6dc038cae4af947c2334d9a41acda9b",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Texas Longhorns",
+    "away_team": "LSU Tigers",
+    "commence_time": "2026-02-18 02:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 152.5
+      },
+      "spread": {
+        "away": 10.5,
+        "home": -10.5
+      },
+      "moneyline": {
+        "away": 480,
+        "home": -690
+      }
+    },
+    "home_moneyline": "-690.000",
+    "away_moneyline": "480.000",
+    "home_spread": "-10.50",
+    "away_spread": "10.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "152.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:41.919+00",
+    "updated_at": "2026-02-17 00:19:41.919+00"
+  },
+  {
+    "id": "666b3267-445c-46df-ad1d-7c523b585cbd",
+    "external_id": "ea7780fe99a91e917987557769331431",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Iowa Hawkeyes",
+    "away_team": "Nebraska Cornhuskers",
+    "commence_time": "2026-02-18 02:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 137.5
+      },
+      "spread": {
+        "away": -1.5,
+        "home": 1.5
+      },
+      "moneyline": {
+        "away": 105,
+        "home": -126
+      }
+    },
+    "home_moneyline": "-126.000",
+    "away_moneyline": "105.000",
+    "home_spread": "1.50",
+    "away_spread": "-1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "137.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:41.831+00",
+    "updated_at": "2026-02-17 00:19:41.831+00"
+  },
+  {
+    "id": "1134d3c7-9828-4e78-a94a-5ce3befbfb59",
+    "external_id": "845cb9de00d05e6094e934a50989e91d",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Kentucky Wildcats",
+    "away_team": "Georgia Bulldogs",
+    "commence_time": "2026-02-18 02:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 161.5
+      },
+      "spread": {
+        "away": 8.5,
+        "home": -8.5
+      },
+      "moneyline": {
+        "away": 320,
+        "home": -420
+      }
+    },
+    "home_moneyline": "-420.000",
+    "away_moneyline": "320.000",
+    "home_spread": "-8.50",
+    "away_spread": "8.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "161.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:41.746+00",
+    "updated_at": "2026-02-17 00:19:41.746+00"
+  },
+  {
+    "id": "0daa5bf6-db65-418f-ba53-887372a49e72",
+    "external_id": "900aa0dab3f0c801711765e352c3374f",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Kansas St Wildcats",
+    "away_team": "Baylor Bears",
+    "commence_time": "2026-02-18 02:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 161.5
+      },
+      "spread": {
+        "away": -4.5,
+        "home": 4.5
+      },
+      "moneyline": {
+        "away": -205,
+        "home": 168
+      }
+    },
+    "home_moneyline": "168.000",
+    "away_moneyline": "-205.000",
+    "home_spread": "4.50",
+    "away_spread": "-4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "161.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:41.651+00",
+    "updated_at": "2026-02-17 00:19:41.651+00"
+  },
+  {
+    "id": "8b2aff7e-5685-4f57-8289-68a33e5e3819",
+    "external_id": "d24d0e4b2e6fea28ddd5a3cb0d4f6c32",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "New Mexico Lobos",
+    "away_team": "Air Force Falcons",
+    "commence_time": "2026-02-18 02:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 147.5
+      },
+      "spread": {
+        "away": 27.5,
+        "home": -27.5
+      },
+      "moneyline": {
+        "away": 3300,
+        "home": -10000
+      }
+    },
+    "home_moneyline": "-10000.000",
+    "away_moneyline": "3300.000",
+    "home_spread": "-27.50",
+    "away_spread": "27.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "147.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:41.568+00",
+    "updated_at": "2026-02-17 00:19:41.568+00"
+  },
+  {
+    "id": "ef90b1c6-7ed7-41c0-9311-4860adff74d3",
+    "external_id": "489d663c0183761cf515b7887d61ff9b",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Tenn-Martin Skyhawks",
+    "away_team": "SE Missouri St Redhawks",
+    "commence_time": "2026-02-18 01:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 141.5
+      },
+      "spread": {
+        "away": 2.5,
+        "home": -2.5
+      },
+      "moneyline": {
+        "away": 138,
+        "home": -166
+      }
+    },
+    "home_moneyline": "-166.000",
+    "away_moneyline": "138.000",
+    "home_spread": "-2.50",
+    "away_spread": "2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "141.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:41.484+00",
+    "updated_at": "2026-02-17 00:19:41.484+00"
+  },
+  {
+    "id": "795159d6-6a1d-44c1-9321-73976aee34fd",
+    "external_id": "cfd8b8c4d3b8c81d9097b6f3c0dd9264",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Ohio State Buckeyes",
+    "away_team": "Wisconsin Badgers",
+    "commence_time": "2026-02-18 01:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 158.5
+      },
+      "spread": {
+        "away": -1.5,
+        "home": 1.5
+      },
+      "moneyline": {
+        "away": -102,
+        "home": -118
+      }
+    },
+    "home_moneyline": "-118.000",
+    "away_moneyline": "-102.000",
+    "home_spread": "1.50",
+    "away_spread": "-1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "158.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:41.384+00",
+    "updated_at": "2026-02-17 00:19:41.384+00"
+  },
+  {
+    "id": "cda5280d-ede0-4781-be7d-7529b52afe8e",
+    "external_id": "9e8b4942533f665ef5757aa7a045dc60",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Michigan St Spartans",
+    "away_team": "UCLA Bruins",
+    "commence_time": "2026-02-18 01:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 139.5
+      },
+      "spread": {
+        "away": 9.5,
+        "home": -9.5
+      },
+      "moneyline": {
+        "away": 420,
+        "home": -580
+      }
+    },
+    "home_moneyline": "-580.000",
+    "away_moneyline": "420.000",
+    "home_spread": "-9.50",
+    "away_spread": "9.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "139.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:41.299+00",
+    "updated_at": "2026-02-17 00:19:41.299+00"
+  },
+  {
+    "id": "44684062-30c8-45a2-ba17-c50e1d7bffd9",
+    "external_id": "bb1321af76b324142bc572f5f62dde5a",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Wyoming Cowboys",
+    "away_team": "Fresno St Bulldogs",
+    "commence_time": "2026-02-18 01:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 148
+      },
+      "spread": {
+        "away": 9,
+        "home": -9
+      },
+      "moneyline": {
+        "away": 350,
+        "home": -465
+      }
+    },
+    "home_moneyline": "-465.000",
+    "away_moneyline": "350.000",
+    "home_spread": "-9.00",
+    "away_spread": "9.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "148.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:41.189+00",
+    "updated_at": "2026-02-17 00:19:41.189+00"
+  },
+  {
+    "id": "862238af-ab56-4f85-8404-1a206dab31ec",
+    "external_id": "2cf928f4e1171ec0d1cef58f8a5c1118",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Miami Hurricanes",
+    "away_team": "Virginia Tech Hokies",
+    "commence_time": "2026-02-18 01:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 150.5
+      },
+      "spread": {
+        "away": 8,
+        "home": -8
+      },
+      "moneyline": {
+        "away": 365,
+        "home": -490
+      }
+    },
+    "home_moneyline": "-490.000",
+    "away_moneyline": "365.000",
+    "home_spread": "-8.00",
+    "away_spread": "8.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "150.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:41.105+00",
+    "updated_at": "2026-02-17 00:19:41.105+00"
+  },
+  {
+    "id": "bf8f8439-863a-4e5a-a6d0-adc6080bfb25",
+    "external_id": "e245b8ddb0eac5d67672bd34566275bd",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "VCU Rams",
+    "away_team": "GW Revolutionaries",
+    "commence_time": "2026-02-18 01:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 163.5
+      },
+      "spread": {
+        "away": 7.5,
+        "home": -7.5
+      },
+      "moneyline": {
+        "away": 275,
+        "home": -350
+      }
+    },
+    "home_moneyline": "-350.000",
+    "away_moneyline": "275.000",
+    "home_spread": "-7.50",
+    "away_spread": "7.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "163.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:41.008+00",
+    "updated_at": "2026-02-17 00:19:41.008+00"
+  },
+  {
+    "id": "a587b0e6-8a70-4bdd-a9d1-d71c999b22c6",
+    "external_id": "395476c72b82f8e034979c5f18bede1d",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "UCF Knights",
+    "away_team": "TCU Horned Frogs",
+    "commence_time": "2026-02-18 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 154.5
+      },
+      "spread": {
+        "away": 1.5,
+        "home": -1.5
+      },
+      "moneyline": {
+        "away": 108,
+        "home": -130
+      }
+    },
+    "home_moneyline": "-130.000",
+    "away_moneyline": "108.000",
+    "home_spread": "-1.50",
+    "away_spread": "1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "154.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.922+00",
+    "updated_at": "2026-02-17 00:19:40.922+00"
+  },
+  {
+    "id": "67a829ba-bf4e-48a0-9405-5940b1c35ff6",
+    "external_id": "e8669a7c2754aa549f5774aff497d59b",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Rhode Island Rams",
+    "away_team": "Saint Louis Billikens",
+    "commence_time": "2026-02-18 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 151.5
+      },
+      "spread": {
+        "away": -11.5,
+        "home": 11.5
+      },
+      "moneyline": {
+        "away": -750,
+        "home": 520
+      }
+    },
+    "home_moneyline": "520.000",
+    "away_moneyline": "-750.000",
+    "home_spread": "11.50",
+    "away_spread": "-11.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "151.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.846+00",
+    "updated_at": "2026-02-17 00:19:40.846+00"
+  },
+  {
+    "id": "19f82a21-fcab-4edb-90a9-71678410d1c9",
+    "external_id": "6eca5f4d74c19c605747c3f2fca9cdf2",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "NC State Wolfpack",
+    "away_team": "North Carolina Tar Heels",
+    "commence_time": "2026-02-18 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 158.5
+      },
+      "spread": {
+        "away": 7,
+        "home": -7
+      },
+      "moneyline": {
+        "away": 275,
+        "home": -350
+      }
+    },
+    "home_moneyline": "-350.000",
+    "away_moneyline": "275.000",
+    "home_spread": "-7.00",
+    "away_spread": "7.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "158.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.755+00",
+    "updated_at": "2026-02-17 00:19:40.755+00"
+  },
+  {
+    "id": "d2e32e16-a3f5-4f11-a477-513206cc6a2b",
+    "external_id": "185cc5fe17e5cfa9173c035ea3336871",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Massachusetts Minutemen",
+    "away_team": "Miami (OH) RedHawks",
+    "commence_time": "2026-02-18 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 164.5
+      },
+      "spread": {
+        "away": -2.5,
+        "home": 2.5
+      },
+      "moneyline": {
+        "away": -172,
+        "home": 140
+      }
+    },
+    "home_moneyline": "140.000",
+    "away_moneyline": "-172.000",
+    "home_spread": "2.50",
+    "away_spread": "-2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "164.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.666+00",
+    "updated_at": "2026-02-17 00:19:40.666+00"
+  },
+  {
+    "id": "f1353779-d0cd-4a10-94f6-7c4fac39af6c",
+    "external_id": "dcea6ccdcbb9724ba8ab1adcaf5c0a88",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "SMU Mustangs",
+    "away_team": "Louisville Cardinals",
+    "commence_time": "2026-02-18 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 167.5
+      },
+      "spread": {
+        "away": -4.5,
+        "home": 4.5
+      },
+      "moneyline": {
+        "away": -205,
+        "home": 168
+      }
+    },
+    "home_moneyline": "168.000",
+    "away_moneyline": "-205.000",
+    "home_spread": "4.50",
+    "away_spread": "-4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "167.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.587+00",
+    "updated_at": "2026-02-17 00:19:40.587+00"
+  },
+  {
+    "id": "87ffb061-615e-4f30-a446-46c03d62ccdd",
+    "external_id": "46a8b84e814bcfa39dc2d6189e9682b1",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Florida Gators",
+    "away_team": "South Carolina Gamecocks",
+    "commence_time": "2026-02-18 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 152.5
+      },
+      "spread": {
+        "away": 23.5,
+        "home": -23.5
+      },
+      "moneyline": {
+        "away": 2400,
+        "home": -10000
+      }
+    },
+    "home_moneyline": "-10000.000",
+    "away_moneyline": "2400.000",
+    "home_spread": "-23.50",
+    "away_spread": "23.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "152.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.498+00",
+    "updated_at": "2026-02-17 00:19:40.498+00"
+  },
+  {
+    "id": "2b0c908c-3501-4612-86a5-79433e314be0",
+    "external_id": "08fe5da673f6b36d3aa3329c8ab8a4ff",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Bowling Green Falcons",
+    "away_team": "Kent State Golden Flashes",
+    "commence_time": "2026-02-18 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 150.5
+      },
+      "spread": {
+        "away": 3,
+        "home": -3
+      },
+      "moneyline": {
+        "away": 142,
+        "home": -172
+      }
+    },
+    "home_moneyline": "-172.000",
+    "away_moneyline": "142.000",
+    "home_spread": "-3.00",
+    "away_spread": "3.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "150.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.419+00",
+    "updated_at": "2026-02-17 00:19:40.419+00"
+  },
+  {
+    "id": "50393dee-1c38-4aa7-86e0-9c55adf43fae",
+    "external_id": "d7813eb4e5e8d9402e5b026bd5678038",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Ohio Bobcats",
+    "away_team": "Ball State Cardinals",
+    "commence_time": "2026-02-18 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 143
+      },
+      "spread": {
+        "away": 9.5,
+        "home": -9.5
+      },
+      "moneyline": {
+        "away": 400,
+        "home": -550
+      }
+    },
+    "home_moneyline": "-550.000",
+    "away_moneyline": "400.000",
+    "home_spread": "-9.50",
+    "away_spread": "9.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "143.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.342+00",
+    "updated_at": "2026-02-17 00:19:40.342+00"
+  },
+  {
+    "id": "8ff62df5-4622-4b38-98c1-13c854c1ad3c",
+    "external_id": "df71900f3d765d68e0152d6b498b8679",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Western Michigan Broncos",
+    "away_team": "Akron Zips",
+    "commence_time": "2026-02-18 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 160
+      },
+      "spread": {
+        "away": -13.5,
+        "home": 13.5
+      },
+      "moneyline": {
+        "away": -1450,
+        "home": 810
+      }
+    },
+    "home_moneyline": "810.000",
+    "away_moneyline": "-1450.000",
+    "home_spread": "13.50",
+    "away_spread": "-13.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "160.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.252+00",
+    "updated_at": "2026-02-17 00:19:40.252+00"
+  },
+  {
+    "id": "4dd3e4de-4e8e-432b-b322-7b487a15dae7",
+    "external_id": "66a984c47de28d4de36aee6afcadcceb",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Purdue Boilermakers",
+    "away_team": "Michigan Wolverines",
+    "commence_time": "2026-02-17 23:30:23+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 156.5
+      },
+      "spread": {
+        "away": -1.5,
+        "home": 1.5
+      },
+      "moneyline": {
+        "away": -132,
+        "home": 110
+      }
+    },
+    "home_moneyline": "110.000",
+    "away_moneyline": "-132.000",
+    "home_spread": "1.50",
+    "away_spread": "-1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "156.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.165+00",
+    "updated_at": "2026-02-17 00:19:40.165+00"
+  },
+  {
+    "id": "c4301734-5ea2-4c2e-95ae-30226c8bc3c5",
+    "external_id": "74c82fb23fb57e46926072c4d0d56cd0",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Xavier Musketeers",
+    "away_team": "Villanova Wildcats",
+    "commence_time": "2026-02-17 23:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 151.5
+      },
+      "spread": {
+        "away": -4.5,
+        "home": 4.5
+      },
+      "moneyline": {
+        "away": -225,
+        "home": 184
+      }
+    },
+    "home_moneyline": "184.000",
+    "away_moneyline": "-225.000",
+    "home_spread": "4.50",
+    "away_spread": "-4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "151.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.083+00",
+    "updated_at": "2026-02-17 00:19:40.083+00"
+  },
+  {
+    "id": "ccfe55aa-bf1f-4620-8b11-b5e1615cd652",
+    "external_id": "58531bf2b287bec48da2b40b998c6ef2",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Eastern Michigan Eagles",
+    "away_team": "Central Michigan Chippewas",
+    "commence_time": "2026-02-17 23:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 143.5
+      },
+      "spread": {
+        "away": 4.5,
+        "home": -4.5
+      },
+      "moneyline": {
+        "away": 195,
+        "home": -240
+      }
+    },
+    "home_moneyline": "-240.000",
+    "away_moneyline": "195.000",
+    "home_spread": "-4.50",
+    "away_spread": "4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "143.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:40.009+00",
+    "updated_at": "2026-02-17 00:19:40.009+00"
+  },
+  {
+    "id": "42faa900-266c-46c4-80b2-b3bd692f51c5",
+    "external_id": "5621581942c6b80b6498b1f5723d5371",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Buffalo Bulls",
+    "away_team": "Northern Illinois Huskies",
+    "commence_time": "2026-02-17 23:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 147.5
+      },
+      "spread": {
+        "away": 8.5,
+        "home": -8.5
+      },
+      "moneyline": {
+        "away": 390,
+        "home": -530
+      }
+    },
+    "home_moneyline": "-530.000",
+    "away_moneyline": "390.000",
+    "home_spread": "-8.50",
+    "away_spread": "8.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "147.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.917+00",
+    "updated_at": "2026-02-17 00:19:39.917+00"
+  },
+  {
+    "id": "bd4bc3a7-2824-439f-b46f-032bf9d997f1",
+    "external_id": "7771054bb31f63dc57f933d9916a1392",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Charleston Southern Buccaneers",
+    "away_team": "Gardner-Webb Bulldogs",
+    "commence_time": "2026-02-17 23:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 159.5
+      },
+      "spread": {
+        "away": 17.5,
+        "home": -17.5
+      },
+      "moneyline": {
+        "away": 1160,
+        "home": -2800
+      }
+    },
+    "home_moneyline": "-2800.000",
+    "away_moneyline": "1160.000",
+    "home_spread": "-17.50",
+    "away_spread": "17.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "159.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.843+00",
+    "updated_at": "2026-02-17 00:19:39.843+00"
+  },
+  {
+    "id": "f914c53d-75f6-4875-8754-60b736d33072",
+    "external_id": "5cdf7ad5ad0742cde68a5264eab4b9c9",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Florida St Seminoles",
+    "away_team": "Boston College Eagles",
+    "commence_time": "2026-02-17 23:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 147.5
+      },
+      "spread": {
+        "away": 11.5,
+        "home": -11.5
+      },
+      "moneyline": {
+        "away": 500,
+        "home": -720
+      }
+    },
+    "home_moneyline": "-720.000",
+    "away_moneyline": "500.000",
+    "home_spread": "-11.50",
+    "away_spread": "11.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "147.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.754+00",
+    "updated_at": "2026-02-17 00:19:39.754+00"
+  },
+  {
+    "id": "6453d3a3-785d-4cfb-a69b-2ae42cac2745",
+    "external_id": "b153a59f4be08f235dbe01460f0e5332",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Iowa State Cyclones",
+    "away_team": "Houston Cougars",
+    "commence_time": "2026-02-17 02:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 135.5
+      },
+      "spread": {
+        "away": 2.5,
+        "home": -2.5
+      },
+      "moneyline": {
+        "away": 130,
+        "home": -155
+      }
+    },
+    "home_moneyline": "-155.000",
+    "away_moneyline": "130.000",
+    "home_spread": "-2.50",
+    "away_spread": "2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "135.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.684+00",
+    "updated_at": "2026-02-17 00:19:39.684+00"
+  },
+  {
+    "id": "e4a3ed94-2711-4f80-9435-5afac76bc453",
+    "external_id": "ddb286bede9f861743e56bdb9af5dd90",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Texas A&M-CC Islanders",
+    "away_team": "Stephen F. Austin Lumberjacks",
+    "commence_time": "2026-02-17 01:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 136
+      },
+      "spread": {
+        "away": -5,
+        "home": 5
+      },
+      "moneyline": {
+        "away": -250,
+        "home": 207
+      }
+    },
+    "home_moneyline": "207.000",
+    "away_moneyline": "-250.000",
+    "home_spread": "5.00",
+    "away_spread": "-5.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "136.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.601+00",
+    "updated_at": "2026-02-17 00:19:39.601+00"
+  },
+  {
+    "id": "da7268ff-10d3-439b-9e73-c05acedec5ec",
+    "external_id": "a086a893ba2f7cc59b22dabd8c0415f3",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Texas Southern Tigers",
+    "away_team": "Southern Jaguars",
+    "commence_time": "2026-02-17 01:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 152
+      },
+      "spread": {
+        "away": -4.5,
+        "home": 4.5
+      },
+      "moneyline": {
+        "away": -210,
+        "home": 180
+      }
+    },
+    "home_moneyline": "180.000",
+    "away_moneyline": "-210.000",
+    "home_spread": "4.50",
+    "away_spread": "-4.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "152.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.525+00",
+    "updated_at": "2026-02-17 00:19:39.525+00"
+  },
+  {
+    "id": "988d9aff-235b-4f0b-8b0e-d6e1322c680f",
+    "external_id": "3c78ded651fc433f8f7704c6b18a4fe0",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Houston Christian Huskies",
+    "away_team": "Nicholls St Colonels",
+    "commence_time": "2026-02-17 01:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 138.5
+      },
+      "spread": {
+        "away": 1.5,
+        "home": -1.5
+      },
+      "moneyline": {
+        "away": 110,
+        "home": -130
+      }
+    },
+    "home_moneyline": "-130.000",
+    "away_moneyline": "110.000",
+    "home_spread": "-1.50",
+    "away_spread": "1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "138.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.439+00",
+    "updated_at": "2026-02-17 00:19:39.439+00"
+  },
+  {
+    "id": "4b3ae562-be85-4023-9315-fc6e57dc67fa",
+    "external_id": "c41f8ac8249b7da2c8d63d7cfad4c2cc",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Stony Brook Seawolves",
+    "away_team": "Drexel Dragons",
+    "commence_time": "2026-02-17 01:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 135
+      },
+      "spread": {
+        "away": 3,
+        "home": -3
+      },
+      "moneyline": {
+        "away": 140,
+        "home": -160
+      }
+    },
+    "home_moneyline": "-160.000",
+    "away_moneyline": "140.000",
+    "home_spread": "-3.00",
+    "away_spread": "3.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "135.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.365+00",
+    "updated_at": "2026-02-17 00:19:39.365+00"
+  },
+  {
+    "id": "c5a019a1-352e-4ac7-9f9b-d176145ae04c",
+    "external_id": "b09238bf7ac550d22b74ac9dddfd7714",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Alcorn St Braves",
+    "away_team": "Florida A&M Rattlers",
+    "commence_time": "2026-02-17 01:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 137.5
+      },
+      "spread": {
+        "away": -1.5,
+        "home": 1.5
+      },
+      "moneyline": {
+        "away": -125,
+        "home": 105
+      }
+    },
+    "home_moneyline": "105.000",
+    "away_moneyline": "-125.000",
+    "home_spread": "1.50",
+    "away_spread": "-1.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "137.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.28+00",
+    "updated_at": "2026-02-17 00:19:39.28+00"
+  },
+  {
+    "id": "eb2270a7-1f5a-49ca-9501-bd3245f3fb8a",
+    "external_id": "00fc8f77e61e0b83c0cb729088065e0b",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Alabama A&M Bulldogs",
+    "away_team": "Arkansas-Pine Bluff Golden Lions",
+    "commence_time": "2026-02-17 01:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 144
+      },
+      "spread": {
+        "away": 3.5,
+        "home": -3.5
+      },
+      "moneyline": {
+        "away": 151,
+        "home": -172
+      }
+    },
+    "home_moneyline": "-172.000",
+    "away_moneyline": "151.000",
+    "home_spread": "-3.50",
+    "away_spread": "3.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "144.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.198+00",
+    "updated_at": "2026-02-17 00:19:39.198+00"
+  },
+  {
+    "id": "daf4939a-414e-46fa-a98a-6a438190b2b1",
+    "external_id": "73bd8b336bdd373fd97cd5df6189a64f",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Tarleton State Texans",
+    "away_team": "Abilene Christian Wildcats",
+    "commence_time": "2026-02-17 01:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 134
+      },
+      "spread": {
+        "away": 0,
+        "home": 0
+      },
+      "moneyline": {
+        "away": 100,
+        "home": -120
+      }
+    },
+    "home_moneyline": "-120.000",
+    "away_moneyline": "100.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "134.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.116+00",
+    "updated_at": "2026-02-17 00:19:39.116+00"
+  },
+  {
+    "id": "e73b2083-229f-4ec9-8e52-4f353909a2d6",
+    "external_id": "95db878b9094b46a028b86e2cd489415",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Northwestern St Demons",
+    "away_team": "McNeese Cowboys",
+    "commence_time": "2026-02-17 00:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 138.5
+      },
+      "spread": {
+        "away": -14.5,
+        "home": 14.5
+      },
+      "moneyline": {
+        "away": -1450,
+        "home": 856
+      }
+    },
+    "home_moneyline": "856.000",
+    "away_moneyline": "-1450.000",
+    "home_spread": "14.50",
+    "away_spread": "-14.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "138.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:39.029+00",
+    "updated_at": "2026-02-17 00:19:39.029+00"
+  },
+  {
+    "id": "1e241aee-0952-4b46-a5dc-a9c8b1b85d2c",
+    "external_id": "dcf2ebf9b86222125d206a3862207e7f",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "UT Rio Grande Valley Vaqueros",
+    "away_team": "Lamar Cardinals",
+    "commence_time": "2026-02-17 00:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 142
+      },
+      "spread": {
+        "away": 6,
+        "home": -6
+      },
+      "moneyline": {
+        "away": 222,
+        "home": -270
+      }
+    },
+    "home_moneyline": "-270.000",
+    "away_moneyline": "222.000",
+    "home_spread": "-6.00",
+    "away_spread": "6.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "142.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:38.942+00",
+    "updated_at": "2026-02-17 00:19:38.942+00"
+  },
+  {
+    "id": "7b70a3eb-9817-4c77-8f9a-86897a386288",
+    "external_id": "1c00894f287d458375bf5e37f08ee0f0",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Incarnate Word Cardinals",
+    "away_team": "New Orleans Privateers",
+    "commence_time": "2026-02-17 00:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 154
+      },
+      "spread": {
+        "away": 2.5,
+        "home": -2.5
+      },
+      "moneyline": {
+        "away": 120,
+        "home": -140
+      }
+    },
+    "home_moneyline": "-140.000",
+    "away_moneyline": "120.000",
+    "home_spread": "-2.50",
+    "away_spread": "2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "154.00",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:38.863+00",
+    "updated_at": "2026-02-17 00:19:38.863+00"
+  },
+  {
+    "id": "92ad360c-ea0d-4df3-9ac0-4fca2e1f5405",
+    "external_id": "84020ba47330aaf5d0b98491eee1ab51",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "North Carolina Central Eagles",
+    "away_team": "Morgan St Bears",
+    "commence_time": "2026-02-17 00:10:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 151.5
+      },
+      "spread": {
+        "away": 8.5,
+        "home": -8.5
+      },
+      "moneyline": {
+        "away": 270,
+        "home": -375
+      }
+    },
+    "home_moneyline": "-375.000",
+    "away_moneyline": "270.000",
+    "home_spread": "-8.50",
+    "away_spread": "8.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "151.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:38.771+00",
+    "updated_at": "2026-02-17 00:19:38.771+00"
+  },
+  {
+    "id": "cc910ff5-1082-44bd-8c65-d4afd2407b54",
+    "external_id": "c2bf5565ff42a9db07e698835569790b",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Maryland-Eastern Shore Hawks",
+    "away_team": "Norfolk St Spartans",
+    "commence_time": "2026-02-17 00:10:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 135.5
+      },
+      "spread": {
+        "away": 2.5,
+        "home": -2.5
+      },
+      "moneyline": {
+        "away": 120,
+        "home": -154
+      }
+    },
+    "home_moneyline": "-154.000",
+    "away_moneyline": "120.000",
+    "home_spread": "-2.50",
+    "away_spread": "2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "135.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:38.691+00",
+    "updated_at": "2026-02-17 00:19:38.691+00"
+  },
+  {
+    "id": "8e47c73e-8591-4de5-be09-46a856dd2209",
+    "external_id": "15b2457a3d50c0ac836f826be9804c00",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Duke Blue Devils",
+    "away_team": "Syracuse Orange",
+    "commence_time": "2026-02-17 00:09:01+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 136.5
+      },
+      "spread": {
+        "away": 17.5,
+        "home": -17.5
+      },
+      "moneyline": {
+        "away": 1300,
+        "home": -5000
+      }
+    },
+    "home_moneyline": "-5000.000",
+    "away_moneyline": "1300.000",
+    "home_spread": "-17.50",
+    "away_spread": "17.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "136.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:38.591+00",
+    "updated_at": "2026-02-17 00:19:38.591+00"
+  },
+  {
+    "id": "9070c01a-318b-4e28-960c-ce0f80693858",
+    "external_id": "f087b7785f87bc95060e99c660c5e97a",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "LIU Sharks",
+    "away_team": "Wagner Seahawks",
+    "commence_time": "2026-02-17 00:05:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 143.5
+      },
+      "spread": {
+        "away": 7.5,
+        "home": -7.5
+      },
+      "moneyline": {
+        "away": 310,
+        "home": -450
+      }
+    },
+    "home_moneyline": "-450.000",
+    "away_moneyline": "310.000",
+    "home_spread": "-7.50",
+    "away_spread": "7.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "143.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:38.492+00",
+    "updated_at": "2026-02-17 00:19:38.492+00"
+  },
+  {
+    "id": "61065aa8-f59f-4d57-9b55-622c4d9ff037",
+    "external_id": "14e10005216db03602cbd3799abe3f9a",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Delaware St Hornets",
+    "away_team": "Howard Bison",
+    "commence_time": "2026-02-17 00:05:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 138.5
+      },
+      "spread": {
+        "away": -23.5,
+        "home": 23.5
+      },
+      "moneyline": {
+        "away": -10000,
+        "home": 2200
+      }
+    },
+    "home_moneyline": "2200.000",
+    "away_moneyline": "-10000.000",
+    "home_spread": "23.50",
+    "away_spread": "-23.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "138.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:38.404+00",
+    "updated_at": "2026-02-17 00:19:38.404+00"
+  },
+  {
+    "id": "762d48c3-0a8e-4f40-95d7-2c6b87825a23",
+    "external_id": "c809a03befe0edfc342a9866b51bb847",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Marshall Thundering Herd",
+    "away_team": "South Alabama Jaguars",
+    "commence_time": "2026-02-17 00:02:42+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 146.5
+      },
+      "spread": {
+        "away": 6.5,
+        "home": -6.5
+      },
+      "moneyline": {
+        "away": 210,
+        "home": -280
+      }
+    },
+    "home_moneyline": "-280.000",
+    "away_moneyline": "210.000",
+    "home_spread": "-6.50",
+    "away_spread": "6.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "146.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:38.31+00",
+    "updated_at": "2026-02-17 00:19:38.31+00"
+  },
+  {
+    "id": "cd963bdb-ae6f-4ff7-b356-51fe6cb28bcf",
+    "external_id": "a7254c8d4ec86415b8adcc13080a1698",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Prairie View Panthers",
+    "away_team": "Grambling St Tigers",
+    "commence_time": "2026-02-17 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 140.5
+      },
+      "spread": {
+        "away": 6.5,
+        "home": -6.5
+      },
+      "moneyline": {
+        "away": 210,
+        "home": -280
+      }
+    },
+    "home_moneyline": "-280.000",
+    "away_moneyline": "210.000",
+    "home_spread": "-6.50",
+    "away_spread": "6.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "140.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:38.209+00",
+    "updated_at": "2026-02-17 00:19:38.209+00"
+  },
+  {
+    "id": "317df5d9-8c01-4247-9043-d20475d06a1a",
+    "external_id": "7edb09a7427b72e6131e3da0da643da2",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Jackson St Tigers",
+    "away_team": "Bethune-Cookman Wildcats",
+    "commence_time": "2026-02-17 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 147.5
+      },
+      "spread": {
+        "away": -5.5,
+        "home": 5.5
+      },
+      "moneyline": {
+        "away": -245,
+        "home": 185
+      }
+    },
+    "home_moneyline": "185.000",
+    "away_moneyline": "-245.000",
+    "home_spread": "5.50",
+    "away_spread": "-5.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "147.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:38.129+00",
+    "updated_at": "2026-02-17 00:19:38.129+00"
+  },
+  {
+    "id": "551b3221-edb9-4ae8-871c-ff6a8e913580",
+    "external_id": "2a1afce731c08fe7a727dbc68e490f82",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Alabama St Hornets",
+    "away_team": "Miss Valley St Delta Devils",
+    "commence_time": "2026-02-17 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 145.5
+      },
+      "spread": {
+        "away": 13.5,
+        "home": -13.5
+      },
+      "moneyline": {
+        "away": 700,
+        "home": -1300
+      }
+    },
+    "home_moneyline": "-1300.000",
+    "away_moneyline": "700.000",
+    "home_spread": "-13.50",
+    "away_spread": "13.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "145.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:37.821+00",
+    "updated_at": "2026-02-17 00:19:37.821+00"
+  },
+  {
+    "id": "28ba05c7-a144-4077-918c-f9bc877c24f3",
+    "external_id": "f2f8b20a3f953efae02c3257e3256d40",
+    "sport": "ncaab",
+    "sport_key": "ncaab",
+    "home_team": "Boston Univ. Terriers",
+    "away_team": "Colgate Raiders",
+    "commence_time": "2026-02-16 23:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 136.5
+      },
+      "spread": {
+        "away": 14.5,
+        "home": -14.5
+      },
+      "moneyline": {
+        "away": 2800,
+        "home": -15000
+      }
+    },
+    "home_moneyline": "-15000.000",
+    "away_moneyline": "2800.000",
+    "home_spread": "-14.50",
+    "away_spread": "14.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "136.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:19:37.627+00",
+    "updated_at": "2026-02-17 00:19:37.627+00"
+  },
+  {
+    "id": "eb2c5cf3-cb08-41d9-8686-a417eaf5f705",
+    "external_id": "13c088a4f279e674bf80e4cb06d231a9",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Los Angeles Clippers",
+    "away_team": "Denver Nuggets",
+    "commence_time": "2026-02-20 03:40:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 226.5
+      },
+      "spread": {
+        "away": -3.5,
+        "home": 3.5
+      },
+      "moneyline": {
+        "away": -164,
+        "home": 138
+      }
+    },
+    "home_moneyline": "138.000",
+    "away_moneyline": "-164.000",
+    "home_spread": "3.50",
+    "away_spread": "-3.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "226.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:17:31.493+00",
+    "updated_at": "2026-02-17 00:17:31.493+00"
+  },
+  {
+    "id": "93d150d3-fa78-462e-8722-5cd007f8284e",
+    "external_id": "fc4ef6fdb917bca80f99940665442e96",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Sacramento Kings",
+    "away_team": "Orlando Magic",
+    "commence_time": "2026-02-20 03:10:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 224.5
+      },
+      "spread": {
+        "away": -12.5,
+        "home": 12.5
+      },
+      "moneyline": {
+        "away": -620,
+        "home": 460
+      }
+    },
+    "home_moneyline": "460.000",
+    "away_moneyline": "-620.000",
+    "home_spread": "12.50",
+    "away_spread": "-12.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "224.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:17:31.401+00",
+    "updated_at": "2026-02-17 00:17:31.401+00"
+  },
+  {
+    "id": "d88c98e6-b032-4227-8e46-865edde38796",
+    "external_id": "7bb1dc8e7e0b6a77195533729951d187",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Golden State Warriors",
+    "away_team": "Boston Celtics",
+    "commence_time": "2026-02-20 03:10:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 223.5
+      },
+      "spread": {
+        "away": -4,
+        "home": 4
+      },
+      "moneyline": {
+        "away": -166,
+        "home": 140
+      }
+    },
+    "home_moneyline": "140.000",
+    "away_moneyline": "-166.000",
+    "home_spread": "4.00",
+    "away_spread": "-4.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "223.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:17:31.322+00",
+    "updated_at": "2026-02-17 00:17:31.322+00"
+  },
+  {
+    "id": "9cfe4f9e-d88e-4365-8248-db1279e69780",
+    "external_id": "d34f8e76f10dd65a684c9bd6301e667e",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "San Antonio Spurs",
+    "away_team": "Phoenix Suns",
+    "commence_time": "2026-02-20 01:40:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 225.5
+      },
+      "spread": {
+        "away": 6.5,
+        "home": -6.5
+      },
+      "moneyline": {
+        "away": 215,
+        "home": -260
+      }
+    },
+    "home_moneyline": "-260.000",
+    "away_moneyline": "215.000",
+    "home_spread": "-6.50",
+    "away_spread": "6.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "225.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:17:31.242+00",
+    "updated_at": "2026-02-17 00:17:31.242+00"
+  },
+  {
+    "id": "9aedc987-91c3-4e1c-8e21-6c0ada9ad7ed",
+    "external_id": "537f72a12ccf54596ce42c638bacb485",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Chicago Bulls",
+    "away_team": "Toronto Raptors",
+    "commence_time": "2026-02-20 01:10:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 231.5
+      },
+      "spread": {
+        "away": -6,
+        "home": 6
+      },
+      "moneyline": {
+        "away": -205,
+        "home": 172
+      }
+    },
+    "home_moneyline": "172.000",
+    "away_moneyline": "-205.000",
+    "home_spread": "6.00",
+    "away_spread": "-6.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "231.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:17:31.139+00",
+    "updated_at": "2026-02-17 00:17:31.139+00"
+  },
+  {
+    "id": "6ee55413-31c1-40c8-91a4-b0a767586ab1",
+    "external_id": "0ea61c4bb159036d242d6aa077216586",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "New York Knicks",
+    "away_team": "Detroit Pistons",
+    "commence_time": "2026-02-20 00:40:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 221.5
+      },
+      "spread": {
+        "away": 3,
+        "home": -3
+      },
+      "moneyline": {
+        "away": 136,
+        "home": -162
+      }
+    },
+    "home_moneyline": "-162.000",
+    "away_moneyline": "136.000",
+    "home_spread": "-3.00",
+    "away_spread": "3.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "221.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:17:31.046+00",
+    "updated_at": "2026-02-17 00:17:31.046+00"
+  },
+  {
+    "id": "613956dc-eec8-4d32-bff7-f728c3db4475",
+    "external_id": "97031eee2ea39d890bf5046a1c57c7a7",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Charlotte Hornets",
+    "away_team": "Houston Rockets",
+    "commence_time": "2026-02-20 00:10:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 213.5
+      },
+      "spread": {
+        "away": -2.5,
+        "home": 2.5
+      },
+      "moneyline": {
+        "away": -146,
+        "home": 124
+      }
+    },
+    "home_moneyline": "124.000",
+    "away_moneyline": "-146.000",
+    "home_spread": "2.50",
+    "away_spread": "-2.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "213.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:17:30.948+00",
+    "updated_at": "2026-02-17 00:17:30.948+00"
+  },
+  {
+    "id": "9bb0a257-7695-4901-866d-4043cf281c24",
+    "external_id": "24a92d49df82923f29b3e9cda4d57446",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Cleveland Cavaliers",
+    "away_team": "Brooklyn Nets",
+    "commence_time": "2026-02-20 00:10:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 228.5
+      },
+      "spread": {
+        "away": 13.5,
+        "home": -13.5
+      },
+      "moneyline": {
+        "away": 540,
+        "home": -770
+      }
+    },
+    "home_moneyline": "-770.000",
+    "away_moneyline": "540.000",
+    "home_spread": "-13.50",
+    "away_spread": "13.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "228.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:17:30.862+00",
+    "updated_at": "2026-02-17 00:17:30.862+00"
+  },
+  {
+    "id": "f8d9e598-089d-4bb8-9655-2b9b8a7c867f",
+    "external_id": "d647541d42648749f3bde601547fa1be",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Philadelphia 76ers",
+    "away_team": "Atlanta Hawks",
+    "commence_time": "2026-02-20 00:10:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 236.5
+      },
+      "spread": {
+        "away": 4,
+        "home": -4
+      },
+      "moneyline": {
+        "away": 158,
+        "home": -188
+      }
+    },
+    "home_moneyline": "-188.000",
+    "away_moneyline": "158.000",
+    "home_spread": "-4.00",
+    "away_spread": "4.00",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "236.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:17:30.648+00",
+    "updated_at": "2026-02-17 00:17:30.648+00"
+  },
+  {
+    "id": "1d72940b-909b-4139-aea2-74ab22121569",
+    "external_id": "c93f72cb146ef69c7bd4a79f03481123",
+    "sport": "nba",
+    "sport_key": "nba",
+    "home_team": "Washington Wizards",
+    "away_team": "Indiana Pacers",
+    "commence_time": "2026-02-20 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": 234.5
+      },
+      "spread": {
+        "away": -3.5,
+        "home": 3.5
+      },
+      "moneyline": {
+        "away": -162,
+        "home": 136
+      }
+    },
+    "home_moneyline": "136.000",
+    "away_moneyline": "-162.000",
+    "home_spread": "3.50",
+    "away_spread": "-3.50",
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": "234.50",
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:17:30.555+00",
+    "updated_at": "2026-02-17 00:17:30.555+00"
+  },
+  {
+    "id": "1c68382c-e362-4db5-9588-acc3ea352263",
+    "external_id": "70ad639dbfb1b1f17f503857920380dd",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Anaheim Ducks",
+    "away_team": "Edmonton Oilers",
+    "commence_time": "2026-02-26 03:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": -157,
+        "home": 125
+      }
+    },
+    "home_moneyline": "125.000",
+    "away_moneyline": "-157.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:01:48.887+00",
+    "updated_at": "2026-02-17 00:01:48.887+00"
+  },
+  {
+    "id": "6fecd900-eb7a-4461-b371-638a055b137a",
+    "external_id": "c7e030f8824a01e811126ffe9260e414",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Vancouver Canucks",
+    "away_team": "Winnipeg Jets",
+    "commence_time": "2026-02-26 03:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": -143,
+        "home": 115
+      }
+    },
+    "home_moneyline": "115.000",
+    "away_moneyline": "-143.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:01:48.792+00",
+    "updated_at": "2026-02-17 00:01:48.792+00"
+  },
+  {
+    "id": "eba6a3a1-88c0-423f-abf9-9b6bfa575283",
+    "external_id": "ff44e0238a7b844ec02714e7e80fb7ae",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Los Angeles Kings",
+    "away_team": "Vegas Golden Knights",
+    "commence_time": "2026-02-26 03:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": -114,
+        "home": -109
+      }
+    },
+    "home_moneyline": "-109.000",
+    "away_moneyline": "-114.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:01:48.708+00",
+    "updated_at": "2026-02-17 00:01:48.708+00"
+  },
+  {
+    "id": "f4af46f6-2085-4ab4-8d2a-21906df5d413",
+    "external_id": "62d3d5c47cb28bbb3fe941b2a372da99",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Utah Mammoth",
+    "away_team": "Colorado Avalanche",
+    "commence_time": "2026-02-26 02:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": -175,
+        "home": 138
+      }
+    },
+    "home_moneyline": "138.000",
+    "away_moneyline": "-175.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:01:48.609+00",
+    "updated_at": "2026-02-17 00:01:48.609+00"
+  },
+  {
+    "id": "5296db09-19ec-406d-9807-603673aa397b",
+    "external_id": "9e0efb6fbebb4688c447b7b8b9510376",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Dallas Stars",
+    "away_team": "Seattle Kraken",
+    "commence_time": "2026-02-26 01:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": 155,
+        "home": -195
+      }
+    },
+    "home_moneyline": "-195.000",
+    "away_moneyline": "155.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:01:48.48+00",
+    "updated_at": "2026-02-17 00:01:48.48+00"
+  },
+  {
+    "id": "13dbfd7b-7754-4f63-b8c0-f82b343af613",
+    "external_id": "7db784c85f5a8503aae0321813e62475",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Tampa Bay Lightning",
+    "away_team": "Toronto Maple Leafs",
+    "commence_time": "2026-02-26 00:30:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": 170,
+        "home": -220
+      }
+    },
+    "home_moneyline": "-220.000",
+    "away_moneyline": "170.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:01:48.348+00",
+    "updated_at": "2026-02-17 00:01:48.348+00"
+  },
+  {
+    "id": "e64b3fed-66b9-4d84-b827-0e20893badf4",
+    "external_id": "e8c18f2b16ac22ddc4b6160e03b48432",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "Washington Capitals",
+    "away_team": "Philadelphia Flyers",
+    "commence_time": "2026-02-26 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": 170,
+        "home": -215
+      }
+    },
+    "home_moneyline": "-215.000",
+    "away_moneyline": "170.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:01:47.938+00",
+    "updated_at": "2026-02-17 00:01:47.938+00"
+  },
+  {
+    "id": "db9ee571-4a18-483c-aafe-8dfe693399e1",
+    "external_id": "9d0b725f6e813c43975b6ac5532309a6",
+    "sport": "nhl",
+    "sport_key": "nhl",
+    "home_team": "New Jersey Devils",
+    "away_team": "Buffalo Sabres",
+    "commence_time": "2026-02-26 00:00:00+00",
+    "game_date": "2026-02-17",
+    "venue": "Unknown",
+    "odds_data": {
+      "total": {
+        "line": null
+      },
+      "spread": {
+        "away": null,
+        "home": null
+      },
+      "moneyline": {
+        "away": -121,
+        "home": -103
+      }
+    },
+    "home_moneyline": "-103.000",
+    "away_moneyline": "-121.000",
+    "home_spread": null,
+    "away_spread": null,
+    "spread_line": null,
+    "over_line": null,
+    "under_line": null,
+    "total_line": null,
+    "source": "the-odds-api",
+    "bookmaker": null,
+    "fetched_at": "2026-02-17 00:01:47.812+00",
+    "updated_at": "2026-02-17 00:01:47.812+00"
+  }
+]

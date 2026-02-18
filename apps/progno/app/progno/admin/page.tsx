@@ -1,223 +1,256 @@
 // app/progno/admin/page.tsx
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import EnhancedEarlyLinesSection from '../../../components/admin/EnhancedEarlyLinesSection';
 import PrintBetsSection from '../../../components/admin/PrintBetsSection';
 import ReportsSection from '../../../components/admin/ReportsSection';
 
-const ENV_VARS = [
-  'CRON_SECRET',
-  'ODDS_API_KEY',
-  'NEXT_PUBLIC_ODDS_API_KEY',
-  'ADMIN_PASSWORD',
-  'PROGNO_ADMIN_PASSWORD',
-  'ANTHROPIC_API_KEY',
-  'API_SPORTS_KEY',
-  'SPORTS_BLAZE_API_KEY',
-  'SPORTSDATA_IO_KEY',
-  'NEXT_PUBLIC_SUPABASE_URL',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'CRON_APP_URL',
-  'NEXT_PUBLIC_PROGNO_URL',
-  'FILTER_STRATEGY',
-  'HOME_ONLY_MODE',
-  'OPENWEATHER_API_KEY',
-  'WEATHERAPI_KEY',
+// -- Constants ----------------------------------------------------------------
+const SPORTS_LIST = [
+  { key: 'basketball_nba', label: 'NBA', icon: '🏀' },
+  { key: 'basketball_ncaab', label: 'NCAAB', icon: '🏀' },
+  { key: 'icehockey_nhl', label: 'NHL', icon: '🏒' },
+  { key: 'americanfootball_nfl', label: 'NFL', icon: '🏈' },
+  { key: 'baseball_mlb', label: 'MLB', icon: '⚾' },
+  { key: 'baseball_ncaa', label: 'NCAA BBall', icon: '⚾' },
+  { key: 'americanfootball_ncaaf', label: 'NCAAF', icon: '🏈' },
 ];
 
-const VIEWER_CONFIGS = [
-  {
-    name: 'Cevict Arb Tool',
-    envPath: process.env.ARBITRAGE_TOOL_PATH,
-    defaultPath: 'C:\\cevict-live\\apps\\progno\\cevict-arb-tool\\index.html',
-  },
-  {
-    name: 'Cevict Picks Viewer',
-    envPath: process.env.PICKS_VIEWER_PATH,
-    defaultPath: 'C:\\cevict-live\\apps\\progno\\cevict-picks-viewer\\index.html',
-  },
-] as const;
+const ENV_VARS = [
+  'CRON_SECRET', 'ODDS_API_KEY', 'ODDS_API_KEY_2', 'NEXT_PUBLIC_ODDS_API_KEY',
+  'BETSTACK_API_KEY', 'SPORTS_BLAZE_API_KEY', 'ADMIN_PASSWORD', 'PROGNO_ADMIN_PASSWORD',
+  'ANTHROPIC_API_KEY', 'API_SPORTS_KEY', 'SPORTSDATA_IO_KEY',
+  'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY',
+  'CRON_APP_URL', 'NEXT_PUBLIC_PROGNO_URL', 'FILTER_STRATEGY', 'HOME_ONLY_MODE',
+  'OPENWEATHER_API_KEY', 'WEATHERAPI_KEY',
+];
 
-const VIEWERS = VIEWER_CONFIGS.map((v) => {
-  const path = (v.envPath || v.defaultPath).replace(/\\/g, '/');
-  return {
-    name: v.name,
-    path,
-    url: `file:///${path}`,
-  };
-});
-
-// Date utility functions
-function getToday(): string {
-  return new Date().toISOString().split('T')[0];
+// -- Date utils ---------------------------------------------------------------
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function getToday(): string { return toLocalDateStr(new Date()); }
+function getYesterday(): string { const d = new Date(); d.setDate(d.getDate() - 1); return toLocalDateStr(d); }
+function addDays(s: string, n: number): string { const d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + n); return toLocalDateStr(d); }
+function subtractDays(s: string, n: number): string { return addDays(s, -n); }
+function fmt(o: number | null | undefined): string { if (o == null) return '—'; return o > 0 ? `+${o}` : String(o); }
+function fmtTime(iso: string): string {
+  try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }); }
+  catch { return iso; }
 }
 
-function getYesterday(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().split('T')[0];
-}
+// -- Theme --------------------------------------------------------------------
+const C = {
+  bg: '#04080f',
+  card: '#080f1a',
+  cardAlt: '#0a1220',
+  border: '#12233a',
+  borderBright: '#1e3a5f',
+  green: '#00e676',
+  greenDim: '#00b84d',
+  blue: '#29b6f6',
+  blueDim: '#0288d1',
+  amber: '#ffc107',
+  amberDim: '#cc9900',
+  red: '#ef5350',
+  purple: '#ab47bc',
+  text: '#9ab8d4',
+  textBright: '#ddeeff',
+  textDim: '#3a5570',
+  mono: '"JetBrains Mono","Fira Code","Cascadia Code",Consolas,monospace',
+  sans: 'system-ui,-apple-system,sans-serif',
+};
 
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
-}
-
-function subtractDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() - days);
-  return d.toISOString().split('T')[0];
-}
-
-function ResultsTable({ rows }: { rows: any[] }) {
-  const cell = { padding: '6px 10px', borderBottom: '1px solid #eee', fontSize: '13px' } as const;
-  const th = { ...cell, fontWeight: 600, background: '#f5f5f5', position: 'sticky' as const, top: 0 };
+// -- Mini components ----------------------------------------------------------
+function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
-      <thead>
-        <tr>
-          <th style={{ ...th, width: '28px' }}>#</th>
-          <th style={th}>Match</th>
-          <th style={th}>Pick</th>
-          <th style={{ ...th, width: '44px' }}>H/A</th>
-          <th style={{ ...th, width: '64px' }}>Conf%</th>
-          <th style={{ ...th, width: '64px' }}>Odds</th>
-          <th style={{ ...th, width: '72px' }}>Status</th>
-          <th style={{ ...th, width: '80px' }}>Score</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={i}>
-            <td style={cell}>{i + 1}</td>
-            <td style={cell}>{r.home_team} vs {r.away_team}</td>
-            <td style={cell}>{r.pick}</td>
-            <td style={{ ...cell, color: r.is_home_pick ? '#0070f3' : '#e67e22', fontWeight: 600 }}>{r.is_home_pick ? 'H' : 'A'}</td>
-            <td style={cell}>{r.confidence != null ? (Number(r.confidence) > 1 ? Math.round(Number(r.confidence)) : Math.round(Number(r.confidence) * 100)) : '—'}</td>
-            <td style={cell}>{r.odds != null ? (r.odds > 0 ? `+${r.odds}` : r.odds) : '—'}</td>
-            <td style={{ ...cell, color: r.status === 'win' ? '#0a0' : r.status === 'lose' ? '#c00' : '#666' }}>{r.status}</td>
-            <td style={cell}>{r.actualScore ? `${r.actualScore.home}-${r.actualScore.away}` : '—'}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 8, padding: '16px 20px', ...style }}>
+      {children}
+    </div>
   );
 }
 
-export default function PrognoAdminPage() {
-  const [secret, setSecret] = useState('');
-  const [activeTab, setActiveTab] = useState<'run' | 'analyze' | 'keys' | 'docs'>('run');
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontFamily: C.mono, fontSize: 10, fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', color: C.textDim, marginBottom: 14, paddingBottom: 8, borderBottom: `1px solid ${C.border}` }}>
+      {children}
+    </div>
+  );
+}
 
-  // Unified date system - single source of truth
-  // When you pick a "Game Date", we auto-calculate:
-  // - Early date = game date minus 4 days (typical early run)
-  // - Regular date = game date (when regular predictions run)
-  // - Results date = yesterday (for grading)
+function Badge({ children, color = C.blue }: { children: React.ReactNode; color?: string }) {
+  return (
+    <span style={{ background: `${color}20`, color, border: `1px solid ${color}40`, borderRadius: 3, padding: '2px 7px', fontSize: 10, fontFamily: C.mono, fontWeight: 700, letterSpacing: '0.5px' }}>
+      {children}
+    </span>
+  );
+}
+
+function Btn({ children, onClick, disabled, color = C.blue, style }: {
+  children: React.ReactNode; onClick?: () => void; disabled?: boolean; color?: string; style?: React.CSSProperties;
+}) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      padding: '7px 15px', background: disabled ? '#0a1422' : `${color}18`, color: disabled ? C.textDim : color,
+      border: `1px solid ${disabled ? C.border : color + '50'}`, borderRadius: 5, cursor: disabled ? 'not-allowed' : 'pointer',
+      fontSize: 12, fontFamily: C.mono, fontWeight: 600, letterSpacing: '0.5px', transition: 'all 0.15s', ...style,
+    }}>
+      {children}
+    </button>
+  );
+}
+
+function StatusLine({ ok, msg }: { ok: boolean; msg: string }) {
+  return (
+    <div style={{ marginTop: 10, padding: '10px 14px', background: ok ? `${C.green}10` : `${C.red}10`, border: `1px solid ${ok ? C.green : C.red}30`, borderRadius: 5, fontFamily: C.mono, fontSize: 12, color: ok ? C.green : C.red }}>
+      {ok ? '✓ ' : '✗ '}{msg}
+    </div>
+  );
+}
+
+function DarkResultsTable({ rows }: { rows: any[] }) {
+  const sorted = [...rows].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: C.mono, fontSize: 11 }}>
+        <thead>
+          <tr style={{ borderBottom: `1px solid ${C.borderBright}` }}>
+            {['#', 'MATCH', 'PICK', 'H/A', 'CONF%', 'ODDS', 'STATUS', 'SCORE'].map(h => (
+              <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: C.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 9 }}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((r, i) => {
+            const status = r.status || r.result || '';
+            const statusColor = status === 'WIN' || status === 'win' ? C.green : status === 'LOSS' || status === 'loss' || status === 'LOSE' || status === 'lose' ? C.red : C.amber;
+            return (
+              <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? 'transparent' : '#070e18' }}>
+                <td style={{ padding: '7px 10px', color: C.textDim }}>{i + 1}</td>
+                <td style={{ padding: '7px 10px', color: C.textBright }}>{r.home_team} vs {r.away_team}<br /><span style={{ color: C.textDim, fontSize: 10 }}>{r.sport}</span></td>
+                <td style={{ padding: '7px 10px', color: C.blue }}>{r.pick}</td>
+                <td style={{ padding: '7px 10px' }}><Badge color={r.is_home ? C.green : C.amber}>{r.is_home ? 'H' : 'A'}</Badge></td>
+                <td style={{ padding: '7px 10px', color: C.textBright }}>{r.confidence ?? '—'}%</td>
+                <td style={{ padding: '7px 10px', color: (r.odds ?? 0) > 0 ? C.green : C.text }}>{fmt(r.odds)}</td>
+                <td style={{ padding: '7px 10px' }}>{status ? <Badge color={statusColor}>{status.toUpperCase()}</Badge> : <span style={{ color: C.textDim }}>pending</span>}</td>
+                <td style={{ padding: '7px 10px', color: C.textDim }}>{r.home_score != null ? `${r.home_score}-${r.away_score}` : '—'}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// -- Types --------------------------------------------------------------------
+type TabId = 'odds' | 'picks' | 'results' | 'lines' | 'analyzer' | 'config';
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'odds', label: 'LIVE ODDS' },
+  { id: 'picks', label: 'PICKS' },
+  { id: 'results', label: 'RESULTS' },
+  { id: 'lines', label: 'LINE MOVES' },
+  { id: 'analyzer', label: 'ANALYZER' },
+  { id: 'config', label: 'CONFIG' },
+];
+
+// -- Main component -----------------------------------------------------------
+export default function AdminPage() {
+  const [activeTab, setActiveTab] = useState<TabId>('odds');
+  const [secret, setSecret] = useState('');
+
+  // dates
   const [gameDate, setGameDate] = useState(() => getToday());
   const [earlyOffset, setEarlyOffset] = useState(4);
-
-  // Derived dates (auto-calculated from gameDate)
   const earlyDate = subtractDays(gameDate, earlyOffset);
   const regularDate = gameDate;
   const resultsDate = getYesterday();
-  // Date used by cron jobs when naming predictions files (always “today”)
   const cronFileDate = getToday();
 
+  // live odds
+  const [liveOdds, setLiveOdds] = useState<any[]>([]);
+  const [oddsLoading, setOddsLoading] = useState(false);
+  const [oddsError, setOddsError] = useState<string | null>(null);
+  const [selectedSports, setSelectedSports] = useState<string[]>(['basketball_nba', 'basketball_ncaab', 'icehockey_nhl']);
+  const [oddsFilter, setOddsFilter] = useState('');
+  const [oddsSort, setOddsSort] = useState<'time' | 'sport' | 'edge'>('time');
+  const [oddsLastFetched, setOddsLastFetched] = useState<string | null>(null);
+
+  // cron
   const [cronLog, setCronLog] = useState<{ job: string; ok: boolean; msg: string } | null>(null);
   const [cronLoading, setCronLoading] = useState<string | null>(null);
 
+  // results
+  const [resultsList, setResultsList] = useState<any[]>([]);
+  const [resultsListDate, setResultsListDate] = useState<string | null>(null);
+  const [fallbackSummary, setFallbackSummary] = useState<Record<string, string | number> | null>(null);
+  const [scoresByLeague, setScoresByLeague] = useState<Record<string, { count: number; source: 'odds' | 'fallback' }> | null>(null);
+
+  // line compare
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareResult, setCompareResult] = useState<any>(null);
+
+  // keys
   const [keys, setKeys] = useState<{ id: string; label: string; createdAt: string }[]>([]);
   const [keysLoading, setKeysLoading] = useState(false);
   const [keyLabel, setKeyLabel] = useState('');
   const [keyValue, setKeyValue] = useState('');
   const [keyLog, setKeyLog] = useState<string | null>(null);
 
-  const [resultsList, setResultsList] = useState<any[]>([]);
-  const [resultsListDate, setResultsListDate] = useState<string | null>(null);
-  const [fallbackSummary, setFallbackSummary] = useState<Record<string, string | number> | null>(null);
-  const [scoresByLeague, setScoresByLeague] = useState<Record<string, { count: number; source: 'odds' | 'fallback' }> | null>(null);
-
-  const [compareLoading, setCompareLoading] = useState(false);
-  const [compareResult, setCompareResult] = useState<{ matches: any[]; message: string; sideFlippedCount: number; hintNoOverlap?: string } | { error: string; availableFiles?: string[]; hint?: string } | null>(null);
-
-  const [lastMainTab, setLastMainTab] = useState<string>('run');
-
-  // Force reset to today's date on mount to prevent cached dates
   useEffect(() => {
     const today = getToday();
-    if (gameDate !== today) {
-      setGameDate(today);
-    }
+    if (gameDate !== today) setGameDate(today);
   }, []);
 
-  // Sync lastMainTab whenever activeTab changes
-  useEffect(() => {
-    if (['run', 'analyze', 'keys', 'docs'].includes(activeTab)) {
-      setLastMainTab(activeTab);
-    }
-  }, [activeTab]);
-
-  const runEarlyVsRegular = async () => {
-    if (!secret.trim()) {
-      setCompareResult({ error: 'Enter admin secret first.' });
-      return;
-    }
-    setCompareLoading(true);
-    setCompareResult(null);
+  // -- Live Odds ---------------------------------------------------------------
+  const fetchLiveOdds = async () => {
+    if (!secret.trim()) { setOddsError('Enter admin secret first'); return; }
+    if (selectedSports.length === 0) { setOddsError('Select at least one sport'); return; }
+    setOddsLoading(true);
+    setOddsError(null);
     try {
-      const res = await fetch('/api/progno/admin/early-vs-regular', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: secret.trim(), earlyDate, regularDate }),
-      });
+      const res = await fetch(`/api/progno/admin/live-odds?secret=${encodeURIComponent(secret.trim())}&sports=${selectedSports.join(',')}`);
       const data = await res.json();
-      if (res.ok && data.success) {
-        setCompareResult({
-          matches: data.matches || [],
-          message: data.message || '',
-          sideFlippedCount: data.sideFlippedCount ?? 0,
-          hintNoOverlap: data.hintNoOverlap,
-        });
+      if (data.success) {
+        setLiveOdds(data.games || []);
+        setOddsLastFetched(new Date().toLocaleTimeString());
+        if (data.errors && Object.keys(data.errors).length > 0) {
+          setOddsError(`Partial errors: ${JSON.stringify(data.errors)}`);
+        }
       } else {
-        setCompareResult({
-          error: data.error || JSON.stringify(data),
-          availableFiles: data.availableFiles,
-          hint: data.hint,
-        });
+        setOddsError(data.error || 'Failed to fetch odds');
       }
     } catch (e: any) {
-      setCompareResult({ error: e?.message || 'Request failed' });
+      setOddsError(e?.message || 'Network error');
     } finally {
-      setCompareLoading(false);
+      setOddsLoading(false);
     }
   };
 
+  const toggleSport = (key: string) => {
+    setSelectedSports(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  };
+
+  // -- Cron --------------------------------------------------------------------
   const runCron = async (job: 'daily-predictions' | 'daily-results') => {
-    if (!secret.trim()) {
-      setCronLog({ job, ok: false, msg: 'Enter admin secret first.' });
-      return;
-    }
+    if (!secret.trim()) { setCronLog({ job, ok: false, msg: 'Enter admin secret first.' }); return; }
     setCronLoading(job);
     setCronLog(null);
     setFallbackSummary(null);
     setScoresByLeague(null);
     try {
-      const body: { secret: string; job: string; date?: string; earlyLines?: boolean } = { secret: secret.trim(), job };
+      const body: any = { secret: secret.trim(), job };
       if (job === 'daily-results') body.date = resultsDate;
-      const res = await fetch('/api/progno/admin/run-cron', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch('/api/progno/admin/run-cron', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (res.ok && data.success) {
-        let msg: string;
         const summary = data.data?.summary;
+        let msg: string;
         if (job === 'daily-results' && summary && typeof summary === 'object') {
-          const { total, correct, pending, graded, winRate } = summary as { total?: number; correct?: number; pending?: number; graded?: number; winRate?: number };
+          const { total, correct, pending, graded, winRate } = summary as any;
           const wrong = (graded ?? 0) - (correct ?? 0);
           msg = `${total ?? 0} picks: ${correct ?? 0} correct, ${wrong} wrong, ${pending ?? 0} pending. Win rate ${winRate ?? 0}% (of ${graded ?? 0} graded).`;
           setResultsList(Array.isArray(data.data?.results) ? data.data.results : []);
@@ -227,8 +260,6 @@ export default function PrognoAdminPage() {
         } else {
           msg = data.data?.message ?? (summary ? JSON.stringify(summary) : 'Done');
           if (job !== 'daily-results') setResultsList([]);
-          setFallbackSummary(null);
-          setScoresByLeague(null);
         }
         setCronLog({ job, ok: true, msg });
       } else {
@@ -242,44 +273,20 @@ export default function PrognoAdminPage() {
   };
 
   const runBothPredictions = async () => {
-    if (!secret.trim()) {
-      setCronLog({ job: 'daily-predictions', ok: false, msg: 'Enter admin secret first.' });
-      return;
-    }
+    if (!secret.trim()) { setCronLog({ job: 'daily-predictions', ok: false, msg: 'Enter admin secret first.' }); return; }
     setCronLoading('daily-predictions');
     setCronLog(null);
-    const today = new Date().toISOString().split('T')[0];
     try {
       const baseBody = { secret: secret.trim(), job: 'daily-predictions' };
-      const res1 = await fetch('/api/progno/admin/run-cron', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...baseBody, earlyLines: false }),
-      });
+      const res1 = await fetch('/api/progno/admin/run-cron', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...baseBody, earlyLines: false }) });
       const data1 = await res1.json();
-      if (!res1.ok || !data1.success) {
-        setCronLog({ job: 'daily-predictions', ok: false, msg: data1.error || data1.detail?.error || 'Regular run failed.' });
-        return;
-      }
+      if (!res1.ok || !data1.success) { setCronLog({ job: 'daily-predictions', ok: false, msg: data1.error || data1.detail?.error || 'Regular run failed.' }); return; }
       const msg1 = data1.data?.message ?? '';
-      const res2 = await fetch('/api/progno/admin/run-cron', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...baseBody, earlyLines: true }),
-      });
+      const res2 = await fetch('/api/progno/admin/run-cron', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...baseBody, earlyLines: true }) });
       const data2 = await res2.json();
-      if (!res2.ok || !data2.success) {
-        setCronLog({ job: 'daily-predictions', ok: false, msg: (data2.error || 'Early run failed') + '. Regular already saved.' });
-        return;
-      }
+      if (!res2.ok || !data2.success) { setCronLog({ job: 'daily-predictions', ok: false, msg: (data2.error || 'Early run failed') + '. Regular already saved.' }); return; }
       const msg2 = data2.data?.message ?? '';
-      setCronLog({ job: 'daily-predictions', ok: true, msg: `${msg1} ${msg2} → Opening viewer.` });
-      const viewerUrl = VIEWERS[1]?.url || 'file:///C:/Users/cevict/Desktop/CevictPicksViewer/index.html';
-      try {
-        window.open(viewerUrl + '#' + today, '_blank');
-      } catch {
-        setCronLog({ job: 'daily-predictions', ok: true, msg: `${msg1} ${msg2} — Open viewer: ${viewerUrl}#${today}` });
-      }
+      setCronLog({ job: 'daily-predictions', ok: true, msg: `${msg1} ${msg2}` });
     } catch (e: any) {
       setCronLog({ job: 'daily-predictions', ok: false, msg: e?.message || 'Request failed' });
     } finally {
@@ -287,126 +294,107 @@ export default function PrognoAdminPage() {
     }
   };
 
+  // -- Keys --------------------------------------------------------------------
   const loadKeys = async () => {
     if (!secret.trim()) return;
     setKeysLoading(true);
     try {
-      const res = await fetch('/api/progno/admin/keys', {
-        headers: { Authorization: `Bearer ${secret.trim()}` },
-      });
+      const res = await fetch('/api/progno/admin/keys', { headers: { Authorization: `Bearer ${secret.trim()}` } });
       const data = await res.json();
-      if (data.success && Array.isArray(data.keys)) setKeys(data.keys);
-      else setKeys([]);
-    } catch {
-      setKeys([]);
-    } finally {
-      setKeysLoading(false);
-    }
+      setKeys(data.success && Array.isArray(data.keys) ? data.keys : []);
+    } catch { setKeys([]); } finally { setKeysLoading(false); }
   };
 
   const addKey = async () => {
-    if (!secret.trim() || !keyValue.trim()) {
-      setKeyLog('Secret and value are required.');
-      return;
-    }
+    if (!secret.trim() || !keyValue.trim()) { setKeyLog('Secret and key value are required.'); return; }
     setKeyLog(null);
     try {
-      const res = await fetch('/api/progno/admin/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` },
-        body: JSON.stringify({ label: keyLabel.trim() || 'Odds API', value: keyValue.trim() }),
-      });
+      const res = await fetch('/api/progno/admin/keys', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` }, body: JSON.stringify({ label: keyLabel.trim() || 'Odds API', value: keyValue.trim() }) });
       const data = await res.json();
-      if (data.success) {
-        setKeyValue('');
-        setKeyLabel('');
-        setKeyLog('Key added. First key in .progno/keys.json is used as Odds API key if ODDS_API_KEY is not set.');
-        loadKeys();
-      } else {
-        setKeyLog(data.error || 'Failed');
-      }
-    } catch (e: any) {
-      setKeyLog(e?.message || 'Failed');
-    }
+      if (data.success) { setKeyValue(''); setKeyLabel(''); setKeyLog('Key added.'); loadKeys(); }
+      else setKeyLog(data.error || 'Failed');
+    } catch (e: any) { setKeyLog(e?.message || 'Failed'); }
   };
 
   const deleteKey = async (id: string) => {
     if (!secret.trim()) return;
     try {
-      const res = await fetch('/api/progno/admin/keys', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` },
-        body: JSON.stringify({ id }),
-      });
+      const res = await fetch('/api/progno/admin/keys', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` }, body: JSON.stringify({ id }) });
       if (res.ok) loadKeys();
     } catch { }
   };
 
-  const copyPath = (path: string) => {
-    navigator.clipboard.writeText(path);
+  // -- Line compare ------------------------------------------------------------
+  const runEarlyVsRegular = async () => {
+    if (!secret.trim()) { setCompareResult({ error: 'Enter admin secret first.' }); return; }
+    setCompareLoading(true);
+    setCompareResult(null);
+    try {
+      const res = await fetch('/api/progno/admin/early-vs-regular', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: secret.trim(), earlyDate, regularDate }) });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCompareResult({ matches: data.matches || [], message: data.message || '', sideFlippedCount: data.sideFlippedCount ?? 0, hintNoOverlap: data.hintNoOverlap });
+      } else {
+        setCompareResult({ error: data.error || JSON.stringify(data), availableFiles: data.availableFiles, hint: data.hint });
+      }
+    } catch (e: any) { setCompareResult({ error: e?.message || 'Request failed' }); }
+    finally { setCompareLoading(false); }
   };
 
-  const TABS: { id: 'run' | 'analyze' | 'keys' | 'docs'; label: string; description: string }[] = [
-    {
-      id: 'run',
-      label: 'Run predictions & results',
-      description: 'Pick a game date, run today’s prediction files and grade yesterday’s results. Use this tab for daily operations.',
-    },
-    {
-      id: 'analyze',
-      label: 'Line moves & reports',
-      description: 'Compare early vs regular lines, run enhanced early-line analysis, and generate deeper performance reports.',
-    },
-    {
-      id: 'keys',
-      label: 'Keys & environment',
-      description: 'Manage Odds API keys and check required environment variables for Progno to run correctly.',
-    },
-    {
-      id: 'docs',
-      label: 'Viewers & docs',
-      description: 'Open local viewer tools and read reference docs about cron schedules and debug flows.',
-    },
-  ];
-
-  const activeTabMeta = TABS.find(t => t.id === activeTab) || TABS[0];
+  // -- Render ------------------------------------------------------------------
+  const filteredOdds = liveOdds
+    .filter(g => !oddsFilter || g.home_team.toLowerCase().includes(oddsFilter.toLowerCase()) || g.away_team.toLowerCase().includes(oddsFilter.toLowerCase()))
+    .sort((a, b) => {
+      if (oddsSort === 'sport') return a.sport.localeCompare(b.sport);
+      if (oddsSort === 'edge') {
+        const ea = a.noVig?.home != null ? Math.abs(a.noVig.home - 50) : 0;
+        const eb = b.noVig?.home != null ? Math.abs(b.noVig.home - 50) : 0;
+        return eb - ea;
+      }
+      return new Date(a.commence_time).getTime() - new Date(b.commence_time).getTime();
+    });
 
   return (
-    <div style={{ padding: '20px', maxWidth: '900px', margin: '0 auto', fontFamily: 'system-ui' }}>
-      <h1 style={{ marginBottom: '8px' }}>Progno Admin</h1>
-      <p style={{ color: '#666', marginBottom: '24px' }}>
-        Control the daily Progno pipeline from one place: run prediction/result crons, inspect early-line moves, and review performance.
-        Use your <strong>CRON_SECRET</strong> or <strong>ADMIN_PASSWORD</strong> from <code>.env.local</code>.
-      </p>
-
-      <div style={{ marginBottom: '24px', padding: '12px', background: '#f5f5f5', borderRadius: '8px' }}>
-        <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Admin secret</label>
-        <input
-          type="password"
-          value={secret}
-          onChange={e => setSecret(e.target.value)}
-          placeholder="CRON_SECRET or ADMIN_PASSWORD"
-          style={{ width: '100%', maxWidth: '400px', padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc' }}
-        />
+    <div style={{ background: C.bg, minHeight: '100vh', color: C.text, fontFamily: C.sans }}>
+      {/* ── Header ── */}
+      <div style={{ background: C.card, borderBottom: `1px solid ${C.border}`, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ fontFamily: C.mono, fontSize: 13, fontWeight: 700, color: C.green, letterSpacing: '3px' }}>◆ PROGNO</div>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <input
+            type="password"
+            value={secret}
+            onChange={e => setSecret(e.target.value)}
+            placeholder="ADMIN_SECRET"
+            style={{ width: '100%', maxWidth: 260, padding: '5px 10px', background: '#050c16', border: `1px solid ${secret.trim() ? C.green + '50' : C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11 }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Btn onClick={() => setGameDate(getYesterday())} color={C.textDim} style={{ padding: '5px 10px', fontSize: 11 }}>-1D</Btn>
+          <input
+            type="date"
+            value={gameDate}
+            onChange={e => setGameDate(e.target.value)}
+            style={{ padding: '5px 10px', background: '#050c16', border: `1px solid ${C.borderBright}`, borderRadius: 4, color: C.textBright, fontFamily: C.mono, fontSize: 11 }}
+          />
+          <Btn onClick={() => setGameDate(getToday())} color={C.green} style={{ padding: '5px 10px', fontSize: 11 }}>TODAY</Btn>
+          <Btn onClick={() => setGameDate(addDays(getToday(), 1))} color={C.textDim} style={{ padding: '5px 10px', fontSize: 11 }}>+1D</Btn>
+        </div>
+        <Link href="/progno" style={{ color: C.textDim, fontSize: 11, fontFamily: C.mono, textDecoration: 'none' }}>← DASHBOARD</Link>
       </div>
 
-      {/* Primary navigation */}
-      <div style={{ marginBottom: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+      {/* ── Tab bar ── */}
+      <div style={{ background: '#050c16', borderBottom: `1px solid ${C.border}`, padding: '0 20px', display: 'flex', gap: 0, overflowX: 'auto' }}>
         {TABS.map(tab => {
-          const isActive = tab.id === activeTab;
+          const active = tab.id === activeTab;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: '8px 14px',
-                borderRadius: '999px',
-                border: isActive ? 'none' : '1px solid #ccc',
-                background: isActive ? '#0070f3' : '#f5f5f5',
-                color: isActive ? 'white' : '#333',
-                cursor: 'pointer',
-                fontSize: '13px',
-                fontWeight: isActive ? 600 : 500,
+                padding: '11px 18px', background: 'none', border: 'none',
+                borderBottom: active ? `2px solid ${C.green}` : '2px solid transparent',
+                color: active ? C.green : C.textDim,
+                fontFamily: C.mono, fontSize: 10, fontWeight: 700, letterSpacing: '1.5px', cursor: 'pointer', whiteSpace: 'nowrap',
               }}
             >
               {tab.label}
@@ -415,473 +403,398 @@ export default function PrognoAdminPage() {
         })}
       </div>
 
-      <p style={{ color: '#555', marginBottom: '20px', fontSize: '13px' }}>
-        {activeTabMeta.description}
-      </p>
+      {/* ── Content ── */}
+      <div style={{ padding: '20px 24px', maxWidth: 1400, margin: '0 auto' }}>
 
-      {activeTab === 'run' && (
-        <>
-          {/* Smart Date Selector */}
-          <div style={{
-            marginBottom: '24px',
-            padding: '20px',
-            background: '#f8f9fa',
-            borderRadius: '12px',
-            border: '1px solid #dee2e6'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                📅 Smart Date Selector
-              </h3>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => { setGameDate(getYesterday()); }}
-                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #ccc', background: 'white', cursor: 'pointer', fontSize: '13px' }}
-                >
-                  Yesterday
-                </button>
-                <button
-                  onClick={() => { setGameDate(getToday()); }}
-                  style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#0070f3', color: 'white', cursor: 'pointer', fontSize: '13px' }}
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => { setGameDate(addDays(getToday(), 1)); }}
-                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #ccc', background: 'white', cursor: 'pointer', fontSize: '13px' }}
-                >
-                  Tomorrow
-                </button>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-              {/* Main Game Date Selector */}
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Game Date (Regular Run)
-                </label>
-                <input
-                  type="date"
-                  value={gameDate}
-                  onChange={e => setGameDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '2px solid #0070f3',
-                    fontSize: '15px',
-                    fontWeight: 500
-                  }}
-                />
-              </div>
-
-              {/* Early Offset */}
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Early Lines Offset
-                </label>
-                <select
-                  value={earlyOffset}
-                  onChange={e => setEarlyOffset(Number(e.target.value))}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #ccc',
-                    fontSize: '15px'
-                  }}
-                >
-                  <option value={2}>2 days in future</option>
-                  <option value={3}>3 days in future</option>
-                  <option value={4}>4 days in future</option>
-                  <option value={5}>5 days in future</option>
-                  <option value={6}>6 days in future</option>
-                  <option value={7}>7 days in future</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Derived Dates Display (on-disk cron files) */}
-            <div style={{
-              marginTop: '16px',
-              padding: '12px 16px',
-              background: 'white',
-              borderRadius: '8px',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '20px',
-              fontSize: '13px'
-            }}>
-              <div>
-                <span style={{ color: '#666' }}>Early file: </span>
-                <code style={{ background: '#e9ecef', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
-                  predictions-early-{cronFileDate}.json
-                </code>
-              </div>
-              <div>
-                <span style={{ color: '#666' }}>Regular file: </span>
-                <code style={{ background: '#e9ecef', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
-                  predictions-{cronFileDate}.json
-                </code>
-              </div>
-              <div>
-                <span style={{ color: '#666' }}>Results file: </span>
-                <code style={{ background: '#e9ecef', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
-                  results-{resultsDate}.json
-                </code>
-              </div>
-            </div>
-          </div>
-
-          {/* Backtest-Driven Strategy Settings (read-only display) */}
-          <div style={{
-            marginBottom: '24px',
-            padding: '16px 20px',
-            background: '#f0f8ff',
-            borderRadius: '12px',
-            border: '1px solid #b8d4f0',
-            fontSize: '13px'
-          }}>
-            <h3 style={{ margin: '0 0 10px 0', fontSize: '1rem' }}>Strategy Settings (from backtest)</h3>
-            <p style={{ color: '#555', margin: '0 0 10px 0' }}>
-              Configured via env vars in <code>.env.local</code>. <code>FILTER_STRATEGY</code>: <code>baseline</code> | <code>best</code> (default) | <code>balanced</code>. <code>HOME_ONLY_MODE=1</code> to filter away picks.
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Filter strategy</span>
-                <div style={{ fontWeight: 600, marginTop: '2px' }}>best</div>
-              </div>
-              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Odds range</span>
-                <div style={{ fontWeight: 600, marginTop: '2px' }}>-130 to +200</div>
-              </div>
-              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Min confidence</span>
-                <div style={{ fontWeight: 600, marginTop: '2px' }}>80%</div>
-              </div>
-              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Home bias</span>
-                <div style={{ fontWeight: 600, marginTop: '2px' }}>+5% / Away -5%</div>
-              </div>
-              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Home only mode</span>
-                <div style={{ fontWeight: 600, marginTop: '2px' }}>Off (set HOME_ONLY_MODE=1)</div>
-              </div>
-              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Season-aware</span>
-                <div style={{ fontWeight: 600, marginTop: '2px' }}>On (skips out-of-season)</div>
-              </div>
-              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Streak modifier</span>
-                <div style={{ fontWeight: 600, marginTop: '2px' }}>Win 3+ → 1.1x, Loss 3+ → 0.75x</div>
-              </div>
-              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Early-line decay</span>
-                <div style={{ fontWeight: 600, marginTop: '2px' }}>1d: 100%, 3d: 93%, 5d+: 75%</div>
-              </div>
-              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>League conf floors</span>
-                <div style={{ fontWeight: 600, marginTop: '2px' }}>NCAAF 80 / NCAA 75 / NBA 70</div>
-              </div>
-              <div style={{ padding: '8px 12px', background: 'white', borderRadius: '6px', border: '1px solid #ddd' }}>
-                <span style={{ color: '#666', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Stake caps</span>
-                <div style={{ fontWeight: 600, marginTop: '2px' }}>NCAAF 50% / NCAAB 75%</div>
-              </div>
-            </div>
-          </div>
-
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Cron jobs</h2>
-            <p style={{ color: '#555', marginBottom: '12px', fontSize: '14px' }}>
-              <strong>Get predictions</strong> runs both at once: regular (today + tomorrow) → <code>predictions-YYYY-MM-DD.json</code>, early (3–5 days out) →
-              {' '}<code>predictions-early-YYYY-MM-DD.json</code>. Files use today’s date. After it completes, open the Picks Viewer and load the date shown in the message.
-              {' '}<strong>Get results</strong> grades yesterday’s card using <code>results-YYYY-MM-DD.json</code>.
-            </p>
-            <ol style={{ color: '#555', marginBottom: '12px', fontSize: '13px', paddingLeft: '20px' }}>
-              <li>Pick the game date above.</li>
-              <li>Click <strong>Get predictions</strong> to write today’s prediction files.</li>
-              <li>After games finish, click <strong>Get results</strong> to grade and view the summary.</li>
-            </ol>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center' }}>
-              <button
-                onClick={runBothPredictions}
-                disabled={!!cronLoading}
-                style={{ padding: '10px 18px', background: cronLoading === 'daily-predictions' ? '#ccc' : '#0070f3', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-              >
-                {cronLoading === 'daily-predictions' ? 'Running both…' : 'Get predictions'}
-              </button>
-              <button
-                onClick={() => runCron('daily-results')}
-                disabled={!!cronLoading}
-                style={{ padding: '10px 18px', background: cronLoading === 'daily-results' ? '#ccc' : '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-              >
-                {cronLoading === 'daily-results' ? 'Running…' : 'Get results'}
-              </button>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                Results use: <code>{resultsDate}</code>
-              </label>
-            </div>
-            {cronLog && (
-              <>
-                <pre style={{ marginTop: '12px', padding: '12px', background: cronLog.ok ? '#e6f3ff' : '#ffe6e6', borderRadius: '6px', fontSize: '13px', overflow: 'auto' }}>
-                  {cronLog.msg}
-                </pre>
-                {cronLog.ok && cronLog.job === 'daily-results' && (
-                  <div style={{ marginTop: '12px', padding: '10px 12px', background: '#f0f4f8', borderRadius: '6px', fontSize: '13px', border: '1px solid #dde' }}>
-                    <strong>Scores by league</strong> (source = Odds API or API-Sports fallback):{' '}
-                    {scoresByLeague && Object.keys(scoresByLeague).length > 0
-                      ? Object.entries(scoresByLeague).map(([league, { count, source }]) => `${league}: ${count} (${source === 'fallback' ? 'API-Sports' : 'Odds API'})`).join(' · ')
-                      : fallbackSummary && Object.keys(fallbackSummary).length > 0
-                        ? Object.entries(fallbackSummary).map(([k, v]) => `${k}: ${v}`).join(' · ')
-                        : 'No data (run Get results again).'}
-                  </div>
-                )}
-              </>
-            )}
-            {resultsList.length > 0 && resultsListDate && (
-              <>
-                <h3 style={{ fontSize: '1.1rem', marginTop: '24px', marginBottom: '8px' }}>Top 10 by confidence ({resultsListDate})</h3>
-                <ResultsTable rows={[...resultsList].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0)).slice(0, 10)} />
-                <h3 style={{ fontSize: '1.1rem', marginTop: '24px', marginBottom: '8px' }}>All results ({resultsList.length})</h3>
-                <div style={{ maxHeight: '400px', overflow: 'auto', border: '1px solid #ddd', borderRadius: '6px' }}>
-                  <ResultsTable rows={resultsList} />
-                </div>
-              </>
-            )}
-          </section>
-
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>🖨️ Print Bets Tracker</h2>
-            <p style={{ color: '#555', marginBottom: '12px', fontSize: '14px' }}>
-              Generate a printable sheet for today’s card. Use this after running predictions so you can track wins and losses by hand.
-            </p>
-            <PrintBetsSection date={gameDate} />
-          </section>
-        </>
-      )}
-
-      {activeTab === 'analyze' && (
-        <>
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Early vs Regular (line-move arb)</h2>
-            <p style={{ color: '#555', marginBottom: '12px', fontSize: '14px' }}>
-              Compare early-line picks vs regular picks for the same games. When the pick <strong>flips to the other side</strong>, you have early position and the regular run likes the new line on the other team — possible hedge/arb. See <code>EARLY_LINES_STRATEGY.md</code>.
-            </p>
-            <p style={{ color: '#666', marginBottom: '10px', fontSize: '13px' }}>
-              Dates are pulled from the Smart Date Selector on the Run tab: early lines use the offset above, regular lines use the game date itself.
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
-              <div style={{ padding: '8px 12px', background: '#f0f4f8', borderRadius: '6px' }}>
-                <span style={{ fontSize: '12px', color: '#666' }}>Early file: </span>
-                <code>predictions-early-{earlyDate}.json</code>
-              </div>
-              <div style={{ padding: '8px 12px', background: '#f0f4f8', borderRadius: '6px' }}>
-                <span style={{ fontSize: '12px', color: '#666' }}>Regular file: </span>
-                <code>predictions-{regularDate}.json</code>
-              </div>
-              <button
-                onClick={runEarlyVsRegular}
-                disabled={compareLoading || !secret.trim()}
-                style={{ padding: '8px 14px', background: compareLoading ? '#ccc' : '#6f42c1', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-              >
-                {compareLoading ? 'Comparing…' : 'Compare'}
-              </button>
-            </div>
-            {compareResult && (
-              <div style={{ marginTop: '12px', padding: '12px', background: 'error' in compareResult ? '#ffe6e6' : '#f0f4f8', borderRadius: '6px', fontSize: '13px', border: '1px solid #dde' }}>
-                {'error' in compareResult ? (
-                  <>
-                    <p style={{ margin: 0, color: '#c00' }}>{compareResult.error}</p>
-                    {compareResult.hint && <p style={{ margin: '8px 0 0 0', color: '#555' }}>{compareResult.hint}</p>}
-                    {compareResult.availableFiles && compareResult.availableFiles.length > 0 && (
-                      <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#666' }}>
-                        Available: {compareResult.availableFiles.join(', ')}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p style={{ margin: '0 0 10px 0', fontWeight: 600 }}>{compareResult.message}</p>
-                    {compareResult.matches.length === 0 ? (
-                      <>
-                        <p style={{ margin: 0, color: '#666' }}>No games in both files.</p>
-                        {compareResult.hintNoOverlap && (
-                          <p style={{ margin: '10px 0 0 0', padding: '8px 10px', background: '#fff8e6', borderRadius: '4px', fontSize: '12px', color: '#555' }}>
-                            {compareResult.hintNoOverlap}
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '1px solid #ccc' }}>
-                            <th style={{ textAlign: 'left', padding: '6px 8px' }}>Match</th>
-                            <th style={{ textAlign: 'left', padding: '6px 8px' }}>Early pick (odds)</th>
-                            <th style={{ textAlign: 'left', padding: '6px 8px' }}>Regular pick (odds)</th>
-                            <th style={{ textAlign: 'left', padding: '6px 8px' }}></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {compareResult.matches.map((m: any, i: number) => (
-                            <tr key={i} style={{ borderBottom: '1px solid #eee', background: m.side_flipped ? '#fff8e6' : undefined }}>
-                              <td style={{ padding: '6px 8px' }}>{m.home_team} vs {m.away_team} ({m.sport})</td>
-                              <td style={{ padding: '6px 8px' }}>{m.early_pick} ({m.early_odds > 0 ? '+' : ''}{m.early_odds})</td>
-                              <td style={{ padding: '6px 8px' }}>{m.regular_pick} ({m.regular_odds > 0 ? '+' : ''}{m.regular_odds})</td>
-                              <td style={{ padding: '6px 8px' }}>{m.side_flipped ? <span style={{ background: '#6f42c1', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>Side flipped — arb?</span> : ''}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </section>
-
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>🎯 Enhanced Early Lines Analysis</h2>
-            <p style={{ color: '#555', marginBottom: '12px', fontSize: '14px' }}>
-              Run a richer early-lines analysis with value scoring, odds movement, and recommendations (hedge, double-down, or close).
-            </p>
-            <ol style={{ color: '#555', marginBottom: '12px', fontSize: '13px', paddingLeft: '20px' }}>
-              <li>Run both regular and early prediction crons for the target date.</li>
-              <li>Make sure the early file shown above exists.</li>
-              <li>Click <strong>Analyze Early Lines</strong> to generate opportunities.</li>
-            </ol>
-            <EnhancedEarlyLinesSection secret={secret} earlyDate={earlyDate} regularDate={regularDate} />
-          </section>
-
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>📊 Reports & Analytics</h2>
-            <p style={{ color: '#555', marginBottom: '12px', fontSize: '14px' }}>
-              Generate human-readable summaries of how the system performs by sport, edge band, confidence band, month, and odds range. Use CSV export to pull data into a spreadsheet.
-            </p>
-            <ReportsSection secret={secret} date={gameDate} />
-          </section>
-        </>
-      )}
-
-      {activeTab === 'keys' && (
-        <>
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Odds provider keys</h2>
-            <p style={{ color: '#555', marginBottom: '12px', fontSize: '14px' }}>
-              Store Odds API and related keys in <code>.progno/keys.json</code>. The first key is used as the Odds API key if <code>ODDS_API_KEY</code> is not set in <code>.env.local</code>.
-            </p>
-            <ol style={{ color: '#555', marginBottom: '12px', fontSize: '13px', paddingLeft: '20px' }}>
-              <li>Click <strong>Load keys</strong> to see what is currently configured.</li>
-              <li>Add a new key with a human-readable label such as “Odds API”.</li>
-              <li>Remove old keys that you no longer want the system to use.</li>
-            </ol>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-              <button
-                onClick={loadKeys}
-                disabled={!secret.trim() || keysLoading}
-                style={{ padding: '8px 14px', background: '#555', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-              >
-                {keysLoading ? 'Loading…' : 'Load keys'}
-              </button>
-            </div>
-            {keys.length > 0 && (
-              <ul style={{ listStyle: 'none', padding: 0, marginBottom: '16px' }}>
-                {keys.map(k => (
-                  <li key={k.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-                    <span style={{ fontWeight: 500 }}>{k.label || '(no label)'}</span>
-                    <span style={{ color: '#888', fontSize: '13px' }}>{k.id}</span>
+        {/* ═══ LIVE ODDS ═══ */}
+        {activeTab === 'odds' && (
+          <div>
+            <Card style={{ marginBottom: 16 }}>
+              <SectionLabel>SELECT SPORTS & FETCH</SectionLabel>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                {SPORTS_LIST.map(s => {
+                  const sel = selectedSports.includes(s.key);
+                  return (
                     <button
-                      type="button"
-                      onClick={() => deleteKey(k.id)}
-                      style={{ marginLeft: 'auto', padding: '4px 10px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                      key={s.key}
+                      onClick={() => toggleSport(s.key)}
+                      style={{
+                        padding: '5px 12px', background: sel ? `${C.blue}20` : 'transparent',
+                        border: `1px solid ${sel ? C.blue + '70' : C.border}`,
+                        borderRadius: 4, color: sel ? C.blue : C.textDim,
+                        fontFamily: C.mono, fontSize: 11, cursor: 'pointer',
+                      }}
                     >
-                      Delete
+                      {s.icon} {s.label}
                     </button>
-                  </li>
-                ))}
-              </ul>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Btn onClick={fetchLiveOdds} disabled={oddsLoading || !secret.trim()} color={C.blue}>
+                  {oddsLoading ? '⟳ FETCHING...' : '◈ FETCH LIVE ODDS'}
+                </Btn>
+                {liveOdds.length > 0 && (
+                  <>
+                    <input
+                      placeholder="Filter teams..."
+                      value={oddsFilter}
+                      onChange={e => setOddsFilter(e.target.value)}
+                      style={{ padding: '5px 10px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11, width: 180 }}
+                    />
+                    <select
+                      value={oddsSort}
+                      onChange={e => setOddsSort(e.target.value as any)}
+                      style={{ padding: '5px 10px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11 }}
+                    >
+                      <option value="time">Sort: TIME</option>
+                      <option value="sport">Sort: SPORT</option>
+                      <option value="edge">Sort: EDGE</option>
+                    </select>
+                    <Badge color={C.green}>{filteredOdds.length} GAMES</Badge>
+                  </>
+                )}
+                {oddsLastFetched && <span style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim }}>last: {oddsLastFetched}</span>}
+              </div>
+              {oddsError && <div style={{ marginTop: 10, fontFamily: C.mono, fontSize: 11, color: C.amber }}>⚠ {oddsError}</div>}
+            </Card>
+
+            {filteredOdds.length > 0 && (
+              <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: C.mono, fontSize: 11 }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${C.borderBright}`, background: '#060d18' }}>
+                      {['SPORT', 'MATCHUP', 'TIME', 'HOME ML', 'AWAY ML', 'BEST HOME', 'BEST AWAY', 'SPREAD', 'TOTAL', 'NO-VIG H', 'NO-VIG A', 'EDGE', 'BKS'].map(h => (
+                        <th key={h} style={{ padding: '9px 8px', textAlign: 'left', color: C.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 9, whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredOdds.map((game, i) => {
+                      const nvHome = game.noVig?.home;
+                      const nvAway = game.noVig?.away;
+                      const mktImplied = game.consensus?.homeML != null ? (game.consensus.homeML < 0 ? Math.abs(game.consensus.homeML) / (Math.abs(game.consensus.homeML) + 100) * 100 : 100 / (game.consensus.homeML + 100) * 100) : null;
+                      const edge = nvHome != null && mktImplied != null ? (nvHome - mktImplied).toFixed(1) : null;
+                      const edgeNum = edge != null ? parseFloat(edge) : 0;
+                      return (
+                        <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? 'transparent' : '#060d18' }}>
+                          <td style={{ padding: '9px 8px' }}><Badge color={C.green}>{game.sport}</Badge></td>
+                          <td style={{ padding: '9px 8px', color: C.textBright, whiteSpace: 'nowrap' }}>
+                            <div>{game.away_team}</div>
+                            <div style={{ color: C.textDim, fontSize: 10 }}>@ {game.home_team}</div>
+                          </td>
+                          <td style={{ padding: '9px 8px', color: C.textDim, fontSize: 10, whiteSpace: 'nowrap' }}>{fmtTime(game.commence_time)}</td>
+                          <td style={{ padding: '9px 8px', color: (game.consensus?.homeML ?? 0) > 0 ? C.green : C.text }}>{fmt(game.consensus?.homeML)}</td>
+                          <td style={{ padding: '9px 8px', color: (game.consensus?.awayML ?? 0) > 0 ? C.green : C.text }}>{fmt(game.consensus?.awayML)}</td>
+                          <td style={{ padding: '9px 8px', color: C.blue }}>{fmt(game.best?.homeML)}</td>
+                          <td style={{ padding: '9px 8px', color: C.blue }}>{fmt(game.best?.awayML)}</td>
+                          <td style={{ padding: '9px 8px', color: C.amber }}>{game.consensus?.spread != null ? game.consensus.spread : '—'}</td>
+                          <td style={{ padding: '9px 8px' }}>{game.consensus?.total != null ? game.consensus.total : '—'}</td>
+                          <td style={{ padding: '9px 8px', color: C.blue }}>{nvHome != null ? nvHome.toFixed(1) + '%' : '—'}</td>
+                          <td style={{ padding: '9px 8px', color: C.blue }}>{nvAway != null ? nvAway.toFixed(1) + '%' : '—'}</td>
+                          <td style={{ padding: '9px 8px', color: edgeNum > 3 ? C.green : edgeNum < -3 ? C.red : C.textDim }}>{edge != null ? (edgeNum > 0 ? '+' : '') + edge + '%' : '—'}</td>
+                          <td style={{ padding: '9px 8px', color: C.textDim }}>{game.bookmakerCount}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-              <input
-                type="text"
-                value={keyLabel}
-                onChange={e => setKeyLabel(e.target.value)}
-                placeholder="Label (e.g. Odds API)"
-                style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc', width: '160px' }}
-              />
-              <input
-                type="password"
-                value={keyValue}
-                onChange={e => setKeyValue(e.target.value)}
-                placeholder="API key value"
-                style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid #ccc', width: '220px' }}
-              />
-              <button
-                onClick={addKey}
-                disabled={!secret.trim() || !keyValue.trim()}
-                style={{ padding: '8px 14px', background: '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-              >
-                Add key
-              </button>
-            </div>
-            {keyLog && <p style={{ marginTop: '8px', color: '#555', fontSize: '14px' }}>{keyLog}</p>}
-          </section>
 
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>.env.local</h2>
-            <p style={{ color: '#555', marginBottom: '8px', fontSize: '14px' }}>
-              Edit <code>apps/progno/.env.local</code> to configure these environment variables. Restart the dev server after changes.
-            </p>
-            <ul style={{ margin: 0, paddingLeft: '20px', color: '#555', fontSize: '14px' }}>
-              {ENV_VARS.map(v => (
-                <li key={v}><code>{v}</code></li>
-              ))}
-            </ul>
-          </section>
-        </>
-      )}
-
-      {activeTab === 'docs' && (
-        <>
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Viewers</h2>
-            <p style={{ color: '#555', marginBottom: '12px', fontSize: '14px' }}>
-              These local tools live under <code>C:\cevict-live\apps\progno</code>. If <code>file://</code> links are blocked, open the folder in Explorer and double‑click <code>index.html</code>.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {VIEWERS.map(v => (
-                <div key={v.name} style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <a href={v.url} target="_blank" rel="noopener noreferrer" style={{ color: '#0070f3', fontWeight: 500 }}>
-                    {v.name}
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => copyPath(v.path)}
-                    style={{ padding: '4px 10px', background: '#eee', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
-                  >
-                    Copy path
-                  </button>
-                  <code style={{ fontSize: '12px', color: '#666', wordBreak: 'break-all' }}>{v.path}</code>
+            {liveOdds.length === 0 && !oddsLoading && (
+              <Card style={{ textAlign: 'center', padding: 40 }}>
+                <div style={{ fontFamily: C.mono, fontSize: 12, color: C.textDim }}>
+                  ◈ Select sports and click FETCH LIVE ODDS to load the latest lines
                 </div>
-              ))}
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* ═══ PICKS ═══ */}
+        {activeTab === 'picks' && (
+          <div>
+            <Card style={{ marginBottom: 16 }}>
+              <SectionLabel>PREDICTION PIPELINE</SectionLabel>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 4 }}>REGULAR FILE</div>
+                  <code style={{ color: C.green, fontSize: 11 }}>predictions-{cronFileDate}.json</code>
+                </div>
+                <div>
+                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 4 }}>EARLY FILE</div>
+                  <code style={{ color: C.amber, fontSize: 11 }}>predictions-early-{cronFileDate}.json</code>
+                </div>
+                <div>
+                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 4 }}>EARLY OFFSET</div>
+                  <select
+                    value={earlyOffset}
+                    onChange={e => setEarlyOffset(Number(e.target.value))}
+                    style={{ padding: '4px 8px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11 }}
+                  >
+                    {[2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n} days out</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <Btn onClick={runBothPredictions} disabled={!!cronLoading} color={C.green}>
+                  {cronLoading === 'daily-predictions' ? '⟳ RUNNING BOTH...' : '▶ RUN PREDICTIONS (BOTH)'}
+                </Btn>
+              </div>
+              {cronLog && <StatusLine ok={cronLog.ok} msg={cronLog.msg} />}
+            </Card>
+
+            <div style={{ marginBottom: 16 }}>
+              <Card>
+                <SectionLabel>PRINT BETS TRACKER — {gameDate}</SectionLabel>
+                <PrintBetsSection date={gameDate} />
+              </Card>
             </div>
-          </section>
 
-          <section style={{ marginBottom: '24px' }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '12px' }}>Docs</h2>
-            <ul style={{ margin: 0, paddingLeft: '20px' }}>
-              <li><strong>PROGNO-DEBUG-CHEATSHEET.md</strong> — key files, flow, how to run</li>
-              <li><strong>CRON-SCHEDULE.md</strong> — cron times, Task Scheduler, paths</li>
-              <li>Predictions file: <code>C:\cevict-live\apps\progno\predictions-YYYY-MM-DD.json</code></li>
-              <li>Results file: <code>C:\cevict-live\apps\progno\results-YYYY-MM-DD.json</code></li>
-            </ul>
-          </section>
+            <Card>
+              <SectionLabel>STRATEGY SETTINGS (ACTIVE)</SectionLabel>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {[
+                  ['STRATEGY', 'best'], ['ODDS RANGE', '-130 to +200'], ['MIN CONF', '80%'],
+                  ['HOME BIAS', '+5% / Away -5%'], ['HOME ONLY', 'Off → HOME_ONLY_MODE=1'],
+                  ['SEASON CHECK', 'On'], ['STREAK WIN 3+', '1.1x'], ['STREAK LOSS 3+', '0.75x'],
+                  ['EARLY DECAY 1d', '100%'], ['EARLY DECAY 3d', '93%'], ['EARLY DECAY 5d+', '75%'],
+                  ['NCAAF FLOOR', '80%'], ['NCAA FLOOR', '75%'], ['NBA FLOOR', '70%'],
+                  ['TOP N PICKS', '25'],
+                ].map(([k, v]) => (
+                  <div key={k} style={{ background: '#060d18', border: `1px solid ${C.border}`, borderRadius: 4, padding: '7px 10px', minWidth: 130 }}>
+                    <div style={{ fontFamily: C.mono, fontSize: 8, color: C.textDim, letterSpacing: 1, marginBottom: 3 }}>{k}</div>
+                    <div style={{ fontFamily: C.mono, fontSize: 12, fontWeight: 700, color: C.textBright }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
 
-          <p style={{ marginTop: '24px' }}>
-            <Link href="/progno" style={{ color: '#0070f3' }}>← Back to dashboard</Link>
-          </p>
-        </>
-      )}
+        {/* ═══ RESULTS ═══ */}
+        {activeTab === 'results' && (
+          <div>
+            <Card style={{ marginBottom: 16 }}>
+              <SectionLabel>GRADE RESULTS</SectionLabel>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+                <div>
+                  <span style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1 }}>RESULTS DATE: </span>
+                  <code style={{ color: C.blue, fontSize: 12 }}>{resultsDate}</code>
+                  <span style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, marginLeft: 8 }}>(yesterday)</span>
+                </div>
+                <Btn onClick={() => runCron('daily-results')} disabled={!!cronLoading} color={C.blue}>
+                  {cronLoading === 'daily-results' ? '⟳ GRADING...' : '◈ GRADE YESTERDAY'}
+                </Btn>
+              </div>
+              {cronLog && cronLog.job === 'daily-results' && <StatusLine ok={cronLog.ok} msg={cronLog.msg} />}
+              {cronLog?.ok && cronLog.job === 'daily-results' && scoresByLeague && Object.keys(scoresByLeague).length > 0 && (
+                <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {Object.entries(scoresByLeague).map(([league, info]) => (
+                    <Badge key={league} color={info.source === 'fallback' ? C.amber : C.green}>
+                      {league}: {info.count} ({info.source === 'fallback' ? 'API-Sports' : 'Odds API'})
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {resultsList.length > 0 && resultsListDate && (
+              <Card>
+                <SectionLabel>RESULTS — {resultsListDate} ({resultsList.length} picks)</SectionLabel>
+                <DarkResultsTable rows={resultsList} />
+              </Card>
+            )}
+
+            {resultsList.length === 0 && (
+              <Card style={{ textAlign: 'center', padding: 40 }}>
+                <div style={{ fontFamily: C.mono, fontSize: 12, color: C.textDim }}>◇ Run grade to see results here</div>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* ═══ LINE MOVES ═══ */}
+        {activeTab === 'lines' && (
+          <div>
+            <Card style={{ marginBottom: 16 }}>
+              <SectionLabel>EARLY vs REGULAR — LINE MOVE DETECTION</SectionLabel>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 3 }}>EARLY FILE</div>
+                  <code style={{ color: C.amber, fontSize: 11 }}>predictions-early-{earlyDate}.json</code>
+                </div>
+                <div>
+                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 3 }}>REGULAR FILE</div>
+                  <code style={{ color: C.green, fontSize: 11 }}>predictions-{regularDate}.json</code>
+                </div>
+                <div>
+                  <span style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1 }}>OFFSET: </span>
+                  <select
+                    value={earlyOffset}
+                    onChange={e => setEarlyOffset(Number(e.target.value))}
+                    style={{ padding: '4px 8px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11, marginLeft: 6 }}
+                  >
+                    {[2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n} days</option>)}
+                  </select>
+                </div>
+              </div>
+              <Btn onClick={runEarlyVsRegular} disabled={compareLoading || !secret.trim()} color={C.amber}>
+                {compareLoading ? '⟳ COMPARING...' : '⟺ COMPARE LINES'}
+              </Btn>
+
+              {compareResult && (
+                <div style={{ marginTop: 14 }}>
+                  {'error' in compareResult ? (
+                    <StatusLine ok={false} msg={compareResult.error} />
+                  ) : (
+                    <>
+                      <div style={{ fontFamily: C.mono, fontSize: 11, color: C.textBright, marginBottom: 10 }}>{compareResult.message}</div>
+                      {compareResult.matches.length === 0 ? (
+                        <div style={{ fontFamily: C.mono, fontSize: 11, color: C.textDim }}>No matching games found.</div>
+                      ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: C.mono, fontSize: 11 }}>
+                            <thead>
+                              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                                {['MATCHUP', 'EARLY PICK', 'REGULAR PICK', 'STATUS'].map(h => (
+                                  <th key={h} style={{ padding: '7px 8px', textAlign: 'left', color: C.textDim, fontSize: 9, letterSpacing: 1 }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {compareResult.matches.map((m: any, i: number) => (
+                                <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, background: m.side_flipped ? `${C.amber}10` : 'transparent' }}>
+                                  <td style={{ padding: '7px 8px', color: C.textBright }}>{m.home_team} vs {m.away_team}<br /><span style={{ color: C.textDim, fontSize: 9 }}>{m.sport}</span></td>
+                                  <td style={{ padding: '7px 8px' }}>{m.early_pick} <span style={{ color: C.textDim }}>({fmt(m.early_odds)})</span></td>
+                                  <td style={{ padding: '7px 8px' }}>{m.regular_pick} <span style={{ color: C.textDim }}>({fmt(m.regular_odds)})</span></td>
+                                  <td style={{ padding: '7px 8px' }}>
+                                    {m.side_flipped ? <Badge color={C.amber}>⚡ SIDE FLIPPED — ARB?</Badge> : <span style={{ color: C.textDim }}>same</span>}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </Card>
+
+            <Card style={{ marginBottom: 16 }}>
+              <SectionLabel>ENHANCED EARLY-LINE ANALYSIS</SectionLabel>
+              <EnhancedEarlyLinesSection secret={secret} earlyDate={earlyDate} regularDate={regularDate} />
+            </Card>
+
+            <Card>
+              <SectionLabel>PERFORMANCE REPORTS</SectionLabel>
+              <ReportsSection secret={secret} date={gameDate} />
+            </Card>
+          </div>
+        )}
+
+        {/* ═══ ANALYZER ═══ */}
+        {activeTab === 'analyzer' && (
+          <div>
+            <Card style={{ marginBottom: 12 }}>
+              <SectionLabel>CEVICT PROBABILITY ANALYZER — 16 ML MODELS</SectionLabel>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ fontFamily: C.mono, fontSize: 11, color: C.textDim }}>
+                  Loaded date: <span style={{ color: C.green }}>{gameDate}</span>
+                  <span style={{ marginLeft: 12 }}>Click "Load Picks" in the sidebar to auto-fetch from API, or paste JSON.</span>
+                </div>
+              </div>
+            </Card>
+            <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden', height: 'calc(100vh - 200px)', minHeight: 600 }}>
+              <iframe
+                src={`/api/serve/analyzer?date=${gameDate}`}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                title="Cevict Probability Analyzer"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ═══ CONFIG ═══ */}
+        {activeTab === 'config' && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 16 }}>
+            <Card>
+              <SectionLabel>ODDS API KEYS</SectionLabel>
+              <p style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim, marginBottom: 12 }}>
+                Stored in <code style={{ color: C.green }}>.progno/keys.json</code>. First key is used if ODDS_API_KEY not in .env.local
+              </p>
+              <Btn onClick={loadKeys} disabled={!secret.trim() || keysLoading} color={C.textDim} style={{ marginBottom: 12 }}>
+                {keysLoading ? '⟳ LOADING...' : '↺ LOAD KEYS'}
+              </Btn>
+              {keys.length > 0 && (
+                <div style={{ marginBottom: 14 }}>
+                  {keys.map(k => (
+                    <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderBottom: `1px solid ${C.border}`, fontFamily: C.mono, fontSize: 11 }}>
+                      <span style={{ color: C.textBright, flex: 1 }}>{k.label || '(no label)'}</span>
+                      <span style={{ color: C.textDim, fontSize: 10 }}>{k.id}</span>
+                      <button onClick={() => deleteKey(k.id)} style={{ padding: '3px 8px', background: `${C.red}18`, border: `1px solid ${C.red}40`, borderRadius: 3, color: C.red, cursor: 'pointer', fontSize: 10, fontFamily: C.mono }}>✗</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <input
+                  type="text"
+                  value={keyLabel}
+                  onChange={e => setKeyLabel(e.target.value)}
+                  placeholder="Label (e.g. Odds API v2)"
+                  style={{ padding: '6px 10px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11 }}
+                />
+                <input
+                  type="password"
+                  value={keyValue}
+                  onChange={e => setKeyValue(e.target.value)}
+                  placeholder="API key value"
+                  style={{ padding: '6px 10px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11 }}
+                />
+                <Btn onClick={addKey} disabled={!secret.trim() || !keyValue.trim()} color={C.green}>+ ADD KEY</Btn>
+              </div>
+              {keyLog && <div style={{ marginTop: 8, fontFamily: C.mono, fontSize: 11, color: C.textDim }}>{keyLog}</div>}
+            </Card>
+
+            <Card>
+              <SectionLabel>ENVIRONMENT VARIABLES</SectionLabel>
+              <p style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim, marginBottom: 12 }}>
+                Edit <code style={{ color: C.green }}>apps/progno/.env.local</code> — restart dev server after changes
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {ENV_VARS.map(v => <Badge key={v} color={C.textDim}>{v}</Badge>)}
+              </div>
+            </Card>
+
+            <Card style={{ gridColumn: '1 / -1' }}>
+              <SectionLabel>FILE PATHS</SectionLabel>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontFamily: C.mono, fontSize: 11 }}>
+                {[
+                  ['Predictions (today)', `C:\\cevict-live\\apps\\progno\\predictions-${cronFileDate}.json`],
+                  ['Early lines', `C:\\cevict-live\\apps\\progno\\predictions-early-${cronFileDate}.json`],
+                  ['Results (yesterday)', `C:\\cevict-live\\apps\\progno\\results-${resultsDate}.json`],
+                  ['Probability Analyzer', 'C:\\cevict-live\\apps\\progno\\cevict-probability-analyzer\\index.html'],
+                ].map(([label, path]) => (
+                  <div key={label} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '8px 12px', background: '#060d18', borderRadius: 4 }}>
+                    <span style={{ color: C.textDim, minWidth: 160 }}>{label}</span>
+                    <code style={{ color: C.blue, flex: 1, wordBreak: 'break-all', fontSize: 10 }}>{path}</code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(path)}
+                      style={{ padding: '3px 8px', background: `${C.blue}18`, border: `1px solid ${C.blue}40`, borderRadius: 3, color: C.blue, cursor: 'pointer', fontSize: 10, fontFamily: C.mono, whiteSpace: 'nowrap' }}
+                    >
+                      COPY
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

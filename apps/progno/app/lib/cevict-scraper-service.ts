@@ -239,19 +239,7 @@ export class CevictScraperService {
         break;
       // NOTE: "cbb" = college baseball in this codebase (college basketball = "ncaab").
       case 'cbb':
-        {
-          // College baseball injuries are extremely sparse; ESPN IDs are incomplete.
-          // Only call ESPN when we have a known mapping to avoid spamming /id/ with no ID.
-          const id = this.getCollegeTeamId(team);
-          if (id) {
-            urls.push(
-              `https://www.espn.com/college-baseball/team/injuries/_/id/${id}`
-            );
-          } else {
-            console.log(`[CevictScraper] No ESPN college ID for ${team} (cbb/college baseball), skipping ESPN injuries URL`);
-          }
-          // NCAA team roster page is a best-effort fallback; it rarely has injury data.
-        }
+        // College baseball injury pages are not available via ESPN; skip to avoid fetch failures.
         break;
     }
 
