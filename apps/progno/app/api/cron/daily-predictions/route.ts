@@ -122,7 +122,7 @@ export async function GET(request: Request) {
         }))
         const { error: _pErr } = await _sb
           .from('picks')
-          .upsert(pickRows, { onConflict: 'game_date,home_team,away_team,early_lines', ignoreDuplicates: true })
+          .upsert(pickRows, { onConflict: 'game_date,home_team,away_team,early_lines' })
         if (_pErr) {
           console.warn(`[CRON daily-predictions] Supabase picks write:`, _pErr.message)
         } else {

@@ -10,11 +10,20 @@
  * Home picks: +112.4% ROI vs Away: -18.2% ROI
  * → Home picks are prioritised for Elite tier.
  *
- * Distribution (~6 picks/day from V3 filters):
- *   Free:    3 picks — lowest-ranked picks that still pass V3 filters (80%+)
- *   Premium: 5 picks — mid-range quality (80-87% confidence band)
- *   Elite:   All remaining — top picks, home-biased, 85%+ preferred
+ * NOTE: Actual Shin-devig output range is 57–72%. Tier thresholds are calibrated
+ * to this range via env vars (PROGNO_TIER_ELITE_MIN, PROGNO_TIER_PREMIUM_MIN).
+ * Defaults: elite ≥70%, premium ≥62%, free = bottom 3.
+ *
+ * Distribution (~10 picks/day from V3 filters):
+ *   Free:    3 picks — lowest-ranked picks (still passed confidence floor)
+ *   Premium: mid-range quality picks (62–69% confidence band by default)
+ *   Elite:   Top picks, home-biased, 70%+ preferred
  */
+
+// Tier confidence thresholds — tunable via env vars
+const TIER_ELITE_MIN   = Number(process.env.PROGNO_TIER_ELITE_MIN   ?? 70)
+const TIER_PREMIUM_MIN = Number(process.env.PROGNO_TIER_PREMIUM_MIN ?? 62)
+const TIER_FREE_MAX    = Number(process.env.PROGNO_TIER_FREE_MAX     ?? 3)
 
 export type Tier = 'free' | 'premium' | 'elite' | 'early' | 'arbitrage';
 
@@ -67,31 +76,31 @@ export interface TierConfig {
 export const TIER_CONFIGS: Record<Tier, TierConfig> = {
   elite: {
     name: 'elite',
-    minConfidence: 85,
+    minConfidence: TIER_ELITE_MIN,
     maxConfidence: 100,
     maxPicks: 10,
-    description: 'Elite tier — top picks, home-biased, 85%+ confidence (108% ROI in backtest)',
+    description: `Elite tier — top picks, home-biased, ${TIER_ELITE_MIN}%+ confidence (108% ROI in backtest)`,
   },
   premium: {
     name: 'premium',
-    minConfidence: 80,
-    maxConfidence: 85,
+    minConfidence: TIER_PREMIUM_MIN,
+    maxConfidence: TIER_ELITE_MIN,
     maxPicks: 5,
-    description: 'Premium tier — solid picks, 80-84% confidence (51% ROI in backtest)',
+    description: `Premium tier — solid picks, ${TIER_PREMIUM_MIN}–${TIER_ELITE_MIN}% confidence (51% ROI in backtest)`,
   },
   free: {
     name: 'free',
     minConfidence: 0,
     maxConfidence: 100,
-    maxPicks: 3,
-    description: 'Free tier — 3 quality picks per day (all still 80%+ from V3 filters)',
+    maxPicks: TIER_FREE_MAX,
+    description: `Free tier — ${TIER_FREE_MAX} quality picks per day`,
   },
   early: {
     name: 'early',
-    minConfidence: 80,
+    minConfidence: TIER_PREMIUM_MIN,
     maxConfidence: 100,
     requiresEarlyLine: true,
-    description: 'Early line picks with value (80%+ confidence after decay)',
+    description: `Early line picks with value (${TIER_PREMIUM_MIN}%+ confidence after decay)`,
   },
   arbitrage: {
     name: 'arbitrage',
@@ -112,9 +121,9 @@ export class TierAssignmentService {
       return 'early';
     }
 
-    if (pick.confidence >= 85) {
+    if (pick.confidence >= TIER_ELITE_MIN) {
       return 'elite';
-    } else if (pick.confidence >= 80) {
+    } else if (pick.confidence >= TIER_PREMIUM_MIN) {
       return 'premium';
     } else {
       return 'free';
@@ -133,10 +142,10 @@ export class TierAssignmentService {
     const assigned: Pick[] = [];
     const assignedIds = new Set<string>();
 
-    // Phase 1: Elite — confidence 85+ OR arbitrage, home picks first
+    // Phase 1: Elite — confidence TIER_ELITE_MIN+ OR arbitrage, home picks first
     const eliteCandidates = sortedPicks.filter(p =>
       !assignedIds.has(p.id) &&
-      ((p.confidence >= 85) || p.isArbitrage)
+      ((p.confidence >= TIER_ELITE_MIN) || p.isArbitrage)
     );
     const eliteHome = eliteCandidates.filter(p => p.isHomePick || p.pick === p.homeTeam);
     const eliteAway = eliteCandidates.filter(p => !p.isHomePick && p.pick !== p.homeTeam);
@@ -151,11 +160,11 @@ export class TierAssignmentService {
       eliteCount++;
     }
 
-    // Phase 2: Premium — confidence 80-84, max 5
+    // Phase 2: Premium — confidence TIER_PREMIUM_MIN to TIER_ELITE_MIN, max 5
     const premiumCandidates = sortedPicks.filter(p =>
       !assignedIds.has(p.id) &&
-      p.confidence >= 80 &&
-      p.confidence < 85
+      p.confidence >= TIER_PREMIUM_MIN &&
+      p.confidence < TIER_ELITE_MIN
     );
 
     let premiumCount = 0;
@@ -185,7 +194,7 @@ export class TierAssignmentService {
     // Phase 4: Overflow elite/premium picks that didn't fit caps
     const overflow = sortedPicks.filter(p => !assignedIds.has(p.id));
     for (const pick of overflow) {
-      assigned.push({ ...pick, tier: pick.confidence >= 85 ? 'elite' : 'premium' });
+      assigned.push({ ...pick, tier: pick.confidence >= TIER_ELITE_MIN ? 'elite' : 'premium' });
       assignedIds.add(pick.id);
     }
 

@@ -137,20 +137,44 @@ export const revalidate = 0
 const FILTER_STRATEGY = (process.env.FILTER_STRATEGY || 'best') as 'baseline' | 'best' | 'balanced'
 
 // Backtest-calibrated filters (2024 full-season, 11,107 games):
+// ─── Strategy config: all tunable via env vars for testing without redeploy ───
+// Set any of these in .env.local (local) or Vercel Dashboard (production)
+const PROGNO_MIN_ODDS          = Number(process.env.PROGNO_MIN_ODDS          ?? -200)
+const PROGNO_MAX_ODDS          = Number(process.env.PROGNO_MAX_ODDS          ?? 500)
+const PROGNO_MIN_CONFIDENCE    = Number(process.env.PROGNO_MIN_CONFIDENCE    ?? 57)
+const PROGNO_HOME_BIAS_BOOST   = Number(process.env.PROGNO_HOME_BIAS_BOOST   ?? 5)
+const PROGNO_AWAY_BIAS_PENALTY = Number(process.env.PROGNO_AWAY_BIAS_PENALTY ?? 5)
+const PROGNO_STREAK_WIN_MULT_3 = Number(process.env.PROGNO_STREAK_WIN_MULT_3 ?? 1.1)
+const PROGNO_STREAK_WIN_MULT_5 = Number(process.env.PROGNO_STREAK_WIN_MULT_5 ?? 1.25)
+const PROGNO_STREAK_LOSS_MULT_3 = Number(process.env.PROGNO_STREAK_LOSS_MULT_3 ?? 0.75)
+const PROGNO_STREAK_LOSS_MULT_5 = Number(process.env.PROGNO_STREAK_LOSS_MULT_5 ?? 0.50)
+const PROGNO_EARLY_DECAY_2D    = Number(process.env.PROGNO_EARLY_DECAY_2D    ?? 0.97)
+const PROGNO_EARLY_DECAY_3D    = Number(process.env.PROGNO_EARLY_DECAY_3D    ?? 0.93)
+const PROGNO_EARLY_DECAY_4D    = Number(process.env.PROGNO_EARLY_DECAY_4D    ?? 0.88)
+const PROGNO_EARLY_DECAY_5D    = Number(process.env.PROGNO_EARLY_DECAY_5D    ?? 0.82)
+const PROGNO_EARLY_DECAY_5DPLUS = Number(process.env.PROGNO_EARLY_DECAY_5DPLUS ?? 0.75)
+const PROGNO_FLOOR_NCAAF       = Number(process.env.PROGNO_FLOOR_NCAAF       ?? 62)
+const PROGNO_FLOOR_NCAAB       = Number(process.env.PROGNO_FLOOR_NCAAB       ?? 57)
+const PROGNO_FLOOR_NBA         = Number(process.env.PROGNO_FLOOR_NBA         ?? 57)
+const PROGNO_FLOOR_NFL         = Number(process.env.PROGNO_FLOOR_NFL         ?? 62)
+const PROGNO_FLOOR_NHL         = Number(process.env.PROGNO_FLOOR_NHL         ?? 57)
+const PROGNO_FLOOR_MLB         = Number(process.env.PROGNO_FLOOR_MLB         ?? 57)
+// ─────────────────────────────────────────────────────────────────────────────
+
 // NFL ≥62% prob → +20.4% ROI. Shin-devig favorites rarely exceed 65%.
 // "best" targets pick-em to slight-fav range (-130 to +200) where most alpha lives.
 // minConfidence 57 aligns with actual Shin-devig output range; 80 produced zero picks.
 const ODDS_FILTER: Record<string, { minOdds: number; maxOdds: number; minConfidence: number }> = {
-  baseline: { minOdds: -10000, maxOdds: 10000, minConfidence: 0 },
-  best:     { minOdds: -200,   maxOdds: 500,   minConfidence: 57 },
-  balanced: { minOdds: -150,   maxOdds: 300,   minConfidence: 60 },
+  baseline: { minOdds: -10000,         maxOdds: 10000,         minConfidence: 0 },
+  best:     { minOdds: PROGNO_MIN_ODDS, maxOdds: PROGNO_MAX_ODDS, minConfidence: PROGNO_MIN_CONFIDENCE },
+  balanced: { minOdds: -150,           maxOdds: 300,           minConfidence: 60 },
 }
 
 // Backtest 2024: home picks +117.1% ROI vs away picks -18.2% ROI. Default ON.
 const HOME_ONLY_MODE = process.env.HOME_ONLY_MODE !== '0' && process.env.HOME_ONLY_MODE !== 'false'
 
-const HOME_BIAS_BOOST = 5
-const AWAY_BIAS_PENALTY = 5
+const HOME_BIAS_BOOST   = PROGNO_HOME_BIAS_BOOST
+const AWAY_BIAS_PENALTY = PROGNO_AWAY_BIAS_PENALTY
 
 const LEAGUE_STAKE_MULTIPLIER: Record<string, number> = {
   ncaaf: 0.5,
@@ -165,13 +189,13 @@ const LEAGUE_STAKE_MULTIPLIER: Record<string, number> = {
 // Per-league floors set to backtest-validated thresholds (see simulation-2024-results.txt)
 // NFL best ROI at ≥62%; NHL/MLB acceptable at ≥57%; NBA/NCAAB market-efficient, use 57
 const LEAGUE_CONFIDENCE_FLOOR: Record<string, number> = {
-  ncaaf: 62,
-  ncaab: 57,
-  cbb:   57,
-  nba:   57,
-  nfl:   62,
-  nhl:   57,
-  mlb:   57,
+  ncaaf: PROGNO_FLOOR_NCAAF,
+  ncaab: PROGNO_FLOOR_NCAAB,
+  cbb:   PROGNO_FLOOR_NCAAB,
+  nba:   PROGNO_FLOOR_NBA,
+  nfl:   PROGNO_FLOOR_NFL,
+  nhl:   PROGNO_FLOOR_NHL,
+  mlb:   PROGNO_FLOOR_MLB,
 }
 
 const SPORT_SEASONS: Record<string, { start: number; end: number }> = {
@@ -221,10 +245,10 @@ async function loadStreakFromSupabase(): Promise<void> {
 }
 
 function getStreakMultiplier(): number {
-  if (STREAK_TRACKER.wins >= 5) return 1.25
-  if (STREAK_TRACKER.wins >= 3) return 1.1
-  if (STREAK_TRACKER.losses >= 5) return 0.5
-  if (STREAK_TRACKER.losses >= 3) return 0.75
+  if (STREAK_TRACKER.wins >= 5) return PROGNO_STREAK_WIN_MULT_5
+  if (STREAK_TRACKER.wins >= 3) return PROGNO_STREAK_WIN_MULT_3
+  if (STREAK_TRACKER.losses >= 5) return PROGNO_STREAK_LOSS_MULT_5
+  if (STREAK_TRACKER.losses >= 3) return PROGNO_STREAK_LOSS_MULT_3
   return 1.0
 }
 
@@ -292,11 +316,11 @@ function getEarlyLineDecay(commenceTime: string): number {
   const now = new Date()
   const daysAhead = (gameDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
   if (daysAhead <= 1) return 1.0
-  if (daysAhead <= 2) return 0.97
-  if (daysAhead <= 3) return 0.93
-  if (daysAhead <= 4) return 0.88
-  if (daysAhead <= 5) return 0.82
-  return 0.75
+  if (daysAhead <= 2) return PROGNO_EARLY_DECAY_2D
+  if (daysAhead <= 3) return PROGNO_EARLY_DECAY_3D
+  if (daysAhead <= 4) return PROGNO_EARLY_DECAY_4D
+  if (daysAhead <= 5) return PROGNO_EARLY_DECAY_5D
+  return PROGNO_EARLY_DECAY_5DPLUS
 }
 
 // Claude Effect weights (7 dimensions)
@@ -1683,7 +1707,7 @@ async function fetchWeatherFromOpenWeather(city: string): Promise<{
 
 /** All 6 leagues for diversity */
 const LEAGUES_FOR_DIVERSITY = ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAF', 'NCAAB']
-const TOP_N = 25  // Top 25 best picks regardless of league
+const TOP_N = Number(process.env.PROGNO_TOP_N ?? 25)  // Top N best picks regardless of league
 const MAX_PER_SPORT = 3
 
 /**

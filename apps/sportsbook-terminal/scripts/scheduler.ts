@@ -9,25 +9,33 @@
  * 4. Archives processed files to C:\cevict-archive\Probabilityanalyzer
  */
 
+console.log('[SCHEDULER] Starting up...');
+
 import { createClient } from '@supabase/supabase-js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as dotenv from 'dotenv';
 
+console.log('[SCHEDULER] Imports loaded');
+
 // Load environment variables from .env.local
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+console.log('[SCHEDULER] __dirname:', __dirname);
 dotenv.config({ path: path.join(__dirname, '../.env.local') });
+console.log('[SCHEDULER] dotenv loaded');
 
 // Configuration
 const CONFIG = {
-  predictionsDir: path.join(__dirname, '../public'),
-  resultsDir: path.join(__dirname, '../data/results'),
+  predictionsDir: 'C:\\cevict-live\\apps\\progno',  // Where prediction files are created
+  resultsDir: 'C:\\cevict-live\\apps\\progno',      // Where results files are created
   archiveDir: 'C:\\cevict-archive\\Probabilityanalyzer',
   logDir: path.join(__dirname, '../logs'),
   resultsGenerationTime: '03:00', // 3:00 AM for next-day results
 };
+
+console.log('[SCHEDULER] CONFIG:', CONFIG);
 
 // Verify we're using production database
 const PRODUCTION_URL = 'https://rdbuwyefbgnbuhmjrizo.supabase.co';
@@ -35,6 +43,9 @@ const PRODUCTION_URL = 'https://rdbuwyefbgnbuhmjrizo.supabase.co';
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+console.log('[SCHEDULER] Supabase URL:', supabaseUrl ? 'Set' : 'NOT SET');
+console.log('[SCHEDULER] Supabase Key:', supabaseKey ? 'Set' : 'NOT SET');
 
 // Validate production database
 if (supabaseUrl && !supabaseUrl.includes('rdbuwyefbgnbuhmjrizo')) {
@@ -50,7 +61,9 @@ if (!supabaseUrl || !supabaseKey) {
   process.exit(1);
 }
 
+console.log('[SCHEDULER] Creating Supabase client...');
 const supabase = createClient(supabaseUrl, supabaseKey);
+console.log('[SCHEDULER] Supabase client created');
 
 // Logger
 class Logger {
@@ -175,114 +188,164 @@ async function findResultsFiles(): Promise<string[]> {
   }
 }
 
-// Save predictions to Supabase
+// Save predictions to Supabase - using existing predictions table structure
 async function savePredictionsToSupabase(data: PredictionFile, sourceFile: string): Promise<boolean> {
   try {
-    logger.info(`Saving ${data.picks.length} predictions to Supabase...`);
+    logger.info(`Processing ${data.picks.length} picks for Supabase...`);
 
-    const records = data.picks.map(pick => ({
-      game_id: pick.game_id,
-      sport: pick.sport,
-      league: pick.league,
-      home_team: pick.home_team,
-      away_team: pick.away_team,
-      pick: pick.pick,
-      pick_type: pick.pick_type,
-      recommended_line: pick.recommended_line,
-      odds: pick.odds,
-      confidence: pick.confidence,
-      expected_value: pick.expected_value,
-      win_probability: pick.mc_win_probability,
-      game_time: pick.game_time,
-      prediction_date: data.date,
-      generated_at: data.generatedAt,
-      source_file: path.basename(sourceFile),
-      metadata: {
-        summary: data.summary,
-        raw: pick
-      }
-    }));
+    const today = new Date().toISOString().split('T')[0];
+    let marketsCreated = 0;
+    let predictionsCreated = 0;
 
-    // Insert in batches
-    const batchSize = 50;
-    for (let i = 0; i < records.length; i += batchSize) {
-      const batch = records.slice(i, i + batchSize);
-      const { error } = await supabase
-        .from('daily_predictions')
-        .upsert(batch, {
-          onConflict: 'game_id,prediction_date',
-          ignoreDuplicates: false
-        });
+    for (const pick of data.picks) {
+      try {
+        // Step 1: Create market for the game
+        const gameId = pick.id || pick.game_id || `${pick.league}-${pick.home_team}-${pick.away_team}-${today}`;
 
-      if (error) {
-        logger.error(`Supabase insert error: ${error.message}`);
-        return false;
+        const marketData = {
+          external_id: gameId,
+          venue: 'sportsbook',
+          market_type: 'sports',
+          event_name: `${pick.home_team} vs ${pick.away_team}`,
+          event_date: pick.game_time || new Date().toISOString(),
+          sport: pick.sport || pick.league,
+          league: pick.league,
+          home_team: pick.home_team,
+          away_team: pick.away_team,
+          market_description: `${pick.pick} (${pick.pick_type})`,
+          contract_type: pick.pick_type,
+          american_odds: pick.odds,
+          status: 'open',
+          source_data: {
+            pick: pick.pick,
+            pick_type: pick.pick_type,
+            recommended_line: pick.recommended_line,
+            confidence: pick.confidence,
+            ev: pick.expected_value,
+            exported_from: 'scheduler'
+          }
+        };
+
+        const { data: market, error: marketError } = await supabase
+          .from('markets')
+          .insert(marketData)
+          .select('id')
+          .single();
+
+        if (marketError) {
+          // Check if this is a unique constraint violation (market already exists)
+          if (marketError.code === '23505') {
+            logger.info(`Market already exists for ${gameId}, finding existing...`);
+            const { data: existing } = await supabase
+              .from('markets')
+              .select('id')
+              .eq('external_id', gameId)
+              .single();
+            if (existing) {
+              const marketId = existing.id;
+              logger.info(`Found existing market: ${marketId}`);
+
+              // Step 2: Create prediction
+              const winProb = pick.mc_win_probability || (pick.confidence / 100);
+              const ev = pick.expected_value;
+              const impliedProb = pick.odds ? (pick.odds > 0 ? 100 / (pick.odds + 100) : -pick.odds / (-pick.odds + 100)) : 0.5;
+              const edge = winProb - impliedProb;
+
+              const predictionData = {
+                market_id: marketId,
+                model_version: 'scheduler-v1',
+                model_probability: winProb,
+                confidence: pick.confidence,
+                variance: 0.05,
+                market_probability: impliedProb,
+                edge: edge,
+                expected_value: ev,
+                value_bet_edge: ev > 0 ? ev : 0,
+                is_premium: pick.confidence >= 70,
+                correlation_group: pick.league,
+                simulation_count: 10000,
+                valid_until: pick.game_time || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+              };
+
+              const { error: predError } = await supabase
+                .from('predictions')
+                .insert(predictionData);
+
+              if (predError) {
+                logger.error(`Failed to create prediction: ${predError.message}`);
+                continue;
+              }
+
+              predictionsCreated++;
+            }
+          } else {
+            logger.error(`Failed to create market: ${marketError.message}`);
+            continue;
+          }
+        } else if (market) {
+          const marketId = market.id;
+          marketsCreated++;
+          logger.info(`Created new market: ${marketId}`);
+
+          // Step 2: Create prediction
+          const winProb = pick.mc_win_probability || (pick.confidence / 100);
+          const ev = pick.expected_value;
+          const impliedProb = pick.odds ? (pick.odds > 0 ? 100 / (pick.odds + 100) : -pick.odds / (-pick.odds + 100)) : 0.5;
+          const edge = winProb - impliedProb;
+
+          const predictionData = {
+            market_id: marketId,
+            model_version: 'scheduler-v1',
+            model_probability: winProb,
+            confidence: pick.confidence,
+            variance: 0.05,
+            market_probability: impliedProb,
+            edge: edge,
+            expected_value: ev,
+            value_bet_edge: ev > 0 ? ev : 0,
+            is_premium: pick.confidence >= 70,
+            correlation_group: pick.league,
+            simulation_count: 10000,
+            valid_until: pick.game_time || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+          };
+
+          const { error: predError } = await supabase
+            .from('predictions')
+            .insert(predictionData);
+
+          if (predError) {
+            logger.error(`Failed to create prediction: ${predError.message}`);
+            continue;
+          }
+
+          predictionsCreated++;
+        } else {
+          logger.error(`Failed to get market ID for ${gameId}`);
+          continue;
+        }
+      } catch (err: any) {
+        logger.error(`Failed to process pick ${pick.home_team} vs ${pick.away_team}: ${err.message}`);
       }
     }
 
-    logger.success(`Saved ${records.length} predictions to Supabase`);
-    return true;
+    logger.success(`Created ${marketsCreated} markets and ${predictionsCreated} predictions`);
+    return predictionsCreated > 0;
   } catch (err: any) {
     logger.error(`Failed to save predictions: ${err.message}`);
     return false;
   }
 }
 
-// Save results to Supabase
+// Save results to Supabase - results table doesn't exist, just log for now
 async function saveResultsToSupabase(data: ResultsFile, sourceFile: string): Promise<boolean> {
   try {
-    logger.info(`Saving ${data.results.length} results to Supabase...`);
+    logger.info(`Results file found: ${data.results.length} results`);
+    logger.info(`Note: graded_results table not in schema - archiving only`);
 
-    const records = data.results.map(result => ({
-      game_id: result.game_id,
-      sport: result.sport,
-      home_team: result.home_team,
-      away_team: result.away_team,
-      confidence: result.confidence,
-      status: result.status,
-      actual_score: result.actual_score,
-      pick_result: result.pick_result,
-      result_date: data.date,
-      source_file: path.basename(sourceFile),
-      processed_at: new Date().toISOString()
-    }));
-
-    // Insert in batches
-    const batchSize = 50;
-    for (let i = 0; i < records.length; i += batchSize) {
-      const batch = records.slice(i, i + batchSize);
-      const { error } = await supabase
-        .from('graded_results')
-        .upsert(batch, {
-          onConflict: 'game_id,result_date',
-          ignoreDuplicates: false
-        });
-
-      if (error) {
-        logger.error(`Supabase insert error: ${error.message}`);
-        return false;
-      }
-    }
-
-    // Update prediction outcomes
-    for (const result of data.results) {
-      if (result.status !== 'pending') {
-        await supabase
-          .from('daily_predictions')
-          .update({
-            outcome: result.status,
-            actual_score: result.actual_score,
-            graded_at: new Date().toISOString()
-          })
-          .eq('game_id', result.game_id)
-          .eq('prediction_date', data.date);
-      }
-    }
-
-    logger.success(`Saved ${records.length} results to Supabase`);
+    // Just archive the file without trying to save to non-existent table
     return true;
   } catch (err: any) {
-    logger.error(`Failed to save results: ${err.message}`);
+    logger.error(`Failed to process results: ${err.message}`);
     return false;
   }
 }
@@ -411,15 +474,19 @@ async function main() {
   const startTime = Date.now();
 
   try {
+    console.log('[MAIN] Ensuring directories...');
     await ensureDirectories();
+    console.log('[MAIN] Directories ready');
 
     // Process predictions
-    logger.info('Phase 1: Processing predictions...');
+    console.log('[MAIN] Starting Phase 1: Processing predictions...');
     const predictionsProcessed = await processPredictions();
+    console.log(`[MAIN] Phase 1 complete: ${predictionsProcessed} files processed`);
 
     // Process results
-    logger.info('Phase 2: Processing results...');
+    console.log('[MAIN] Starting Phase 2: Processing results...');
     const resultsProcessed = await processResults();
+    console.log(`[MAIN] Phase 2 complete: ${resultsProcessed} files processed`);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
@@ -433,8 +500,9 @@ async function main() {
 
     await logger.save();
 
-    process.exit(predictionsProcessed + resultsProcessed > 0 ? 0 : 0);
+    process.exit(0);
   } catch (err: any) {
+    console.error('[MAIN] Fatal error:', err.message);
     logger.error(`Fatal error: ${err.message}`);
     await logger.save();
     process.exit(1);
@@ -442,8 +510,21 @@ async function main() {
 }
 
 // Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+console.log('[SCHEDULER] Checking if should run main...');
+console.log('[SCHEDULER] import.meta.url:', import.meta.url);
+console.log('[SCHEDULER] process.argv[1]:', process.argv[1]);
+
+// Normalize paths for comparison (handle Windows backslashes and file:// prefix)
+const currentFile = import.meta.url.replace('file:///', '').replace(/\//g, '\\');
+const entryFile = process.argv[1];
+console.log('[SCHEDULER] Normalized current file:', currentFile);
+console.log('[SCHEDULER] Entry file:', entryFile);
+
+if (currentFile.toLowerCase() === entryFile.toLowerCase()) {
+  console.log('[SCHEDULER] Running main()...');
   main();
+} else {
+  console.log('[SCHEDULER] Not running main - module import detected');
 }
 
 export { main, processPredictions, processResults };

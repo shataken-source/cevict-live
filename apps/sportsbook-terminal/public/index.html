@@ -203,6 +203,18 @@
       transform: translateY(-1px);
     }
 
+    .btn-primary:disabled {
+      background: #4a4a4a !important;
+      color: #888 !important;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .btn-primary:disabled:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
     /* Filter Tabs */
     .filter-tabs {
       display: flex;
@@ -2981,7 +2993,124 @@
       }
     }
 
-    // ==================== ADMIN ACTIONS ====================
+    // Helper function to disable/enable admin buttons
+    function setAdminButtonsDisabled(disabled) {
+      const buttons = document.querySelectorAll('#adminSection .btn-primary');
+      buttons.forEach(btn => {
+        btn.disabled = disabled;
+      });
+    }
+
+    // Show modal to prompt for Supabase Service Key
+    async function showSupabaseSetupModal() {
+      return new Promise((resolve) => {
+        // Remove existing modal
+        const existing = document.getElementById('supabaseSetupModal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'supabaseSetupModal';
+        modal.style.cssText = `
+          position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(0,0,0,0.8); z-index: 10000;
+          display: flex; align-items: center; justify-content: center;
+        `;
+
+        modal.innerHTML = `
+          <div style="
+            background: var(--card-bg, #1a1d29);
+            border: 1px solid var(--border-color, #2d3142);
+            border-radius: 12px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 24px;
+            margin: 20px;
+            color: var(--text-primary, #fff);
+          ">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 style="margin: 0; color: var(--text-primary);">Enter Supabase Service Key</h3>
+              <button id="closeSetupModal" style="
+                background: none; border: none; color: var(--text-muted);
+                font-size: 1.5em; cursor: pointer;
+              ">×</button>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.9em;">
+              You need to enter your Supabase Service Key to export to the database.
+              Find it in your .env.local file (starts with "eyJhbGci...")
+            </p>
+            <textarea id="serviceKeyInput" style="
+              width: 100%;
+              min-height: 80px;
+              background: rgba(0,0,0,0.3);
+              border: 1px solid var(--border-color);
+              border-radius: 8px;
+              padding: 12px;
+              color: var(--text-primary);
+              font-family: monospace;
+              font-size: 0.85em;
+              resize: vertical;
+            " placeholder="Paste your Supabase Service Key here..."></textarea>
+            <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end;">
+              <button id="cancelSetup" style="
+                background: transparent;
+                border: 1px solid var(--border-color);
+                color: var(--text-muted);
+                padding: 8px 16px;
+                border-radius: 6px;
+                cursor: pointer;
+              ">Cancel</button>
+              <button id="saveSetup" style="
+                background: var(--accent-primary, #4a6de5);
+                border: none;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 500;
+              ">Save Key</button>
+            </div>
+          </div>
+        `;
+
+        // Event handlers
+        const closeBtn = modal.querySelector('#closeSetupModal');
+        const cancelBtn = modal.querySelector('#cancelSetup');
+        const saveBtn = modal.querySelector('#saveSetup');
+        const input = modal.querySelector('#serviceKeyInput');
+
+        closeBtn.onclick = () => {
+          modal.remove();
+          resolve(null);
+        };
+
+        cancelBtn.onclick = () => {
+          modal.remove();
+          resolve(null);
+        };
+
+        saveBtn.onclick = () => {
+          const key = input.value.trim();
+          if (key) {
+            modal.remove();
+            resolve(key);
+          } else {
+            alert('Please enter a valid Service Key');
+          }
+        };
+
+        // Close on backdrop click
+        modal.onclick = (e) => {
+          if (e.target === modal) {
+            modal.remove();
+            resolve(null);
+          }
+        };
+
+        document.body.appendChild(modal);
+        input.focus();
+      });
+    }
 
     // Production Supabase configuration
     const PRODUCTION_SUPABASE_URL = 'https://rdbuwyefbgnbuhmjrizo.supabase.co';
@@ -3004,118 +3133,97 @@
     }
 
     async function runSchedulerNow() {
-      showError('🔄 Scheduler must be run from command line', 'success');
+      setAdminButtonsDisabled(true);
+      showError('🔄 Running scheduler...', 'success');
 
-      const instructions = `
-To run the scheduler manually:
+      try {
+        const response = await fetch('http://localhost:3433/api/run-scheduler', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
 
-1. Open terminal in: c:/cevict-live/apps/sportsbook-terminal
-2. Run: npx tsx scripts/scheduler.ts
+        const result = await response.json();
 
-Or with PowerShell:
-cd c:/cevict-live/apps/sportsbook-terminal
-npx tsx scripts/scheduler.ts
+        if (result.success) {
+          showError('✅ Scheduler completed!', 'success');
+          showAdminModal('Scheduler Complete', `
+✅ Scheduler finished!
 
-The scheduler will:
-✓ Process prediction files from /public
-✓ Save to Supabase daily_predictions table
-✓ Process results from /data/results
-✓ Save to Supabase graded_results table
-✓ Archive files to C:\cevict-archive\Probabilityanalyzer
-      `;
+OUTPUT:
+${result.output || 'No output'}
 
-      console.log('[SCHEDULER]', instructions);
+ERRORS:
+${result.errors || 'No errors'}
 
-      // Show modal with instructions
-      showAdminModal('Run Scheduler', instructions);
+Archive location: C:\cevict-archive\Probabilityanalyzer
+          `);
+        } else {
+          throw new Error(result.message || 'Scheduler failed');
+        }
+      } catch (error) {
+        console.error('[SCHEDULER] API call failed:', error);
+        showError('❌ Scheduler failed. Make sure server is running (node server.js)');
+        showAdminModal('Scheduler Failed', `
+❌ Could not run scheduler
+
+Error: ${error.message}
+
+Make sure the backend server is running:
+1. Open terminal
+2. cd c:/cevict-live/apps/sportsbook-terminal
+3. node server.js
+
+Then try again.
+        `);
+      } finally {
+        setAdminButtonsDisabled(false);
+      }
     }
 
     async function exportToSupabase() {
+      setAdminButtonsDisabled(true);
+      console.log('[SUPABASE] Starting export via backend API...');
+
       if (allPicks.length === 0) {
         showError('No predictions loaded to export');
+        setAdminButtonsDisabled(false);
         return;
       }
 
-      const config = getSupabaseConfig();
-
-      if (!config.url || !config.key) {
-        const setupMsg = `
-❌ Supabase not fully configured!
-
-Using production database: ${PRODUCTION_SUPABASE_URL}
-
-To enable Supabase export, you need the Service Key.
-
-Option 1 - Run scheduler from terminal (recommended):
-npx tsx scripts/scheduler.ts
-
-Option 2 - Set key in browser console:
-localStorage.setItem('SUPABASE_SERVICE_KEY', 'your-service-key');
-
-Service key found in: c:/cevict-live/apps/sportsbook-terminal/.env.local
-        `;
-        showError('Supabase Service Key required. Check console for details.');
-        console.error('[SUPABASE] Missing Service Key');
-        showAdminModal('Supabase Configuration Required', setupMsg);
-        return;
-      }
-
-      // Verify production database
-      if (!config.url.includes('rdbuwyefbgnbuhmjrizo')) {
-        showError('⚠️ Not using production database!');
-        console.error('[SUPABASE] Expected: https://rdbuwyefbgnbuhmjrizo.supabase.co, Found:', config.url);
-        return;
-      }
-
+      console.log('[SUPABASE] Records to export:', allPicks.length);
       showError('☁️ Exporting predictions to Supabase...', 'success');
 
       try {
-        // Import Supabase dynamically
-        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-        const supabase = createClient(config.url, config.key);
+        // Call backend API to export picks (bypasses RLS with service key)
+        console.log('[SUPABASE] Calling backend API...');
+        const response = await fetch('http://localhost:3433/api/export-picks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ picks: allPicks })
+        });
 
-        const today = new Date().toISOString().split('T')[0];
-        const records = allPicks.map(pick => ({
-          game_id: pick.id || pick.game_id,
-          sport: pick.sport || pick.league,
-          league: pick.league,
-          home_team: pick.home_team,
-          away_team: pick.away_team,
-          pick: pick.pick,
-          pick_type: pick.pick_type,
-          recommended_line: pick.recommended_line,
-          odds: pick.odds,
-          confidence: pick.confidence,
-          expected_value: pick.expected_value || pick.ev,
-          win_probability: pick.mc_win_probability || (pick.confidence / 100),
-          game_time: pick.game_time,
-          prediction_date: today,
-          generated_at: new Date().toISOString(),
-          source_file: 'manual-export.json'
-        }));
+        const result = await response.json();
+        console.log('[SUPABASE] API response:', result);
 
-        // Insert in batches
-        const batchSize = 50;
-        let totalInserted = 0;
+        if (result.success) {
+          const successMsg = `✅ Exported ${result.predictionsCreated}/${allPicks.length} predictions to Supabase!`;
+          showError(successMsg, 'success');
 
-        for (let i = 0; i < records.length; i += batchSize) {
-          const batch = records.slice(i, i + batchSize);
-          const { data, error } = await supabase
-            .from('daily_predictions')
-            .upsert(batch, {
-              onConflict: 'game_id,prediction_date',
-              ignoreDuplicates: false
-            });
+          if (result.errors && result.errors.length > 0) {
+            showAdminModal('Export Complete (with errors)', `
+${successMsg}
 
-          if (error) {
-            console.error('[SUPABASE] Batch error:', error);
-            throw new Error(`Insert failed: ${error.message}`);
+Markets created: ${result.marketsCreated}
+Predictions created: ${result.predictionsCreated}
+
+Errors (${result.errors.length}):
+${result.errors.slice(0, 5).join('\n')}
+${result.errors.length > 5 ? `...and ${result.errors.length - 5} more` : ''}
+            `);
           }
-          totalInserted += batch.length;
+        } else {
+          throw new Error(result.message || 'Export failed');
         }
-
-        showError(`✅ Exported ${totalInserted} predictions to Supabase!`, 'success');
-        console.log('[SUPABASE] Exported', totalInserted, 'predictions');
 
       } catch (err) {
         console.error('[SUPABASE] Export failed:', err);
@@ -3123,34 +3231,64 @@ Service key found in: c:/cevict-live/apps/sportsbook-terminal/.env.local
         showAdminModal('Export Failed', `
 Error: ${err.message}
 
-Make sure:
-1. Supabase URL and Service Key are correct
-2. daily_predictions table exists
-3. You have proper RLS policies configured
+Make sure the backend server is running:
+1. Open terminal
+2. cd c:/cevict-live/apps/sportsbook-terminal
+3. node server.js
+
+Then try again.
         `);
+      } finally {
+        setAdminButtonsDisabled(false);
       }
     }
 
     async function archiveFiles() {
-      const msg = `
-📦 Archiving requires the scheduler script
+      setAdminButtonsDisabled(true);
+      showError('📦 Archiving files...', 'success');
 
-Files must be archived by the backend scheduler:
+      try {
+        const response = await fetch('http://localhost:3433/api/archive', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
 
-1. Run in terminal:
-   npx tsx scripts/scheduler.ts
+        const result = await response.json();
 
-2. Scheduler will:
-   ✓ Find predictions*.json in /public
-   ✓ Move to C:\cevict-archive\Probabilityanalyzer\predictions\
-   ✓ Find results*.json in /data/results
-   ✓ Move to C:\cevict-archive\Probabilityanalyzer\results\
+        if (result.success) {
+          showError('✅ Files archived successfully!', 'success');
+          showAdminModal('Archive Complete', `
+✅ Files archived!
+
+OUTPUT:
+${result.output || 'No output'}
+
+ERRORS:
+${result.errors || 'No errors'}
 
 Archive location: C:\cevict-archive\Probabilityanalyzer
-      `;
+          `);
+        } else {
+          throw new Error(result.message || 'Archive failed');
+        }
+      } catch (error) {
+        console.error('[ARCHIVE] API call failed:', error);
+        showError('❌ Archive failed. Make sure server is running (node server.js)');
+        showAdminModal('Archive Failed', `
+❌ Could not archive files
 
-      console.log('[ARCHIVE]', msg);
-      showAdminModal('Archive Files', msg);
+Error: ${error.message}
+
+Make sure the backend server is running:
+1. Open terminal
+2. cd c:/cevict-live/apps/sportsbook-terminal
+3. node server.js
+
+Then try again.
+        `);
+      } finally {
+        setAdminButtonsDisabled(false);
+      }
     }
 
     function showAdminModal(title, content) {
@@ -3206,8 +3344,10 @@ Archive location: C:\cevict-archive\Probabilityanalyzer
     }
 
     async function generateResultsFile() {
+      setAdminButtonsDisabled(true);
       if (allPicks.length === 0) {
         showError('No predictions loaded to generate results');
+        setAdminButtonsDisabled(false);
         return;
       }
 
@@ -3268,6 +3408,7 @@ Expected workflow:
 
       showAdminModal('Results Template Generated', msg);
       console.log('[RESULTS] Template generated with', results.length, 'pending picks');
+      setTimeout(() => setAdminButtonsDisabled(false), 500);
     }
 
     // Call these when switching to strategy tabs

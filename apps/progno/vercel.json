@@ -6,14 +6,14 @@
     },
     {
       "path": "/api/cron/daily-predictions",
-      "schedule": "0 18 * * *"
+      "schedule": "0 14 * * *"
     },
     {
       "path": "/api/cron/daily-results",
       "schedule": "0 8 * * *"
     },
     {
-      "path": "/api/cron/daily-results?attempt=2",
+      "path": "/api/cron/daily-results-retry",
       "schedule": "0 14 * * *"
     },
     {

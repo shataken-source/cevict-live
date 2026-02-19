@@ -25,25 +25,51 @@ CREATE INDEX IF NOT EXISTS idx_pred_daily_summary_date ON public.prediction_dail
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. picks  (daily-predictions cron writes picks here so they survive Vercel cold starts)
 -- ─────────────────────────────────────────────────────────────────────────────
--- Add all columns we need (safe — IF NOT EXISTS prevents errors if already present)
+CREATE TABLE IF NOT EXISTS public.picks (
+  id               BIGSERIAL    PRIMARY KEY,
+  game_id          TEXT,
+  game_date        DATE,
+  game_time        TIMESTAMPTZ,
+  home_team        TEXT,
+  away_team        TEXT,
+  sport            TEXT,
+  league           TEXT,
+  pick             TEXT,
+  confidence       NUMERIC(5,2),
+  odds             INTEGER,
+  is_home          BOOLEAN      DEFAULT true,
+  early_lines      BOOLEAN      DEFAULT false,
+  commence_time    TIMESTAMPTZ,
+  expected_value   NUMERIC(8,4),
+  kelly_fraction   NUMERIC(8,4),
+  status           TEXT         DEFAULT 'pending',
+  result           TEXT,
+  actual_home_score INTEGER,
+  actual_away_score INTEGER,
+  created_at       TIMESTAMPTZ  DEFAULT NOW()
+);
+
+-- Add columns for existing installs that may be missing newer columns
 ALTER TABLE IF EXISTS public.picks
-  ADD COLUMN IF NOT EXISTS game_id        TEXT,
-  ADD COLUMN IF NOT EXISTS game_date      DATE,
-  ADD COLUMN IF NOT EXISTS game_time      TIMESTAMPTZ,          -- used by verify-results cron
-  ADD COLUMN IF NOT EXISTS home_team      TEXT,
-  ADD COLUMN IF NOT EXISTS away_team      TEXT,
-  ADD COLUMN IF NOT EXISTS sport          TEXT,
-  ADD COLUMN IF NOT EXISTS league         TEXT,
-  ADD COLUMN IF NOT EXISTS pick           TEXT,
-  ADD COLUMN IF NOT EXISTS confidence     NUMERIC(5,2),
-  ADD COLUMN IF NOT EXISTS odds           INTEGER,
-  ADD COLUMN IF NOT EXISTS is_home        BOOLEAN DEFAULT true,
-  ADD COLUMN IF NOT EXISTS early_lines    BOOLEAN DEFAULT false,
-  ADD COLUMN IF NOT EXISTS commence_time  TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS expected_value NUMERIC(8,4),
-  ADD COLUMN IF NOT EXISTS kelly_fraction NUMERIC(8,4),
-  ADD COLUMN IF NOT EXISTS status         TEXT DEFAULT 'pending',
-  ADD COLUMN IF NOT EXISTS result         TEXT;                  -- used by verify-results cron (null = pending)
+  ADD COLUMN IF NOT EXISTS game_id          TEXT,
+  ADD COLUMN IF NOT EXISTS game_date        DATE,
+  ADD COLUMN IF NOT EXISTS game_time        TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS home_team        TEXT,
+  ADD COLUMN IF NOT EXISTS away_team        TEXT,
+  ADD COLUMN IF NOT EXISTS sport            TEXT,
+  ADD COLUMN IF NOT EXISTS league           TEXT,
+  ADD COLUMN IF NOT EXISTS pick             TEXT,
+  ADD COLUMN IF NOT EXISTS confidence       NUMERIC(5,2),
+  ADD COLUMN IF NOT EXISTS odds             INTEGER,
+  ADD COLUMN IF NOT EXISTS is_home          BOOLEAN DEFAULT true,
+  ADD COLUMN IF NOT EXISTS early_lines      BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS commence_time    TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS expected_value   NUMERIC(8,4),
+  ADD COLUMN IF NOT EXISTS kelly_fraction   NUMERIC(8,4),
+  ADD COLUMN IF NOT EXISTS status           TEXT DEFAULT 'pending',
+  ADD COLUMN IF NOT EXISTS result           TEXT,
+  ADD COLUMN IF NOT EXISTS actual_home_score INTEGER,
+  ADD COLUMN IF NOT EXISTS actual_away_score INTEGER;
 
 -- Unique constraint for upsert deduplication (daily picks per game+side)
 DO $$
