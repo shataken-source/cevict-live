@@ -116,9 +116,9 @@ export function generateParlays(
     prioritize2Leg = true,   // Default to prioritizing 2-leg
   } = options;
 
-  // Filter high-confidence, non-exotic picks
-  const eligible = picks
-    .filter(p => p.confidence >= minConfidence)
+  // Filter picks separately for 2-leg (higher confidence) and 3-leg (lower confidence)
+  const eligible2Leg = picks
+    .filter(p => p.confidence >= minConfidence2Leg)
     .filter(p => !p.isPremium)
     .map(p => ({
       signalId: p.id,
@@ -133,15 +133,29 @@ export function generateParlays(
       league: p.league || 'General',
     }));
 
-  if (eligible.length < 2) return [];
+  const eligible3Leg = picks
+    .filter(p => p.confidence >= minConfidence3Leg)
+    .filter(p => !p.isPremium)
+    .map(p => ({
+      signalId: p.id,
+      eventId: p.eventId,
+      team: p.league?.includes('NBA') || p.league?.includes('NFL')
+        ? p.eventId.split('-')[0] || 'Team'
+        : 'Side',
+      probability: p.modelProbability,
+      odds: p.decimalOdds,
+      edge: p.modelProbability - (1 / p.decimalOdds),
+      sport: p.league?.split(' ')[0] || 'Sports',
+      league: p.league || 'General',
+    }));
 
   const parlays: ParlayCombination[] = [];
 
-  // Generate 2-leg parlays
-  for (let i = 0; i < eligible.length; i++) {
-    for (let j = i + 1; j < eligible.length; j++) {
-      const leg1 = eligible[i];
-      const leg2 = eligible[j];
+  // Generate 2-leg parlays (using higher confidence threshold)
+  for (let i = 0; i < eligible2Leg.length; i++) {
+    for (let j = i + 1; j < eligible2Leg.length; j++) {
+      const leg1 = eligible2Leg[i];
+      const leg2 = eligible2Leg[j];
 
       const correlation = calculateCorrelation(leg1, leg2);
       const correlationPenalty = 1 - correlation;
@@ -184,13 +198,13 @@ export function generateParlays(
   }
 
   // Generate 3-leg parlays (if enough picks and maxLegs >= 3)
-  if (maxLegs >= 3 && eligible.length >= 3) {
-    for (let i = 0; i < eligible.length; i++) {
-      for (let j = i + 1; j < eligible.length; j++) {
-        for (let k = j + 1; k < eligible.length; k++) {
-          const leg1 = eligible[i];
-          const leg2 = eligible[j];
-          const leg3 = eligible[k];
+  if (maxLegs >= 3 && eligible3Leg.length >= 3) {
+    for (let i = 0; i < eligible3Leg.length; i++) {
+      for (let j = i + 1; j < eligible3Leg.length; j++) {
+        for (let k = j + 1; k < eligible3Leg.length; k++) {
+          const leg1 = eligible3Leg[i];
+          const leg2 = eligible3Leg[j];
+          const leg3 = eligible3Leg[k];
 
           const correlation = (
             calculateCorrelation(leg1, leg2) +
