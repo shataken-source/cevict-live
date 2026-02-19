@@ -1785,12 +1785,12 @@
       }
     }
 
-    // Generate Parlays - Generate all possible combinations with 55%+ confidence picks
+    // Generate Parlays - Generate all possible combinations with 65%+ confidence picks (higher threshold for 2-leg)
     function generateParlays() {
-      // Get ALL picks with 55%+ confidence, including premium
+      // Get picks with 65%+ confidence for better quality parlays
       const eligiblePicks = allPicks.filter(p => {
         const conf = p.confidence || 0;
-        return conf >= 55;
+        return conf >= 65;  // Higher threshold for 2-leg parlays
       });
 
       const parlays = [];
@@ -1800,7 +1800,7 @@
         return [];
       }
 
-      console.log('Generating parlays from', eligiblePicks.length, 'eligible picks');
+      console.log('Generating parlays from', eligiblePicks.length, 'eligible picks (65%+ confidence)');
 
       // Generate ALL 2-leg parlays
       for (let i = 0; i < eligiblePicks.length; i++) {
@@ -1889,10 +1889,10 @@
 
       console.log('Generated', parlays.length, 'parlays');
 
-      // Sort by EV descending and return top 10
+      // Sort by EV descending and return top 20
       return parlays
         .sort((a, b) => b.ev - a.ev)
-        .slice(0, 10);
+        .slice(0, 20);
     }
 
     // Generate Strategies
@@ -1905,7 +1905,7 @@
         parlayList.innerHTML = `
       <div class="empty-state">
         <div class="empty-state-icon">🎯</div>
-        <div>Need 2+ picks with confidence ≥55% to generate parlays.<br>Currently have ${allPicks.filter(p => (p.confidence || 0) >= 55).length} qualifying picks.</div>
+        <div>Need 2+ picks with confidence ≥65% to generate parlays.<br>Currently have ${allPicks.filter(p => (p.confidence || 0) >= 65).length} qualifying picks.</div>
       </div>`;
       } else {
         // Separate 2-leg and 3-leg parlays
