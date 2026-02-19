@@ -1,0 +1,101 @@
+{
+  "date": "2026-02-18",
+  "generatedAt": "2026-02-18T23:48:47.119Z",
+  "count": 10,
+  "message": "Top 10 picks (of 10 games) — Cevict Flex + Triple Alignment — Regular (0-1 days)",
+  "earlyLines": false,
+  "picks": [
+    {
+      "id": "nba-001",
+      "sport": "NBA",
+      "league": "NBA",
+      "home_team": "New York Knicks",
+      "away_team": "Detroit Pistons",
+      "pick": "New York Knicks",
+      "pick_type": "SPREAD",
+      "recommended_line": -4.4,
+      "odds": -110,
+      "confidence": 59,
+      "game_time": "2026-02-20T00:40:00Z",
+      "is_premium": true,
+      "game_id": "0ea61c4bb159036d242d6aa077216586",
+      "expected_value": 45.59,
+      "triple_align": true,
+      "composite_score": 66.4,
+      "mc_win_probability": 0.654,
+      "mc_predicted_score": {
+        "home": 117,
+        "away": 110,
+        "homeRange": [
+          98,
+          136
+        ],
+        "awayRange": [
+          90,
+          129
+        ]
+      },
+      "mc_spread_probability": 0.7626,
+      "mc_total_probability": 0.5568,
+      "mc_iterations": 5000,
+      "value_bet_edge": 23.88,
+      "value_bet_ev": 45.59,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "is_favorite_pick": true,
+      "is_home_pick": true,
+      "calibrated_stake": 10,
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "New York Knicks",
+          "line": -4.4,
+          "edge": 23.88,
+          "probability": 0.763,
+          "expected_value": 45.59,
+          "kelly_fraction": 0.05,
+          "confidence": "very_high"
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 224,
+          "edge": 3.3,
+          "probability": 0.557,
+          "expected_value": 6.3,
+          "kelly_fraction": 0.017,
+          "confidence": "low"
+        }
+      ],
+      "total": {
+        "prediction": "over",
+        "line": 224,
+        "edge": 3.28,
+        "probability": 0.557,
+        "expected_value": 11.36,
+        "average_projected_total": 226.9,
+        "over_probability": 0.557,
+        "under_probability": 0.422,
+        "has_value": true
+      },
+      "arbitrage_opportunity": null,
+      "parlay_suggestions": null,
+      "optimal_stake": null,
+      "bankroll_units": null,
+      "live_monitoring_available": true,
+      "venue": "sportsbook",
+      "market_type": "sports",
+      "timestamp": "2026-02-18T23:48:47.119Z"
+    }
+  ],
+  "summary": {
+    "total_picks": 1,
+    "high_confidence": 1,
+    "medium_confidence": 0,
+    "low_confidence": 0,
+    "plus_ev": 1,
+    "sportsbook_count": 1,
+    "avg_confidence": 59,
+    "avg_edge": 23.88
+  }
+}

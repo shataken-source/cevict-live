@@ -1,0 +1,3287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prognostication Capital - Institutional Probability Trading Terminal</title>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: linear-gradient(135deg, rgba(30, 35, 60, .95), rgba(20, 24, 45, .95));
+      --border-color: rgba(102, 126, 234, 0.25);
+      --accent-primary: #667eea;
+      --accent-secondary: #764ba2;
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.7);
+      --text-muted: rgba(255, 255, 255, 0.5);
+      --success: #00e676;
+      --warning: #ffd600;
+      --danger: #ff5252;
+      --info: #00b0ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Terminal Header */
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 24px;
+      background: linear-gradient(90deg, #0f172a, #1e293b);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      font-weight: 700;
+      color: var(--accent-primary);
+      letter-spacing: 1px;
+      font-size: 1.1em;
+    }
+
+    .brand span {
+      color: var(--text-muted);
+      font-weight: 400;
+      font-size: 0.75em;
+      margin-left: 8px;
+    }
+
+    .mode-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      padding: 8px 16px;
+      margin: 0 4px;
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all .2s ease;
+      font-weight: 500;
+    }
+
+    .mode-btn.active,
+    .mode-btn:hover {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: white;
+    }
+
+    .live-status {
+      display: flex;
+      align-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85em;
+      color: var(--success);
+    }
+
+    #liveDot {
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 0.4;
+        transform: scale(0.8);
+      }
+    }
+
+    /* Main Layout */
+    .container {
+      display: flex;
+      height: calc(100vh - 60px);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 420px;
+      border-right: 1px solid var(--border-color);
+      padding: 20px;
+      overflow-y: auto;
+      background: var(--bg-secondary);
+    }
+
+    .sidebar-header {
+      margin-bottom: 20px;
+    }
+
+    .sidebar-title {
+      font-size: 0.9em;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    /* File Upload */
+    .file-section {
+      background: rgba(102, 126, 234, 0.05);
+      border: 1px dashed var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+      width: 100%;
+    }
+
+    .file-input-wrapper input[type=file] {
+      position: absolute;
+      left: -9999px;
+    }
+
+    .file-input-label {
+      display: block;
+      padding: 12px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      color: var(--text-secondary);
+      transition: all .2s ease;
+    }
+
+    .file-input-label:hover {
+      border-color: var(--accent-primary);
+      color: var(--text-primary);
+    }
+
+    .btn-primary {
+      background: var(--accent-primary);
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      transition: all .2s ease;
+      font-weight: 500;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .btn-primary:hover {
+      background: #5a6ee1;
+      transform: translateY(-1px);
+    }
+
+    /* Filter Tabs */
+    .filter-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      background: rgba(102, 126, 234, 0.1);
+      border: 1px solid var(--border-color);
+      padding: 6px 12px;
+      border-radius: 4px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.8em;
+      transition: all .2s ease;
+    }
+
+    .filter-btn:hover,
+    .filter-btn.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: white;
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 0.8em;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--accent-primary);
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 0.75em;
+    }
+
+    /* Error Banner */
+    .error-banner {
+      background: rgba(255, 82, 82, 0.15);
+      border: 1px solid rgba(255, 82, 82, 0.4);
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 6px;
+      color: var(--danger);
+      font-size: 0.85em;
+      display: none;
+    }
+
+    .error-banner.show {
+      display: block;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Pick Cards */
+    .pick-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      position: relative;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .pick-card:hover {
+      box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+      border-color: var(--accent-primary);
+    }
+
+    .pick-card.selected {
+      border-color: var(--success);
+      box-shadow: 0 0 20px rgba(0, 230, 118, 0.2);
+    }
+
+    .pick-card.premium-locked {
+      /* Premium styling only - no blur */
+      border-color: var(--accent-secondary);
+    }
+
+    .pick-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .pick-sport {
+      font-size: 0.75em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.65em;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-premium {
+      background: var(--accent-secondary);
+      color: white;
+    }
+
+    .badge-parlay {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .badge-teaser {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    /* Pick Type Badges */
+    .badge-spread {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: #000;
+    }
+
+    .badge-moneyline {
+      background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+      color: #000;
+    }
+
+    .badge-total {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      color: #000;
+    }
+
+    .badge-team_total {
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      color: #000;
+    }
+
+    .badge-prop {
+      background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+      color: #000;
+    }
+
+    .pick-teams {
+      font-size: 1em;
+      font-weight: 600;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    .pick-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    /* Confidence Colors */
+    .conf-high {
+      color: var(--success);
+      font-weight: 700;
+    }
+
+    .conf-medium {
+      color: var(--warning);
+      font-weight: 700;
+    }
+
+    .conf-low {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    .pick-odds {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .pick-details {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .pick-detail-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* EV Meter */
+    .ev-meter {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .ev-fill {
+      height: 100%;
+      transition: width 0.6s ease;
+      border-radius: 2px;
+    }
+
+    .ev-fill.positive {
+      background: var(--success);
+    }
+
+    .ev-fill.negative {
+      background: var(--danger);
+    }
+
+    /* Main Panel */
+    .main-panel {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .panel-header {
+      margin-bottom: 24px;
+    }
+
+    .panel-title {
+      font-size: 1.3em;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .panel-subtitle {
+      color: var(--text-muted);
+      font-size: 0.85em;
+    }
+
+    /* Analysis Card */
+    .analysis-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-label {
+      font-size: 0.75em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 12px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95em;
+      transition: all .2s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    /* Results Grid */
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .result-card {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .result-label {
+      font-size: 0.7em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .result-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.4em;
+      font-weight: 600;
+    }
+
+    .result-value.positive {
+      color: var(--success);
+    }
+
+    .result-value.negative {
+      color: var(--danger);
+    }
+
+    .result-value.warning {
+      color: var(--warning);
+    }
+
+    /* Bet Recommendation */
+    .bet-recommendation {
+      background: linear-gradient(135deg, rgba(0, 230, 118, 0.15), rgba(0, 176, 255, 0.1));
+      border: 2px solid var(--success);
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 16px;
+      text-align: center;
+    }
+
+    .bet-label {
+      font-size: 0.8em;
+      color: var(--success);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .bet-details {
+      font-size: 1.1em;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .bet-amount {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2.5em;
+      font-weight: 700;
+      color: var(--success);
+      margin-bottom: 8px;
+    }
+
+    .bet-odds {
+      font-size: 0.9em;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .bet-verdict {
+      font-size: 0.85em;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    .bet-verdict.positive {
+      background: rgba(0, 230, 118, 0.2);
+      color: var(--success);
+    }
+
+    .bet-verdict.negative {
+      background: rgba(255, 82, 82, 0.2);
+      color: var(--danger);
+    }
+
+    /* Teaser Pick Selection */
+    .teaser-pick-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .teaser-pick-item:hover {
+      background: rgba(102, 126, 234, 0.1);
+    }
+
+    .teaser-pick-item.selected {
+      background: rgba(0, 230, 118, 0.1);
+      border: 1px solid var(--success);
+    }
+
+    .teaser-pick-checkbox {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--success);
+    }
+
+    .teaser-pick-info {
+      flex: 1;
+      font-size: 0.85em;
+    }
+
+    .teaser-pick-line {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-primary);
+      font-weight: 600;
+    }
+
+    /* Kelly Output */
+    .kelly-card {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+      border: 1px solid var(--accent-primary);
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+
+    .kelly-title {
+      font-size: 0.8em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .kelly-amount {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2em;
+      font-weight: 700;
+      color: var(--accent-primary);
+    }
+
+    .kelly-details {
+      display: flex;
+      gap: 24px;
+      margin-top: 12px;
+      font-size: 0.8em;
+      color: var(--text-muted);
+    }
+
+    /* Strategy Panel */
+    .strategy-panel {
+      margin-top: 24px;
+    }
+
+    .strategy-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+
+    .strategy-section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .strategy-title {
+      font-size: 0.9em;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Parlay Builder */
+    .parlay-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 0.85em;
+    }
+
+    .parlay-ev {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    .parlay-ev.positive {
+      color: var(--success);
+    }
+
+    .parlay-ev.negative {
+      color: var(--danger);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 3em;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    /* Loading */
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border-color);
+      border-top-color: var(--accent-primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--accent-primary);
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .container {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: 50vh;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .results-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Share Button */
+    .share-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.1em;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .share-btn:hover {
+      opacity: 1;
+      color: var(--accent-primary);
+    }
+
+    /* Premium Overlay */
+    .premium-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 14, 26, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .premium-btn {
+      background: var(--accent-secondary);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    /* Bankroll Display */
+    .bankroll-display {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 16px;
+      background: rgba(0, 230, 118, 0.1);
+      border: 1px solid var(--success);
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .bankroll-label {
+      font-size: 0.75em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .bankroll-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.3em;
+      font-weight: 600;
+      color: var(--success);
+    }
+
+    /* Exposure Bars */
+    .exposure-bar {
+      margin-top: 16px;
+    }
+
+    .exposure-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .exposure-track {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .exposure-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .exposure-fill.safe {
+      background: var(--success);
+    }
+
+    .exposure-fill.warning {
+      background: var(--warning);
+    }
+
+    .exposure-fill.danger {
+      background: var(--danger);
+    }
+
+    /* Results & Reports */
+    .stat-box {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .report-section {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .report-title {
+      font-size: 0.85em;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .report-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.85em;
+    }
+
+    .report-row:last-child {
+      border-bottom: none;
+    }
+
+    .result-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75em;
+      font-weight: 600;
+    }
+
+    .result-status.win {
+      background: rgba(0, 230, 118, 0.2);
+      color: var(--success);
+    }
+
+    .result-status.loss {
+      background: rgba(255, 82, 82, 0.2);
+      color: var(--danger);
+    }
+
+    .result-status.pending {
+      background: rgba(255, 187, 51, 0.2);
+      color: var(--warning);
+    }
+
+    /* File Upload Zone */
+    .upload-zone {
+      border: 2px dashed var(--border-color);
+      border-radius: 8px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--accent-primary);
+      background: rgba(102, 126, 234, 0.05);
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Terminal Header -->
+  <div class="terminal-header">
+    <div class="brand">
+      CEVICT.COM
+      <span>Institutional Probability Trading Terminal</span>
+    </div>
+
+    <div>
+      <button class="mode-btn active" onclick="setMode('sports')" data-mode="sports">Sportsbook</button>
+      <button class="mode-btn" onclick="setMode('kalshi')" data-mode="kalshi">Kalshi</button>
+      <button class="mode-btn" onclick="setMode('polymarket')" data-mode="polymarket">Polymarket</button>
+    </div>
+
+    <div class="live-status">
+      <span id="liveDot"></span>
+      <span id="lastUpdate">LIVE</span>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <div class="container">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+
+      <!-- Error Container -->
+      <div id="errorContainer" class="error-banner"></div>
+
+      <!-- File Upload Section -->
+      <div class="file-section">
+        <div class="sidebar-title">Load Predictions</div>
+        <div class="file-input-wrapper">
+          <input type="file" id="fileInput" accept=".json" onchange="handleFileSelect(event)" />
+          <label for="fileInput" class="file-input-label">
+            📁 Drop predictions file or click to browse
+          </label>
+        </div>
+      </div>
+
+      <!-- Refresh Odds Button -->
+      <div class="file-section" id="refreshSection" style="display: none;">
+        <div class="sidebar-title">Live Odds</div>
+        <button class="btn-primary" onclick="refreshOdds()" id="refreshOddsBtn">
+          🔄 Refresh Odds
+        </button>
+        <div style="font-size: 0.75em; color: var(--text-muted); margin-top: 8px; text-align: center;">
+          Compare current lines vs prediction time
+        </div>
+        <div id="lastOddsRefresh"
+          style="font-size: 0.7em; color: var(--text-muted); margin-top: 4px; text-align: center;">
+          Never refreshed
+        </div>
+      </div>
+
+      <!-- Admin Actions -->
+      <div class="file-section" id="adminSection" style="display: none;">
+        <div class="sidebar-title">Admin Actions</div>
+        <button class="btn-primary" onclick="runSchedulerNow()"
+          style="margin-bottom: 8px; background: var(--accent-secondary);">
+          ▶️ Run Scheduler Now
+        </button>
+        <button class="btn-primary" onclick="exportToSupabase()" style="margin-bottom: 8px; background: #4facfe;">
+          ☁️ Export to Supabase
+        </button>
+        <button class="btn-primary" onclick="archiveFiles()" style="margin-bottom: 8px; background: #fa709a;">
+          📦 Archive Files
+        </button>
+        <button class="btn-primary" onclick="generateResultsFile()" style="background: #43e97b; color: #000;">
+          📊 Generate Results
+        </button>
+        <div style="font-size: 0.7em; color: var(--text-muted); margin-top: 8px; text-align: center;">
+          Results auto-generate at 3:00 AM daily
+        </div>
+      </div>
+
+      <!-- Bankroll Display -->
+      <div class="bankroll-display" id="bankrollDisplay" style="display: none;">
+        <div>
+          <div class="bankroll-label">Bankroll</div>
+          <div class="bankroll-value" id="bankrollValue">$100,000</div>
+        </div>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="stats-bar" id="statsBar" style="display: none;">
+        <div class="stat-item">
+          <div class="stat-value" id="pickCount">0</div>
+          <div class="stat-label">Picks</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="avgEdge">0%</div>
+          <div class="stat-label">Avg Edge</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="highConfCount">0</div>
+          <div class="stat-label">High Conf</div>
+        </div>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="filter-tabs" id="filterTabs" style="display: none;">
+        <button class="filter-btn active" onclick="filterPicks('all')">All</button>
+        <button class="filter-btn" onclick="filterPicks('high')">High 65%+</button>
+        <button class="filter-btn" onclick="filterPicks('medium')">Med 55-64%</button>
+        <button class="filter-btn" onclick="filterPicks('ev')">+EV Only</button>
+        <button class="filter-btn" onclick="filterPicks('nfl')">NFL</button>
+        <button class="filter-btn" onclick="filterPicks('nba')">NBA</button>
+        <button class="filter-btn" onclick="filterPicks('nhl')">NHL</button>
+        <button class="filter-btn" onclick="filterPicks('mlb')">MLB</button>
+      </div>
+
+      <!-- Picks List -->
+      <div id="picksList">
+        <div class="empty-state">
+          <div class="empty-state-icon">📊</div>
+          <div>Load predictions to view picks</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Main Panel -->
+    <div class="main-panel">
+
+      <div class="panel-header">
+        <div class="panel-title">Pick Analysis & Capital Allocation</div>
+        <div class="panel-subtitle">Kelly Criterion • EV Analysis • Portfolio Optimization</div>
+      </div>
+
+      <!-- Analysis Card -->
+      <div class="analysis-card">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label class="form-label">Event</label>
+            <input type="text" id="eventName" class="form-input" placeholder="Select a pick or enter manually" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Model Probability (%)</label>
+            <input type="number" id="modelProb" class="form-input" placeholder="e.g., 58" step="0.1" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Market Odds</label>
+            <input type="text" id="marketOdds" class="form-input" placeholder="-110 or +150" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Bankroll ($)</label>
+            <input type="number" id="bankroll" class="form-input" placeholder="100000" value="100000" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Kelly Fraction</label>
+            <input type="number" id="kellyFraction" class="form-input" placeholder="0.33" value="0.33" step="0.01"
+              min="0.1" max="1" />
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="analyze()">Run Analysis</button>
+
+        <!-- Results -->
+        <div class="results-grid" id="resultsGrid" style="display: none;">
+          <div class="result-card">
+            <div class="result-label">Expected Value</div>
+            <div class="result-value" id="evResult">--</div>
+          </div>
+          <div class="result-card">
+            <div class="result-label">Edge vs Market</div>
+            <div class="result-value" id="edgeResult">--</div>
+          </div>
+          <div class="result-card">
+            <div class="result-label">Implied Probability</div>
+            <div class="result-value" id="impliedResult">--</div>
+          </div>
+        </div>
+
+        <!-- Kelly Output -->
+        <div class="kelly-card" id="kellyCard" style="display: none;">
+          <div class="kelly-title">Recommended Position Size (Kelly Criterion)</div>
+          <div class="kelly-amount" id="kellyAmount">$0</div>
+          <div class="kelly-details">
+            <span>Full Kelly: <span id="fullKelly">0%</span></span>
+            <span>Edge: <span id="kellyEdge">0%</span></span>
+            <span>Risk: <span id="riskPct">0%</span></span>
+          </div>
+          <div class="ev-meter" style="margin-top: 16px; height: 8px;">
+            <div id="kellyBar" class="ev-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- BET RECOMMENDATION -->
+        <div class="bet-recommendation" id="betRecommendation" style="display: none;">
+          <div class="bet-label">🎯 BET RECOMMENDATION</div>
+          <div class="bet-details" id="betDetails">Select a pick to see recommendation</div>
+          <div class="bet-amount" id="betAmountDisplay">$0</div>
+          <div class="bet-odds" id="betOddsDisplay"></div>
+          <div class="bet-verdict" id="betVerdict"></div>
+        </div>
+
+        <!-- Exposure Warnings -->
+        <div class="exposure-bar" id="exposureBar" style="display: none;">
+          <div class="exposure-label">
+            <span>Portfolio Exposure</span>
+            <span id="exposureText">0%</span>
+          </div>
+          <div class="exposure-track">
+            <div id="exposureFill" class="exposure-fill safe" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Strategy Panel -->
+      <div class="strategy-panel">
+        <div class="panel-title">Strategy Optimizer</div>
+        <div class="panel-subtitle">Parlay • Teaser • Cross-Venue Arbitrage</div>
+
+        <div class="strategy-tabs">
+          <button class="mode-btn active" onclick="showStrategy('picks')">Picks</button>
+          <button class="mode-btn" onclick="showStrategy('parlay')">Parlay Builder</button>
+          <button class="mode-btn" onclick="showStrategy('teaser')">Teaser Optimizer</button>
+          <button class="mode-btn" onclick="showStrategy('results')">Results & Reports</button>
+          <button class="mode-btn" onclick="showStrategy('kalshi')">Kalshi</button>
+          <button class="mode-btn" onclick="showStrategy('polymarket')">Polymarket</button>
+        </div>
+
+        <!-- Parlay Builder -->
+        <div class="strategy-section" id="parlaySection">
+          <div class="strategy-title">Optimal Parlay Combinations (2 & 3 leg, sorted by EV)</div>
+          <div id="parlayList">
+            <div class="empty-state">
+              <div class="empty-state-icon">🎯</div>
+              <div>Load high-confidence picks (55%+) to generate parlays</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Teaser Optimizer -->
+        <div class="strategy-section" id="teaserSection" style="display: none;">
+          <div class="strategy-title">Best Teaser Opportunities (Auto-Generated)</div>
+          <div id="teaserList" style="max-height: 400px; overflow-y: auto;">
+            <div class="empty-state">
+              <div class="empty-state-icon">🏈</div>
+              <div>Load predictions to see best teaser combinations</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results & Reports -->
+        <div class="strategy-section" id="resultsSection" style="display: none;">
+          <div class="strategy-title">Results Analysis & Performance Reports</div>
+
+          <div class="file-upload" style="margin-bottom: 16px;">
+            <input type="file" id="resultsFile" accept=".json" onchange="handleResultsFile(event)" hidden>
+            <div class="upload-zone" onclick="document.getElementById('resultsFile').click()">
+              <div>📁 Load Graded Results File</div>
+              <div style="font-size: 0.8em; color: var(--text-muted);">Click to browse results JSON</div>
+            </div>
+          </div>
+
+          <div id="resultsSummary" style="display: none;">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+              <div class="stat-box">
+                <div class="stat-label">Total Picks</div>
+                <div class="stat-value" id="resTotal">0</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Win Rate</div>
+                <div class="stat-value" id="resWinRate">0%</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Pending</div>
+                <div class="stat-value" id="resPending">0</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Graded</div>
+                <div class="stat-value" id="resGraded">0</div>
+              </div>
+            </div>
+
+            <!-- ROI Summary -->
+            <div class="report-section" style="margin-bottom: 20px;">
+              <div class="report-title">💰 ROI Analysis (Simulated with $100/unit bets)</div>
+              <div id="roiReport"></div>
+            </div>
+
+            <!-- Streak Analysis -->
+            <div class="report-section" style="margin-bottom: 20px;">
+              <div class="report-title">🔥 Win/Loss Streaks</div>
+              <div id="streakReport"></div>
+            </div>
+
+            <!-- Pick Type Performance -->
+            <div class="report-section" style="margin-bottom: 20px;">
+              <div class="report-title">📊 Performance by Pick Type</div>
+              <div id="pickTypeReport"></div>
+            </div>
+
+            <div class="report-section" style="margin-bottom: 20px;">
+              <div class="report-title">Performance by Confidence Level</div>
+              <div id="confReport"></div>
+            </div>
+
+            <div class="report-section" style="margin-bottom: 20px;">
+              <div class="report-title">Performance by Sport</div>
+              <div id="sportReport"></div>
+            </div>
+
+            <!-- Daily Trends -->
+            <div class="report-section" style="margin-bottom: 20px;">
+              <div class="report-title">📈 Daily Performance Trends</div>
+              <div id="trendReport"></div>
+            </div>
+
+            <div class="report-section">
+              <div class="report-title">Recent Results</div>
+              <div id="recentResults" style="max-height: 300px; overflow-y: auto;"></div>
+            </div>
+          </div>
+
+          <div id="resultsEmpty" class="empty-state">
+            <div class="empty-state-icon">📊</div>
+            <div>Load graded results to analyze performance<br><br>
+              <span style="font-size: 0.85em; color: var(--text-muted);">
+                Results files are auto-generated at 3:00 AM daily<br>
+                Archive location: C:\cevict-archive\Probabilityanalyzer
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kalshi Strategies -->
+        <div class="strategy-section" id="kalshiSection" style="display: none;">
+          <div class="strategy-title">Kalshi Special Strategies</div>
+          <div id="kalshiList">
+            <div class="empty-state">
+              <div class="empty-state-icon">📈</div>
+              <div>Calendar spreads • Volatility compression • YES/NO imbalance</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Polymarket Arb -->
+        <div class="strategy-section" id="polymarketSection" style="display: none;">
+          <div class="strategy-title">Polymarket Cross-Venue Arbitrage</div>
+          <div id="polymarketList">
+            <div class="empty-state">
+              <div class="empty-state-icon">⚡</div>
+              <div>Liquidity sniping • Event drift • Cross-platform mispricing</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Global State
+    let allPicks = [];
+    let currentMode = 'sports';
+    let userIsPro = false;
+    let selectedPick = null;
+    let portfolio = {
+      bankroll: 100000,
+      currentDrawdown: 0,
+      exposureByEvent: {},
+      exposureByLeague: {},
+      exposureByVenue: { sportsbook: 0, kalshi: 0, polymarket: 0 }
+    };
+
+    // Constants
+    const MAX_EVENT_EXPOSURE = 0.05;
+    const MAX_LEAGUE_EXPOSURE = 0.15;
+    const MAX_VENUE_EXPOSURE = 0.40;
+
+    // Mode Switching
+    function setMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.mode-btn[data-mode]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+      renderPicksList();
+    }
+
+    // Error Handling
+    function showError(message, type = 'error') {
+      const container = document.getElementById('errorContainer');
+      container.textContent = message;
+      container.className = `error-banner show ${type}`;
+      setTimeout(() => container.className = 'error-banner', 5000);
+    }
+
+    // File Loading
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+
+          if (data.picks && Array.isArray(data.picks)) {
+            allPicks = data.picks.map((pick, idx) => ({
+              ...pick,
+              id: pick.id || `pick-${idx}`,
+              venue: pick.venue || 'sportsbook',
+              market_type: pick.market_type || 'sports'
+            }));
+
+            document.getElementById('bankrollDisplay').style.display = 'flex';
+            document.getElementById('statsBar').style.display = 'flex';
+            document.getElementById('filterTabs').style.display = 'flex';
+            document.getElementById('refreshSection').style.display = 'block';
+            document.getElementById('adminSection').style.display = 'block';
+
+            updateStats();
+            renderPicksList();
+            generateStrategies();
+            showError('Predictions loaded successfully', 'success');
+          } else {
+            throw new Error('Invalid format: missing picks array');
+          }
+        } catch (err) {
+          showError('Invalid JSON: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Confidence Color Class
+    function getConfidenceClass(confidence) {
+      if (confidence >= 65) return 'conf-high';
+      if (confidence >= 55) return 'conf-medium';
+      return 'conf-low';
+    }
+
+    // Format Odds
+    function formatOdds(odds) {
+      if (odds > 0) return `+${odds}`;
+      return odds.toString();
+    }
+
+    // Convert to Decimal Odds
+    function toDecimalOdds(odds) {
+      return odds > 0 ? (odds / 100) + 1 : (100 / Math.abs(odds)) + 1;
+    }
+
+    // Calculate Implied Probability
+    function getImpliedProbability(odds) {
+      const decimal = toDecimalOdds(odds);
+      return 1 / decimal;
+    }
+
+    // Update Stats
+    function updateStats() {
+      const count = allPicks.length;
+      const highConf = allPicks.filter(p => (p.confidence || 0) >= 65).length;
+
+      const avgEdge = allPicks.reduce((sum, p) => {
+        const implied = getImpliedProbability(p.odds || -110);
+        const model = (p.mc_win_probability || (p.confidence || 0) / 100);
+        return sum + (model - implied);
+      }, 0) / (count || 1);
+
+      document.getElementById('pickCount').textContent = count;
+      document.getElementById('highConfCount').textContent = highConf;
+      document.getElementById('avgEdge').textContent = (avgEdge * 100).toFixed(1) + '%';
+    }
+
+    // Filter Picks
+    let currentFilter = 'all';
+    function filterPicks(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(filter) ||
+          (filter === 'ev' && btn.textContent.includes('EV')));
+      });
+      renderPicksList();
+      // Regenerate strategies when filter changes (for teaser/parlay tabs)
+      generateStrategies();
+    }
+
+    // Render Picks
+    function renderPicksList() {
+      const list = document.getElementById('picksList');
+      console.log('renderPicksList called, allPicks.length:', allPicks.length);
+
+      if (!allPicks.length) {
+        list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <div>Load predictions to view picks</div>
+      </div>`;
+        return;
+      }
+
+      let filtered = allPicks.filter(p => {
+        if (currentMode === 'sports') return true;
+        return p.market_type === currentMode || p.venue === currentMode;
+      });
+
+      console.log('Filtered picks:', filtered.length);
+
+      // Apply confidence/EV filter
+      if (currentFilter === 'high') {
+        filtered = filtered.filter(p => (p.confidence || 0) >= 65);
+      } else if (currentFilter === 'medium') {
+        filtered = filtered.filter(p => {
+          const c = p.confidence || 0;
+          return c >= 55 && c < 65;
+        });
+      } else if (currentFilter === 'ev') {
+        filtered = filtered.filter(p => {
+          const implied = getImpliedProbability(p.odds || -110);
+          const model = p.mc_win_probability || (p.confidence || 0) / 100;
+          return model > implied;
+        });
+      } else if (currentFilter === 'nhl') {
+        filtered = filtered.filter(p => {
+          const league = (p.league || '').toLowerCase();
+          const sport = (p.sport || '').toLowerCase();
+          return league.includes('nhl') || sport.includes('nhl') || league.includes('hockey');
+        });
+      } else if (currentFilter === 'nba') {
+        filtered = filtered.filter(p => {
+          const league = (p.league || '').toLowerCase();
+          const sport = (p.sport || '').toLowerCase();
+          return league.includes('nba') || sport.includes('nba') || league.includes('basketball');
+        });
+      } else if (currentFilter === 'nfl') {
+        filtered = filtered.filter(p => {
+          const league = (p.league || '').toLowerCase();
+          const sport = (p.sport || '').toLowerCase();
+          return league.includes('nfl') || sport.includes('nfl') || league.includes('football');
+        });
+      } else if (currentFilter === 'mlb') {
+        filtered = filtered.filter(p => {
+          const league = (p.league || '').toLowerCase();
+          const sport = (p.sport || '').toLowerCase();
+          return league.includes('mlb') || sport.includes('mlb') || league.includes('baseball');
+        });
+      }
+
+      // Sort by confidence
+      filtered.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+
+      if (filtered.length === 0) {
+        list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🔍</div>
+        <div>No picks match current filter</div>
+      </div>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map((pick, idx) => {
+        const confClass = getConfidenceClass(pick.confidence || 0);
+        const isPremium = pick.is_premium && !userIsPro;
+        const isSelected = selectedPick && selectedPick.id === pick.id;
+
+        const implied = getImpliedProbability(pick.odds || -110);
+        const model = pick.mc_win_probability || (pick.confidence || 0) / 100;
+        const edge = (model - implied) * 100;
+        const ev = (model * (toDecimalOdds(pick.odds || -110) - 1)) - (1 - model);
+
+        const evWidth = Math.min(Math.abs(edge) * 3, 100);
+        const evColor = edge > 0 ? 'positive' : 'negative';
+
+        // Get line movement info
+        const lineMove = getLineMovement(pick);
+        const moveBadge = lineMove ? `
+          <span style="font-size: 0.7em; padding: 2px 6px; border-radius: 4px;
+            background: ${lineMove.isFavorable ? 'rgba(0, 230, 118, 0.2)' : 'rgba(255, 82, 82, 0.2)'};
+            color: ${lineMove.isFavorable ? '#00e676' : '#ff5252'};">
+            ${lineMove.arrow} ${lineMove.text}
+          </span>
+        ` : '';
+
+        return `
+      <div class="pick-card ${isPremium ? 'premium-locked' : ''} ${isSelected ? 'selected' : ''}"
+           onclick="selectPick('${pick.id}')">
+        ${!isPremium ? `<button class="share-btn" onclick="sharePick(event, '${pick.id}')">🔗</button>` : ''}
+
+        <div class="pick-header">
+          <div class="pick-sport">${pick.league || pick.sport || 'Sports'}</div>
+          <div>
+            ${pick.is_premium ? '<span class="badge badge-premium">PRO</span>' : ''}
+            ${pick.type === 'parlay' ? '<span class="badge badge-parlay">PARLAY</span>' : ''}
+            ${pick.type === 'teaser' ? '<span class="badge badge-teaser">TEASER</span>' : ''}
+            ${pick.pick_type ? `<span class="badge badge-${pick.pick_type.toLowerCase()}">${pick.pick_type}</span>` : ''}
+          </div>
+        </div>
+
+        <div class="pick-teams">${pick.home_team || pick.team} vs ${pick.away_team || pick.opponent || 'Opponent'}</div>
+
+        <div class="pick-meta">
+          <div class="${confClass}">${pick.confidence || 0}% Confidence</div>
+          <div class="pick-odds">${formatOdds(pick.odds || -110)} ${moveBadge}</div>
+        </div>
+
+        <div class="pick-details">
+          <div class="pick-detail-item">
+            <span>EV: ${ev > 0 ? '+' : ''}${ev.toFixed(2)}</span>
+          </div>
+          <div class="pick-detail-item">
+            <span>Edge: ${edge > 0 ? '+' : ''}${edge.toFixed(1)}%</span>
+          </div>
+          ${pick.expected_value ? `<div class="pick-detail-item">$${pick.expected_value.toFixed(0)} E{x}</div>` : ''}
+        </div>
+
+        <div class="ev-meter">
+          <div class="ev-fill ${evColor}" style="width: ${evWidth}%"></div>
+        </div>
+
+        ${isPremium ? `
+          <div class="premium-overlay" style="display: none;">
+            <div>🔒 Premium Pick</div>
+            <button class="premium-btn" onclick="unlockPro(event)">Unlock Pro</button>
+          </div>
+        ` : ''}
+      </div>
+    `;
+      }).join('');
+    }
+
+    // Select Pick
+    function selectPick(pickId) {
+      const pick = allPicks.find(p => p.id === pickId);
+      if (!pick) return;
+
+      selectedPick = pick;
+
+      // Use the appropriate probability based on pick type
+      let modelProb = pick.mc_win_probability || 0;
+      if (pick.pick_type === 'SPREAD' && pick.mc_spread_probability) {
+        modelProb = pick.mc_spread_probability;
+      } else if (pick.pick_type === 'TOTAL' && pick.mc_total_probability) {
+        modelProb = pick.mc_total_probability;
+      }
+
+      document.getElementById('eventName').value = `${pick.home_team || pick.team} vs ${pick.away_team || pick.opponent || 'Opponent'}`;
+      document.getElementById('modelProb').value = Math.round(modelProb * 100);
+      document.getElementById('marketOdds').value = pick.odds || -110;
+
+      renderPicksList(); // Update selection styling
+
+      // Delay analyze to ensure DOM values are set
+      setTimeout(() => analyze(), 50);
+    }
+
+    // Share Pick
+    function sharePick(event, pickId) {
+      event.stopPropagation();
+      const url = `${window.location.origin}${window.location.pathname}?pick=${pickId}`;
+      navigator.clipboard.writeText(url);
+      showError('Pick link copied to clipboard', 'success');
+    }
+
+    // Unlock Pro
+    function unlockPro(event) {
+      event.stopPropagation();
+      userIsPro = true;
+      renderPicksList();
+      showError('Pro features unlocked!', 'success');
+    }
+
+    // Kelly Criterion Calculation
+    function fullKelly(p, odds) {
+      const b = odds - 1;
+      const q = 1 - p;
+      if (b <= 0) return 0;
+      return (b * p - q) / b;
+    }
+
+    // Analyze
+    function analyze() {
+      const prob = parseFloat(document.getElementById('modelProb').value) / 100;
+      const oddsInput = document.getElementById('marketOdds').value;
+      const bankroll = parseFloat(document.getElementById('bankroll').value) || 100000;
+      const kellyFrac = parseFloat(document.getElementById('kellyFraction').value) || 0.33;
+
+      if (!prob || !oddsInput) {
+        showError('Please enter probability and odds');
+        return;
+      }
+
+      const odds = parseFloat(oddsInput);
+      const decimalOdds = toDecimalOdds(odds);
+      const implied = 1 / decimalOdds;
+      const edge = prob - implied;
+      const ev = (prob * (decimalOdds - 1)) - (1 - prob);
+
+      // Display results
+      document.getElementById('resultsGrid').style.display = 'grid';
+      document.getElementById('kellyCard').style.display = 'block';
+
+      const evEl = document.getElementById('evResult');
+      evEl.textContent = (ev > 0 ? '+' : '') + (ev * 100).toFixed(2) + '%';
+      evEl.className = 'result-value ' + (ev > 0 ? 'positive' : ev < 0 ? 'negative' : '');
+
+      const edgeEl = document.getElementById('edgeResult');
+      edgeEl.textContent = (edge > 0 ? '+' : '') + (edge * 100).toFixed(2) + '%';
+      edgeEl.className = 'result-value ' + (edge > 0 ? 'positive' : edge < 0 ? 'negative' : 'warning');
+
+      document.getElementById('impliedResult').textContent = (implied * 100).toFixed(1) + '%';
+
+      // Kelly calculation
+      const rawKelly = fullKelly(prob, decimalOdds);
+      const adjustedKelly = Math.max(0, rawKelly * kellyFrac);
+      const stake = adjustedKelly * bankroll;
+
+      document.getElementById('kellyAmount').textContent = '$' + stake.toFixed(2);
+      document.getElementById('fullKelly').textContent = (rawKelly * 100).toFixed(1) + '%';
+      document.getElementById('kellyEdge').textContent = (edge * 100).toFixed(1) + '%';
+      document.getElementById('riskPct').textContent = (adjustedKelly * 100).toFixed(2) + '%';
+
+      // Bet recommendation
+      const betRec = document.getElementById('betRecommendation');
+      const betDetails = document.getElementById('betDetails');
+      const betAmountDisplay = document.getElementById('betAmountDisplay');
+      const betOddsDisplay = document.getElementById('betOddsDisplay');
+      const betVerdict = document.getElementById('betVerdict');
+
+      betRec.style.display = 'block';
+
+      if (selectedPick) {
+        const pickText = selectedPick.pick || `${selectedPick.home_team} ${selectedPick.pick_type === 'SPREAD' ? selectedPick.recommended_line : ''}`;
+        betDetails.textContent = `Bet on: ${pickText}`;
+        betOddsDisplay.textContent = `Odds: ${formatOdds(odds)} | Model: ${(prob * 100).toFixed(1)}% vs Market: ${(implied * 100).toFixed(1)}%`;
+      }
+
+      betAmountDisplay.textContent = '$' + stake.toFixed(2);
+
+      if (ev > 0) {
+        betVerdict.textContent = '✓ VALUE BET - Proceed';
+        betVerdict.className = 'bet-verdict positive';
+      } else {
+        betVerdict.textContent = '✗ No Edge - Skip';
+        betVerdict.className = 'bet-verdict negative';
+      }
+
+      // Exposure check
+      updateExposure(stake);
+    }
+
+    // Update Exposure Display
+    function updateExposure(newStake) {
+      const totalExposure = Object.values(portfolio.exposureByEvent).reduce((a, b) => a + b, 0) + newStake;
+      const exposurePct = (totalExposure / portfolio.bankroll) * 100;
+
+      document.getElementById('exposureBar').style.display = 'block';
+      document.getElementById('exposureText').textContent = exposurePct.toFixed(1) + '%';
+      document.getElementById('exposureFill').style.width = Math.min(exposurePct * 2, 100) + '%';
+
+      const fill = document.getElementById('exposureFill');
+      fill.className = 'exposure-fill ' + (exposurePct < 20 ? 'safe' : exposurePct < 50 ? 'warning' : 'danger');
+    }
+
+    // Strategy Tabs
+    function showStrategy(strategy) {
+      if (strategy === 'picks') {
+        // Hide all strategy sections to show regular picks
+        document.querySelectorAll('.strategy-section').forEach(s => s.style.display = 'none');
+        // Re-render picks list to ensure sidebar shows current picks
+        renderPicksList();
+      } else {
+        document.querySelectorAll('.strategy-section').forEach(s => s.style.display = 'none');
+        document.getElementById(strategy + 'Section').style.display = 'block';
+      }
+
+      document.querySelectorAll('.strategy-tabs .mode-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.toLowerCase().includes(strategy)) btn.classList.add('active');
+      });
+
+      // Regenerate teasers when switching to teaser tab to apply current filter
+      if (strategy === 'teaser') {
+        generateStrategies();
+      }
+    }
+
+    // Generate Parlays - Generate all possible combinations with 55%+ confidence picks
+    function generateParlays() {
+      // Get ALL picks with 55%+ confidence, including premium
+      const eligiblePicks = allPicks.filter(p => {
+        const conf = p.confidence || 0;
+        return conf >= 55;
+      });
+
+      const parlays = [];
+
+      if (eligiblePicks.length < 2) {
+        console.log('Not enough picks for parlays:', eligiblePicks.length);
+        return [];
+      }
+
+      console.log('Generating parlays from', eligiblePicks.length, 'eligible picks');
+
+      // Generate ALL 2-leg parlays
+      for (let i = 0; i < eligiblePicks.length; i++) {
+        for (let j = i + 1; j < eligiblePicks.length; j++) {
+          const p1 = eligiblePicks[i];
+          const p2 = eligiblePicks[j];
+
+          // Calculate combined probability
+          const prob1 = p1.mc_win_probability || (p1.confidence / 100) || 0.55;
+          const prob2 = p2.mc_win_probability || (p2.confidence / 100) || 0.55;
+          const combinedProb = prob1 * prob2;
+
+          // Calculate parlay odds
+          const odds1 = p1.odds || -110;
+          const odds2 = p2.odds || -110;
+          const dec1 = toDecimalOdds(odds1);
+          const dec2 = toDecimalOdds(odds2);
+          const payout = dec1 * dec2;
+
+          // Expected value
+          const ev = (combinedProb * payout) - (1 - combinedProb);
+
+          // Format team names
+          const team1 = p1.team || p1.home_team || 'Team 1';
+          const team2 = p2.team || p2.home_team || 'Team 2';
+
+          parlays.push({
+            legs: [p1, p2],
+            teamNames: [team1, team2],
+            pickTypes: [p1.pick_type || 'SPREAD', p2.pick_type || 'SPREAD'],
+            confidences: [p1.confidence, p2.confidence],
+            probability: combinedProb,
+            payout,
+            ev,
+            type: '2-leg',
+            odds: [odds1, odds2],
+            combinedOdds: Math.round((dec1 * dec2 - 1) * 100)
+          });
+        }
+      }
+
+      // Generate 3-leg parlays if we have enough picks
+      if (eligiblePicks.length >= 3) {
+        for (let i = 0; i < eligiblePicks.length; i++) {
+          for (let j = i + 1; j < eligiblePicks.length; j++) {
+            for (let k = j + 1; k < eligiblePicks.length; k++) {
+              const p1 = eligiblePicks[i];
+              const p2 = eligiblePicks[j];
+              const p3 = eligiblePicks[k];
+
+              const prob1 = p1.mc_win_probability || (p1.confidence / 100) || 0.55;
+              const prob2 = p2.mc_win_probability || (p2.confidence / 100) || 0.55;
+              const prob3 = p3.mc_win_probability || (p3.confidence / 100) || 0.55;
+              const combinedProb = prob1 * prob2 * prob3;
+
+              const odds1 = p1.odds || -110;
+              const odds2 = p2.odds || -110;
+              const odds3 = p3.odds || -110;
+              const dec1 = toDecimalOdds(odds1);
+              const dec2 = toDecimalOdds(odds2);
+              const dec3 = toDecimalOdds(odds3);
+              const payout = dec1 * dec2 * dec3;
+
+              const ev = (combinedProb * payout) - (1 - combinedProb);
+
+              const team1 = p1.team || p1.home_team || 'Team 1';
+              const team2 = p2.team || p2.home_team || 'Team 2';
+              const team3 = p3.team || p3.home_team || 'Team 3';
+
+              parlays.push({
+                legs: [p1, p2, p3],
+                teamNames: [team1, team2, team3],
+                pickTypes: [p1.pick_type || 'SPREAD', p2.pick_type || 'SPREAD', p3.pick_type || 'SPREAD'],
+                confidences: [p1.confidence, p2.confidence, p3.confidence],
+                probability: combinedProb,
+                payout,
+                ev,
+                type: '3-leg',
+                odds: [odds1, odds2, odds3],
+                combinedOdds: Math.round((dec1 * dec2 * dec3 - 1) * 100)
+              });
+            }
+          }
+        }
+      }
+
+      console.log('Generated', parlays.length, 'parlays');
+
+      // Sort by EV descending and return top 10
+      return parlays
+        .sort((a, b) => b.ev - a.ev)
+        .slice(0, 10);
+    }
+
+    // Generate Strategies
+    function generateStrategies() {
+      // Generate parlays
+      const parlays = generateParlays();
+      const parlayList = document.getElementById('parlayList');
+
+      if (parlays.length === 0) {
+        parlayList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🎯</div>
+        <div>Need 2+ picks with confidence ≥55% to generate parlays.<br>Currently have ${allPicks.filter(p => (p.confidence || 0) >= 55).length} qualifying picks.</div>
+      </div>`;
+      } else {
+        // Separate 2-leg and 3-leg parlays
+        const twoLegParlays = parlays.filter(p => p.type === '2-leg');
+        const threeLegParlays = parlays.filter(p => p.type === '3-leg');
+
+        let html = '';
+
+        // 2-Leg Parlays Section
+        if (twoLegParlays.length > 0) {
+          html += `<div style="margin-bottom: 20px;">
+            <div style="font-size: 0.85em; font-weight: 600; color: var(--accent-primary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              🎯 2-Leg Parlays (${twoLegParlays.length})
+            </div>`;
+
+          html += twoLegParlays.map((p, idx) => `
+    <div class="parlay-item" style="flex-direction: column; align-items: flex-start; margin-bottom: 12px;">
+      <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+        <div style="font-weight: 600;">${p.teamNames.join(' + ')}</div>
+        <div style="font-size: 0.75em; padding: 2px 8px; border-radius: 4px;
+          background: ${p.ev > 0 ? 'rgba(0, 230, 118, 0.2)' : 'rgba(255, 82, 82, 0.2)'};
+          color: ${p.ev > 0 ? '#00e676' : '#ff5252'};">
+          ${p.ev > 0 ? '+' : ''}${p.ev.toFixed(2)} EV
+        </div>
+      </div>
+      <div style="font-size: 0.8em; color: var(--text-muted); margin: 4px 0;">
+        ${p.pickTypes.join('/')} • ${p.odds.map(o => formatOdds(o)).join('/')} • Combined: ${p.combinedOdds > 0 ? '+' : ''}${p.combinedOdds}
+      </div>
+      <div style="display: flex; gap: 16px; font-size: 0.75em; color: var(--text-secondary);">
+        <span>Combined Prob: ${(p.probability * 100).toFixed(1)}%</span>
+        <span>Individual: ${p.confidences.join('% / ')}%</span>
+        <span>Payout: ${p.payout.toFixed(2)}x</span>
+      </div>
+    </div>
+  `).join('');
+
+          html += '</div>';
+        }
+
+        // 3-Leg Parlays Section
+        if (threeLegParlays.length > 0) {
+          html += `<div>
+            <div style="font-size: 0.85em; font-weight: 600; color: var(--accent-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+              🎲 3-Leg Parlays (${threeLegParlays.length})
+            </div>`;
+
+          html += threeLegParlays.map((p, idx) => `
+    <div class="parlay-item" style="flex-direction: column; align-items: flex-start; margin-bottom: 12px; opacity: 0.9;">
+      <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+        <div style="font-weight: 600;">${p.teamNames.join(' + ')}</div>
+        <div style="font-size: 0.75em; padding: 2px 8px; border-radius: 4px;
+          background: ${p.ev > 0 ? 'rgba(0, 230, 118, 0.2)' : 'rgba(255, 82, 82, 0.2)'};
+          color: ${p.ev > 0 ? '#00e676' : '#ff5252'};">
+          ${p.ev > 0 ? '+' : ''}${p.ev.toFixed(2)} EV
+        </div>
+      </div>
+      <div style="font-size: 0.8em; color: var(--text-muted); margin: 4px 0;">
+        ${p.pickTypes.join('/')} • ${p.odds.map(o => formatOdds(o)).join('/')} • Combined: ${p.combinedOdds > 0 ? '+' : ''}${p.combinedOdds}
+      </div>
+      <div style="display: flex; gap: 16px; font-size: 0.75em; color: var(--text-secondary);">
+        <span>Combined Prob: ${(p.probability * 100).toFixed(1)}%</span>
+        <span>Individual: ${p.confidences.join('% / ')}%</span>
+        <span>Payout: ${p.payout.toFixed(2)}x</span>
+      </div>
+    </div>
+  `).join('');
+
+          html += '</div>';
+        }
+
+        parlayList.innerHTML = html;
+      }
+
+      // Generate teasers
+      const teasers = generateTeasers();
+      const teaserList = document.getElementById('teaserList');
+
+      if (teasers.length === 0) {
+        teaserList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🏈���⚾</div>
+        <div>No spread/puck/run line picks available for teasers.<br>Need 2+ picks with pick_type="SPREAD"/"PUCK_LINE"/"RUN_LINE", recommended_line, and 55%+ confidence.<br><br>Filter: ${currentFilter === 'all' ? 'All Leagues' : currentFilter.toUpperCase()}</div>
+      </div>`;
+      } else {
+        teaserList.innerHTML = teasers.map(t => `
+    <div class="parlay-item" style="margin-bottom: 12px; flex-direction: column; align-items: flex-start;">
+      <div style="font-weight: 600; margin-bottom: 4px; color: var(--success);">
+        <span style="background: rgba(0,230,118,0.2); padding: 2px 8px; border-radius: 4px; font-size: 0.75em;">${t.sport}</span>
+        ${t.points}-Point Teaser (${t.type})
+      </div>
+      <div style="font-size: 0.85em; margin-bottom: 4px;">
+        ${t.legs.map((l, i) => `<span style="color: var(--text-secondary);">${l.league || l.sport}:</span> ${l.home_team || l.team} ${l.recommended_line} → <span style="color: var(--success); font-weight: 600;">${t.newLines[i] > 0 ? '+' : ''}${t.newLines[i].toFixed(1)}</span>`).join('<br>')}
+      </div>
+      <div style="font-size: 0.75em; color: var(--text-muted);">
+        Key Numbers Captured: <span style="color: var(--success); font-weight: 600;">${t.keyCaptures}</span> • Avg Confidence: ${t.avgConfidence.toFixed(0)}%
+      </div>
+    </div>
+  `).join('');
+      }
+    }
+
+    // Auto-load from URL params
+    window.onload = () => {
+      const params = new URLSearchParams(window.location.search);
+      const pickId = params.get('pick');
+
+      if (pickId && allPicks.length) {
+        selectPick(pickId);
+      }
+    };
+
+    // Auto-refresh simulation
+    setInterval(() => {
+      document.getElementById('lastUpdate').textContent = 'LIVE • ' + new Date().toLocaleTimeString();
+    }, 15000);
+
+    // Generate Best Teasers (Auto) - Multi-league support with filter awareness
+    function generateTeasers() {
+      // Apply current filter to get filtered picks first
+      let filteredPicks = allPicks;
+
+      if (currentFilter === 'high') {
+        filteredPicks = filteredPicks.filter(p => (p.confidence || 0) >= 65);
+      } else if (currentFilter === 'medium') {
+        filteredPicks = filteredPicks.filter(p => {
+          const c = p.confidence || 0;
+          return c >= 55 && c < 65;
+        });
+      } else if (currentFilter === 'nfl') {
+        filteredPicks = filteredPicks.filter(p => {
+          const league = (p.league || '').toLowerCase();
+          const sport = (p.sport || '').toLowerCase();
+          return league.includes('nfl') || sport.includes('nfl') || league.includes('football');
+        });
+      } else if (currentFilter === 'nba') {
+        filteredPicks = filteredPicks.filter(p => {
+          const league = (p.league || '').toLowerCase();
+          const sport = (p.sport || '').toLowerCase();
+          return league.includes('nba') || sport.includes('nba') || league.includes('basketball');
+        });
+      } else if (currentFilter === 'nhl') {
+        filteredPicks = filteredPicks.filter(p => {
+          const league = (p.league || '').toLowerCase();
+          const sport = (p.sport || '').toLowerCase();
+          return league.includes('nhl') || sport.includes('nhl') || league.includes('hockey');
+        });
+      } else if (currentFilter === 'mlb') {
+        filteredPicks = filteredPicks.filter(p => {
+          const league = (p.league || '').toLowerCase();
+          const sport = (p.sport || '').toLowerCase();
+          return league.includes('mlb') || sport.includes('mlb') || league.includes('baseball');
+        });
+      }
+
+      // Filter for spread/puck line/run line picks
+      const eligiblePicks = filteredPicks.filter(p => {
+        const isSpreadSport = ['NFL', 'NBA', 'NCAAB', 'NHL', 'MLB'].some(s =>
+          (p.league || '').includes(s) || (p.sport || '').includes(s)
+        );
+        const isSpreadType = p.pick_type === 'SPREAD' || p.pick_type === 'PUCK_LINE' || p.pick_type === 'RUN_LINE';
+        return isSpreadSport && isSpreadType && p.recommended_line && (p.confidence || 0) >= 55;
+      });
+
+      if (eligiblePicks.length < 2) return [];
+
+      const teasers = [];
+
+      // Sport-specific teaser configs
+      const teaserConfigs = [
+        { sports: ['NFL'], points: [6, 6.5, 7], keyNumbers: [3, 4, 6, 7, 10, 14] },
+        { sports: ['NBA', 'NCAAB'], points: [4, 4.5, 5], keyNumbers: [3, 4, 5, 6, 7] },
+        { sports: ['NHL'], points: [0.5, 1, 1.5], keyNumbers: [1, 2, 3] },
+        { sports: ['MLB'], points: [0.5, 1, 1.5], keyNumbers: [1, 2, 3] }
+      ];
+
+      // Generate single-sport teasers
+      teaserConfigs.forEach(config => {
+        const sportPicks = eligiblePicks.filter(p =>
+          config.sports.some(s => (p.league || '').includes(s) || (p.sport || '').includes(s))
+        );
+
+        if (sportPicks.length < 2) return;
+
+        config.points.forEach(pt => {
+          let bestTeaser = null;
+          let bestScore = -999;
+
+          for (let i = 0; i < sportPicks.length; i++) {
+            for (let j = i + 1; j < sportPicks.length; j++) {
+              const p1 = sportPicks[i];
+              const p2 = sportPicks[j];
+
+              const newLine1 = p1.recommended_line + (p1.recommended_line < 0 ? pt : -pt);
+              const newLine2 = p2.recommended_line + (p2.recommended_line < 0 ? pt : -pt);
+
+              let keyCaptures = 0;
+              config.keyNumbers.forEach(kn => {
+                if (Math.abs(newLine1 - kn) < 1.5) keyCaptures++;
+                if (Math.abs(newLine2 - kn) < 1.5) keyCaptures++;
+              });
+
+              const avgConfidence = ((p1.confidence || 0) + (p2.confidence || 0)) / 2;
+              const score = keyCaptures * 10 + avgConfidence;
+
+              if (score > bestScore) {
+                bestScore = score;
+                bestTeaser = {
+                  points: pt,
+                  legs: [p1, p2],
+                  newLines: [newLine1, newLine2],
+                  keyCaptures,
+                  avgConfidence,
+                  type: '2-leg',
+                  sport: config.sports[0]
+                };
+              }
+            }
+          }
+
+          if (bestTeaser && bestTeaser.keyCaptures > 0) {
+            teasers.push(bestTeaser);
+          }
+        });
+      });
+
+      // Generate multi-league teasers (cross-sport combinations)
+      const nflPicks = eligiblePicks.filter(p => (p.league || '').includes('NFL'));
+      const nbaPicks = eligiblePicks.filter(p => (p.league || '').includes('NBA'));
+      const ncaabPicks = eligiblePicks.filter(p => (p.league || '').includes('NCAAB'));
+      const nhlPicks = eligiblePicks.filter(p => (p.league || '').includes('NHL'));
+      const mlbPicks = eligiblePicks.filter(p => (p.league || '').includes('MLB'));
+
+      // NFL + NBA teasers (use NFL points 6.5, NBA key numbers)
+      if (nflPicks.length >= 1 && nbaPicks.length >= 1) {
+        nflPicks.slice(0, 2).forEach(nflPick => {
+          nbaPicks.slice(0, 2).forEach(nbaPick => {
+            const pt = 6.5; // NFL teaser points
+            const newNflLine = nflPick.recommended_line + (nflPick.recommended_line < 0 ? pt : -pt);
+            const newNbaLine = nbaPick.recommended_line + (nbaPick.recommended_line < 0 ? 4.5 : -4.5); // NBA points
+
+            let keyCaptures = 0;
+            [3, 4, 6, 7, 10].forEach(kn => {
+              if (Math.abs(newNflLine - kn) < 1.5) keyCaptures++;
+            });
+            [3, 4, 5, 6, 7].forEach(kn => {
+              if (Math.abs(newNbaLine - kn) < 1.5) keyCaptures++;
+            });
+
+            if (keyCaptures >= 1) {
+              teasers.push({
+                points: `${pt}/4.5`,
+                legs: [nflPick, nbaPick],
+                newLines: [newNflLine, newNbaLine],
+                keyCaptures,
+                avgConfidence: ((nflPick.confidence || 0) + (nbaPick.confidence || 0)) / 2,
+                type: '2-leg multi-league',
+                sport: 'NFL/NBA'
+              });
+            }
+          });
+        });
+      }
+
+      // NBA + NCAAB teasers
+      if (nbaPicks.length >= 1 && ncaabPicks.length >= 1) {
+        nbaPicks.slice(0, 2).forEach(nbaPick => {
+          ncaabPicks.slice(0, 2).forEach(ncaabPick => {
+            const pt = 4.5;
+            const newNbaLine = nbaPick.recommended_line + (nbaPick.recommended_line < 0 ? pt : -pt);
+            const newNcaabLine = ncaabPick.recommended_line + (ncaabPick.recommended_line < 0 ? 4.5 : -4.5);
+
+            let keyCaptures = 0;
+            [3, 4, 5, 6, 7].forEach(kn => {
+              if (Math.abs(newNbaLine - kn) < 1.5) keyCaptures++;
+              if (Math.abs(newNcaabLine - kn) < 1.5) keyCaptures++;
+            });
+
+            if (keyCaptures >= 1) {
+              teasers.push({
+                points: pt,
+                legs: [nbaPick, ncaabPick],
+                newLines: [newNbaLine, newNcaabLine],
+                keyCaptures,
+                avgConfidence: ((nbaPick.confidence || 0) + (ncaabPick.confidence || 0)) / 2,
+                type: '2-leg multi-league',
+                sport: 'NBA/NCAAB'
+              });
+            }
+          });
+        });
+      }
+
+      // NHL + MLB teasers (puck/run line combos)
+      if (nhlPicks.length >= 1 && mlbPicks.length >= 1) {
+        nhlPicks.slice(0, 2).forEach(nhlPick => {
+          mlbPicks.slice(0, 2).forEach(mlbPick => {
+            const pt = 1;
+            const newNhlLine = nhlPick.recommended_line + (nhlPick.recommended_line < 0 ? pt : -pt);
+            const newMlbLine = mlbPick.recommended_line + (mlbPick.recommended_line < 0 ? 1 : -1);
+
+            let keyCaptures = 0;
+            [1, 2, 3].forEach(kn => {
+              if (Math.abs(newNhlLine - kn) < 1.5) keyCaptures++;
+              if (Math.abs(newMlbLine - kn) < 1.5) keyCaptures++;
+            });
+
+            if (keyCaptures >= 1) {
+              teasers.push({
+                points: pt,
+                legs: [nhlPick, mlbPick],
+                newLines: [newNhlLine, newMlbLine],
+                keyCaptures,
+                avgConfidence: ((nhlPick.confidence || 0) + (mlbPick.confidence || 0)) / 2,
+                type: '2-leg multi-league',
+                sport: 'NHL/MLB'
+              });
+            }
+          });
+        });
+      }
+
+      return teasers.sort((a, b) => b.keyCaptures - a.keyCaptures);
+    }
+
+    // Results File Handling
+    let resultsData = null;
+
+    function handleResultsFile(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        showError('No file selected');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+
+          // Detailed validation
+          if (!data) {
+            throw new Error('File is empty or not valid JSON');
+          }
+
+          if (!data.results) {
+            throw new Error(`Missing 'results' array. Found keys: ${Object.keys(data).join(', ')}`);
+          }
+
+          if (!Array.isArray(data.results)) {
+            throw new Error(`'results' is not an array. Type: ${typeof data.results}`);
+          }
+
+          if (data.results.length === 0) {
+            throw new Error('Results array is empty');
+          }
+
+          // Check first result for required fields
+          const firstResult = data.results[0];
+          const requiredFields = ['game_id', 'home_team', 'away_team', 'status'];
+          const missingFields = requiredFields.filter(f => !(f in firstResult));
+
+          if (missingFields.length > 0) {
+            throw new Error(`Missing required fields in results: ${missingFields.join(', ')}. Found keys: ${Object.keys(firstResult).join(', ')}`);
+          }
+
+          // Normalize status values (handle different cases)
+          data.results = data.results.map(r => ({
+            ...r,
+            status: normalizeStatus(r.status)
+          }));
+
+          resultsData = data;
+          renderResultsAnalysis();
+
+          const winCount = data.results.filter(r => r.status === 'win').length;
+          const lossCount = data.results.filter(r => r.status === 'loss').length;
+          const pendingCount = data.results.filter(r => r.status === 'pending').length;
+
+          showError(`✅ Results loaded: ${data.results.length} total (${winCount} wins, ${lossCount} losses, ${pendingCount} pending)`, 'success');
+        } catch (err) {
+          console.error('Results file error:', err);
+          showError(`❌ Error loading results: ${err.message}`);
+
+          // Show detailed debug info
+          document.getElementById('resultsSummary').style.display = 'none';
+          document.getElementById('resultsEmpty').style.display = 'block';
+          document.getElementById('resultsEmpty').innerHTML = `
+            <div style="padding: 20px; background: rgba(255,82,82,0.1); border-radius: 8px;">
+              <div style="color: #ff5252; font-weight: 600; margin-bottom: 12px;">❌ Failed to load results</div>
+              <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 12px;">${err.message}</div>
+              <div style="font-size: 0.75em; color: var(--text-muted);">
+                <div style="margin-bottom: 8px;"><strong>Expected format:</strong></div>
+                <pre style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 4px; overflow-x: auto;">{
+  "date": "2024-01-15",
+  "results": [
+    {
+      "game_id": "12345",
+      "home_team": "Lakers",
+      "away_team": "Warriors",
+      "sport": "NBA",
+      "confidence": 62,
+      "status": "win",
+      "actual_score": { "home": 120, "away": 110 }
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "winRate": 60,
+    "pending": 0,
+    "graded": 10
+  }
+}</pre>
+              </div>
+            </div>
+          `;
+        }
+      };
+
+      reader.onerror = (e) => {
+        showError(`Failed to read file: ${reader.error?.message || 'Unknown error'}`);
+      };
+
+      reader.readAsText(file);
+    }
+
+    // Normalize status values to handle different formats
+    function normalizeStatus(status) {
+      if (!status) return 'pending';
+      const s = String(status).toLowerCase().trim();
+      if (['win', 'w', 'won', 'winner', '1', 'true'].includes(s)) return 'win';
+      if (['loss', 'l', 'lose', 'lost', 'loser', '0', 'false'].includes(s)) return 'loss';
+      return 'pending';
+    }
+
+    function renderResultsAnalysis() {
+      if (!resultsData) return;
+
+      const results = resultsData.results;
+      const summary = resultsData.summary || {};
+
+      // Show summary, hide empty state
+      document.getElementById('resultsSummary').style.display = 'block';
+      document.getElementById('resultsEmpty').style.display = 'none';
+
+      // Update summary stats
+      document.getElementById('resTotal').textContent = summary.total || results.length;
+      document.getElementById('resWinRate').textContent = summary.winRate ? summary.winRate + '%' : '0%';
+      document.getElementById('resPending').textContent = summary.pending || results.filter(r => r.status === 'pending').length;
+      document.getElementById('resGraded').textContent = summary.graded || results.filter(r => r.status === 'win' || r.status === 'loss').length;
+
+      // Performance by confidence level
+      const confBuckets = {
+        'High (65%+)': { wins: 0, total: 0 },
+        'Medium (55-64%)': { wins: 0, total: 0 },
+        'Low (<55%)': { wins: 0, total: 0 }
+      };
+
+      results.forEach(r => {
+        if (r.status === 'pending') return;
+        const conf = r.confidence || 0;
+        const bucket = conf >= 65 ? 'High (65%+)' : conf >= 55 ? 'Medium (55-64%)' : 'Low (<55%)';
+        confBuckets[bucket].total++;
+        if (r.status === 'win') confBuckets[bucket].wins++;
+      });
+
+      document.getElementById('confReport').innerHTML = Object.entries(confBuckets).map(([name, data]) => {
+        const rate = data.total > 0 ? ((data.wins / data.total) * 100).toFixed(1) : 0;
+        return `
+          <div class="report-row">
+            <span>${name}</span>
+            <span>${data.wins}/${data.total} (${rate}%)</span>
+          </div>
+        `;
+      }).join('');
+
+      // Performance by sport
+      const sportStats = {};
+      results.forEach(r => {
+        if (r.status === 'pending') return;
+        const sport = r.sport || 'Unknown';
+        if (!sportStats[sport]) sportStats[sport] = { wins: 0, total: 0 };
+        sportStats[sport].total++;
+        if (r.status === 'win') sportStats[sport].wins++;
+      });
+
+      document.getElementById('sportReport').innerHTML = Object.entries(sportStats).map(([sport, data]) => {
+        const rate = data.total > 0 ? ((data.wins / data.total) * 100).toFixed(1) : 0;
+        return `
+          <div class="report-row">
+            <span>${sport}</span>
+            <span>${data.wins}/${data.total} (${rate}%)</span>
+          </div>
+        `;
+      }).join('') || '<div style="color: var(--text-muted);">No graded results yet</div>';
+
+      // ROI Analysis (simulated with $100 bets at -110 odds)
+      const unitSize = 100;
+      const vig = 0.0909; // -110 juice
+      let totalWagered = 0;
+      let totalReturn = 0;
+
+      results.forEach(r => {
+        if (r.status === 'pending') return;
+        totalWagered += unitSize;
+        if (r.status === 'win') {
+          totalReturn += unitSize * (1 + (100 / 110)); // -110 payout
+        }
+      });
+
+      const netProfit = totalReturn - totalWagered;
+      const roi = totalWagered > 0 ? ((netProfit / totalWagered) * 100).toFixed(2) : 0;
+      const units = (netProfit / unitSize).toFixed(2);
+
+      document.getElementById('roiReport').innerHTML = `
+        <div class="report-row" style="background: rgba(0,230,118,0.1); border-radius: 6px; padding: 12px;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center;">
+            <div>
+              <div style="font-size: 0.75em; color: var(--text-muted);">Total Wagered</div>
+              <div style="font-size: 1.3em; font-weight: 600;">$${totalWagered.toLocaleString()}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.75em; color: var(--text-muted);">Net Profit</div>
+              <div style="font-size: 1.3em; font-weight: 600; color: ${netProfit >= 0 ? 'var(--success)' : 'var(--danger)'};">
+                ${netProfit >= 0 ? '+' : ''}$${netProfit.toFixed(0)}
+              </div>
+            </div>
+            <div>
+              <div style="font-size: 0.75em; color: var(--text-muted);">ROI</div>
+              <div style="font-size: 1.3em; font-weight: 600; color: ${roi >= 0 ? 'var(--success)' : 'var(--danger)'};">
+                ${roi >= 0 ? '+' : ''}${roi}%
+              </div>
+            </div>
+          </div>
+          <div style="margin-top: 12px; text-align: center; font-size: 0.85em; color: var(--text-secondary);">
+            Units: ${units > 0 ? '+' : ''}${units} units @ $${unitSize}/unit
+          </div>
+        </div>
+      `;
+
+      // Streak Analysis
+      let currentStreak = 0;
+      let maxWinStreak = 0;
+      let maxLossStreak = 0;
+      let currentStreakType = '';
+      let tempStreak = 0;
+      let lastResult = '';
+
+      const gradedResults = results.filter(r => r.status !== 'pending');
+      gradedResults.forEach(r => {
+        if (r.status === lastResult) {
+          tempStreak++;
+        } else {
+          tempStreak = 1;
+          lastResult = r.status;
+        }
+
+        if (r.status === 'win') {
+          maxWinStreak = Math.max(maxWinStreak, tempStreak);
+        } else {
+          maxLossStreak = Math.max(maxLossStreak, tempStreak);
+        }
+      });
+
+      // Current streak
+      if (gradedResults.length > 0) {
+        const last = gradedResults[gradedResults.length - 1];
+        currentStreakType = last.status;
+        for (let i = gradedResults.length - 1; i >= 0; i--) {
+          if (gradedResults[i].status === currentStreakType) {
+            currentStreak++;
+          } else {
+            break;
+          }
+        }
+      }
+
+      document.getElementById('streakReport').innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+          <div class="stat-box" style="background: ${currentStreakType === 'win' ? 'rgba(0,230,118,0.15)' : 'rgba(255,82,82,0.15)'};">
+            <div class="stat-label">Current Streak</div>
+            <div class="stat-value" style="color: ${currentStreakType === 'win' ? 'var(--success)' : 'var(--danger)'};">
+              ${currentStreak} ${currentStreakType.toUpperCase()}${currentStreak > 1 ? 'S' : ''}
+            </div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Best Win Streak</div>
+            <div class="stat-value" style="color: var(--success);">${maxWinStreak}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Worst Loss Streak</div>
+            <div class="stat-value" style="color: var(--danger);">${maxLossStreak}</div>
+          </div>
+        </div>
+      `;
+
+      // Pick Type Performance
+      const pickTypeStats = {};
+      results.forEach(r => {
+        if (r.status === 'pending') return;
+        const type = r.pick_type || 'MONEYLINE';
+        if (!pickTypeStats[type]) pickTypeStats[type] = { wins: 0, total: 0 };
+        pickTypeStats[type].total++;
+        if (r.status === 'win') pickTypeStats[type].wins++;
+      });
+
+      document.getElementById('pickTypeReport').innerHTML = Object.entries(pickTypeStats).map(([type, data]) => {
+        const rate = data.total > 0 ? ((data.wins / data.total) * 100).toFixed(1) : 0;
+        const emoji = type === 'SPREAD' ? '📊' : type === 'MONEYLINE' ? '💰' : type === 'TOTAL' ? '📈' : '🎯';
+        return `
+          <div class="report-row">
+            <span>${emoji} ${type}</span>
+            <span>${data.wins}/${data.total} (${rate}%)</span>
+          </div>
+        `;
+      }).join('') || '<div style="color: var(--text-muted);">No pick type data available</div>';
+
+      // Daily Trends (group by date if available)
+      const dailyStats = {};
+      results.forEach(r => {
+        if (r.status === 'pending') return;
+        const date = r.result_date || r.date || 'Unknown';
+        if (!dailyStats[date]) dailyStats[date] = { wins: 0, total: 0 };
+        dailyStats[date].total++;
+        if (r.status === 'win') dailyStats[date].wins++;
+      });
+
+      document.getElementById('trendReport').innerHTML = Object.entries(dailyStats).slice(0, 7).map(([date, data]) => {
+        const rate = data.total > 0 ? ((data.wins / data.total) * 100).toFixed(1) : 0;
+        const profit = (data.wins * 90.91) - ((data.total - data.wins) * 100); // -110 odds math
+        return `
+          <div class="report-row">
+            <span>${date}</span>
+            <span>${data.wins}/${data.total} (${rate}%) | ${profit >= 0 ? '+' : ''}$${profit.toFixed(0)}</span>
+          </div>
+        `;
+      }).join('') || '<div style="color: var(--text-muted);">Need more daily data for trends</div>';
+
+      // Recent results list
+      document.getElementById('recentResults').innerHTML = results.slice(0, 20).map(r => {
+        const statusClass = r.status === 'win' ? 'win' : r.status === 'loss' ? 'loss' : 'pending';
+        const statusText = r.status === 'win' ? 'WIN' : r.status === 'loss' ? 'LOSS' : 'PENDING';
+        return `
+          <div class="report-row">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="result-status ${statusClass}">${statusText}</span>
+              <span>${r.home_team} vs ${r.away_team}</span>
+            </div>
+            <span style="color: var(--text-muted);">${r.confidence || 0}%</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Auto-refresh simulation
+    setInterval(() => {
+      document.getElementById('lastUpdate').textContent = 'LIVE • ' + new Date().toLocaleTimeString();
+    }, 15000);
+
+    // Store original odds for comparison
+    let originalOdds = {};
+    let lastRefreshTime = null;
+
+    // Refresh Odds from API
+    async function refreshOdds() {
+      const btn = document.getElementById('refreshOddsBtn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ Fetching...';
+      btn.disabled = true;
+
+      try {
+        // Store original odds on first refresh
+        if (Object.keys(originalOdds).length === 0) {
+          allPicks.forEach(p => {
+            originalOdds[p.id] = {
+              odds: p.odds,
+              line: p.recommended_line,
+              timestamp: new Date().toISOString()
+            };
+          });
+        }
+
+        // Fetch fresh odds from The Odds API
+        // Using the API key from the keyvault store
+        const API_KEY = 'dea4f9f87fe7a2e3642523ee51d398d9'; // ODDS_API_KEY from keyvault
+
+        // Group picks by sport for API calls
+        const sports = [...new Set(allPicks.map(p => mapLeagueToSport(p.league || p.sport)))];
+
+        let updatedCount = 0;
+        let lineMoves = [];
+
+        for (const sport of sports) {
+          if (!sport) continue;
+
+          try {
+            const response = await fetch(
+              `https://api.the-odds-api.com/v4/sports/${sport}/odds?apiKey=${API_KEY}&regions=us&oddsFormat=american&markets=h2h,spreads,totals`
+            );
+
+            if (!response.ok) continue;
+
+            const events = await response.json();
+
+            // Match events to our picks and update odds
+            allPicks.forEach(pick => {
+              const event = events.find(e =>
+                e.home_team?.toLowerCase().includes((pick.home_team || '').toLowerCase()) ||
+                e.away_team?.toLowerCase().includes((pick.away_team || '').toLowerCase()) ||
+                (pick.home_team || '').toLowerCase().includes(e.home_team?.toLowerCase()) ||
+                (pick.away_team || '').toLowerCase().includes(e.away_team?.toLowerCase())
+              );
+
+              if (event && event.bookmakers && event.bookmakers.length > 0) {
+                const bookmaker = event.bookmakers[0];
+                const market = bookmaker.markets?.find(m =>
+                  (pick.pick_type === 'SPREAD' && m.key === 'spreads') ||
+                  (pick.pick_type === 'MONEYLINE' && m.key === 'h2h') ||
+                  (pick.pick_type === 'TOTAL' && m.key === 'totals')
+                );
+
+                if (market && market.outcomes) {
+                  const outcome = market.outcomes.find(o =>
+                    o.name?.toLowerCase().includes((pick.team || pick.home_team || '').toLowerCase())
+                  );
+
+                  if (outcome) {
+                    const oldOdds = pick.odds;
+                    const newOdds = outcome.price;
+
+                    // Track line movement
+                    if (oldOdds !== newOdds) {
+                      const move = newOdds - oldOdds;
+                      lineMoves.push({
+                        id: pick.id,
+                        team: pick.home_team || pick.team,
+                        oldOdds,
+                        newOdds,
+                        move,
+                        pickType: pick.pick_type
+                      });
+
+                      pick.odds = newOdds;
+                      updatedCount++;
+                    }
+
+                    // Update spread line if available
+                    if (pick.pick_type === 'SPREAD' && outcome.point !== undefined) {
+                      pick.recommended_line = outcome.point;
+                    }
+                  }
+                }
+              }
+            });
+          } catch (err) {
+            console.error(`Error fetching ${sport}:`, err);
+          }
+        }
+
+        lastRefreshTime = new Date();
+        document.getElementById('lastOddsRefresh').textContent =
+          'Last refresh: ' + lastRefreshTime.toLocaleTimeString();
+
+        // Re-render with updated odds
+        updateStats();
+        renderPicksList();
+        generateStrategies();
+
+        // Show line movement summary
+        if (lineMoves.length > 0) {
+          const favorableMoves = lineMoves.filter(m =>
+            (m.pickType === 'MONEYLINE' && m.move > 0) || // Better payout
+            (m.pickType === 'SPREAD' && Math.abs(m.newOdds) < Math.abs(m.oldOdds)) // Less juice
+          );
+
+          const msg = favorableMoves.length > 0
+            ? `✓ Updated ${updatedCount} lines. ${favorableMoves.length} moved in your favor!`
+            : `✓ Updated ${updatedCount} lines. ${lineMoves.length} moved (check picks for details)`;
+
+          showError(msg, 'success');
+        } else {
+          showError('✓ Lines are current - no changes detected', 'success');
+        }
+
+      } catch (err) {
+        console.error('Refresh error:', err);
+        showError('Failed to refresh odds. Using cached lines.', 'error');
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    // Map league to API sport key
+    function mapLeagueToSport(league) {
+      if (!league) return null;
+      const leagueMap = {
+        'NBA': 'basketball_nba',
+        'NFL': 'americanfootball_nfl',
+        'NCAAB': 'basketball_ncaab',
+        'NHL': 'icehockey_nhl',
+        'MLB': 'baseball_mlb',
+        'NHL Hockey': 'icehockey_nhl',
+        'NCAA Basketball': 'basketball_ncaab',
+        'NCAAM': 'basketball_ncaab'
+      };
+      return leagueMap[league] || leagueMap[league?.split(' ')[0]];
+    }
+
+    // Get line movement indicator
+    function getLineMovement(pick) {
+      const orig = originalOdds[pick.id];
+      if (!orig || !orig.odds) return null;
+
+      const current = pick.odds;
+      const diff = current - orig.odds;
+
+      if (diff === 0) return null;
+
+      // Positive move = better odds for bettor
+      const isFavorable =
+        (pick.pick_type === 'MONEYLINE' && diff > 0) ||
+        (pick.pick_type === 'SPREAD' && Math.abs(current) < Math.abs(orig.odds));
+
+      return {
+        diff,
+        isFavorable,
+        arrow: diff > 0 ? '↑' : '↓',
+        text: diff > 0 ? `+${diff}` : `${diff}`
+      };
+    }
+
+    // ==================== KALSHI STRATEGIES ====================
+
+    function generateKalshiStrategies() {
+      // Filter picks that could be Kalshi events (binary outcomes)
+      const kalshiPicks = allPicks.filter(p =>
+        p.venue === 'kalshi' || p.market_type === 'kalshi' ||
+        ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAB'].some(s =>
+          (p.league || '').includes(s) || (p.sport || '').includes(s)
+        )
+      );
+
+      const kalshiList = document.getElementById('kalshiList');
+
+      if (kalshiPicks.length === 0) {
+        kalshiList.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📈</div>
+            <div>No Kalshi-compatible events detected.<br>Load predictions with binary outcomes (YES/NO markets).</div>
+          </div>`;
+        return;
+      }
+
+      const opportunities = [];
+
+      // 1. YES/NO Imbalance Detection
+      kalshiPicks.forEach(pick => {
+        const modelProb = pick.mc_win_probability || (pick.confidence || 50) / 100;
+        const marketPrice = pick.kalshi_price || pick.polymarket_price || 0.5;
+        const edge = Math.abs(modelProb - marketPrice);
+
+        if (edge > 0.05) {
+          const isYes = modelProb > marketPrice;
+          opportunities.push({
+            type: 'imbalance',
+            emoji: '⚖️',
+            title: `${pick.home_team || pick.team} - ${pick.pick_type || 'WIN'}`,
+            action: isYes ? 'Buy YES' : 'Buy NO',
+            price: isYes ? marketPrice : (1 - marketPrice),
+            modelProb,
+            edge,
+            confidence: Math.min(95, 50 + edge * 500),
+            risk: edge > 0.10 ? 'medium' : 'low',
+            profit: edge * 1000,
+            maxStake: 500
+          });
+        }
+      });
+
+      // 2. Calendar Spread (if multiple expiries for same event)
+      const byEvent = {};
+      kalshiPicks.forEach(p => {
+        const key = `${p.home_team}-${p.away_team}`;
+        if (!byEvent[key]) byEvent[key] = [];
+        byEvent[key].push(p);
+      });
+
+      Object.entries(byEvent).forEach(([event, picks]) => {
+        if (picks.length >= 2) {
+          // Check for price differences between time periods
+          for (let i = 0; i < picks.length - 1; i++) {
+            for (let j = i + 1; j < picks.length; j++) {
+              const p1 = picks[i];
+              const p2 = picks[j];
+              const price1 = p1.kalshi_price || p1.mc_win_probability || 0.5;
+              const price2 = p2.kalshi_price || p2.mc_win_probability || 0.5;
+              const diff = Math.abs(price1 - price2);
+
+              if (diff > 0.05) {
+                opportunities.push({
+                  type: 'calendar',
+                  emoji: '📅',
+                  title: `Calendar Spread: ${p1.home_team}`,
+                  action: `Buy ${price1 < price2 ? 'YES near' : 'YES far'}, Sell ${price1 < price2 ? 'YES far' : 'YES near'}`,
+                  price: diff,
+                  modelProb: (price1 + price2) / 2,
+                  edge: diff,
+                  confidence: 70,
+                  risk: 'low',
+                  profit: diff * 1000,
+                  maxStake: Math.min(200, diff * 2000)
+                });
+              }
+            }
+          }
+        }
+      });
+
+      // Render opportunities
+      if (opportunities.length === 0) {
+        kalshiList.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📊</div>
+            <div>No significant edge detected in Kalshi markets.<br>Model aligns with current pricing.</div>
+          </div>`;
+      } else {
+        kalshiList.innerHTML = opportunities.map(opp => `
+          <div class="parlay-item" style="flex-direction: column; align-items: flex-start; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+              <div style="font-weight: 600;">${opp.emoji} ${opp.title}</div>
+              <div style="font-size: 0.75em; padding: 2px 8px; border-radius: 4px;
+                background: ${opp.risk === 'low' ? 'rgba(0, 230, 118, 0.2)' : 'rgba(255, 214, 0, 0.2)'};
+                color: ${opp.risk === 'low' ? '#00e676' : '#ffd600'};">
+                ${opp.risk} risk
+              </div>
+            </div>
+            <div style="font-size: 0.85em; color: var(--text-muted); margin: 4px 0;">
+              ${opp.action} @ ${opp.price.toFixed(2)} | Model: ${(opp.modelProb * 100).toFixed(1)}%
+            </div>
+            <div style="display: flex; gap: 16px; font-size: 0.75em;">
+              <span style="color: var(--success);">Edge: ${(opp.edge * 100).toFixed(1)}%</span>
+              <span>Profit: $${opp.profit.toFixed(0)}/k</span>
+              <span>Stake: $${opp.maxStake.toFixed(0)} max</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // ==================== POLYMARKET STRATEGIES ====================
+
+    function generatePolymarketStrategies() {
+      // Filter picks that could be Polymarket events
+      const polyPicks = allPicks.filter(p =>
+        p.venue === 'polymarket' || p.market_type === 'polymarket' ||
+        ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAB', 'Politics', 'Crypto'].some(s =>
+          (p.league || '').includes(s) || (p.sport || '').includes(s) || (p.category || '').includes(s)
+        )
+      );
+
+      const polyList = document.getElementById('polymarketList');
+
+      if (polyPicks.length === 0) {
+        polyList.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">⚡</div>
+            <div>No Polymarket-compatible events detected.<br>Load predictions for political, crypto, or sports markets.</div>
+          </div>`;
+        return;
+      }
+
+      const opportunities = [];
+
+      // 1. Liquidity Sniping (low liquidity + wide spread)
+      polyPicks.forEach(pick => {
+        const liquidity = pick.liquidity || pick.volume_24h || 0;
+        const spread = pick.spread || Math.abs((pick.ask || 0.5) - (pick.bid || 0.5));
+
+        if (liquidity > 10000 && liquidity < 100000 && spread > 0.02) {
+          opportunities.push({
+            type: 'liquidity',
+            emoji: '💧',
+            title: `${pick.home_team || pick.team || pick.event}`,
+            action: spread > 0.05 ? 'Aggressive snipe' : 'Passive snipe',
+            price: pick.polymarket_price || pick.mc_win_probability || 0.5,
+            modelProb: pick.mc_win_probability || 0.5,
+            edge: spread * 0.5,
+            confidence: 45,
+            risk: 'high',
+            profit: spread * 500,
+            maxStake: Math.min(500, liquidity * 0.01),
+            details: `Spread: ${(spread * 100).toFixed(1)}%, Liquidity: $${(liquidity / 1000).toFixed(0)}k`
+          });
+        }
+      });
+
+      // 2. Event Drift Reversion (price moved significantly)
+      polyPicks.forEach(pick => {
+        const currentPrice = pick.polymarket_price || pick.mc_win_probability || 0.5;
+        const modelProb = pick.mc_win_probability || (pick.confidence || 50) / 100;
+        const drift = Math.abs(currentPrice - modelProb);
+
+        // High drift from model = potential reversion
+        if (drift > 0.10) {
+          opportunities.push({
+            type: 'drift',
+            emoji: '🔄',
+            title: `${pick.home_team || pick.team || pick.event}`,
+            action: currentPrice > modelProb ? 'Expect reversion DOWN' : 'Expect reversion UP',
+            price: currentPrice,
+            modelProb,
+            edge: drift * 0.5,
+            confidence: 55,
+            risk: 'medium',
+            profit: drift * 500,
+            maxStake: 300,
+            details: `Drifted ${(drift * 100).toFixed(1)}% from model`
+          });
+        }
+      });
+
+      // 3. Cross-Venue Arbitrage (compare Kalshi vs Polymarket prices)
+      const kalshiPicks = allPicks.filter(p => p.venue === 'kalshi' || p.kalshi_price);
+      polyPicks.forEach(poly => {
+        const kalshi = kalshiPicks.find(k =>
+          (k.home_team || '').toLowerCase() === (poly.home_team || '').toLowerCase() ||
+          (k.event || '').toLowerCase() === (poly.event || '').toLowerCase()
+        );
+
+        if (kalshi) {
+          const kalshiPrice = kalshi.kalshi_price || kalshi.mc_win_probability || 0.5;
+          const polyPrice = poly.polymarket_price || poly.mc_win_probability || 0.5;
+          const arb = Math.abs(kalshiPrice - polyPrice);
+
+          if (arb > 0.03) {
+            opportunities.push({
+              type: 'arbitrage',
+              emoji: '⚡',
+              title: `Cross-Venue: ${poly.home_team || poly.event}`,
+              action: kalshiPrice < polyPrice ? 'Buy Kalshi / Sell Poly' : 'Buy Poly / Sell Kalshi',
+              price: Math.min(kalshiPrice, polyPrice),
+              modelProb: (kalshiPrice + polyPrice) / 2,
+              edge: arb,
+              confidence: 80,
+              risk: 'low',
+              profit: arb * 1000,
+              maxStake: Math.min(1000, (poly.liquidity || 50000) * 0.05),
+              details: `Kalshi: ${kalshiPrice.toFixed(3)} vs Poly: ${polyPrice.toFixed(3)}`
+            });
+          }
+        }
+      });
+
+      // Render opportunities
+      if (opportunities.length === 0) {
+        polyList.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📊</div>
+            <div>No edge opportunities detected on Polymarket.<br>Markets appear efficiently priced.</div>
+          </div>`;
+      } else {
+        polyList.innerHTML = opportunities.map(opp => `
+          <div class="parlay-item" style="flex-direction: column; align-items: flex-start; margin-bottom: 12px;">
+            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+              <div style="font-weight: 600;">${opp.emoji} ${opp.title}</div>
+              <div style="font-size: 0.75em; padding: 2px 8px; border-radius: 4px;
+                background: ${opp.risk === 'low' ? 'rgba(0, 230, 118, 0.2)' : opp.risk === 'medium' ? 'rgba(255, 214, 0, 0.2)' : 'rgba(255, 82, 82, 0.2)'};
+                color: ${opp.risk === 'low' ? '#00e676' : opp.risk === 'medium' ? '#ffd600' : '#ff5252'};">
+                ${opp.risk} risk
+              </div>
+            </div>
+            <div style="font-size: 0.85em; color: var(--success); margin: 4px 0;">
+              ${opp.action}
+            </div>
+            <div style="font-size: 0.8em; color: var(--text-muted); margin-bottom: 4px;">
+              ${opp.details || `Price: ${opp.price.toFixed(3)} | Model: ${(opp.modelProb * 100).toFixed(1)}%`}
+            </div>
+            <div style="display: flex; gap: 16px; font-size: 0.75em;">
+              <span style="color: var(--success);">Edge: ${(opp.edge * 100).toFixed(1)}%</span>
+              <span>Profit: $${opp.profit.toFixed(0)}/k</span>
+              <span>Max: $${opp.maxStake.toFixed(0)}</span>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // ==================== ADMIN ACTIONS ====================
+
+    // Production Supabase configuration
+    const PRODUCTION_SUPABASE_URL = 'https://rdbuwyefbgnbuhmjrizo.supabase.co';
+
+    // Supabase configuration - loaded from localStorage or defaults to production
+    function getSupabaseConfig() {
+      // Try to get from localStorage first (user can override if needed)
+      const url = localStorage.getItem('SUPABASE_URL') || PRODUCTION_SUPABASE_URL;
+      const key = localStorage.getItem('SUPABASE_SERVICE_KEY') || '';
+
+      // Verify we're using production
+      if (url && !url.includes('rdbuwyefbgnbuhmjrizo')) {
+        console.warn('⚠️ WARNING: Not using production database:', url);
+        console.warn('   Expected:', PRODUCTION_SUPABASE_URL);
+      } else if (url === PRODUCTION_SUPABASE_URL) {
+        console.log('✅ Using production database:', PRODUCTION_SUPABASE_URL);
+      }
+
+      return { url, key };
+    }
+
+    async function runSchedulerNow() {
+      showError('🔄 Scheduler must be run from command line', 'success');
+
+      const instructions = `
+To run the scheduler manually:
+
+1. Open terminal in: c:/cevict-live/apps/sportsbook-terminal
+2. Run: npx tsx scripts/scheduler.ts
+
+Or with PowerShell:
+cd c:/cevict-live/apps/sportsbook-terminal
+npx tsx scripts/scheduler.ts
+
+The scheduler will:
+✓ Process prediction files from /public
+✓ Save to Supabase daily_predictions table
+✓ Process results from /data/results
+✓ Save to Supabase graded_results table
+✓ Archive files to C:\cevict-archive\Probabilityanalyzer
+      `;
+
+      console.log('[SCHEDULER]', instructions);
+
+      // Show modal with instructions
+      showAdminModal('Run Scheduler', instructions);
+    }
+
+    async function exportToSupabase() {
+      if (allPicks.length === 0) {
+        showError('No predictions loaded to export');
+        return;
+      }
+
+      const config = getSupabaseConfig();
+
+      if (!config.url || !config.key) {
+        const setupMsg = `
+❌ Supabase not fully configured!
+
+Using production database: ${PRODUCTION_SUPABASE_URL}
+
+To enable Supabase export, you need the Service Key.
+
+Option 1 - Run scheduler from terminal (recommended):
+npx tsx scripts/scheduler.ts
+
+Option 2 - Set key in browser console:
+localStorage.setItem('SUPABASE_SERVICE_KEY', 'your-service-key');
+
+Service key found in: c:/cevict-live/apps/sportsbook-terminal/.env.local
+        `;
+        showError('Supabase Service Key required. Check console for details.');
+        console.error('[SUPABASE] Missing Service Key');
+        showAdminModal('Supabase Configuration Required', setupMsg);
+        return;
+      }
+
+      // Verify production database
+      if (!config.url.includes('rdbuwyefbgnbuhmjrizo')) {
+        showError('⚠️ Not using production database!');
+        console.error('[SUPABASE] Expected: https://rdbuwyefbgnbuhmjrizo.supabase.co, Found:', config.url);
+        return;
+      }
+
+      showError('☁️ Exporting predictions to Supabase...', 'success');
+
+      try {
+        // Import Supabase dynamically
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+        const supabase = createClient(config.url, config.key);
+
+        const today = new Date().toISOString().split('T')[0];
+        const records = allPicks.map(pick => ({
+          game_id: pick.id || pick.game_id,
+          sport: pick.sport || pick.league,
+          league: pick.league,
+          home_team: pick.home_team,
+          away_team: pick.away_team,
+          pick: pick.pick,
+          pick_type: pick.pick_type,
+          recommended_line: pick.recommended_line,
+          odds: pick.odds,
+          confidence: pick.confidence,
+          expected_value: pick.expected_value || pick.ev,
+          win_probability: pick.mc_win_probability || (pick.confidence / 100),
+          game_time: pick.game_time,
+          prediction_date: today,
+          generated_at: new Date().toISOString(),
+          source_file: 'manual-export.json'
+        }));
+
+        // Insert in batches
+        const batchSize = 50;
+        let totalInserted = 0;
+
+        for (let i = 0; i < records.length; i += batchSize) {
+          const batch = records.slice(i, i + batchSize);
+          const { data, error } = await supabase
+            .from('daily_predictions')
+            .upsert(batch, {
+              onConflict: 'game_id,prediction_date',
+              ignoreDuplicates: false
+            });
+
+          if (error) {
+            console.error('[SUPABASE] Batch error:', error);
+            throw new Error(`Insert failed: ${error.message}`);
+          }
+          totalInserted += batch.length;
+        }
+
+        showError(`✅ Exported ${totalInserted} predictions to Supabase!`, 'success');
+        console.log('[SUPABASE] Exported', totalInserted, 'predictions');
+
+      } catch (err) {
+        console.error('[SUPABASE] Export failed:', err);
+        showError(`❌ Export failed: ${err.message}`);
+        showAdminModal('Export Failed', `
+Error: ${err.message}
+
+Make sure:
+1. Supabase URL and Service Key are correct
+2. daily_predictions table exists
+3. You have proper RLS policies configured
+        `);
+      }
+    }
+
+    async function archiveFiles() {
+      const msg = `
+📦 Archiving requires the scheduler script
+
+Files must be archived by the backend scheduler:
+
+1. Run in terminal:
+   npx tsx scripts/scheduler.ts
+
+2. Scheduler will:
+   ✓ Find predictions*.json in /public
+   ✓ Move to C:\cevict-archive\Probabilityanalyzer\predictions\
+   ✓ Find results*.json in /data/results
+   ✓ Move to C:\cevict-archive\Probabilityanalyzer\results\
+
+Archive location: C:\cevict-archive\Probabilityanalyzer
+      `;
+
+      console.log('[ARCHIVE]', msg);
+      showAdminModal('Archive Files', msg);
+    }
+
+    function showAdminModal(title, content) {
+      // Remove existing modal
+      const existing = document.getElementById('adminModal');
+      if (existing) existing.remove();
+
+      const modal = document.createElement('div');
+      modal.id = 'adminModal';
+      modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8); z-index: 10000;
+        display: flex; align-items: center; justify-content: center;
+      `;
+
+      modal.innerHTML = `
+        <div style="
+          background: var(--card-bg, #1a1d29);
+          border: 1px solid var(--border-color, #2d3142);
+          border-radius: 12px;
+          max-width: 600px;
+          max-height: 80vh;
+          overflow-y: auto;
+          padding: 24px;
+          margin: 20px;
+        ">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0; color: var(--text-primary);">${title}</h3>
+            <button onclick="document.getElementById('adminModal').remove()" style="
+              background: none; border: none; color: var(--text-muted);
+              font-size: 1.5em; cursor: pointer;
+            ">×</button>
+          </div>
+          <pre style="
+            background: rgba(0,0,0,0.3);
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 0.8em;
+            line-height: 1.5;
+            overflow-x: auto;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+          ">${content}</pre>
+        </div>
+      `;
+
+      modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+      };
+
+      document.body.appendChild(modal);
+    }
+
+    async function generateResultsFile() {
+      if (allPicks.length === 0) {
+        showError('No predictions loaded to generate results');
+        return;
+      }
+
+      showError('📊 Generating results template...', 'success');
+
+      // Generate results template with pending status
+      // Games won't be graded until they complete
+      const results = allPicks.map(pick => ({
+        game_id: pick.id || pick.game_id,
+        home_team: pick.home_team,
+        away_team: pick.away_team,
+        sport: pick.sport || pick.league,
+        confidence: pick.confidence,
+        status: 'pending',
+        actual_score: null,
+        pick_result: pick.pick
+      }));
+
+      const resultsData = {
+        date: new Date().toISOString().split('T')[0],
+        results: results,
+        summary: {
+          total: results.length,
+          winRate: 0,
+          pending: results.length,
+          graded: 0
+        },
+        _instructions: "Games will be graded after completion. Update 'status' to 'win' or 'loss' with actual_score."
+      };
+
+      // Create downloadable file
+      const blob = new Blob([JSON.stringify(resultsData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `results-template-${resultsData.date}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      const msg = `
+✅ Results template generated!
+
+Saved as: results-template-${resultsData.date}.json
+
+IMPORTANT:
+• All games are set to 'pending' status
+• Results are only available AFTER games complete
+• Grade games by updating status to 'win' or 'loss'
+• Add actual scores when grading
+• Re-import the file to see updated stats
+
+Expected workflow:
+1. Today: Generate predictions (status: pending)
+2. Tomorrow ~3 AM: Games complete, results available
+3. Update this file with actual outcomes
+4. Load updated file to see win/loss stats
+      `;
+
+      showAdminModal('Results Template Generated', msg);
+      console.log('[RESULTS] Template generated with', results.length, 'pending picks');
+    }
+
+    // Call these when switching to strategy tabs
+    const originalShowStrategy = showStrategy;
+    showStrategy = function (strategy) {
+      originalShowStrategy(strategy);
+      if (strategy === 'kalshi') {
+        generateKalshiStrategies();
+      } else if (strategy === 'polymarket') {
+        generatePolymarketStrategies();
+      }
+    };
+  </script>
+
+</body>
+
+</html>
