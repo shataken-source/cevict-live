@@ -1335,11 +1335,26 @@
 
         <!-- Kalshi Strategies -->
         <div class="strategy-section" id="kalshiSection" style="display: none;">
-          <div class="strategy-title">Kalshi Special Strategies</div>
-          <div id="kalshiList">
+          <div class="strategy-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Kalshi Sports Picks (YES/NO Markets)</span>
+            <button class="btn-primary" onclick="loadKalshiPicks()"
+              style="width: auto; padding: 8px 16px; font-size: 0.8em; margin: 0;">
+              🔄 Refresh from File
+            </button>
+          </div>
+
+          <!-- Tier Filter Tabs -->
+          <div class="filter-tabs" style="margin-bottom: 16px;">
+            <button class="filter-btn active" onclick="filterKalshiPicks('all')">All Tiers</button>
+            <button class="filter-btn" onclick="filterKalshiPicks('elite')">🔥 Elite (80%+)</button>
+            <button class="filter-btn" onclick="filterKalshiPicks('pro')">⭐ Pro (65-79%)</button>
+            <button class="filter-btn" onclick="filterKalshiPicks('free')">🆓 Free (&lt;65%)</button>
+          </div>
+
+          <div id="kalshiList" style="max-height: 500px; overflow-y: auto;">
             <div class="empty-state">
               <div class="empty-state-icon">📈</div>
-              <div>Calendar spreads • Volatility compression • YES/NO imbalance</div>
+              <div>Click "Refresh from File" to load Kalshi picks from <code>data/kalshi-picks.json</code></div>
             </div>
           </div>
         </div>
@@ -2769,6 +2784,188 @@
         text: diff > 0 ? `+${diff}` : `${diff}`
       };
     }
+
+    // ==================== KALSHI PICKS FROM JSON FILE ====================
+    let kalshiPicksData = null;
+    let currentKalshiFilter = 'all';
+
+    // Load Kalshi picks from the JSON file endpoint
+    async function loadKalshiPicks() {
+      const list = document.getElementById('kalshiList');
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="loading"></div>
+          <div>Loading Kalshi picks from file...</div>
+        </div>`;
+
+      try {
+        const response = await fetch('/api/kalshi-picks.json');
+        if (!response.ok) {
+          throw new Error(`Failed to load: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!data.success) {
+          throw new Error(data.message || 'Invalid data from server');
+        }
+
+        kalshiPicksData = data;
+        renderKalshiPicks();
+
+        const total = (data.elite?.length || 0) + (data.pro?.length || 0) + (data.free?.length || 0);
+        showError(`Loaded ${total} Kalshi picks from ${data.source || 'file'}`, 'success');
+      } catch (err) {
+        console.error('Error loading Kalshi picks:', err);
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">❌</div>
+            <div>Failed to load Kalshi picks: ${err.message}</div>
+            <div style="font-size: 0.8em; color: var(--text-muted); margin-top: 8px;">
+              Ensure the server is running and data/kalshi-picks.json exists
+            </div>
+          </div>`;
+      }
+    }
+
+    // Filter Kalshi picks by tier
+    function filterKalshiPicks(tier) {
+      currentKalshiFilter = tier;
+
+      // Update filter button states
+      document.querySelectorAll('#kalshiSection .filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.toLowerCase().includes(tier) ||
+          (tier === 'all' && btn.textContent.includes('All'))) {
+          btn.classList.add('active');
+        }
+      });
+
+      renderKalshiPicks();
+    }
+
+    // Render Kalshi picks based on current filter
+    function renderKalshiPicks() {
+      const list = document.getElementById('kalshiList');
+
+      if (!kalshiPicksData) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📈</div>
+            <div>Click "Refresh from File" to load Kalshi picks</div>
+          </div>`;
+        return;
+      }
+
+      let picksToShow = [];
+
+      if (currentKalshiFilter === 'all') {
+        picksToShow = [
+          ...(kalshiPicksData.elite || []).map(p => ({ ...p, tier: 'elite' })),
+          ...(kalshiPicksData.pro || []).map(p => ({ ...p, tier: 'pro' })),
+          ...(kalshiPicksData.free || []).map(p => ({ ...p, tier: 'free' }))
+        ];
+      } else {
+        picksToShow = (kalshiPicksData[currentKalshiFilter] || []).map(p => ({ ...p, tier: currentKalshiFilter }));
+      }
+
+      if (picksToShow.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <div>No ${currentKalshiFilter === 'all' ? '' : currentKalshiFilter} picks available</div>
+          </div>`;
+        return;
+      }
+
+      // Sort by confidence descending
+      picksToShow.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+
+      list.innerHTML = picksToShow.map(pick => {
+        const tierColor = pick.tier === 'elite' ? '#ff6b6b' : pick.tier === 'pro' ? '#ffd93d' : '#6bcf7f';
+        const tierBadge = pick.tier === 'elite' ? '🔥 ELITE' : pick.tier === 'pro' ? '⭐ PRO' : '🆓 FREE';
+        const pickColor = pick.pick === 'YES' ? '#00e676' : '#ff5252';
+
+        return `
+          <div class="parlay-item" style="flex-direction: column; align-items: flex-start; margin-bottom: 12px; border-left: 3px solid ${tierColor};">
+            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-bottom: 8px;">
+              <div style="font-weight: 600; font-size: 1em;">${pick.market}</div>
+              <div style="font-size: 0.75em; padding: 3px 10px; border-radius: 12px; background: ${tierColor}20; color: ${tierColor}; border: 1px solid ${tierColor}40;">
+                ${tierBadge}
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 16px; font-size: 0.85em; color: var(--text-secondary); margin-bottom: 8px;">
+              <span style="color: ${pickColor}; font-weight: 600; font-size: 1.1em;">${pick.pick}</span>
+              <span>|</span>
+              <span>${pick.probability}% Prob</span>
+              <span>|</span>
+              <span>${pick.marketPrice}¢ Price</span>
+              <span>|</span>
+              <span style="color: ${pick.edge > 0 ? 'var(--success)' : 'var(--danger)'}">${pick.edge > 0 ? '+' : ''}${pick.edge}% Edge</span>
+            </div>
+
+            <div style="font-size: 0.8em; color: var(--text-muted); margin-bottom: 8px; line-height: 1.4;">
+              ${pick.gameInfo} • ${pick.originalSport}
+            </div>
+
+            ${pick.reasoning ? `
+              <div style="font-size: 0.75em; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; margin-bottom: 8px; width: 100%;">
+                ${pick.reasoning}
+              </div>
+            ` : ''}
+
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <button onclick="openKalshiMarket('${pick.market}', '${pick.originalSport}')" style="
+                flex: 1;
+                padding: 6px 12px;
+                font-size: 0.75em;
+                background: rgba(59, 130, 246, 0.2);
+                color: #60a5fa;
+                border: 1px solid rgba(59, 130, 246, 0.4);
+                border-radius: 4px;
+                cursor: pointer;
+              ">
+                📈 View on Kalshi
+              </button>
+              <button onclick="copyKalshiPick('${pick.market}', '${pick.pick}', ${pick.probability})" style="
+                padding: 6px 12px;
+                font-size: 0.75em;
+                background: rgba(255, 255, 255, 0.1);
+                color: var(--text-secondary);
+                border: 1px solid var(--border-color);
+                border-radius: 4px;
+                cursor: pointer;
+              ">
+                📋 Copy
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Open Kalshi market (with sport hint)
+    function openKalshiMarket(marketTitle, sport) {
+      const kalshiUrl = 'https://kalshi.com/markets?sports';
+      window.open(kalshiUrl, '_blank');
+      showError(`Opening Kalshi... Search for: ${marketTitle}`, 'success');
+    }
+
+    // Copy Kalshi pick info
+    function copyKalshiPick(market, pick, probability) {
+      const text = `${market}: ${pick} (${probability}% confidence)`;
+      navigator.clipboard.writeText(text);
+      showError('Pick copied to clipboard', 'success');
+    }
+
+    // Auto-load Kalshi picks when switching to Kalshi tab
+    const originalShowStrategy = showStrategy;
+    showStrategy = function (strategy) {
+      originalShowStrategy(strategy);
+      if (strategy === 'kalshi' && !kalshiPicksData) {
+        loadKalshiPicks();
+      }
+    };
 
     // ==================== KALSHI STRATEGIES ====================
 

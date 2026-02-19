@@ -283,39 +283,100 @@ app.post('/api/export-supabase', async (req, res) => {
   }
 });
 
-// Fetch Kalshi sports picks from prognostication API
+// Fetch Kalshi sports picks from prognostication API (fault-tolerant with file fallback)
+const KALSHI_CACHE_FILE = path.join(__dirname, 'data', 'kalshi-picks.json');
+
+// Ensure data directory exists
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Load cached picks from file
+function loadCachedKalshiPicks() {
+  try {
+    if (fs.existsSync(KALSHI_CACHE_FILE)) {
+      const data = fs.readFileSync(KALSHI_CACHE_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error('[CACHE] Error loading cached picks:', err.message);
+  }
+  return null;
+}
+
+// Save picks to cache file
+function saveKalshiCache(data) {
+  try {
+    fs.writeFileSync(KALSHI_CACHE_FILE, JSON.stringify(data, null, 2));
+    console.log('[CACHE] Saved picks to', KALSHI_CACHE_FILE);
+  } catch (err) {
+    console.error('[CACHE] Error saving cache:', err.message);
+  }
+}
+
 app.get('/api/import-kalshi-sports', async (req, res) => {
   console.log('[SERVER] Importing Kalshi sports picks from prognostication API...');
 
+  const { createClient } = require('@supabase/supabase-js');
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(500).json({ success: false, message: 'Missing Supabase credentials' });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  let data = null;
+  let source = 'api';
+
+  // Try to fetch from prognostication API first
   try {
-    const { createClient } = require('@supabase/supabase-js');
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      return res.status(500).json({ success: false, message: 'Missing Supabase credentials' });
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Fetch from prognostication API
     const prognoUrl = process.env.PROGNO_URL || 'http://localhost:3000';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
     const response = await fetch(`${prognoUrl}/api/kalshi/sports?tier=all&limit=20`, {
       headers: { 'Content-Type': 'application/json' },
-      timeout: 10000
+      signal: controller.signal
     });
+    clearTimeout(timeout);
 
-    if (!response.ok) {
-      throw new Error(`Prognostication API returned ${response.status}`);
+    if (response.ok) {
+      data = await response.json();
+      if (data.success && data.elite && data.pro && data.free) {
+        console.log('[SERVER] Successfully fetched from prognostication API');
+        // Save to cache for fallback
+        saveKalshiCache(data);
+      } else {
+        throw new Error('Invalid API response structure');
+      }
+    } else {
+      throw new Error(`API returned ${response.status}`);
+    }
+  } catch (apiErr) {
+    console.warn('[SERVER] API fetch failed:', apiErr.message);
+    console.log('[SERVER] Falling back to cached file...');
+
+    // Fallback to cached file
+    data = loadCachedKalshiPicks();
+    source = 'cache';
+
+    if (!data) {
+      return res.status(503).json({
+        success: false,
+        message: 'Prognostication API unavailable and no cache file found',
+        error: apiErr.message,
+        cacheFile: KALSHI_CACHE_FILE
+      });
     }
 
-    const data = await response.json();
+    console.log('[SERVER] Using cached picks from file');
+  }
 
-    if (!data.success || !data.elite || !data.pro || !data.free) {
-      throw new Error('Invalid response from prognostication API');
-    }
-
-    // Combine all tiers
+  // Import to database
+  try {
     const allPicks = [
       ...data.elite.map(p => ({ ...p, tier: 'elite' })),
       ...data.pro.map(p => ({ ...p, tier: 'pro' })),
@@ -325,7 +386,6 @@ app.get('/api/import-kalshi-sports', async (req, res) => {
     let imported = 0;
     let errors = [];
 
-    // Import each pick as a Kalshi bet
     for (const pick of allPicks) {
       try {
         // Check if already exists
@@ -356,7 +416,7 @@ app.get('/api/import-kalshi-sports', async (req, res) => {
           original_sport: pick.originalSport,
           game_info: pick.gameInfo,
           status: 'open',
-          source: 'prognostication_api'
+          source: source === 'api' ? 'prognostication_api' : 'cached_file'
         });
 
         if (error) {
@@ -370,12 +430,13 @@ app.get('/api/import-kalshi-sports', async (req, res) => {
       }
     }
 
-    console.log(`[SERVER] Imported ${imported} Kalshi sports picks`);
+    console.log(`[SERVER] Imported ${imported} Kalshi sports picks (source: ${source})`);
 
     res.json({
       success: true,
       message: `Imported ${imported} Kalshi sports picks`,
       imported,
+      source,
       errors: errors.slice(0, 10),
       tiers: {
         elite: data.elite.length,
@@ -388,6 +449,39 @@ app.get('/api/import-kalshi-sports', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Import failed',
+      error: error.message
+    });
+  }
+});
+
+// Serve Kalshi picks as JSON file (for frontend direct consumption)
+app.get('/api/kalshi-picks.json', (req, res) => {
+  try {
+    // Try cache file first
+    const data = loadCachedKalshiPicks();
+    if (data) {
+      res.json({
+        success: true,
+        source: 'cache_file',
+        ...data,
+        cached_at: fs.statSync(KALSHI_CACHE_FILE).mtime
+      });
+      return;
+    }
+
+    // Return empty if no cache
+    res.json({
+      success: true,
+      elite: [],
+      pro: [],
+      free: [],
+      total: 0,
+      source: 'empty',
+      message: 'No cached picks available. Run /api/import-kalshi-sports to populate.'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
       error: error.message
     });
   }
@@ -734,7 +828,9 @@ app.get('/api', (req, res) => {
       'GET /api/v1/stats': 'Get system statistics (counts, archive status)',
       'GET /api/v1/archive/predictions': 'List archived prediction files',
       'GET /api/v1/archive/results': 'List archived results files',
-      'GET /api/v1/kalshi-bets': 'Get Kalshi-format sports bets by tier',
+      'GET /api/v1/kalshi-bets': 'Get Kalshi-format sports bets by tier (from DB)',
+      'GET /api/kalshi-picks.json': 'Get Kalshi picks as JSON file (direct file access)',
+      'GET /api': 'API documentation',
 
       // Admin endpoints
       'GET /api/health': 'Health check',
@@ -742,7 +838,7 @@ app.get('/api', (req, res) => {
       'POST /api/archive': 'Archive files to external storage',
       'POST /api/export-picks': 'Export picks from frontend to Supabase',
       'GET /api/archive-status': 'Check archive directory status',
-      'GET /api/import-kalshi-sports': 'Import Kalshi sports picks from prognostication API'
+      'GET /api/import-kalshi-sports': 'Import Kalshi sports picks from prognostication API (fault-tolerant)'
     },
     documentation: {
       description: 'REST API for accessing sports betting predictions and market data',
@@ -845,7 +941,8 @@ app.listen(PORT, () => {
   - GET  /api/v1/stats             - System statistics
   - GET  /api/v1/archive/predictions - Archived prediction files
   - GET  /api/v1/archive/results     - Archived results files
-  - GET  /api/v1/kalshi-bets       - Kalshi-format sports bets by tier
+  - GET  /api/v1/kalshi-bets       - Kalshi bets from DB (by tier)
+  - GET  /api/kalshi-picks.json    - Kalshi picks JSON file (direct)
   - GET  /api                      - API documentation
 
   🔧 ADMIN ENDPOINTS:
@@ -854,7 +951,10 @@ app.listen(PORT, () => {
   - POST /api/archive               - Archive files
   - POST /api/export-picks          - Export to Supabase
   - GET  /api/archive-status        - Check archive status
-  - GET  /api/import-kalshi-sports  - Import from prognostication API
+  - GET  /api/import-kalshi-sports  - Import from API (fault-tolerant)
+
+  📁 CACHE FILE:
+  - data/kalshi-picks.json         - Fallback cache for Kalshi picks
 
   📚 Documentation:
   ${path.join(__dirname, 'API_DOCUMENTATION.md')}
