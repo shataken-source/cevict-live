@@ -355,7 +355,7 @@ async function importKalshiSportsPicks(): Promise<number> {
   try {
     logger.info('Importing Kalshi sports picks from prognostication API...');
 
-    const prognoUrl = process.env.PROGNO_URL || 'http://localhost:3000';
+    const prognoUrl = process.env.PROGNO_URL || 'http://localhost:3005';
     const response = await fetch(`${prognoUrl}/api/kalshi/sports?tier=all&limit=20`, {
       headers: { 'Content-Type': 'application/json' }
     });

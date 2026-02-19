@@ -333,7 +333,7 @@ app.get('/api/import-kalshi-sports', async (req, res) => {
 
   // Try to fetch from prognostication API first
   try {
-    const prognoUrl = process.env.PROGNO_URL || 'http://localhost:3000';
+    const prognoUrl = process.env.PROGNO_URL || 'http://localhost:3005';
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
 
