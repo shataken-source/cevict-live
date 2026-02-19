@@ -1670,6 +1670,15 @@
       showError('Pro features unlocked!', 'success');
     }
 
+    // Open Kalshi - Deep link to Kalshi markets
+    function openKalshi(teamNames) {
+      // For now, open Kalshi sports page
+      // TODO: Map team names to specific Kalshi market IDs
+      const kalshiUrl = 'https://kalshi.com/markets?sports';
+      window.open(kalshiUrl, '_blank');
+      showError('Opening Kalshi... Search for your teams: ' + teamNames, 'success');
+    }
+
     // Kelly Criterion Calculation
     function fullKelly(p, odds) {
       const b = odds - 1;
@@ -1939,6 +1948,18 @@
         <span>Individual: ${p.confidences.join('% / ')}%</span>
         <span>Payout: ${p.payout.toFixed(2)}x</span>
       </div>
+      <button onclick="openKalshi('${p.teamNames.join(', ')}')" style="
+        margin-top: 8px;
+        padding: 4px 12px;
+        font-size: 0.75em;
+        background: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+        border: 1px solid rgba(59, 130, 246, 0.4);
+        border-radius: 4px;
+        cursor: pointer;
+      ">
+        📈 Place on Kalshi
+      </button>
     </div>
   `).join('');
 
@@ -1970,6 +1991,18 @@
         <span>Individual: ${p.confidences.join('% / ')}%</span>
         <span>Payout: ${p.payout.toFixed(2)}x</span>
       </div>
+      <button onclick="openKalshi('${p.teamNames.join(', ')}')" style="
+        margin-top: 8px;
+        padding: 4px 12px;
+        font-size: 0.75em;
+        background: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+        border: 1px solid rgba(59, 130, 246, 0.4);
+        border-radius: 4px;
+        cursor: pointer;
+      ">
+        📈 Place on Kalshi
+      </button>
     </div>
   `).join('');
 
