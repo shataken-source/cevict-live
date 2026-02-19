@@ -283,6 +283,116 @@ app.post('/api/export-supabase', async (req, res) => {
   }
 });
 
+// Fetch Kalshi sports picks from prognostication API
+app.get('/api/import-kalshi-sports', async (req, res) => {
+  console.log('[SERVER] Importing Kalshi sports picks from prognostication API...');
+
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return res.status(500).json({ success: false, message: 'Missing Supabase credentials' });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch from prognostication API
+    const prognoUrl = process.env.PROGNO_URL || 'http://localhost:3000';
+    const response = await fetch(`${prognoUrl}/api/kalshi/sports?tier=all&limit=20`, {
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 10000
+    });
+
+    if (!response.ok) {
+      throw new Error(`Prognostication API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.elite || !data.pro || !data.free) {
+      throw new Error('Invalid response from prognostication API');
+    }
+
+    // Combine all tiers
+    const allPicks = [
+      ...data.elite.map(p => ({ ...p, tier: 'elite' })),
+      ...data.pro.map(p => ({ ...p, tier: 'pro' })),
+      ...data.free.map(p => ({ ...p, tier: 'free' }))
+    ];
+
+    let imported = 0;
+    let errors = [];
+
+    // Import each pick as a Kalshi bet
+    for (const pick of allPicks) {
+      try {
+        // Check if already exists
+        const { data: existing } = await supabase
+          .from('kalshi_bets')
+          .select('id')
+          .eq('market_id', pick.marketId || pick.id)
+          .single();
+
+        if (existing) {
+          console.log(`[IMPORT] Skipping duplicate: ${pick.market}`);
+          continue;
+        }
+
+        // Insert Kalshi bet
+        const { error } = await supabase.from('kalshi_bets').insert({
+          market_id: pick.marketId || pick.id,
+          market_title: pick.market,
+          category: pick.category,
+          pick: pick.pick,
+          probability: pick.probability,
+          edge: pick.edge,
+          market_price: pick.marketPrice,
+          expires_at: pick.expires,
+          reasoning: pick.reasoning,
+          confidence: pick.confidence,
+          tier: pick.tier,
+          original_sport: pick.originalSport,
+          game_info: pick.gameInfo,
+          status: 'open',
+          source: 'prognostication_api'
+        });
+
+        if (error) {
+          errors.push(`${pick.market}: ${error.message}`);
+          continue;
+        }
+
+        imported++;
+      } catch (err) {
+        errors.push(`${pick.market}: ${err.message}`);
+      }
+    }
+
+    console.log(`[SERVER] Imported ${imported} Kalshi sports picks`);
+
+    res.json({
+      success: true,
+      message: `Imported ${imported} Kalshi sports picks`,
+      imported,
+      errors: errors.slice(0, 10),
+      tiers: {
+        elite: data.elite.length,
+        pro: data.pro.length,
+        free: data.free.length
+      }
+    });
+  } catch (error) {
+    console.error('[SERVER] Import failed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Import failed',
+      error: error.message
+    });
+  }
+});
+
 // ============ PUBLIC API ENDPOINTS FOR OTHER APPS ============
 // These endpoints allow external applications to consume prediction data
 
@@ -555,6 +665,61 @@ app.get('/api/v1/archive/results', (req, res) => {
   }
 });
 
+// GET /api/v1/kalshi-bets - Get Kalshi-format sports bets
+app.get('/api/v1/kalshi-bets', async (req, res) => {
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      return res.status(500).json({ error: 'Supabase not configured' });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const tier = req.query.tier || 'all';
+    const limit = Math.min(parseInt(req.query.limit || '10'), 30);
+
+    let query = supabase
+      .from('kalshi_bets')
+      .select('*')
+      .eq('status', 'open')
+      .order('confidence', { ascending: false })
+      .limit(limit);
+
+    if (tier !== 'all') {
+      query = query.eq('tier', tier);
+    }
+
+    const { data: bets, error } = await query;
+
+    if (error) throw error;
+
+    // Group by tier
+    const grouped = {
+      elite: bets?.filter(b => b.tier === 'elite') || [],
+      pro: bets?.filter(b => b.tier === 'pro') || [],
+      free: bets?.filter(b => b.tier === 'free') || []
+    };
+
+    res.json({
+      success: true,
+      count: bets?.length || 0,
+      tier,
+      data: grouped,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[API] Error fetching Kalshi bets:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // GET /api - API documentation
 app.get('/api', (req, res) => {
   res.json({
@@ -569,13 +734,15 @@ app.get('/api', (req, res) => {
       'GET /api/v1/stats': 'Get system statistics (counts, archive status)',
       'GET /api/v1/archive/predictions': 'List archived prediction files',
       'GET /api/v1/archive/results': 'List archived results files',
+      'GET /api/v1/kalshi-bets': 'Get Kalshi-format sports bets by tier',
 
       // Admin endpoints
       'GET /api/health': 'Health check',
       'POST /api/run-scheduler': 'Run the scheduler to process files',
       'POST /api/archive': 'Archive files to external storage',
       'POST /api/export-picks': 'Export picks from frontend to Supabase',
-      'GET /api/archive-status': 'Check archive directory status'
+      'GET /api/archive-status': 'Check archive directory status',
+      'GET /api/import-kalshi-sports': 'Import Kalshi sports picks from prognostication API'
     },
     documentation: {
       description: 'REST API for accessing sports betting predictions and market data',
@@ -678,6 +845,7 @@ app.listen(PORT, () => {
   - GET  /api/v1/stats             - System statistics
   - GET  /api/v1/archive/predictions - Archived prediction files
   - GET  /api/v1/archive/results     - Archived results files
+  - GET  /api/v1/kalshi-bets       - Kalshi-format sports bets by tier
   - GET  /api                      - API documentation
 
   🔧 ADMIN ENDPOINTS:
@@ -686,6 +854,7 @@ app.listen(PORT, () => {
   - POST /api/archive               - Archive files
   - POST /api/export-picks          - Export to Supabase
   - GET  /api/archive-status        - Check archive status
+  - GET  /api/import-kalshi-sports  - Import from prognostication API
 
   📚 Documentation:
   ${path.join(__dirname, 'API_DOCUMENTATION.md')}

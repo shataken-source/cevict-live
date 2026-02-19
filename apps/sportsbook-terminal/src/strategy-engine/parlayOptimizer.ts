@@ -112,7 +112,7 @@ export function generateParlays(
     minConfidence3Leg = 60,  // Lower confidence for 3-leg parlays
     maxLegs = 3,
     requirePositiveEV = true,
-    maxParlays = 10,
+    maxParlays = 20,
     prioritize2Leg = true,   // Default to prioritizing 2-leg
   } = options;
 

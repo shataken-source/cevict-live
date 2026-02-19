@@ -350,6 +350,89 @@ async function saveResultsToSupabase(data: ResultsFile, sourceFile: string): Pro
   }
 }
 
+// Import Kalshi sports picks from prognostication API
+async function importKalshiSportsPicks(): Promise<number> {
+  try {
+    logger.info('Importing Kalshi sports picks from prognostication API...');
+
+    const prognoUrl = process.env.PROGNO_URL || 'http://localhost:3000';
+    const response = await fetch(`${prognoUrl}/api/kalshi/sports?tier=all&limit=20`, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) {
+      logger.error(`Prognostication API returned ${response.status}`);
+      return 0;
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.elite || !data.pro || !data.free) {
+      logger.error('Invalid response from prognostication API');
+      return 0;
+    }
+
+    // Combine all tiers
+    const allPicks = [
+      ...data.elite.map((p: any) => ({ ...p, tier: 'elite' })),
+      ...data.pro.map((p: any) => ({ ...p, tier: 'pro' })),
+      ...data.free.map((p: any) => ({ ...p, tier: 'free' }))
+    ];
+
+    let imported = 0;
+
+    for (const pick of allPicks) {
+      try {
+        // Check if already exists
+        const { data: existing } = await supabase
+          .from('kalshi_bets')
+          .select('id')
+          .eq('market_id', pick.marketId || pick.id)
+          .single();
+
+        if (existing) {
+          logger.info(`Skipping duplicate: ${pick.market}`);
+          continue;
+        }
+
+        // Insert Kalshi bet
+        const { error } = await supabase.from('kalshi_bets').insert({
+          market_id: pick.marketId || pick.id,
+          market_title: pick.market,
+          category: pick.category,
+          pick: pick.pick,
+          probability: pick.probability,
+          edge: pick.edge,
+          market_price: pick.marketPrice,
+          expires_at: pick.expires,
+          reasoning: pick.reasoning,
+          confidence: pick.confidence,
+          tier: pick.tier,
+          original_sport: pick.originalSport,
+          game_info: pick.gameInfo,
+          status: 'open',
+          source: 'prognostication_api'
+        });
+
+        if (error) {
+          logger.error(`Failed to import ${pick.market}: ${error.message}`);
+          continue;
+        }
+
+        imported++;
+      } catch (err: any) {
+        logger.error(`Error importing ${pick.market}: ${err.message}`);
+      }
+    }
+
+    logger.success(`Imported ${imported} Kalshi sports picks (Elite: ${data.elite.length}, Pro: ${data.pro.length}, Free: ${data.free.length})`);
+    return imported;
+  } catch (err: any) {
+    logger.error(`Failed to import Kalshi sports picks: ${err.message}`);
+    return 0;
+  }
+}
+
 // Archive processed file
 async function archiveFile(sourcePath: string, subdir: string): Promise<boolean> {
   try {
@@ -488,6 +571,11 @@ async function main() {
     const resultsProcessed = await processResults();
     console.log(`[MAIN] Phase 2 complete: ${resultsProcessed} files processed`);
 
+    // Import Kalshi sports picks
+    console.log('[MAIN] Starting Phase 3: Importing Kalshi sports picks...');
+    const kalshiImported = await importKalshiSportsPicks();
+    console.log(`[MAIN] Phase 3 complete: ${kalshiImported} picks imported`);
+
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
 
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -495,6 +583,7 @@ async function main() {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`Predictions processed: ${predictionsProcessed}`);
     console.log(`Results processed: ${resultsProcessed}`);
+    console.log(`Kalshi picks imported: ${kalshiImported}`);
     console.log(`Duration: ${duration}s`);
     console.log('');
 
