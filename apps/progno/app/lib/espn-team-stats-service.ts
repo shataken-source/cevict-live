@@ -199,7 +199,7 @@ export async function fetchTeamCalibrationStats(
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
-      next: { revalidate: 21600 }, // 6h Next.js cache
+      cache: 'no-store',
     });
 
     if (!res.ok) {
@@ -210,10 +210,14 @@ export async function fetchTeamCalibrationStats(
     const data = await res.json();
     const events: any[] = data?.events ?? [];
 
-    // Filter completed games only
-    const completed = events.filter(
-      (e: any) => e?.status?.type?.completed === true
-    );
+    // Filter completed games only — ESPN nests status differently across endpoints
+    const completed = events.filter((e: any) => {
+      const comp = e?.competitions?.[0];
+      const statusType = comp?.status?.type ?? e?.status?.type;
+      return statusType?.completed === true ||
+        statusType?.state === 'post' ||
+        statusType?.name === 'STATUS_FINAL';
+    });
 
     // Take most recent N
     const recent = completed.slice(-lastN);
@@ -230,9 +234,9 @@ export async function fetchTeamCalibrationStats(
       const oppComp = competitors.find((c: any) => c.id !== String(espnTeamId));
       if (!teamComp || !oppComp) continue;
 
-      const scored = parseInt(teamComp?.score?.displayValue ?? '0', 10);
-      const allowed = parseInt(oppComp?.score?.displayValue ?? '0', 10);
-      if (isNaN(scored) || isNaN(allowed)) continue;
+      const scored = parseInt(teamComp?.score?.displayValue ?? teamComp?.score ?? '0', 10);
+      const allowed = parseInt(oppComp?.score?.displayValue ?? oppComp?.score ?? '0', 10);
+      if (isNaN(scored) || isNaN(allowed) || (scored === 0 && allowed === 0)) continue;
 
       games.push({
         date: (event.date ?? '').slice(0, 10),
