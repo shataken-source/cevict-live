@@ -50,7 +50,7 @@ async function fetchScores(sportKey, daysFrom) {
 
 function normalizeTeam(name) {
   return (name || '').toLowerCase()
-    .replace(/\s+(st|state|university|college|univ)\b/g, '')
+    .replace(/\s+(st\.?|state|university|college|univ|blue devils|wildcats|huskies|cougars|tigers|bears|eagles|hawks|wolves|bulldogs|cardinals|spartans|hoyas|orange|ramblers|billikens|mountaineers|vikings|lancers|chargers|warriors|skyhawks|dolphins|lions|panthers|titans)\b/g, '')
     .replace(/[^a-z0-9]/g, '')
     .trim();
 }
@@ -137,7 +137,7 @@ async function main() {
   const scoreCache = {};
   for (const [league, sportKey] of Object.entries(SPORT_KEYS)) {
     process.stdout.write(`  ${league}... `);
-    scoreCache[league] = await fetchScores(sportKey, 7);
+    scoreCache[league] = await fetchScores(sportKey, 3);
     console.log(`${scoreCache[league].length} games`);
   }
 
