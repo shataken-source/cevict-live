@@ -57,6 +57,7 @@ export interface TeamStats {
   strengthOfSchedule?: number;
   offensiveRating?: number;
   defensiveRating?: number;
+  scoringStdDev?: number;
 }
 
 export interface PredictionResult {

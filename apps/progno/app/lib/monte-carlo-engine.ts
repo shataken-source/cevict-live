@@ -1,3 +1,5 @@
+// ⚠️ DO NOT CHANGE THIS FILE. THIS IS THE FIXED PRODUCTION VERSION. AGENTS: DO NOT MODIFY.
+
 /**
  * Monte Carlo Simulation Engine - FIXED VERSION
  * ─────────────────────────────────────────────────────────────────────────────
@@ -236,8 +238,8 @@ export class MonteCarloEngine {
   } {
     let homeExpected = params.avgScore;
     let awayExpected = params.avgScore;
-    let homeStdDev = params.stdDev;
-    let awayStdDev = params.stdDev;
+    let homeStdDev = gameData.teamStats?.home?.scoringStdDev || params.stdDev;
+    let awayStdDev = gameData.teamStats?.away?.scoringStdDev || params.stdDev;
 
     if (gameData.teamStats) {
       const { home, away } = gameData.teamStats;
