@@ -167,20 +167,24 @@ export class PredictionEngine {
   }
 
   /**
-   * Load historical performance from database
+   * Load historical performance from database.
+   * Only adjusts the data-driven methods (statistical, elo, ml, regression, bayesian).
+   * Grid-search-tuned weights (home-advantage, recent-form, momentum, h2h, market-efficiency)
+   * are intentionally preserved — overwriting them with a blanket multiplier defeats the
+   * 1.3M-combination optimization that produced Sharpe 7.78 / 80.8% win rate.
    */
   private async loadHistoricalPerformance() {
+    const TUNED_WEIGHTS = new Set([
+      'home-advantage', 'recent-form', 'momentum', 'head-to-head', 'market-efficiency'
+    ]);
     try {
-      // Load win percentages by method from database
       const stats = await getWinPercentage({ type: 'sports' });
-
-      if (stats) {
-        // Adjust weights based on historical performance
-        const baseWeight = 1.0;
+      if (stats && stats.total >= 10) {
         const performanceMultiplier = stats.win_percentage / 50; // Normalize to 50% baseline
-
-        this.learningWeights.forEach((weight, method) => {
-          this.learningWeights.set(method, baseWeight * performanceMultiplier);
+        this.learningWeights.forEach((_, method) => {
+          if (!TUNED_WEIGHTS.has(method)) {
+            this.learningWeights.set(method, 1.0 * performanceMultiplier);
+          }
         });
       }
     } catch (error) {

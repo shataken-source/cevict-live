@@ -2,116 +2,150 @@ import { NextResponse } from 'next/server';
 
 /**
  * Performance API
- * Returns accuracy metrics, ROI, and historical performance data
+ * Returns accuracy metrics, ROI, and historical performance data from Supabase.
  */
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+function getClient() {
+  if (!supabaseUrl || !supabaseServiceKey) return null;
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    return createClient(supabaseUrl, supabaseServiceKey);
+  } catch {
+    return null;
+  }
+}
+
+function timeframeToStartDate(timeframe: string): string {
+  const days = timeframe === '7d' ? 7 : timeframe === '30d' ? 30 : timeframe === '90d' ? 90 : 365;
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString();
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const timeframe = searchParams.get('timeframe') || '30d';
+  const startDate = timeframeToStartDate(timeframe);
 
-  // In production, this would query Supabase
-  // For now, return realistic sample data based on timeframe
-  const data = generatePerformanceData(timeframe);
+  const client = getClient();
+  if (!client) {
+    return NextResponse.json({
+      error: 'Database not configured',
+      overall: { totalPicks: 0, wins: 0, losses: 0, pushes: 0, accuracy: 0, roi: 0, streak: 0, streakType: 'W' },
+      byLeague: {},
+      byConfidence: { high: { picks: 0, accuracy: 0 }, medium: { picks: 0, accuracy: 0 }, low: { picks: 0, accuracy: 0 } },
+      recentPicks: [],
+      weeklyTrend: [],
+      timeframe,
+      generatedAt: new Date().toISOString(),
+    }, { status: 503 });
+  }
 
-  return NextResponse.json(data);
-}
+  try {
+    const { data: predictions, error } = await client
+      .from('progno_predictions')
+      .select('id, category, confidence, is_correct, status, profit, edge_pct, prediction_data, created_at')
+      .eq('prediction_type', 'sports')
+      .gte('created_at', startDate)
+      .order('created_at', { ascending: false });
 
-function generatePerformanceData(timeframe: string) {
-  // Seed based on timeframe for consistency
-  const seed = timeframe === '7d' ? 7 : timeframe === '30d' ? 30 : timeframe === '90d' ? 90 : 365;
-  
-  // Calculate base metrics
-  const totalPicks = Math.floor(seed * 8 + Math.random() * seed * 2);
-  const accuracy = 58 + Math.random() * 12; // 58-70%
-  const wins = Math.floor(totalPicks * (accuracy / 100));
-  const losses = totalPicks - wins - Math.floor(totalPicks * 0.04); // ~4% pushes
-  const pushes = totalPicks - wins - losses;
+    if (error) throw error;
+    const rows: any[] = predictions || [];
 
-  // ROI based on accuracy
-  const roi = (accuracy - 52.38) * 0.8 + Math.random() * 3; // Break-even is ~52.38%
+    const completed = rows.filter((r: any) => r.status !== 'pending' && r.status !== 'cancelled');
+    const wins = completed.filter((r: any) => r.is_correct === true).length;
+    const losses = completed.filter((r: any) => r.is_correct === false).length;
+    const pushes = completed.filter((r: any) => r.status === 'partial').length;
+    const accuracy = completed.length > 0 ? parseFloat(((wins / completed.length) * 100).toFixed(1)) : 0;
 
-  // Streak (random but realistic)
-  const streakType = Math.random() > 0.4 ? 'W' : 'L';
-  const streak = Math.floor(Math.random() * 8) + 1;
+    // ROI: sum profit / (count * $100 stake)
+    const totalProfit = completed.reduce((s: number, r: any) => s + (r.profit || 0), 0);
+    const roi = completed.length > 0 ? parseFloat((totalProfit / (completed.length * 100) * 100).toFixed(1)) : 0;
 
-  // Weekly trend
-  const weeklyTrend = Array.from({ length: 7 }, () => 
-    55 + Math.random() * 15
-  );
-
-  // League breakdown
-  const byLeague: Record<string, any> = {};
-  const leagues = ['NFL', 'NBA', 'NCAAF', 'NCAAB', 'NHL', 'MLB'];
-  
-  leagues.forEach(league => {
-    const picks = Math.floor(totalPicks / leagues.length * (0.5 + Math.random()));
-    const leagueAccuracy = accuracy + (Math.random() * 10 - 5);
-    byLeague[league] = {
-      picks,
-      wins: Math.floor(picks * (leagueAccuracy / 100)),
-      accuracy: parseFloat(leagueAccuracy.toFixed(1)),
-      roi: parseFloat(((leagueAccuracy - 52.38) * 0.8 + Math.random() * 3).toFixed(1))
-    };
-  });
-
-  // Confidence breakdown
-  const highPicks = Math.floor(totalPicks * 0.25);
-  const mediumPicks = Math.floor(totalPicks * 0.5);
-  const lowPicks = totalPicks - highPicks - mediumPicks;
-
-  const byConfidence = {
-    high: { 
-      picks: highPicks, 
-      accuracy: parseFloat((accuracy + 8 + Math.random() * 4).toFixed(1))
-    },
-    medium: { 
-      picks: mediumPicks, 
-      accuracy: parseFloat((accuracy + Math.random() * 4 - 2).toFixed(1))
-    },
-    low: { 
-      picks: lowPicks, 
-      accuracy: parseFloat((accuracy - 5 + Math.random() * 4).toFixed(1))
+    // Current streak from most recent completed picks
+    let streak = 0;
+    let streakType: 'W' | 'L' = 'W';
+    for (const r of completed) {
+      if (streak === 0) { streakType = r.is_correct ? 'W' : 'L'; streak = 1; continue; }
+      if ((r.is_correct && streakType === 'W') || (!r.is_correct && streakType === 'L')) streak++;
+      else break;
     }
-  };
 
-  // Recent picks
-  const games = [
-    ['Chiefs', 'Raiders', 'NFL'],
-    ['Lakers', 'Celtics', 'NBA'],
-    ['Bills', 'Dolphins', 'NFL'],
-    ['Warriors', 'Suns', 'NBA'],
-    ['Cowboys', 'Eagles', 'NFL'],
-    ['Bucks', 'Heat', 'NBA'],
-    ['Alabama', 'Georgia', 'NCAAF'],
-    ['Duke', 'UNC', 'NCAAB'],
-  ];
+    // Weekly trend: accuracy per day for last 7 days
+    const weeklyTrend: number[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = new Date(); dayStart.setDate(dayStart.getDate() - i); dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(); dayEnd.setDate(dayEnd.getDate() - i); dayEnd.setHours(23, 59, 59, 999);
+      const dayRows = completed.filter((r: any) => {
+        const d = new Date(r.created_at);
+        return d >= dayStart && d <= dayEnd;
+      });
+      const dayWins = dayRows.filter((r: any) => r.is_correct === true).length;
+      weeklyTrend.push(dayRows.length > 0 ? parseFloat(((dayWins / dayRows.length) * 100).toFixed(1)) : 0);
+    }
 
-  const recentPicks = games.slice(0, 5).map((game, i) => ({
-    id: String(i + 1),
-    game: `${game[0]} vs ${game[1]}`,
-    pick: Math.random() > 0.5 ? `${game[0]} -${(Math.random() * 7 + 1).toFixed(1)}` : `Over ${Math.floor(Math.random() * 20 + 200)}.5`,
-    confidence: Math.floor(60 + Math.random() * 25),
-    result: i < 4 ? (Math.random() > 0.35 ? 'W' : 'L') : 'pending',
-    date: new Date(Date.now() - i * 86400000).toISOString().split('T')[0]
-  }));
+    // By league
+    const byLeague: Record<string, any> = {};
+    for (const r of completed) {
+      const league = (r.category || 'UNKNOWN').toUpperCase();
+      if (!byLeague[league]) byLeague[league] = { picks: 0, wins: 0, profit: 0 };
+      byLeague[league].picks++;
+      if (r.is_correct) byLeague[league].wins++;
+      byLeague[league].profit += (r.profit || 0);
+    }
+    Object.keys(byLeague).forEach(l => {
+      const lg = byLeague[l];
+      lg.accuracy = lg.picks > 0 ? parseFloat(((lg.wins / lg.picks) * 100).toFixed(1)) : 0;
+      lg.roi = lg.picks > 0 ? parseFloat((lg.profit / (lg.picks * 100) * 100).toFixed(1)) : 0;
+      delete lg.profit;
+    });
 
-  return {
-    overall: {
-      totalPicks,
-      wins,
-      losses,
-      pushes,
-      accuracy: parseFloat(accuracy.toFixed(1)),
-      roi: parseFloat(roi.toFixed(1)),
-      streak,
-      streakType
-    },
-    byLeague,
-    byConfidence,
-    recentPicks,
-    weeklyTrend: weeklyTrend.map(v => parseFloat(v.toFixed(1))),
-    timeframe,
-    generatedAt: new Date().toISOString()
-  };
+    // By confidence tier
+    const high = completed.filter((r: any) => r.confidence >= 70);
+    const medium = completed.filter((r: any) => r.confidence >= 57 && r.confidence < 70);
+    const low = completed.filter((r: any) => r.confidence < 57);
+    const tierAcc = (arr: any[]) => arr.length > 0
+      ? parseFloat(((arr.filter((r: any) => r.is_correct).length / arr.length) * 100).toFixed(1))
+      : 0;
+    const byConfidence = {
+      high: { picks: high.length, accuracy: tierAcc(high) },
+      medium: { picks: medium.length, accuracy: tierAcc(medium) },
+      low: { picks: low.length, accuracy: tierAcc(low) },
+    };
+
+    // Recent picks (last 10 completed)
+    const recentPicks = rows.slice(0, 10).map((r: any) => {
+      const pd = r.prediction_data || {};
+      const gd = pd.gameData || {};
+      const pred = pd.prediction || {};
+      return {
+        id: r.id,
+        game: `${gd.awayTeam || '?'} @ ${gd.homeTeam || '?'}`,
+        pick: pred.predictedWinner || pred.recommendedBet?.side || '?',
+        confidence: r.confidence || 0,
+        result: r.status === 'pending' ? 'pending' : r.is_correct ? 'W' : 'L',
+        date: r.created_at?.split('T')[0] || '',
+        league: r.category || '',
+        edge: r.edge_pct || 0,
+      };
+    });
+
+    return NextResponse.json({
+      overall: { totalPicks: rows.length, wins, losses, pushes, accuracy, roi, streak, streakType },
+      byLeague,
+      byConfidence,
+      recentPicks,
+      weeklyTrend,
+      timeframe,
+      generatedAt: new Date().toISOString(),
+    });
+
+  } catch (error: any) {
+    console.error('[PERFORMANCE] Error:', error);
+    return NextResponse.json({ error: error.message || 'Query failed' }, { status: 500 });
+  }
 }
 
