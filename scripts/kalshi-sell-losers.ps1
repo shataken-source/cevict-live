@@ -8,6 +8,7 @@
 
 param(
     [switch]$DryRun = $false,
+    [switch]$SellAll = $false,    # Sell ALL open positions regardless of P&L
     [double]$LossThresholdPct = 0  # Sell if current value is ANY % below cost (0 = sell all losers)
 )
 
@@ -138,12 +139,13 @@ foreach ($pos in $positions) {
     $currValD = [math]::Round($currentValCents / 100, 2)
 
     $isLoser = $pnlCents -lt 0
-    $color = if ($isLoser) { 'Red' } else { 'Green' }
-    $action = if ($isLoser) { 'SELL' } else { 'HOLD' }
+    $willSell = $isLoser -or $SellAll
+    $color = if ($isLoser) { 'Red' } elseif ($SellAll) { 'Yellow' } else { 'Green' }
+    $action = if ($willSell) { 'SELL' } else { 'HOLD' }
 
     Write-Host ("{0,-30} {1,8} {2,10:C} {3,10:C} {4,10:C} {5,8}" -f $ticker, $qty, $avgCostD, $currValD, $pnlDollar, $action) -ForegroundColor $color
 
-    if ($isLoser) {
+    if ($willSell) {
         $toSell += [PSCustomObject]@{
             Ticker  = $ticker
             Side    = $side
@@ -154,15 +156,17 @@ foreach ($pos in $positions) {
     }
 }
 
-Write-Host "`nLosing positions to sell: $($toSell.Count)" -ForegroundColor $(if ($toSell.Count -gt 0) { 'Yellow' } else { 'Green' })
+$sellLabel = if ($SellAll) { 'Positions to sell (ALL)' } else { 'Losing positions to sell' }
+Write-Host "`n$sellLabel`: $($toSell.Count)" -ForegroundColor $(if ($toSell.Count -gt 0) { 'Yellow' } else { 'Green' })
 
 if ($toSell.Count -eq 0) {
-    Write-Host "No losing positions found. Nothing to sell." -ForegroundColor Green
+    Write-Host "No positions to sell." -ForegroundColor Green
     exit 0
 }
 
-# ── 4. Sell losers ────────────────────────────────────────────────────────────
-Write-Host "`n🔴 Selling losing positions..." -ForegroundColor Red
+# ── 4. Sell positions ─────────────────────────────────────────────────────────
+$sellHeader = if ($SellAll) { '🔴 Selling ALL positions...' } else { '🔴 Selling losing positions...' }
+Write-Host "`n$sellHeader" -ForegroundColor Red
 $sold = 0
 $freed = 0.0
 
@@ -175,18 +179,36 @@ foreach ($pos in $toSell) {
     }
 
     try {
-        # Place a market sell order
-        # On Kalshi, selling means placing a 'sell' action order
+        # Fetch orderbook to get best bid price
+        $book = Invoke-KalshiApi -Method 'GET' -Path "/trade-api/v2/markets/$($pos.Ticker)/orderbook"
+        Start-Sleep -Milliseconds 300
+
+        # When selling YES contracts: we want the best YES bid (someone willing to buy YES from us)
+        # When selling NO contracts: we want the best NO bid
+        # Use price 1 (1 cent) as absolute floor to guarantee fill — taker gets whatever is on book
+        $bestBid = 1
+        if ($pos.Side -eq 'yes' -and $book.orderbook.yes -and $book.orderbook.yes.Count -gt 0) {
+            # yes bids are sorted descending; first entry is best bid [price, qty]
+            $bestBid = [int]($book.orderbook.yes[0][0])
+        }
+        elseif ($pos.Side -eq 'no' -and $book.orderbook.no -and $book.orderbook.no.Count -gt 0) {
+            $bestBid = [int]($book.orderbook.no[0][0])
+        }
+        if ($bestBid -lt 1) { $bestBid = 1 }
+
+        # Kalshi sell order: action=sell, side=yes/no, type=limit, yes_price or no_price in cents
+        $priceKey = if ($pos.Side -eq 'yes') { 'yes_price' } else { 'no_price' }
         $body = @{
-            ticker = $pos.Ticker
-            side   = $pos.Side
-            action = 'sell'
-            count  = [int]$pos.Qty
-            type   = 'market'
+            ticker    = $pos.Ticker
+            side      = $pos.Side
+            action    = 'sell'
+            count     = [int]$pos.Qty
+            type      = 'limit'
+            $priceKey = $bestBid
         }
 
         $result = Invoke-KalshiApi -Method 'POST' -Path '/trade-api/v2/portfolio/orders' -Body $body
-        Write-Host " ✅ Order placed: $($result.order.order_id)" -ForegroundColor Green
+        Write-Host " ✅ Order placed @ $bestBid¢: $($result.order.order_id)" -ForegroundColor Green
         $sold++
         $freed += $pos.CurrVal
         Start-Sleep -Milliseconds 600  # Rate limit: stay under 10 req/sec
