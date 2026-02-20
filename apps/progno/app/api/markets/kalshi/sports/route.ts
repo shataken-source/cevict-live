@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  
+
   try {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       try {
         // Extract sport and teams from market title
         const sportInfo = extractSportInfo(market);
-        
+
         const sportsMarket: SportsMarket = {
           id: market.ticker,
           platform: 'kalshi',
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
           picks.push({
             ...prediction,
             kalshiTicker: market.ticker,
-            kalshiUrl: `https://kalshi.com/trade/${market.ticker}`,
+            kalshiUrl: `https://kalshi.com/markets/${market.event_ticker}/${market.ticker}`,
             marketInfo: {
               volume: market.volume,
               openInterest: market.open_interest,
@@ -127,11 +127,11 @@ function extractSportInfo(market: any): {
   teams?: { home: string; away: string };
 } {
   const title = market.title.toLowerCase();
-  
+
   // Detect sport
   let sport = 'unknown';
   let league: string | undefined;
-  
+
   if (title.includes('nfl') || title.includes('football')) {
     sport = 'americanfootball';
     league = 'NFL';
@@ -151,7 +151,7 @@ function extractSportInfo(market: any): {
 
   // Try to extract teams (simple pattern matching)
   const teams = extractTeams(market.title);
-  
+
   return { sport, league, teams };
 }
 
@@ -183,7 +183,7 @@ function extractTeams(title: string): { home: string; away: string } | undefined
  */
 function determineEventType(title: string): SportsMarket['eventType'] {
   const lower = title.toLowerCase();
-  
+
   if (lower.includes('win') || lower.includes('winner') || lower.includes('beat')) {
     return 'game_winner';
   } else if (lower.includes('total') || lower.includes('over') || lower.includes('under')) {
@@ -195,6 +195,6 @@ function determineEventType(title: string): SportsMarket['eventType'] {
   } else if (lower.includes('team')) {
     return 'team_prop';
   }
-  
+
   return 'other';
 }
