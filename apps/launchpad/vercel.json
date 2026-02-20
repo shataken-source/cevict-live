@@ -3,10 +3,10 @@
   "outputDirectory": ".next",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "framework": "nextjs",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/launchpad/",
   "git": {
     "deploymentEnabled": {
       "main": true
     }
   }
 }
-
