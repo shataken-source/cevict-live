@@ -1,0 +1,49 @@
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  PROGNO WEEKLY BACKTEST — ESPN RESULTS
+  Generated: 2/20/2026, 5:56:24 AM
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+DATE        LG     ENG  MATCHUP                             PICK                  TYPE    CONF  EDGE   ACTUAL                SCORE     RESULT
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────
+2026-02-20  NCAAB  new  Siena Saints @ Merrimack Warriors   Merrimack Warriors    SPREAD  69%   22.8%  —                     —         NOT FOUND
+2026-02-20  NBA    new  Milwaukee Bucks @ New Orleans PelicaNew Orleans Pelicans  SPREAD  68%   22.7%  —                     —         NOT FOUND
+2026-02-20  NCAAB  new  Tennessee Volunteers @ Vanderbilt CoVanderbilt Commodores SPREAD  66%   21.7%  —                     —         NOT FOUND
+2026-02-20  NBA    new  Utah Jazz @ Memphis Grizzlies       Memphis Grizzlies     SPREAD  65%   17.0%  —                     —         NOT FOUND
+2026-02-20  NCAAB  new  Milwaukee Panthers @ Detroit Mercy TDetroit Mercy Titans  SPREAD  66%   16.6%  —                     —         NOT FOUND
+2026-02-20  NCAA   new  Baylor Bears @ Oregon St Beavers    Oregon St Beavers     MONEYLIN68%   6.9%   —                     —         NOT FOUND
+2026-02-20  NCAA   new  Wichita St Shockers @ Hawai'i RainboHawai'i Rainbow WarrioTOTAL   67%   5.0%   —                     —         NOT FOUND
+2026-02-20  NCAA   new  Nebraska Cornhuskers @ Louisville CaLouisville Cardinals  SPREAD  63%   5.2%   —                     —         NOT FOUND
+2026-02-19  NCAAB  new  Lindenwood Lions @ Tennessee St TigeTennessee St Tigers   SPREAD  62%   22.8%  Tennessee State Tigers89-80     ✅ WIN
+2026-02-19  NBA    new  Utah Jazz @ Memphis Grizzlies       Memphis Grizzlies     SPREAD  58%   23.0%  —                     —         NOT FOUND
+2026-02-19  NCAAB  new  Siena Saints @ Merrimack Warriors   Merrimack Warriors    SPREAD  60%   22.4%  —                     —         NOT FOUND
+2026-02-19  NCAAB  new  Marshall Thundering Herd @ AppalachiAppalachian St MountaiSPREAD  61%   21.9%  —                     —         NOT FOUND
+2026-02-19  NCAAB  new  Le Moyne Dolphins @ Central ConnectiCentral Connecticut StSPREAD  61%   21.8%  Central Connecticut Bl78-77     ✅ WIN
+2026-02-19  NCAAB  new  Idaho Vandals @ Portland St Vikings Portland St Vikings   SPREAD  61%   21.6%  Portland State Vikings77-67     ✅ WIN
+2026-02-19  NBA    new  Detroit Pistons @ New York Knicks   New York Knicks       SPREAD  61%   21.2%  Detroit Pistons       111-126   ❌ LOSS
+2026-02-19  NBA    new  Milwaukee Bucks @ New Orleans PelicaNew Orleans Pelicans  SPREAD  59%   21.0%  —                     —         NOT FOUND
+2026-02-19  NCAAB  new  Longwood Lancers @ Presbyterian BluePresbyterian Blue HoseSPREAD  58%   18.0%  Presbyterian Blue Hose72-65     ✅ WIN
+2026-02-19  NCAAB  new  Stonehill Skyhawks @ New Haven ChargNew Haven Chargers    SPREAD  58%   17.8%  New Haven Chargers    64-51     ✅ WIN
+2026-02-19  NBA    new  Atlanta Hawks @ Philadelphia 76ers  Philadelphia 76ers    SPREAD  57%   12.6%  Atlanta Hawks         107-117   ❌ LOSS
+2026-02-15  NCAAB  new  Syracuse Orange @ Duke Blue Devils  Syracuse Orange       MONEYLIN92%   84.5%  Duke Blue Devils      101-64    ❌ LOSS
+2026-02-15  NCAAB  new  Davidson Wildcats @ Dayton Flyers   Davidson Wildcats     MONEYLIN81%   49.0%  —                     —         NOT FOUND
+2026-02-15  NCAAB  new  San Francisco Dons @ San Diego TorerSan Diego Toreros     MONEYLIN78%   39.7%  —                     —         NOT FOUND
+2026-02-13  NCAAB  new  Kansas St Wildcats @ Houston CougarsKansas St Wildcats    MONEYLIN92%   85.9%  Houston Cougars       78-64     ❌ LOSS
+2026-02-13  NCAAB  new  Saint Louis Billikens @ Loyola (Chi)Loyola (Chi) Ramblers MONEYLIN92%   85.3%  Saint Louis Billikens 59-86     ❌ LOSS
+2026-02-13  NCAAB  new  Georgetown Hoyas @ UConn Huskies    Georgetown Hoyas      MONEYLIN92%   73.5%  UConn Huskies         79-75     ❌ LOSS
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  OVERALL SUMMARY
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  Total picks:    25
+  Completed:      11
+  Correct:        5
+  Incorrect:      6
+  Not Found:      14
+  Win Rate:       45.5%
+  Est. ROI:       -6.9%
+
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  ENGINE COMPARISON
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  NEW    | Total: 25   | Completed: 11   | W: 5   L: 6   | Win Rate: 45.5  % | Est. ROI: -6.9%
+══════════════════════════════════════════════════════════════════════════════════════════════════════════════
