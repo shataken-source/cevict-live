@@ -209,6 +209,82 @@ export function estimateTeamStatsFromOdds(odds: { home: number; away: number; sp
   };
 }
 
+/**
+ * Async version: tries ESPN real data first, falls back to market-derived estimates.
+ * Use this in pick-engine when you want calibrated stdDev for MC simulation.
+ */
+export async function estimateTeamStatsEnhanced(
+  homeTeam: string,
+  awayTeam: string,
+  odds: { home: number; away: number; spread?: number; total?: number },
+  sport: string
+): Promise<{ home: any; away: any; dataSource: 'espn_calibrated' | 'market_derived' }> {
+  // Determine league
+  const upper = sport.toUpperCase();
+  const isNBA = upper.includes('NBA') || upper.includes('BASKETBALL_NBA');
+  const isNCAAB = upper.includes('NCAAB') || upper.includes('COLLEGE') || upper.includes('NCAA');
+
+  if (isNBA || isNCAAB) {
+    try {
+      const { fetchTeamCalibrationStats, resolveEspnId } = await import('./espn-team-stats-service');
+      const league: 'nba' | 'ncaab' = isNBA ? 'nba' : 'ncaab';
+
+      const homeId = resolveEspnId(homeTeam, league);
+      const awayId = resolveEspnId(awayTeam, league);
+
+      if (homeId && awayId) {
+        const [homeEspn, awayEspn] = await Promise.all([
+          fetchTeamCalibrationStats(homeId, league, 15),
+          fetchTeamCalibrationStats(awayId, league, 15),
+        ]);
+
+        if (homeEspn && awayEspn) {
+          const spread = odds.spread ?? 0;
+          const total = odds.total ?? (isNBA ? 224 : 144);
+          const marketHomeExp = (total - spread) / 2;
+          const marketAwayExp = (total + spread) / 2;
+
+          // Blend ESPN recent avg with market implied (50/50)
+          const homeExp = (homeEspn.homeAvgScored + marketHomeExp) / 2;
+          const awayExp = (awayEspn.awayAvgScored + marketAwayExp) / 2;
+
+          // Cap stdDev to sane range
+          const homeStd = Math.min(Math.max(homeEspn.scoringStdDev, 5), 20);
+          const awayStd = Math.min(Math.max(awayEspn.scoringStdDev, 5), 20);
+
+          return {
+            dataSource: 'espn_calibrated',
+            home: {
+              wins: Math.round(homeEspn.recentForm * 15),
+              losses: Math.round((1 - homeEspn.recentForm) * 15),
+              pointsFor: homeEspn.avgPointsScored * 82,
+              pointsAgainst: homeEspn.avgPointsAllowed * 82,
+              recentAvgPoints: homeExp,
+              recentAvgAllowed: awayExp,
+              scoringStdDev: homeStd,
+            },
+            away: {
+              wins: Math.round(awayEspn.recentForm * 15),
+              losses: Math.round((1 - awayEspn.recentForm) * 15),
+              pointsFor: awayEspn.avgPointsScored * 82,
+              pointsAgainst: awayEspn.avgPointsAllowed * 82,
+              recentAvgPoints: awayExp,
+              recentAvgAllowed: homeExp,
+              scoringStdDev: awayStd,
+            },
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('[ODDS_HELPERS] ESPN stats fetch failed, falling back to market-derived:', err);
+    }
+  }
+
+  // Fallback: market-derived
+  const base = estimateTeamStatsFromOdds(odds, sport);
+  return { ...base, dataSource: 'market_derived' };
+}
+
 // Estimate recent form from odds (favorite = better form)
 export function estimateRecentForm(odds: { home: number; away: number }): { home: string[]; away: string[] } {
   const homeProb = americanToImpliedProb(odds.home);
