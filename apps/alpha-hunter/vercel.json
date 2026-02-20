@@ -3,5 +3,6 @@
   "buildCommand": "next build",
   "outputDirectory": ".next",
   "installCommand": "npm install",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/alpha-hunter/"
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/alpha-hunter/",
+  "rootDirectory": "apps/alpha-hunter"
 }
