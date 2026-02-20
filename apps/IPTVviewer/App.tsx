@@ -1,12 +1,12 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import HomeScreen from './screens/HomeScreen';
-import PlayerScreen from './screens/PlayerScreen';
-import SettingsScreen from './screens/SettingsScreen';
-import EPGScreen from './screens/EPGScreen';
-import { FavoritesScreen } from './screens/FavoritesScreen';
-import { ChannelHistoryScreen } from './screens/ChannelHistoryScreen';
+import HomeScreen from './src/screens/HomeScreen';
+import PlayerScreen from './src/screens/PlayerScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import EPGScreen from './src/screens/EPGScreen';
+import { FavoritesScreen } from './src/screens/FavoritesScreen';
+import { ChannelHistoryScreen } from './src/screens/ChannelHistoryScreen';
 
 const Stack = createNativeStackNavigator();
 
