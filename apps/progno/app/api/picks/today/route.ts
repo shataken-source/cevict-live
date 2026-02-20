@@ -129,8 +129,8 @@ function convertApiSportsToOddsFormat(game: ApiSportsGame): any {
 const EV_DISPLAY_CAP = 150
 /** Regular picks: today + next day (0–1 days ahead). */
 const REGULAR_MAX_DAYS_AHEAD = 1
-/** Early lines: 3–5 days ahead (so you can compare when those games hit regular window). */
-const EARLY_LINES_MIN_DAYS = 3
+/** Early lines: 2–5 days ahead (so you can compare when those games hit regular window). */
+const EARLY_LINES_MIN_DAYS = 2
 const EARLY_LINES_MAX_DAYS = 5
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -364,6 +364,7 @@ export async function GET(request: Request) {
         .select('*')
         .gte('game_time', `${today}T00:00:00`)
         .lt('game_time', `${today}T23:59:59`)
+        .or('early_lines.is.null,early_lines.eq.false')
 
       // Validate cached picks - skip if NHL has unrealistic scores (5-5)
       const hasUnrealisticScores = existingPicks?.some((p: any) => {
@@ -474,6 +475,8 @@ export async function GET(request: Request) {
           if (!commence || !inWindow(commence)) continue
           const pick = await runPickEngine(game, sport)
           if (!pick) continue
+          // Tag pick with early_lines flag so DB rows are distinguishable
+          pick.early_lines = earlyLines
           // Favorite-only (backtest showed underdog value bets lose; favorite-only is profitable)
           if (favoriteOnly && !pick.is_favorite_pick) continue
           // Save to Supabase if available
@@ -499,7 +502,7 @@ export async function GET(request: Request) {
     }
 
     const topPicks = rankPicks(allPicks)
-    const windowLabel = earlyLines ? `Early lines (${EARLY_LINES_MIN_DAYS}-${EARLY_LINES_MAX_DAYS} days ahead)` : `Regular (0-${REGULAR_MAX_DAYS_AHEAD} days)`
+    const windowLabel = earlyLines ? `Early lines (${EARLY_LINES_MIN_DAYS}–${EARLY_LINES_MAX_DAYS} days ahead)` : `Regular (0–${REGULAR_MAX_DAYS_AHEAD} days)`
 
     return NextResponse.json({
       message: topPicks.length > 0
@@ -511,6 +514,7 @@ export async function GET(request: Request) {
       picks: topPicks,
       count: topPicks.length,
       total_games: allPicks.length,
+      early_lines: earlyLines,
       premium_count: topPicks.filter((p: any) => p.is_premium).length,
       value_bets_count: topPicks.filter((p: any) => p.has_value).length,
       strategy: 'Triple Alignment: model pick + value bet side + MC agree. Top 20 by composite score (confidence + edge + EV + triple bonus). Max 3 per sport (NFL/NBA/NHL/MLB/NCAAF/NCAAB). Ensures all tiers (Elite/Pro/Free) receive picks. Consensus odds (up to 3 books).',

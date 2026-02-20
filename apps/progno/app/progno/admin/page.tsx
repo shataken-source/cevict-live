@@ -553,14 +553,14 @@ export default function AdminPage() {
             </div>
 
             <Card>
-              <SectionLabel>STRATEGY SETTINGS (ACTIVE)</SectionLabel>
+              <SectionLabel>STRATEGY SETTINGS (ACTIVE DEFAULTS — override via Vercel env vars)</SectionLabel>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {[
-                  ['STRATEGY', 'best'], ['ODDS RANGE', '-130 to +200'], ['MIN CONF', '80%'],
-                  ['HOME BIAS', '+5% / Away -5%'], ['HOME ONLY', 'Off → HOME_ONLY_MODE=1'],
+                  ['STRATEGY', 'best (FILTER_STRATEGY)'], ['ODDS RANGE', '-200 to +500'], ['MIN CONF', '57% (PROGNO_MIN_CONFIDENCE)'],
+                  ['HOME BIAS', '+5% / Away -5%'], ['HOME ONLY', 'Off (HOME_ONLY_MODE=1 to enable)'],
                   ['SEASON CHECK', 'On'], ['STREAK WIN 3+', '1.1x'], ['STREAK LOSS 3+', '0.75x'],
-                  ['EARLY DECAY 1d', '100%'], ['EARLY DECAY 3d', '93%'], ['EARLY DECAY 5d+', '75%'],
-                  ['NCAAF FLOOR', '80%'], ['NCAA FLOOR', '75%'], ['NBA FLOOR', '70%'],
+                  ['EARLY WINDOW', '2–5 days ahead'], ['EARLY DECAY 2d', '97%'], ['EARLY DECAY 3d', '93%'], ['EARLY DECAY 5d+', '75%'],
+                  ['NFL FLOOR', '62% (PROGNO_FLOOR_NFL)'], ['NCAAF FLOOR', '62%'], ['NBA FLOOR', '57%'], ['NHL FLOOR', '57%'],
                   ['TOP N PICKS', '25'],
                 ].map(([k, v]) => (
                   <div key={k} style={{ background: '#060d18', border: `1px solid ${C.border}`, borderRadius: 4, padding: '7px 10px', minWidth: 130 }}>
