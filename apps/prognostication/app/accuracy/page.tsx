@@ -22,10 +22,17 @@ export default function AccuracyPage() {
     async function fetchStats() {
       try {
         const response = await fetch('/api/admin/reports');
+        if (!response.ok) throw new Error('API error');
         const data = await response.json();
         setStats(data);
       } catch (e) {
         console.error('Failed to load stats');
+        // Set empty stats so UI shows real zeros, not fake hardcoded numbers
+        setStats({
+          totalPicks: 0, wins: 0, losses: 0,
+          winRate: 0, avgROI: 0,
+          bySport: {}, byOddsRange: {}, recentStreak: [],
+        });
       } finally {
         setLoading(false);
       }
@@ -66,19 +73,19 @@ export default function AccuracyPage() {
         {/* Key Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
           <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 text-center">
-            <p className="text-4xl font-bold text-emerald-400">{stats?.winRate || 60.8}%</p>
+            <p className="text-4xl font-bold text-emerald-400">{stats?.winRate ?? 0}%</p>
             <p className="text-slate-400">Win Rate</p>
           </div>
           <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 text-center">
-            <p className="text-4xl font-bold text-blue-400">+{stats?.avgROI || 12.4}%</p>
+            <p className="text-4xl font-bold text-blue-400">{(stats?.avgROI ?? 0) >= 0 ? '+' : ''}{stats?.avgROI ?? 0}%</p>
             <p className="text-slate-400">Avg ROI</p>
           </div>
           <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 text-center">
-            <p className="text-4xl font-bold text-purple-400">{stats?.totalPicks || 1250}</p>
+            <p className="text-4xl font-bold text-purple-400">{stats?.totalPicks ?? 0}</p>
             <p className="text-slate-400">Total Picks</p>
           </div>
           <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700 text-center">
-            <p className="text-4xl font-bold text-amber-400">{stats?.recentStreak?.length || 8}</p>
+            <p className="text-4xl font-bold text-amber-400">{stats?.recentStreak?.length ?? 0}</p>
             <p className="text-slate-400">Current Streak</p>
           </div>
         </div>

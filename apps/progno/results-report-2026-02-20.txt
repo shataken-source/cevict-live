@@ -1,18 +1,18 @@
 ════════════════════════════════════════════════════════════════════════════════════════════════════
   PROGNO PICKS vs REAL RESULTS
-  Generated: 2/20/2026, 5:58:05 AM
+  Generated: 2/20/2026, 7:55:14 AM
 ════════════════════════════════════════════════════════════════════════════════════════════════════
 
 DATE        LG     MATCHUP                               PICK                  TYPE    CONF  EDGE   ACTUAL                SCORE     RESULT
 ────────────────────────────────────────────────────────────────────────────────────────────────────
-2026-02-20  NCAAB  Siena Saints @ Merrimack Warriors     Merrimack Warriors    SPREAD  69%   22.8%  —                     —         PENDING
-2026-02-20  NBA    Milwaukee Bucks @ New Orleans PelicansNew Orleans Pelicans  SPREAD  68%   22.7%  —                     —         PENDING
-2026-02-20  NCAAB  Tennessee Volunteers @ Vanderbilt CommVanderbilt Commodores SPREAD  66%   21.7%  —                     —         PENDING
-2026-02-20  NBA    Utah Jazz @ Memphis Grizzlies         Memphis Grizzlies     SPREAD  65%   17.0%  —                     —         PENDING
-2026-02-20  NCAAB  Milwaukee Panthers @ Detroit Mercy TitDetroit Mercy Titans  SPREAD  66%   16.6%  —                     —         PENDING
-2026-02-20  NCAA   Baylor Bears @ Oregon St Beavers      Oregon St Beavers     MONEYLIN68%   6.9%   —                     —         NOT FOUND
-2026-02-20  NCAA   Wichita St Shockers @ Hawai'i Rainbow Hawai'i Rainbow WarrioTOTAL   67%   5.0%   —                     —         NOT FOUND
-2026-02-20  NCAA   Nebraska Cornhuskers @ Louisville CardLouisville Cardinals  SPREAD  63%   5.2%   —                     —         NOT FOUND
+2026-02-20  NBA    Milwaukee Bucks @ New Orleans PelicansNew Orleans Pelicans  SPREAD  68%   22.8%  —                     —         PENDING
+2026-02-20  NCAAB  Tennessee Volunteers @ Vanderbilt CommVanderbilt Commodores SPREAD  66%   21.9%  —                     —         PENDING
+2026-02-20  NCAAB  Siena Saints @ Merrimack Warriors     Merrimack Warriors    SPREAD  67%   20.5%  —                     —         PENDING
+2026-02-20  NCAAB  Milwaukee Panthers @ Detroit Mercy TitDetroit Mercy Titans  SPREAD  65%   16.9%  —                     —         PENDING
+2026-02-20  NCAA   Baylor Bears @ Oregon St Beavers      Oregon St Beavers     MONEYLIN68%   7.5%   —                     —         NOT FOUND
+2026-02-20  NBA    Utah Jazz @ Memphis Grizzlies         Memphis Grizzlies     SPREAD  60%   7.3%   —                     —         PENDING
+2026-02-20  NCAA   Campbell Fighting Camels @ Troy TrojanTroy Trojans          MONEYLIN68%   6.4%   —                     —         NOT FOUND
+2026-02-20  NCAA   Rutgers Scarlet Knights @ Virginia TecVirginia Tech Hokies  SPREAD  65%   4.9%   —                     —         NOT FOUND
 2026-02-19  NCAAB  Lindenwood Lions @ Tennessee St TigersTennessee St Tigers   SPREAD  62%   22.8%  Tennessee St Tigers   89-80     ✅ WIN
 2026-02-19  NBA    Utah Jazz @ Memphis Grizzlies         Memphis Grizzlies     SPREAD  58%   23.0%  —                     —         PENDING
 2026-02-19  NCAAB  Siena Saints @ Merrimack Warriors     Merrimack Warriors    SPREAD  60%   22.4%  —                     —         PENDING

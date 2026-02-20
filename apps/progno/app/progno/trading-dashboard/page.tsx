@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import AdSenseBanner from '@/components/AdSenseBanner';
 
 interface PrognoTrade {
   id: string;

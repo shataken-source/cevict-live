@@ -15,9 +15,9 @@ import Anthropic from '@anthropic-ai/sdk';
 // CONFIGURATION
 // ============================================================================
 
-const THE_ODDS_API_KEY = process.env.THE_ODDS_API_KEY;
+const THE_ODDS_API_KEY = process.env.THE_ODDS_API_KEY || process.env.ODDS_API_KEY;
 if (!THE_ODDS_API_KEY) {
-  console.error('THE_ODDS_API_KEY environment variable is required');
+  console.error('THE_ODDS_API_KEY (or ODDS_API_KEY) environment variable is required');
   process.exit(1);
 }
 const MAX_BET_SIZE = 5; // $5 max per bet

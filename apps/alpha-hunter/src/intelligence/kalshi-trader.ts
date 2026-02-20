@@ -27,13 +27,12 @@ import {
  *
  * We load by file-location so it works regardless of current working directory.
  */
-const alphaHunterRoot = path.resolve(__dirname, '..', '..', '..'); // src/intelligence -> alpha-hunter/
+const alphaHunterRoot = path.resolve(__dirname, '..', '..', '..'); // src/intelligence -> alpha-hunter/ -> src/ -> repo root
 const alphaEnvLocal = path.join(alphaHunterRoot, '.env.local');
 const alphaEnv = path.join(alphaHunterRoot, '.env');
 
-// Prefer `.env.local` and allow it to override inherited env vars (workspace/global).
-if (fs.existsSync(alphaEnvLocal)) dotenv.config({ path: alphaEnvLocal, override: true });
-// Load `.env` as defaults only (do not override `.env.local` / process env).
+// Load without override — caller (kalshi-auto-trader.ts) already loaded app-level .env.local first.
+if (fs.existsSync(alphaEnvLocal)) dotenv.config({ path: alphaEnvLocal, override: false });
 if (fs.existsSync(alphaEnv)) dotenv.config({ path: alphaEnv, override: false });
 
 export class KalshiTrader {
@@ -101,13 +100,28 @@ export class KalshiTrader {
     if (rawKey) {
       // Typical .env format uses "\n" escapes; support that.
       const normalized = rawKey.replace(/\\n/g, '\n').replace(/\"/g, '').trim();
-      this.privateKey = normalized;
+
+      // Re-wrap PEM if header and base64 body are on the same line (common in .env files)
+      const reformatted = (() => {
+        const beginMatch = normalized.match(/-----BEGIN ([^-]+)-----/);
+        const endMatch = normalized.match(/-----END ([^-]+)-----/);
+        if (!beginMatch || !endMatch) return normalized;
+        const type = beginMatch[1];
+        const b64 = normalized
+          .replace(/-----BEGIN [^-]+-----/, '')
+          .replace(/-----END [^-]+-----/, '')
+          .replace(/\s+/g, '');
+        const wrapped = (b64.match(/.{1,64}/g) ?? []).join('\n');
+        return `-----BEGIN ${type}-----\n${wrapped}\n-----END ${type}-----`;
+      })();
+
+      this.privateKey = reformatted;
 
       // Validate the key is plausibly complete and parseable.
       // (Do NOT log key contents.)
-      if (normalized.length > 256 && normalized.includes('BEGIN') && normalized.includes('PRIVATE KEY')) {
+      if (reformatted.length > 256 && reformatted.includes('BEGIN') && reformatted.includes('PRIVATE KEY')) {
         try {
-          crypto.createPrivateKey(normalized);
+          crypto.createPrivateKey(reformatted);
           this.keyConfigured = true;
         } catch {
           this.keyConfigured = false;

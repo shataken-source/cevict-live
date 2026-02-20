@@ -2,13 +2,33 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { TrendingUp, Shield, Zap, BarChart3, Check, ArrowRight } from 'lucide-react'
+import { TrendingUp, Shield, Zap, BarChart3, ArrowRight } from 'lucide-react'
+
+interface PublicStats {
+    todaySignals: number;
+    winRate: number;
+    totalPicks: number;
+    activeTraders: number;
+    volumeTracked: number;
+    source: string;
+}
+
+function fmt(n: number): string {
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M+`;
+    if (n >= 1_000) return `${n.toLocaleString()}`;
+    return String(n);
+}
 
 export default function HomePage() {
     const [mounted, setMounted] = useState(false)
+    const [liveStats, setLiveStats] = useState<PublicStats | null>(null)
 
     useEffect(() => {
         setMounted(true)
+        fetch('/api/stats/public')
+            .then(r => r.json())
+            .then(setLiveStats)
+            .catch(() => { })
     }, [])
 
     return (
@@ -51,7 +71,7 @@ export default function HomePage() {
                         <div className={mounted ? 'animate-fade-in' : ''}>
                             <div className="inline-flex items-center gap-2 px-4 py-2 bg-panel border border-border rounded-full mb-8">
                                 <span className="w-2 h-2 bg-success rounded-full animate-pulse" />
-                                <span className="text-sm text-text-secondary">Live: 142 signals today</span>
+                                <span className="text-sm text-text-secondary">Live: {liveStats?.todaySignals ?? '...'} signals today</span>
                             </div>
 
                             <h1 className="text-5xl md:text-6xl font-bold text-text-primary mb-6 leading-tight">
@@ -82,15 +102,15 @@ export default function HomePage() {
                             <div className="flex items-center gap-8 text-sm text-text-muted">
                                 <span className="flex items-center gap-2">
                                     <Shield size={16} className="text-success" />
-                                    12,481 Active Traders
+                                    {liveStats ? fmt(liveStats.activeTraders) : '...'} Active Traders
                                 </span>
                                 <span className="flex items-center gap-2">
                                     <BarChart3 size={16} className="text-success" />
-                                    $48M+ Volume Tracked
+                                    {liveStats ? fmt(liveStats.volumeTracked) : '...'} Volume Tracked
                                 </span>
                                 <span className="flex items-center gap-2">
                                     <Zap size={16} className="text-success" />
-                                    63.8% Win Rate
+                                    {liveStats ? `${liveStats.winRate}%` : '...'} Win Rate
                                 </span>
                             </div>
                         </div>

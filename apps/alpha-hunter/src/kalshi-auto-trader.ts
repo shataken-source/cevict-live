@@ -7,6 +7,7 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+dotenv.config({ path: path.join(process.cwd(), '.env') }); // load secrets not in .env.local
 
 import { KalshiTrader } from './intelligence/kalshi-trader';
 import Anthropic from '@anthropic-ai/sdk';
@@ -146,7 +147,7 @@ class MarketAnalyzer {
       const response = await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot');
       const data = await response.json();
       btcPrice = parseFloat(data.data.amount);
-    } catch (e) {}
+    } catch (e) { }
 
     // Analyze based on market type
     if (title.includes('above') || title.includes('over') || title.includes('higher')) {
@@ -283,7 +284,7 @@ class MarketAnalyzer {
 
     try {
       const response = await this.anthropic.messages.create({
-        model: 'claude-3-haiku-20240307',
+        model: 'claude-3-5-haiku-20241022',
         max_tokens: 300,
         messages: [{
           role: 'user',
@@ -307,7 +308,8 @@ Respond in JSON format only:
         confidence: json.confidence,
         reasoning: json.reasoning,
       };
-    } catch (e) {
+    } catch (e: any) {
+      console.error(`   ⚠️ Claude error: ${e?.message || e}`);
       return { prediction: market.yesPrice, confidence: 45, reasoning: 'AI analysis failed' };
     }
   }
@@ -341,6 +343,15 @@ async function main() {
   const kalshi = new KalshiTrader();
   const analyzer = new MarketAnalyzer();
 
+  // Auth probe — surface key/signature issues early
+  const auth = await kalshi.probeAuth();
+  if (!auth.ok) {
+    console.log(`❌ Auth failed: [${auth.code}] ${auth.message}`);
+    if (auth.details) console.log(`   Details: ${auth.details}`);
+    if (auth.raw) console.log(`   Raw:`, JSON.stringify(auth.raw).slice(0, 200));
+    return;
+  }
+
   // Check balance
   const balance = await kalshi.getBalance();
   console.log(`💰 Kalshi Balance: $${balance.toFixed(2)}\n`);
@@ -369,7 +380,7 @@ async function main() {
 
     // Show market analysis
     const icon = analysis.recommendedSide === 'pass' ? '⚪' :
-                 analysis.recommendedSide === 'yes' ? '🟢' : '🔴';
+      analysis.recommendedSide === 'yes' ? '🟢' : '🔴';
 
     console.log(`\n${icon} ${market.title.substring(0, 60)}...`);
     console.log(`   Market: YES ${market.yesPrice}¢ / NO ${market.noPrice}¢`);
