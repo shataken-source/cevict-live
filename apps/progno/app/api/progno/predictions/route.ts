@@ -39,41 +39,47 @@ export async function GET(request: NextRequest) {
 
     console.log(`[PREDICTIONS] Fetching predictions for date: ${date}, sport: ${sport}, limit: ${limit}`);
 
-    // Try to get real predictions from picks/today API
+    // Load picks directly from Supabase (avoids localhost self-fetch / ECONNREFUSED)
     let realPicks = [];
     try {
-      const picksResponse = await fetch(`${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/api/picks/today`);
-      if (picksResponse.ok) {
-        const picksData = await picksResponse.json();
-        if (picksData.picks && Array.isArray(picksData.picks)) {
-          realPicks = picksData.picks.map(pick => ({
-            id: pick.id || `pick_${pick.home_team || ''}_${pick.away_team || ''}_${date}`.replace(/\s+/g, '_'),
-            gameDate: date,
-            league: pick.league?.toUpperCase() || 'UNKNOWN',
-            sport: pick.sport?.toUpperCase() || 'UNKNOWN',
-            homeTeam: pick.home_team || 'Unknown',
-            awayTeam: pick.away_team || 'Unknown',
-            gameTime: pick.game_time || new Date().toISOString(),
-            venue: pick.venue,
-            prediction: {
-              winner: pick.pick || 'Unknown',
-              confidence: (pick.confidence || 0) / 100,
-              score: pick.mc_predicted_score || { home: 0, away: 0 },
-              edge: pick.value_bet_edge || 0,
-              keyFactors: pick.analysis ? pick.analysis.split('\n').filter(f => f.trim()) : []
-            },
-            odds: {
-              moneyline: pick.odds ? { home: pick.odds, away: 0 } : undefined,
-              spread: pick.odds ? { home: pick.odds, away: 0 } : undefined,
-              total: pick.odds ? pick.odds : undefined
-            },
-            isLive: false,
-            isCompleted: false
-          }));
-        }
+      const { data: dbPicks, error: dbErr } = await client
+        .from('picks')
+        .select('*')
+        .gte('game_time', `${date}T00:00:00`)
+        .lt('game_time', `${date}T23:59:59`)
+        .order('confidence', { ascending: false })
+        .limit(limit);
+
+      if (dbErr) {
+        console.warn('[PREDICTIONS] Supabase picks query error:', dbErr.message);
+      } else if (dbPicks && dbPicks.length > 0) {
+        realPicks = dbPicks.map((pick: any) => ({
+          id: pick.id || `pick_${pick.home_team || ''}_${pick.away_team || ''}_${date}`.replace(/\s+/g, '_'),
+          gameDate: date,
+          league: pick.league?.toUpperCase() || 'UNKNOWN',
+          sport: pick.sport?.toUpperCase() || 'UNKNOWN',
+          homeTeam: pick.home_team || 'Unknown',
+          awayTeam: pick.away_team || 'Unknown',
+          gameTime: pick.game_time || new Date().toISOString(),
+          venue: pick.venue,
+          prediction: {
+            winner: pick.pick || 'Unknown',
+            confidence: (pick.confidence || 0) / 100,
+            score: pick.mc_predicted_score || { home: 0, away: 0 },
+            edge: pick.value_bet_edge || 0,
+            keyFactors: pick.analysis ? pick.analysis.split('\n').filter((f: string) => f.trim()) : []
+          },
+          odds: {
+            moneyline: pick.odds ? { home: pick.odds, away: 0 } : undefined,
+            spread: pick.odds ? { home: pick.odds, away: 0 } : undefined,
+            total: pick.odds ? pick.odds : undefined
+          },
+          isLive: false,
+          isCompleted: false
+        }));
       }
     } catch (err) {
-      console.warn('[PREDICTIONS] Could not fetch real picks:', err);
+      console.warn('[PREDICTIONS] Could not load picks from Supabase:', err);
     }
 
     // If no real picks available, return empty array (no mock data in production)

@@ -261,45 +261,106 @@ async function fetchPicksFromLiveApi(): Promise<EnginePick[] | null> {
       if (!Array.isArray(games)) continue;
 
       for (const game of games) {
-        const bookmaker = game.bookmakers?.find((b: any) => b.key === 'draftkings') || game.bookmakers?.[0];
-        if (!bookmaker) continue;
+        if (!game.bookmakers?.length) continue;
 
-        const h2h = bookmaker.markets?.find((m: any) => m.key === 'h2h');
-        if (!h2h?.outcomes?.length) continue;
-
-        // Convert American odds to implied probability
+        // Convert American odds to decimal probability
         const toProb = (odds: number) => odds > 0 ? 100 / (odds + 100) : Math.abs(odds) / (Math.abs(odds) + 100);
-        const homeOutcome = h2h.outcomes.find((o: any) => o.name === game.home_team);
-        const awayOutcome = h2h.outcomes.find((o: any) => o.name === game.away_team);
-        if (!homeOutcome || !awayOutcome) continue;
 
-        const homeProb = toProb(homeOutcome.price);
-        const awayProb = toProb(awayOutcome.price);
-        const total = homeProb + awayProb;
-        // Shin devig: remove vig
-        const homeNoVig = homeProb / total;
-        const awayNoVig = awayProb / total;
+        // ── Step 1: Build consensus probability across ALL bookmakers ──────────
+        // Averaging across books removes individual book bias and gives a
+        // better estimate of true market probability than any single book.
+        let homeRawSum = 0, awayRawSum = 0, bookCount = 0;
+        let bestHomeOdds = -99999, bestAwayOdds = -99999; // best (highest payout) odds
 
-        // Pick the side with >52% no-vig probability
-        const [pickTeam, pickProb, pickOdds] = homeNoVig >= awayNoVig
-          ? [game.home_team, homeNoVig, homeOutcome.price]
-          : [game.away_team, awayNoVig, awayOutcome.price];
+        for (const bk of game.bookmakers) {
+          const h2h = bk.markets?.find((m: any) => m.key === 'h2h');
+          if (!h2h?.outcomes?.length) continue;
+          const ho = h2h.outcomes.find((o: any) => o.name === game.home_team);
+          const ao = h2h.outcomes.find((o: any) => o.name === game.away_team);
+          if (!ho || !ao) continue;
+          homeRawSum += toProb(ho.price);
+          awayRawSum += toProb(ao.price);
+          bookCount++;
+          // Track best available odds (highest payout = most positive American)
+          if (ho.price > bestHomeOdds) bestHomeOdds = ho.price;
+          if (ao.price > bestAwayOdds) bestAwayOdds = ao.price;
+        }
+        if (bookCount === 0) continue;
 
-        if (pickProb < 0.52) continue; // No edge
+        const homeRawAvg = homeRawSum / bookCount;
+        const awayRawAvg = awayRawSum / bookCount;
+        const vigTotal = homeRawAvg + awayRawAvg;
 
-        const confidencePct = Math.round(pickProb * 100);
-        const edgePct = Math.round((pickProb - 0.5) * 200 * 10) / 10; // edge vs 50/50
+        // Shin devig on consensus: removes average vig
+        const homeConsensus = homeRawAvg / vigTotal;
+        const awayConsensus = awayRawAvg / vigTotal;
+        const avgVig = ((vigTotal - 1) * 100);
+
+        // ── Step 2: Model probability — home-field adjusted ───────────────────
+        // Home-field baselines from historical data (real win rates at home):
+        const HOME_BIAS: Record<string, number> = {
+          basketball_nba: 0.595,
+          americanfootball_nfl: 0.575,
+          baseball_mlb: 0.540,
+          icehockey_nhl: 0.550,
+          basketball_ncaab: 0.620,
+          americanfootball_ncaaf: 0.600,
+        };
+        const homeBias = HOME_BIAS[sport] ?? 0.540;
+        const REG_WEIGHT = 0.20; // 20% regression to home-field mean
+
+        // Model blends consensus with home-field prior
+        // This creates genuine disagreement when market under/over-prices home edge
+        const modelHome = (1 - REG_WEIGHT) * homeConsensus + REG_WEIGHT * homeBias;
+        const modelAway = 1 - modelHome;
+
+        // ── Step 3: Edge = model disagrees with market ────────────────────────
+        // Positive edge means our model thinks this side is underpriced by market
+        const homeEdge = modelHome - homeConsensus;
+        const awayEdge = modelAway - awayConsensus;
+        const MIN_EDGE = 0.03; // 3% minimum edge (matches backtest best_enhanced strategy)
+
+        let pickTeam: string, pickProb: number, pickOdds: number, pickEdge: number, pickSide: string;
+
+        if (homeEdge >= awayEdge && homeEdge >= MIN_EDGE) {
+          pickTeam = game.home_team;
+          pickProb = modelHome;
+          pickOdds = bestHomeOdds !== -99999 ? bestHomeOdds : -110;
+          pickEdge = homeEdge;
+          pickSide = 'home';
+        } else if (awayEdge > homeEdge && awayEdge >= MIN_EDGE) {
+          pickTeam = game.away_team;
+          pickProb = modelAway;
+          pickOdds = bestAwayOdds !== -99999 ? bestAwayOdds : -110;
+          pickEdge = awayEdge;
+          pickSide = 'away';
+        } else {
+          continue; // No edge — skip this game
+        }
+
+        // Confidence = model probability scaled to 50-95 range
+        // 50% model prob = 50 confidence, 70% = 90 confidence
+        const confidencePct = Math.min(95, Math.round(50 + (pickProb - 0.5) * 200));
+        const edgePct = Math.round(pickEdge * 1000) / 10;
+
+        const sportLabel = sport.split('_').pop()?.toUpperCase() || sport.toUpperCase();
+        const isFavorite = pickOdds < 0;
+        const marketImplied = pickSide === 'home' ? homeConsensus : awayConsensus;
 
         picks.push({
           gameId: game.id,
           game: `${game.away_team} @ ${game.home_team}`,
-          sport: sport.split('_').pop()?.toUpperCase() || sport.toUpperCase(),
+          sport: sportLabel,
           pick: pickTeam,
           confidencePct,
           edgePct,
           kickoff: game.commence_time,
-          keyFactors: [`No-vig probability: ${(pickProb * 100).toFixed(1)}%`, `Odds: ${pickOdds > 0 ? '+' : ''}${pickOdds}`],
-          rationale: `Shin-devig model gives ${pickTeam} ${(pickProb * 100).toFixed(1)}% win probability vs market-implied ${(homeNoVig === pickProb ? homeProb : awayProb * 100).toFixed(1)}%`,
+          keyFactors: [
+            `Model prob: ${(pickProb * 100).toFixed(1)}% vs market: ${(marketImplied * 100).toFixed(1)}%`,
+            `Edge: +${edgePct}% | Books sampled: ${bookCount} | Avg vig: ${avgVig.toFixed(1)}%`,
+            `${isFavorite ? 'Favorite' : 'Underdog'} pick | Best odds: ${pickOdds > 0 ? '+' : ''}${pickOdds}`,
+          ],
+          rationale: `${bookCount}-book consensus gives ${pickTeam} ${(marketImplied * 100).toFixed(1)}% win probability. Home-field adjusted model gives ${(pickProb * 100).toFixed(1)}%, a +${edgePct}% edge vs market.`,
         });
       }
     } catch (err) {

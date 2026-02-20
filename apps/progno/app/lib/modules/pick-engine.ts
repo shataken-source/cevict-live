@@ -224,6 +224,7 @@ export async function runPickEngine(game: any, sport: string): Promise<any | nul
     league: sportToLeague(sport),
     home_team: game.home_team,
     away_team: game.away_team,
+    game_matchup: `${game.away_team} @ ${game.home_team}`,
     pick: recPick,
     pick_type: recType,
     recommended_line: recLine,

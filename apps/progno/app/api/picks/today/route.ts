@@ -709,22 +709,7 @@ export async function GET(request: Request) {
           }
         }
 
-        // Fallback: API-Sports if The-Odds returned nothing
-        if (games.length === 0) {
-          const apiSportsSportKey = SPORT_TO_API_SPORTS[sport]
-          if (apiSportsSportKey && API_SPORTS_KEY) {
-            console.log(`[Picks API] The-Odds returned 0 for ${sport}, trying API-Sports fallback...`)
-            try {
-              const apiSportsGames = await fetchApiSportsOdds(apiSportsSportKey)
-              if (apiSportsGames.length > 0) {
-                console.log(`[Picks API] API-Sports fallback: ${apiSportsGames.length} games for ${sport}`)
-                games = apiSportsGames.map(convertApiSportsToOddsFormat)
-              }
-            } catch (fallbackErr) {
-              console.error(`[Picks API] API-Sports fallback failed for ${sport}:`, fallbackErr)
-            }
-          }
-        }
+        // API-Sports fallback disabled — key quota exhausted; The-Odds is primary source
 
         if (games.length === 0) continue
 
