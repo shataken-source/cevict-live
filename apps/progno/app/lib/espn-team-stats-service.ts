@@ -46,6 +46,62 @@ const LEAGUE_MAP: Record<string, string> = {
 const statsCache = new Map<string, { data: TeamCalibrationStats; ts: number }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
+// Sync-readable derived stats cache keyed by "league:teamName" for pick-engine path
+// Populated by warmStatsCache() before runPickEngine is called
+export const derivedStatsCache = new Map<string, {
+  recentAvgPoints: number;
+  recentAvgAllowed: number;
+  scoringStdDev: number;
+  wins: number;
+  losses: number;
+}>();
+
+/**
+ * Synchronously read cached derived stats for a team.
+ * Returns null if not yet warmed — pick-engine falls back to market-derived.
+ */
+export function syncGetCachedStats(teamName: string, league: 'nba' | 'ncaab') {
+  return derivedStatsCache.get(`${league}:${teamName}`) ?? null;
+}
+
+/**
+ * Pre-warm the ESPN stats cache for a list of games before runPickEngine is called.
+ * Call this once per request in route.ts, then runPickEngine will find data synchronously.
+ */
+export async function warmStatsCache(
+  games: Array<{ home_team: string; away_team: string }>,
+  league: 'nba' | 'ncaab',
+  spread?: number,
+  total?: number
+): Promise<void> {
+  const teamNames = new Set<string>();
+  for (const g of games) {
+    teamNames.add(g.home_team);
+    teamNames.add(g.away_team);
+  }
+
+  await Promise.allSettled(
+    [...teamNames].map(async (name) => {
+      const id = resolveEspnId(name, league);
+      if (!id) return;
+      const stats = await fetchTeamCalibrationStats(id, league, 15);
+      if (!stats) return;
+
+      const mktTotal = total ?? (league === 'nba' ? 224 : 144);
+      const mktSpread = spread ?? 0;
+      const marketExp = (mktTotal - mktSpread) / 2;
+
+      derivedStatsCache.set(`${league}:${name}`, {
+        recentAvgPoints: (stats.avgPointsScored + marketExp) / 2,
+        recentAvgAllowed: (stats.avgPointsAllowed + marketExp) / 2,
+        scoringStdDev: Math.min(Math.max(stats.scoringStdDev, 5), 20),
+        wins: Math.round(stats.recentForm * 15),
+        losses: Math.round((1 - stats.recentForm) * 15),
+      });
+    })
+  );
+}
+
 /**
  * Fetch last N completed games for a team from ESPN hidden API
  */

@@ -155,10 +155,59 @@ const SPORT_SCORING = {
 };
 
 // Estimate team stats from odds (more accurate than zeros)
-export function estimateTeamStatsFromOdds(odds: { home: number; away: number; spread?: number; total?: number }, sport: string): {
+// If ESPN cache was pre-warmed via warmStatsCache(), uses real historical data.
+export function estimateTeamStatsFromOdds(
+  odds: { home: number; away: number; spread?: number; total?: number },
+  sport: string,
+  homeTeam?: string,
+  awayTeam?: string
+): {
   home: any;
   away: any;
 } {
+  // Try ESPN sync cache first (populated by warmStatsCache before runPickEngine)
+  if (homeTeam && awayTeam) {
+    const upper = sport.toUpperCase();
+    const league: 'nba' | 'ncaab' | null =
+      upper.includes('NBA') ? 'nba' :
+        (upper.includes('NCAAB') || upper.includes('COLLEGE') || upper.includes('NCAA')) ? 'ncaab' :
+          null;
+
+    if (league) {
+      // Dynamic require to avoid circular import — cache is a plain Map, always available
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { syncGetCachedStats } = require('./espn-team-stats-service');
+        const homeCache = syncGetCachedStats(homeTeam, league);
+        const awayCache = syncGetCachedStats(awayTeam, league);
+        if (homeCache && awayCache) {
+          return {
+            home: {
+              wins: homeCache.wins,
+              losses: homeCache.losses,
+              pointsFor: homeCache.recentAvgPoints * 82,
+              pointsAgainst: homeCache.recentAvgAllowed * 82,
+              recentAvgPoints: homeCache.recentAvgPoints,
+              recentAvgAllowed: homeCache.recentAvgAllowed,
+              scoringStdDev: homeCache.scoringStdDev,
+            },
+            away: {
+              wins: awayCache.wins,
+              losses: awayCache.losses,
+              pointsFor: awayCache.recentAvgPoints * 82,
+              pointsAgainst: awayCache.recentAvgAllowed * 82,
+              recentAvgPoints: awayCache.recentAvgPoints,
+              recentAvgAllowed: awayCache.recentAvgAllowed,
+              scoringStdDev: awayCache.scoringStdDev,
+            },
+          };
+        }
+      } catch {
+        // ESPN cache unavailable — fall through to market-derived
+      }
+    }
+  }
+
   const sportKey = sport.toLowerCase().replace(/basketball_|americanfootball_|icehockey_|baseball_/, '');
   const scoring = SPORT_SCORING[sportKey as keyof typeof SPORT_SCORING] || SPORT_SCORING.nfl;
 

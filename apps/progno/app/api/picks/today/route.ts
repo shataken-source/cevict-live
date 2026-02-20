@@ -14,7 +14,8 @@ import { runPickEngine, rankPicks } from '../../../lib/modules/pick-engine'
 import { MonteCarloEngine } from '../../../lib/monte-carlo-engine'
 import { GameData } from '../../../lib/prediction-engine'
 import { getPrimaryKey } from '../../../keys-store'
-import { estimateTeamStatsFromOdds, shinDevig } from '../../../lib/odds-helpers'
+import { estimateTeamStatsFromOdds, estimateTeamStatsEnhanced, shinDevig } from '../../../lib/odds-helpers'
+import { warmStatsCache } from '../../../lib/espn-team-stats-service'
 import { predictScoreComprehensive } from '../../../score-prediction-service'
 import { OddsService } from '../../../../lib/odds-service'
 import { fetchApiSportsOdds, ApiSportsGame } from '../../../../lib/api-sports-client'
@@ -729,6 +730,13 @@ export async function GET(request: Request) {
           return commence <= cutoff
         }
 
+        // Pre-warm ESPN stats cache for NBA/NCAAB so runPickEngine gets real stdDev
+        const upper = sport.toUpperCase()
+        if (upper.includes('NBA') || upper.includes('NCAAB') || upper.includes('COLLEGE')) {
+          const league = upper.includes('NBA') ? 'nba' : 'ncaab'
+          await warmStatsCache(games, league).catch(() => { })
+        }
+
         for (const game of games) {
           const commence = game.commence_time ? new Date(game.commence_time) : null
           if (!commence || !inWindow(commence)) continue
@@ -1158,7 +1166,7 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     const homePrice = sanitizeAmericanOdds(homeOdds.price)
     const awayPrice = sanitizeAmericanOdds(awayOdds.price)
     const oddsForStats = { home: homePrice, away: awayPrice, spread: spreadPoint, total: totalPoint }
-    const estimatedStats = estimateTeamStatsFromOdds(oddsForStats, sport)
+    const estimatedStats = await estimateTeamStatsEnhanced(game.home_team, game.away_team, oddsForStats, sport)
     const gameData: GameData = {
       homeTeam: game.home_team,
       awayTeam: game.away_team,
