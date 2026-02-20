@@ -482,6 +482,56 @@ app.get('/api/kalshi-picks.json', (req, res) => {
   }
 });
 
+// GET /api/picks/today — serves latest progno predictions file directly
+// This is the primary endpoint for the sportsbook terminal UI
+app.get('/api/picks/today', (req, res) => {
+  try {
+    const prognoDir = path.join(__dirname, '..', 'progno');
+    const today = new Date().toISOString().split('T')[0];
+
+    // Priority order: today's file, then most recent non-empty file
+    const candidates = [
+      path.join(prognoDir, `predictions-${today}.json`),
+      path.join(prognoDir, `predictions-early-${today}.json`),
+    ];
+
+    let picksFile = null;
+    for (const c of candidates) {
+      if (fs.existsSync(c) && fs.statSync(c).size > 100) { picksFile = c; break; }
+    }
+
+    if (!picksFile && fs.existsSync(prognoDir)) {
+      const files = fs.readdirSync(prognoDir)
+        .filter(f => f.match(/^predictions-\d{4}-\d{2}-\d{2}\.json$/) && !f.includes('early'))
+        .sort().reverse();
+      for (const f of files) {
+        const fp = path.join(prognoDir, f);
+        if (fs.statSync(fp).size > 100) { picksFile = fp; break; }
+      }
+    }
+
+    if (!picksFile) {
+      return res.json({ success: true, picks: [], count: 0, source: 'none', message: 'No predictions files found' });
+    }
+
+    const raw = JSON.parse(fs.readFileSync(picksFile, 'utf8'));
+    const picks = raw.picks || [];
+    const fileName = path.basename(picksFile);
+    console.log(`[SERVER] /api/picks/today serving ${picks.length} picks from ${fileName}`);
+
+    res.json({
+      success: true,
+      source: fileName,
+      generatedAt: raw.generatedAt || raw.date || null,
+      count: picks.length,
+      picks
+    });
+  } catch (error) {
+    console.error('[SERVER] /api/picks/today error:', error.message);
+    res.status(500).json({ success: false, error: error.message, picks: [] });
+  }
+});
+
 // ============ PUBLIC API ENDPOINTS FOR OTHER APPS ============
 // These endpoints allow external applications to consume prediction data
 

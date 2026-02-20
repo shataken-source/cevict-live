@@ -1418,52 +1418,100 @@
     async function loadTodaysPicks() {
       showError('⚡ Loading today\'s picks from server...', 'success');
       try {
-        const response = await fetch('/api/kalshi-picks.json');
+        // Primary: /api/picks/today serves the latest progno predictions file directly
+        const response = await fetch('/api/picks/today');
         if (!response.ok) throw new Error(`Server returned ${response.status}`);
         const data = await response.json();
 
-        // Server returns { picks: [], count, generatedAt } (new format)
-        // or legacy { elite: [], pro: [], free: [] }
         let picks = [];
         if (Array.isArray(data.picks) && data.picks.length > 0) {
           picks = data.picks;
-        } else if (data.elite || data.pro || data.free) {
-          picks = [
-            ...(data.elite || []),
-            ...(data.pro || []),
-            ...(data.free || [])
-          ];
+        }
+
+        // Fallback: try /api/kalshi-picks.json (alpha-hunter format)
+        if (picks.length === 0) {
+          const r2 = await fetch('/api/kalshi-picks.json');
+          if (r2.ok) {
+            const d2 = await r2.json();
+            if (Array.isArray(d2.picks) && d2.picks.length > 0) picks = d2.picks;
+            else if (d2.elite || d2.pro || d2.free) {
+              picks = [...(d2.elite || []), ...(d2.pro || []), ...(d2.free || [])];
+            }
+          }
         }
 
         if (picks.length === 0) {
-          showError('No picks on server yet. Load a file manually or run alpha-hunter.', 'error');
+          showError('No picks found. Load a predictions file manually.', 'error');
           return;
         }
 
-        loadPicksData(picks, data.generatedAt || data.cached_at);
-        showError(`✅ Loaded ${picks.length} picks from server (${data.generatedAt ? new Date(data.generatedAt).toLocaleString() : 'cached'})`, 'success');
+        const label = data.source || 'server';
+        loadPicksData(picks, data.generatedAt);
+        showError(`✅ Loaded ${picks.length} picks from ${label}`, 'success');
       } catch (err) {
         showError('❌ Server load failed: ' + err.message + ' — try loading file manually');
       }
     }
 
-    // Shared pick loader — normalizes progno format for the UI
+    // Shared pick loader — normalizes both progno and alpha-hunter formats for the UI
     function loadPicksData(picks, sourceLabel) {
       allPicks = picks.map((pick, idx) => {
-        // Progno format: pick.pick = team name, pick.home_team, pick.away_team
-        // Ensure id exists
         const id = pick.id || pick.game_id || `pick-${idx}`;
-        // mc_win_probability is 0-1; confidence is 0-100
-        const mcProb = typeof pick.mc_win_probability === 'number' ? pick.mc_win_probability
-          : typeof pick.confidence === 'number' ? pick.confidence / 100 : 0.55;
+
+        // Detect alpha-hunter tradingBot format: has no home_team/away_team, pick is YES/NO or market title
+        const isAlphaHunterFormat = !pick.home_team && !pick.away_team && pick.market;
+
+        // Normalize odds: progno uses American odds number, alpha-hunter may not have odds
+        const odds = pick.odds || pick.american_odds || -110;
+
+        // Normalize confidence: always 0-100
+        const confidence = typeof pick.confidence === 'number'
+          ? (pick.confidence > 1 ? pick.confidence : pick.confidence * 100)
+          : 55;
+
+        // Normalize mc_win_probability: always 0-1
+        const mcProb = typeof pick.mc_win_probability === 'number'
+          ? (pick.mc_win_probability > 1 ? pick.mc_win_probability / 100 : pick.mc_win_probability)
+          : confidence / 100;
+
+        // Build display strings
+        let homeTeam = pick.home_team || '';
+        let awayTeam = pick.away_team || '';
+        let pickDisplay, league, sport;
+
+        if (isAlphaHunterFormat) {
+          // Alpha-hunter: market = "Will X cover Y?" or team name
+          const mkt = pick.market || pick.id || 'Unknown';
+          pickDisplay = pick.pick || 'YES';
+          league = (pick.sport || pick.category || 'Sports').toUpperCase();
+          sport = league;
+          // Try to extract teams from market title
+          const vsMatch = mkt.match(/(.+?)\s+(?:vs\.?|@)\s+(.+?)(?:\s+cover|\?|$)/i);
+          if (vsMatch) { awayTeam = vsMatch[1].trim(); homeTeam = vsMatch[2].trim(); }
+          else { homeTeam = mkt.replace(/Will |\?|cover.*/gi, '').trim(); }
+        } else {
+          // Progno format
+          pickDisplay = pick.pick || pick._displayPick || homeTeam || 'Unknown';
+          league = (pick.league || pick.sport || 'Sports').toUpperCase();
+          sport = league;
+        }
+
         return {
           ...pick,
           id,
+          odds,
+          confidence,
+          mc_win_probability: mcProb,
+          home_team: homeTeam,
+          away_team: awayTeam,
+          league,
+          sport,
           venue: pick.venue || 'sportsbook',
           market_type: pick.market_type || 'sports',
-          mc_win_probability: mcProb,
-          // Normalize team display: if pick.pick is a team name, use it
-          _displayPick: pick.pick || (pick.home_team ? `${pick.home_team} ${pick.recommended_line || ''}`.trim() : 'Unknown')
+          pick_type: pick.pick_type || (isAlphaHunterFormat ? 'MONEYLINE' : 'MONEYLINE'),
+          value_bet_edge: pick.value_bet_edge || pick.edge || 0,
+          _displayPick: pickDisplay,
+          _isAlphaHunter: isAlphaHunterFormat
         };
       });
 
@@ -1478,7 +1526,7 @@
       generateStrategies();
     }
 
-    // File Loading
+    // File Loading — accepts progno predictions JSON, kalshi-picks JSON, or any picks array
     function handleFileSelect(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -1487,15 +1535,32 @@
       reader.onload = (e) => {
         try {
           const data = JSON.parse(e.target.result);
+          let picks = [];
 
-          if (data.picks && Array.isArray(data.picks)) {
-            loadPicksData(data.picks, data.generatedAt);
-            showError(`✅ Loaded ${data.picks.length} predictions from file`, 'success');
+          if (Array.isArray(data.picks) && data.picks.length > 0) {
+            // Standard progno predictions format: { picks: [...] }
+            picks = data.picks;
+          } else if (Array.isArray(data)) {
+            // Raw array of picks
+            picks = data;
+          } else if (data.elite || data.pro || data.free) {
+            // Legacy tiered format: { elite: [], pro: [], free: [] }
+            picks = [...(data.elite || []), ...(data.pro || []), ...(data.free || [])];
+          } else if (data.picks && !Array.isArray(data.picks)) {
+            throw new Error('picks field is not an array');
           } else {
-            throw new Error('Invalid format: missing picks array');
+            throw new Error('Unrecognized format — expected { picks: [...] }, tiered { elite/pro/free }, or raw array');
           }
+
+          if (picks.length === 0) {
+            showError('File loaded but contains 0 picks', 'error');
+            return;
+          }
+
+          loadPicksData(picks, data.generatedAt || file.name);
+          showError(`✅ Loaded ${picks.length} picks from ${file.name}`, 'success');
         } catch (err) {
-          showError('Invalid JSON: ' + err.message);
+          showError('❌ File error: ' + err.message);
         }
       };
       reader.readAsText(file);
