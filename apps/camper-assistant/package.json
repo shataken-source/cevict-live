@@ -2,6 +2,7 @@
   "name": "wildready",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "npm@10.9.2",
   "scripts": {
     "dev": "next dev --port 3010",
     "build": "next build",
@@ -12,9 +13,9 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.460.0",
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "next": "^15.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "recharts": "^2.15.4",
     "resend": "^6.9.2",
     "sinch": "^0.4.0",
@@ -26,7 +27,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "^15.1.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

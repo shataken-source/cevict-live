@@ -5,6 +5,13 @@ const SINCH_SERVICE_PLAN_ID = process.env.SINCH_SERVICE_PLAN_ID;
 const SINCH_FROM_NUMBER = process.env.SINCH_FROM_NUMBER || 'WildReady';
 
 export async function POST(request: NextRequest) {
+  if (!SINCH_API_TOKEN || !SINCH_SERVICE_PLAN_ID) {
+    return NextResponse.json(
+      { error: 'SMS service not configured. Add SINCH_API_TOKEN and SINCH_SERVICE_PLAN_ID to environment.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const { phone, name = '' } = await request.json();
 

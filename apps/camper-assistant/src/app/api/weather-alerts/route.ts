@@ -64,13 +64,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter and categorize alerts
-    const fireAlerts = alerts.filter(a => 
-      a.event?.toLowerCase().includes('fire') || 
+    const fireAlerts = alerts.filter(a =>
+      a.event?.toLowerCase().includes('fire') ||
       a.event?.toLowerCase().includes('red flag') ||
       a.event?.toLowerCase().includes('burn ban')
     );
 
-    const weatherAlerts = alerts.filter(a => 
+    const weatherAlerts = alerts.filter(a =>
       !a.event?.toLowerCase().includes('fire') && !a.event?.toLowerCase().includes('red flag')
     );
 
@@ -87,12 +87,25 @@ export async function GET(request: NextRequest) {
       effective: alert.effective,
       expires: alert.expires,
       sender: alert.senderName,
-      isFireRelated: alert.event?.toLowerCase().includes('fire') || 
-                     alert.event?.toLowerCase().includes('red flag'),
+      isFireRelated: alert.event?.toLowerCase().includes('fire') ||
+        alert.event?.toLowerCase().includes('red flag'),
       category: getCategory(alert.event)
     }));
 
-    // If no alerts, return mock data for demo
+    // If NWS returned real data with no active alerts, that's valid - return empty
+    if (mappedAlerts.length === 0 && source === 'nws') {
+      return NextResponse.json({
+        alerts: [],
+        count: 0,
+        source: 'nws',
+        fireAlerts: 0,
+        weatherAlerts: 0,
+        updated: new Date().toISOString(),
+        message: 'No active alerts for this location'
+      });
+    }
+
+    // If NWS failed (source=mock from earlier fallback) and still no alerts, use mock
     if (mappedAlerts.length === 0) {
       const mockAlerts = getMockAlerts(parseFloat(lat), parseFloat(lon));
       return NextResponse.json({
@@ -108,8 +121,8 @@ export async function GET(request: NextRequest) {
           effective: a.effective,
           expires: a.expires,
           sender: a.senderName,
-          isFireRelated: a.event?.toLowerCase().includes('fire') || 
-                         a.event?.toLowerCase().includes('red flag'),
+          isFireRelated: a.event?.toLowerCase().includes('fire') ||
+            a.event?.toLowerCase().includes('red flag'),
           category: getCategory(a.event)
         })),
         count: mockAlerts.length,
@@ -129,10 +142,10 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('NWS Weather API error:', error);
-    
+
     // Return mock data on error
     const mockAlerts = getMockAlerts(parseFloat(lat), parseFloat(lon));
-    
+
     return NextResponse.json({
       alerts: mockAlerts.map(a => ({
         id: a.id,
@@ -146,8 +159,8 @@ export async function GET(request: NextRequest) {
         effective: a.effective,
         expires: a.expires,
         sender: a.senderName,
-        isFireRelated: a.event?.toLowerCase().includes('fire') || 
-                       a.event?.toLowerCase().includes('red flag'),
+        isFireRelated: a.event?.toLowerCase().includes('fire') ||
+          a.event?.toLowerCase().includes('red flag'),
         category: getCategory(a.event)
       })),
       count: mockAlerts.length,
@@ -170,9 +183,9 @@ function mapSeverity(severity: string): string {
 
 function getCategory(event?: string): string {
   if (!event) return 'other';
-  
+
   const eventLower = event.toLowerCase();
-  
+
   if (eventLower.includes('fire') || eventLower.includes('red flag')) return 'fire';
   if (eventLower.includes('thunderstorm') || eventLower.includes('tornado')) return 'severe-weather';
   if (eventLower.includes('flood') || eventLower.includes('flash')) return 'flood';
@@ -180,13 +193,13 @@ function getCategory(event?: string): string {
   if (eventLower.includes('heat') || eventLower.includes('excessive')) return 'heat';
   if (eventLower.includes('winter') || eventLower.includes('snow') || eventLower.includes('ice')) return 'winter';
   if (eventLower.includes('air quality') || eventLower.includes('smoke')) return 'air-quality';
-  
+
   return 'other';
 }
 
 function getMockAlerts(lat: number, lon: number): NWSAlert[] {
   const location = getLocationName(lat, lon);
-  
+
   // Yellowstone area - low fire risk, mostly weather
   if (lat > 44 && lat < 45 && lon > -111 && lon < -109) {
     return [
@@ -240,7 +253,7 @@ function getMockAlerts(lat: number, lon: number): NWSAlert[] {
       }
     ];
   }
-  
+
   // California - high fire risk
   if (lat > 32 && lat < 42 && lon > -124 && lon < -114) {
     return [
@@ -292,7 +305,7 @@ function getMockAlerts(lat: number, lon: number): NWSAlert[] {
       }
     ];
   }
-  
+
   // Default alerts
   return [
     {

@@ -68,12 +68,12 @@ export async function GET(request: NextRequest) {
     // Map to our format with threat levels
     const mappedFires = fires.map((fire, index) => {
       const distance = calculateDistance(
-        parseFloat(lat), 
-        parseFloat(lon), 
-        fire.latitude, 
+        parseFloat(lat),
+        parseFloat(lon),
+        fire.latitude,
         fire.longitude
       );
-      
+
       return {
         id: `fire-${index}`,
         lat: fire.latitude,
@@ -108,10 +108,10 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('NASA FIRMS API error:', error);
-    
+
     // Return mock data on error
     const mockFires = getMockFires(parseFloat(lat), parseFloat(lon), parseFloat(radius));
-    
+
     return NextResponse.json({
       fires: mockFires,
       count: mockFires.length,
@@ -127,11 +127,11 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const R = 6371; // Earth's radius in km
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat/2) * Math.sin(dLat/2) +
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
 
@@ -180,34 +180,53 @@ function getLocationName(lat: number, lon: number): string {
   return 'Unknown Location';
 }
 
-// Generate realistic mock fire data
+// Simple seeded pseudo-random for deterministic mock data (same location = same fires)
+function seeded(seed: number): () => number {
+  let s = Math.abs(Math.round(seed * 1000)) % 233280 || 1;
+  return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+}
+
+// Generate realistic mock fire data (deterministic - same lat/lon always returns same fires)
 function getMockFires(centerLat: number, centerLon: number, radiusKm: number): FireData[] {
   const fires: FireData[] = [];
-  const numFires = Math.floor(Math.random() * 8) + 2; // 2-10 fires
-  
+  const rand = seeded(centerLat * 100 + centerLon);
+  const numFires = Math.floor(rand() * 8) + 2; // 2-10 fires, stable per location
+  const today = new Date().toISOString().split('T')[0];
+
+  // Fixed offsets so fires don't move on every page load
+  const offsets = [
+    [0.45, 0.12], [0.78, 0.67], [0.23, 0.89], [0.91, 0.34],
+    [0.56, 0.45], [0.14, 0.72], [0.83, 0.21], [0.37, 0.58],
+    [0.62, 0.93], [0.08, 0.41]
+  ];
+
   for (let i = 0; i < numFires; i++) {
-    // Random position within radius
-    const distance = Math.random() * radiusKm;
-    const angle = Math.random() * 2 * Math.PI;
+    const [distFrac, angleFrac] = offsets[i % offsets.length];
+    const distance = distFrac * radiusKm;
+    const angle = angleFrac * 2 * Math.PI;
     const lat = centerLat + (distance / 111) * Math.cos(angle);
     const lon = centerLon + (distance / 111) * Math.sin(angle);
-    
+    const brightness = 300 + Math.round(rand() * 150);
+    const frpVal = Math.round(rand() * 100);
+    const hourVal = Math.floor(rand() * 24);
+    const minVal = Math.floor(rand() * 60);
+
     fires.push({
       latitude: lat,
       longitude: lon,
-      bright_ti4: 300 + Math.random() * 150, // 300-450 Kelvin
+      bright_ti4: brightness,
       scan: 0.5,
       track: 0.5,
-      acq_date: new Date().toISOString().split('T')[0],
-      acq_time: `${String(Math.floor(Math.random() * 24)).padStart(2, '0')}${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`,
+      acq_date: today,
+      acq_time: `${String(hourVal).padStart(2, '0')}${String(minVal).padStart(2, '0')}`,
       satellite: 'VIIRS',
-      confidence: Math.random() > 0.7 ? 'high' : 'nominal',
+      confidence: frpVal > 70 ? 'high' : 'nominal',
       version: '1.0',
-      bright_ti5: 320 + Math.random() * 100,
-      frp: Math.random() * 100,
-      daynight: Math.random() > 0.5 ? 'D' : 'N'
+      bright_ti5: brightness + 20,
+      frp: frpVal,
+      daynight: hourVal >= 6 && hourVal < 20 ? 'D' : 'N'
     });
   }
-  
+
   return fires;
 }
