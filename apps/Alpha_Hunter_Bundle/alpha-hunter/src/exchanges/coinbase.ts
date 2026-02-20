@@ -16,8 +16,8 @@ interface CoinbaseConfig {
 }
 
 async function createJWT(apiKey: string, privateKey: string, uri: string): Promise<string> {
-  // Parse the private key (handle escaped newlines)
-  const formattedKey = privateKey.replace(/\\n/g, '\n');
+  // Vault stores keys with literal \n — convert to real newlines, strip surrounding quotes
+  const formattedKey = privateKey.replace(/\\n/g, '\n').replace(/^"|"$/g, '');
 
   try {
     // Import the EC private key using Node's crypto (handles SEC1 format)
