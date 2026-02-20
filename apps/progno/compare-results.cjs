@@ -10,7 +10,18 @@ const path = require('path');
 const https = require('https');
 
 // ── Config ────────────────────────────────────────────────────────────────────
-const ODDS_API_KEY = 'dea4f9f87fe7a2e3642523ee51d398d9';
+// Load .env.local if present (for local runs without shell env set)
+const envPath = path.join(__dirname, '.env.local');
+if (fs.existsSync(envPath)) {
+  fs.readFileSync(envPath, 'utf8').split('\n').forEach(line => {
+    const m = line.match(/^([A-Z_][A-Z0-9_]*)=(.+)$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim().replace(/^['"]|['"]$/g, '');
+  });
+}
+
+const ODDS_API_KEY = process.env.ODDS_API_KEY || process.env.NEXT_PUBLIC_ODDS_API_KEY || '';
+if (!ODDS_API_KEY) { console.error('ERROR: ODDS_API_KEY not set. Add it to .env.local or set in environment.'); process.exit(1); }
+
 const PROGNO_DIR = path.join(__dirname);
 
 const SPORT_KEYS = {
