@@ -2764,7 +2764,7 @@
 
         // Fetch fresh odds from The Odds API
         // Using the API key from the keyvault store
-        const API_KEY = 'dea4f9f87fe7a2e3642523ee51d398d9'; // ODDS_API_KEY from keyvault
+        const API_KEY = window.ODDS_API_KEY || ''; // injected server-side via NEXT_PUBLIC_ODDS_API_KEY
 
         // Group picks by sport for API calls
         const sports = [...new Set(allPicks.map(p => mapLeagueToSport(p.league || p.sport)))];

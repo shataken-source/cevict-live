@@ -1,6 +1,6 @@
 # PROGNO + PROGNOSTICATION Deep Audit Report
-**Generated:** February 16, 2026  
-**Auditor:** Claude Code  
+**Generated:** February 16, 2026
+**Auditor:** Claude Code
 **Scope:** Complete system integration audit including KeyVault, data flow, and college baseball
 
 ---
@@ -24,12 +24,12 @@ The progno-prognostication ecosystem is **partially operational** with critical 
 
 | Key | Status | Value | Location |
 |-----|--------|-------|----------|
-| **SCRAPINGBEE_API_KEY** | ✅ **PRESENT** | `B87FHGJU3P90AHQTSS2S0ML9BRL5BGXV584D9SFZVO0JNZ82JE7JG3W5HUIN7ZCHX5RYJS37PSWBUL6K` | KeyVault + Prognostication .env.local |
-| **ODDS_API_KEY** | ✅ PRESENT | `dea4f9f87fe7a2e3642523ee51d398d9` | KeyVault |
-| **THE_ODDS_API_KEY** | ✅ PRESENT | `77f1fd90090fafba88359aff2da200a3` | KeyVault |
+| **SCRAPINGBEE_API_KEY** | ✅ **PRESENT** | `[stored in C:\Cevict_Vault\env-store.json]` | KeyVault + Prognostication .env.local |
+| **ODDS_API_KEY** | ✅ PRESENT | `[stored in C:\Cevict_Vault\env-store.json]` | KeyVault |
+| **THE_ODDS_API_KEY** | ✅ PRESENT | `[stored in C:\Cevict_Vault\env-store.json]` | KeyVault |
 | **API_SPORTS_KEY** | ⚠️ PLACEHOLDER | `"your-api-sports-key"` | KeyVault line 202 |
-| **API_SPORTS_BASEBALL_KEY** | ✅ PRESENT | `d0d545201e9b7ed86e2641b661c6efaa` | KeyVault line 90 |
-| **CFBD_API_KEY** | ✅ PRESENT | `YOFKBE6/cqRj5f1GwhOpnjGQBP/u5d5wpsdB9/pBQoG0OXqVLckvTtScVjMjjcx6` | KeyVault line 234 |
+| **API_SPORTS_BASEBALL_KEY** | ✅ PRESENT | `[stored in C:\Cevict_Vault\env-store.json]` | KeyVault |
+| **CFBD_API_KEY** | ✅ PRESENT | `[stored in C:\Cevict_Vault\env-store.json]` | KeyVault |
 | **PROGNO_BASE_URL** | ✅ PRESENT | `http://localhost:3008` | KeyVault + Prognostication |
 | **PROGNOSTICATION_WEBHOOK_URL** | ❌ **MISSING** | N/A | Not in KeyVault or .env files |
 | **PROGNO_API_KEY** | ❌ **MISSING** | N/A | Not found for syndication |
@@ -127,7 +127,7 @@ const sports = [
 ```typescript
 // app/api/picks/today/route.ts
 NM: 0,  // Narrative Momentum - no data source
-NIG: 0, // News Impact Grade - no data source  
+NIG: 0, // News Impact Grade - no data source
 EPD: 0, // External Pressure Differential - no data source
 ```
 
@@ -321,7 +321,7 @@ const sports = [
    ```typescript
    // BEFORE (WRONG)
    if (lowerSport === 'college-baseball' || lowerSport === 'ncaab')
-   
+
    // AFTER (CORRECT)
    if (lowerSport === 'college-baseball' || lowerSport === 'ncaabaseball')
    ```
