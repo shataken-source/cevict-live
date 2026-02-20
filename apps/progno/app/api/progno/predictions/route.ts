@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         const picksData = await picksResponse.json();
         if (picksData.picks && Array.isArray(picksData.picks)) {
           realPicks = picksData.picks.map(pick => ({
-            id: pick.id || `pick_${Date.now()}_${Math.random()}`,
+            id: pick.id || `pick_${pick.home_team || ''}_${pick.away_team || ''}_${date}`.replace(/\s+/g, '_'),
             gameDate: date,
             league: pick.league?.toUpperCase() || 'UNKNOWN',
             sport: pick.sport?.toUpperCase() || 'UNKNOWN',

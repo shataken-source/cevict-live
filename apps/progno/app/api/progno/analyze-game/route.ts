@@ -57,9 +57,9 @@ export async function POST(request: NextRequest) {
 
     // Check if this is a Kalshi game (by source or identifier)
     const isKalshiGame = gameData.source === 'kalshi' ||
-                        gameData.kalshi === true ||
-                        gameData.id?.toString().includes('kalshi') ||
-                        gameData.sport_key?.toLowerCase().includes('kalshi');
+      gameData.kalshi === true ||
+      gameData.id?.toString().includes('kalshi') ||
+      gameData.sport_key?.toLowerCase().includes('kalshi');
 
     const formattedGameData: GameData = {
       homeTeam: gameData.home_team || gameData.homeTeam,
@@ -141,67 +141,67 @@ export async function POST(request: NextRequest) {
     // Run standard simulations (for smaller counts or if enhanced method failed)
     if (!useEnhancedMonteCarlo || predictions.length === 0) {
       for (let i = 0; i < numSimulations; i++) {
-      try {
-        // Add realistic randomization to team stats for Monte Carlo simulation
-        // Use larger variance for more realistic simulations
-        const varianceFactor = 1.5 + (Math.random() * 0.5); // 1.5-2.0x variance
-        const randomizedGameData: GameData = {
-          ...formattedGameData,
-          odds: {
-            ...formattedGameData.odds,
-            // Add small variance to odds to simulate market movement
-            home: formattedGameData.odds.home + (Math.random() - 0.5) * 5,
-            away: formattedGameData.odds.away + (Math.random() - 0.5) * 5,
-            spread: formattedGameData.odds.spread ? formattedGameData.odds.spread + (Math.random() - 0.5) * 1.5 : undefined,
-            total: formattedGameData.odds.total ? formattedGameData.odds.total + (Math.random() - 0.5) * 3 : undefined,
-          },
-          teamStats: formattedGameData.teamStats ? {
-            home: {
-              ...formattedGameData.teamStats.home,
-              recentAvgPoints: Math.max(0, formattedGameData.teamStats.home.recentAvgPoints + (Math.random() - 0.5) * 4 * varianceFactor),
-              recentAvgAllowed: Math.max(0, formattedGameData.teamStats.home.recentAvgAllowed + (Math.random() - 0.5) * 4 * varianceFactor),
-              pointsFor: formattedGameData.teamStats.home.pointsFor + (Math.random() - 0.5) * 20 * varianceFactor,
-              pointsAgainst: formattedGameData.teamStats.home.pointsAgainst + (Math.random() - 0.5) * 20 * varianceFactor,
+        try {
+          // Add realistic randomization to team stats for Monte Carlo simulation
+          // Fixed variance calibrated to NFL score std dev (~7 pts per game)
+          const varianceFactor = 1.5;
+          const randomizedGameData: GameData = {
+            ...formattedGameData,
+            odds: {
+              ...formattedGameData.odds,
+              // Add small variance to odds to simulate market movement
+              home: formattedGameData.odds.home + (Math.random() - 0.5) * 5,
+              away: formattedGameData.odds.away + (Math.random() - 0.5) * 5,
+              spread: formattedGameData.odds.spread ? formattedGameData.odds.spread + (Math.random() - 0.5) * 1.5 : undefined,
+              total: formattedGameData.odds.total ? formattedGameData.odds.total + (Math.random() - 0.5) * 3 : undefined,
             },
-            away: {
-              ...formattedGameData.teamStats.away,
-              recentAvgPoints: Math.max(0, formattedGameData.teamStats.away.recentAvgPoints + (Math.random() - 0.5) * 4 * varianceFactor),
-              recentAvgAllowed: Math.max(0, formattedGameData.teamStats.away.recentAvgAllowed + (Math.random() - 0.5) * 4 * varianceFactor),
-              pointsFor: formattedGameData.teamStats.away.pointsFor + (Math.random() - 0.5) * 20 * varianceFactor,
-              pointsAgainst: formattedGameData.teamStats.away.pointsAgainst + (Math.random() - 0.5) * 20 * varianceFactor,
-            },
-          } : formattedGameData.teamStats,
-        };
+            teamStats: formattedGameData.teamStats ? {
+              home: {
+                ...formattedGameData.teamStats.home,
+                recentAvgPoints: Math.max(0, formattedGameData.teamStats.home.recentAvgPoints + (Math.random() - 0.5) * 4 * varianceFactor),
+                recentAvgAllowed: Math.max(0, formattedGameData.teamStats.home.recentAvgAllowed + (Math.random() - 0.5) * 4 * varianceFactor),
+                pointsFor: formattedGameData.teamStats.home.pointsFor + (Math.random() - 0.5) * 20 * varianceFactor,
+                pointsAgainst: formattedGameData.teamStats.home.pointsAgainst + (Math.random() - 0.5) * 20 * varianceFactor,
+              },
+              away: {
+                ...formattedGameData.teamStats.away,
+                recentAvgPoints: Math.max(0, formattedGameData.teamStats.away.recentAvgPoints + (Math.random() - 0.5) * 4 * varianceFactor),
+                recentAvgAllowed: Math.max(0, formattedGameData.teamStats.away.recentAvgAllowed + (Math.random() - 0.5) * 4 * varianceFactor),
+                pointsFor: formattedGameData.teamStats.away.pointsFor + (Math.random() - 0.5) * 20 * varianceFactor,
+                pointsAgainst: formattedGameData.teamStats.away.pointsAgainst + (Math.random() - 0.5) * 20 * varianceFactor,
+              },
+            } : formattedGameData.teamStats,
+          };
 
-        // For Kalshi games, force moneyline-only predictions
-        const prediction = await predictionEngine.predict(randomizedGameData, isKalshiGame);
-        predictions.push(prediction);
+          // For Kalshi games, force moneyline-only predictions
+          const prediction = await predictionEngine.predict(randomizedGameData, isKalshiGame);
+          predictions.push(prediction);
 
-        // Weight by confidence - higher confidence predictions matter more
-        const weight = prediction.confidence;
-        totalWeightedConfidence += prediction.confidence * weight;
-        totalWeightedEdge += prediction.edge * weight;
-        totalWeight += weight;
+          // Weight by confidence - higher confidence predictions matter more
+          const weight = prediction.confidence;
+          totalWeightedConfidence += prediction.confidence * weight;
+          totalWeightedEdge += prediction.edge * weight;
+          totalWeight += weight;
 
-        // Count winners (both simple count and weighted)
-        const currentWinner = winnerCounts.get(prediction.predictedWinner) || { count: 0, weighted: 0 };
-        winnerCounts.set(prediction.predictedWinner, {
-          count: currentWinner.count + 1,
-          weighted: currentWinner.weighted + weight,
-        });
-
-        // Count bet types (weighted by confidence)
-        if (prediction.recommendedBet) {
-          const betKey = `${prediction.recommendedBet.type}-${prediction.recommendedBet.side}`;
-          const currentBet = betTypeCounts.get(betKey) || { count: 0, weighted: 0 };
-          betTypeCounts.set(betKey, {
-            count: currentBet.count + 1,
-            weighted: currentBet.weighted + weight,
+          // Count winners (both simple count and weighted)
+          const currentWinner = winnerCounts.get(prediction.predictedWinner) || { count: 0, weighted: 0 };
+          winnerCounts.set(prediction.predictedWinner, {
+            count: currentWinner.count + 1,
+            weighted: currentWinner.weighted + weight,
           });
+
+          // Count bet types (weighted by confidence)
+          if (prediction.recommendedBet) {
+            const betKey = `${prediction.recommendedBet.type}-${prediction.recommendedBet.side}`;
+            const currentBet = betTypeCounts.get(betKey) || { count: 0, weighted: 0 };
+            betTypeCounts.set(betKey, {
+              count: currentBet.count + 1,
+              weighted: currentBet.weighted + weight,
+            });
+          }
+        } catch (err) {
+          console.error(`Simulation ${i + 1} failed:`, err);
         }
-      } catch (err) {
-        console.error(`Simulation ${i + 1} failed:`, err);
-      }
       }
     }
 
