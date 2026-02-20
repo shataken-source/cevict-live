@@ -510,8 +510,8 @@ export class CoinbaseExchange {
       const estimatedFees = order.fillFees || (amount * 0.006);
 
       return {
-        id: order.orderId,
-        price: order.avgPrice || await this.getPrice(productId),
+        id: order.id,
+        price: order.price || await this.getPrice(productId),
         size: order.filledSize || amount,
         side: order.side,
         fees: estimatedFees,

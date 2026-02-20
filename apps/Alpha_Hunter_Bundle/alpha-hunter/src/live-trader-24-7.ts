@@ -799,17 +799,37 @@ Be conservative. Only recommend if clear setup exists. Otherwise confidence=50, 
           try {
             // 9. COMPREHENSIVE ERROR HANDLING - Wrap in safe API call
             await this.tradeProtection.safeAPICall(async () => {
+              const autoExecute = process.env.AUTO_EXECUTE === 'true';
+              const side = aiAnalysis.prediction as 'buy' | 'sell';
+              let entryPrice = ticker.price;
+
+              if (autoExecute) {
+                // ── LIVE TRADE ──────────────────────────────────────────
+                console.log(`   ${color.warning(`🔴 LIVE ORDER: ${side.toUpperCase()} $${tradeSize} ${pair}`)}`);
+                const filled = await this.coinbase.marketOrder(pair, side, tradeSize);
+                if (!filled) {
+                  await this.releaseSpending(tradeSize);
+                  console.log(`   ${color.error('❌ Order rejected by Coinbase')}`);
+                  return;
+                }
+                entryPrice = filled.price || ticker.price;
+                console.log(`   ${color.success(`✅ FILLED: ${filled.id} @ $${entryPrice.toFixed(2)} fees=$${filled.fees.toFixed(4)}`)}`);
+              } else {
+                // ── PAPER TRADE ─────────────────────────────────────────
+                console.log(`   ${color.info(`📝 PAPER TRADE: ${side.toUpperCase()} $${tradeSize} ${pair} @ $${entryPrice.toFixed(2)}`)}`);
+              }
+
               const order = {
                 pair,
-                side: aiAnalysis.prediction as 'buy' | 'sell',
-                entryPrice: ticker.price,
+                side,
+                entryPrice,
                 amount: tradeSize,
-                takeProfit: aiAnalysis.prediction === 'buy'
-                  ? ticker.price * 1.015
-                  : ticker.price * 0.985,
-                stopLoss: aiAnalysis.prediction === 'buy'
-                  ? ticker.price * 0.99
-                  : ticker.price * 1.01,
+                takeProfit: side === 'buy'
+                  ? entryPrice * 1.015
+                  : entryPrice * 0.985,
+                stopLoss: side === 'buy'
+                  ? entryPrice * 0.99
+                  : entryPrice * 1.01,
               };
 
               const positionId = `${pair}-${Date.now()}`;
@@ -829,9 +849,9 @@ Be conservative. Only recommend if clear setup exists. Otherwise confidence=50, 
 
               await saveTradeRecord({
                 platform: 'coinbase',
-                trade_type: aiAnalysis.prediction,
+                trade_type: side,
                 symbol: pair,
-                entry_price: order.entryPrice,
+                entry_price: entryPrice,
                 amount: tradeSize,
                 fees: tradeSize * 0.006,
                 opened_at: new Date(),
@@ -841,8 +861,9 @@ Be conservative. Only recommend if clear setup exists. Otherwise confidence=50, 
                 bot_category: 'crypto',
               });
 
-              console.log(`   ${color.success('✅ AI Trade executed')} - $${tradeSize} on ${pair}`);
-              logTrade(`TRADE: ${aiAnalysis.prediction.toUpperCase()} $${tradeSize} ${pair} @ $${order.entryPrice.toFixed(2)}`, { pair, side: aiAnalysis.prediction, amount: tradeSize, price: order.entryPrice });
+              const label = autoExecute ? '✅ LIVE Trade executed' : '📝 Paper trade recorded';
+              console.log(`   ${color.success(label)} - $${tradeSize} ${side.toUpperCase()} ${pair}`);
+              logTrade(`${autoExecute ? 'LIVE' : 'PAPER'} TRADE: ${side.toUpperCase()} $${tradeSize} ${pair} @ $${entryPrice.toFixed(2)}`, { pair, side, amount: tradeSize, price: entryPrice });
             }, `Crypto trade execution: ${pair}`);
             break;
           } catch (err: any) {
