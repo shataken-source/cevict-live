@@ -42,13 +42,11 @@ const LEAGUE_MAP: Record<string, string> = {
   NCAAB: 'mens-college-basketball',
 };
 
-// Cache to avoid hammering ESPN on every pick
-const statsCache = new Map<string, { data: TeamCalibrationStats; ts: number }>();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
-// Sync-readable derived stats cache keyed by "league:teamName" for pick-engine path
-// Populated by warmStatsCache() before runPickEngine is called
-export const derivedStatsCache = new Map<string, {
+// Use globalThis to survive Next.js hot-module reloads in dev
+// Each new module instance re-uses the same Map reference
+type DerivedEntry = {
   recentAvgPoints: number;
   recentAvgAllowed: number;
   scoringStdDev: number;
@@ -56,14 +54,26 @@ export const derivedStatsCache = new Map<string, {
   losses: number;
   pointsFor: number;
   pointsAgainst: number;
-}>();
+};
+type OddsEntry = { home: DerivedEntry; away: DerivedEntry };
 
-// Secondary cache keyed by "homeOdds:awayOdds:spread:total" for when team names aren't passed
-// pick-engine.ts calls estimateTeamStatsFromOdds(oddsObj, sport) without team names
-export const oddsKeyedCache = new Map<string, {
-  home: { recentAvgPoints: number; recentAvgAllowed: number; scoringStdDev: number; wins: number; losses: number; pointsFor: number; pointsAgainst: number };
-  away: { recentAvgPoints: number; recentAvgAllowed: number; scoringStdDev: number; wins: number; losses: number; pointsFor: number; pointsAgainst: number };
-}>();
+declare global {
+  // eslint-disable-next-line no-var
+  var __espnStatsCache: Map<string, { data: TeamCalibrationStats; ts: number }> | undefined;
+  // eslint-disable-next-line no-var
+  var __espnDerivedCache: Map<string, DerivedEntry> | undefined;
+  // eslint-disable-next-line no-var
+  var __espnOddsCache: Map<string, OddsEntry> | undefined;
+  // eslint-disable-next-line no-var
+  var __espnGameCtx: { homeTeam: string; awayTeam: string; league: 'nba' | 'ncaab' } | null | undefined;
+}
+
+const statsCache: Map<string, { data: TeamCalibrationStats; ts: number }> =
+  (globalThis.__espnStatsCache ??= new Map());
+export const derivedStatsCache: Map<string, DerivedEntry> =
+  (globalThis.__espnDerivedCache ??= new Map());
+export const oddsKeyedCache: Map<string, OddsEntry> =
+  (globalThis.__espnOddsCache ??= new Map());
 
 export function makeOddsKey(odds: { home: number; away: number; spread?: number; total?: number }): string {
   return `${odds.home}:${odds.away}:${odds.spread ?? 0}:${odds.total ?? 0}`;
@@ -71,18 +81,17 @@ export function makeOddsKey(odds: { home: number; away: number; spread?: number;
 
 // Module-level context: set by route.ts before each runPickEngine call
 // Allows estimateTeamStatsFromOdds to resolve team names without arg changes
-let _currentGame: { homeTeam: string; awayTeam: string; league: 'nba' | 'ncaab' } | null = null;
-
+// Uses globalThis so it survives Next.js hot-module reloads
 export function setCurrentGameContext(homeTeam: string, awayTeam: string, league: 'nba' | 'ncaab') {
-  _currentGame = { homeTeam, awayTeam, league };
+  globalThis.__espnGameCtx = { homeTeam, awayTeam, league };
 }
 
 export function clearCurrentGameContext() {
-  _currentGame = null;
+  globalThis.__espnGameCtx = null;
 }
 
 export function getCurrentGameContext() {
-  return _currentGame;
+  return globalThis.__espnGameCtx ?? null;
 }
 
 /**
