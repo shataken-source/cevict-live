@@ -8,6 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { syncToPrognostication } from '../services/trade-safety';
+import { saveBotPrediction, BotPrediction } from '../lib/supabase-memory';
 
 export interface KalshiPickForPrognostication {
   marketId: string;
@@ -23,6 +24,7 @@ export interface KalshiPickForPrognostication {
   yesPrice: number;
   noPrice: number;
   expiresAt?: Date;
+  amount?: number;
 }
 
 export interface PrognostationUpdate {
@@ -106,6 +108,8 @@ export class PrognosticationSync {
           await this.writePicksFile(update);
           // POST to Prognostication API
           await this.postToPrognosticationAPI(picks);
+          // Write to Supabase so Prognostication can read from bot_predictions
+          await this.savePicksToSupabase(picks);
           this.lastUpdate = new Date();
         }
       );
@@ -161,6 +165,38 @@ export class PrognosticationSync {
     } catch (error: any) {
       // Don't fail if API is down, we already wrote to file
       console.log(`   ⚠️  Prognostication API unavailable: ${error.message} (file fallback active)`);
+    }
+  }
+
+  /**
+   * Write picks to Supabase bot_predictions table for Prognostication to read
+   */
+  private async savePicksToSupabase(picks: KalshiPickForPrognostication[]): Promise<void> {
+    try {
+      let saved = 0;
+      for (const pick of picks) {
+        const prediction: BotPrediction = {
+          market_id: pick.marketId,
+          market_title: pick.title,
+          prediction: pick.prediction,
+          probability: pick.probability,
+          confidence: pick.confidence,
+          edge: pick.edge,
+          reasoning: pick.reasoning,
+          factors: pick.factors,
+          learned_from: pick.learnedFrom,
+          platform: 'kalshi',
+          market_price: pick.yesPrice,
+          bot_category: pick.category,
+          source: 'alpha-hunter',
+          status: 'pending'
+        };
+        const result = await saveBotPrediction(prediction);
+        if (result) saved++;
+      }
+      console.log(`   💾 Saved ${saved}/${picks.length} picks to Supabase bot_predictions`);
+    } catch (error: any) {
+      console.log(`   ⚠️  Supabase save failed: ${error.message}`);
     }
   }
 

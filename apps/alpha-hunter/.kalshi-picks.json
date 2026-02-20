@@ -1,6 +1,81 @@
 {
-  "picks": [],
-  "timestamp": "2025-12-31T22:20:53.333Z",
-  "totalPicks": 0,
-  "categories": []
+  "timestamp": "2026-02-19T21:15:57.487Z",
+  "picks": [
+    {
+      "marketId": "MKT-1",
+      "title": "Will X happen?",
+      "category": "world",
+      "prediction": "yes",
+      "probability": 68,
+      "confidence": 68,
+      "edge": 7.5,
+      "reasoning": [],
+      "factors": [],
+      "learnedFrom": [],
+      "yesPrice": 50,
+      "noPrice": 50
+    },
+    {
+      "marketId": "f8e2775a-0cb1-4653-9277-138333e628fd",
+      "title": "SAMPLE: US GDP Q1 above 2.5%",
+      "category": "economics",
+      "prediction": "yes",
+      "probability": 78,
+      "confidence": 78,
+      "edge": 6.5,
+      "reasoning": [],
+      "factors": [],
+      "learnedFrom": [],
+      "yesPrice": 50,
+      "noPrice": 50
+    },
+    {
+      "marketId": "f8e2775a-0cb1-4653-9277-138333e628fd",
+      "title": "SAMPLE: US GDP Q1 above 2.5%",
+      "category": "economics",
+      "prediction": "yes",
+      "probability": 78,
+      "confidence": 78,
+      "edge": 6.5,
+      "reasoning": [],
+      "factors": [],
+      "learnedFrom": [],
+      "yesPrice": 50,
+      "noPrice": 50
+    },
+    {
+      "marketId": "f531ac4f-999c-4e1d-b297-bb5d998c1bad",
+      "title": "SAMPLE: March CPI below 3.0%",
+      "category": "world",
+      "prediction": "yes",
+      "probability": 72,
+      "confidence": 72,
+      "edge": 5.2,
+      "reasoning": [],
+      "factors": [],
+      "learnedFrom": [],
+      "yesPrice": 50,
+      "noPrice": 50
+    },
+    {
+      "marketId": "f531ac4f-999c-4e1d-b297-bb5d998c1bad",
+      "title": "SAMPLE: March CPI below 3.0%",
+      "category": "world",
+      "prediction": "yes",
+      "probability": 72,
+      "confidence": 72,
+      "edge": 5.2,
+      "reasoning": [],
+      "factors": [],
+      "learnedFrom": [],
+      "yesPrice": 50,
+      "noPrice": 50
+    }
+  ],
+  "stats": {
+    "totalMarkets": 5,
+    "highConfidencePicks": 5,
+    "avgEdge": 6.18,
+    "avgConfidence": 73.6
+  }
 }

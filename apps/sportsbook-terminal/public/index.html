@@ -1033,6 +1033,10 @@
       <!-- File Upload Section -->
       <div class="file-section">
         <div class="sidebar-title">Load Predictions</div>
+        <button class="btn-primary" onclick="loadTodaysPicks()"
+          style="margin-bottom: 10px; background: linear-gradient(135deg, #00e676, #00b0ff); color: #000; font-weight: 700;">
+          ⚡ Load Today's Picks
+        </button>
         <div class="file-input-wrapper">
           <input type="file" id="fileInput" accept=".json" onchange="handleFileSelect(event)" />
           <label for="fileInput" class="file-input-label">
@@ -1410,6 +1414,70 @@
       setTimeout(() => container.className = 'error-banner', 5000);
     }
 
+    // Load today's picks from the server API
+    async function loadTodaysPicks() {
+      showError('⚡ Loading today\'s picks from server...', 'success');
+      try {
+        const response = await fetch('/api/kalshi-picks.json');
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        const data = await response.json();
+
+        // Server returns { picks: [], count, generatedAt } (new format)
+        // or legacy { elite: [], pro: [], free: [] }
+        let picks = [];
+        if (Array.isArray(data.picks) && data.picks.length > 0) {
+          picks = data.picks;
+        } else if (data.elite || data.pro || data.free) {
+          picks = [
+            ...(data.elite || []),
+            ...(data.pro || []),
+            ...(data.free || [])
+          ];
+        }
+
+        if (picks.length === 0) {
+          showError('No picks on server yet. Load a file manually or run alpha-hunter.', 'error');
+          return;
+        }
+
+        loadPicksData(picks, data.generatedAt || data.cached_at);
+        showError(`✅ Loaded ${picks.length} picks from server (${data.generatedAt ? new Date(data.generatedAt).toLocaleString() : 'cached'})`, 'success');
+      } catch (err) {
+        showError('❌ Server load failed: ' + err.message + ' — try loading file manually');
+      }
+    }
+
+    // Shared pick loader — normalizes progno format for the UI
+    function loadPicksData(picks, sourceLabel) {
+      allPicks = picks.map((pick, idx) => {
+        // Progno format: pick.pick = team name, pick.home_team, pick.away_team
+        // Ensure id exists
+        const id = pick.id || pick.game_id || `pick-${idx}`;
+        // mc_win_probability is 0-1; confidence is 0-100
+        const mcProb = typeof pick.mc_win_probability === 'number' ? pick.mc_win_probability
+          : typeof pick.confidence === 'number' ? pick.confidence / 100 : 0.55;
+        return {
+          ...pick,
+          id,
+          venue: pick.venue || 'sportsbook',
+          market_type: pick.market_type || 'sports',
+          mc_win_probability: mcProb,
+          // Normalize team display: if pick.pick is a team name, use it
+          _displayPick: pick.pick || (pick.home_team ? `${pick.home_team} ${pick.recommended_line || ''}`.trim() : 'Unknown')
+        };
+      });
+
+      document.getElementById('bankrollDisplay').style.display = 'flex';
+      document.getElementById('statsBar').style.display = 'flex';
+      document.getElementById('filterTabs').style.display = 'flex';
+      document.getElementById('refreshSection').style.display = 'block';
+      document.getElementById('adminSection').style.display = 'block';
+
+      updateStats();
+      renderPicksList();
+      generateStrategies();
+    }
+
     // File Loading
     function handleFileSelect(event) {
       const file = event.target.files[0];
@@ -1421,23 +1489,8 @@
           const data = JSON.parse(e.target.result);
 
           if (data.picks && Array.isArray(data.picks)) {
-            allPicks = data.picks.map((pick, idx) => ({
-              ...pick,
-              id: pick.id || `pick-${idx}`,
-              venue: pick.venue || 'sportsbook',
-              market_type: pick.market_type || 'sports'
-            }));
-
-            document.getElementById('bankrollDisplay').style.display = 'flex';
-            document.getElementById('statsBar').style.display = 'flex';
-            document.getElementById('filterTabs').style.display = 'flex';
-            document.getElementById('refreshSection').style.display = 'block';
-            document.getElementById('adminSection').style.display = 'block';
-
-            updateStats();
-            renderPicksList();
-            generateStrategies();
-            showError('Predictions loaded successfully', 'success');
+            loadPicksData(data.picks, data.generatedAt);
+            showError(`✅ Loaded ${data.picks.length} predictions from file`, 'success');
           } else {
             throw new Error('Invalid format: missing picks array');
           }
@@ -1587,7 +1640,7 @@
         const evWidth = Math.min(Math.abs(edge) * 3, 100);
         const evColor = edge > 0 ? 'positive' : 'negative';
 
-        // Get line movement info
+        // Line movement badge (only after odds refresh)
         const lineMove = getLineMovement(pick);
         const moveBadge = lineMove ? `
           <span style="font-size: 0.7em; padding: 2px 6px; border-radius: 4px;
@@ -1597,6 +1650,16 @@
           </span>
         ` : '';
 
+        // Display: pick field = picked team name in progno format
+        const pickDisplay = pick._displayPick || pick.pick || '';
+        const matchup = (pick.home_team && pick.away_team)
+          ? `${pick.away_team} @ ${pick.home_team}`
+          : (pick.home_team || pick.team || pickDisplay);
+
+        // MC score display
+        const mcScore = pick.mc_predicted_score;
+        const scoreHint = mcScore ? ` (${mcScore.home}-${mcScore.away})` : '';
+
         return `
       <div class="pick-card ${isPremium ? 'premium-locked' : ''} ${isSelected ? 'selected' : ''}"
            onclick="selectPick('${pick.id}')">
@@ -1605,40 +1668,35 @@
         <div class="pick-header">
           <div class="pick-sport">${pick.league || pick.sport || 'Sports'}</div>
           <div>
-            ${pick.is_premium ? '<span class="badge badge-premium">PRO</span>' : ''}
-            ${pick.type === 'parlay' ? '<span class="badge badge-parlay">PARLAY</span>' : ''}
-            ${pick.type === 'teaser' ? '<span class="badge badge-teaser">TEASER</span>' : ''}
-            ${pick.pick_type ? `<span class="badge badge-${pick.pick_type.toLowerCase()}">${pick.pick_type}</span>` : ''}
+            ${pick.triple_align ? '<span class="badge badge-premium" style="background:#00e676;color:#000">✓ TRIPLE</span>' : ''}
+            ${pick.pick_type ? `<span class="badge badge-${(pick.pick_type || '').toLowerCase()}">${pick.pick_type}</span>` : ''}
           </div>
         </div>
 
-        <div class="pick-teams">${pick.home_team || pick.team} vs ${pick.away_team || pick.opponent || 'Opponent'}</div>
+        <div class="pick-teams">${matchup}</div>
+
+        <div style="font-size: 0.85em; color: var(--accent-primary); font-weight: 600; margin-bottom: 6px;">
+          ✓ ${pickDisplay}${scoreHint}
+        </div>
 
         <div class="pick-meta">
-          <div class="${confClass}">${pick.confidence || 0}% Confidence</div>
+          <div class="${confClass}">${pick.confidence || 0}% Conf</div>
           <div class="pick-odds">${formatOdds(pick.odds || -110)} ${moveBadge}</div>
         </div>
 
         <div class="pick-details">
           <div class="pick-detail-item">
-            <span>EV: ${ev > 0 ? '+' : ''}${ev.toFixed(2)}</span>
+            <span>EV: ${ev > 0 ? '+' : ''}${(ev * 100).toFixed(1)}%</span>
           </div>
           <div class="pick-detail-item">
             <span>Edge: ${edge > 0 ? '+' : ''}${edge.toFixed(1)}%</span>
           </div>
-          ${pick.expected_value ? `<div class="pick-detail-item">$${pick.expected_value.toFixed(0)} E{x}</div>` : ''}
+          ${pick.value_bet_edge ? `<div class="pick-detail-item" style="color:var(--success)">+${Number(pick.value_bet_edge).toFixed(1)}% VBE</div>` : ''}
         </div>
 
         <div class="ev-meter">
           <div class="ev-fill ${evColor}" style="width: ${evWidth}%"></div>
         </div>
-
-        ${isPremium ? `
-          <div class="premium-overlay" style="display: none;">
-            <div>🔒 Premium Pick</div>
-            <button class="premium-btn" onclick="unlockPro(event)">Unlock Pro</button>
-          </div>
-        ` : ''}
       </div>
     `;
       }).join('');
@@ -1651,15 +1709,19 @@
 
       selectedPick = pick;
 
-      // Use the appropriate probability based on pick type
-      let modelProb = pick.mc_win_probability || 0;
+      // Use the appropriate probability based on pick type (all stored as 0-1)
+      let modelProb = pick.mc_win_probability || (pick.confidence || 55) / 100;
       if (pick.pick_type === 'SPREAD' && pick.mc_spread_probability) {
         modelProb = pick.mc_spread_probability;
       } else if (pick.pick_type === 'TOTAL' && pick.mc_total_probability) {
         modelProb = pick.mc_total_probability;
       }
 
-      document.getElementById('eventName').value = `${pick.home_team || pick.team} vs ${pick.away_team || pick.opponent || 'Opponent'}`;
+      const matchup = (pick.home_team && pick.away_team)
+        ? `${pick.away_team} @ ${pick.home_team}`
+        : (pick.home_team || pick.team || pick._displayPick || 'Unknown');
+
+      document.getElementById('eventName').value = `${matchup} — Pick: ${pick._displayPick || pick.pick || ''}`;
       document.getElementById('modelProb').value = Math.round(modelProb * 100);
       document.getElementById('marketOdds').value = pick.odds || -110;
 
@@ -2789,40 +2851,74 @@
     let kalshiPicksData = null;
     let currentKalshiFilter = 'all';
 
-    // Load Kalshi picks from the JSON file endpoint
+    // Load Kalshi picks from the server API endpoint
     async function loadKalshiPicks() {
       const list = document.getElementById('kalshiList');
       list.innerHTML = `
         <div class="empty-state">
           <div class="loading"></div>
-          <div>Loading Kalshi picks from file...</div>
+          <div>Loading Kalshi picks from server...</div>
         </div>`;
 
       try {
         const response = await fetch('/api/kalshi-picks.json');
-        if (!response.ok) {
-          throw new Error(`Failed to load: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
 
         const data = await response.json();
-        if (!data.success) {
-          throw new Error(data.message || 'Invalid data from server');
+
+        // Normalize: server now returns { picks: [], count, generatedAt }
+        // but may also return legacy { elite: [], pro: [], free: [] }
+        let allKalshiPicks = [];
+        if (Array.isArray(data.picks) && data.picks.length > 0) {
+          // New format — assign tiers by confidence
+          allKalshiPicks = data.picks.map(p => ({
+            ...p,
+            tier: (p.confidence || 0) >= 65 ? 'elite' : (p.confidence || 0) >= 60 ? 'pro' : 'free',
+            // Map progno fields to Kalshi display fields
+            market: p.pick || p.market || p.id,
+            pick: 'YES',
+            probability: p.confidence || Math.round((p.mc_win_probability || 0.55) * 100),
+            marketPrice: p.kalshiPrice || Math.round((p.mc_win_probability || 0.55) * 100),
+            edge: p.edge || p.value_bet_edge || 0,
+            reasoning: Array.isArray(p.reasoning) ? p.reasoning.join(' ') : (p.analysis || p.reasoning || ''),
+            gameInfo: (p.home_team && p.away_team) ? `${p.away_team} @ ${p.home_team}` : (p.pick || ''),
+            originalSport: p.sport || p.league || 'Sports'
+          }));
+        } else {
+          // Legacy tiered format
+          allKalshiPicks = [
+            ...(data.elite || []).map(p => ({ ...p, tier: 'elite' })),
+            ...(data.pro || []).map(p => ({ ...p, tier: 'pro' })),
+            ...(data.free || []).map(p => ({ ...p, tier: 'free' }))
+          ];
         }
 
-        kalshiPicksData = data;
-        renderKalshiPicks();
+        if (allKalshiPicks.length === 0) {
+          list.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">📭</div>
+              <div>No Kalshi picks yet.<br>Run alpha-hunter to generate picks, or load a predictions file.</div>
+            </div>`;
+          return;
+        }
 
-        const total = (data.elite?.length || 0) + (data.pro?.length || 0) + (data.free?.length || 0);
-        showError(`Loaded ${total} Kalshi picks from ${data.source || 'file'}`, 'success');
+        // Store normalized data in legacy structure for renderKalshiPicks
+        kalshiPicksData = {
+          elite: allKalshiPicks.filter(p => p.tier === 'elite'),
+          pro: allKalshiPicks.filter(p => p.tier === 'pro'),
+          free: allKalshiPicks.filter(p => p.tier === 'free'),
+          generatedAt: data.generatedAt
+        };
+
+        renderKalshiPicks();
+        showError(`✅ Loaded ${allKalshiPicks.length} Kalshi picks (${data.generatedAt ? new Date(data.generatedAt).toLocaleString() : 'cached'})`, 'success');
       } catch (err) {
         console.error('Error loading Kalshi picks:', err);
         list.innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">❌</div>
-            <div>Failed to load Kalshi picks: ${err.message}</div>
-            <div style="font-size: 0.8em; color: var(--text-muted); margin-top: 8px;">
-              Ensure the server is running and data/kalshi-picks.json exists
-            </div>
+            <div>Failed to load: ${err.message}<br>
+            <span style="font-size:0.8em;color:var(--text-muted)">Make sure the server is running on port 3433</span></div>
           </div>`;
       }
     }
@@ -2958,14 +3054,7 @@
       showError('Pick copied to clipboard', 'success');
     }
 
-    // Auto-load Kalshi picks when switching to Kalshi tab
-    const originalShowStrategy = showStrategy;
-    showStrategy = function (strategy) {
-      originalShowStrategy(strategy);
-      if (strategy === 'kalshi' && !kalshiPicksData) {
-        loadKalshiPicks();
-      }
-    };
+    // Auto-load Kalshi picks when switching to Kalshi tab (merged with polymarket handler below)
 
     // ==================== KALSHI STRATEGIES ====================
 
@@ -3641,11 +3730,12 @@ Expected workflow:
       setTimeout(() => setAdminButtonsDisabled(false), 500);
     }
 
-    // Call these when switching to strategy tabs
-    const originalShowStrategy = showStrategy;
+    // Override showStrategy: auto-load Kalshi picks + run strategy generators
+    const _baseShowStrategy = showStrategy;
     showStrategy = function (strategy) {
-      originalShowStrategy(strategy);
+      _baseShowStrategy(strategy);
       if (strategy === 'kalshi') {
+        if (!kalshiPicksData) loadKalshiPicks();
         generateKalshiStrategies();
       } else if (strategy === 'polymarket') {
         generatePolymarketStrategies();

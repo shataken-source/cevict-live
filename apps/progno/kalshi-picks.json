@@ -1,0 +1,107 @@
+{
+  "generatedAt": "2026-02-20T04:16:25.662Z",
+  "source": "alpha-hunter",
+  "count": 10,
+  "picks": [
+    {
+      "id": "NBA:Memphis Grizzlies_vs_Utah Jazz:Memphis Grizzlies",
+      "sport": "NBA",
+      "pick": "Memphis Grizzlies",
+      "confidence": 58,
+      "edge": 0.23019999999999996,
+      "expectedValue": 0.43947272727272735,
+      "stake": 15952.860000000002,
+      "status": "recommended"
+    },
+    {
+      "id": "NCAAB:Tennessee St Tigers_vs_Lindenwood Lions:Tennessee St Tigers",
+      "sport": "NCAAB",
+      "pick": "Tennessee St Tigers",
+      "confidence": 62,
+      "edge": 0.22799999999999998,
+      "expectedValue": 0.43527272727272737,
+      "stake": 13279.784308560003,
+      "status": "recommended"
+    },
+    {
+      "id": "NCAAB:Merrimack Warriors_vs_Siena Saints:Merrimack Warriors",
+      "sport": "NCAAB",
+      "pick": "Merrimack Warriors",
+      "confidence": 60,
+      "edge": 0.22420000000000007,
+      "expectedValue": 0.4280181818181821,
+      "stake": 10995.166514192453,
+      "status": "recommended"
+    },
+    {
+      "id": "NCAAB:Appalachian St Mountaineers_vs_Marshall Thundering Herd:Appalachian St Mountaineers",
+      "sport": "NCAAB",
+      "pick": "Appalachian St Mountaineers",
+      "confidence": 61,
+      "edge": 0.21899999999999997,
+      "expectedValue": 0.4180909090909092,
+      "stake": 9071.445834863329,
+      "status": "recommended"
+    },
+    {
+      "id": "NCAAB:Central Connecticut St Blue Devils_vs_Le Moyne Dolphins:Central Connecticut St Blue Devils",
+      "sport": "NCAAB",
+      "pick": "Central Connecticut St Blue Devils",
+      "confidence": 61,
+      "edge": 0.21760000000000002,
+      "expectedValue": 0.4154181818181819,
+      "stake": 7645.509853652845,
+      "status": "recommended"
+    },
+    {
+      "id": "NCAAB:Portland St Vikings_vs_Idaho Vandals:Portland St Vikings",
+      "sport": "NCAAB",
+      "pick": "Portland St Vikings",
+      "confidence": 61,
+      "edge": 0.21620000000000006,
+      "expectedValue": 0.41274545454545475,
+      "stake": 6450.819245822762,
+      "status": "recommended"
+    },
+    {
+      "id": "NBA:New York Knicks_vs_Detroit Pistons:New York Knicks",
+      "sport": "NBA",
+      "pick": "New York Knicks",
+      "confidence": 61,
+      "edge": 0.2116,
+      "expectedValue": 0.4039636363636365,
+      "stake": 5367.627379283028,
+      "status": "recommended"
+    },
+    {
+      "id": "NBA:New Orleans Pelicans_vs_Milwaukee Bucks:New Orleans Pelicans",
+      "sport": "NBA",
+      "pick": "New Orleans Pelicans",
+      "confidence": 59,
+      "edge": 0.21040000000000003,
+      "expectedValue": 0.4016727272727274,
+      "stake": 4554.548429582029,
+      "status": "recommended"
+    },
+    {
+      "id": "NCAAB:Presbyterian Blue Hose_vs_Longwood Lancers:Presbyterian Blue Hose",
+      "sport": "NCAAB",
+      "pick": "Presbyterian Blue Hose",
+      "confidence": 58,
+      "edge": 0.17980000000000007,
+      "expectedValue": 0.3432545454545457,
+      "stake": 3324.644264015636,
+      "status": "recommended"
+    },
+    {
+      "id": "NCAAB:New Haven Chargers_vs_Stonehill Skyhawks:New Haven Chargers",
+      "sport": "NCAAB",
+      "pick": "New Haven Chargers",
+      "confidence": 58,
+      "edge": 0.1784,
+      "expectedValue": 0.3405818181818183,
+      "stake": 2887.7273963535563,
+      "status": "recommended"
+    }
+  ]
+}

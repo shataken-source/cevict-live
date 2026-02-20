@@ -1,0 +1,242 @@
+Deep Audit: Kalshi Data Flow Across All 4 Apps
+Executive Summary
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐     ┌─────────────────────┐
+│  ALPHA-HUNTER   │────▶│  SUPABASE        │────▶│  PROGNOSTICATION│────▶│  SPORTSBOOK-TERMINAL│
+│  (Data Source)  │     │  (bot_predictions)│     │  (API Layer)    │     │  (Display/Consumer) │
+└─────────────────┘     └──────────────────┘     └─────────────────┘     └─────────────────────┘
+        │                                                           ▲            │
+        │                                                           │            │
+        └────────────────── Kalshi API ─────────────────────────────┘            │
+                                                                                 │
+        ┌────────────────────────────────────────────────────────────────────────┘
+        │                           (File-based fallback)
+        ▼
+  data/kalshi-picks.json (cached)
+App-by-App Analysis
+1. ALPHA-HUNTER (Trading Bot) - apps/alpha-hunter
+Role: Data Producer - Creates predictions and executes trades
+
+Key Files:
+
+File	Purpose
+src/lib/supabase-memory.ts:118-212	saveBotPrediction() - Core insert/update function
+src/live-trader-24-7.ts:530-606	fetchAndSaveKalshiPredictions() - Fetches markets from Kalshi API, generates predictions
+src/intelligence/kalshi-trader.ts:1-924	Trading execution, API client
+src/kalshi-sandbox-autopilot.ts:106-121	Sandbox prediction generation
+src/intelligence/bot-academy.ts:394	Academy-based predictions
+src/services/kalshi/settlement-worker.ts:114	Resolves predictions when markets settle
+Data Flow IN:
+
+Kalshi API → getMarkets() → fetchAndSaveKalshiPredictions()
+Progno API → kalshi-trainer.ts:354 → Uses PROGNO picks to find matching Kalshi markets
+Data Flow OUT:
+
+saveBotPrediction() → Supabase bot_predictions table
+saveTradeRecord() → Supabase trade_history table
+Prediction Logic (live-trader-24-7.ts:559-582):
+
+javascript
+const marketPrice = market.yesPrice || 50;
+const probability = marketPrice;
+const confidence = Math.min(70, 50 + Math.abs(marketPrice - 50));
+const edge = Math.abs(probability - marketPrice);
+const prediction = probability > 50 ? 'yes' : 'no';
+Critical Issue: The edge calculation is broken - edge = Math.abs(probability - marketPrice) but probability = marketPrice, so edge is always 0.
+
+2. PROGNO (Probability Analyzer) - apps/progno
+Role: Data Producer - Generates sports predictions from Monte Carlo simulations
+
+Key Files:
+
+File	Purpose
+src/index.ts	Main entry point, runs simulations
+predictions-*.json	Output files with picks
+Data Flow OUT:
+
+Sports data → Monte Carlo → predictions-{date}.json files
+These files are processed by sportsbook-terminal scheduler
+Note: Progno does NOT interact directly with Kalshi. It produces sports predictions that alpha-hunter may match to Kalshi markets.
+
+3. PROGNOSTICATION (Next.js App) - apps/prognostication
+Role: API Layer - Serves predictions to consumers
+
+Key Files:
+
+File	Purpose
+lib/kalshi-integration.ts:63-237	fetchLiveKalshiPicks() - Reads from Supabase
+app/api/kalshi/picks/route.ts:31-98	/api/kalshi/picks endpoint - Returns alpha-hunter picks
+app/api/kalshi/sports/route.ts:1-320	/api/kalshi/sports endpoint - Returns sports picks converted to Kalshi format
+Data Flow IN:
+
+Supabase bot_predictions → fetchLiveKalshiPicks() → Transform → API response
+Query Filters (kalshi-integration.ts:74-79):
+
+javascript
+.eq('platform', 'kalshi')
+.gte('confidence', 50)          // 50% threshold
+.is('actual_outcome', null)     // Only open predictions
+.order('predicted_at', { descending })
+.limit(100)
+Data Flow OUT:
+
+/api/kalshi/picks?category=sports&limit=20 → Returns picks from alpha-hunter
+/api/kalshi/sports?tier=all&limit=20 → Returns sports picks (from predictions files) converted to Kalshi YES/NO format
+⚠️ ERROR FOUND: /api/kalshi/picks returns empty because:
+
+Alpha-hunter isn't running → No data in bot_predictions table
+Log shows: ℹ️ No Kalshi predictions found in bot_predictions table
+4. SPORTSBOOK-TERMINAL - apps/sportsbook-terminal
+Role: Data Consumer - Displays picks to users
+
+Key Files:
+
+File	Purpose
+server.js:328-455	/api/import-kalshi-sports - Fault-tolerant import
+server.js:457-488	/api/kalshi-picks.json - File-based endpoint
+scripts/scheduler.ts:353-434	importKalshiSportsPicks() - Scheduler import
+public/index.html:2788-2970	Frontend display with tier filtering
+Data Flow IN:
+
+Prognostication API (http://localhost:3005/api/kalshi/sports) → Parse → Supabase kalshi_bets
+File cache (data/kalshi-picks.json) → Fallback if API down
+Fault-Tolerance Logic (server.js:334-376):
+
+javascript
+// Try API first
+const response = await fetch(`${prognoUrl}/api/kalshi/sports?tier=all&limit=20`);
+if (response.ok) {
+  data = await response.json();
+  saveKalshiCache(data);  // Save for fallback
+} else {
+  // Fallback to cached file
+  data = loadCachedKalshiPicks();
+}
+Data Flow OUT:
+
+/api/v1/kalshi-bets → Returns picks from kalshi_bets table (grouped by tier)
+/api/kalshi-picks.json → Returns cached file directly
+Frontend → Displays with tier filters (All, Elite, Pro, Free)
+Complete Kalshi Data Flow (Start to Finish)
+Path 1: Live Kalshi Markets (Alpha-Hunter Driven)
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 1. ALPHA-HUNTER fetches from Kalshi API                                                     │
+│    └─▶ kalshi-trader.ts:getMarkets() → /trade-api/v2/markets                                 │
+│                                                                                             │
+│ 2. Generates predictions                                                                    │
+│    └─▶ live-trader-24-7.ts:fetchAndSaveKalshiPredictions()                                  │
+│       ├─▶ Filters: markets WITHOUT existing predictions (dedup)                              │
+│       ├─▶ Analyzes max 10 new markets at a time                                            │
+│       └─▶ Calculates: confidence, edge, probability, prediction (yes/no)                  │
+│                                                                                             │
+│ 3. Saves to Supabase                                                                        │
+│    └─▶ lib/supabase-memory.ts:saveBotPrediction() → bot_predictions table                    │
+│       ├─▶ platform: 'kalshi'                                                                │
+│       ├─▶ actual_outcome: null (open)                                                       │
+│       └─▶ Updates existing if higher confidence/more recent                                 │
+│                                                                                             │
+│ 4. PROGNOSTICATION reads from Supabase                                                       │
+│    └─▶ lib/kalshi-integration.ts:fetchLiveKalshiPicks()                                     │
+│       ├─▶ Filters: platform='kalshi', confidence >=50, actual_outcome=null                   │
+│       ├─▶ Deduplicates by market_id (keeps highest confidence)                             │
+│       └─▶ Transforms to KalshiPickResponse format                                            │
+│                                                                                             │
+│ 5. Serves via API                                                                            │
+│    └─▶ /api/kalshi/picks → Returns transformed picks                                        │
+│                                                                                             │
+│ 6. SPORTSBOOK-TERMINAL imports                                                               │
+│    └─▶ server.js:/api/import-kalshi-sports                                                    │
+│       ├─▶ Tries prognostication API first (8s timeout)                                      │
+│       ├─▶ Falls back to cache file if API fails                                             │
+│       └─▶ Saves to Supabase kalshi_bets table                                                │
+│                                                                                             │
+│ 7. Frontend displays                                                                         │
+│    └─▶ public/index.html:loadKalshiPicks() → /api/kalshi-picks.json                          │
+│       └─▶ Renders with tier filters, copy buttons, Kalshi links                              │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+Path 2: Sports Picks (Progno-Driven)
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│ 1. PROGNO generates predictions                                                              │
+│    └─▶ Monte Carlo simulation → predictions-{date}.json                                     │
+│                                                                                             │
+│ 2. SPORTSBOOK-TERMINAL scheduler processes                                                   │
+│    └─▶ scripts/scheduler.ts:processPredictions()                                            │
+│       ├─▶ Reads predictions files from C:\cevict-live\apps\progno                            │
+│       ├─▶ Saves to Supabase (markets, predictions tables)                                     │
+│       └─▶ Archives processed files                                                            │
+│                                                                                             │
+│ 3. PROGNOSTICATION /api/kalshi/sports endpoint                                              │
+│    └─▶ Reads from syndicated_picks (not bot_predictions)                                    │
+│       ├─▶ Converts spread/moneyline/total picks to YES/NO format                           │
+│       ├─▶ Allocates to tiers (Elite 80%+, Pro 65-79%, Free <65%)                            │
+│       └─▶ Returns tiered response                                                            │
+│                                                                                             │
+│ 4. SPORTSBOOK-TERMINAL consumes                                                             │
+│    └─▶ Same as Path 1, step 6-7                                                              │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+Critical Errors Found
+❌ ERROR 1: Edge Calculation Always Zero
+Location: alpha-hunter/src/live-trader-24-7.ts:562-564
+
+javascript
+const marketPrice = market.yesPrice || 50;
+const probability = marketPrice;  // ← Same value
+const edge = Math.abs(probability - marketPrice);  // ← Always 0!
+Impact: All alpha-hunter predictions have edge: 0, making them unfilterable by edge.
+
+❌ ERROR 2: bot_predictions Table Empty
+Location: System-wide Cause: Alpha-hunter not running → No data flow Evidence: Logs show ℹ️ No Kalshi predictions found in bot_predictions table Impact: /api/kalshi/picks returns empty; prognostication shows no live data
+
+❌ ERROR 3: kalshi_bets Table Missing
+Location: sportsbook-terminal/server.js:404
+
+javascript
+await supabase.from('kalshi_bets').insert({...})
+Error: Could not find the table 'public.kalshi_bets' Impact: File-based cache works, but DB persistence fails
+
+❌ ERROR 4: Two Different Data Sources With Same Name
+Endpoint	Source	Table
+/api/kalshi/picks	Alpha-hunter predictions	bot_predictions
+/api/kalshi/sports	Progno sports picks	syndicated_picks
+Confusion: Both are "Kalshi" endpoints but use completely different data sources. The sports endpoint doesn't use alpha-hunter data at all.
+
+Inter-App Dependencies
+┌─────────────────────────────────────────────────────────────────┐
+│                    STARTUP ORDER REQUIREMENTS                    │
+├─────────────────────────────────────────────────────────────────┤
+│ 1. Supabase (database) - Must be running first                  │
+│ 2. Alpha-hunter (optional) - Needed for live Kalshi picks       │
+│ 3. Prognostication (port 3005) - Must be running                  │
+│ 4. Sportsbook-terminal (port 3433) - Can start anytime          │
+└─────────────────────────────────────────────────────────────────┘
+ 
+┌─────────────────────────────────────────────────────────────────┐
+│                    API DEPENDENCIES                              │
+├─────────────────────────────────────────────────────────────────┤
+│ • Alpha-hunter → Kalshi API (demo environment)                   │
+│ • Prognostication → Supabase (bot_predictions, syndicated_picks) │
+│ • Sportsbook-terminal → Prognostication (:3005)                  │
+│ • Sportsbook-terminal → Supabase (kalshi_bets, markets, etc.)    │
+└─────────────────────────────────────────────────────────────────┘
+Fix Recommendations
+Fix edge calculation in alpha-hunter:
+javascript
+// Current (broken):
+const edge = Math.abs(probability - marketPrice);
+ 
+// Fixed:
+const edge = Math.abs(probability - 50); // Edge vs 50/50 baseline
+// OR use actual market implied probability
+Create kalshi_bets table using the schema in sportsbook-terminal/database/kalshi_bets_schema.sql
+Run alpha-hunter to populate bot_predictions:
+bash
+cd apps/alpha-hunter
+npm run live-trader
+Clarify endpoint naming - Consider renaming:
+/api/kalshi/picks → /api/kalshi/live-picks (alpha-hunter data)
+/api/kalshi/sports → /api/kalshi/sports-picks (progno data)
+Feedback submitted
+
+
+
+
+Command Awaiting Approval

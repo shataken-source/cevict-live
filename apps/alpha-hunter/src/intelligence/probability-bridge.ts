@@ -1,27 +1,28 @@
-/**
- * Probability Bridge: Progno + Kalshi + Crypto
- *
- * Unifies model probabilities from:
- * - Progno: sports picks (confidence + Monte Carlo win prob) → match to Kalshi sports markets
- * - Crypto: Coinbase spot + simple rule → match to Kalshi BTC/ETH markets
- *
- * Use these "model probabilities" in findOpportunities to detect edge vs market yes_price.
- */
-
+/** Unifies model probabilities from Progno/Kalshi. Model probabilities are ALWAYS 0-100 scale. */
 export interface PrognoEventProbability {
-  /** e.g. "Chiefs win" */
   label: string;
-  /** Team names for matching Kalshi title */
   teamNames: string[];
-  /** Model probability 0-100 for the pick (YES side) */
+  /** Model probability 0-100 for the pick (YES side) - ALWAYS 0-100 SCALE */
   modelProbability: number;
   league: string;
-  /** Raw pick for display */
   pick: string;
   homeTeam: string;
   awayTeam: string;
-  /** Monte Carlo win prob if available (0-1) */
   mcWinProbability?: number;
+}
+
+export interface KalshiMarketMatch {
+  ticker: string;
+  eventTicker: string;
+  title: string;
+  yes_ask: number;
+  yes_bid: number;
+  no_ask: number;
+  no_bid: number;
+  volume: number;
+  open_interest: number;
+  status: string;
+  category?: string;
 }
 
 export interface CryptoModelProbability {
@@ -33,7 +34,79 @@ export interface CryptoModelProbability {
   currentPrice?: number;
 }
 
+import fs from 'fs';
+import path from 'path';
+
 const BOT_API_KEY = process.env.BOT_API_KEY;
+
+/**
+ * Load Progno picks from local JSON file and normalize to event + model probability (0-100).
+ */
+export function getPrognoProbabilitiesFromFile(filePath: string): PrognoEventProbability[] {
+  console.log(`[DEBUG] Loading from: ${filePath}`);
+  try {
+    if (!fs.existsSync(filePath)) {
+      console.error(`[DEBUG] File not found: ${filePath}`);
+      return [];
+    }
+    const content = fs.readFileSync(filePath, 'utf-8');
+    console.log(`[DEBUG] File content length: ${content.length}`);
+    if (!content || content.trim() === '') {
+      console.error(`[DEBUG] File is empty: ${filePath}`);
+      return [];
+    }
+    const data = JSON.parse(content);
+    console.log(`[DEBUG] Parsed data type: ${typeof data}, keys: ${data ? Object.keys(data).join(',') : 'null'}`);
+    if (!data || typeof data !== 'object') {
+      console.error(`[DEBUG] Invalid JSON data in file: ${filePath}`);
+      return [];
+    }
+    const picks = data.picks || [];
+    console.log(`[DEBUG] Found ${picks.length} picks`);
+    if (!Array.isArray(picks)) {
+      console.error(`[DEBUG] Invalid picks array in file: ${filePath}`);
+      return [];
+    }
+    const out: PrognoEventProbability[] = [];
+
+    for (const p of picks) {
+      const pick = (p.pick || '').trim();
+      const homeTeam = (p.home_team || '').trim();
+      const awayTeam = (p.away_team || '').trim();
+      if (!pick) continue;
+
+      // Model probability: prefer Monte Carlo win prob for picked side, else confidence
+      // ALWAYS returns 0-100 scale
+      let modelProbability = typeof p.confidence === 'number' ? p.confidence : 50;
+      if (typeof p.mc_win_probability === 'number') {
+        modelProbability = Math.round(p.mc_win_probability * 100); // Convert 0-1 to 0-100
+      }
+
+      // Clamp to valid range
+      modelProbability = Math.max(1, Math.min(99, modelProbability));
+
+      // Build team names array for matching - ONLY use actual team names, not pick words
+      const teamNames: string[] = [];
+      if (homeTeam) teamNames.push(homeTeam);
+      if (awayTeam) teamNames.push(awayTeam);
+
+      out.push({
+        label: pick === homeTeam ? `${homeTeam} win` : pick === awayTeam ? `${awayTeam} win` : pick,
+        teamNames,
+        modelProbability, // 0-100 scale
+        league: p.league || p.sport || 'NCAAB',
+        pick,
+        homeTeam,
+        awayTeam,
+        mcWinProbability: p.mc_win_probability,
+      });
+    }
+    return out;
+  } catch (error: any) {
+    console.error(`Failed to load Progno probabilities from ${filePath}:`, error.message);
+    return [];
+  }
+}
 
 /**
  * Fetch today's Progno picks and normalize to event + model probability (0-100).
@@ -48,6 +121,7 @@ export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]
     });
     if (!res.ok) return [];
     const data = await res.json();
+    if (!data || typeof data !== 'object') return [];
     const picks = data.picks || [];
     const out: PrognoEventProbability[] = [];
     for (const p of picks) {
@@ -121,48 +195,92 @@ function titleLeagueMatchesEvent(title: string, league: string): boolean {
   if (/football/i.test(t) && !/soccer/i.test(t)) return /nfl|ncaa/i.test(L) || L === 'NFL';
   if (/baseball/i.test(t)) return L === 'MLB';
   if (/soccer/i.test(t)) return true;
-  if (/\b(game|match|win|beat|vs\.?|at\s)\b|nfl|nba|mlb|nhl|ncaa/i.test(t)) return true; // explicit sport/game context
+  if (/\b(game|match|win|winner|beat|vs\.?|at\s)\b|nfl|nba|mlb|nhl|ncaa/i.test(t)) return true; // explicit sport/game context
   return false; // no sport keyword — don't allow single-team match (avoids "Drake" → Drake Bulldogs, "Denver" → Denver Pioneers)
 }
 
 /**
- * Match a Kalshi market title (and optional category) to a Progno event.
- * Uses normalized team tokens, "vs"/"at"/"beat"/"win", and prefers both teams present.
- * Skips non-sports titles (weather, music, GDP) and enforces league consistency (e.g. basketball ↔ NBA/NCAAB).
+ * Match a Kalshi market to a Progno event.
+ * Requires both teams present in title OR event_ticker prefix match + single team.
+ * Validates market status, bounds, and returns complete market metadata.
  */
 export function matchKalshiMarketToProgno(
-  marketTitle: string,
-  category: string | undefined,
-  prognoEvents: PrognoEventProbability[]
-): { modelProbability: number; side: 'yes' | 'no'; label: string; league?: string } | null {
-  const title = (marketTitle || '').toLowerCase();
-  if (NON_SPORTS_TITLE.test(title)) return null;
+  prognoEvent: PrognoEventProbability,
+  kalshiMarkets: any[]
+): KalshiMarketMatch | null {
+  const sportsPrefixes = ['KXMVNBA', 'KXMVNCAAB', 'KXMVNFL', 'KXMVNHL', 'KXMVMLB', 'KXNBAGAME', 'KXNCAABGAME', 'KXNFLGAME', 'KXNHLGAME', 'KXMLBGAME', 'KXNCAAFGAME'];
+  const homeTokens = teamSearchTokens(prognoEvent.homeTeam);
+  const awayTokens = teamSearchTokens(prognoEvent.awayTeam);
 
-  const hasSportsKeyword = /win|beat|vs\.?|at\s|nfl|nba|mlb|nhl|ncaa|soccer|football|basketball|baseball|hockey|game|match/i.test(title);
-  const categoryIsSports = !category || /sport|nfl|nba|mlb|nhl|ncaa|soccer|football|basketball|baseball|hockey/i.test(category);
+  for (const market of kalshiMarkets) {
+    // Skip invalid markets
+    if (!market || typeof market !== 'object') continue;
 
-  for (const ev of prognoEvents) {
-    const homeTokens = teamSearchTokens(ev.homeTeam);
-    const awayTokens = teamSearchTokens(ev.awayTeam);
-    const pickTokens = teamSearchTokens(ev.pick);
+    // Check market status
+    const status = (market.status || '').toLowerCase();
+    if (status === 'settled' || status === 'suspended' || status === 'closed') continue;
 
-    const titleHasPick = pickTokens.some((tok) => tok.length >= 2 && title.includes(tok));
-    const titleHasHome = homeTokens.some((tok) => tok.length >= 2 && title.includes(tok));
-    const titleHasAway = awayTokens.some((tok) => tok.length >= 2 && title.includes(tok));
-    const bothTeamsInTitle = titleHasHome && titleHasAway;
-    const oneTeamAndPick = (titleHasHome || titleHasAway) && titleHasPick;
+    // Validate yes_ask bounds
+    const yesAsk = typeof market.yes_ask === 'number' ? market.yes_ask : null;
+    if (yesAsk === null || yesAsk <= 0 || yesAsk >= 100) continue;
 
-    if (!titleHasPick && !titleHasHome && !titleHasAway) continue;
-    if (!hasSportsKeyword && !categoryIsSports) continue;
-    // When both teams are in the title, trust the matchup; otherwise require league consistency (e.g. basketball ↔ NBA/NCAAB)
-    if (!bothTeamsInTitle && !titleLeagueMatchesEvent(title, ev.league)) continue;
+    // Get market title
+    let marketTitle = market.title;
+    if (typeof marketTitle !== 'string') marketTitle = String(marketTitle || '');
+    if (!marketTitle) continue;
 
-    if (bothTeamsInTitle || oneTeamAndPick || titleHasPick) {
-      const modelProb = ev.modelProbability;
-      const side: 'yes' | 'no' = modelProb >= 50 ? 'yes' : 'no';
-      return { modelProbability: modelProb, side, label: ev.label, league: ev.league };
+    const marketTitleLower = marketTitle.toLowerCase();
+
+    // Skip non-sports markets
+    if (NON_SPORTS_TITLE.test(marketTitle)) continue;
+
+    // Skip multi-leg markets (contain commas)
+    if (marketTitleLower.includes(',')) continue;
+
+    // Check event_ticker for sports prefix
+    const eventTicker = (market.event_ticker || '').toUpperCase();
+    const hasSportsPrefix = sportsPrefixes.some(p => eventTicker.startsWith(p));
+
+    // Check if both teams are in title (strong match)
+    const hasHome = homeTokens.some(t => t.length >= 3 && marketTitleLower.includes(t));
+    const hasAway = awayTokens.some(t => t.length >= 3 && marketTitleLower.includes(t));
+    const bothTeamsPresent = hasHome && hasAway;
+
+    // For KXNBAGAME/KXNCAABGAME etc., each market has ONE team in title:
+    // "Utah at Memphis Winner?" has two markets: one resolving for Utah, one for Memphis.
+    // We need to match the market for the PICKED team specifically.
+    const pickTokens = teamSearchTokens(prognoEvent.pick);
+    const hasPick = pickTokens.some(t => t.length >= 3 && marketTitleLower.includes(t));
+
+    // Require either:
+    // 1. Both teams present in title (old-style multi-team markets), OR
+    // 2. Sports prefix + pick team found in title + league consistency
+    if (!bothTeamsPresent) {
+      if (!hasSportsPrefix) continue;
+      if (!hasPick) continue;
+      if (!titleLeagueMatchesEvent(marketTitle, prognoEvent.league)) continue;
+    } else {
+      // Both teams present — still require the pick team to be in the title
+      // so we don't accidentally match the wrong side of the market
+      if (!hasPick) continue;
     }
+
+    // Found a valid match - return complete market data
+    return {
+      ticker: market.ticker || '',
+      eventTicker: market.event_ticker || '',
+      title: market.title || '',
+      yes_ask: yesAsk,
+      yes_bid: typeof market.yes_bid === 'number' ? market.yes_bid : yesAsk - 1,
+      no_ask: typeof market.no_ask === 'number' ? market.no_ask : 100 - yesAsk,
+      no_bid: typeof market.no_bid === 'number' ? market.no_bid : 100 - yesAsk - 1,
+      volume: typeof market.volume === 'number' ? market.volume : 0,
+      open_interest: typeof market.open_interest === 'number' ? market.open_interest : 0,
+      status: market.status || 'unknown',
+      category: market.category || ''
+    };
   }
+
   return null;
 }
 

@@ -44,5 +44,6 @@
       "path": "/api/cron/update-live",
       "schedule": "*/15 * * * *"
     }
-  ]
+  ],
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ."
 }

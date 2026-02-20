@@ -54,9 +54,23 @@ interface RestingOrder {
   last_checked: string;
 }
 
-interface RateLimitState {
-  requests: number[];  // timestamps of requests
-  maxPerSecond: number;
+interface TokenBucket {
+  tokens: number;
+  lastRefill: number;
+  maxTokens: number;
+  refillRate: number; // tokens per second
+}
+
+interface InventoryState {
+  ticker: string;
+  netPosition: number; // positive = long YES, negative = long NO
+  totalContracts: number;
+  avgEntryPrice: number;
+}
+
+interface MakerConstraints {
+  maxInventoryPerTicker: number;
+  fairValueThresholdCents: number; // max distance from fair value
 }
 
 // ============================================================================
@@ -69,19 +83,28 @@ export class KalshiLiquidityProvider {
   private baseUrl: string;
   private keyConfigured: boolean = false;
 
-  // Rate limiting
-  private rateLimitState: RateLimitState = {
-    requests: [],
-    maxPerSecond: 10  // Basic tier limit
+  // Rate limiting - Token bucket for stability
+  private tokenBucket: TokenBucket = {
+    tokens: 10,
+    lastRefill: Date.now(),
+    maxTokens: 10,
+    refillRate: 10 // 10 tokens per second (Basic tier)
   };
 
-  // Order tracking
-  private restingOrders: Map<string, RestingOrder> = new Map();
-  private orderVerificationInterval: NodeJS.Timeout | null = null;
+  // Inventory tracking per ticker
+  private inventory: Map<string, InventoryState> = new Map();
+
+  // Maker constraints
+  private constraints: MakerConstraints = {
+    maxInventoryPerTicker: 100, // max 100 contracts per ticker
+    fairValueThresholdCents: 10  // max 10 cents from fair value
+  };
 
   // Constants
   private readonly MIN_SPREAD_FOR_MAKER = 2;  // cents
   private readonly ORDER_VERIFICATION_INTERVAL = 5000;  // 5 seconds
+  private restingOrders: Map<string, RestingOrder> = new Map();
+  private orderVerificationInterval: NodeJS.Timeout | null = null;
 
   constructor() {
     this.apiKeyId = process.env.KALSHI_API_KEY_ID || '';
@@ -102,8 +125,27 @@ export class KalshiLiquidityProvider {
     // Normalize key: handle \n escapes and quotes
     this.privateKey = rawKey.replace(/\\n/g, '\n').replace(/^"+|"+$/g, '').trim();
 
-    // Base URL WITHOUT /trade-api/v2 - we'll add it in paths
-    this.baseUrl = 'https://trading-api.kalshi.com';
+    // Convert single-line key to proper multi-line PEM format if it's missing newlines
+    if (this.privateKey.includes('-----BEGIN RSA PRIVATE KEY-----') && !this.privateKey.includes('\n')) {
+      const begin = '-----BEGIN RSA PRIVATE KEY-----';
+      const end = '-----END RSA PRIVATE KEY-----';
+      const beginIdx = this.privateKey.indexOf(begin);
+      const endIdx = this.privateKey.indexOf(end);
+
+      if (beginIdx !== -1 && endIdx !== -1) {
+        const content = this.privateKey.substring(beginIdx + begin.length, endIdx);
+        // Insert newlines every 64 characters
+        const lines = content.match(/.{1,64}/g) || [];
+        this.privateKey = `${begin}\n${lines.join('\n')}\n${end}`;
+      }
+    } else if (!this.privateKey.includes('BEGIN RSA PRIVATE KEY') && this.privateKey.length > 100) {
+      // If it's just the raw base64 string
+      const lines = this.privateKey.match(/.{1,64}/g) || [];
+      this.privateKey = `-----BEGIN RSA PRIVATE KEY-----\n${lines.join('\n')}\n-----END RSA PRIVATE KEY-----`;
+    }
+
+    // Base URL - Kalshi migrated to elections API
+    this.baseUrl = 'https://api.elections.kalshi.com';
 
     // Validate key is a proper RSA key
     if (this.apiKeyId && this.privateKey && this.privateKey.includes('BEGIN') && this.privateKey.includes('PRIVATE KEY')) {
@@ -123,28 +165,46 @@ export class KalshiLiquidityProvider {
   }
 
   // ==========================================================================
-  // RATE LIMITING (10 req/sec cap)
+  // TOKEN BUCKET RATE LIMITING (Stable, non-recursive)
   // ==========================================================================
 
   private async enforceRateLimit(): Promise<void> {
-    const now = Date.now();
-    const oneSecondAgo = now - 1000;
+    // Non-recursive token bucket — hard cap of 5 seconds total wait to prevent hangs
+    const MAX_WAIT_MS = 5000;
+    const waitStart = Date.now();
 
-    // Clean up old timestamps
-    this.rateLimitState.requests = this.rateLimitState.requests.filter(
-      ts => ts > oneSecondAgo
-    );
+    while (true) {
+      const now = Date.now();
+      const timePassed = (now - this.tokenBucket.lastRefill) / 1000;
 
-    // If at limit, wait with exponential backoff
-    if (this.rateLimitState.requests.length >= this.rateLimitState.maxPerSecond) {
-      const delay = Math.min(1000, 100 * Math.pow(2, this.rateLimitState.requests.length - this.rateLimitState.maxPerSecond));
-      console.log(`⏸️  Rate limit reached (${this.rateLimitState.maxPerSecond}/sec), waiting ${delay}ms`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return this.enforceRateLimit();  // Recursive retry
+      // Refill tokens based on time passed
+      const tokensToAdd = timePassed * this.tokenBucket.refillRate;
+      this.tokenBucket.tokens = Math.min(
+        this.tokenBucket.maxTokens,
+        this.tokenBucket.tokens + tokensToAdd
+      );
+      this.tokenBucket.lastRefill = now;
+
+      if (this.tokenBucket.tokens >= 1) {
+        // Token available — consume and return
+        this.tokenBucket.tokens -= 1;
+        return;
+      }
+
+      // Hard guard: if we've waited too long, log and bail out
+      if (Date.now() - waitStart >= MAX_WAIT_MS) {
+        console.warn(`⚠️  Rate limit: max wait (${MAX_WAIT_MS}ms) exceeded — proceeding anyway`);
+        this.tokenBucket.tokens = 0;
+        return;
+      }
+
+      const waitTime = Math.min(
+        (1 - this.tokenBucket.tokens) / this.tokenBucket.refillRate * 1000,
+        MAX_WAIT_MS - (Date.now() - waitStart)
+      );
+      console.log(`⏸️  Rate limit: waiting ${waitTime.toFixed(0)}ms for token`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
-
-    // Record this request
-    this.rateLimitState.requests.push(now);
   }
 
   // ==========================================================================
@@ -219,13 +279,14 @@ export class KalshiLiquidityProvider {
   }
 
   // ==========================================================================
-  // CALCULATE OPTIMAL MAKER PRICE
+  // CALCULATE OPTIMAL MAKER PRICE (with fair value guardrail)
   // ==========================================================================
 
   private calculateMakerPrice(
     orderBook: OrderBook,
     side: 'yes' | 'no',
-    action: 'buy' | 'sell'
+    action: 'buy' | 'sell',
+    fairValueCents?: number // Model fair value (0-100)
   ): { price: number; spread: number } | null {
     const book = side === 'yes' ? orderBook.yes : orderBook.no;
 
@@ -238,22 +299,105 @@ export class KalshiLiquidityProvider {
     const bestAsk = book.asks[0].price;
     const spread = bestAsk - bestBid;
 
-    // Only place maker orders if spread is >2 cents (profitable after fees)
-    if (spread < this.MIN_SPREAD_FOR_MAKER) {
+    // CRITICAL: Only place maker orders if spread is profitable after fees
+    // Maker fee is typically 0.5%, so need spread > 1% to be profitable
+    const minProfitableSpread = 2; // cents (1% = 1 cent on 100 cent contract)
+    if (spread < minProfitableSpread) {
       console.log(`   📉 Spread too tight (${spread}¢) - skipping maker order`);
       return null;
     }
 
-    // Place limit order inside the spread
-    const price = action === 'buy'
+    // Calculate proposed maker price
+    const proposedPrice = action === 'buy'
       ? bestBid + 1  // Better than current best bid by 1 cent
       : bestAsk - 1;  // Better than current best ask by 1 cent
 
-    return { price, spread };
+    // CRITICAL: Fair value guardrail - don't trade if price is worse than fair value
+    if (fairValueCents !== undefined) {
+      const distanceFromFair = Math.abs(proposedPrice - fairValueCents);
+
+      // For buys: don't pay more than fair value + threshold
+      // For sells: don't accept less than fair value - threshold
+      if (action === 'buy' && proposedPrice > fairValueCents + this.constraints.fairValueThresholdCents) {
+        console.log(`   🛑 Buy price ${proposedPrice}¢ exceeds fair value ${fairValueCents}¢ + threshold`);
+        return null;
+      }
+
+      if (action === 'sell' && proposedPrice < fairValueCents - this.constraints.fairValueThresholdCents) {
+        console.log(`   🛑 Sell price ${proposedPrice}¢ below fair value ${fairValueCents}¢ - threshold`);
+        return null;
+      }
+
+      // Additional guard: don't trade if distance from fair is excessive
+      if (distanceFromFair > this.constraints.fairValueThresholdCents * 2) {
+        console.log(`   🛑 Price ${proposedPrice}¢ too far from fair value ${fairValueCents}¢`);
+        return null;
+      }
+    }
+
+    // CRITICAL: Verify maker status - ensure we don't cross the book
+    if (action === 'buy' && proposedPrice >= bestAsk) {
+      console.log(`   🛑 Buy price ${proposedPrice}¢ would cross book (bestAsk: ${bestAsk}¢)`);
+      return null;
+    }
+
+    if (action === 'sell' && proposedPrice <= bestBid) {
+      console.log(`   🛑 Sell price ${proposedPrice}¢ would cross book (bestBid: ${bestBid}¢)`);
+      return null;
+    }
+
+    return { price: proposedPrice, spread };
   }
 
   // ==========================================================================
-  // PLACE RESTING LIMIT ORDER (MAKER)
+  // INVENTORY MANAGEMENT
+  // ==========================================================================
+
+  private getInventory(ticker: string): InventoryState {
+    return this.inventory.get(ticker) || {
+      ticker,
+      netPosition: 0,
+      totalContracts: 0,
+      avgEntryPrice: 0
+    };
+  }
+
+  private updateInventory(ticker: string, side: 'yes' | 'no', action: 'buy' | 'sell', count: number, price: number): void {
+    const current = this.getInventory(ticker);
+    const multiplier = (side === 'yes' ? 1 : -1) * (action === 'buy' ? 1 : -1);
+    const newContracts = count * multiplier;
+
+    const newTotal = current.totalContracts + Math.abs(newContracts);
+    const newNetPosition = current.netPosition + newContracts;
+
+    // Update average entry price
+    const totalValue = (current.avgEntryPrice * current.totalContracts) + (price * Math.abs(newContracts));
+    const newAvgPrice = newTotal > 0 ? totalValue / newTotal : 0;
+
+    this.inventory.set(ticker, {
+      ticker,
+      netPosition: newNetPosition,
+      totalContracts: newTotal,
+      avgEntryPrice: newAvgPrice
+    });
+  }
+
+  private checkInventoryLimit(ticker: string, side: 'yes' | 'no', action: 'buy' | 'sell', count: number): boolean {
+    const inventory = this.getInventory(ticker);
+    const multiplier = (side === 'yes' ? 1 : -1) * (action === 'buy' ? 1 : -1);
+    const newPosition = inventory.netPosition + (count * multiplier);
+
+    // Check absolute position limit
+    if (Math.abs(newPosition) > this.constraints.maxInventoryPerTicker) {
+      console.log(`   🛑 Inventory limit exceeded: ${Math.abs(newPosition)} > ${this.constraints.maxInventoryPerTicker}`);
+      return false;
+    }
+
+    return true;
+  }
+
+  // ==========================================================================
+  // PLACE RESTING LIMIT ORDER (MAKER with inventory + fair value controls)
   // ==========================================================================
 
   async placeRestingOrder(
@@ -261,10 +405,17 @@ export class KalshiLiquidityProvider {
     side: 'yes' | 'no',
     action: 'buy' | 'sell',
     contracts: number,
-    maxPriceCents?: number  // Optional: override calculated price
+    maxPriceCents?: number,  // Optional: override calculated price
+    fairValueCents?: number  // Model fair value for guardrail (0-100)
   ): Promise<RestingOrder | null> {
     if (!this.keyConfigured) {
       console.log(`[SIMULATED] Would place resting order: ${ticker} ${side} ${action} ${contracts} contracts`);
+      return null;
+    }
+
+    // CRITICAL: Check inventory limits before placing
+    if (!this.checkInventoryLimit(ticker, side, action, contracts)) {
+      console.log(`   🛑 Order rejected: inventory limit exceeded for ${ticker}`);
       return null;
     }
 
@@ -276,10 +427,10 @@ export class KalshiLiquidityProvider {
         return null;
       }
 
-      // Step 2: Calculate maker price (best_bid+1 or best_ask-1)
-      const priceCalc = this.calculateMakerPrice(orderBook, side, action);
+      // Step 2: Calculate maker price with fair value guardrail
+      const priceCalc = this.calculateMakerPrice(orderBook, side, action, fairValueCents);
       if (!priceCalc) {
-        return null;  // Spread too tight
+        return null;  // Spread too tight or violates fair value
       }
 
       const limitPrice = maxPriceCents || priceCalc.price;
@@ -289,12 +440,12 @@ export class KalshiLiquidityProvider {
       // Step 3: Enforce rate limit
       await this.enforceRateLimit();
 
-      // Step 4: Build order payload
+      // Step 4: Build order payload with crypto.randomUUID for safety
       const fullPath = '/trade-api/v2/portfolio/orders';
       const builderCode = process.env.KALSHI_BUILDER_CODE || '';
       const body: any = {
         ticker,
-        client_order_id: `maker_${Date.now()}`,
+        client_order_id: crypto.randomUUID(), // Use UUID to prevent collisions
         side,
         action,
         count: contracts,
@@ -329,7 +480,10 @@ export class KalshiLiquidityProvider {
 
       const data = await response.json();
 
-      // Step 6: Track resting order
+      // Step 6: Update inventory tracking
+      this.updateInventory(ticker, side, action, contracts, limitPrice);
+
+      // Step 7: Track resting order
       const restingOrder: RestingOrder = {
         order_id: data.order.order_id,
         ticker,
@@ -346,6 +500,7 @@ export class KalshiLiquidityProvider {
       this.restingOrders.set(restingOrder.order_id, restingOrder);
 
       console.log(`   ✅ Resting limit order placed: ${restingOrder.order_id}`);
+      console.log(`   📈 Inventory: ${this.getInventory(ticker).netPosition} contracts`);
       return restingOrder;
 
     } catch (error: any) {

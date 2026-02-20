@@ -1,6 +1,35 @@
 /**
  * Supabase Memory System for AI Trading Bots
  * Persistent storage for predictions, trades, and learning data
+ *
+ * FUND-GRADE SQL SCHEMA REQUIREMENTS:
+ *
+ * -- 1. Unique constraint to prevent race condition duplicates
+ * CREATE UNIQUE INDEX unique_open_prediction
+ * ON bot_predictions (market_id, platform)
+ * WHERE actual_outcome IS NULL;
+ *
+ * -- 2. Indexes for performance at scale
+ * CREATE INDEX idx_predictions_category ON bot_predictions(bot_category);
+ * CREATE INDEX idx_predictions_market ON bot_predictions(market_id);
+ * CREATE INDEX idx_predictions_platform_outcome ON bot_predictions(platform, actual_outcome);
+ * CREATE INDEX idx_trade_history_platform ON trade_history(platform);
+ * CREATE INDEX idx_trade_history_outcome ON trade_history(outcome);
+ * CREATE INDEX idx_trade_history_closed ON trade_history(closed_at) WHERE outcome IN ('win', 'loss');
+ * CREATE INDEX idx_metrics_category ON bot_metrics(bot_category);
+ * CREATE INDEX idx_learning_category ON bot_learnings(bot_category);
+ * CREATE INDEX idx_learning_pattern ON bot_learnings(bot_category, pattern_description);
+ *
+ * -- 3. Check constraints for data integrity (PostgreSQL 12+)
+ * ALTER TABLE bot_predictions
+ *   ADD CONSTRAINT chk_probability_range CHECK (probability >= 0 AND probability <= 1),
+ *   ADD CONSTRAINT chk_confidence_range CHECK (confidence >= 0 AND confidence <= 100),
+ *   ADD CONSTRAINT chk_edge_range CHECK (edge >= -1 AND edge <= 1);
+ *
+ * -- 4. For transaction safety, consider RPC for trade closing:
+ * -- CREATE OR REPLACE FUNCTION close_trade_with_metrics(...)
+ *
+ * TODO: Add capital ledger tracking (daily spend, drawdown, exposure)
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -23,21 +52,21 @@ const NETWORK_ERROR_THROTTLE_MS = 30000; // Only log network errors every 30 sec
 function handleSupabaseError(error: any, context: string): void {
   const errorMessage = error?.message || String(error);
   const errorDetails = error?.details || String(error);
-  
+
   // Detect network/DNS failures
-  const isNetworkError = errorMessage.includes('ENOTFOUND') || 
-                        errorMessage.includes('getaddrinfo') ||
-                        errorMessage.includes('fetch failed') ||
-                        errorMessage.includes('ECONNREFUSED') ||
-                        errorMessage.includes('ETIMEDOUT') ||
-                        errorDetails.includes('ENOTFOUND') ||
-                        errorDetails.includes('getaddrinfo');
-  
-  const isAuthError = errorMessage.includes('Invalid API key') || 
-                      errorMessage.includes('JWT') || 
-                      errorMessage.includes('authentication') ||
-                      errorMessage.includes('401');
-  
+  const isNetworkError = errorMessage.includes('ENOTFOUND') ||
+    errorMessage.includes('getaddrinfo') ||
+    errorMessage.includes('fetch failed') ||
+    errorMessage.includes('ECONNREFUSED') ||
+    errorMessage.includes('ETIMEDOUT') ||
+    errorDetails.includes('ENOTFOUND') ||
+    errorDetails.includes('getaddrinfo');
+
+  const isAuthError = errorMessage.includes('Invalid API key') ||
+    errorMessage.includes('JWT') ||
+    errorMessage.includes('authentication') ||
+    errorMessage.includes('401');
+
   if (isNetworkError) {
     networkErrorCount++;
     const now = Date.now();
@@ -119,68 +148,30 @@ export async function saveBotPrediction(prediction: BotPrediction): Promise<bool
   const client = getClient();
   if (!client) return false;
 
+  // CRITICAL: Validate probability scaling (must be 0-1, not 0-100)
+  if (prediction.probability < 0 || prediction.probability > 1) {
+    console.error(`❌ REJECTED: probability ${prediction.probability} out of bounds (must be 0-1)`);
+    return false;
+  }
+
+  // Validate confidence scaling (must be 0-100)
+  if (prediction.confidence < 0 || prediction.confidence > 100) {
+    console.error(`❌ REJECTED: confidence ${prediction.confidence} out of bounds (must be 0-100)`);
+    return false;
+  }
+
+  // Validate edge is reasonable (-1 to 1)
+  if (prediction.edge < -1 || prediction.edge > 1) {
+    console.error(`❌ REJECTED: edge ${prediction.edge} out of bounds`);
+    return false;
+  }
+
   try {
-    // CRITICAL: Check for existing prediction to prevent duplicates
-    // Find the most recent open prediction for this market_id + platform
-    const { data: existing, error: checkError } = await client
+    // Use upsert with conflict resolution instead of manual check+update
+    // Requires SQL: CREATE UNIQUE INDEX unique_open_prediction ON bot_predictions (market_id, platform) WHERE actual_outcome IS NULL;
+    const { error: upsertError } = await client
       .from('bot_predictions')
-      .select('id, confidence, predicted_at')
-      .eq('market_id', prediction.market_id)
-      .eq('platform', prediction.platform)
-      .is('actual_outcome', null) // Only check open predictions
-      .order('predicted_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error checking for existing prediction:', checkError);
-    }
-
-    // If exists, decide whether to update or skip
-    if (existing) {
-      const existingConfidence = existing.confidence || 0;
-      const existingDate = new Date(existing.predicted_at || 0);
-      const newDate = prediction.predicted_at;
-
-      // Only update if new prediction is better (higher confidence OR same confidence but more recent)
-      if (prediction.confidence < existingConfidence) {
-        return true; // Keep existing, don't update
-      }
-      if (prediction.confidence === existingConfidence && newDate <= existingDate) {
-        return true; // Keep existing if same confidence but not newer
-      }
-
-      // Update existing prediction
-      const { error: updateError } = await client
-        .from('bot_predictions')
-        .update({
-          bot_category: prediction.bot_category,
-          market_title: prediction.market_title,
-          prediction: prediction.prediction,
-          probability: prediction.probability,
-          confidence: prediction.confidence,
-          edge: prediction.edge,
-          reasoning: prediction.reasoning,
-          factors: prediction.factors,
-          learned_from: prediction.learned_from,
-          market_price: prediction.market_price,
-          predicted_at: prediction.predicted_at.toISOString(),
-          expires_at: prediction.expires_at?.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existing.id);
-
-      if (updateError) {
-        console.error('Error updating prediction:', updateError);
-        return false;
-      }
-      return true;
-    }
-
-    // No existing prediction - insert new one
-    const { error: insertError } = await client
-      .from('bot_predictions')
-      .insert({
+      .upsert({
         bot_category: prediction.bot_category,
         market_id: prediction.market_id,
         market_title: prediction.market_title,
@@ -197,10 +188,51 @@ export async function saveBotPrediction(prediction: BotPrediction): Promise<bool
         expires_at: prediction.expires_at?.toISOString(),
         actual_outcome: prediction.actual_outcome,
         pnl: prediction.pnl,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'market_id,platform',
+        ignoreDuplicates: false // Update on conflict
       });
 
-    if (insertError) {
-      console.error('Error inserting prediction:', insertError);
+    if (upsertError) {
+      // If upsert failed due to missing unique constraint, fall back to manual logic
+      if (upsertError.code === '23505' || upsertError.message?.includes('duplicate')) {
+        console.warn(`⚠️ Duplicate prediction detected, attempting update...`);
+
+        // Find existing and decide whether to update
+        const { data: existing } = await client
+          .from('bot_predictions')
+          .select('id, confidence, predicted_at')
+          .eq('market_id', prediction.market_id)
+          .eq('platform', prediction.platform)
+          .is('actual_outcome', null)
+          .order('predicted_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existing) {
+          const existingConfidence = existing.confidence || 0;
+          if (prediction.confidence < existingConfidence) {
+            return true; // Keep existing
+          }
+
+          // Update with better prediction
+          const { error: updateError } = await client
+            .from('bot_predictions')
+            .update({
+              confidence: prediction.confidence,
+              probability: prediction.probability,
+              edge: prediction.edge,
+              market_price: prediction.market_price,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id);
+
+          return !updateError;
+        }
+      }
+
+      console.error('Error saving prediction:', upsertError);
       return false;
     }
 
@@ -372,7 +404,7 @@ export async function getOpenTradeRecords(
       handleSupabaseError(error, 'getOpenTradeRecords');
       return [];
     }
-    
+
     // DEBUG: Log if we get unexpected results
     if (data && data.length > 10) {
       console.log(`   ⚠️  getOpenTradeRecords: Found ${data.length} open positions (unexpectedly high)`);
@@ -607,12 +639,18 @@ export async function saveBotLearning(learning: BotLearning): Promise<boolean> {
       .single();
 
     if (existing) {
-      // Update existing pattern
+      // FIX: Don't double-average. Track cumulative stats properly.
+      // New success rate = (wins + new_result) / (total_observations + 1)
+      const newObservations = existing.times_observed + 1;
+      const currentWins = Math.round(existing.success_rate * existing.times_observed);
+      const newWins = currentWins + (learning.success_rate >= 0.5 ? 1 : 0); // Treat >=50% as win
+      const newSuccessRate = newWins / newObservations;
+
       const { error } = await client
         .from('bot_learnings')
         .update({
-          times_observed: existing.times_observed + 1,
-          success_rate: (existing.success_rate * existing.times_observed + learning.success_rate) / (existing.times_observed + 1),
+          times_observed: newObservations,
+          success_rate: newSuccessRate,
           last_seen: new Date().toISOString(),
           confidence: learning.confidence,
         })
@@ -779,15 +817,24 @@ export async function getBotHistoricalPerformance(
   if (!client) return { accuracy: 0, avgEdge: 0, totalPredictions: 0 };
 
   try {
-    // Build a query to find similar past predictions
-    let query = client
+    // FIX: Use SQL filtering with ilike instead of loading entire table
+    // Build OR condition for keyword matching at database level
+    const keywordConditions = marketKeywords
+      .filter(kw => kw.length >= 3) // Only use meaningful keywords
+      .map(kw => `market_title.ilike.%${kw}%`)
+      .join(',');
+
+    if (!keywordConditions) {
+      return { accuracy: 0, avgEdge: 0, totalPredictions: 0 };
+    }
+
+    // Query with SQL filtering - only fetch relevant records
+    const { data, error } = await client
       .from('bot_predictions')
       .select('*')
       .eq('bot_category', category)
-      .not('actual_outcome', 'is', null);
-
-    // Filter by keywords in market title
-    const { data, error } = await query;
+      .not('actual_outcome', 'is', null)
+      .or(keywordConditions);
 
     if (error) {
       console.error('Error fetching historical performance:', error);
@@ -798,22 +845,13 @@ export async function getBotHistoricalPerformance(
       return { accuracy: 0, avgEdge: 0, totalPredictions: 0 };
     }
 
-    // Filter by keywords
-    const relevantPredictions = data.filter(p =>
-      marketKeywords.some(kw => p.market_title.toLowerCase().includes(kw.toLowerCase()))
-    );
-
-    if (relevantPredictions.length === 0) {
-      return { accuracy: 0, avgEdge: 0, totalPredictions: 0 };
-    }
-
-    const correctPredictions = relevantPredictions.filter(p => p.actual_outcome === 'win').length;
-    const avgEdge = relevantPredictions.reduce((sum, p) => sum + p.edge, 0) / relevantPredictions.length;
+    const correctPredictions = data.filter(p => p.actual_outcome === 'win').length;
+    const avgEdge = data.reduce((sum, p) => sum + p.edge, 0) / data.length;
 
     return {
-      accuracy: (correctPredictions / relevantPredictions.length) * 100,
+      accuracy: (correctPredictions / data.length) * 100,
       avgEdge,
-      totalPredictions: relevantPredictions.length,
+      totalPredictions: data.length,
     };
   } catch (e) {
     console.error('Exception fetching historical performance:', e);
@@ -837,6 +875,7 @@ export const supabaseMemory = {
   updateBotMetrics,
   getBotMetrics,
   getBotHistoricalPerformance,
+  getSupabaseClient: getClient, // Alias for compatibility
 };
 
 /**

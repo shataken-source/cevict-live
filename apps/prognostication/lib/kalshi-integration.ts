@@ -62,7 +62,7 @@ function getSupabaseClient(): SupabaseClient | null {
  */
 export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPickResponse[]> {
   const supabase = getSupabaseClient();
-  
+
   if (!supabase) {
     console.error('âŒ Supabase client not available');
     return [];
@@ -87,7 +87,7 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
 
     // Add 3-second timeout to prevent hangs
     const queryPromise = query;
-    const timeoutPromise = new Promise((_, reject) => 
+    const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Supabase query timed out after 3 seconds')), 3000)
     );
 
@@ -116,7 +116,7 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
     for (const pred of data) {
       const marketId = pred.market_id || pred.id || '';
       if (!marketId) continue;
-      
+
       const existing = marketMap.get(marketId);
       if (!existing) {
         marketMap.set(marketId, pred);
@@ -124,9 +124,9 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
         // Keep the one with higher confidence, or if equal, the more recent one
         const existingDate = new Date(existing.predicted_at || existing.created_at || 0);
         const currentDate = new Date(pred.predicted_at || pred.created_at || 0);
-        
-        if (pred.confidence > existing.confidence || 
-            (pred.confidence === existing.confidence && currentDate > existingDate)) {
+
+        if (pred.confidence > existing.confidence ||
+          (pred.confidence === existing.confidence && currentDate > existingDate)) {
           marketMap.set(marketId, pred);
         }
       }
@@ -165,7 +165,7 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
         // If extraction fails, will use fallback below
         reasoning = '';
       }
-      
+
       // If still empty, create a meaningful default based on the prediction
       if (!reasoning || reasoning.length === 0) {
         const marketTitle = (pred.market_title || '').toLowerCase();
@@ -181,6 +181,14 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
       // Map category to valid categories (handle technology -> world, etc.)
       let category = (pred.bot_category || 'unknown').toLowerCase();
       const categoryMap: Record<string, string> = {
+        'kalshi_sports': 'sports',
+        'sports': 'sports',
+        'nba': 'sports',
+        'nfl': 'sports',
+        'mlb': 'sports',
+        'nhl': 'sports',
+        'ncaab': 'sports',
+        'ncaaf': 'sports',
         'technology': 'world',
         'tech': 'world',
         'politics': 'politics',
@@ -242,7 +250,7 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
  */
 export async function hasRecentLiveData(): Promise<boolean> {
   const supabase = getSupabaseClient();
-  
+
   if (!supabase) {
     return false;
   }
@@ -250,7 +258,7 @@ export async function hasRecentLiveData(): Promise<boolean> {
   try {
     // Check for predictions created in the last hour
     const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    
+
     const { data, error } = await supabase
       .from('bot_predictions')
       .select('predicted_at')

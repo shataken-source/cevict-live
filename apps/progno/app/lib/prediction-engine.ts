@@ -799,7 +799,8 @@ export class PredictionEngine {
       'NBA': { home: 115, away: 112 },
       'NCAAB': { home: 72, away: 68 },
       'NHL': { home: 3, away: 2 },
-      'MLB': { home: 5, away: 4 }
+      'MLB': { home: 5, away: 4 },
+      'CBB': { home: 6, away: 5 }
     };
 
     // Find matching sport default
@@ -807,21 +808,29 @@ export class PredictionEngine {
       if (sport.includes(key)) return value;
     }
 
+    // If team stats available, calculate from stats
+    if (gameData.teamStats) {
+      const home = gameData.teamStats.home;
+      const away = gameData.teamStats.away;
+      const homeGames = Math.max(home.wins + home.losses, 1);
+      const awayGames = Math.max(away.wins + away.losses, 1);
+      const avgHomeScore = home.pointsFor / homeGames;
+      const avgAwayScore = away.pointsFor / awayGames;
+      const avgHomeAllowed = home.pointsAgainst / homeGames;
+      const avgAwayAllowed = away.pointsAgainst / awayGames;
+
+      const homeExpected = (avgHomeScore + avgAwayAllowed) / 2;
+      const awayExpected = (avgAwayScore + avgHomeAllowed) / 2;
+
+      // Adjust based on win probability
+      return {
+        home: Math.round(homeExpected + (homeWinProb - 0.5) * 4),
+        away: Math.round(awayExpected - (homeWinProb - 0.5) * 4)
+      };
+    }
+
     // Generic fallback
     return { home: 0, away: 0 };
-  }
-
-  private async predictScore(gameData: GameData, homeWinProb: number): Promise<{ home: number; away: number }> {
-    const home = gameData.teamStats.home;
-    const away = gameData.teamStats.away;
-    const homeExpected = (avgHomeScore + avgAwayAllowed) / 2;
-    const awayExpected = (avgAwayScore + avgHomeAllowed) / 2;
-
-    // Adjust based on win probability
-    const homeScore = homeExpected + (homeWinProb - 0.5) * 4;
-    const awayScore = awayExpected - (homeWinProb - 0.5) * 4;
-
-    return { homeScore, awayScore };
   }
 
   /**

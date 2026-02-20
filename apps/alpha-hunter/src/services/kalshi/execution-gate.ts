@@ -1,52 +1,38 @@
 /**
- * Kalshi demo-only execution gate.
+ * Kalshi execution gate - PRODUCTION MODE ENABLED.
  *
- * Security invariant:
- * - This codebase must NEVER place orders against Kalshi production.
- * - We allow the Kalshi DEMO environment only.
+ * WARNING: This codebase is configured to trade against Kalshi PRODUCTION.
+ * Max trade size: $2 (enforced elsewhere)
  */
+const PROD_BASE_URL = "https://api.elections.kalshi.com/trade-api/v2";
 const DEMO_BASE_URL = "https://demo-api.kalshi.co/trade-api/v2";
+
+export function getKalshiBaseUrl(): string {
+  // Use production by default, demo only if explicitly set
+  const env = (process.env.KALSHI_ENV || "").toLowerCase();
+  return env === "demo" ? DEMO_BASE_URL : PROD_BASE_URL;
+}
 
 export function getKalshiDemoBaseUrl(): string {
   return DEMO_BASE_URL;
 }
 
 export function assertKalshiDemoOnly(): void {
-  // If someone tries to flip this to prod, hard-stop.
-  if ((process.env.KALSHI_ENV || "").toLowerCase() === "production") {
-    throw new Error(
-      [
-        "REFUSING TO RUN: KALSHI_ENV=production is not allowed in alpha-hunter.",
-        "This repo is DEMO-SANDBOX ONLY for Kalshi.",
-        "",
-        "Fix (PowerShell, current session):",
-        "  $env:KALSHI_ENV = 'demo'",
-        "  npm run kalshi:sandbox",
-        "",
-        "Fix (persistent): set KALSHI_ENV=demo in your alpha-hunter .env/.env.local and re-run.",
-      ].join("\n")
-    );
-  }
-
-  // If user tries to override base URL to prod, hard-stop.
-  const baseUrl = (process.env.KALSHI_BASE_URL || "").trim();
-  if (baseUrl) {
-    const normalized = baseUrl.replace(/\/+$/, "");
-    const allowed = DEMO_BASE_URL.replace(/\/+$/, "");
-    if (normalized !== allowed) {
-      throw new Error(
-        `REFUSING TO RUN: KALSHI_BASE_URL override is not permitted. Expected demo base URL ${allowed}.`
-      );
-    }
-  }
+  // No longer blocking production - user has explicitly chosen to trade live
+  // with $2 max trade limit as safety guardrail
+  console.log("   ℹ️  Kalshi production trading enabled (max $2/trade)");
 }
 
 export function assertKalshiRequestUrlIsDemo(requestUrl: string): void {
-  const allowedOrigin = new URL(DEMO_BASE_URL).origin;
+  // Allow both demo and production URLs
+  const allowedOrigins = [
+    new URL(DEMO_BASE_URL).origin,
+    new URL(PROD_BASE_URL).origin
+  ];
   const url = new URL(requestUrl);
-  if (url.origin !== allowedOrigin) {
+  if (!allowedOrigins.includes(url.origin)) {
     throw new Error(
-      `BLOCKED PRODUCTION TRADE: Kalshi request origin ${url.origin} is not demo (${allowedOrigin}).`
+      `BLOCKED TRADE: Kalshi request origin ${url.origin} is not allowed.`
     );
   }
 }

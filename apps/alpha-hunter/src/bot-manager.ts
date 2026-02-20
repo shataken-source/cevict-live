@@ -184,6 +184,16 @@ ${c.brightCyan}╚════════════════════�
       const markets = await this.kalshi.getMarkets();
       console.log(`   ${color.success('✅')} Fetched ${markets.length} markets`);
 
+      // DEBUG: Show first few markets if any found
+      if (markets.length > 0) {
+        console.log(`   📋 First 3 markets:`);
+        markets.slice(0, 3).forEach((m, i) => {
+          console.log(`      ${i + 1}. ${m.ticker || m.id} - ${m.title?.substring(0, 40)}...`);
+        });
+      } else {
+        console.log(`   ⚠️  DEBUG: Raw response had 0 markets`);
+      }
+
       // 2. Feed data to category learners
       console.log(`\n${c.dim}2. Feeding data to category learners...${c.reset}`);
       await this.feedCategoryLearners(markets);
@@ -275,7 +285,7 @@ ${c.brightCyan}╚════════════════════�
     const entertainmentMarkets = markets.filter(m => {
       const title = (m.title || '').toLowerCase();
       return title.includes('oscar') || title.includes('emmy') || title.includes('movie') ||
-             title.includes('box office') || title.includes('awards');
+        title.includes('box office') || title.includes('awards');
     });
 
     if (entertainmentMarkets.length === 0) {
@@ -402,7 +412,7 @@ async function main() {
     }, 300000); // Every 5 minutes
 
     // Keep process alive
-    setInterval(() => {}, 1000);
+    setInterval(() => { }, 1000);
   } else {
     await manager.start();
 
@@ -413,7 +423,7 @@ async function main() {
     });
 
     // Keep running
-    setInterval(() => {}, 1000);
+    setInterval(() => { }, 1000);
   }
 }
 

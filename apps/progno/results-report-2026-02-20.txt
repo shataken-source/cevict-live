@@ -1,0 +1,49 @@
+════════════════════════════════════════════════════════════════════════════════════════════════════
+  PROGNO PICKS vs REAL RESULTS
+  Generated: 2/19/2026, 11:12:57 PM
+════════════════════════════════════════════════════════════════════════════════════════════════════
+
+DATE        LG     MATCHUP                               PICK                  TYPE    CONF  EDGE   ACTUAL                SCORE     RESULT
+────────────────────────────────────────────────────────────────────────────────────────────────────
+2026-02-19  NCAAB  Lindenwood Lions @ Tennessee St TigersTennessee St Tigers   SPREAD  62%   22.8%  Tennessee St Tigers   89-80     ✅ WIN
+2026-02-19  NBA    Utah Jazz @ Memphis Grizzlies         Memphis Grizzlies     SPREAD  58%   23.0%  —                     —         PENDING
+2026-02-19  NCAAB  Siena Saints @ Merrimack Warriors     Merrimack Warriors    SPREAD  60%   22.4%  —                     —         PENDING
+2026-02-19  NCAAB  Marshall Thundering Herd @ AppalachianAppalachian St MountaiSPREAD  61%   21.9%  Marshall Thundering He93-94     ❌ LOSS
+2026-02-19  NCAAB  Le Moyne Dolphins @ Central ConnecticuCentral Connecticut StSPREAD  61%   21.8%  Central Connecticut St78-77     ✅ WIN
+2026-02-19  NCAAB  Idaho Vandals @ Portland St Vikings   Portland St Vikings   SPREAD  61%   21.6%  Portland St Vikings   77-67     ✅ WIN
+2026-02-19  NBA    Detroit Pistons @ New York Knicks     New York Knicks       SPREAD  61%   21.2%  Detroit Pistons       111-126   ❌ LOSS
+2026-02-19  NBA    Milwaukee Bucks @ New Orleans PelicansNew Orleans Pelicans  SPREAD  59%   21.0%  —                     —         PENDING
+2026-02-19  NCAAB  Longwood Lancers @ Presbyterian Blue HPresbyterian Blue HoseSPREAD  58%   18.0%  Presbyterian Blue Hose72-65     ✅ WIN
+2026-02-19  NCAAB  Stonehill Skyhawks @ New Haven ChargerNew Haven Chargers    SPREAD  58%   17.8%  New Haven Chargers    64-51     ✅ WIN
+2026-02-19  NBA    Atlanta Hawks @ Philadelphia 76ers    Philadelphia 76ers    SPREAD  57%   12.6%  Atlanta Hawks         107-117   ❌ LOSS
+2026-02-15  NCAAB  Syracuse Orange @ Duke Blue Devils    Syracuse Orange       MONEYLIN92%   84.5%  —                     —         NOT FOUND
+2026-02-15  NCAAB  Davidson Wildcats @ Dayton Flyers     Davidson Wildcats     MONEYLIN81%   49.0%  —                     —         NOT FOUND
+2026-02-15  NCAAB  San Francisco Dons @ San Diego TorerosSan Diego Toreros     MONEYLIN78%   39.7%  —                     —         NOT FOUND
+2026-02-13  NCAAB  Kansas St Wildcats @ Houston Cougars  Kansas St Wildcats    MONEYLIN92%   85.9%  —                     —         NOT FOUND
+2026-02-13  NCAAB  Saint Louis Billikens @ Loyola (Chi) RLoyola (Chi) Ramblers MONEYLIN92%   85.3%  —                     —         NOT FOUND
+2026-02-13  NCAAB  Georgetown Hoyas @ UConn Huskies      Georgetown Hoyas      MONEYLIN92%   73.5%  —                     —         NOT FOUND
+2026-02-11  NCAAB  The Citadel Bulldogs @ Western CarolinThe Citadel Bulldogs  MONEYLIN92%   94.3%  —                     —         NOT FOUND
+2026-02-11  NCAAB  Pepperdine Waves @ Saint Mary's Gaels Pepperdine Waves      MONEYLIN92%   90.1%  —                     —         NOT FOUND
+2026-02-11  NCAAB  Winthrop Eagles @ Gardner-Webb BulldogGardner-Webb Bulldogs MONEYLIN92%   88.2%  —                     —         NOT FOUND
+2026-02-11  NBA    Washington Wizards @ Cleveland CavalieWashington Wizards    MONEYLIN92%   71.6%  —                     —         NOT FOUND
+2026-02-11  NBA    Milwaukee Bucks @ Oklahoma City ThundeMilwaukee Bucks       MONEYLIN89%   62.6%  —                     —         NOT FOUND
+2026-02-11  NBA    Memphis Grizzlies @ Denver Nuggets    Memphis Grizzlies     MONEYLIN88%   59.5%  —                     —         NOT FOUND
+2026-02-07  NCAAB  La Salle Explorers @ Saint Louis BilliLa Salle Explorers    MONEYLIN92%   87.4%  —                     —         NOT FOUND
+2026-02-07  NCAAB  San Diego St Aztecs @ Air Force FalconAir Force Falcons     MONEYLIN92%   89.4%  —                     —         NOT FOUND
+2026-02-07  NCAAB  Oklahoma St Cowboys @ Arizona WildcatsOklahoma St Cowboys   MONEYLIN92%   79.8%  —                     —         NOT FOUND
+2026-02-07  NBA    Cleveland Cavaliers @ Sacramento KingsSacramento Kings      MONEYLIN92%   62.9%  —                     —         NOT FOUND
+2026-02-07  NBA    Dallas Mavericks @ San Antonio Spurs  Dallas Mavericks      MONEYLIN83%   45.2%  —                     —         NOT FOUND
+2026-02-07  NBA    Memphis Grizzlies @ Portland Trail BlaMemphis Grizzlies     MONEYLIN81%   35.8%  —                     —         NOT FOUND
+2026-02-07  NFL    Seattle Seahawks @ New England PatriotNew England Patriots  MONEYLIN76%   35.2%  —                     —         NOT FOUND
+
+════════════════════════════════════════════════════════════════════════════════════════════════════
+  SUMMARY
+════════════════════════════════════════════════════════════════════════════════════════════════════
+  Total picks:    30
+  Completed:      8
+  Correct:        5
+  Incorrect:      3
+  Pending:        22
+  Win Rate:       62.5%
+  Est. ROI:       10.1%
+════════════════════════════════════════════════════════════════════════════════════════════════════

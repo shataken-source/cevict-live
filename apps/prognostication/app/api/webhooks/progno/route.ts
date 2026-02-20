@@ -1,7 +1,7 @@
 /**
  * Progno Syndication Webhook Endpoint
  * Receives predictions from Progno engine and stores them for tiered distribution
- * 
+ *
  * Security: Requires PROGNO_API_KEY header for authentication
  * Enterprise Features:
  * - Request validation and sanitization
@@ -46,12 +46,12 @@ function validateRequest(request: NextRequest, body: any): { valid: boolean; err
   // Check API key
   const apiKey = request.headers.get('x-progno-api-key') || request.headers.get('authorization')?.replace('Bearer ', '');
   const expectedKey = process.env.PROGNO_INTERNAL_API_KEY || process.env.PROGNO_API_KEY;
-  
+
   if (!expectedKey) {
     console.error('[SYNDICATION_WEBHOOK] PROGNO_API_KEY not configured');
     return { valid: false, error: 'Server configuration error' };
   }
-  
+
   if (!apiKey || apiKey !== expectedKey) {
     console.warn('[SYNDICATION_WEBHOOK] Invalid API key attempt');
     return { valid: false, error: 'Unauthorized - Invalid API key' };
@@ -82,7 +82,7 @@ function validateRequest(request: NextRequest, body: any): { valid: boolean; err
  */
 async function checkIdempotency(batchId: string): Promise<boolean> {
   if (!supabaseUrl || !supabaseKey) return false;
-  
+
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { data } = await supabase
@@ -90,7 +90,7 @@ async function checkIdempotency(batchId: string): Promise<boolean> {
       .select('id')
       .eq('batch_id', batchId)
       .limit(1);
-    
+
     return data && data.length > 0;
   } catch (error) {
     console.error('[SYNDICATION_WEBHOOK] Idempotency check failed:', error);
@@ -134,7 +134,7 @@ async function logSyndicationEvent(
  */
 async function storePicksForTier(tier: string, picks: any[], batchId: string): Promise<{ success: boolean; errors: string[] }> {
   const errors: string[] = [];
-  
+
   if (!supabaseUrl || !supabaseKey) {
     console.log('[SYNDICATION_WEBHOOK] Supabase not configured, skipping storage');
     return { success: true, errors }; // Allow to pass if no storage
@@ -142,7 +142,7 @@ async function storePicksForTier(tier: string, picks: any[], batchId: string): P
 
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
-    
+
     // Transform picks for storage
     const records = picks.map((pick, index) => ({
       batch_id: batchId,
@@ -163,13 +163,35 @@ async function storePicksForTier(tier: string, picks: any[], batchId: string): P
     }));
 
     // Insert in batches to avoid payload limits
+    // Resilient: if a column is missing (PGRST204), strip it and retry once
     const BATCH_SIZE = 50;
+    const OPTIONAL_COLS = ['game_time', 'source_file', 'recommended_line', 'mc_win_probability', 'pick_type', 'raw_data'];
+    let stripCols: string[] = [];
+
     for (let i = 0; i < records.length; i += BATCH_SIZE) {
-      const batch = records.slice(i, i + BATCH_SIZE);
+      let batch = records.slice(i, i + BATCH_SIZE);
+      if (stripCols.length > 0) {
+        batch = batch.map((r: any) => { const c = { ...r }; stripCols.forEach(k => delete c[k]); return c; });
+      }
       const { error } = await supabase.from('syndicated_picks').insert(batch);
-      
+
       if (error) {
-        errors.push(`Batch ${i / BATCH_SIZE + 1} insert failed: ${error.message}`);
+        // PGRST204 = column not found in schema cache — strip it and retry this batch
+        if (error.code === 'PGRST204') {
+          const match = error.message.match(/\'([^']+)\' column/);
+          const badCol = match?.[1];
+          if (badCol && OPTIONAL_COLS.includes(badCol) && !stripCols.includes(badCol)) {
+            console.warn(`[SYNDICATION_WEBHOOK] Column '${badCol}' missing from table, stripping and retrying`);
+            stripCols.push(badCol);
+            const cleanBatch = batch.map((r: any) => { const c = { ...r }; stripCols.forEach(k => delete c[k]); return c; });
+            const { error: retryErr } = await supabase.from('syndicated_picks').insert(cleanBatch);
+            if (retryErr) errors.push(`Batch ${i / BATCH_SIZE + 1} retry failed: ${retryErr.message}`);
+          } else {
+            errors.push(`Batch ${i / BATCH_SIZE + 1} insert failed: ${error.message}`);
+          }
+        } else {
+          errors.push(`Batch ${i / BATCH_SIZE + 1} insert failed: ${error.message}`);
+        }
       }
     }
 

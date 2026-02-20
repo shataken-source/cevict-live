@@ -10,6 +10,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { runPickEngine, rankPicks } from '../../../lib/modules/pick-engine'
 import { MonteCarloEngine } from '../../../lib/monte-carlo-engine'
 import { GameData } from '../../../lib/prediction-engine'
 import { getPrimaryKey } from '../../../keys-store'
@@ -139,41 +140,41 @@ const FILTER_STRATEGY = (process.env.FILTER_STRATEGY || 'best') as 'baseline' | 
 // Backtest-calibrated filters (2024 full-season, 11,107 games):
 // ─── Strategy config: all tunable via env vars for testing without redeploy ───
 // Set any of these in .env.local (local) or Vercel Dashboard (production)
-const PROGNO_MIN_ODDS          = Number(process.env.PROGNO_MIN_ODDS          ?? -200)
-const PROGNO_MAX_ODDS          = Number(process.env.PROGNO_MAX_ODDS          ?? 500)
-const PROGNO_MIN_CONFIDENCE    = Number(process.env.PROGNO_MIN_CONFIDENCE    ?? 57)
-const PROGNO_HOME_BIAS_BOOST   = Number(process.env.PROGNO_HOME_BIAS_BOOST   ?? 5)
+const PROGNO_MIN_ODDS = Number(process.env.PROGNO_MIN_ODDS ?? -200)
+const PROGNO_MAX_ODDS = Number(process.env.PROGNO_MAX_ODDS ?? 500)
+const PROGNO_MIN_CONFIDENCE = Number(process.env.PROGNO_MIN_CONFIDENCE ?? 57)
+const PROGNO_HOME_BIAS_BOOST = Number(process.env.PROGNO_HOME_BIAS_BOOST ?? 5)
 const PROGNO_AWAY_BIAS_PENALTY = Number(process.env.PROGNO_AWAY_BIAS_PENALTY ?? 5)
 const PROGNO_STREAK_WIN_MULT_3 = Number(process.env.PROGNO_STREAK_WIN_MULT_3 ?? 1.1)
 const PROGNO_STREAK_WIN_MULT_5 = Number(process.env.PROGNO_STREAK_WIN_MULT_5 ?? 1.25)
 const PROGNO_STREAK_LOSS_MULT_3 = Number(process.env.PROGNO_STREAK_LOSS_MULT_3 ?? 0.75)
 const PROGNO_STREAK_LOSS_MULT_5 = Number(process.env.PROGNO_STREAK_LOSS_MULT_5 ?? 0.50)
-const PROGNO_EARLY_DECAY_2D    = Number(process.env.PROGNO_EARLY_DECAY_2D    ?? 0.97)
-const PROGNO_EARLY_DECAY_3D    = Number(process.env.PROGNO_EARLY_DECAY_3D    ?? 0.93)
-const PROGNO_EARLY_DECAY_4D    = Number(process.env.PROGNO_EARLY_DECAY_4D    ?? 0.88)
-const PROGNO_EARLY_DECAY_5D    = Number(process.env.PROGNO_EARLY_DECAY_5D    ?? 0.82)
+const PROGNO_EARLY_DECAY_2D = Number(process.env.PROGNO_EARLY_DECAY_2D ?? 0.97)
+const PROGNO_EARLY_DECAY_3D = Number(process.env.PROGNO_EARLY_DECAY_3D ?? 0.93)
+const PROGNO_EARLY_DECAY_4D = Number(process.env.PROGNO_EARLY_DECAY_4D ?? 0.88)
+const PROGNO_EARLY_DECAY_5D = Number(process.env.PROGNO_EARLY_DECAY_5D ?? 0.82)
 const PROGNO_EARLY_DECAY_5DPLUS = Number(process.env.PROGNO_EARLY_DECAY_5DPLUS ?? 0.75)
-const PROGNO_FLOOR_NCAAF       = Number(process.env.PROGNO_FLOOR_NCAAF       ?? 62)
-const PROGNO_FLOOR_NCAAB       = Number(process.env.PROGNO_FLOOR_NCAAB       ?? 57)
-const PROGNO_FLOOR_NBA         = Number(process.env.PROGNO_FLOOR_NBA         ?? 57)
-const PROGNO_FLOOR_NFL         = Number(process.env.PROGNO_FLOOR_NFL         ?? 62)
-const PROGNO_FLOOR_NHL         = Number(process.env.PROGNO_FLOOR_NHL         ?? 57)
-const PROGNO_FLOOR_MLB         = Number(process.env.PROGNO_FLOOR_MLB         ?? 57)
+const PROGNO_FLOOR_NCAAF = Number(process.env.PROGNO_FLOOR_NCAAF ?? 62)
+const PROGNO_FLOOR_NCAAB = Number(process.env.PROGNO_FLOOR_NCAAB ?? 57)
+const PROGNO_FLOOR_NBA = Number(process.env.PROGNO_FLOOR_NBA ?? 57)
+const PROGNO_FLOOR_NFL = Number(process.env.PROGNO_FLOOR_NFL ?? 62)
+const PROGNO_FLOOR_NHL = Number(process.env.PROGNO_FLOOR_NHL ?? 57)
+const PROGNO_FLOOR_MLB = Number(process.env.PROGNO_FLOOR_MLB ?? 57)
 // ─────────────────────────────────────────────────────────────────────────────
 
 // NFL ≥62% prob → +20.4% ROI. Shin-devig favorites rarely exceed 65%.
 // "best" targets pick-em to slight-fav range (-130 to +200) where most alpha lives.
 // minConfidence 57 aligns with actual Shin-devig output range; 80 produced zero picks.
 const ODDS_FILTER: Record<string, { minOdds: number; maxOdds: number; minConfidence: number }> = {
-  baseline: { minOdds: -10000,         maxOdds: 10000,         minConfidence: 0 },
-  best:     { minOdds: PROGNO_MIN_ODDS, maxOdds: PROGNO_MAX_ODDS, minConfidence: PROGNO_MIN_CONFIDENCE },
-  balanced: { minOdds: -150,           maxOdds: 300,           minConfidence: 60 },
+  baseline: { minOdds: -10000, maxOdds: 10000, minConfidence: 0 },
+  best: { minOdds: PROGNO_MIN_ODDS, maxOdds: PROGNO_MAX_ODDS, minConfidence: PROGNO_MIN_CONFIDENCE },
+  balanced: { minOdds: -150, maxOdds: 300, minConfidence: 60 },
 }
 
 // Backtest 2024: home picks +117.1% ROI vs away picks -18.2% ROI. Default ON.
 const HOME_ONLY_MODE = process.env.HOME_ONLY_MODE !== '0' && process.env.HOME_ONLY_MODE !== 'false'
 
-const HOME_BIAS_BOOST   = PROGNO_HOME_BIAS_BOOST
+const HOME_BIAS_BOOST = PROGNO_HOME_BIAS_BOOST
 const AWAY_BIAS_PENALTY = PROGNO_AWAY_BIAS_PENALTY
 
 const LEAGUE_STAKE_MULTIPLIER: Record<string, number> = {
@@ -191,21 +192,21 @@ const LEAGUE_STAKE_MULTIPLIER: Record<string, number> = {
 const LEAGUE_CONFIDENCE_FLOOR: Record<string, number> = {
   ncaaf: PROGNO_FLOOR_NCAAF,
   ncaab: PROGNO_FLOOR_NCAAB,
-  cbb:   PROGNO_FLOOR_NCAAB,
-  nba:   PROGNO_FLOOR_NBA,
-  nfl:   PROGNO_FLOOR_NFL,
-  nhl:   PROGNO_FLOOR_NHL,
-  mlb:   PROGNO_FLOOR_MLB,
+  cbb: PROGNO_FLOOR_NCAAB,
+  nba: PROGNO_FLOOR_NBA,
+  nfl: PROGNO_FLOOR_NFL,
+  nhl: PROGNO_FLOOR_NHL,
+  mlb: PROGNO_FLOOR_MLB,
 }
 
 const SPORT_SEASONS: Record<string, { start: number; end: number }> = {
-  'basketball_nba':        { start: 10, end: 6 },   // Oct–Jun
-  'americanfootball_nfl':  { start: 9,  end: 2 },   // Sep–Feb
-  'icehockey_nhl':         { start: 10, end: 6 },   // Oct–Jun
-  'baseball_mlb':          { start: 3,  end: 10 },  // Mar–Oct
-  'americanfootball_ncaaf':{ start: 8,  end: 1 },   // Aug–Jan
-  'basketball_ncaab':      { start: 11, end: 4 },   // Nov–Apr
-  'baseball_ncaa':         { start: 2,  end: 6 },   // Feb–Jun
+  'basketball_nba': { start: 10, end: 6 },   // Oct–Jun
+  'americanfootball_nfl': { start: 9, end: 2 },   // Sep–Feb
+  'icehockey_nhl': { start: 10, end: 6 },   // Oct–Jun
+  'baseball_mlb': { start: 3, end: 10 },  // Mar–Oct
+  'americanfootball_ncaaf': { start: 8, end: 1 },   // Aug–Jan
+  'basketball_ncaab': { start: 11, end: 4 },   // Nov–Apr
+  'baseball_ncaa': { start: 2, end: 6 },   // Feb–Jun
 }
 
 function isSportInSeason(sportKey: string): boolean {
@@ -240,7 +241,7 @@ async function loadStreakFromSupabase(): Promise<void> {
       if (isWin === true) { STREAK_TRACKER.wins = streak; STREAK_TRACKER.losses = 0 }
       else if (isWin === false) { STREAK_TRACKER.losses = streak; STREAK_TRACKER.wins = 0 }
     }
-  } catch {}
+  } catch { }
   STREAK_TRACKER.loaded = true
 }
 
@@ -471,7 +472,7 @@ export async function GET(request: Request) {
         for (const game of games) {
           const commence = game.commence_time ? new Date(game.commence_time) : null
           if (!commence || !inWindow(commence)) continue
-          const pick = await buildPickFromRawGame(game, sport)
+          const pick = await runPickEngine(game, sport)
           if (!pick) continue
           // Favorite-only (backtest showed underdog value bets lose; favorite-only is profitable)
           if (favoriteOnly && !pick.is_favorite_pick) continue
@@ -497,7 +498,7 @@ export async function GET(request: Request) {
       }
     }
 
-    const topPicks = selectTop10(allPicks)
+    const topPicks = rankPicks(allPicks)
     const windowLabel = earlyLines ? `Early lines (${EARLY_LINES_MIN_DAYS}-${EARLY_LINES_MAX_DAYS} days ahead)` : `Regular (0-${REGULAR_MAX_DAYS_AHEAD} days)`
 
     return NextResponse.json({

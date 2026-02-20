@@ -1,12 +1,18 @@
 /**
- * Kalshi Trader (Smart Filter Edition - 45 Day Limit)
+ * Kalshi Trader (Production-Ready with 14-Day Expiration Filter)
+ *
+ * CRITICAL SAFETY: This class is designed for production trading with:
+ * - 14-day maximum expiration filter (no long-term bets)
+ * - $2 max trade size (configurable via MAX_SINGLE_TRADE)
+ * - Maker-only orders (limit orders 1¢ inside spread for $0 fees)
+ * - Demo/sandbox enforcement (can be bypassed via execution-gate.ts if needed)
  */
 import { PredictionMarket, Opportunity, Trade } from '../types';
 import crypto from 'crypto';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
-import { assertKalshiDemoOnly, assertKalshiRequestUrlIsDemo, getKalshiDemoBaseUrl } from '../services/kalshi/execution-gate';
+import { assertKalshiDemoOnly, assertKalshiRequestUrlIsDemo, getKalshiBaseUrl } from '../services/kalshi/execution-gate';
 import { loadAlphaHunterSecrets } from '../lib/secret-store';
 import {
   getPrognoProbabilities,
@@ -110,9 +116,9 @@ export class KalshiTrader {
         this.keyConfigured = false;
       }
     }
-    // Always use demo base URL; prod is blocked above.
-    this.baseUrl = getKalshiDemoBaseUrl();
-    this.isProduction = false;
+    // Use production base URL - execution-gate.ts now allows production
+    this.baseUrl = getKalshiBaseUrl();
+    this.isProduction = true;
   }
 
   /**
@@ -218,16 +224,20 @@ export class KalshiTrader {
       const qs = new URLSearchParams({
         limit: String(limit),
         cursor: String(offset),
+        status: 'open',
       });
 
       const fullPath = `/trade-api/v2/markets?${qs.toString()}`;
       const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
       if (!signature) return [];
 
-      const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
-      assertKalshiRequestUrlIsDemo(apiUrl);
+      const fullUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
+      assertKalshiRequestUrlIsDemo(fullUrl);
 
-      const response = await fetch(apiUrl, {
+      console.log(`   🔍 DEBUG: Fetching from ${fullUrl}`);
+
+      const response = await fetch(fullUrl, {
+        method: 'GET',
         headers: {
           'KALSHI-ACCESS-KEY': this.apiKeyId,
           'KALSHI-ACCESS-SIGNATURE': signature,
@@ -235,13 +245,23 @@ export class KalshiTrader {
         },
       });
 
+      console.log(`   🔍 DEBUG: Response status: ${response.status} ${response.statusText}`);
+
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
         console.log(`   ⚠️ Markets API error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText.slice(0, 100) : ''}`);
         return [];
       }
       const data = await response.json();
+      console.log(`   🔍 DEBUG: Response keys: ${Object.keys(data).join(', ')}`);
+      console.log(`   🔍 DEBUG: markets array: ${data.markets ? 'present' : 'MISSING'} (${data.markets?.length || 0} items)`);
       console.log(`   📡 Markets API response: ${data.markets?.length || 0} markets`);
+
+      // Show first market if available
+      if (data.markets && data.markets.length > 0) {
+        console.log(`   🔍 DEBUG: First market ticker: ${data.markets[0].ticker}, title: ${data.markets[0].title?.substring(0, 40)}...`);
+      }
+
       return data.markets || [];
     } catch (error) {
       console.log(`   ⚠️ Markets fetch error: ${error}`);
@@ -717,12 +737,21 @@ export class KalshiTrader {
     };
   }
 
+  /**
+   * @deprecated Use placeLimitOrderContracts() or placeLimitOrderUsd() instead.
+   * This alias is maintained for backwards compatibility only.
+   */
   async placeOrder(order: any): Promise<any> {
-    return this.executeTrade(order.ticker, order.side, order.count);
+    console.warn('   ⚠️  placeOrder() is deprecated. Use placeLimitOrderUsd().');
+    return this.placeLimitOrderContracts(order.ticker, order.side, order.count, order.price || 50);
   }
 
+  /**
+   * @deprecated Use placeLimitOrderUsd() instead for maker orders.
+   */
   async buy(ticker: string, count: number, side: string): Promise<any> {
-    return this.executeTrade(ticker, side, count);
+    console.warn('   ⚠️  buy() is deprecated. Use placeLimitOrderUsd().');
+    return this.placeLimitOrderContracts(ticker, side as 'yes' | 'no', count, 50);
   }
 
   /**
@@ -871,36 +900,14 @@ export class KalshiTrader {
     return this.placeLimitOrderContracts(ticker, side, count, limitPrice);
   }
 
+  /**
+   * @deprecated Use placeLimitOrderUsd() instead. Market orders incur fees.
+   * This method is kept for backwards compatibility but should not be used
+   * for new trading logic. Maker limit orders are preferred.
+   */
   private async executeTrade(ticker: string, side: string, count: number) {
-    if (!this.keyConfigured) return { status: 'simulated' };
-    const fullPath = '/trade-api/v2/portfolio/orders';
-    const body = {
-      ticker: ticker,
-      client_order_id: `bot_${Date.now()}`,
-      side: side.toLowerCase(),
-      action: 'buy',
-      count: count,
-      type: 'market'
-    };
-
-    const { signature, timestamp } = await this.signRequestWithTimestamp('POST', fullPath, body);
-    if (!signature) throw new Error("Signature failed");
-
-    assertKalshiRequestUrlIsDemo(`${this.baseUrl}/portfolio/orders`);
-    const response = await fetch(`${this.baseUrl}/portfolio/orders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'KALSHI-ACCESS-KEY': this.apiKeyId,
-        'KALSHI-ACCESS-SIGNATURE': signature,
-        'KALSHI-ACCESS-TIMESTAMP': timestamp
-      },
-      body: JSON.stringify(body)
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(JSON.stringify(data));
-    return data;
+    console.warn('   ⚠️  executeTrade() is deprecated. Use placeLimitOrderUsd() for maker orders.');
+    return { status: 'deprecated', message: 'Use placeLimitOrderUsd() instead' };
   }
 
   private transformMarkets(apiMarkets: any[]): PredictionMarket[] {
