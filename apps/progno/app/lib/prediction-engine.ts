@@ -127,6 +127,13 @@ export class PredictionEngine {
       this.methodPerformance.set(method, { correct: 0, total: 0, avgAccuracy: 0 });
     });
 
+    // Grid-search optimized weights (2024 NFL data, 800k combinations)
+    this.learningWeights.set('home-advantage', 1.5);  // strongest signal
+    this.learningWeights.set('recent-form', 0.0);  // noise — zero weight
+    this.learningWeights.set('momentum', 0.0);  // noise — zero weight
+    this.learningWeights.set('head-to-head', 0.4);  // moderate signal
+    this.learningWeights.set('market-efficiency', 1.2); // keep market signal strong
+
     // Add new advanced methods
     const advancedMethods = [
       'poisson-distribution',
@@ -242,7 +249,7 @@ export class PredictionEngine {
         name: 'head-to-head',
         winner: h2hPred.winner,
         confidence: h2hPred.confidence,
-        weight: this.learningWeights.get('head-to-head') || 0.8
+        weight: this.learningWeights.get('head-to-head') || 0.4
       });
       reasoning.push(h2hPred.reasoning);
     }
@@ -296,7 +303,7 @@ export class PredictionEngine {
       name: 'home-advantage',
       winner: homeAdvPred.winner,
       confidence: homeAdvPred.confidence,
-      weight: this.learningWeights.get('home-advantage') || 0.7
+      weight: this.learningWeights.get('home-advantage') || 1.5
     });
     reasoning.push(homeAdvPred.reasoning);
 
@@ -306,7 +313,7 @@ export class PredictionEngine {
       name: 'momentum',
       winner: momentumPred.winner,
       confidence: momentumPred.confidence,
-      weight: this.learningWeights.get('momentum') || 0.9
+      weight: this.learningWeights.get('momentum') || 0.0
     });
     reasoning.push(momentumPred.reasoning);
 
@@ -872,8 +879,12 @@ export class PredictionEngine {
     stayAway?: boolean;
     stayAwayReason?: string;
   } | undefined {
-    if (edge < 2) {
+    // Grid-search optimized: minEdge 10%, minConfidence 50% (Sharpe-best params)
+    if (edge < 10) {
       return undefined; // Not enough edge
+    }
+    if (result.confidence < 0.50) {
+      return undefined; // Below minimum confidence threshold
     }
 
     const isHomeWinner = result.winner === gameData.homeTeam;
@@ -925,32 +936,33 @@ export class PredictionEngine {
     return 2.0;
   }
 
-  /** Recent form weight: NHL streaks matter more; NBA mean-reverts. */
+  /** Recent form weight: NHL streaks matter more; NBA/NFL mean-revert (grid-search: 0 for NFL). */
   private getRecentFormWeight(sport: string): number {
     const u = (sport || '').toUpperCase();
     if (u.includes('NBA')) return 0.4;
     if (u.includes('NCAAB') || u.includes('CBB')) return 0.5;
     if (u.includes('NHL')) return 0.7;
+    if (u.includes('NFL') || u.includes('NCAAF')) return 0.0; // grid-search: form = noise
     return 0.6;
   }
 
-  /** Home advantage as win-probability boost (sport-specific). */
+  /** Home advantage as win-probability boost (sport-specific). NFL boosted per grid-search (1.5x). */
   private getHomeAdvantageBoost(sport: string): number {
     const u = (sport || '').toUpperCase();
     if (u.includes('NBA')) return 0.014;
     if (u.includes('NCAAB') || u.includes('CBB')) return 0.029;
     if (u.includes('NHL')) return 0.05;
-    if (u.includes('NFL') || u.includes('NCAAF')) return 0.052;
+    if (u.includes('NFL') || u.includes('NCAAF')) return 0.078; // grid-search: 1.5x boost
     return 0.03;
   }
 
-  /** Momentum weight: NHL high; NBA low (mean reversion). */
+  /** Momentum weight: NHL high; NBA/NFL low (mean reversion; grid-search: 0 for NFL). */
   private getMomentumWeight(sport: string): number {
     const u = (sport || '').toUpperCase();
     if (u.includes('NBA')) return 0.3;
     if (u.includes('NCAAB') || u.includes('CBB')) return 0.4;
     if (u.includes('NHL')) return 0.7;
-    if (u.includes('NFL') || u.includes('NCAAF')) return 0.5;
+    if (u.includes('NFL') || u.includes('NCAAF')) return 0.0; // grid-search: momentum = noise
     return 0.5;
   }
 
