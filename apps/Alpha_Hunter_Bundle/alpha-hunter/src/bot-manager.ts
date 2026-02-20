@@ -4,12 +4,12 @@
  */
 
 import 'dotenv/config';
-import { categoryLearners } from './intelligence/category-learners';
-import { entertainmentExpert } from './intelligence/entertainment-expert';
-import { marketLearner } from './intelligence/market-learner';
-import { historicalKnowledge } from './intelligence/historical-knowledge';
-import { KalshiTrader } from './intelligence/kalshi-trader';
-import { dataAggregator } from './intelligence/data-aggregator';
+import { categoryLearners } from './integration/intelligence/category-learners';
+import { entertainmentExpert } from './integration/intelligence/entertainment-expert';
+import { marketLearner } from './integration/intelligence/market-learner';
+import { historicalKnowledge } from './integration/intelligence/historical-knowledge';
+import { KalshiTrader } from './integration/intelligence/kalshi-trader';
+import { dataAggregator } from './integration/intelligence/data-aggregator';
 
 const c = {
   reset: '\x1b[0m',
@@ -275,7 +275,7 @@ ${c.brightCyan}╚════════════════════�
     const entertainmentMarkets = markets.filter(m => {
       const title = (m.title || '').toLowerCase();
       return title.includes('oscar') || title.includes('emmy') || title.includes('movie') ||
-             title.includes('box office') || title.includes('awards');
+        title.includes('box office') || title.includes('awards');
     });
 
     if (entertainmentMarkets.length === 0) {
@@ -402,7 +402,7 @@ async function main() {
     }, 300000); // Every 5 minutes
 
     // Keep process alive
-    setInterval(() => {}, 1000);
+    setInterval(() => { }, 1000);
   } else {
     await manager.start();
 
@@ -413,11 +413,8 @@ async function main() {
     });
 
     // Keep running
-    setInterval(() => {}, 1000);
+    setInterval(() => { }, 1000);
   }
 }
 
-if (require.main === module) {
-  main().catch(console.error);
-}
 

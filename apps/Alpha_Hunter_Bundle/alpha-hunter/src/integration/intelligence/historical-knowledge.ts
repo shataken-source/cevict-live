@@ -688,8 +688,4 @@ ${c.bgBlue}${c.white}╚══════════════════�
   }
 }
 
-// Run if executed directly
-if (require.main === module) {
-  main().catch(console.error);
-}
 

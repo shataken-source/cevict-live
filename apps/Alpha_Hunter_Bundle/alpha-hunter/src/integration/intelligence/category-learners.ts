@@ -7,7 +7,7 @@
 // NO ANTHROPIC IMPORT - Saves money!
 import { KalshiTrader } from './kalshi-trader';
 import { historicalKnowledge } from './historical-knowledge';
-import { getBotPredictions } from '../lib/supabase-memory.js';
+import { getBotPredictions } from '../../lib/supabase-memory.js';
 
 const c = {
   reset: '\x1b[0m',
@@ -82,7 +82,7 @@ export class CategoryLearner {
     for (const [category, bot] of this.bots.entries()) {
       try {
         const predictions = await getBotPredictions(category, 'kalshi', 200);
-        
+
         if (predictions.length > 0) {
           const trainingData = predictions.map(p => ({
             marketId: p.market_id,
@@ -96,15 +96,15 @@ export class CategoryLearner {
             edge: p.edge,
             timestamp: p.predicted_at,
           }));
-          
+
           bot.trainingData = trainingData;
-          
+
           const withOutcomes = trainingData.filter(t => t.actualOutcome !== null);
           if (withOutcomes.length > 0) {
             bot.totalPredictions = withOutcomes.length;
             bot.correctPredictions = withOutcomes.filter(t => t.wasCorrect === true).length;
             bot.accuracy = (bot.correctPredictions / bot.totalPredictions) * 100;
-            
+
             const edges = withOutcomes.map(t => t.edge);
             bot.averageEdge = edges.reduce((sum, e) => sum + e, 0) / edges.length;
           }
@@ -171,7 +171,7 @@ export class CategoryLearner {
     // Crypto seasonality
     const month = new Date().getMonth();
     const seasonality = this.getCryptoSeasonality(month);
-    
+
     if (title.includes('bitcoin') || title.includes('btc')) {
       if (seasonality.bullish) {
         probability += seasonality.adjustment;
@@ -189,7 +189,7 @@ export class CategoryLearner {
     }
 
     const edge = Math.abs(probability - market.yesPrice);
-    
+
     return {
       marketId: market.id || market.ticker,
       title: market.title,
@@ -330,7 +330,7 @@ export class CategoryLearner {
     if (title.includes('temperature')) {
       factors.push('Historical temperature data');
       reasoning.push('Compare to historical averages for this date');
-      
+
       // Specific ranges are less likely
       if (title.match(/\d+[-–]\d+/)) {
         probability -= 5; // Specific ranges are harder to hit
@@ -457,7 +457,7 @@ export class CategoryLearner {
    */
   getAllStats(): Map<KalshiCategory, { totalPredictions: number; accuracy: number; lastTrained: Date }> {
     const stats = new Map<KalshiCategory, { totalPredictions: number; accuracy: number; lastTrained: Date }>();
-    
+
     for (const [category, bot] of this.bots.entries()) {
       stats.set(category, {
         totalPredictions: bot.totalPredictions,
@@ -465,7 +465,7 @@ export class CategoryLearner {
         lastTrained: bot.lastTrained,
       });
     }
-    
+
     return stats;
   }
 

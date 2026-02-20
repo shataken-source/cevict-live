@@ -1,0 +1,10 @@
+{
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/supershopper-v2/",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install --no-frozen-lockfile",
+  "framework": "nextjs",
+  "regions": [
+    "iad1"
+  ]
+}

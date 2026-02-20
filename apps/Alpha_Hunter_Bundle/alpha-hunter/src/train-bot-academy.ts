@@ -64,9 +64,6 @@ ${c.brightCyan}╚════════════════════�
   }
 }
 
-if (require.main === module) {
-  main().catch(console.error);
-}
 
 export default main;
 

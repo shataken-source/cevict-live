@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/SwitchbackTV/",
   "version": 2,
   "builds": [
     {

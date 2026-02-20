@@ -21,6 +21,7 @@ import { historicalKnowledge } from './integration/intelligence/historical-knowl
 import { KalshiTrader } from './integration/intelligence/kalshi-trader';
 import { PrognosticationSync } from './integration/intelligence/prognostication-sync';
 import { getBotConfig, saveTradeRecord, getBotPredictions, saveBotPrediction, updateTradeOutcome, saveBotLearning, getBotLearnings } from './lib/supabase-memory';
+import { CoinbasePredict, DEFAULT_PREDICT_LIMITS, PredictLossLimits } from './exchanges/coinbase-predict';
 import { TradeProtectionService } from './services/trade-protection';
 // Engine stubs — modules removed from codebase
 class KalshiPassiveIncome { constructor(...a) { } async provideLiquidity() { } async start() { } async stop() { } }
@@ -235,6 +236,7 @@ interface KalshiBet {
 interface TradingConfig {
   cryptoInterval: number;
   kalshiInterval: number;
+  predictInterval: number;
   maxTradeSize: number;
   minConfidence: number;
   minEdge: number;
@@ -286,6 +288,9 @@ export class EventContractExecutionEngine {
 
   private cryptoOpenPositions: Map<string, CryptoPosition> = new Map();
   private kalshiOpenBets: Map<string, KalshiBet> = new Map();
+  private coinbasePredict: CoinbasePredict;
+  private predictLimits: PredictLossLimits = DEFAULT_PREDICT_LIMITS;
+  private lastPredictCheck = 0;
 
   private dailySpending = 0;
   private dailyLoss = 0;
@@ -299,6 +304,7 @@ export class EventContractExecutionEngine {
   private config: TradingConfig = {
     cryptoInterval: 30000,
     kalshiInterval: 60000,
+    predictInterval: 90000,
     maxTradeSize: 5,
     minConfidence: 55,
     minEdge: 2,
@@ -316,6 +322,7 @@ export class EventContractExecutionEngine {
     this.botManager = new BotManager();
     this.kalshi = new KalshiTrader();
     this.coinbase = new CoinbaseExchange();
+    this.coinbasePredict = new CoinbasePredict();
     this.prognosticationSync = new PrognosticationSync();
     this.aiGatekeeper = new AIGatekeeper();  // NEW: Initialize gatekeeper
     this.tradeProtection = new TradeProtectionService();  // NEW: Initialize trade protection
@@ -670,13 +677,26 @@ Be conservative. Only recommend if clear setup exists. Otherwise confidence=50, 
       try { await this.alphaLoop.runCycle(); } catch (err: any) { console.error('❌ Alpha loop error:', err.message); }
     }, 3 * 60 * 1000);
 
+    // Coinbase Predict cycle: every 90 seconds
+    setInterval(async () => {
+      if (!this.isRunning) return;
+      try { await this.checkCoinbasePredictTrades(); } catch (err: any) { console.error('❌ Predict error:', err.message); }
+    }, this.config.predictInterval);
+
+    // Predict position monitor: every 60 seconds
+    setInterval(async () => {
+      if (!this.isRunning) return;
+      try { await this.coinbasePredict.checkPositions(this.predictLimits); } catch (err: any) { console.error('❌ Predict monitor error:', err.message); }
+    }, 60000);
+
     // Initial runs
     setTimeout(() => this.checkCryptoTrades(), 5000);
     setTimeout(() => this.checkKalshiTrades(), 10000);
     setTimeout(() => this.updatePicksFile(), 15000);
-    setTimeout(() => this.liquidityFarming.provideLiquidity(), 20000);
-    setTimeout(() => this.marketMaker.runMarketMakerScan(), 25000);
-    setTimeout(() => this.alphaLoop.runCycle(), 30000);
+    setTimeout(() => this.checkCoinbasePredictTrades(), 20000);
+    setTimeout(() => this.liquidityFarming.provideLiquidity(), 25000);
+    setTimeout(() => this.marketMaker.runMarketMakerScan(), 30000);
+    setTimeout(() => this.alphaLoop.runCycle(), 35000);
   }
 
   // ==========================================================================
@@ -900,6 +920,209 @@ Be conservative. Only recommend if clear setup exists. Otherwise confidence=50, 
       }
     } finally {
       releaseLock();
+    }
+  }
+
+  // ==========================================================================
+  // COINBASE PREDICT TRADING (mirrors Kalshi/Progno flow)
+  // ==========================================================================
+
+  private async checkCoinbasePredictTrades(): Promise<void> {
+    const releaseLock = await this.tradeProtection.acquireTradingLock();
+    try {
+      const now = Date.now();
+      if (now - this.lastPredictCheck < this.config.predictInterval) { releaseLock(); return; }
+      this.lastPredictCheck = now;
+
+      // ── Loss limit circuit breaker ──────────────────────────────────────
+      const predictDailyLoss = this.coinbasePredict.getDailyLoss();
+      if (predictDailyLoss >= this.predictLimits.maxDailyLoss) {
+        console.log(`\n${c.brightCyan}🔮 COINBASE PREDICT: ⛔ Daily loss limit $${this.predictLimits.maxDailyLoss} reached ($${predictDailyLoss.toFixed(2)}) — skipping${c.reset}`);
+        releaseLock();
+        return;
+      }
+
+      const limitCheck = await this.canTrade(1);
+      if (!limitCheck.allowed) { releaseLock(); return; }
+
+      console.log(`\n${c.brightCyan}🔮 COINBASE PREDICT MARKETS (AI-POWERED):${c.reset}`);
+      console.log(`   Limits: max/trade=$${this.predictLimits.maxPerTrade} | daily loss=$${this.predictLimits.maxDailyLoss} | exposure=$${this.predictLimits.maxTotalExposure}`);
+      console.log(`   Today's predict loss: $${predictDailyLoss.toFixed(2)} | Open positions: ${this.coinbasePredict.getOpenPositions().size}`);
+
+      const contracts = await this.coinbasePredict.getContracts(30);
+      if (!contracts.length) {
+        console.log(`   ${color.warning('⚠️  No prediction contracts available')}`);
+        releaseLock();
+        return;
+      }
+
+      // ── Pre-filter: only high-volume, near-50/50 markets ──────────────
+      const filtered = contracts.filter(c =>
+        c.volume24h > 5000 &&
+        c.yesPrice >= 0.15 && c.yesPrice <= 0.85 &&
+        c.status === 'open'
+      ).slice(0, 8);
+
+      console.log(`   Contracts: ${contracts.length} total → ${filtered.length} after pre-filter`);
+
+      for (const contract of filtered.slice(0, 3)) {
+        try {
+          // ── AI analysis ──────────────────────────────────────────────
+          const aiAnalysis = await this.analyzePredictWithAI(contract);
+          if (!aiAnalysis || aiAnalysis.confidence < this.config.minConfidence || aiAnalysis.edge < this.config.minEdge) {
+            console.log(`   ⏭️  ${contract.productId.substring(0, 40)}: AI skipped (conf=${aiAnalysis?.confidence ?? 0}%)`);
+            this.aiCallsSkipped++;
+            continue;
+          }
+
+          this.aiCallsToday++;
+          const side = aiAnalysis.prediction as 'yes' | 'no';
+          const tradeSize = Math.min(
+            this.predictLimits.maxPerTrade,
+            this.config.maxTradeSize,
+            this.config.dailySpendingLimit - this.dailySpending
+          );
+          if (tradeSize < 1) break;
+
+          // ── Loss limit check ─────────────────────────────────────────
+          const limitOk = this.coinbasePredict.checkLimits(tradeSize, this.predictLimits);
+          if (!limitOk.allowed) {
+            console.log(`   ${color.warning(`⚠️  ${limitOk.reason}`)}`);
+            continue;
+          }
+
+          const reserved = await this.reserveSpending(tradeSize);
+          if (!reserved) continue;
+
+          console.log(`   🔮 ${contract.title.substring(0, 55)}`);
+          console.log(`   ${color.ai(`🤖 AI: ${side.toUpperCase()} @ ${aiAnalysis.confidence}% conf, ${aiAnalysis.edge}% edge`)}`);
+          console.log(`   💡 ${aiAnalysis.reasoning[0] || 'AI analysis'}`);
+
+          const autoExecute = process.env.AUTO_EXECUTE === 'true';
+          const currentPrice = side === 'yes' ? contract.yesPrice : contract.noPrice;
+
+          let filled = null;
+          if (autoExecute) {
+            filled = await this.coinbasePredict.placeOrder(contract.productId, side, tradeSize, currentPrice, this.predictLimits);
+          }
+
+          if (autoExecute && !filled) {
+            await this.releaseSpending(tradeSize);
+            console.log(`   ${color.error('❌ Predict order rejected')}`);
+            continue;
+          }
+
+          if (!autoExecute) {
+            console.log(`   ${color.info(`📝 PAPER: ${side.toUpperCase()} $${tradeSize} on ${contract.productId}`)}`);
+          } else {
+            console.log(`   ${color.success(`✅ LIVE: ${side.toUpperCase()} $${tradeSize} filled @ $${currentPrice.toFixed(3)}`)}`);
+          }
+
+          // ── Audit trail ──────────────────────────────────────────────
+          await saveTradeRecord({
+            platform: 'coinbase',
+            trade_type: side as any,
+            symbol: contract.productId,
+            market_id: contract.productId,
+            entry_price: currentPrice,
+            amount: tradeSize,
+            fees: tradeSize * 0.01,
+            opened_at: new Date(),
+            confidence: aiAnalysis.confidence,
+            edge: aiAnalysis.edge,
+            outcome: 'open',
+            bot_category: contract.category,
+          });
+
+          await saveBotPrediction({
+            bot_category: contract.category,
+            market_id: contract.productId,
+            market_title: contract.title,
+            platform: 'coinbase',
+            prediction: side,
+            probability: aiAnalysis.confidence,
+            confidence: aiAnalysis.confidence,
+            edge: aiAnalysis.edge,
+            reasoning: aiAnalysis.reasoning,
+            factors: aiAnalysis.factors || [],
+            learned_from: ['AI Analysis', 'CoinbasePredict'],
+            market_price: Math.round(currentPrice * 100),
+            predicted_at: new Date(),
+            expires_at: contract.expiresAt ?? undefined,
+          });
+
+          logTrade(`PREDICT ${autoExecute ? 'LIVE' : 'PAPER'}: ${side.toUpperCase()} $${tradeSize} ${contract.productId} @ $${currentPrice.toFixed(3)}`, { side, amount: tradeSize, price: currentPrice });
+          break;
+
+        } catch (err: any) {
+          console.error(`   Error on ${contract.productId}:`, err.message);
+        }
+      }
+    } finally {
+      releaseLock();
+    }
+  }
+
+  private async analyzePredictWithAI(contract: import('./exchanges/coinbase-predict').PredictContract): Promise<{
+    prediction: string; confidence: number; edge: number; reasoning: string[]; factors: string[];
+  } | null> {
+    try {
+      if (this.aiCallsToday >= this.MAX_AI_CALLS_PER_DAY) return null;
+
+      const learnedPatterns = await getBotLearnings(contract.category, 8);
+      const winPatterns = learnedPatterns.filter(p => p.pattern_type === 'winning_pattern').slice(0, 3);
+      const patternCtx = winPatterns.length > 0
+        ? `LEARNED PATTERNS:\n${winPatterns.map(p => `  ✅ ${p.pattern_description} (${p.times_observed}x)`).join('\n')}`
+        : 'LEARNED PATTERNS: None yet';
+
+      const daysLeft = contract.expiresAt
+        ? Math.ceil((contract.expiresAt.getTime() - Date.now()) / 86400000)
+        : null;
+
+      const prompt = `You are an expert prediction market analyst. Analyze this Coinbase Predict contract.
+
+CONTRACT: ${contract.title}
+YES PRICE: $${contract.yesPrice.toFixed(3)} (market implies ${(contract.yesPrice * 100).toFixed(0)}% probability)
+NO PRICE: $${contract.noPrice.toFixed(3)}
+CATEGORY: ${contract.category}
+VOLUME 24H: $${contract.volume24h.toLocaleString()}
+${daysLeft !== null ? `DAYS TO EXPIRY: ${daysLeft}` : ''}
+
+${patternCtx}
+
+Is the market price accurate? Is there exploitable edge?
+
+Respond ONLY with this JSON (no other text):
+{
+  "prediction": "yes" or "no",
+  "confidence": 50-85,
+  "edge": 0-20,
+  "reasoning": ["reason1", "reason2"],
+  "factors": ["factor1"]
+}
+
+Be conservative. Only recommend if clear edge exists. Otherwise confidence=50, edge=0.`;
+
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return null;
+      const analysis = JSON.parse(jsonMatch[0]);
+      return {
+        prediction: analysis.prediction,
+        confidence: Math.min(85, Math.max(50, analysis.confidence)),
+        edge: Math.min(20, Math.max(0, analysis.edge)),
+        reasoning: analysis.reasoning || [],
+        factors: analysis.factors || [],
+      };
+    } catch (err: any) {
+      console.error(`   ${color.error('❌ Predict AI error:')} ${err.message}`);
+      return null;
     }
   }
 
