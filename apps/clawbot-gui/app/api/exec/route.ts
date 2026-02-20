@@ -1,55 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { spawn } from 'child_process';
+import { exec } from 'child_process';
 import { promisify } from 'util';
-import path from 'path';
 
-const execAsync = promisify(require('child_process').exec);
+const execAsync = promisify(exec);
 
-const CLAWBOT_DIR = 'C:\\cevict-live\\apps\\clawbot';
+// Strip ANSI escape codes from terminal output
+function stripAnsi(str: string): string {
+  return str.replace(/\x1B\[[0-9;]*[mGKHF]/g, '').replace(/\x1B\[[0-9;]*[A-Za-z]/g, '');
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { command, args = [] } = await req.json();
-
-    if (!command) {
+    const { command } = await req.json();
+    if (!command || typeof command !== 'string') {
       return NextResponse.json({ error: 'Command is required' }, { status: 400 });
     }
 
-    // Add --allow-unconfigured for commands that need it when gateway isn't fully configured
-    const needsUnconfigured = ['status', 'gateway', 'channels', 'message'].some(cmd =>
-      command.startsWith(cmd)
-    );
-    const unconfiguredFlag = needsUnconfigured ? '--allow-unconfigured' : '';
+    // Sanitize: only allow openclaw subcommands, no shell injection
+    const sanitized = command.replace(/[;&|`$(){}[\]<>]/g, '').trim();
+    const fullCmd = `openclaw ${sanitized}`;
 
-    // Add --agent main for agent commands to use default session
-    const needsAgent = command.startsWith('agent');
-    const agentFlag = needsAgent ? '--agent main' : '';
-
-    // Build command with proper flag order
-    const cmd = `node openclaw.mjs ${command} ${agentFlag} ${args.join(' ')} ${unconfiguredFlag}`.trim();
-
-    const { stdout, stderr } = await execAsync(cmd, {
-      cwd: CLAWBOT_DIR,
-      timeout: 60000,
-      env: {
-        ...process.env,
-        FORCE_COLOR: '1'
-      }
+    const { stdout, stderr } = await execAsync(fullCmd, {
+      timeout: 90000,
+      env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+      shell: 'cmd.exe',
     });
 
     return NextResponse.json({
       success: true,
-      stdout,
-      stderr,
-      command: cmd
+      stdout: stripAnsi(stdout || ''),
+      stderr: stripAnsi(stderr || ''),
+      command: fullCmd,
     });
   } catch (error: any) {
     return NextResponse.json({
       success: false,
       error: error.message,
-      stdout: error.stdout,
-      stderr: error.stderr,
-      command: error.cmd
+      stdout: stripAnsi(error.stdout || ''),
+      stderr: stripAnsi(error.stderr || ''),
     }, { status: 500 });
   }
 }

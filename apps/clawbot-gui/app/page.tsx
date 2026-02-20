@@ -1,529 +1,331 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Terminal, Play, MessageSquare, Settings, Activity,
-  Wifi, Users, Brain, Shield, Database, Send,
-  Smartphone, Globe, Bot, RefreshCw, Power, FileText,
-  Box, Code, ShieldCheck, Cpu, LayoutGrid, Puzzle,
-  Trash2, Zap, Clock, Search, ChevronRight, X, Plus,
-  Minus, Wand2, Rocket, Server, RotateCcw, Info,
-  HelpCircle, PowerOff, MessageCircle, LogIn, LogOut,
-  Hash, List, Download, History, Camera, Link, Check,
-  Edit, Eye, Folder, Key, Lock, Mail, MapPin,
-  Monitor, Star, Upload, User, Video, Volume2,
-  AlertCircle, ArrowRight, BarChart, Bell, Book,
-  Briefcase, Brush, Bug, Building, Car, Cloud,
-  Coffee, Compass, Copy, CreditCard, Crop, Crosshair,
-  Crown, Disc, Divide, DollarSign, Droplet, Dumbbell,
-  Egg, Flag, Flame, Flashlight, Flower, Framer,
-  Frown, Gamepad, Gift, GitBranch, Github, Gitlab,
-  Glasses, Globe2, GraduationCap, Grip, Group,
-  Hammer, Hand, Headphones, Heart, Hexagon, Home,
-  Image, Inbox, Indent, Infinity, Inspect, Joystick,
-  Keyboard, Laptop, Layers, Leaf, Library, LifeBuoy,
-  Lightbulb, LineChart, Loader, Locate, Maximize,
-  Megaphone, Menu, Mic, Minimize, MonitorPlay,
-  MoreHorizontal, MoreVertical, MousePointer, Move,
-  Music, Navigation, Network, Octagon, Option,
-  Outdent, Package, Paintbrush, Paperclip, Pause,
-  Pen, Pencil, Percent, Phone, PieChart, Pin,
-  Plane, Printer, QrCode, Radio, Receipt, Redo,
-  Repeat, Rewind, Rss, Ruler, Scissors, Share,
-  Share2, ShieldOff, Shirt, ShoppingBag, ShoppingCart,
-  Shuffle, Sidebar, Signal, Slash, Sliders,
-  Snowflake, Space, Speaker, Square, Store, Sunrise,
-  Sunset, Tablet, Tag, Target, Tent, Thermometer,
-  ThumbsDown, ThumbsUp, Ticket, Timer, ToggleLeft,
-  ToggleRight, Trello, TrendingDown, TrendingUp,
-  Triangle, Truck, Tv, Twitch, Twitter, Type,
-  Umbrella, Underline, Undo, Unlock, View, Voicemail,
-  Volume, Volume1, VolumeX, Watch, Waves, Webcam,
-  WifiOff, Wind, Youtube, ZoomIn, ZoomOut, Stethoscope,
-  Wrench, Grid3X3, AlertTriangle, Save, FileCode,
-  ArrowUpRight, ArrowDown, ArrowUp, ArrowLeft,
-  AlignCenter, AlignLeft, AlignRight, Anchor, Aperture,
-  Award, Baby, Backpack, Badge, Ban,
-  Banknote, Baseline, Bath, Battery, BatteryCharging,
-  BatteryFull, BatteryLow, BatteryMedium,
-  BatteryWarning, Beaker, Bean, BeanOff, Bed, BedDouble,
-  BedSingle, Beef, Beer, Bike, Binary, Bird, Bitcoin,
-  Blinds, Blocks, Bluetooth, BluetoothConnected,
-  BluetoothOff, BluetoothSearching, Bold, Bomb, Bone,
-  BookOpen, BookOpenCheck, Bookmark, BookmarkMinus,
-  BookmarkPlus, BoxSelect, Boxes, Braces,
-  Brackets, BrainCircuit, BrainCog, BrickWall,
-  Bus, BusFront, Cable, Calculator, CalendarCheck,
-  CalendarClock, CalendarDays, CalendarHeart,
-  CalendarMinus, CalendarPlus, CalendarRange, CalendarX,
-  CameraOff, Candy, CandyOff, CarFront, Carrot,
-  CaseLower, CaseSensitive, CaseUpper, Cast, Castle,
-  Cat, CheckCheck, CheckCircle, CheckCircle2,
-  CheckSquare, ChefHat, Cherry, ChevronDown,
-  ChevronFirst, ChevronLast, ChevronLeft, ChevronUp,
-  ChevronsDown, ChevronsDownUp, ChevronsLeft,
-  ChevronsLeftRight, ChevronsRight, ChevronsUp,
-  ChevronsUpDown, Chrome, Church, Cigarette,
-  CigaretteOff, Circle, CircleDashed, CircleDollarSign,
-  CircleDot, CircleEllipsis, CircleEqual, CircleOff,
-  CircleSlash, CircuitBoard, Citrus, Clapperboard,
-  ClipboardCheck, ClipboardCopy, ClipboardList,
-  ClipboardPaste, ClipboardSignature, ClipboardType,
-  ClipboardX, Clock1, Clock10, Clock11, Clock12,
-  Clock2, Clock3, Clock4, Clock5, Clock6, Clock7,
-  Clock8, Clock9, CloudCog, CloudDrizzle, CloudFog,
-  CloudHail, CloudLightning, CloudMoon, CloudMoonRain,
-  CloudOff, CloudRain, CloudRainWind, CloudSnow,
-  CloudSun, CloudSunRain, Cloudy, Clover, Club,
-  Code2, Codepen, Codesandbox, Cog, Coins,
-  Columns, Combine, Component,
-  ConciergeBell, Construction, Contact, Contact2,
-  Contrast, Cookie, CopyCheck, CopyPlus, CopyX,
-  CornerDownLeft, CornerDownRight, CornerLeftDown,
-  CornerLeftUp, CornerRightDown, CornerRightUp,
-  CornerUpLeft, CornerUpRight, CreativeCommons,
-  Croissant, Cross, CupSoda, Currency,
-  DatabaseBackup, DatabaseZap, Delete, Diamond, Dice1,
-  Dice2, Dice3, Dice4, Dice5, Dice6, Dices, Diff,
-  DiscAlbum, DivideCircle, DivideSquare, Dna, Dog,
-  Donut, DoorClosed, DoorOpen, Dot, Dribbble,
-  Droplets, Drumstick, Ear, EarOff, Earth,
-  EarthLock, Eclipse, EggFried, Equal, EqualNot,
-  Eraser, Euro, Expand, EyeOff,
-  Facebook, Factory, Fan, FastForward, Feather, Fence,
-  FerrisWheel, Figma, File, FileArchive, FileAudio,
-  FileAudio2, FileAxis3d, FileBadge, FileBadge2,
-  FileBarChart, FileBarChart2, FileBox, FileCheck,
-  FileCheck2, FileClock, FileCode2, FileCog, FileDiff,
-  FileDigit, FileDown, FileEdit, FileHeart, FileImage,
-  FileInput, FileJson, FileKey, FileKey2, FileLineChart,
-  FileLock, FileLock2, FileMinus, FileMinus2,
-  FileOutput, FilePieChart, FilePlus, FilePlus2,
-  FileQuestion, FileScan, FileSearch, FileSearch2,
-  FileSignature, FileSpreadsheet, FileStack, FileSymlink,
-  FileTerminal, FileType, FileType2, FileUp, FileVideo,
-  FileVideo2, FileVolume, FileVolume2, FileWarning,
-  FileX, FileX2, Files, Film, Filter, FilterX,
-  Fingerprint, Fish, FishOff, FishSymbol, FlagOff,
-  FlagTriangleLeft, FlagTriangleRight, FlameKindling,
-  FlashlightOff, FlaskConical, FlaskConicalOff,
-  FlaskRound, FlipHorizontal, FlipHorizontal2,
-  FlipVertical, FlipVertical2, Flower2, Focus,
-  FoldHorizontal, FoldVertical, FolderArchive,
-  FolderCheck, FolderClock, FolderClosed, FolderCog,
-  FolderDot, FolderDown, FolderEdit, FolderGit,
-  FolderGit2, FolderHeart, FolderInput, FolderKanban,
-  FolderKey, FolderLock, FolderMinus, FolderOpen,
-  FolderOutput, FolderPlus, FolderRoot, FolderSearch,
-  FolderSearch2, FolderSymlink, FolderSync, FolderTree,
-  FolderUp, FolderX, Folders, Footprints, Forklift,
-  FormInput, Forward, Frame, Fuel, FunctionSquare,
-  Gamepad2, Gauge, Gavel, Gem, Ghost, GiftIcon,
-  GitCommit, GitCommitHorizontal, GitCommitVertical,
-  GitCompare, GitCompareArrows, GitFork, GitGraph,
-  GitMerge, GitPullRequest, GitPullRequestArrow,
-  GitPullRequestClosed, GitPullRequestCreate,
-  GitPullRequestCreateArrow, GitPullRequestDraft,
-  GlassWater, Goal, Grab, Grape, GripHorizontal,
-  GripVertical, Guitar, HandMetal, HardHat,
-  Heading, Heading1, Heading2, Heading3, Heading4,
-  Heading5, Heading6, Headset, HeartCrack,
-  HeartHandshake, HeartOff, HeartPulse, HelpingHand,
-  Highlighter, HistoryIcon, Hop, HopOff, Hospital,
-  Hotel, Hourglass, IceCream, IceCream2, ImageMinus,
-  ImageOff, ImagePlus, Images, Import, IndentIcon,
-  IndianRupee, InfoIcon, InspectIcon, Instagram,
-  Italic, IterationCcw, IterationCw, JapaneseYen,
-  Kanban, KeyRound, KeySquare, Lamp, LampCeiling,
-  LampDesk, LampFloor, LampWallDown, LampWallUp,
-  LandPlot, Landmark, Languages, Laptop2, Lasso,
-  LassoSelect, Laugh, Layout, LayoutDashboard,
-  LayoutList, LayoutPanelLeft, LayoutPanelTop,
-  LayoutTemplate, LeafIcon, LifeBuoyIcon, LightbulbOff,
-  LineChartIcon, Link2, Link2Off, Linkedin,
-  ListChecks, ListCollapse, ListEnd, ListFilter,
-  ListMinusIcon, ListMusic, ListOrdered, ListPlusIcon,
-  ListRestart, ListStart, ListTree, ListVideo,
-  Loader2, LocateFixed, LocateOff, LockIcon, LogInIcon,
-  LogOutIcon, Luggage, Magnet, MailCheck, MailMinus,
-  MailOpen, MailPlus, MailQuestion, MailSearch,
-  MailWarning, MailX, Mailbox, Mails, MapIcon,
-  MapPinOff, MapPinned, Martini, Maximize2, Medal,
-  MegaphoneOff, Meh, MemoryStick, MenuSquare, Merge,
-  MessageCircleDashed, MessageCircleOff, MessageSquareDashed,
-  MessageSquareDiff, MessageSquareDot, MessageSquareOff,
-  MessageSquarePlus, MessagesSquare, Mic2, MicOff,
-  Microscope, Microwave, Milestone, Milk, MilkOff,
-  Minimize2, MinusCircle, MinusSquare, MonitorCheck,
-  MonitorDot, MonitorDown, MonitorOff, MonitorPause,
-  MonitorSmartphone, MonitorSpeaker, MonitorStop,
-  MonitorUp, MonitorX, MoonStar, Mountain, MountainSnow,
-  Mouse, MousePointer2, MousePointerClick, Move3d,
-  MoveDiagonal, MoveDiagonal2, MoveHorizontal,
-  MoveVertical, Music2, Music3, Music4, Navigation2,
-  Navigation2Off, NavigationOff, Newspaper, Nfc,
-  Notebook, NotebookPen, NotebookTabs, NotepadText,
-  Nut, NutOff, OctagonAlert, OctagonPause, OctagonX,
-  Package2, PackageCheck, PackageMinus, PackageOpen,
-  PackagePlus, PackageSearch, PackageX, PaintBucket,
-  Paintbrush2, Palette, Palmtree, PanelBottom,
-  PanelBottomClose, PanelBottomInactive, PanelBottomOpen,
-  PanelLeft, PanelLeftClose, PanelLeftInactive,
-  PanelLeftOpen, PanelRight, PanelRightClose,
-  PanelRightInactive, PanelRightOpen, PanelTop,
-  PanelTopClose, PanelTopInactive, PanelTopOpen,
-  PanelsLeftBottom, PanelsRightBottom, PanelsTopLeft,
-  PaperclipIcon, Parentheses, ParkingCircle,
-  ParkingCircleOff, ParkingMeter, ParkingSquare,
-  ParkingSquareOff, PartyPopper, PauseCircle,
-  PauseOctagon, PawPrint, PcCase, PenLine, PenTool,
-  PencilLine, PencilRuler, Pentagon, PercentCircle,
-  PercentDiamond, PercentSquare, PersonStanding, PhoneCall,
-  PhoneForwarded, PhoneIncoming, PhoneMissed, PhoneOff,
-  PhoneOutgoing, Pi, PiSquare, PictureInPicture,
-  PictureInPicture2, PiggyBank, Pilcrow, PilcrowSquare,
-  Pill, PinOff, Pipette, Pizza, PlaneLanding,
-  PlaneTakeoff, PlayCircle, PlaySquare, Plug, Plug2,
-  PlugZap, PlusCircle, PlusSquare, Pocket, Podcast,
-  Pointer, Popsicle, PoundSterling, PowerCircle,
-  PowerSquare, Presentation, Projector, Proportions,
-  Quote, Rabbit, Radar, Radiation, RadioReceiver,
-  RadioTower, Radius, RailSymbol, Rainbow, Rat,
-  ReceiptCent, ReceiptEuro, ReceiptIndianRupee,
-  ReceiptJapaneseYen, ReceiptPoundSterling,
-  ReceiptRussianRuble, ReceiptSwissFranc, ReceiptText,
-  RectangleHorizontal, RectangleVertical, Recycle,
-  Redo2, RedoDot, Refrigerator, Regex,
-  RemoveFormatting, Repeat1, Repeat2, Replace,
-  ReplaceAll, Reply, ReplyAll, RockingChair,
-  RollerCoaster, Rotate3d, RotateCw, Router, Rows,
-  RussianRuble, Sailboat, Salad, Sandwich, Satellite,
-  SatelliteDish, SaveAll, Scale, Scale3d, Scaling,
-  ScanBarcode, ScanEye, ScanFace, ScanLine, ScanSearch,
-  ScanText, ScatterChart, School, School2,
-  ScissorsLineDashed, ScreenShare, ScreenShareOff,
-  Scroll, ScrollText, SearchCheck, SearchCode,
-  SearchSlash, SearchX, SendHorizonal, SendToBack,
-  SeparatorHorizontal, SeparatorVertical, ServerCog,
-  ServerCrash, ServerOff, Settings2, Shapes,
-  Shell, ShieldAlert, ShieldBan, ShieldClose,
-  ShieldEllipsis, ShieldHalf, ShieldMinus,
-  ShieldPlus, ShieldQuestion, Ship, ShipWheel,
-  ShoppingBasket, ShowerHead, Shovel, Shrink,
-  SidebarClose, SidebarOpen, Sigma, SigmaSquare,
-  SignalHigh, SignalLow, SignalMedium, SignalZero,
-  Signpost, SignpostBig, Siren, SkipBack, SkipForward,
-  Skull, Slack, Slice, SmartphoneCharging,
-  SmartphoneNfc, Smile, SnowflakeIcon, Sofa, Soup,
-  Spade, Sparkle, Sparkles, Speech,
-  SpellCheck, SpellCheck2, Spline, Split, SprayCan,
-  Sprout, SquareAsterisk, SquareCode, SquareDashedBottom,
-  SquareDashedBottomCode, SquareDot, SquareEqual,
-  SquareSlash, SquareStack, Squirrel, Stamp, StarHalf,
-  StarOff, StepBack, StepForward, Sticker, StickyNote,
-  StopCircle, StretchHorizontal, StretchVertical,
-  Strikethrough, Subscript, Subtitles, SunDim,
-  SunMedium, SunMoon, Superscript, SwissFranc,
-  SwitchCamera, Sword, Swords, Syringe, Table, Table2,
-  TableProperties, TabletSmartphone, Tablets,
-  Tags, TargetIcon, TentTree, TerminalSquare,
-  TestTube, TestTube2, TestTubes, Text, TextCursor,
-  TextCursorInput, TextQuote, TextSelect, TextSearch,
-  Theater, ThermometerSnowflake, ThermometerSun,
-  TicketCheck, TicketMinus, TicketPercent, TicketPlus,
-  TicketSlash, TicketX, TimerOff, TimerReset,
-  Tornado, Touchpad, TouchpadOff, TowerControl,
-  ToyBrick, Tractor, TrafficCone, Train, TrainFront,
-  TrainFrontTunnel, TrainTrack, TramFront, Trash,
-  TreeDeciduous, TreePine, Trees, TrelloIcon,
-  TriangleRight, Trophy,
-  Tv2, Turtle, UnlockIcon, UploadCloud,
-  Usb, UserCheck, UserCog, UserMinus, UserPlus,
-  UserRound, UserRoundCheck, UserRoundCog,
-  UserRoundMinus, UserRoundPlus, UserRoundSearch,
-  UserRoundX, UserSearch, UserX, UsersRound, Utensils,
-  UtensilsCrossed, UtilityPole, Variable, Vault, Vegan,
-  VenetianMask, Verified, Vibrate, VibrateOff,
-  VideoOff, Videotape, ViewIcon, Wallet, Wallet2,
-  WalletCards, Wallpaper, Wand, Warehouse, WebhookOff,
-  Weight, Wheat, WheatOff, WholeWord, Wine, WineOff,
-  Workflow, WrapText
+  Wifi, WifiOff, Users, Brain, Send, Bot, RefreshCw,
+  Power, FileText, Cpu, Puzzle, Trash2, Search,
+  X, Plus, Wand2, RotateCcw, Info, HelpCircle,
+  MessageCircle, Hash, List, Download, Eye,
+  Globe, Stethoscope, Shield, AlertCircle, CheckCircle,
+  Loader2, ExternalLink, Copy, ChevronRight, Clock,
+  Database, Zap, GitBranch, Key
 } from 'lucide-react';
 
-interface CommandDef {
-  id: string;
-  category: string;
-  label: string;
-  command: string;
-  icon: any;
-  description?: string;
-  args?: { name: string; placeholder: string; required?: boolean; flag?: string }[];
-}
+interface ChatMessage { id: string; role: 'user' | 'assistant' | 'system'; content: string; ts: number; }
+interface GatewayInfo { token: string | null; port: number; gatewayUrl: string; dashboardUrl: string; }
+interface QuickCmd { id: string; category: string; label: string; command: string; icon: any; description: string; }
+type Tab = 'chat' | 'terminal' | 'commands';
+function uid() { return Math.random().toString(36).slice(2); }
 
-const allCommands: CommandDef[] = [
-  // Core Status & Info
-  { id: 'status', category: 'Core', label: 'Status', command: 'status', icon: Activity, description: 'Show gateway status' },
-  { id: 'health', category: 'Core', label: 'Health Check', command: 'doctor', icon: Stethoscope, description: 'Run health checks' },
+const QUICK_CMDS: QuickCmd[] = [
+  { id: 'status', category: 'Core', label: 'Status', command: 'gateway status', icon: Activity, description: 'Gateway status' },
+  { id: 'doctor', category: 'Core', label: 'Doctor', command: 'doctor', icon: Stethoscope, description: 'Health checks' },
   { id: 'version', category: 'Core', label: 'Version', command: '--version', icon: Info, description: 'Show version' },
-  { id: 'help', category: 'Core', label: 'Help', command: '--help', icon: HelpCircle, description: 'Show CLI help' },
-
-  // Gateway Control
-  { id: 'gateway-start', category: 'Gateway', label: 'Start Gateway', command: 'gateway --verbose', icon: Power, description: 'Start gateway with logs' },
-  { id: 'gateway-dev', category: 'Gateway', label: 'Dev Mode', command: 'gateway --dev', icon: Code, description: 'Development mode' },
-  { id: 'gateway-logs', category: 'Gateway', label: 'View Logs', command: 'logs tail --lines 100', icon: FileText, description: 'Show last 100 lines' },
-  { id: 'dashboard', category: 'Gateway', label: 'Dashboard', command: 'dashboard', icon: LayoutGrid, description: 'Open web UI' },
-
-  // Agent Commands
-  { id: 'agent-chat', category: 'Agent', label: 'Chat', command: 'agent --message', icon: MessageCircle, description: 'Send message to agent', args: [{ name: 'msg', placeholder: 'Hello!', required: true, flag: '--message' }] },
-  { id: 'agent-thinking', category: 'Agent', label: 'High Thinking', command: 'agent --message --thinking high', icon: Brain, description: 'Complex reasoning', args: [{ name: 'msg', placeholder: 'Question...', required: true, flag: '--message' }] },
-  { id: 'agents-list', category: 'Agent', label: 'List Agents', command: 'agents list', icon: Users, description: 'All agents' },
-  { id: 'agents-create', category: 'Agent', label: 'Create', command: 'agents create', icon: Plus, description: 'New agent', args: [{ name: 'name', placeholder: 'my-agent', required: true }] },
-
-  // Channels Management
-  { id: 'channels-list', category: 'Channels', label: 'List Channels', command: 'channels list', icon: List, description: 'All channels' },
-  { id: 'channels-whatsapp', category: 'Channels', label: 'WhatsApp QR', command: 'channels login whatsapp', icon: Smartphone, description: 'Link WhatsApp' },
-  { id: 'channels-telegram', category: 'Channels', label: 'Telegram Bot', command: 'channels login telegram', icon: Send, description: 'Setup Telegram' },
-  { id: 'channels-discord', category: 'Channels', label: 'Discord Bot', command: 'channels login discord', icon: MessageSquare, description: 'Setup Discord' },
-  { id: 'channels-slack', category: 'Channels', label: 'Slack Bot', command: 'channels login slack', icon: Hash, description: 'Setup Slack' },
-
-  // Messaging
-  { id: 'message-send', category: 'Messages', label: 'Send Message', command: 'message send --message', icon: Send, description: 'Send message', args: [{ name: 'msg', placeholder: 'Hello!', required: true, flag: '--message' }] },
-  { id: 'message-list', category: 'Messages', label: 'List Messages', command: 'message list --limit 20', icon: List, description: 'Recent messages' },
-
-  // Models
-  { id: 'models-list', category: 'Models', label: 'List Models', command: 'models list', icon: Cpu, description: 'AI models' },
-  { id: 'model-set', category: 'Models', label: 'Set Model', command: 'config set agent.model', icon: Settings, description: 'Change model', args: [{ name: 'model', placeholder: 'claude-opus-4-6', required: true }] },
-
-  // Skills
-  { id: 'skills-list', category: 'Skills', label: 'List Skills', command: 'skills list', icon: Puzzle, description: 'Installed skills' },
-  { id: 'skills-install', category: 'Skills', label: 'Install', command: 'skills install', icon: Download, description: 'Add skill', args: [{ name: 'skill', placeholder: 'skill-name', required: true }] },
-
-  // Memory
-  { id: 'memory-list', category: 'Memory', label: 'List', command: 'memory list', icon: List, description: 'All entries' },
-  { id: 'memory-search', category: 'Memory', label: 'Search', command: 'memory search', icon: Search, description: 'Search memory', args: [{ name: 'q', placeholder: 'query...', required: true, flag: '--query' }] },
-  { id: 'memory-clear', category: 'Memory', label: 'Clear All', command: 'memory clear', icon: Trash2, description: 'Delete all' },
-
-  // Sessions
-  { id: 'sessions-list', category: 'Sessions', label: 'List', command: 'sessions list', icon: List, description: 'Active sessions' },
-  { id: 'sessions-reset', category: 'Sessions', label: 'Reset', command: 'sessions reset', icon: RotateCcw, description: 'Reset current' },
-
-  // Browser
-  { id: 'browser-open', category: 'Browser', label: 'Open', command: 'browser open', icon: Globe, description: 'Launch browser', args: [{ name: 'url', placeholder: 'https://...', flag: '--url' }] },
-  { id: 'browser-snapshot', category: 'Browser', label: 'Screenshot', command: 'browser snapshot', icon: Camera, description: 'Capture page' },
-  { id: 'browser-close', category: 'Browser', label: 'Close', command: 'browser close', icon: X, description: 'Close browser' },
-
-  // Cron
-  { id: 'cron-list', category: 'Cron', label: 'List', command: 'cron list', icon: List, description: 'Cron jobs' },
-  { id: 'cron-add', category: 'Cron', label: 'Add', command: 'cron add', icon: Plus, description: 'Schedule job', args: [{ name: 'schedule', placeholder: '0 9 * * *', required: true, flag: '--schedule' }, { name: 'cmd', placeholder: 'command', required: true, flag: '--command' }] },
-
-  // Webhooks
-  { id: 'webhooks-list', category: 'Webhooks', label: 'List', command: 'webhooks list', icon: List, description: 'Webhooks' },
-
-  // Nodes
-  { id: 'nodes-list', category: 'Nodes', label: 'List', command: 'nodes list', icon: List, description: 'Devices' },
-
-  // Pairing
-  { id: 'pairing-list', category: 'Pairing', label: 'List', command: 'pairing list', icon: List, description: 'Pairings' },
-
-  // Plugins
-  { id: 'plugins-list', category: 'Plugins', label: 'List', command: 'plugins list', icon: Box, description: 'Plugins' },
-  { id: 'plugins-install', category: 'Plugins', label: 'Install', command: 'plugins install', icon: Download, description: 'Add plugin', args: [{ name: 'plugin', placeholder: 'plugin-name', required: true, flag: '--plugin' }] },
-
-  // Config
-  { id: 'config-get', category: 'Config', label: 'Get', command: 'config get', icon: Eye, description: 'Read value', args: [{ name: 'key', placeholder: 'agent.model', required: true, flag: '--key' }] },
-  { id: 'config-set', category: 'Config', label: 'Set', command: 'config set', icon: Edit, description: 'Update config', args: [{ name: 'key', placeholder: 'agent.model', required: true, flag: '--key' }, { name: 'value', placeholder: 'value', required: true, flag: '--value' }] },
-  { id: 'configure', category: 'Config', label: 'Wizard', command: 'configure', icon: Wand2, description: 'Setup wizard' },
-
-  // Setup
-  { id: 'onboard', category: 'Setup', label: 'Onboard', command: 'onboard', icon: Rocket, description: 'First setup' },
-  { id: 'reset', category: 'Setup', label: 'Reset', command: 'reset', icon: RotateCcw, description: 'Reset all' },
-  { id: 'update', category: 'Setup', label: 'Update', command: 'update', icon: RefreshCw, description: 'Update CLI' },
-  { id: 'doctor', category: 'Setup', label: 'Doctor', command: 'doctor', icon: Stethoscope, description: 'Diagnostics' },
-
-  // System
-  { id: 'system-info', category: 'System', label: 'System Info', command: 'system info', icon: Info, description: 'OS/process info' },
-  { id: 'tui', category: 'System', label: 'TUI', command: 'tui', icon: Terminal, description: 'Terminal UI' },
-
-  // Security
-  { id: 'security-status', category: 'Security', label: 'Status', command: 'security status', icon: Shield, description: 'Security status' },
-  { id: 'approvals-list', category: 'Security', label: 'Approvals', command: 'approvals list', icon: List, description: 'Pending approvals' },
+  { id: 'update', category: 'Core', label: 'Update', command: 'update', icon: RefreshCw, description: 'Update OpenClaw' },
+  { id: 'models', category: 'Models', label: 'Models', command: 'models list', icon: Cpu, description: 'List AI models' },
+  { id: 'agents', category: 'Agents', label: 'Agents', command: 'agents list', icon: Users, description: 'List agents' },
+  { id: 'channels', category: 'Channels', label: 'Channels', command: 'channels list', icon: Hash, description: 'List channels' },
+  { id: 'skills', category: 'Skills', label: 'Skills', command: 'skills list', icon: Puzzle, description: 'List skills' },
+  { id: 'cron', category: 'Cron', label: 'Cron Jobs', command: 'cron list', icon: Clock, description: 'Scheduled jobs' },
+  { id: 'memory', category: 'Memory', label: 'Memory', command: 'memory list', icon: Database, description: 'Memory entries' },
+  { id: 'sessions', category: 'Sessions', label: 'Sessions', command: 'sessions list', icon: List, description: 'Active sessions' },
+  { id: 'security', category: 'Security', label: 'Security', command: 'security status', icon: Shield, description: 'Security status' },
+  { id: 'approvals', category: 'Security', label: 'Approvals', command: 'approvals list', icon: Eye, description: 'Pending approvals' },
+  { id: 'gw-restart', category: 'Gateway', label: 'Restart GW', command: 'gateway restart', icon: RotateCcw, description: 'Restart gateway' },
+  { id: 'gw-install', category: 'Gateway', label: 'Install Svc', command: 'gateway install', icon: Download, description: 'Install as service' },
 ];
 
 export default function Dashboard() {
-  const [output, setOutput] = useState<string>('');
-  const [loading, setLoading] = useState<string | null>(null);
-  const [customCommand, setCustomCommand] = useState('');
+  const [tab, setTab] = useState<Tab>('chat');
+  const [gwInfo, setGwInfo] = useState<GatewayInfo | null>(null);
+  const [gwOnline, setGwOnline] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const [wsState, setWsState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [wsError, setWsError] = useState('');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const [termOutput, setTermOutput] = useState('');
+  const [termInput, setTermInput] = useState('');
+  const [termLoading, setTermLoading] = useState(false);
+  const termEndRef = useRef<HTMLDivElement>(null);
+  const [cmdLoading, setCmdLoading] = useState<string | null>(null);
 
-  const runCommand = async (cmd: string, label: string) => {
-    setLoading(label);
-    setOutput(prev => prev + `\n\n$ openclaw ${cmd}\n` + '='.repeat(50) + '\n');
+  useEffect(() => {
+    fetch('/api/gateway-info').then(r => r.json()).then(setGwInfo).catch(() => { });
+  }, []);
 
-    try {
-      const response = await fetch('/api/exec', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: cmd }),
-      });
+  useEffect(() => {
+    const check = () => {
+      fetch('http://127.0.0.1:18789/', { signal: AbortSignal.timeout(2000) })
+        .then(() => setGwOnline(true)).catch(() => setGwOnline(false));
+    };
+    check();
+    const t = setInterval(check, 10000);
+    return () => clearInterval(t);
+  }, []);
 
-      const data = await response.json();
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
+  useEffect(() => { termEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [termOutput]);
 
-      if (data.success) {
-        setOutput(prev => prev + (data.stdout || 'Command executed successfully') + '\n');
-      } else {
-        setOutput(prev => prev + `ERROR: ${data.error}\n${data.stderr || ''}\n`);
+  const connectWs = useCallback(() => {
+    if (!gwInfo) return;
+    wsRef.current?.close();
+    setWsState('connecting');
+    setWsError('');
+    const url = gwInfo.token
+      ? `${gwInfo.gatewayUrl}?token=${encodeURIComponent(gwInfo.token)}`
+      : gwInfo.gatewayUrl;
+    const ws = new WebSocket(url);
+    wsRef.current = ws;
+    ws.onopen = () => {
+      setWsState('connected');
+      setChatMessages(prev => [...prev, { id: uid(), role: 'system', content: '🦞 Connected to OpenClaw gateway.', ts: Date.now() }]);
+    };
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        const text = msg?.message?.content ?? msg?.content ?? msg?.text ?? JSON.stringify(msg);
+        setChatMessages(prev => [...prev, { id: uid(), role: 'assistant', content: text, ts: Date.now() }]);
+      } catch {
+        setChatMessages(prev => [...prev, { id: uid(), role: 'assistant', content: e.data, ts: Date.now() }]);
       }
-    } catch (error) {
-      setOutput(prev => prev + `ERROR: ${error}\n`);
+    };
+    ws.onerror = () => setWsError('WebSocket error — check gateway is running.');
+    ws.onclose = (e) => {
+      setWsState('disconnected');
+      wsRef.current = null;
+      if (e.code !== 1000) setWsError(`Disconnected (${e.code}): ${e.reason || 'connection closed'}`);
+    };
+  }, [gwInfo]);
+
+  useEffect(() => {
+    if (gwInfo) connectWs();
+    return () => { wsRef.current?.close(); };
+  }, [gwInfo, connectWs]);
+
+  const sendChat = () => {
+    const text = chatInput.trim();
+    if (!text || wsState !== 'connected' || !wsRef.current) return;
+    setChatMessages(prev => [...prev, { id: uid(), role: 'user', content: text, ts: Date.now() }]);
+    wsRef.current.send(JSON.stringify({ type: 'message', content: text }));
+    setChatInput('');
+  };
+
+  const runCmd = async (command: string) => {
+    setCmdLoading(command);
+    setTermLoading(true);
+    setTermOutput(prev => prev + `\n$ openclaw ${command}\n${'─'.repeat(48)}\n`);
+    try {
+      const res = await fetch('/api/exec', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command }),
+      });
+      const data = await res.json();
+      setTermOutput(prev => prev + (data.stdout || data.stderr || data.error || 'Done.') + '\n');
+    } catch (err: any) {
+      setTermOutput(prev => prev + `ERROR: ${err.message}\n`);
     } finally {
-      setLoading(null);
+      setCmdLoading(null);
+      setTermLoading(false);
+      setTab('terminal');
     }
   };
 
-  const runCustomCommand = () => {
-    if (customCommand.trim()) {
-      runCommand(customCommand.trim(), 'custom');
-      setCustomCommand('');
-    }
-  };
+  const wsColor = wsState === 'connected' ? 'text-emerald-400' : wsState === 'connecting' ? 'text-amber-400' : 'text-red-400';
+  const wsLabel = wsState === 'connected' ? 'Connected' : wsState === 'connecting' ? 'Connecting…' : 'Disconnected';
 
-  const clearOutput = () => {
-    setOutput('');
-  };
+  const tabBtn = (t: Tab, label: string, Icon: any) => (
+    <button
+      onClick={() => setTab(t)}
+      className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${tab === t ? 'bg-orange-500 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+    >
+      <Icon className="w-4 h-4" />{label}
+    </button>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans flex flex-col">
       {/* Header */}
-      <header className="bg-slate-900 border-b border-slate-800 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
-            <Bot className="w-6 h-6 text-white" />
+      <header className="bg-slate-900 border-b border-slate-800 px-5 py-3 flex items-center gap-3 shrink-0">
+        <div className="w-9 h-9 bg-orange-500 rounded-lg flex items-center justify-center">
+          <Bot className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <h1 className="text-base font-bold text-white leading-tight">OpenClaw Control</h1>
+          <p className="text-xs text-slate-500">v2026.2.19-2 · claude-opus-4-6</p>
+        </div>
+        <div className="ml-auto flex items-center gap-4">
+          {/* Gateway status */}
+          <div className="flex items-center gap-2 text-xs">
+            <span className={`w-2 h-2 rounded-full ${gwOnline ? 'bg-emerald-400' : 'bg-red-500'}`} />
+            <span className="text-slate-400">Gateway</span>
+            <span className={gwOnline ? 'text-emerald-400' : 'text-red-400'}>{gwOnline ? 'Online' : 'Offline'}</span>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-white">OpenClaw GUI</h1>
-            <p className="text-sm text-slate-400">Personal AI Assistant Control Center</p>
+          {/* WS status */}
+          <div className="flex items-center gap-2 text-xs">
+            {wsState === 'connecting' ? <Loader2 className="w-3 h-3 animate-spin text-amber-400" /> : wsState === 'connected' ? <Wifi className="w-3 h-3 text-emerald-400" /> : <WifiOff className="w-3 h-3 text-red-400" />}
+            <span className={wsColor}>{wsLabel}</span>
           </div>
-          <div className="ml-auto flex gap-2">
-            <button
-              onClick={() => runCommand('status', 'status')}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm font-medium transition-colors"
-            >
-              <RefreshCw className="w-4 h-4 inline mr-2" />
-              Refresh Status
-            </button>
-          </div>
+          <button onClick={connectWs} title="Reconnect WebSocket" className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors">
+            <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
+          </button>
+          <a href="http://127.0.0.1:18789/" target="_blank" rel="noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs text-slate-300 transition-colors">
+            <ExternalLink className="w-3 h-3" />Dashboard
+          </a>
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-80px)]">
+      {/* Error banner */}
+      {wsError && (
+        <div className="bg-red-950 border-b border-red-800 px-5 py-2 flex items-center gap-2 text-xs text-red-300">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          <span>{wsError}</span>
+          {gwInfo?.token && <span className="ml-2 text-red-400">Token: {gwInfo.token.slice(0, 12)}…</span>}
+          <button onClick={() => setWsError('')} className="ml-auto text-red-500 hover:text-red-300"><X className="w-3.5 h-3.5" /></button>
+        </div>
+      )}
+
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-80 bg-slate-900 border-r border-slate-800 p-4 overflow-y-auto">
-          <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-            Commands ({allCommands.length})
-          </h2>
-          <div className="space-y-1">
-            {allCommands.slice(0, 20).map((cmd: CommandDef) => (
-              <button
-                key={cmd.id}
-                onClick={() => runCommand(cmd.command, cmd.label)}
-                disabled={loading === cmd.label}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left disabled:opacity-50"
-              >
-                <cmd.icon className="w-4 h-4 text-orange-400" />
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm">{loading === cmd.label ? 'Running...' : cmd.label}</span>
-                  {cmd.description && <p className="text-xs text-slate-500 truncate">{cmd.description}</p>}
+        <aside className="w-56 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
+          <div className="p-3 border-b border-slate-800">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Quick Commands</p>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+            {QUICK_CMDS.map(cmd => (
+              <button key={cmd.id} onClick={() => runCmd(cmd.command)}
+                disabled={cmdLoading === cmd.command}
+                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-800 transition-colors text-left disabled:opacity-40 group">
+                <cmd.icon className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-200 truncate">
+                    {cmdLoading === cmd.command ? <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin inline" /> Running…</span> : cmd.label}
+                  </p>
+                  <p className="text-xs text-slate-600 truncate">{cmd.description}</p>
                 </div>
               </button>
             ))}
           </div>
+          {/* Status tiles */}
+          <div className="p-3 border-t border-slate-800 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500 flex items-center gap-1"><Key className="w-3 h-3" />Token</span>
+              <span className={gwInfo?.token ? 'text-emerald-400' : 'text-red-400'}>{gwInfo?.token ? 'Set' : 'Missing'}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500 flex items-center gap-1"><Globe className="w-3 h-3" />Port</span>
+              <span className="text-slate-300">{gwInfo?.port ?? 18789}</span>
+            </div>
+          </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col p-6 gap-4">
-          {/* Custom Command */}
-          <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">Custom Command</h3>
-            <div className="flex gap-2">
-              <span className="px-3 py-2 bg-slate-800 rounded-lg text-slate-400 text-sm font-mono">
-                openclaw
-              </span>
-              <input
-                type="text"
-                value={customCommand}
-                onChange={(e) => setCustomCommand(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && runCustomCommand()}
-                placeholder="Enter command (e.g., 'agent --message Hello')"
-                className="flex-1 px-3 py-2 bg-slate-800 rounded-lg text-sm text-white placeholder-slate-500 border border-slate-700 focus:border-orange-500 focus:outline-none font-mono"
-              />
-              <button
-                onClick={runCustomCommand}
-                disabled={loading === 'custom'}
-                title="Run command"
-                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-white text-sm font-medium transition-colors disabled:opacity-50"
-              >
-                <Play className="w-4 h-4" />
-              </button>
-            </div>
+        {/* Main */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {/* Tab bar */}
+          <div className="flex items-center gap-1 px-4 py-2 bg-slate-900 border-b border-slate-800 shrink-0">
+            {tabBtn('chat', 'Chat', MessageCircle)}
+            {tabBtn('terminal', 'Terminal', Terminal)}
+            {tabBtn('commands', 'Commands', Zap)}
           </div>
 
-          {/* Output Terminal */}
-          <div className="flex-1 bg-black rounded-xl border border-slate-800 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800">
-              <div className="flex items-center gap-2">
-                <Terminal className="w-4 h-4 text-slate-400" />
-                <span className="text-sm font-medium text-slate-300">Output</span>
+          {/* ── Chat tab ── */}
+          {tab === 'chat' && (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {chatMessages.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-full text-center gap-3 text-slate-600">
+                    <Bot className="w-12 h-12 opacity-30" />
+                    <p className="text-sm">Chat with OpenClaw via WebSocket</p>
+                    <p className="text-xs">{wsState === 'disconnected' ? 'Gateway offline — start it with: openclaw gateway start' : wsState === 'connecting' ? 'Connecting to gateway…' : 'Type a message below'}</p>
+                  </div>
+                )}
+                {chatMessages.map(msg => (
+                  <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${msg.role === 'user' ? 'bg-orange-500' : msg.role === 'system' ? 'bg-slate-700' : 'bg-purple-600'}`}>
+                      {msg.role === 'user' ? 'U' : msg.role === 'system' ? '·' : '🦞'}
+                    </div>
+                    <div className={`max-w-[75%] rounded-xl px-3 py-2 text-sm ${msg.role === 'user' ? 'bg-orange-500/20 text-orange-100' : msg.role === 'system' ? 'bg-slate-800 text-slate-400 italic text-xs' : 'bg-slate-800 text-slate-200'}`}>
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                      <p className="text-xs text-slate-600 mt-1">{new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                  </div>
+                ))}
+                <div ref={chatEndRef} />
               </div>
-              <button
-                onClick={clearOutput}
-                className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
-              >
-                Clear
-              </button>
+              <div className="p-3 border-t border-slate-800 bg-slate-900 flex gap-2">
+                <input
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChat()}
+                  placeholder={wsState === 'connected' ? 'Message OpenClaw… (Enter to send)' : 'Gateway disconnected'}
+                  disabled={wsState !== 'connected'}
+                  className="flex-1 px-3 py-2 bg-slate-800 rounded-lg text-sm text-white placeholder-slate-500 border border-slate-700 focus:border-orange-500 focus:outline-none disabled:opacity-40"
+                />
+                <button onClick={sendChat} disabled={wsState !== 'connected' || !chatInput.trim()}
+                  className="px-3 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-white transition-colors disabled:opacity-40">
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div className="flex-1 p-4 overflow-auto font-mono text-sm">
-              {output ? (
-                <pre className="text-green-400 whitespace-pre-wrap">{output}</pre>
-              ) : (
-                <p className="text-slate-600 italic">Run a command to see output...</p>
-              )}
-            </div>
-          </div>
+          )}
 
-          {/* Quick Info Cards */}
-          <div className="grid grid-cols-4 gap-4">
-            <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Globe className="w-4 h-4 text-blue-400" />
-                <span className="text-xs font-medium text-slate-400">Gateway</span>
+          {/* ── Terminal tab ── */}
+          {tab === 'terminal' && (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 bg-black overflow-y-auto p-4 font-mono text-sm">
+                {termOutput ? (
+                  <pre className="text-green-400 whitespace-pre-wrap">{termOutput}</pre>
+                ) : (
+                  <p className="text-slate-600 italic">Run a command from the sidebar or type below…</p>
+                )}
+                <div ref={termEndRef} />
               </div>
-              <p className="text-lg font-bold text-white">Offline</p>
-              <p className="text-xs text-slate-500">ws://localhost:18789</p>
-            </div>
-            <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Brain className="w-4 h-4 text-purple-400" />
-                <span className="text-xs font-medium text-slate-400">AI Model</span>
+              <div className="p-3 border-t border-slate-800 bg-slate-900 flex gap-2">
+                <span className="px-2 py-2 bg-slate-800 rounded-lg text-slate-500 text-xs font-mono shrink-0">openclaw</span>
+                <input
+                  value={termInput}
+                  onChange={e => setTermInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && termInput.trim() && (runCmd(termInput.trim()), setTermInput(''))}
+                  placeholder="gateway status, models list, doctor…"
+                  className="flex-1 px-3 py-2 bg-slate-800 rounded-lg text-sm text-white placeholder-slate-500 border border-slate-700 focus:border-orange-500 focus:outline-none font-mono"
+                />
+                <button onClick={() => termInput.trim() && (runCmd(termInput.trim()), setTermInput(''))}
+                  disabled={termLoading || !termInput.trim()}
+                  className="px-3 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-white transition-colors disabled:opacity-40">
+                  {termLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                </button>
+                <button onClick={() => setTermOutput('')} title="Clear" className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 transition-colors">
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
-              <p className="text-lg font-bold text-white">Claude</p>
-              <p className="text-xs text-slate-500">Anthropic API Ready</p>
             </div>
-            <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <MessageSquare className="w-4 h-4 text-green-400" />
-                <span className="text-xs font-medium text-slate-400">Channels</span>
+          )}
+
+          {/* ── Commands tab ── */}
+          {tab === 'commands' && (
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="grid grid-cols-3 gap-3">
+                {QUICK_CMDS.map(cmd => (
+                  <button key={cmd.id} onClick={() => runCmd(cmd.command)}
+                    disabled={cmdLoading === cmd.command}
+                    className="flex items-start gap-3 p-3 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-orange-500/40 rounded-xl transition-all text-left disabled:opacity-40">
+                    <div className="w-8 h-8 bg-orange-500/10 rounded-lg flex items-center justify-center shrink-0">
+                      <cmd.icon className="w-4 h-4 text-orange-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-200">{cmd.label}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{cmd.description}</p>
+                      <p className="text-xs text-slate-700 font-mono mt-1 truncate">{cmd.command}</p>
+                    </div>
+                    {cmdLoading === cmd.command && <Loader2 className="w-4 h-4 animate-spin text-orange-400 ml-auto shrink-0" />}
+                  </button>
+                ))}
               </div>
-              <p className="text-lg font-bold text-white">0 Active</p>
-              <p className="text-xs text-slate-500">Configure in CLI</p>
             </div>
-            <div className="bg-slate-900 rounded-xl border border-slate-800 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Settings className="w-4 h-4 text-orange-400" />
-                <span className="text-xs font-medium text-slate-400">Version</span>
-              </div>
-              <p className="text-lg font-bold text-white">2026.2.16</p>
-              <p className="text-xs text-slate-500">OpenClaw Latest</p>
-            </div>
-          </div>
+          )}
         </main>
       </div>
     </div>
