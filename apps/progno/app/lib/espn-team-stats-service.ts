@@ -56,8 +56,19 @@ export const derivedStatsCache = new Map<string, {
   losses: number;
 }>();
 
+// Secondary cache keyed by "homeOdds:awayOdds:spread:total" for when team names aren't passed
+// pick-engine.ts calls estimateTeamStatsFromOdds(oddsObj, sport) without team names
+export const oddsKeyedCache = new Map<string, {
+  home: { recentAvgPoints: number; recentAvgAllowed: number; scoringStdDev: number; wins: number; losses: number; pointsFor: number; pointsAgainst: number };
+  away: { recentAvgPoints: number; recentAvgAllowed: number; scoringStdDev: number; wins: number; losses: number; pointsFor: number; pointsAgainst: number };
+}>();
+
+export function makeOddsKey(odds: { home: number; away: number; spread?: number; total?: number }): string {
+  return `${odds.home}:${odds.away}:${odds.spread ?? 0}:${odds.total ?? 0}`;
+}
+
 /**
- * Synchronously read cached derived stats for a team.
+ * Synchronously read cached derived stats for a team by name.
  * Returns null if not yet warmed — pick-engine falls back to market-derived.
  */
 export function syncGetCachedStats(teamName: string, league: 'nba' | 'ncaab') {
@@ -65,39 +76,87 @@ export function syncGetCachedStats(teamName: string, league: 'nba' | 'ncaab') {
 }
 
 /**
+ * Synchronously read cached stats by odds key (used when team names not available).
+ */
+export function syncGetCachedStatsByOdds(oddsKey: string) {
+  return oddsKeyedCache.get(oddsKey) ?? null;
+}
+
+/**
  * Pre-warm the ESPN stats cache for a list of games before runPickEngine is called.
  * Call this once per request in route.ts, then runPickEngine will find data synchronously.
  */
 export async function warmStatsCache(
-  games: Array<{ home_team: string; away_team: string }>,
-  league: 'nba' | 'ncaab',
-  spread?: number,
-  total?: number
+  games: Array<{ home_team: string; away_team: string; bookmakers?: any[] }>,
+  league: 'nba' | 'ncaab'
 ): Promise<void> {
-  const teamNames = new Set<string>();
-  for (const g of games) {
-    teamNames.add(g.home_team);
-    teamNames.add(g.away_team);
-  }
-
   await Promise.allSettled(
-    [...teamNames].map(async (name) => {
-      const id = resolveEspnId(name, league);
-      if (!id) return;
-      const stats = await fetchTeamCalibrationStats(id, league, 15);
-      if (!stats) return;
+    games.map(async (game) => {
+      const homeId = resolveEspnId(game.home_team, league);
+      const awayId = resolveEspnId(game.away_team, league);
+      if (!homeId || !awayId) return;
 
-      const mktTotal = total ?? (league === 'nba' ? 224 : 144);
-      const mktSpread = spread ?? 0;
-      const marketExp = (mktTotal - mktSpread) / 2;
+      const [homeStats, awayStats] = await Promise.all([
+        fetchTeamCalibrationStats(homeId, league, 15),
+        fetchTeamCalibrationStats(awayId, league, 15),
+      ]);
+      if (!homeStats || !awayStats) return;
 
-      derivedStatsCache.set(`${league}:${name}`, {
-        recentAvgPoints: (stats.avgPointsScored + marketExp) / 2,
-        recentAvgAllowed: (stats.avgPointsAllowed + marketExp) / 2,
-        scoringStdDev: Math.min(Math.max(stats.scoringStdDev, 5), 20),
-        wins: Math.round(stats.recentForm * 15),
-        losses: Math.round((1 - stats.recentForm) * 15),
-      });
+      // Derive market spread/total from bookmakers if available
+      let mktSpread = 0;
+      let mktTotal = league === 'nba' ? 224 : 144;
+      if (game.bookmakers?.length) {
+        const book = game.bookmakers[0];
+        const spreads = book.markets?.find((m: any) => m.key === 'spreads');
+        const totals = book.markets?.find((m: any) => m.key === 'totals');
+        const sHome = spreads?.outcomes?.find((o: any) => o.name === game.home_team);
+        const tOver = totals?.outcomes?.find((o: any) => o.name === 'Over');
+        if (sHome?.point != null) mktSpread = sHome.point;
+        if (tOver?.point != null) mktTotal = tOver.point;
+      }
+
+      const marketHomeExp = (mktTotal - mktSpread) / 2;
+      const marketAwayExp = (mktTotal + mktSpread) / 2;
+
+      const homeEntry = {
+        recentAvgPoints: (homeStats.homeAvgScored + marketHomeExp) / 2,
+        recentAvgAllowed: (homeStats.homeAvgAllowed + marketAwayExp) / 2,
+        scoringStdDev: Math.min(Math.max(homeStats.scoringStdDev, 5), 20),
+        wins: Math.round(homeStats.recentForm * 15),
+        losses: Math.round((1 - homeStats.recentForm) * 15),
+        pointsFor: homeStats.avgPointsScored * 82,
+        pointsAgainst: homeStats.avgPointsAllowed * 82,
+      };
+      const awayEntry = {
+        recentAvgPoints: (awayStats.awayAvgScored + marketAwayExp) / 2,
+        recentAvgAllowed: (awayStats.awayAvgAllowed + marketHomeExp) / 2,
+        scoringStdDev: Math.min(Math.max(awayStats.scoringStdDev, 5), 20),
+        wins: Math.round(awayStats.recentForm * 15),
+        losses: Math.round((1 - awayStats.recentForm) * 15),
+        pointsFor: awayStats.avgPointsScored * 82,
+        pointsAgainst: awayStats.avgPointsAllowed * 82,
+      };
+
+      // Store by team name (used when team names are passed)
+      derivedStatsCache.set(`${league}:${game.home_team}`, homeEntry);
+      derivedStatsCache.set(`${league}:${game.away_team}`, awayEntry);
+
+      // Also store by odds key so pick-engine (no team names) can find it
+      if (game.bookmakers?.length) {
+        const book = game.bookmakers[0];
+        const h2h = book.markets?.find((m: any) => m.key === 'h2h');
+        const hHome = h2h?.outcomes?.find((o: any) => o.name === game.home_team);
+        const hAway = h2h?.outcomes?.find((o: any) => o.name === game.away_team);
+        if (hHome?.price != null && hAway?.price != null) {
+          const key = makeOddsKey({
+            home: Math.round(hHome.price),
+            away: Math.round(hAway.price),
+            spread: mktSpread,
+            total: mktTotal,
+          });
+          oddsKeyedCache.set(key, { home: homeEntry, away: awayEntry });
+        }
+      }
     })
   );
 }

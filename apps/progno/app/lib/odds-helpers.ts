@@ -174,7 +174,6 @@ export function estimateTeamStatsFromOdds(
           null;
 
     if (league) {
-      // Dynamic require to avoid circular import — cache is a plain Map, always available
       try {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { syncGetCachedStats } = require('./espn-team-stats-service');
@@ -185,8 +184,8 @@ export function estimateTeamStatsFromOdds(
             home: {
               wins: homeCache.wins,
               losses: homeCache.losses,
-              pointsFor: homeCache.recentAvgPoints * 82,
-              pointsAgainst: homeCache.recentAvgAllowed * 82,
+              pointsFor: homeCache.pointsFor ?? homeCache.recentAvgPoints * 82,
+              pointsAgainst: homeCache.pointsAgainst ?? homeCache.recentAvgAllowed * 82,
               recentAvgPoints: homeCache.recentAvgPoints,
               recentAvgAllowed: homeCache.recentAvgAllowed,
               scoringStdDev: homeCache.scoringStdDev,
@@ -194,8 +193,8 @@ export function estimateTeamStatsFromOdds(
             away: {
               wins: awayCache.wins,
               losses: awayCache.losses,
-              pointsFor: awayCache.recentAvgPoints * 82,
-              pointsAgainst: awayCache.recentAvgAllowed * 82,
+              pointsFor: awayCache.pointsFor ?? awayCache.recentAvgPoints * 82,
+              pointsAgainst: awayCache.pointsAgainst ?? awayCache.recentAvgAllowed * 82,
               recentAvgPoints: awayCache.recentAvgPoints,
               recentAvgAllowed: awayCache.recentAvgAllowed,
               scoringStdDev: awayCache.scoringStdDev,
@@ -203,9 +202,41 @@ export function estimateTeamStatsFromOdds(
           };
         }
       } catch {
-        // ESPN cache unavailable — fall through to market-derived
+        // ESPN cache unavailable — fall through
       }
     }
+  }
+
+  // Odds-keyed cache lookup — used when team names not passed (e.g. pick-engine.ts)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { syncGetCachedStatsByOdds, makeOddsKey } = require('./espn-team-stats-service');
+    const oddsKey = makeOddsKey(odds);
+    const cached = syncGetCachedStatsByOdds(oddsKey);
+    if (cached) {
+      return {
+        home: {
+          wins: cached.home.wins,
+          losses: cached.home.losses,
+          pointsFor: cached.home.pointsFor,
+          pointsAgainst: cached.home.pointsAgainst,
+          recentAvgPoints: cached.home.recentAvgPoints,
+          recentAvgAllowed: cached.home.recentAvgAllowed,
+          scoringStdDev: cached.home.scoringStdDev,
+        },
+        away: {
+          wins: cached.away.wins,
+          losses: cached.away.losses,
+          pointsFor: cached.away.pointsFor,
+          pointsAgainst: cached.away.pointsAgainst,
+          recentAvgPoints: cached.away.recentAvgPoints,
+          recentAvgAllowed: cached.away.recentAvgAllowed,
+          scoringStdDev: cached.away.scoringStdDev,
+        },
+      };
+    }
+  } catch {
+    // odds-keyed cache unavailable — fall through to market-derived
   }
 
   const sportKey = sport.toLowerCase().replace(/basketball_|americanfootball_|icehockey_|baseball_/, '');
