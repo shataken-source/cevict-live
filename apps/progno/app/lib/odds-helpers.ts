@@ -184,6 +184,7 @@ export function estimateTeamStatsFromOdds(
     if (league) {
       const homeCache = syncGetCachedStats(resolvedHome, league);
       const awayCache = syncGetCachedStats(resolvedAway, league);
+      console.log(`[ODDS_HELPERS] ${resolvedHome}→${homeCache ? `HIT stdDev=${homeCache.scoringStdDev.toFixed(1)}` : 'MISS'} | ${resolvedAway}→${awayCache ? 'HIT' : 'MISS'}`);
       if (homeCache && awayCache) {
         return {
           home: {
