@@ -54,6 +54,8 @@ export const derivedStatsCache = new Map<string, {
   scoringStdDev: number;
   wins: number;
   losses: number;
+  pointsFor: number;
+  pointsAgainst: number;
 }>();
 
 // Secondary cache keyed by "homeOdds:awayOdds:spread:total" for when team names aren't passed

@@ -3,6 +3,8 @@
  * Shared utilities for odds processing and estimation
  */
 
+import { syncGetCachedStats, syncGetCachedStatsByOdds, makeOddsKey } from './espn-team-stats-service'
+
 // Convert American odds to decimal
 export function americanToDecimal(americanOdds: number): number {
   if (americanOdds > 0) {
@@ -174,69 +176,57 @@ export function estimateTeamStatsFromOdds(
           null;
 
     if (league) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { syncGetCachedStats } = require('./espn-team-stats-service');
-        const homeCache = syncGetCachedStats(homeTeam, league);
-        const awayCache = syncGetCachedStats(awayTeam, league);
-        if (homeCache && awayCache) {
-          return {
-            home: {
-              wins: homeCache.wins,
-              losses: homeCache.losses,
-              pointsFor: homeCache.pointsFor ?? homeCache.recentAvgPoints * 82,
-              pointsAgainst: homeCache.pointsAgainst ?? homeCache.recentAvgAllowed * 82,
-              recentAvgPoints: homeCache.recentAvgPoints,
-              recentAvgAllowed: homeCache.recentAvgAllowed,
-              scoringStdDev: homeCache.scoringStdDev,
-            },
-            away: {
-              wins: awayCache.wins,
-              losses: awayCache.losses,
-              pointsFor: awayCache.pointsFor ?? awayCache.recentAvgPoints * 82,
-              pointsAgainst: awayCache.pointsAgainst ?? awayCache.recentAvgAllowed * 82,
-              recentAvgPoints: awayCache.recentAvgPoints,
-              recentAvgAllowed: awayCache.recentAvgAllowed,
-              scoringStdDev: awayCache.scoringStdDev,
-            },
-          };
-        }
-      } catch {
-        // ESPN cache unavailable — fall through
+      const homeCache = syncGetCachedStats(homeTeam, league);
+      const awayCache = syncGetCachedStats(awayTeam, league);
+      if (homeCache && awayCache) {
+        return {
+          home: {
+            wins: homeCache.wins,
+            losses: homeCache.losses,
+            pointsFor: homeCache.pointsFor,
+            pointsAgainst: homeCache.pointsAgainst,
+            recentAvgPoints: homeCache.recentAvgPoints,
+            recentAvgAllowed: homeCache.recentAvgAllowed,
+            scoringStdDev: homeCache.scoringStdDev,
+          },
+          away: {
+            wins: awayCache.wins,
+            losses: awayCache.losses,
+            pointsFor: awayCache.pointsFor,
+            pointsAgainst: awayCache.pointsAgainst,
+            recentAvgPoints: awayCache.recentAvgPoints,
+            recentAvgAllowed: awayCache.recentAvgAllowed,
+            scoringStdDev: awayCache.scoringStdDev,
+          },
+        };
       }
     }
   }
 
   // Odds-keyed cache lookup — used when team names not passed (e.g. pick-engine.ts)
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { syncGetCachedStatsByOdds, makeOddsKey } = require('./espn-team-stats-service');
-    const oddsKey = makeOddsKey(odds);
-    const cached = syncGetCachedStatsByOdds(oddsKey);
-    if (cached) {
-      return {
-        home: {
-          wins: cached.home.wins,
-          losses: cached.home.losses,
-          pointsFor: cached.home.pointsFor,
-          pointsAgainst: cached.home.pointsAgainst,
-          recentAvgPoints: cached.home.recentAvgPoints,
-          recentAvgAllowed: cached.home.recentAvgAllowed,
-          scoringStdDev: cached.home.scoringStdDev,
-        },
-        away: {
-          wins: cached.away.wins,
-          losses: cached.away.losses,
-          pointsFor: cached.away.pointsFor,
-          pointsAgainst: cached.away.pointsAgainst,
-          recentAvgPoints: cached.away.recentAvgPoints,
-          recentAvgAllowed: cached.away.recentAvgAllowed,
-          scoringStdDev: cached.away.scoringStdDev,
-        },
-      };
-    }
-  } catch {
-    // odds-keyed cache unavailable — fall through to market-derived
+  const oddsKey = makeOddsKey(odds);
+  const cached = syncGetCachedStatsByOdds(oddsKey);
+  if (cached) {
+    return {
+      home: {
+        wins: cached.home.wins,
+        losses: cached.home.losses,
+        pointsFor: cached.home.pointsFor,
+        pointsAgainst: cached.home.pointsAgainst,
+        recentAvgPoints: cached.home.recentAvgPoints,
+        recentAvgAllowed: cached.home.recentAvgAllowed,
+        scoringStdDev: cached.home.scoringStdDev,
+      },
+      away: {
+        wins: cached.away.wins,
+        losses: cached.away.losses,
+        pointsFor: cached.away.pointsFor,
+        pointsAgainst: cached.away.pointsAgainst,
+        recentAvgPoints: cached.away.recentAvgPoints,
+        recentAvgAllowed: cached.away.recentAvgAllowed,
+        scoringStdDev: cached.away.scoringStdDev,
+      },
+    };
   }
 
   const sportKey = sport.toLowerCase().replace(/basketball_|americanfootball_|icehockey_|baseball_/, '');
