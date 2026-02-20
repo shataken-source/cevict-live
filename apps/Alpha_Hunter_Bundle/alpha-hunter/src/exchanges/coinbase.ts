@@ -179,14 +179,30 @@ export class CoinbaseExchange {
   }
 
   /**
-   * Get USD balance
+   * Get the primary portfolio UUID (cached after first call)
+   */
+  private portfolioId: string | null = null;
+  async getPortfolioId(): Promise<string | null> {
+    if (this.portfolioId) return this.portfolioId;
+    try {
+      const data = await this.request('GET', '/portfolios');
+      this.portfolioId = data.portfolios?.[0]?.uuid || null;
+      return this.portfolioId;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get USD balance — uses portfolios breakdown (1 call, no pagination)
    */
   async getUSDBalance(): Promise<number> {
-    // Use a single-account lookup by currency to avoid full pagination
     try {
-      const data = await this.request('GET', '/accounts', undefined, { limit: '250' });
-      const usd = (data.accounts || []).find((a: any) => a.currency === 'USD');
-      return parseFloat(usd?.available_balance?.value || '0');
+      const pfId = await this.getPortfolioId();
+      if (!pfId) return 0;
+      const data = await this.request('GET', `/portfolios/${pfId}`);
+      const cash = data.breakdown?.portfolio_balances?.total_cash_equivalent_balance?.value;
+      return parseFloat(cash || '0');
     } catch {
       return 0;
     }
@@ -511,58 +527,40 @@ export class CoinbaseExchange {
    */
   async getPortfolio(): Promise<{
     usdBalance: number;
+    cryptoBalance: number;
+    totalValue: number;
     positions: Array<{
       symbol: string;
       amount: number;
       value: number;
       price: number;
     }>;
-    totalValue: number;
   }> {
     try {
-      // Single fetch — derive usdBalance from the same accounts list
-      const accounts = await this.getAccounts();
-      const usdAccount = accounts.find(a => a.currency === 'USD');
-      const usdBalance = usdAccount?.available || 0;
+      // Single call to portfolios breakdown — no account pagination needed
+      const pfId = await this.getPortfolioId();
+      if (!pfId) return { usdBalance: 0, cryptoBalance: 0, totalValue: 0, positions: [] };
 
-      const positions: Array<{
-        symbol: string;
-        amount: number;
-        value: number;
-        price: number;
-      }> = [];
+      const data = await this.request('GET', `/portfolios/${pfId}`);
+      const balances = data.breakdown?.portfolio_balances || {};
+      const usdBalance = parseFloat(balances.total_cash_equivalent_balance?.value || '0');
+      const cryptoBalance = parseFloat(balances.total_crypto_balance?.value || '0');
+      const totalValue = parseFloat(balances.total_balance?.value || '0');
 
-      // Get crypto positions with values
-      for (const account of accounts) {
-        const amount = account.balance; // already mapped by getAccounts()
-        if (amount > 0.0001 && account.currency !== 'USD' && account.currency !== 'USDC') {
-          try {
-            const productId = `${account.currency}-USD`;
-            const price = await this.getPrice(productId);
-            if (price > 0) {
-              positions.push({
-                symbol: account.currency,
-                amount,
-                price,
-                value: amount * price,
-              });
-            }
-          } catch {
-            // Skip if can't get price (delisted or unsupported)
-          }
-        }
-      }
+      // Build positions from spot_positions (already has fiat values — no extra price calls)
+      const positions = (data.breakdown?.spot_positions || [])
+        .filter((p: any) => p.total_balance_fiat > 0.01 && p.asset !== 'USD' && p.asset !== 'USDC')
+        .map((p: any) => ({
+          symbol: p.asset,
+          amount: parseFloat(p.total_balance_crypto || '0'),
+          value: parseFloat(p.total_balance_fiat || '0'),
+          price: parseFloat(p.avg_entry_price || '0'),
+        }));
 
-      const cryptoValue = positions.reduce((sum, p) => sum + p.value, 0);
-
-      return {
-        usdBalance,
-        positions,
-        totalValue: usdBalance + cryptoValue,
-      };
+      return { usdBalance, cryptoBalance, totalValue, positions };
     } catch (error) {
       console.error('Error getting portfolio:', error);
-      return { usdBalance: 0, positions: [], totalValue: 0 };
+      return { usdBalance: 0, cryptoBalance: 0, totalValue: 0, positions: [] };
     }
   }
 }

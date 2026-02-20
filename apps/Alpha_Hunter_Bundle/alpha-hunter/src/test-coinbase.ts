@@ -58,16 +58,18 @@ async function main() {
     console.log(`   ❌ Candles failed: ${e.message}`);
   }
 
-  // 4. Portfolio
+  // 4. Portfolio (single API call via portfolios breakdown)
   console.log('\n── 4. Fetching portfolio...');
   try {
     const portfolio = await cb.getPortfolio();
-    console.log(`   Total value: $${portfolio.totalValue.toFixed(2)}`);
-    console.log(`   USD: $${portfolio.usdBalance.toFixed(2)}`);
+    console.log(`   Total:  $${portfolio.totalValue.toFixed(2)}`);
+    console.log(`   Cash:   $${portfolio.usdBalance.toFixed(2)}`);
+    console.log(`   Crypto: $${portfolio.cryptoBalance.toFixed(2)}`);
     if (portfolio.positions.length > 0) {
-      portfolio.positions.forEach(p => {
-        console.log(`   ${p.symbol}: ${p.amount} @ $${p.price.toLocaleString()} = $${p.value.toFixed(2)}`);
-      });
+      console.log(`   Positions (${portfolio.positions.length}):`);
+      portfolio.positions
+        .sort((a, b) => b.value - a.value)
+        .forEach(p => console.log(`     ${p.symbol.padEnd(8)} $${p.value.toFixed(2)}`));
     } else {
       console.log('   No crypto positions');
     }
