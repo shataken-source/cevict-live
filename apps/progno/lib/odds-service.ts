@@ -320,4 +320,3 @@ export class OddsService {
   }
 }
 
-export { OddsService };
