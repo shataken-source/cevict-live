@@ -167,17 +167,29 @@ export class CoinbaseExchange {
 
     } while (cursor && pageNum < maxPages);
 
-    console.log(`   [Coinbase] Fetched ${allAccounts.length} accounts total`);
     return allAccounts;
+  }
+
+  /**
+   * Get only non-zero balances — much faster for portfolio checks
+   */
+  async getBalances(): Promise<CoinbaseAccount[]> {
+    const accounts = await this.getAccounts();
+    return accounts.filter(a => a.balance > 0);
   }
 
   /**
    * Get USD balance
    */
   async getUSDBalance(): Promise<number> {
-    const accounts = await this.getAccounts();
-    const usdAccount = accounts.find(a => a.currency === 'USD');
-    return usdAccount?.available || 0;
+    // Use a single-account lookup by currency to avoid full pagination
+    try {
+      const data = await this.request('GET', '/accounts', undefined, { limit: '250' });
+      const usd = (data.accounts || []).find((a: any) => a.currency === 'USD');
+      return parseFloat(usd?.available_balance?.value || '0');
+    } catch {
+      return 0;
+    }
   }
 
   /**
@@ -508,8 +520,10 @@ export class CoinbaseExchange {
     totalValue: number;
   }> {
     try {
+      // Single fetch — derive usdBalance from the same accounts list
       const accounts = await this.getAccounts();
-      const usdBalance = await this.getUSDBalance();
+      const usdAccount = accounts.find(a => a.currency === 'USD');
+      const usdBalance = usdAccount?.available || 0;
 
       const positions: Array<{
         symbol: string;
@@ -520,7 +534,7 @@ export class CoinbaseExchange {
 
       // Get crypto positions with values
       for (const account of accounts) {
-        const amount = parseFloat(account.available_balance?.value || '0');
+        const amount = account.balance; // already mapped by getAccounts()
         if (amount > 0.0001 && account.currency !== 'USD' && account.currency !== 'USDC') {
           try {
             const productId = `${account.currency}-USD`;

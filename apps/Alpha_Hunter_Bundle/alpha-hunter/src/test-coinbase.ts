@@ -24,13 +24,12 @@ async function main() {
   console.log('✅ Credentials loaded\n');
 
   // 1. Balance
-  console.log('── 1. Fetching accounts/balance...');
+  console.log('── 1. Fetching balances...');
   try {
     const usd = await cb.getUSDBalance();
     console.log(`   USD balance: $${usd.toFixed(2)}`);
-    const accounts = await cb.getAccounts();
-    const nonZero = accounts.filter(a => a.balance > 0.0001);
-    console.log(`   Non-zero accounts: ${nonZero.map(a => `${a.currency}=${a.balance}`).join(', ') || 'none'}`);
+    const nonZero = await cb.getBalances();
+    console.log(`   Non-zero accounts: ${nonZero.map(a => `${a.currency}=${a.balance}`).join(', ') || 'none (unfunded)'}`);
   } catch (e: any) {
     console.log(`   ❌ Balance failed: ${e.message}`);
   }
