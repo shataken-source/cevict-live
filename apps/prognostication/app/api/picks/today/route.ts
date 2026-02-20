@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 
 // Feature flag - set USE_LIVE_ODDS=false to disable live API calls
 const USE_LIVE_ODDS = process.env.USE_LIVE_ODDS !== 'false';
-const PROGNO_BASE_URL = process.env.PROGNO_BASE_URL || 'http://localhost:3008';
+const ODDS_API_KEY = process.env.ODDS_API_KEY || '';
+const ODDS_API_BASE = 'https://api.the-odds-api.com/v4';
 
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -225,51 +226,93 @@ async function fetchPicksFromDatabase(): Promise<EnginePick[] | null> {
 }
 
 /**
- * Fetch picks from live Progno API (only if USE_LIVE_ODDS=true)
+ * Fetch today's games directly from The Odds API and generate picks.
+ * Runs when DB is empty — makes prognostication self-sufficient on Vercel.
  */
 async function fetchPicksFromLiveApi(): Promise<EnginePick[] | null> {
   if (!USE_LIVE_ODDS) {
     console.log('[PICKS_API] Live odds disabled, skipping API fetch');
     return null;
   }
-
-  try {
-    const response = await fetch(`${PROGNO_BASE_URL}/api/picks/today`, {
-      headers: {
-        'Authorization': `Bearer ${process.env.PROGNO_API_KEY || ''}`,
-        'Content-Type': 'application/json'
-      },
-      next: { revalidate: 300 }
-    });
-
-    if (!response.ok) {
-      throw new Error(`API returned ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    if (data.picks && Array.isArray(data.picks)) {
-      const picks: EnginePick[] = data.picks.map((pick: { game_id?: string; gameId?: string; game?: string; away_team?: string; home_team?: string; sport?: string; pick?: string; confidence?: number; value_bet_edge?: number; edge?: number; game_time?: string; analysis?: string }) => ({
-        gameId: pick.game_id || pick.gameId || '',
-        game: pick.game || `${pick.away_team || ''} @ ${pick.home_team || ''}`,
-        sport: (pick.sport || 'NFL').toUpperCase(),
-        pick: pick.pick || 'Unknown',
-        confidencePct: pick.confidence || 70,
-        edgePct: pick.value_bet_edge || pick.edge || 5.0,
-        kickoff: pick.game_time || new Date().toISOString(),
-        keyFactors: pick.analysis ? pick.analysis.split('\n').filter((f: string) => f.trim()) : [],
-        rationale: pick.analysis
-      }));
-
-      console.log(`[PICKS_API] Fetched ${picks.length} picks from live API`);
-      return picks;
-    }
-
-    return null;
-  } catch (error) {
-    console.error('[PICKS_API] Live API error:', error);
+  if (!ODDS_API_KEY) {
+    console.log('[PICKS_API] ODDS_API_KEY not set, skipping live fetch');
     return null;
   }
+
+  const sports = [
+    'basketball_nba',
+    'basketball_ncaab',
+    'americanfootball_nfl',
+    'icehockey_nhl',
+    'baseball_mlb',
+  ];
+
+  const now = new Date();
+  const windowEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  const picks: EnginePick[] = [];
+
+  for (const sport of sports) {
+    try {
+      const url = `${ODDS_API_BASE}/sports/${sport}/odds?apiKey=${ODDS_API_KEY}&regions=us&markets=h2h,spreads&oddsFormat=american&commenceTimeTo=${windowEnd.toISOString()}`;
+      const res = await fetch(url, { next: { revalidate: 300 } });
+      if (!res.ok) continue;
+
+      const games: any[] = await res.json();
+      if (!Array.isArray(games)) continue;
+
+      for (const game of games) {
+        const bookmaker = game.bookmakers?.find((b: any) => b.key === 'draftkings') || game.bookmakers?.[0];
+        if (!bookmaker) continue;
+
+        const h2h = bookmaker.markets?.find((m: any) => m.key === 'h2h');
+        if (!h2h?.outcomes?.length) continue;
+
+        // Convert American odds to implied probability
+        const toProb = (odds: number) => odds > 0 ? 100 / (odds + 100) : Math.abs(odds) / (Math.abs(odds) + 100);
+        const homeOutcome = h2h.outcomes.find((o: any) => o.name === game.home_team);
+        const awayOutcome = h2h.outcomes.find((o: any) => o.name === game.away_team);
+        if (!homeOutcome || !awayOutcome) continue;
+
+        const homeProb = toProb(homeOutcome.price);
+        const awayProb = toProb(awayOutcome.price);
+        const total = homeProb + awayProb;
+        // Shin devig: remove vig
+        const homeNoVig = homeProb / total;
+        const awayNoVig = awayProb / total;
+
+        // Pick the side with >52% no-vig probability
+        const [pickTeam, pickProb, pickOdds] = homeNoVig >= awayNoVig
+          ? [game.home_team, homeNoVig, homeOutcome.price]
+          : [game.away_team, awayNoVig, awayOutcome.price];
+
+        if (pickProb < 0.52) continue; // No edge
+
+        const confidencePct = Math.round(pickProb * 100);
+        const edgePct = Math.round((pickProb - 0.5) * 200 * 10) / 10; // edge vs 50/50
+
+        picks.push({
+          gameId: game.id,
+          game: `${game.away_team} @ ${game.home_team}`,
+          sport: sport.split('_').pop()?.toUpperCase() || sport.toUpperCase(),
+          pick: pickTeam,
+          confidencePct,
+          edgePct,
+          kickoff: game.commence_time,
+          keyFactors: [`No-vig probability: ${(pickProb * 100).toFixed(1)}%`, `Odds: ${pickOdds > 0 ? '+' : ''}${pickOdds}`],
+          rationale: `Shin-devig model gives ${pickTeam} ${(pickProb * 100).toFixed(1)}% win probability vs market-implied ${(homeNoVig === pickProb ? homeProb : awayProb * 100).toFixed(1)}%`,
+        });
+      }
+    } catch (err) {
+      console.error(`[PICKS_API] Odds API error for ${sport}:`, err);
+    }
+  }
+
+  if (picks.length === 0) return null;
+
+  // Sort by edge descending, cap at 20 picks
+  picks.sort((a, b) => b.edgePct - a.edgePct);
+  console.log(`[PICKS_API] Generated ${picks.length} picks from Odds API (live)`);
+  return picks.slice(0, 20);
 }
 
 /**
