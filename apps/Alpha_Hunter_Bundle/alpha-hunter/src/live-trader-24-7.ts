@@ -15,9 +15,8 @@ import * as path from 'path';
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 import Anthropic from '@anthropic-ai/sdk';
-// BotManager/CoinbaseExchange were deleted — stub as no-op classes
-class BotManager { constructor() { } async start() { } }
-class CoinbaseExchange { constructor() { } getTicker() { return null } getCandles() { return [] } getPrice() { return 0 } }
+import { BotManager } from './bot-manager';
+import { CoinbaseExchange } from './exchanges/coinbase';
 import { historicalKnowledge } from './integration/intelligence/historical-knowledge';
 import { KalshiTrader } from './integration/intelligence/kalshi-trader';
 import { PrognosticationSync } from './integration/intelligence/prognostication-sync';
