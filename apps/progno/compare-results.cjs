@@ -5,19 +5,19 @@
  * Default: checks all predictions files from last 14 days that have completed games.
  */
 
-const fs   = require('fs');
+const fs = require('fs');
 const path = require('path');
 const https = require('https');
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const ODDS_API_KEY = 'dea4f9f87fe7a2e3642523ee51d398d9';
-const PROGNO_DIR   = path.join(__dirname);
+const PROGNO_DIR = path.join(__dirname);
 
 const SPORT_KEYS = {
-  NFL:   'americanfootball_nfl',
-  NBA:   'basketball_nba',
-  NHL:   'icehockey_nhl',
-  MLB:   'baseball_mlb',
+  NFL: 'americanfootball_nfl',
+  NBA: 'basketball_nba',
+  NHL: 'icehockey_nhl',
+  MLB: 'baseball_mlb',
   NCAAB: 'basketball_ncaab',
   NCAAF: 'americanfootball_ncaaf',
 };
@@ -31,7 +31,7 @@ function fetchJson(url) {
       res.on('data', d => { data += d; });
       res.on('end', () => {
         try { resolve(JSON.parse(data)); }
-        catch (e) { reject(new Error(`JSON parse error: ${e.message}\nBody: ${data.substring(0,200)}`)); }
+        catch (e) { reject(new Error(`JSON parse error: ${e.message}\nBody: ${data.substring(0, 200)}`)); }
       });
     }).on('error', reject);
   });
@@ -70,7 +70,7 @@ function findResult(scores, homeTeam, awayTeam) {
     const gh = g.home_team || '';
     const ga = g.away_team || '';
     if ((teamsMatch(gh, homeTeam) && teamsMatch(ga, awayTeam)) ||
-        (teamsMatch(gh, awayTeam) && teamsMatch(ga, homeTeam))) {
+      (teamsMatch(gh, awayTeam) && teamsMatch(ga, homeTeam))) {
       if (!g.completed) return { found: true, completed: false, game: g };
       const hs = g.scores?.find(s => s.name === g.home_team)?.score;
       const as_ = g.scores?.find(s => s.name === g.away_team)?.score;
@@ -137,7 +137,7 @@ async function main() {
   const scoreCache = {};
   for (const [league, sportKey] of Object.entries(SPORT_KEYS)) {
     process.stdout.write(`  ${league}... `);
-    scoreCache[league] = await fetchScores(sportKey, 3);
+    scoreCache[league] = await fetchScores(sportKey, 7);
     console.log(`${scoreCache[league].length} games`);
   }
 
@@ -240,8 +240,8 @@ async function main() {
     '═'.repeat(100),
     '',
     col('DATE', 12) + col('LG', 7) + col('MATCHUP', 38) +
-      col('PICK', 22) + col('TYPE', 8) + col('CONF', 6) + col('EDGE', 7) +
-      col('ACTUAL', 22) + col('SCORE', 10) + 'RESULT',
+    col('PICK', 22) + col('TYPE', 8) + col('CONF', 6) + col('EDGE', 7) +
+    col('ACTUAL', 22) + col('SCORE', 10) + 'RESULT',
     '─'.repeat(100),
     ...rows.map(r =>
       col(r.date, 12) + col(r.league, 7) + col(r.matchup, 38) +
