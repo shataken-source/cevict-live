@@ -9,13 +9,13 @@ import { getSetting } from './settings'
  */
 async function fetchAndStoreTrends() {
   const allTrends: string[] = []
-  
+
   // Fetch Twitter trends
   try {
     const twitterLocation = await getSetting('TWITTER_TRENDS_LOCATION', process.env.TWITTER_TRENDS_LOCATION || 'worldwide')
     const woeid = getWOEID(twitterLocation || 'worldwide')
     const twitterTrends = await fetchTwitterTrends(woeid)
-    
+
     if (twitterTrends.length > 0) {
       console.log(`✓ Fetched ${twitterTrends.length} Twitter trends`)
       allTrends.push(...twitterTrends.map(t => `twitter:${t}`))
@@ -28,13 +28,13 @@ async function fetchAndStoreTrends() {
 
   // Fetch Google Trends
   try {
-    const googleLocation = await getSetting('GOOGLE_TRENDS_LOCATION', 
-      process.env.GOOGLE_TRENDS_LOCATION || 
-      process.env.TWITTER_TRENDS_LOCATION || 
+    const googleLocation = await getSetting('GOOGLE_TRENDS_LOCATION',
+      process.env.GOOGLE_TRENDS_LOCATION ||
+      process.env.TWITTER_TRENDS_LOCATION ||
       'US'
     )
     const googleTrends = await fetchGoogleTrends(googleLocation || 'US')
-    
+
     if (googleTrends.length > 0) {
       console.log(`✓ Fetched ${googleTrends.length} Google Trends`)
       allTrends.push(...googleTrends.map(t => `google:${t}`))
@@ -57,7 +57,7 @@ async function fetchAndStoreTrends() {
   const googleTrendNames = allTrends
     .filter(t => t.startsWith('google:'))
     .map(t => t.replace('google:', ''))
-  
+
   // Find trends that appear in both sources
   const bothTrends = twitterTrendNames.filter(t => googleTrendNames.includes(t))
   const twitterOnly = twitterTrendNames.filter(t => !googleTrendNames.includes(t))
@@ -147,7 +147,7 @@ async function monitorTrends() {
   try {
     // Fetch and store latest Twitter trends
     const twitterTrends = await fetchAndStoreTrends()
-    
+
     // Get current trends from database (fallback if Twitter API fails)
     const currentTrends = twitterTrends.length > 0 ? twitterTrends : await getCurrentTrends()
 
@@ -221,17 +221,5 @@ async function monitorTrends() {
   }
 }
 
-// Run if called directly
-if (require.main === module) {
-  monitorTrends()
-    .then(() => {
-      console.log('Trend monitor finished')
-      process.exit(0)
-    })
-    .catch((error) => {
-      console.error('Trend monitor failed:', error)
-      process.exit(1)
-    })
-}
 
 export { monitorTrends }

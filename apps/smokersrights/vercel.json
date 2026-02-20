@@ -3,7 +3,7 @@
   "outputDirectory": ".next",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/smokersrights/",
+  "ignoreCommand": "git fetch origin $VERCEL_GIT_PREVIOUS_SHA --depth=1 2>/dev/null; git diff --quiet $VERCEL_GIT_PREVIOUS_SHA $VERCEL_GIT_COMMIT_SHA -- apps/smokersrights/ 2>/dev/null || exit 1",
   "regions": [
     "iad1"
   ],
