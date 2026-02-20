@@ -74,10 +74,7 @@ function convertToPrognoFormat(marketData: PredictionMarketData): any {
           home: kalshiMarket.yes_bid ? -1 / kalshiMarket.yes_bid : -1 / kalshiMarket.no_bid,
           away: kalshiMarket.yes_bid ? 1 / kalshiMarket.yes_bid : 1 / kalshiMarket.no_bid
         },
-        predictedScore: {
-          home: Math.round(Math.random() * 5 + 2),
-          away: Math.round(Math.random() * 4 + 1)
-        },
+        predictedScore: null,
         confidence: 0.6,
         edge: kalshiMarket.yes_bid > kalshiMarket.no_bid ?
           ((kalshiMarket.yes_bid - kalshiMarket.no_bid) / kalshiMarket.no_bid) * 100 :

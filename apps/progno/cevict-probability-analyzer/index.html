@@ -466,8 +466,34 @@
     function getSportIcon(sport) { return SPORT_ICONS[sport] || '🎯'; }
     function formatOdds(odds) { return odds > 0 ? `+${odds}` : String(odds); }
 
-    function loadPredictions() {
-      document.getElementById("jsonFileInput").click();
+    async function loadPredictions() {
+      const dateInput = document.getElementById('pickDate');
+      const date = dateInput.value;
+      if (!date) { alert('Select a date first'); return; }
+      const btn = document.querySelector('.btn-load');
+      const orig = btn.textContent;
+      btn.textContent = 'Loading...';
+      btn.disabled = true;
+      try {
+        // Try fetching from the Progno API first
+        const baseUrl = window.location.origin.includes('localhost') ? 'http://localhost:3008' : window.location.origin;
+        const res = await fetch(`${baseUrl}/api/picks/today?date=${date}`, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          const picks = data.picks || data.results || data.predictions || (Array.isArray(data) ? data : null);
+          if (picks && picks.length > 0) {
+            allPicks = picks;
+            renderPicksList();
+            btn.textContent = orig;
+            btn.disabled = false;
+            return;
+          }
+        }
+      } catch (e) { /* fall through to file picker */ }
+      // Fall back to file picker if API unavailable
+      btn.textContent = orig;
+      btn.disabled = false;
+      document.getElementById('jsonFileInput').click();
     }
 
     function showStats() { if (!allPicks.length) return; const avgConf = (allPicks.reduce((s, p) => s + p.confidence, 0) / allPicks.length).toFixed(1); const avgEV = (allPicks.reduce((s, p) => s + (p.expected_value || 0), 0) / allPicks.length).toFixed(0); const leagues = [...new Set(allPicks.map(p => p.league))].join(", "); console.log(`Avg Conf: ${avgConf}% | Avg EV: ${avgEV} | Leagues: ${leagues}`); }
@@ -640,7 +666,7 @@
     function bayesianUpdate(priorProb, dataPoints) { let posterior = priorProb; for (const dp of dataPoints) { const likelihoodRatio = 1 + (dp.value / 100) * dp.weight; const priorOdds = posterior / (100 - posterior); posterior = (priorOdds * likelihoodRatio / (1 + priorOdds * likelihoodRatio)) * 100; } return { name: 'Bayesian', probability: Math.max(0, Math.min(100, posterior)), confidence: 80 }; }
     function weightedFactors(baseProb, dataPoints) { let total = dataPoints.reduce((s, d) => s + Math.max(-50, Math.min(50, d.value)) * d.weight, 0); const finalProb = Math.max(0, Math.min(100, baseProb + total)); return { name: 'Weighted Factors', probability: finalProb, confidence: 75 }; }
     function consensus(dataPoints) { if (!dataPoints.length) return { name: 'Consensus', probability: 50, confidence: 20 }; const avgProb = dataPoints.reduce((s, d) => s + d.value, 0) / dataPoints.length; return { name: 'Consensus', probability: avgProb, confidence: 70 }; }
-    function randomForest(dataPoints, baseProb) { let sum = 0; for (let i = 0; i < 50; i++) { let prob = baseProb; for (const dp of dataPoints) { if (Math.random() > 0.3) prob += (dp.value > 0 ? 1 : -1) * dp.weight * 3; } sum += Math.max(10, Math.min(90, prob)); } return { name: 'Random Forest', probability: sum / 50, confidence: 85 }; }
+    function randomForest(dataPoints, baseProb) { let sum = 0; let seed = baseProb * 1000 + dataPoints.reduce((s, d) => s + d.value * d.weight, 0) * 100; function seededRand() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; } for (let i = 0; i < 50; i++) { let prob = baseProb; for (const dp of dataPoints) { if (seededRand() > 0.3) prob += (dp.value > 0 ? 1 : -1) * dp.weight * 3; } sum += Math.max(10, Math.min(90, prob)); } return { name: 'Random Forest', probability: sum / 50, confidence: 85 }; }
     function xgboost(dataPoints, baseProb) { let pred = baseProb; for (let i = 0; i < 100; i++) { const out = dataPoints.reduce((s, d) => s + (d.value > 0 ? 1 : -1) * d.weight * 0.5, 0); pred += 0.05 * out; } return { name: 'XGBoost', probability: Math.max(10, Math.min(90, pred)), confidence: 87 }; }
     function neuralNetwork(dataPoints, baseProb) { const hidden = dataPoints.map(d => Math.max(0, (d.value / 100) * d.weight)).reduce((a, b) => a + b, 0) / dataPoints.length; const output = 1 / (1 + Math.exp(-((hidden - 0.5) * 4 + (baseProb - 50) / 25))); return { name: 'Neural Network', probability: Math.max(15, Math.min(85, output * 100)), confidence: 78 }; }
     function markovChain(baseProb) { return { name: 'Markov Chain', probability: Math.max(30, Math.min(70, 50 + (baseProb - 50) * 0.8)), confidence: 68 }; }

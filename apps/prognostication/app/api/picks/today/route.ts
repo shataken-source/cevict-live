@@ -56,8 +56,10 @@ interface TieredPicks {
   elite: EnginePick[];
 }
 
-// Mock picks for testing when no live data or database available
-const MOCK_PICKS: EnginePick[] = [
+// No mock picks - always serve real data or empty state
+const MOCK_PICKS: EnginePick[] = [];
+
+const _REMOVED_MOCK_PICKS_PLACEHOLDER = [
   {
     gameId: 'nfl-1',
     game: 'Chiefs vs Eagles',
@@ -412,12 +414,8 @@ export async function GET(request: NextRequest) {
       console.log(`[PICKS_API] Serving ${enginePicks.length} picks from database (cached)`);
     }
 
-    // 2. Fall back to mock data for testing (no API tokens used)
-    else {
-      enginePicks = MOCK_PICKS;
-      source = 'mock';
-      console.log(`[PICKS_API] Serving ${enginePicks.length} mock picks (no API calls)`);
-    }
+    // 2. No mock fallback - if DB is empty, try live API or return empty
+    // (Mock picks were removed to prevent serving fake data to real users)
 
     // 3. Only try live API if explicitly enabled (USE_LIVE_ODDS=true)
     // This prevents accidental API token usage during testing
