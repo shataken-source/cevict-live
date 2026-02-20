@@ -13,38 +13,22 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# ── Credentials ──────────────────────────────────────────────────────────────
-$ApiKeyId = "508d2642-a92d-42a4-93f4-2c60e8259004"
-$BaseUrl = "https://api.elections.kalshi.com"
-$PrivateKeyPem = @"
------BEGIN RSA PRIVATE KEY-----
-MIIEowIBAAKCAQEA4L+eyXXYKskvZvQOS9dQeuh308eXvatvNhnLJxjLOO8yJ19H
-dT3qimXUae5aSAdd0AD4wlcuIcxQnTi8FkM70OqXjHeiczDZMgDfumElzy0AHTbY
-LgOPWmWWK7IPEzUyc/7Fo8XyLRMo+fo3TY4YcYNwDCr4onMpQNNAxy7o/jrFE/Vt
-+LOhJwZjb7bX9TIJ8biMWXpDMoee/e6MfPoUD9FKm8Q5zIXgE5hNfCUnEU9enPaa
-6r/m4CUE2TY8NULsVhjPQ7gQ8ByKo4Xk5JfjIo27AgeDXI8ydCRAaTuf+paLaQo5
-nC/Cc7wRsYoQLl7Ukb/xmaBI+C0awkZXL0/EdwIDAQABAoIBAAL8BLv35a5OidnM
-BcqTzH83LITLADhq598xxhscYV4qEISgBQGODm2vXGg8yABcKtYEO3DOct6RpGui
-qwqT3vuC9Q7sV+1TlgCdBapO5CzVTxtZITXZD0ETUWvDMtDlInKmQt5OJWrvvJ78
-QFoikJIlURkqHMMKj8Fou4M16pskFM5zOKMP3VwITPJumwucY9AqRBw3elIxCuec
-gfTeCVuiHZWAK6DXhtSlruzod5UxtRAq+fYubwTx4S/5dZ2poNteClMaMmDgzJB2
-q+BCNC1Fy7EZ2dj4DoA2eYMQ2oROag83zTOR7sfabCl6SHSF8q95zFAtl3PaGD+h
-EbLfzZkCgYEA/DQ7z/LF4fEoEFWgAP2qCFtjDEk6SSSVPJbadPr9Os0/a13oCH8Y
-GBXF7HhIJNxgoM3n3Ch28of4/5AGKnylMv4zyV55EhSYA2Zio/fLfnbLH2195Qvb
-HjQRhieePnMZjTAJ07d88asd3jnpeZyJHUnCcnURASlI3sUNXMQ+ns8CgYEA5CGZ
-DYdtZBiEsMTvvtapJ9t75dwfmLdeGTZ/6obGiDyDarVCn/LtsNwlwKLVNGeImles
-PfXLSc/BfsLWShLlr6MjyAusU9wK4BbFUOu76qJ33f1H0gzZHlHSEf7BT/IV6uHY
-mMO5Zh9Y5hkggwIhnb7ZBq3hz6AvYsCtydd0KdkCgYBtYCHIb1sOP83GN7wqcdg5
-w5hTDbbvXaQzIKEhNnB3/edRIuqsNKI4X8j0Yr227rQhSOsS+aGMURfVjZp+9ouW
-b9P5srUC+Fdssgx5W8+uysoQmSWOHfQrRx2KdsgUAUrFhl3cqajQDgvoAmmUyiRU
-xVZE2SxEuqjVo9PFtX4K1QKBgQDW0QxeQPgxGSVZjxhyi5Adh//TIsRd+c0R0NAC
-94ZbIyBcivKByy8nKyYhjzNUdWmcbJI0hg83IfsCclV2yvSdvvEinltXXAyhls+W
-s2PwPazBzI6krJSGiGVXrJw7u6oH00MyFpuuHjaH9YE32/nroJqcP4AzEpOMWgNL
-3SX1gQKBgFNP+49qG987882PX9K7asEt3/r6MtVeO1EsfQlTtfZ8aZcC3+vuCS2C
-W2mXSHnEhtAcoNzlVoGuLqjDs+nhN2LRJU7N+8cyFnawSCxy5dXOrqpwA2B9rLph
-V/hOHuB0BXLgfP/HKxxiqtC6LdqU4VIJ+6QPDJS3CHaA1bpZSDy0
------END RSA PRIVATE KEY-----
-"@
+# ── Load credentials from KeyVault ────────────────────────────────────────────
+$_vaultPath = if ($env:KEYVAULT_STORE_PATH) { $env:KEYVAULT_STORE_PATH } else { 'C:\Cevict_Vault\env-store.json' }
+if (-not (Test-Path $_vaultPath)) {
+    Write-Host "KeyVault store not found at $_vaultPath" -ForegroundColor Red
+    exit 1
+}
+$_vault = Get-Content $_vaultPath -Raw | ConvertFrom-Json
+$ApiKeyId = $_vault.secrets.KALSHI_API_KEY_ID
+$PrivateKeyPem = $_vault.secrets.KALSHI_PRIVATE_KEY
+$_baseFromVault = $_vault.secrets.KALSHI_BASE_URL
+# Strip /trade-api/v2 suffix if present — we append paths ourselves
+$BaseUrl = if ($_baseFromVault) { $_baseFromVault -replace '/trade-api/v2.*$', '' } else { 'https://api.elections.kalshi.com' }
+
+if (-not $ApiKeyId) { Write-Host "KALSHI_API_KEY_ID missing from vault" -ForegroundColor Red; exit 1 }
+if (-not $PrivateKeyPem) { Write-Host "KALSHI_PRIVATE_KEY missing from vault" -ForegroundColor Red; exit 1 }
+Write-Host "Loaded credentials from vault (key: $($ApiKeyId.Substring(0,8))...)" -ForegroundColor DarkGray
 
 # ── RSA-PSS signing using .NET (no openssl required) ─────────────────────────
 function Get-KalshiSignature {

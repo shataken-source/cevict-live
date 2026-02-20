@@ -140,6 +140,64 @@ Then restart the monitor app so it picks up the new env.
 
 ---
 
+## Kalshi API Key Management
+
+Kalshi uses RSA-PSS signed requests. The private key lives in the vault; the public key is registered on the Kalshi dashboard. They must be a matched pair.
+
+### Check current key status
+```powershell
+cd C:\cevict-live\scripts\keyvault
+$store = Get-Content 'C:\Cevict_Vault\env-store.json' | ConvertFrom-Json
+$store.secrets.KALSHI_API_KEY_ID   # current key ID
+$store.secrets.KALSHI_BASE_URL     # should be https://api.elections.kalshi.com/trade-api/v2
+```
+
+### Rotate / fix Kalshi keys (when auth fails)
+
+If `kalshi-sell-losers.ps1` returns `INCORRECT_API_KEY_SIGNATURE` or `NOT_FOUND`, the vault private key doesn't match what's registered on Kalshi. Fix:
+
+```powershell
+# Step 1 — Generate a fresh RSA-2048 key pair (saves private key to vault automatically)
+pwsh -NoProfile -File C:\cevict-live\_tmp_gen_kalshi_key.ps1
+# (or run the inline block below)
+
+# Inline key generation:
+$rsa = [System.Security.Cryptography.RSA]::Create(2048)
+$privB64 = [Convert]::ToBase64String($rsa.ExportRSAPrivateKey())
+$wrapped = ($privB64 -split '(.{64})' | Where-Object { $_ }) -join "`n"
+$privPem = "-----BEGIN RSA PRIVATE KEY-----`n$wrapped`n-----END RSA PRIVATE KEY-----"
+$pubB64  = [Convert]::ToBase64String($rsa.ExportSubjectPublicKeyInfo())
+$wrappedPub = ($pubB64 -split '(.{64})' | Where-Object { $_ }) -join "`n"
+$pubPem  = "-----BEGIN PUBLIC KEY-----`n$wrappedPub`n-----END PUBLIC KEY-----"
+$rsa.Dispose()
+Write-Host $pubPem   # <-- copy this
+
+# Step 2 — Save private key to vault
+.\set-secret.ps1 -Name KALSHI_PRIVATE_KEY -Value $privPem
+
+# Step 3 — Upload public key to Kalshi dashboard
+# Go to: https://kalshi.com/account/api-keys
+# Click "Add API Key" → paste the PUBLIC KEY output from step 1
+# Copy the new Key ID Kalshi assigns
+
+# Step 4 — Save new Key ID to vault
+.\set-secret.ps1 -Name KALSHI_API_KEY_ID -Value "<paste-new-key-id-here>"
+
+# Step 5 — Test
+pwsh -NoProfile -File C:\cevict-live\scripts\kalshi-sell-losers.ps1 -DryRun
+```
+
+### Vault keys used by kalshi-sell-losers.ps1
+| Key | Description |
+|-----|-------------|
+| `KALSHI_API_KEY_ID` | UUID from Kalshi dashboard (must match uploaded public key) |
+| `KALSHI_PRIVATE_KEY` | RSA PKCS#1 PEM — must be the private half of the registered public key |
+| `KALSHI_BASE_URL` | `https://api.elections.kalshi.com/trade-api/v2` |
+
+The sell script reads all three automatically from `C:\Cevict_Vault\env-store.json` — no hardcoded credentials.
+
+---
+
 ## Cochran AI task runner (COCHRAN_TASKS.json)
 
 Cochran reads the **same KeyVault store** when running tasks (e.g. Supabase migrations). Add these keys via the keystore so he can run in test or prod; do **not** rely only on app `.env.local` (Cochran merges keyvault first, then `.env.local` overrides).
