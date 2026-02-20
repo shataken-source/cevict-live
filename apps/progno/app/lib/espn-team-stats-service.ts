@@ -167,6 +167,7 @@ export async function warmStatsCache(
       // Store by team name (used when team names are passed)
       derivedStatsCache.set(`${league}:${game.home_team}`, homeEntry);
       derivedStatsCache.set(`${league}:${game.away_team}`, awayEntry);
+      console.log(`[ESPN_CACHE] Stored ${league}:${game.home_team} stdDev=${homeEntry.scoringStdDev.toFixed(1)} avgPts=${homeEntry.recentAvgPoints.toFixed(1)}`);
 
       // Also store by odds key so pick-engine (no team names) can find it
       if (game.bookmakers?.length) {
