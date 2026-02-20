@@ -15,7 +15,7 @@ import { MonteCarloEngine } from '../../../lib/monte-carlo-engine'
 import { GameData } from '../../../lib/prediction-engine'
 import { getPrimaryKey } from '../../../keys-store'
 import { estimateTeamStatsFromOdds, estimateTeamStatsEnhanced, shinDevig } from '../../../lib/odds-helpers'
-import { warmStatsCache } from '../../../lib/espn-team-stats-service'
+import { warmStatsCache, setCurrentGameContext, clearCurrentGameContext } from '../../../lib/espn-team-stats-service'
 import { predictScoreComprehensive } from '../../../score-prediction-service'
 import { OddsService } from '../../../../lib/odds-service'
 import { fetchApiSportsOdds, ApiSportsGame } from '../../../../lib/api-sports-client'
@@ -740,7 +740,13 @@ export async function GET(request: Request) {
         for (const game of games) {
           const commence = game.commence_time ? new Date(game.commence_time) : null
           if (!commence || !inWindow(commence)) continue
+          const upper2 = sport.toUpperCase()
+          if (upper2.includes('NBA') || upper2.includes('NCAAB') || upper2.includes('COLLEGE')) {
+            const ctxLeague = upper2.includes('NBA') ? 'nba' : 'ncaab'
+            setCurrentGameContext(game.home_team, game.away_team, ctxLeague)
+          }
           const pick = await runPickEngine(game, sport)
+          clearCurrentGameContext()
           if (!pick) continue
           // Tag pick with early_lines flag so DB rows are distinguishable
           pick.early_lines = earlyLines

@@ -3,7 +3,7 @@
  * Shared utilities for odds processing and estimation
  */
 
-import { syncGetCachedStats, syncGetCachedStatsByOdds, makeOddsKey } from './espn-team-stats-service'
+import { syncGetCachedStats, syncGetCachedStatsByOdds, makeOddsKey, getCurrentGameContext } from './espn-team-stats-service'
 
 // Convert American odds to decimal
 export function americanToDecimal(americanOdds: number): number {
@@ -168,16 +168,22 @@ export function estimateTeamStatsFromOdds(
   away: any;
 } {
   // Try ESPN sync cache first (populated by warmStatsCache before runPickEngine)
-  if (homeTeam && awayTeam) {
+  // If team names not passed (e.g. pick-engine.ts), use module-level context set by route.ts
+  const ctx = getCurrentGameContext();
+  const resolvedHome = homeTeam ?? ctx?.homeTeam;
+  const resolvedAway = awayTeam ?? ctx?.awayTeam;
+
+  if (resolvedHome && resolvedAway) {
     const upper = sport.toUpperCase();
-    const league: 'nba' | 'ncaab' | null =
-      upper.includes('NBA') ? 'nba' :
+    const ctxLeague = ctx?.league ?? null;
+    const league: 'nba' | 'ncaab' | null = ctxLeague ??
+      (upper.includes('NBA') ? 'nba' :
         (upper.includes('NCAAB') || upper.includes('COLLEGE') || upper.includes('NCAA')) ? 'ncaab' :
-          null;
+          null);
 
     if (league) {
-      const homeCache = syncGetCachedStats(homeTeam, league);
-      const awayCache = syncGetCachedStats(awayTeam, league);
+      const homeCache = syncGetCachedStats(resolvedHome, league);
+      const awayCache = syncGetCachedStats(resolvedAway, league);
       if (homeCache && awayCache) {
         return {
           home: {

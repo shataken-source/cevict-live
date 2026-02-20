@@ -69,6 +69,22 @@ export function makeOddsKey(odds: { home: number; away: number; spread?: number;
   return `${odds.home}:${odds.away}:${odds.spread ?? 0}:${odds.total ?? 0}`;
 }
 
+// Module-level context: set by route.ts before each runPickEngine call
+// Allows estimateTeamStatsFromOdds to resolve team names without arg changes
+let _currentGame: { homeTeam: string; awayTeam: string; league: 'nba' | 'ncaab' } | null = null;
+
+export function setCurrentGameContext(homeTeam: string, awayTeam: string, league: 'nba' | 'ncaab') {
+  _currentGame = { homeTeam, awayTeam, league };
+}
+
+export function clearCurrentGameContext() {
+  _currentGame = null;
+}
+
+export function getCurrentGameContext() {
+  return _currentGame;
+}
+
 /**
  * Synchronously read cached derived stats for a team by name.
  * Returns null if not yet warmed — pick-engine falls back to market-derived.
