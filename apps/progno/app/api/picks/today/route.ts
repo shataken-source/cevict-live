@@ -125,6 +125,260 @@ function convertApiSportsToOddsFormat(game: ApiSportsGame): any {
   }
 }
 
+/**
+ * Fetch early lines from free public sources when The Odds API returns nothing
+ * for the 2-5 day window. Sources: Action Network public API, OddsPortal,
+ * Covers.com, TheLines.com — all provide early lines 3-7 days ahead.
+ * Returns games in The-Odds API format for compatibility with buildPickFromRawGame.
+ */
+async function fetchFreeEarlyLines(sportKey: string): Promise<any[]> {
+  const games: any[] = []
+
+  // Map sport keys to Action Network sport slugs
+  const AN_SPORT_MAP: Record<string, string> = {
+    'americanfootball_nfl': 'nfl',
+    'basketball_nba': 'nba',
+    'icehockey_nhl': 'nhl',
+    'baseball_mlb': 'mlb',
+    'americanfootball_ncaaf': 'ncaaf',
+    'basketball_ncaab': 'ncaab',
+    'baseball_ncaa': 'ncaab', // fallback
+  }
+
+  const anSport = AN_SPORT_MAP[sportKey]
+  if (!anSport) return []
+
+  const now = new Date()
+  const fromDate = new Date(now); fromDate.setDate(fromDate.getDate() + EARLY_LINES_MIN_DAYS)
+  const toDate = new Date(now); toDate.setDate(toDate.getDate() + EARLY_LINES_MAX_DAYS)
+
+  // ── Source 1: Action Network public game API ──────────────────────────────
+  // AN posts early lines 3-7 days ahead, especially for NFL/NCAAF on Sundays
+  try {
+    const dateStr = fromDate.toISOString().split('T')[0].replace(/-/g, '')
+    const anUrl = `https://api.actionnetwork.com/web/v1/games?sport=${anSport}&date=${dateStr}`
+    const anRes = await fetch(anUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; PrognoBot/1.0)',
+        'Accept': 'application/json',
+      },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (anRes.ok) {
+      const anData = await anRes.json()
+      const anGames = anData?.games || anData?.data || []
+      for (const g of anGames) {
+        const commence = g.start_time || g.scheduled || g.datetime
+        if (!commence) continue
+        const commenceDate = new Date(commence)
+        if (commenceDate < fromDate || commenceDate > toDate) continue
+
+        const homeTeam = g.teams?.find((t: any) => t.is_home)?.full_name || g.home_team?.full_name || g.home
+        const awayTeam = g.teams?.find((t: any) => !t.is_home)?.full_name || g.away_team?.full_name || g.away
+        if (!homeTeam || !awayTeam) continue
+
+        // Extract moneyline odds from Action Network consensus
+        const homeOdds = g.odds?.[0]?.ml_home ?? g.home_ml ?? null
+        const awayOdds = g.odds?.[0]?.ml_away ?? g.away_ml ?? null
+        const spread = g.odds?.[0]?.spread ?? g.spread ?? null
+        const total = g.odds?.[0]?.total ?? g.total ?? null
+
+        const bookmakers: any[] = []
+        if (homeOdds || awayOdds) {
+          const outcomes: any[] = []
+          if (homeOdds) outcomes.push({ name: homeTeam, price: homeOdds })
+          if (awayOdds) outcomes.push({ name: awayTeam, price: awayOdds })
+          const markets: any[] = [{ key: 'h2h', outcomes }]
+          if (spread) {
+            markets.push({
+              key: 'spreads', outcomes: [
+                { name: homeTeam, point: spread, price: -110 },
+                { name: awayTeam, point: -spread, price: -110 },
+              ]
+            })
+          }
+          if (total) {
+            markets.push({
+              key: 'totals', outcomes: [
+                { name: 'Over', point: total, price: -110 },
+                { name: 'Under', point: total, price: -110 },
+              ]
+            })
+          }
+          bookmakers.push({ key: 'action-network', title: 'Action Network', markets })
+        }
+
+        games.push({
+          id: `an-${g.id || `${homeTeam}-${awayTeam}-${dateStr}`}`,
+          sport_key: sportKey,
+          home_team: homeTeam,
+          away_team: awayTeam,
+          commence_time: commenceDate.toISOString(),
+          bookmakers,
+          source: 'action-network',
+        })
+      }
+      if (games.length > 0) {
+        console.log(`[EarlyLines] Action Network: ${games.length} games for ${anSport}`)
+        return games
+      }
+    }
+  } catch (err) {
+    console.warn(`[EarlyLines] Action Network failed for ${anSport}:`, err instanceof Error ? err.message : err)
+  }
+
+  // ── Source 2: OddsPortal (via their public JSON endpoint) ─────────────────
+  // OddsPortal aggregates from 80+ books and posts lines early
+  const OP_SPORT_MAP: Record<string, string> = {
+    'americanfootball_nfl': 'american-football/usa/nfl',
+    'basketball_nba': 'basketball/usa/nba',
+    'icehockey_nhl': 'hockey/usa/nhl',
+    'baseball_mlb': 'baseball/usa/mlb',
+    'americanfootball_ncaaf': 'american-football/usa/ncaa',
+    'basketball_ncaab': 'basketball/usa/ncaa',
+  }
+  const opSport = OP_SPORT_MAP[sportKey]
+  if (opSport) {
+    try {
+      const opUrl = `https://www.oddsportal.com/api/next/1/${opSport}/`
+      const opRes = await fetch(opUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; PrognoBot/1.0)',
+          'Accept': 'application/json',
+          'Referer': 'https://www.oddsportal.com/',
+        },
+        signal: AbortSignal.timeout(5000),
+      })
+      if (opRes.ok) {
+        const opData = await opRes.json()
+        const opGames = opData?.d?.rows || opData?.rows || []
+        for (const g of opGames) {
+          const commence = g.date_start_str || g.date_start
+          if (!commence) continue
+          const commenceDate = new Date(typeof commence === 'number' ? commence * 1000 : commence)
+          if (commenceDate < fromDate || commenceDate > toDate) continue
+
+          const homeTeam = g.home_name || g.home
+          const awayTeam = g.away_name || g.away
+          if (!homeTeam || !awayTeam) continue
+
+          const homeOdds = g.odds?.['1'] ?? null
+          const awayOdds = g.odds?.['2'] ?? null
+
+          const bookmakers: any[] = []
+          if (homeOdds || awayOdds) {
+            // OddsPortal uses decimal odds — convert to American
+            const decToAmerican = (dec: number) => dec >= 2 ? Math.round((dec - 1) * 100) : Math.round(-100 / (dec - 1))
+            const outcomes: any[] = []
+            if (homeOdds) outcomes.push({ name: homeTeam, price: decToAmerican(homeOdds) })
+            if (awayOdds) outcomes.push({ name: awayTeam, price: decToAmerican(awayOdds) })
+            bookmakers.push({ key: 'oddsportal', title: 'OddsPortal', markets: [{ key: 'h2h', outcomes }] })
+          }
+
+          games.push({
+            id: `op-${g.id || `${homeTeam}-${awayTeam}`}`,
+            sport_key: sportKey,
+            home_team: homeTeam,
+            away_team: awayTeam,
+            commence_time: commenceDate.toISOString(),
+            bookmakers,
+            source: 'oddsportal',
+          })
+        }
+        if (games.length > 0) {
+          console.log(`[EarlyLines] OddsPortal: ${games.length} games for ${opSport}`)
+          return games
+        }
+      }
+    } catch (err) {
+      console.warn(`[EarlyLines] OddsPortal failed for ${opSport}:`, err instanceof Error ? err.message : err)
+    }
+  }
+
+  // ── Source 3: Covers.com public odds API ─────────────────────────────────
+  // Covers posts opening lines from Circa/BetOnline which open earliest
+  const COVERS_SPORT_MAP: Record<string, number> = {
+    'americanfootball_nfl': 2,
+    'basketball_nba': 3,
+    'icehockey_nhl': 4,
+    'baseball_mlb': 5,
+    'americanfootball_ncaaf': 6,
+    'basketball_ncaab': 7,
+  }
+  const coversSportId = COVERS_SPORT_MAP[sportKey]
+  if (coversSportId) {
+    try {
+      const coversUrl = `https://www.covers.com/api/odds/v2/matchups?sport=${coversSportId}`
+      const coversRes = await fetch(coversUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; PrognoBot/1.0)',
+          'Accept': 'application/json',
+          'Referer': 'https://www.covers.com/',
+        },
+        signal: AbortSignal.timeout(5000),
+      })
+      if (coversRes.ok) {
+        const coversData = await coversRes.json()
+        const coversGames = coversData?.matchups || coversData?.data || []
+        for (const g of coversGames) {
+          const commence = g.startDate || g.gameTime || g.start_time
+          if (!commence) continue
+          const commenceDate = new Date(commence)
+          if (commenceDate < fromDate || commenceDate > toDate) continue
+
+          const homeTeam = g.homeTeam?.name || g.home_team || g.home
+          const awayTeam = g.awayTeam?.name || g.away_team || g.away
+          if (!homeTeam || !awayTeam) continue
+
+          const homeOdds = g.odds?.homeMoneyLine ?? g.homeMoneyLine ?? null
+          const awayOdds = g.odds?.awayMoneyLine ?? g.awayMoneyLine ?? null
+          const spread = g.odds?.homeSpread ?? g.homeSpread ?? null
+          const total = g.odds?.total ?? g.total ?? null
+
+          const bookmakers: any[] = []
+          if (homeOdds || awayOdds) {
+            const outcomes: any[] = []
+            if (homeOdds) outcomes.push({ name: homeTeam, price: homeOdds })
+            if (awayOdds) outcomes.push({ name: awayTeam, price: awayOdds })
+            const markets: any[] = [{ key: 'h2h', outcomes }]
+            if (spread) markets.push({
+              key: 'spreads', outcomes: [
+                { name: homeTeam, point: spread, price: -110 },
+                { name: awayTeam, point: -spread, price: -110 },
+              ]
+            })
+            if (total) markets.push({
+              key: 'totals', outcomes: [
+                { name: 'Over', point: total, price: -110 },
+                { name: 'Under', point: total, price: -110 },
+              ]
+            })
+            bookmakers.push({ key: 'covers', title: 'Covers.com', markets })
+          }
+
+          games.push({
+            id: `cov-${g.id || `${homeTeam}-${awayTeam}`}`,
+            sport_key: sportKey,
+            home_team: homeTeam,
+            away_team: awayTeam,
+            commence_time: commenceDate.toISOString(),
+            bookmakers,
+            source: 'covers',
+          })
+        }
+        if (games.length > 0) {
+          console.log(`[EarlyLines] Covers.com: ${games.length} games for sport ${coversSportId}`)
+          return games
+        }
+      }
+    } catch (err) {
+      console.warn(`[EarlyLines] Covers.com failed for sport ${coversSportId}:`, err instanceof Error ? err.message : err)
+    }
+  }
+
+  return games
+}
+
 /** Cap displayed EV per $100 so copy stays realistic (avoid "win $500 per $100" claims). */
 const EV_DISPLAY_CAP = 150
 /** Regular picks: today + next day (0–1 days ahead). */
@@ -427,12 +681,32 @@ export async function GET(request: Request) {
         let games: any[] = []
 
         // Primary: The-Odds API
-        const response = await fetch(
-          `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${oddsApiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
-        )
+        // For early lines, pass commenceTimeFrom/commenceTimeTo so the API returns
+        // games 2-5 days ahead. Without these params it only returns ~48hr window.
+        let oddsApiUrl = `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${oddsApiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
+        if (earlyLines) {
+          const now = new Date()
+          const from = new Date(now); from.setDate(from.getDate() + EARLY_LINES_MIN_DAYS); from.setHours(0, 0, 0, 0)
+          const to = new Date(now); to.setDate(to.getDate() + EARLY_LINES_MAX_DAYS); to.setHours(23, 59, 59, 999)
+          oddsApiUrl += `&commenceTimeFrom=${from.toISOString()}&commenceTimeTo=${to.toISOString()}`
+          console.log(`[EarlyLines] Fetching ${sport} from ${from.toISOString().split('T')[0]} to ${to.toISOString().split('T')[0]}`)
+        }
+        const response = await fetch(oddsApiUrl)
         if (response.ok) {
           const data = await response.json()
           if (Array.isArray(data)) games = data
+          console.log(`[Picks API] The-Odds ${sport}: ${games.length} games${earlyLines ? ' (early window)' : ''}`)
+        } else {
+          console.warn(`[Picks API] The-Odds ${sport} HTTP ${response.status}`)
+        }
+
+        // Fallback: free public odds sources for early lines when Odds API returns nothing
+        if (games.length === 0 && earlyLines) {
+          const freeGames = await fetchFreeEarlyLines(sport)
+          if (freeGames.length > 0) {
+            console.log(`[EarlyLines] Free source fallback: ${freeGames.length} games for ${sport}`)
+            games = freeGames
+          }
         }
 
         // Fallback: API-Sports if The-Odds returned nothing
