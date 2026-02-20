@@ -1,48 +1,48 @@
 {
   "crons": [
     {
-      "path": "/api/cron/daily-predictions?earlyLines=1",
-      "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron/daily-predictions",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/daily-results",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/daily-results-retry",
-      "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/capture-odds",
-      "schedule": "30 22 * * *"
-    },
-    {
-      "path": "/api/progno/weekly-learning",
-      "schedule": "0 2 * * 1"
+      "path": "/api/cron/sync-injuries",
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/sync-odds",
       "schedule": "*/30 * * * *"
     },
     {
-      "path": "/api/cron/sync-injuries",
-      "schedule": "0 */6 * * *"
-    },
-    {
       "path": "/api/cron/track-odds",
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/daily-results",
+      "schedule": "0 6 * * *"
+    },
+    {
       "path": "/api/cron/verify-results",
-      "schedule": "0 */3 * * *"
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/daily-results-retry",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/capture-odds",
+      "schedule": "30 12 * * *"
+    },
+    {
+      "path": "/api/cron/daily-predictions?earlyLines=1",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/daily-predictions",
+      "schedule": "30 13 * * *"
     },
     {
       "path": "/api/cron/update-live",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/progno/weekly-learning",
+      "schedule": "0 2 * * 1"
     }
   ],
   "installCommand": "npm install",
