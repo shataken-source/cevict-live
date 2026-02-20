@@ -121,6 +121,7 @@ export async function warmStatsCache(
     games.map(async (game) => {
       const homeId = resolveEspnId(game.home_team, league);
       const awayId = resolveEspnId(game.away_team, league);
+      console.log(`[ESPN_WARM] ${game.home_team}→${homeId ?? 'NO_ID'} | ${game.away_team}→${awayId ?? 'NO_ID'}`);
       if (!homeId || !awayId) return;
 
       const [homeStats, awayStats] = await Promise.all([
