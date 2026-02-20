@@ -7,8 +7,6 @@
  */
 
 import { NextResponse } from 'next/server'
-import fs from 'node:fs'
-import path from 'node:path'
 import { ElitePicksEnhancer } from '../../../lib/elite-picks-enhancer'
 import { TierAssignmentService } from '../../../lib/tier-assignment-service'
 
@@ -40,7 +38,9 @@ export async function GET(request: Request) {
 
   try {
     const url = earlyLines ? `${baseUrl}/api/picks/today?earlyLines=1` : `${baseUrl}/api/picks/today`
-    const res = await fetch(url, { cache: 'no-store' })
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 15000)
+    const res = await fetch(url, { cache: 'no-store', signal: controller.signal }).finally(() => clearTimeout(timeout))
     if (!res.ok) {
       const text = await res.text()
       console.error('[CRON daily-predictions] picks/today failed:', res.status, text)
@@ -89,14 +89,14 @@ export async function GET(request: Request) {
       picks,
     }
 
-    const appRoot = process.cwd()
     const fileName = earlyLines ? `predictions-early-${today}.json` : `predictions-${today}.json`
-    const filePath = path.join(appRoot, fileName)
-    fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf8')
 
     // Persist picks to Supabase for queryable history, backtest API, and admin panel
     const _supUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const _supKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const _supKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!_supKey) {
+      console.error('[CRON daily-predictions] Missing SUPABASE_SERVICE_ROLE_KEY — skipping persistence')
+    }
     if (_supUrl && _supKey && picks.length > 0) {
       try {
         const { createClient } = await import('@supabase/supabase-js')
@@ -128,12 +128,26 @@ export async function GET(request: Request) {
         } else {
           console.log(`[CRON daily-predictions] Persisted ${pickRows.length} picks to Supabase`)
         }
+
+        // Store predictions JSON in Supabase Storage instead of filesystem
+        const jsonContent = JSON.stringify(payload, null, 2)
+        const { error: _storErr } = await _sb.storage
+          .from('predictions')
+          .upload(fileName, Buffer.from(jsonContent, 'utf8'), {
+            contentType: 'application/json',
+            upsert: true,
+          })
+        if (_storErr) {
+          console.warn(`[CRON daily-predictions] Supabase Storage upload:`, _storErr.message)
+        } else {
+          console.log(`[CRON daily-predictions] Uploaded ${fileName} to Supabase Storage`)
+        }
       } catch (_e: any) {
         console.warn(`[CRON daily-predictions] Supabase picks write skipped:`, _e?.message)
       }
     }
 
-    console.log(`[CRON daily-predictions] Wrote ${picks.length} picks to ${filePath}`)
+    console.log(`[CRON daily-predictions] Generated ${picks.length} picks for ${today}`)
 
     // Syndicate to Prognostication if configured
     // Prefer a full webhook URL when provided; otherwise fall back to base URL + default path.
@@ -188,17 +202,20 @@ export async function GET(request: Request) {
           try {
             const batchId = `${today}-${tier}-${Date.now()}`
 
+            let picksToSyndicate = tierPicks
             if (tier === 'elite') {
               console.log('[CRON daily-predictions] Enhancing Elite picks...')
               try {
                 const enhanced = await eliteEnhancer.enhance(tierPicks.map(p => ({ ...p, tier: 'elite' })))
-                tierPicks = enhanced
+                picksToSyndicate = enhanced
                 console.log(`[CRON daily-predictions] Enhanced ${enhanced.length} Elite picks`)
               } catch (err) {
                 console.error('[CRON daily-predictions] Elite enhancement failed, using regular picks:', err)
               }
             }
 
+            const synController = new AbortController()
+            const synTimeout = setTimeout(() => synController.abort(), 15000)
             const syndicationRes = await fetch(webhookUrl, {
               method: 'POST',
               headers: {
@@ -208,12 +225,13 @@ export async function GET(request: Request) {
               },
               body: JSON.stringify({
                 tier,
-                picks: tierPicks,
+                picks: picksToSyndicate,
                 batchId,
                 timestamp: new Date().toISOString(),
                 source: 'progno-daily-cron',
-              })
-            })
+              }),
+              signal: synController.signal,
+            }).finally(() => clearTimeout(synTimeout))
 
             if (syndicationRes.ok) {
               const result = await syndicationRes.json()
@@ -259,10 +277,10 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       date: today,
-      file: filePath,
+      file: fileName,
       count: picks.length,
       earlyLines: earlyLines ?? false,
-      message: `Saved ${picks.length} picks to ${fileName}`,
+      message: `Saved ${picks.length} picks to Supabase (${fileName})`,
     })
   } catch (err: any) {
     console.error('[CRON daily-predictions]', err)

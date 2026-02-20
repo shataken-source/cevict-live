@@ -208,49 +208,10 @@ async function detectLineMovementSignals(snapshot: OddsSnapshot): Promise<string
 }
 
 async function loadPreviousSnapshot(gameId: string): Promise<OddsSnapshot | null> {
-  // Load from local storage
-  if (typeof window === 'undefined' && typeof process !== 'undefined') {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const dir = path.join(process.cwd(), '.progno', 'odds');
-      if (!fs.existsSync(dir)) return null;
-
-      // Find most recent snapshot for this game
-      const files = fs.readdirSync(dir).filter((f: string) => f.includes(gameId));
-      if (files.length === 0) return null;
-
-      files.sort().reverse();
-      const latestFile = path.join(dir, files[0]);
-      const content = fs.readFileSync(latestFile, 'utf8');
-      return JSON.parse(content);
-    } catch (e) {
-      return null;
-    }
-  }
   return null;
 }
 
 async function storeOddsSnapshots(snapshots: OddsSnapshot[]): Promise<void> {
-  // Store in local file for backup
-  if (typeof window === 'undefined' && typeof process !== 'undefined') {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const dir = path.join(process.cwd(), '.progno', 'odds');
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-
-      for (const snapshot of snapshots) {
-        const file = path.join(dir, `${snapshot.gameId}_${Date.now()}.json`);
-        fs.writeFileSync(file, JSON.stringify(snapshot, null, 2), 'utf8');
-      }
-    } catch (e) {
-      console.warn('Failed to store odds snapshots locally:', e);
-    }
-  }
-
   // Store in Supabase for historical database
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

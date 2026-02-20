@@ -152,22 +152,6 @@ async function collectNewsSentiment(teamId: string): Promise<number> {
 async function storeSentimentReading(data: any): Promise<void> {
   // Placeholder - would store in Supabase
   // In production:
-  // await supabase.from('sentiment_readings').insert(data);
-
-  // For now, store in local file
-  if (typeof window === 'undefined' && typeof process !== 'undefined') {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const dir = path.join(process.cwd(), '.progno', 'sentiment');
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      const file = path.join(dir, `${data.teamId}_${Date.now()}.json`);
-      fs.writeFileSync(file, JSON.stringify(data), 'utf8');
-    } catch (e) {
-      console.warn('Failed to store sentiment reading:', e);
-    }
-  }
+  // No-op: sentiment data is stored in Supabase by the caller
 }
 

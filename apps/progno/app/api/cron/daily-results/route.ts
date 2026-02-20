@@ -10,8 +10,6 @@
  */
 
 import { NextResponse } from 'next/server'
-import fs from 'node:fs'
-import path from 'node:path'
 import { createClient } from '@supabase/supabase-js'
 import { getPrimaryKey } from '../../../keys-store'
 import { fetchPreviousDayResultsFromProviders } from '../../../../lib/data-sources/results-apis'
@@ -141,21 +139,29 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: 'Odds API key not set' }, { status: 500 })
   }
 
-  const appRoot = process.cwd()
-  const predictionsPath = path.join(appRoot, `predictions-${date}.json`)
-
-  if (!fs.existsSync(predictionsPath)) {
-    return NextResponse.json({
-      success: false,
-      error: `No predictions file: predictions-${date}.json`,
-      path: predictionsPath,
-    }, { status: 404 })
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseKey) {
+    console.error('[CRON daily-results] Missing SUPABASE_SERVICE_ROLE_KEY')
+    return NextResponse.json({ success: false, error: 'Missing SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 })
   }
+  const sbClient = createClient(supabaseUrl!, supabaseKey)
 
+  // Load predictions from Supabase Storage
+  const fileName = `predictions-${date}.json`
   let payload: any
   try {
-    const raw = fs.readFileSync(predictionsPath, 'utf8')
-    // Strip UTF-8 BOM if present so JSON.parse succeeds on files written with BOM.
+    const { data: storageData, error: storageErr } = await sbClient.storage
+      .from('predictions')
+      .download(fileName)
+    if (storageErr || !storageData) {
+      return NextResponse.json({
+        success: false,
+        error: `No predictions file in storage: ${fileName}`,
+        detail: storageErr?.message,
+      }, { status: 404 })
+    }
+    const raw = await storageData.text()
     const clean = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw
     payload = JSON.parse(clean)
   } catch (e) {
@@ -183,8 +189,8 @@ export async function GET(request: Request) {
 
   const noPicksMsg = picks.length === 0
     ? (rawPicks.length === 0
-        ? 'No picks to grade'
-        : `No valid picks to grade (file had ${rawPicks.length} entries but missing home_team/away_team or pick; use daily-predictions cron format).`)
+      ? 'No picks to grade'
+      : `No valid picks to grade (file had ${rawPicks.length} entries but missing home_team/away_team or pick; use daily-predictions cron format).`)
     : null
 
   // Fetch scores for all sports (daysFrom=2 to catch games that finished yesterday)
@@ -302,59 +308,52 @@ export async function GET(request: Request) {
   // Runs regardless of whether we have picks to grade — so every day's results are captured.
   let gameOutcomesStored = 0
   {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    if (supabaseUrl && supabaseKey) {
-      try {
-        const sbClient = createClient(supabaseUrl, supabaseKey)
-        const gameOutcomeRows: any[] = []
-        for (const [league, games] of Object.entries(scoresByKey)) {
-          const sportKey = SPORT_KEY_MAP[league]
-          const usedFallback = league in fallbackSummary
-          for (const game of games) {
-            if (game.homeScore === 0 && game.awayScore === 0) continue
-            const winner = game.homeScore > game.awayScore
-              ? game.home
-              : game.awayScore > game.homeScore
-                ? game.away
-                : 'TIE'
-            gameOutcomeRows.push({
-              game_id: game.gameId || null,
-              game_date: date,
-              sport: sportKey || league.toLowerCase(),
-              league,
-              home_team: game.home,
-              away_team: game.away,
-              home_score: game.homeScore,
-              away_score: game.awayScore,
-              winner,
-              source: usedFallback ? 'api-sports' : 'odds-api',
-            })
-          }
+    try {
+      const gameOutcomeRows: any[] = []
+      for (const [league, games] of Object.entries(scoresByKey)) {
+        const sportKey = SPORT_KEY_MAP[league]
+        const usedFallback = league in fallbackSummary
+        for (const game of games) {
+          if (game.homeScore === 0 && game.awayScore === 0) continue
+          const winner = game.homeScore > game.awayScore
+            ? game.home
+            : game.awayScore > game.homeScore
+              ? game.away
+              : 'TIE'
+          gameOutcomeRows.push({
+            game_id: game.gameId || null,
+            game_date: date,
+            sport: sportKey || league.toLowerCase(),
+            league,
+            home_team: game.home,
+            away_team: game.away,
+            home_score: game.homeScore,
+            away_score: game.awayScore,
+            winner,
+            source: usedFallback ? 'api-sports' : 'odds-api',
+          })
         }
-        if (gameOutcomeRows.length > 0) {
-          const { error: outcomesError } = await sbClient
-            .from('game_outcomes')
-            .upsert(gameOutcomeRows, { onConflict: 'game_date,home_team,away_team' })
-          if (outcomesError) {
-            console.warn(`[CRON daily-results] game_outcomes insert error:`, outcomesError.message)
-          } else {
-            gameOutcomesStored = gameOutcomeRows.length
-            console.log(`[CRON daily-results] Stored ${gameOutcomesStored} game outcomes for backtesting`)
-          }
-        }
-      } catch (e) {
-        console.warn(`[CRON daily-results] game_outcomes write failed:`, (e as Error).message)
       }
+      if (gameOutcomeRows.length > 0) {
+        const { error: outcomesError } = await sbClient
+          .from('game_outcomes')
+          .upsert(gameOutcomeRows, { onConflict: 'game_date,home_team,away_team' })
+        if (outcomesError) {
+          console.warn(`[CRON daily-results] game_outcomes insert error:`, outcomesError.message)
+        } else {
+          gameOutcomesStored = gameOutcomeRows.length
+          console.log(`[CRON daily-results] Stored ${gameOutcomesStored} game outcomes for backtesting`)
+        }
+      }
+    } catch (e) {
+      console.warn(`[CRON daily-results] game_outcomes write failed:`, (e as Error).message)
     }
   }
 
   // If no valid picks, return early now that game_outcomes have been saved
   if (noPicksMsg) {
-    const outPath = path.join(appRoot, `results-${date}.json`)
     const emptyResult = { date, gradedAt: new Date().toISOString(), results: [], summary: { total: 0, correct: 0, pending: 0, graded: 0, winRate: 0 } }
-    fs.writeFileSync(outPath, JSON.stringify(emptyResult, null, 2), 'utf8')
-    return NextResponse.json({ success: true, date, file: outPath, message: noPicksMsg, summary: emptyResult.summary, gameOutcomesStored })
+    return NextResponse.json({ success: true, date, message: noPicksMsg, summary: emptyResult.summary, gameOutcomesStored })
   }
 
   const results: GradedPick[] = []
@@ -429,16 +428,21 @@ export async function GET(request: Request) {
     summary: { total, correct, pending, graded: graded.length, winRate: Math.round(winRate * 10) / 10 },
   }
 
-  const outPath = path.join(appRoot, `results-${date}.json`)
-  fs.writeFileSync(outPath, JSON.stringify(out, null, 2), 'utf8')
+  // Store results JSON in Supabase Storage
+  const resultsFileName = `results-${date}.json`
+  const { error: resStorErr } = await sbClient.storage
+    .from('predictions')
+    .upload(resultsFileName, Buffer.from(JSON.stringify(out, null, 2), 'utf8'), {
+      contentType: 'application/json',
+      upsert: true,
+    })
+  if (resStorErr) console.warn(`[CRON daily-results] Storage upload results:`, resStorErr.message)
 
   // Persist graded results to Supabase for historical tracking
   let dbInserted = 0
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (supabaseUrl && supabaseKey) {
     try {
-      const supabase = createClient(supabaseUrl, supabaseKey)
+      const supabase = sbClient
       const gradedRows = results
         .filter(r => r.status === 'win' || r.status === 'lose')
         .map(r => ({
@@ -471,7 +475,7 @@ export async function GET(request: Request) {
       }
 
       // Also store daily summary
-      const { error: summaryError } = await supabase
+      const { error: summaryError } = await sbClient
         .from('prediction_daily_summary')
         .upsert({
           date,
@@ -500,7 +504,7 @@ export async function GET(request: Request) {
     scoresByLeague[league] = { count, source }
   }
 
-  console.log(`[CRON daily-results] Graded ${total} picks for ${date}: ${correct}W / ${graded.length - correct}L (${pending} pending) -> ${outPath}`)
+  console.log(`[CRON daily-results] Graded ${total} picks for ${date}: ${correct}W / ${graded.length - correct}L (${pending} pending)`)
   const message =
     graded.length === 0 && pending > 0
       ? `${total} picks for ${date} — all pending. Games for this date may not have been played yet or scores not yet available from the Odds API. Re-run after games are complete.`
@@ -508,7 +512,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     success: true,
     date,
-    file: outPath,
+    file: resultsFileName,
     summary: out.summary,
     message,
     dbInserted,

@@ -177,22 +177,7 @@ async function analyzeArticleSentiment(articles: Article[]): Promise<Article[]> 
   });
 }
 
-async function storeArticles(articles: Article[]): Promise<void> {
-  // Store in local file for now
-  // In production, would store in Supabase
-  if (typeof window === 'undefined' && typeof process !== 'undefined') {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const dir = path.join(process.cwd(), '.progno', 'news');
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-      const file = path.join(dir, `articles_${Date.now()}.json`);
-      fs.writeFileSync(file, JSON.stringify(articles, null, 2), 'utf8');
-    } catch (e) {
-      console.warn('Failed to store articles:', e);
-    }
-  }
+async function storeArticles(_articles: Article[]): Promise<void> {
+  // No-op: articles are stored in Supabase by the caller
 }
 
