@@ -19,11 +19,11 @@ let hasWarnedAboutAuthError = false;
 // Helper to check if error is an auth error and log only once
 function handleSupabaseError(error: any, context: string): void {
   const errorMessage = error?.message || String(error);
-  const isAuthError = errorMessage.includes('Invalid API key') || 
-                      errorMessage.includes('JWT') || 
-                      errorMessage.includes('authentication') ||
-                      errorMessage.includes('401');
-  
+  const isAuthError = errorMessage.includes('Invalid API key') ||
+    errorMessage.includes('JWT') ||
+    errorMessage.includes('authentication') ||
+    errorMessage.includes('401');
+
   if (isAuthError && !hasWarnedAboutAuthError) {
     console.warn(`⚠️ Supabase authentication error (${context}) - check SUPABASE_SERVICE_ROLE_KEY in .env.local`);
     hasWarnedAboutAuthError = true;
@@ -126,15 +126,18 @@ export async function saveBotPrediction(prediction: BotPrediction): Promise<bool
       }
 
       // Update existing prediction
+      const edgeNorm = prediction.edge > 1 ? prediction.edge / 100 : prediction.edge;
+      const probNorm = prediction.probability > 1 ? prediction.probability / 100 : prediction.probability;
+
       const { error: updateError } = await client
         .from('bot_predictions')
         .update({
           bot_category: prediction.bot_category,
           market_title: prediction.market_title,
           prediction: prediction.prediction,
-          probability: prediction.probability,
+          probability: probNorm,
           confidence: prediction.confidence,
-          edge: prediction.edge,
+          edge: edgeNorm,
           reasoning: prediction.reasoning,
           factors: prediction.factors,
           learned_from: prediction.learned_from,
@@ -152,6 +155,10 @@ export async function saveBotPrediction(prediction: BotPrediction): Promise<bool
       return true;
     }
 
+    // Normalize: edge stored as 0-1 decimal, probability as 0-1 decimal
+    const edgeNorm = prediction.edge > 1 ? prediction.edge / 100 : prediction.edge;
+    const probNorm = prediction.probability > 1 ? prediction.probability / 100 : prediction.probability;
+
     // No existing prediction - insert new one
     const { error: insertError } = await client
       .from('bot_predictions')
@@ -161,9 +168,9 @@ export async function saveBotPrediction(prediction: BotPrediction): Promise<bool
         market_title: prediction.market_title,
         platform: prediction.platform,
         prediction: prediction.prediction,
-        probability: prediction.probability,
+        probability: probNorm,
         confidence: prediction.confidence,
-        edge: prediction.edge,
+        edge: edgeNorm,
         reasoning: prediction.reasoning,
         factors: prediction.factors,
         learned_from: prediction.learned_from,
