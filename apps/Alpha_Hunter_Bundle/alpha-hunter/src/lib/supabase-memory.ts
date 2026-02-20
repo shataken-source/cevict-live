@@ -294,6 +294,49 @@ export async function saveTradeRecord(trade: TradeRecord): Promise<boolean> {
   }
 }
 
+export async function updateTradeOutcome(marketIdOrSymbol: string, update: {
+  exitPrice: number;
+  pnl: number;
+  outcome: 'win' | 'loss';
+  closedAt?: Date;
+}): Promise<boolean> {
+  const client = getClient();
+  if (!client) return false;
+
+  try {
+    // Find the most recent open trade for this symbol/market
+    const { data: existing, error: findErr } = await client
+      .from('trade_history')
+      .select('id')
+      .or(`symbol.eq.${marketIdOrSymbol},market_id.eq.${marketIdOrSymbol}`)
+      .eq('outcome', 'open')
+      .order('opened_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (findErr || !existing) return false;
+
+    const { error } = await client
+      .from('trade_history')
+      .update({
+        exit_price: update.exitPrice,
+        pnl: update.pnl,
+        outcome: update.outcome,
+        closed_at: (update.closedAt || new Date()).toISOString(),
+      })
+      .eq('id', existing.id);
+
+    if (error) {
+      console.error('Error updating trade outcome:', error);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('Exception updating trade outcome:', e);
+    return false;
+  }
+}
+
 export async function getTradeHistory(
   platform?: 'kalshi' | 'coinbase',
   limit = 100
@@ -579,6 +622,7 @@ export const supabaseMemory = {
   saveBotPrediction,
   getBotPredictions,
   saveTradeRecord,
+  updateTradeOutcome,
   getTradeHistory,
   saveBotLearning,
   getBotLearnings,

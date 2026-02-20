@@ -20,7 +20,7 @@ import { CoinbaseExchange } from './exchanges/coinbase';
 import { historicalKnowledge } from './integration/intelligence/historical-knowledge';
 import { KalshiTrader } from './integration/intelligence/kalshi-trader';
 import { PrognosticationSync } from './integration/intelligence/prognostication-sync';
-import { getBotConfig, saveTradeRecord, getBotPredictions, saveBotPrediction } from './lib/supabase-memory';
+import { getBotConfig, saveTradeRecord, getBotPredictions, saveBotPrediction, updateTradeOutcome, saveBotLearning, getBotLearnings } from './lib/supabase-memory';
 import { TradeProtectionService } from './services/trade-protection';
 // Engine stubs — modules removed from codebase
 class KalshiPassiveIncome { constructor(...a) { } async provideLiquidity() { } async start() { } async stop() { } }
@@ -441,6 +441,16 @@ export class EventContractExecutionEngine {
       const wins = resolved.filter((p: any) => p.actual_outcome === 'win').length;
       const winRate = resolved.length > 0 ? (wins / resolved.length) * 100 : 50;
 
+      // Load learned patterns for this category
+      const learnedPatterns = await getBotLearnings(category, 10);
+      const winPatterns = learnedPatterns.filter(p => p.pattern_type === 'winning_pattern').slice(0, 3);
+      const losePatterns = learnedPatterns.filter(p => p.pattern_type === 'losing_pattern').slice(0, 2);
+      const patternContext = learnedPatterns.length > 0
+        ? `LEARNED PATTERNS (${learnedPatterns.length} total):\n` +
+        winPatterns.map(p => `  ✅ WIN (${(p.success_rate * 100).toFixed(0)}% rate, ${p.times_observed}x): ${p.pattern_description}`).join('\n') +
+        (losePatterns.length ? '\n' + losePatterns.map(p => `  ❌ LOSS: ${p.pattern_description}`).join('\n') : '')
+        : 'LEARNED PATTERNS: None yet (first predictions)';
+
       const prompt = `You are an expert prediction market analyst. Analyze this Kalshi market.
 
 MARKET: ${market.title}
@@ -451,6 +461,8 @@ EXPIRES: ${market.expiresAt || 'Unknown'}
 
 HISTORICAL CONTEXT:
 ${historicalContext.length > 0 ? historicalContext.slice(0, 3).join('\n') : 'No specific historical data'}
+
+${patternContext}
 
 PAST PERFORMANCE: ${pastPreds.length} predictions, ${winRate.toFixed(0)}% win rate
 
@@ -522,11 +534,23 @@ Only recommend if edge > 3%. If market seems efficient, use confidence=50, edge=
         candleSummary = `${trend} trend, ${change}% over last ${recent.length} candles`;
       }
 
+      // Load learned patterns for crypto
+      const cryptoPatterns = await getBotLearnings('crypto', 8);
+      const cryptoWins = cryptoPatterns.filter(p => p.pattern_type === 'winning_pattern').slice(0, 3);
+      const cryptoLosses = cryptoPatterns.filter(p => p.pattern_type === 'losing_pattern').slice(0, 2);
+      const cryptoPatternCtx = cryptoPatterns.length > 0
+        ? `LEARNED PATTERNS:\n` +
+        cryptoWins.map(p => `  ✅ ${p.pattern_description} (${p.times_observed}x observed)`).join('\n') +
+        (cryptoLosses.length ? '\n' + cryptoLosses.map(p => `  ❌ ${p.pattern_description}`).join('\n') : '')
+        : 'LEARNED PATTERNS: None yet';
+
       const prompt = `You are an expert crypto trader. Analyze ${pair} for a short-term trade (1-4 hours).
 
 PRICE: $${ticker.price?.toFixed(2)}
 24H CHANGE: ${ticker.change24h?.toFixed(2) || 'N/A'}%
 RECENT TREND: ${candleSummary}
+
+${cryptoPatternCtx}
 
 Respond ONLY with this JSON:
 {
@@ -1235,27 +1259,42 @@ Be conservative. Only recommend if clear setup exists. Otherwise confidence=50, 
 
     const duration = Date.now() - position.timestamp.getTime();
     const durationSeconds = Math.floor(duration / 1000);
+    const won = pnl >= 0;
+    const exitReason = position.side === 'buy'
+      ? (exitPrice >= position.takeProfit ? 'Take Profit' : 'Stop Loss')
+      : (exitPrice <= position.takeProfit ? 'Take Profit' : 'Stop Loss');
 
-    // 7. EXIT/CLOSE POSITION LOGGING - Enhanced logging
+    // 7. EXIT/CLOSE POSITION LOGGING
     this.tradeProtection.logPositionClose(
-      {
-        symbol: position.pair,
-        entryPrice: position.entryPrice,
-        amount: position.amount,
-        side: position.side,
-        platform: 'coinbase',
-      },
+      { symbol: position.pair, entryPrice: position.entryPrice, amount: position.amount, side: position.side, platform: 'coinbase' },
+      exitPrice, pnl, exitReason, durationSeconds
+    );
+
+    // ── AUDIT TRAIL: close trade record in DB ──────────────────────────────
+    updateTradeOutcome(position.pair, {
       exitPrice,
       pnl,
-      position.side === 'buy'
-        ? (exitPrice >= position.takeProfit ? 'Take Profit' : 'Stop Loss')
-        : (exitPrice <= position.takeProfit ? 'Take Profit' : 'Stop Loss'),
-      durationSeconds
-    );
+      outcome: won ? 'win' : 'loss',
+      closedAt: new Date(),
+    }).catch(() => { });
+
+    // ── LEARNING: extract pattern from outcome ─────────────────────────────
+    const pctMove = ((exitPrice - position.entryPrice) / position.entryPrice * 100).toFixed(2);
+    const holdMins = Math.round(durationSeconds / 60);
+    const patternDesc = `${position.side.toUpperCase()} ${position.pair} ${exitReason}: ${pctMove}% in ${holdMins}m`;
+    saveBotLearning({
+      bot_category: 'crypto',
+      pattern_type: won ? 'winning_pattern' : 'losing_pattern',
+      pattern_description: patternDesc,
+      confidence: won ? 0.7 : 0.3,
+      times_observed: 1,
+      success_rate: won ? 1 : 0,
+      learned_at: new Date(),
+      metadata: { pair: position.pair, side: position.side, entryPrice: position.entryPrice, exitPrice, pnl, exitReason, holdMins },
+    }).catch(() => { });
 
     // Remove from position tracker
     this.tradeProtection.getPositionTracker().removePosition(id);
-
     this.cryptoOpenPositions.delete(id);
     this.dailyLoss += pnl < 0 ? Math.abs(pnl) : -pnl;
   }
@@ -1268,31 +1307,43 @@ Be conservative. Only recommend if clear setup exists. Otherwise confidence=50, 
       ? Math.max(0, bet.expiresAt.getTime() - bet.timestamp.getTime())
       : Date.now() - bet.timestamp.getTime();
     const durationSeconds = Math.floor(duration / 1000);
-
     const exitPrice = won ? 100 : 0;
     const pnl = won ? bet.contracts * (100 - bet.entryPrice) / 100 : -bet.amount;
+    const holdHours = Math.round(durationSeconds / 3600);
 
-    // 7. EXIT/CLOSE POSITION LOGGING - Enhanced logging
+    // 7. EXIT/CLOSE POSITION LOGGING
     this.tradeProtection.logPositionClose(
-      {
-        symbol: marketId,
-        entryPrice: bet.entryPrice,
-        amount: bet.amount,
-        side: bet.side,
-        platform: 'kalshi',
-      },
-      exitPrice,
-      pnl,
+      { symbol: marketId, entryPrice: bet.entryPrice, amount: bet.amount, side: bet.side, platform: 'kalshi' },
+      exitPrice, pnl,
       won ? 'Market Resolved (Won)' : 'Market Resolved (Lost)',
       durationSeconds
     );
 
+    // ── AUDIT TRAIL: close trade record in DB ──────────────────────────────
+    updateTradeOutcome(marketId, {
+      exitPrice,
+      pnl,
+      outcome: won ? 'win' : 'loss',
+      closedAt: new Date(),
+    }).catch(() => { });
+
+    // ── LEARNING: extract pattern from outcome ─────────────────────────────
+    const category = this.categorizeMarket(marketId);
+    const patternDesc = `Kalshi ${bet.side.toUpperCase()} @ ${bet.entryPrice}¢ ${won ? 'WON' : 'LOST'} (${holdHours}h hold, ${bet.contracts} contracts)`;
+    saveBotLearning({
+      bot_category: category,
+      pattern_type: won ? 'winning_pattern' : 'losing_pattern',
+      pattern_description: patternDesc,
+      confidence: won ? 0.7 : 0.3,
+      times_observed: 1,
+      success_rate: won ? 1 : 0,
+      learned_at: new Date(),
+      metadata: { marketId, side: bet.side, entryPrice: bet.entryPrice, contracts: bet.contracts, pnl, holdHours },
+    }).catch(() => { });
+
     // Unregister from correlation tracking
     this.tradeProtection.unregisterKalshiBet(marketId, marketId);
-
-    // Remove from position tracker
     this.tradeProtection.getPositionTracker().removePosition(marketId);
-
     this.kalshiOpenBets.delete(marketId);
     this.dailyLoss += pnl < 0 ? Math.abs(pnl) : -pnl;
   }

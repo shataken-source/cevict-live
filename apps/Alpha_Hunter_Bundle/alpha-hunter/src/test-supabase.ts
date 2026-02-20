@@ -15,7 +15,10 @@ import {
   saveBotPrediction,
   getBotPredictions,
   saveTradeRecord,
+  updateTradeOutcome,
   getTradeHistory,
+  saveBotLearning,
+  getBotLearnings,
   getBotConfig,
 } from './lib/supabase-memory';
 
@@ -23,6 +26,10 @@ const pass = (msg: string) => { console.log(`  ✅ ${msg}`); passed++; };
 const fail = (msg: string) => { console.log(`  ❌ ${msg}`); failed++; };
 const info = (msg: string) => console.log(`  ℹ️  ${msg}`);
 const section = (t: string) => console.log(`\n${'─'.repeat(55)}\n  ${t}\n${'─'.repeat(55)}`);
+function assert(condition: boolean, label: string, detail?: string) {
+  if (condition) { pass(label); }
+  else { fail(`${label}${detail ? ': ' + detail : ''}`); }
+}
 
 let passed = 0, failed = 0;
 
@@ -159,7 +166,91 @@ try {
   fail(`getBotPredictions() threw: ${e.message}`);
 }
 
-// ── 7. BOT CONFIG ─────────────────────────────────────────────────────────────
+// ── 7. BOT LEARNING (write, read back, update via re-observe) ────────────────
+section('7. BOT LEARNING');
+const testPattern = `TEST-PATTERN-${Date.now()}`;
+try {
+  // First observation
+  const ok1 = await saveBotLearning({
+    bot_category: 'crypto',
+    pattern_type: 'winning_pattern',
+    pattern_description: testPattern,
+    confidence: 0.7,
+    times_observed: 1,
+    success_rate: 1.0,
+    learned_at: new Date(),
+    metadata: { test: true },
+  });
+  if (ok1) pass('saveBotLearning() first observation written');
+  else fail('saveBotLearning() returned false');
+
+  // Second observation — should increment times_observed and average success_rate
+  const ok2 = await saveBotLearning({
+    bot_category: 'crypto',
+    pattern_type: 'winning_pattern',
+    pattern_description: testPattern,
+    confidence: 0.8,
+    times_observed: 1,
+    success_rate: 0.0, // loss this time
+    learned_at: new Date(),
+  });
+  if (ok2) pass('saveBotLearning() second observation (re-observe) written');
+  else fail('saveBotLearning() second observation returned false');
+
+  // Read back
+  const patterns = await getBotLearnings('crypto', 50);
+  const found = patterns.find((p: any) => p.pattern_description === testPattern);
+  if (found) {
+    pass(`getBotLearnings() found pattern`);
+    assert(found.times_observed === 2, `times_observed = 2 after 2 observations`, `got ${found.times_observed}`);
+    // success_rate should be (1.0*1 + 0.0) / 2 = 0.5
+    const expectedRate = 0.5;
+    assert(Math.abs(found.success_rate - expectedRate) < 0.01, `success_rate averaged correctly (0.5)`, `got ${found.success_rate}`);
+    assert(found.confidence === 0.8, `confidence updated to latest (0.8)`, `got ${found.confidence}`);
+    info(`Pattern: times=${found.times_observed} success_rate=${found.success_rate} confidence=${found.confidence}`);
+  } else {
+    fail(`Pattern not found in getBotLearnings() (desc=${testPattern.substring(0, 30)})`);
+    info(`Total patterns returned: ${patterns.length}`);
+  }
+} catch (e: any) {
+  fail(`Bot learning threw: ${e.message}`);
+}
+
+// ── 8. UPDATE TRADE OUTCOME ───────────────────────────────────────────────────
+section('8. UPDATE TRADE OUTCOME');
+const outcomeSymbol = `TEST-OUTCOME-${Date.now()}`;
+try {
+  // Write open trade
+  await saveTradeRecord({
+    platform: 'coinbase', trade_type: 'buy', symbol: outcomeSymbol,
+    entry_price: 68000, amount: 5, fees: 0.03, opened_at: new Date(),
+    confidence: 70, edge: 3, outcome: 'open', bot_category: 'crypto',
+  });
+
+  // Close it
+  const closed = await updateTradeOutcome(outcomeSymbol, {
+    exitPrice: 68500, pnl: 0.037, outcome: 'win', closedAt: new Date(),
+  });
+  if (closed) pass('updateTradeOutcome() closed the trade');
+  else fail('updateTradeOutcome() returned false');
+
+  // Verify
+  const history = await getTradeHistory('coinbase', 50);
+  const found = history.find((t: any) => t.symbol === outcomeSymbol);
+  if (found) {
+    assert(found.outcome === 'win', `outcome = win`, found.outcome);
+    assert(found.exit_price === 68500, `exit_price = 68500`, `${found.exit_price}`);
+    assert(found.pnl > 0, `pnl > 0`, `${found.pnl}`);
+    assert(!!found.closed_at, `closed_at set`);
+    info(`Closed trade: exit=$${found.exit_price} pnl=$${found.pnl} outcome=${found.outcome}`);
+  } else {
+    fail(`Closed trade not found in history`);
+  }
+} catch (e: any) {
+  fail(`updateTradeOutcome threw: ${e.message}`);
+}
+
+// ── 9. BOT CONFIG ─────────────────────────────────────────────────────────────
 section('7. BOT CONFIG');
 try {
   const config = await getBotConfig();
@@ -171,8 +262,8 @@ try {
   fail(`getBotConfig() threw: ${e.message}`);
 }
 
-// ── 8. CLEANUP TEST RECORDS ───────────────────────────────────────────────────
-section('8. CLEANUP TEST RECORDS');
+// ── 10. CLEANUP TEST RECORDS ─────────────────────────────────────────────────
+section('10. CLEANUP TEST RECORDS');
 try {
   const { error: e1 } = await client.from('trade_history').delete().eq('symbol', testSymbol);
   if (e1) fail(`Cleanup trade_history: ${e1.message}`);
@@ -181,6 +272,14 @@ try {
   const { error: e2 } = await client.from('bot_predictions').delete().eq('market_id', testMarketId);
   if (e2) fail(`Cleanup bot_predictions: ${e2.message}`);
   else pass('Test prediction cleaned up');
+
+  const { error: e3 } = await client.from('bot_learnings').delete().like('pattern_description', 'TEST-PATTERN-%');
+  if (e3) fail(`Cleanup bot_learnings: ${e3.message}`);
+  else pass('Test learning pattern cleaned up');
+
+  const { error: e4 } = await client.from('trade_history').delete().like('symbol', 'TEST-OUTCOME-%');
+  if (e4) fail(`Cleanup outcome trade: ${e4.message}`);
+  else pass('Test outcome trade cleaned up');
 } catch (e: any) {
   fail(`Cleanup threw: ${e.message}`);
 }
