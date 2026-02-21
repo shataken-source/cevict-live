@@ -34,7 +34,6 @@
     }
   ],
   "framework": "nextjs",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- .",
   "buildCommand": "npm run build",
   "installCommand": "npm install --legacy-peer-deps"
 }
