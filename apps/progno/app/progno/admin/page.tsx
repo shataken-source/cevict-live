@@ -6,6 +6,7 @@ import Link from 'next/link';
 import EnhancedEarlyLinesSection from '../../../components/admin/EnhancedEarlyLinesSection';
 import PrintBetsSection from '../../../components/admin/PrintBetsSection';
 import ReportsSection from '../../../components/admin/ReportsSection';
+import EarlyLinesSection from '../../../components/admin/EarlyLinesSection';
 
 // -- Constants ----------------------------------------------------------------
 const SPORTS_LIST = [
@@ -146,13 +147,14 @@ function DarkResultsTable({ rows }: { rows: any[] }) {
 }
 
 // -- Types --------------------------------------------------------------------
-type TabId = 'odds' | 'picks' | 'results' | 'lines' | 'analyzer' | 'config';
+type TabId = 'odds' | 'picks' | 'results' | 'lines' | 'early' | 'analyzer' | 'config';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'odds', label: 'LIVE ODDS' },
   { id: 'picks', label: 'PICKS' },
   { id: 'results', label: 'RESULTS' },
   { id: 'lines', label: 'LINE MOVES' },
+  { id: 'early', label: 'EARLY LINES' },
   { id: 'analyzer', label: 'ANALYZER' },
   { id: 'config', label: 'CONFIG' },
 ];
@@ -693,6 +695,13 @@ export default function AdminPage() {
               <SectionLabel>PERFORMANCE REPORTS</SectionLabel>
               <ReportsSection secret={secret} date={gameDate} />
             </Card>
+          </div>
+        )}
+
+        {/* ═══ EARLY LINES ═══ */}
+        {activeTab === 'early' && (
+          <div>
+            <EarlyLinesSection />
           </div>
         )}
 

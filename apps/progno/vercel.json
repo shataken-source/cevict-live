@@ -9,10 +9,6 @@
       "schedule": "0 12 * * *"
     },
     {
-      "path": "/api/cron/verify-results",
-      "schedule": "0 13 * * *"
-    },
-    {
       "path": "/api/cron/daily-results-retry",
       "schedule": "30 13 * * *"
     },
@@ -23,10 +19,6 @@
     {
       "path": "/api/cron/daily-predictions",
       "schedule": "30 13 * * *"
-    },
-    {
-      "path": "/api/cron/update-live",
-      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/progno/weekly-learning",
