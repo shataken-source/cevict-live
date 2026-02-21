@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createPortfolio, getUserPortfolios } from '@/lib/pick-portfolio';
+import { createPortfolio, getUserPortfolios } from '@/app/lib/pick-portfolio';
 
 export async function POST(request: NextRequest) {
   try {

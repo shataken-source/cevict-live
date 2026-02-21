@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { IAIScoringEngine } from '@/lib/iai/scoring-engine';
+import { IAIScoringEngine } from '@/app/lib/iai/scoring-engine';
 
 /**
  * POST /api/iai/calculate

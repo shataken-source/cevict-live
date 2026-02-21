@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getRecentAlerts } from '@/lib/live-odds-dashboard';
+import { getRecentAlerts } from '@/app/lib/live-odds-dashboard';
 
 export async function GET(request: NextRequest) {
   try {

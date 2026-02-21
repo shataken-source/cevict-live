@@ -5,10 +5,10 @@
  */
 
 import { NextResponse } from 'next/server'
-import { MultiSourceOddsService } from '@/lib/api-sports/services/multi-source-odds'
-import { getClientForSport, getLeagueId } from '@/lib/api-sports/client'
-import { sportsblazeApi } from '@/lib/sportsblaze-client'
-import { betstackApi } from '@/lib/betstack-client'
+import { MultiSourceOddsService } from '@/app/lib/api-sports/services/multi-source-odds'
+import { getClientForSport, getLeagueId } from '@/app/lib/api-sports/client'
+import { sportsblazeApi } from '@/app/lib/sportsblaze-client'
+import { betstackApi } from '@/app/lib/betstack-client'
 
 const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL

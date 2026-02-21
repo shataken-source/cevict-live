@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ArbitrageDetector } from '@/lib/markets/arbitrage-detector';
+import { ArbitrageDetector } from '@/app/lib/markets/arbitrage-detector';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

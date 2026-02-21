@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { predictionEngine, GameData } from '@/lib/prediction-engine';
-import { savePrediction } from '@/lib/progno-db';
+import { predictionEngine, GameData } from '@/app/lib/prediction-engine';
+import { savePrediction } from '@/app/lib/progno-db';
 
 export const runtime = 'nodejs';
 

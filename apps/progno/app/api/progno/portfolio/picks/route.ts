@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { addPickToPortfolio, settlePick, getPortfolioPicks } from '@/lib/pick-portfolio';
+import { addPickToPortfolio, settlePick, getPortfolioPicks } from '@/app/lib/pick-portfolio';
 
 export async function POST(request: NextRequest) {
   try {

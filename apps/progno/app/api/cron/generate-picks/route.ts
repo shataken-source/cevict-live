@@ -5,9 +5,9 @@
  */
 
 import { NextResponse } from 'next/server'
-import { getClientForSport, getLeagueId, Game } from '@/lib/api-sports/client'
-import { getClaudeEffectEngine, ClaudeEffectInput } from '@/lib/api-sports/claude-effect-complete'
-import { syncH2H } from '@/lib/api-sports/services/h2h-sync'
+import { getClientForSport, getLeagueId, Game } from '@/app/lib/api-sports/client'
+import { getClaudeEffectEngine, ClaudeEffectInput } from '@/app/lib/api-sports/claude-effect-complete'
+import { syncH2H } from '@/app/lib/api-sports/services/h2h-sync'
 
 const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL

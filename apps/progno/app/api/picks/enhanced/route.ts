@@ -11,7 +11,7 @@ import {
   getAccuracyTracker,
   MultiSourceOddsService,
   type ClaudeEffectInput
-} from '@/lib/api-sports'
+} from '@/app/lib/api-sports'
 
 const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL

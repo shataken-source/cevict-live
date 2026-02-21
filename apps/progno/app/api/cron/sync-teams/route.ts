@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { syncAllTeams, syncStandings } from '@/lib/api-sports/services/team-sync'
+import { syncAllTeams, syncStandings } from '@/app/lib/api-sports/services/team-sync'
 
 export async function GET(request: Request) {
   // Verify cron secret

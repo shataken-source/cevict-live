@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
-import { predictGameWithEnrichment } from '@/lib/data-sources/predict-with-enrichment';
+import { predictGameWithEnrichment } from '@/app/lib/data-sources/predict-with-enrichment';
 import { Game, ModelCalibration } from '@/app/weekly-analyzer';
 
 export const runtime = 'nodejs';

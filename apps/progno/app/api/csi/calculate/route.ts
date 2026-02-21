@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { CSICalculator } from '@/lib/csi/calculator';
+import { CSICalculator } from '@/app/lib/csi/calculator';
 
 /**
  * POST /api/csi/calculate

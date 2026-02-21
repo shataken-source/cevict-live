@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { captureAllOdds } from '@/lib/live-odds-dashboard';
+import { captureAllOdds } from '@/app/lib/live-odds-dashboard';
 
 export async function GET(request: NextRequest) {
   try {

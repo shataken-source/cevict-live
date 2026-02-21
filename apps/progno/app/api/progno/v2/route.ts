@@ -1,7 +1,7 @@
 // app/api/progno/v2/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { OddsService } from '@/lib/odds-service';
-import { getDisclaimer } from '@/lib/legal-disclaimers';
+import { OddsService } from '@/app/lib/odds-service';
+import { getDisclaimer } from '@/app/lib/legal-disclaimers';
 import { getSingleGamePick } from '@/app/api/picks/today/route';
 
 const API_VERSION = '2.0.0';

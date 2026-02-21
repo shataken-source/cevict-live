@@ -4,9 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateSentimentField, TeamBaseline } from '@/lib/sentiment/scoring-engine';
-import { SentimentDataCollector } from '@/lib/sentiment/collectors';
-import { aggregateSentiment } from '@/lib/sentiment/analyzer';
+import { calculateSentimentField, TeamBaseline } from '@/app/lib/sentiment/scoring-engine';
+import { SentimentDataCollector } from '@/app/lib/sentiment/collectors';
+import { aggregateSentiment } from '@/app/lib/sentiment/analyzer';
 
 // Placeholder for database functions (would use Supabase in production)
 async function getTeamBaseline(teamId: string): Promise<TeamBaseline> {

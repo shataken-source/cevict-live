@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { KalshiClient } from '@/lib/markets/kalshi-client';
-import { PolymarketClient } from '@/lib/markets/polymarket-client';
+import { KalshiClient } from '@/app/lib/markets/kalshi-client';
+import { PolymarketClient } from '@/app/lib/markets/polymarket-client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

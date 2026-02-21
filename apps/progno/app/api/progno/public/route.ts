@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { TierAssignmentService } from '@/lib/tier-assignment-service';
-import { MasterIntegrationService } from '@/lib/master-integration-service';
+import { TierAssignmentService } from '@/app/lib/tier-assignment-service';
+import { MasterIntegrationService } from '@/app/lib/master-integration-service';
 
 // API Key management (in production, use database)
 const API_KEYS = new Map<string, { tier: string; rateLimit: number; requests: number; lastReset: number }>();

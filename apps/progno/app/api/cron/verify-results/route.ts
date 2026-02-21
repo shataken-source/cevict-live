@@ -5,8 +5,8 @@
  */
 
 import { NextResponse } from 'next/server'
-import { getClientForSport, getLeagueId } from '@/lib/api-sports/client'
-import { getAccuracyTracker } from '@/lib/api-sports/services/accuracy-tracker'
+import { getClientForSport, getLeagueId } from '@/app/lib/api-sports/client'
+import { getAccuracyTracker } from '@/app/lib/api-sports/services/accuracy-tracker'
 
 const getSupabase = () => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL

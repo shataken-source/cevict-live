@@ -7,8 +7,8 @@
  */
 
 import { NextResponse } from 'next/server'
-import { ElitePicksEnhancer } from '@/lib/elite-picks-enhancer'
-import { TierAssignmentService } from '@/lib/tier-assignment-service'
+import { ElitePicksEnhancer } from '@/app/lib/elite-picks-enhancer'
+import { TierAssignmentService } from '@/app/lib/tier-assignment-service'
 
 // Initialize enhancer for Elite tier
 const eliteEnhancer = new ElitePicksEnhancer()

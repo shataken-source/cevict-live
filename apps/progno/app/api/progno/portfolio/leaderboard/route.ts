@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPublicPortfolios } from '@/lib/pick-portfolio';
+import { getPublicPortfolios } from '@/app/lib/pick-portfolio';
 
 export async function GET(request: NextRequest) {
   try {

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { BacktestEngine, BacktestConfig } from '@/lib/backtesting/backtest-engine';
+import { BacktestEngine, BacktestConfig } from '@/app/lib/backtesting/backtest-engine';
 
 export const runtime = 'nodejs';
 

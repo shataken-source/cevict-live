@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { fetchApiSportsOdds } from '@/lib/api-sports-client';
-import { OddsService } from '@/lib/odds-service';
+import { fetchApiSportsOdds } from '@/app/lib/api-sports-client';
+import { OddsService } from '@/app/lib/odds-service';
 
 export async function GET() {
   const results: Record<string, any> = {};

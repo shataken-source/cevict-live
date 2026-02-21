@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PolymarketClient } from '@/lib/markets/polymarket-client';
-import { SportsProbabilityEngine, SportsMarket } from '@/lib/markets/sports-probability-engine';
+import { PolymarketClient } from '@/app/lib/markets/polymarket-client';
+import { SportsProbabilityEngine, SportsMarket } from '@/app/lib/markets/sports-probability-engine';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

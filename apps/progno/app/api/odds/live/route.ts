@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchLiveOdds, fetchPublicBetting, detectSharpMoney, fetchExpertConsensus } from '@/lib/live-data-service';
+import { fetchLiveOdds, fetchPublicBetting, detectSharpMoney, fetchExpertConsensus } from '@/app/lib/live-data-service';
 
 /**
  * Live Odds API

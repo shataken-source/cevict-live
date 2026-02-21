@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateOptimalBetSize } from '@/lib/bankroll-manager';
-import { GameData, predictionEngine } from '@/lib/prediction-engine';
-import { extractAveragedOdds, estimateTeamStatsFromOdds, estimateRecentForm } from '@/lib/odds-helpers';
+import { calculateOptimalBetSize } from '@/app/lib/bankroll-manager';
+import { GameData, predictionEngine } from '@/app/lib/prediction-engine';
+import { extractAveragedOdds, estimateTeamStatsFromOdds, estimateRecentForm } from '@/app/lib/odds-helpers';
 
 export const runtime = 'nodejs';
 

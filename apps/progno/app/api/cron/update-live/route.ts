@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { getLiveTracker } from '@/lib/api-sports/services/live-tracker'
+import { getLiveTracker } from '@/app/lib/api-sports/services/live-tracker'
 
 export async function GET(request: Request) {
   // Verify cron secret

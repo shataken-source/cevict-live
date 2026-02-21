@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { validateBacktestApiKey, getKeyUsageStats } from '@/lib/backtest-api-keys';
+import { validateBacktestApiKey, getKeyUsageStats } from '@/app/lib/backtest-api-keys';
 
 export async function POST(request: NextRequest) {
   try {
