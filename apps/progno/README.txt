@@ -1,4 +1,5 @@
 # PROGNO - AI Prediction Engine
+# Testing Vercel deployment - Feb 20, 2026
 
 ## Overview
 
