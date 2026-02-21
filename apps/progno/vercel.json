@@ -1,14 +1,6 @@
 {
   "crons": [
     {
-      "path": "/api/cron/sync-injuries",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/sync-odds",
-      "schedule": "*/30 * * * *"
-    },
-    {
       "path": "/api/cron/track-odds",
       "schedule": "0 * * * *"
     },
@@ -23,10 +15,6 @@
     {
       "path": "/api/cron/daily-results-retry",
       "schedule": "30 13 * * *"
-    },
-    {
-      "path": "/api/cron/capture-odds",
-      "schedule": "30 12 * * *"
     },
     {
       "path": "/api/cron/daily-predictions?earlyLines=1",
