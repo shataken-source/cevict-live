@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'node:fs'
 import path from 'node:path'
+import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -19,8 +20,8 @@ function isAuthorized(secret: string | undefined): boolean {
   const cronSecret = process.env.CRON_SECRET
   const adminPassword = process.env.PROGNO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD
   return (
-    (cronSecret && secret.trim() === cronSecret) ||
-    (adminPassword && adminPassword && secret.trim() === adminPassword)
+    (cronSecret && secret.trim() === cronSecret.trim()) ||
+    (adminPassword && secret.trim() === adminPassword.trim())
   )
 }
 
@@ -102,27 +103,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const appRoot = process.cwd()
-    const earlyPath = path.join(appRoot, `predictions-early-${earlyDate}.json`)
-    const regularPath = path.join(appRoot, `predictions-${regularDate}.json`)
-
-    // Check files exist
-    if (!fs.existsSync(earlyPath)) {
-      return NextResponse.json({
-        success: false,
-        error: `Early file not found: predictions-early-${earlyDate}.json`,
-      }, { status: 404 })
+    // Helper: load predictions from local FS or Supabase Storage
+    async function loadPredictions(date: string, isEarly: boolean): Promise<any> {
+      const fileName = isEarly ? `predictions-early-${date}.json` : `predictions-${date}.json`
+      // Try local file first (dev convenience)
+      try {
+        const appRoot = process.cwd()
+        const p = path.join(appRoot, fileName)
+        if (fs.existsSync(p)) {
+          const raw = fs.readFileSync(p, 'utf8')
+          return JSON.parse(raw)
+        }
+      } catch { }
+      // Fallback: Supabase Storage
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error(`${fileName} not found locally and Supabase env not configured`)
+      }
+      const sb = createClient(supabaseUrl, supabaseKey)
+      const { data: file, error } = await sb.storage.from('predictions').download(fileName)
+      if (error || !file) throw new Error(`${fileName} not found in storage`)
+      const text = await file.text()
+      const clean = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
+      return JSON.parse(clean)
     }
-    if (!fs.existsSync(regularPath)) {
-      return NextResponse.json({
-        success: false,
-        error: `Regular file not found: predictions-${regularDate}.json`,
-      }, { status: 404 })
-    }
 
-    // Load data
-    const earlyData = JSON.parse(fs.readFileSync(earlyPath, 'utf8'))
-    const regularData = JSON.parse(fs.readFileSync(regularPath, 'utf8'))
+    // Load data (supports both environments)
+    const earlyData = await loadPredictions(earlyDate, true)
+    const regularData = await loadPredictions(regularDate, false)
     const earlyPicks: Pick[] = Array.isArray(earlyData.picks) ? earlyData.picks : []
     const regularPicks: Pick[] = Array.isArray(regularData.picks) ? regularData.picks : []
 

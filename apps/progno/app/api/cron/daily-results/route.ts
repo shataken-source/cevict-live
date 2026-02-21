@@ -335,13 +335,22 @@ export async function GET(request: Request) {
         }
       }
       if (gameOutcomeRows.length > 0) {
+        // Deduplicate by (game_date, home_team, away_team) to avoid Postgres
+        // error: "ON CONFLICT DO UPDATE command cannot affect row a second time"
+        const uniq = new Map<string, any>()
+        for (const r of gameOutcomeRows) {
+          const key = `${r.game_date}|${norm(r.home_team)}|${norm(r.away_team)}`
+          if (!uniq.has(key)) uniq.set(key, r)
+        }
+        const uniqueRows = Array.from(uniq.values())
+
         const { error: outcomesError } = await sbClient
           .from('game_outcomes')
-          .upsert(gameOutcomeRows, { onConflict: 'game_date,home_team,away_team' })
+          .upsert(uniqueRows, { onConflict: 'game_date,home_team,away_team' })
         if (outcomesError) {
           console.warn(`[CRON daily-results] game_outcomes insert error:`, outcomesError.message)
         } else {
-          gameOutcomesStored = gameOutcomeRows.length
+          gameOutcomesStored = uniqueRows.length
           console.log(`[CRON daily-results] Stored ${gameOutcomesStored} game outcomes for backtesting`)
         }
       }
