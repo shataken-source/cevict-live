@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { predictionEngine } from '../../../lib/prediction-engine';
-import { recordOutcome } from '../../../lib/progno-db';
+import { predictionEngine } from '@/app/lib/prediction-engine';
+import { recordOutcome } from '@/app/lib/progno-db';
 
 export const runtime = 'nodejs';
 

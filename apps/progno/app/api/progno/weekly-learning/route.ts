@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { predictionEngine } from '../../../lib/prediction-engine';
+import { predictionEngine } from '@/app/lib/prediction-engine';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAccuracyMetrics } from '../../../lib/prediction-tracker';
+import { getAccuracyMetrics } from '@/app/lib/prediction-tracker';
 
 export const runtime = 'nodejs';
 

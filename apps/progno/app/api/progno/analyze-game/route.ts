@@ -1,11 +1,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateExpectedValue, calculateOptimalBetSize } from '../../../lib/bankroll-manager';
-import { GameData, predictionEngine } from '../../../lib/prediction-engine';
-import { savePrediction } from '../../../lib/progno-db';
-import { validateClaudeEffectInput, sanitizeString } from '../../../lib/claude-effect-validator';
-import { gatherClaudeEffectData, applyClaudeEffect } from '../../../lib/claude-effect-integration';
-import { americanToDecimal, extractAveragedOdds, estimateTeamStatsFromOdds, estimateRecentForm } from '../../../lib/odds-helpers';
+import { calculateExpectedValue, calculateOptimalBetSize } from '@/app/lib/bankroll-manager';
+import { GameData, predictionEngine } from '@/app/lib/prediction-engine';
+import { savePrediction } from '@/app/lib/progno-db';
+import { validateClaudeEffectInput, sanitizeString } from '@/app/lib/claude-effect-validator';
+import { gatherClaudeEffectData, applyClaudeEffect } from '@/app/lib/claude-effect-integration';
+import { americanToDecimal, extractAveragedOdds, estimateTeamStatsFromOdds, estimateRecentForm } from '@/app/lib/odds-helpers';
 
 export const runtime = 'nodejs';
 
