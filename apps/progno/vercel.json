@@ -48,5 +48,5 @@
   "installCommand": "npm install",
   "buildCommand": "next build",
   "framework": "nextjs",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/progno/"
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ."
 }
