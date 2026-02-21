@@ -45,8 +45,8 @@
       "schedule": "0 2 * * 1"
     }
   ],
-  "installCommand": "npm install",
-  "buildCommand": "next build",
   "framework": "nextjs",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ."
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- .",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install --legacy-peer-deps"
 }
