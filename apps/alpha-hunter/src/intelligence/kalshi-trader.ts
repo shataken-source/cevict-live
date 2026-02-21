@@ -195,55 +195,48 @@ export class KalshiTrader {
   // --- SMART MARKET FETCHING ---
 
   /**
-   * Get markets with parallel pagination for faster fetching
-   * Fetches multiple pages concurrently instead of sequentially
+   * Sequential, cursor-based markets fetch with Multivariate Events excluded.
    */
-  private async getMarketsParallel(limitPerPage: number = 100, maxPages: number = 3): Promise<any[]> {
-    // First, fetch page 1 to get total count
-    const firstPage = await this.getMarketsPage(limitPerPage, 0);
-    if (!firstPage || firstPage.length === 0) return [];
-
-    // Calculate remaining pages to fetch
-    const remainingPages = Math.min(maxPages - 1, 4); // Max 4 more pages
-
-    if (remainingPages <= 0) {
-      return firstPage;
+  private async getMarketsParallel(limitPerPage: number = 1000, maxPages: number = 3, seriesTicker?: string): Promise<any[]> {
+    let cursor = '';
+    let page = 0;
+    const all: any[] = [];
+    while (true) {
+      const pageResult = await this.getMarketsPage(limitPerPage, cursor, seriesTicker);
+      if (!pageResult) break;
+      const { markets, cursor: nextCursor } = pageResult as any;
+      page++;
+      console.log(`   📡 Markets API page ${page}: ${markets.length} markets (cursor=${nextCursor ? String(nextCursor).slice(0, 8) + '…' : '∅'})`);
+      all.push(...markets);
+      if (!nextCursor || page >= maxPages) break;
+      cursor = String(nextCursor);
+      await new Promise(r => setTimeout(r, 100));
     }
-
-    // Fetch remaining pages in parallel
-    const pagePromises: Promise<any[]>[] = [];
-    for (let i = 1; i <= remainingPages; i++) {
-      pagePromises.push(this.getMarketsPage(limitPerPage, i * limitPerPage));
-    }
-
-    const remainingResults = await Promise.allSettled(pagePromises);
-
-    // Combine all markets
-    let allMarkets = [...firstPage];
-    for (const result of remainingResults) {
-      if (result.status === 'fulfilled' && result.value.length > 0) {
-        allMarkets = allMarkets.concat(result.value);
-      }
-    }
-
-    console.log(`   📊 Parallel fetch: ${allMarkets.length} markets from ${maxPages} pages`);
-    return allMarkets;
+    console.log(`   📊 Sequential fetch: ${all.length} markets from ${page} page(s)${seriesTicker ? ` (series: ${seriesTicker})` : ''}`);
+    return all;
   }
 
   /**
-   * Fetch a single page of markets
+   * Fetch a single page of markets using opaque cursor and excluding multivariate events.
    */
-  private async getMarketsPage(limit: number, offset: number): Promise<any[]> {
+  private async getMarketsPage(limit: number, offsetOrCursor: any, seriesTicker?: string): Promise<{ markets: any[]; cursor?: string } | null> {
     try {
-      const qs = new URLSearchParams({
+      const params: Record<string, string> = {
         limit: String(limit),
-        cursor: String(offset),
+        cursor: String(offsetOrCursor || ''),
         status: 'open',
-      });
+        mve_filter: 'exclude',
+      };
+
+      if (seriesTicker) {
+        params.series_ticker = seriesTicker;
+      }
+
+      const qs = new URLSearchParams(params);
 
       const fullPath = `/trade-api/v2/markets?${qs.toString()}`;
       const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
-      if (!signature) return [];
+      if (!signature) return null;
 
       const fullUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
       assertKalshiRequestUrlIsDemo(fullUrl);
@@ -264,7 +257,7 @@ export class KalshiTrader {
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
         console.log(`   ⚠️ Markets API error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText.slice(0, 100) : ''}`);
-        return [];
+        return null;
       }
       const data = await response.json();
       console.log(`   🔍 DEBUG: Response keys: ${Object.keys(data).join(', ')}`);
@@ -276,10 +269,10 @@ export class KalshiTrader {
         console.log(`   🔍 DEBUG: First market ticker: ${data.markets[0].ticker}, title: ${data.markets[0].title?.substring(0, 40)}...`);
       }
 
-      return data.markets || [];
+      return { markets: data.markets || [], cursor: data.cursor };
     } catch (error) {
       console.log(`   ⚠️ Markets fetch error: ${error}`);
-      return [];
+      return null;
     }
   }
 
@@ -287,7 +280,9 @@ export class KalshiTrader {
    * Get markets (now uses parallel fetching by default)
    */
   async getMarkets(): Promise<PredictionMarket[]> {
-    const apiMarkets = await this.getMarketsParallel(100, 3); // 3 pages = 300 markets max
+    const envPages = parseInt(process.env.KALSHI_MAX_PAGES || '5', 10);
+    const maxPages = Number.isFinite(envPages) && envPages > 0 ? envPages : 3;
+    const apiMarkets = await this.getMarketsParallel(1000, maxPages);
     return this.transformMarkets(apiMarkets);
   }
 
@@ -627,89 +622,108 @@ export class KalshiTrader {
     minEdgePct: number,
     options?: { getCoinbasePrice?: (productId: string) => Promise<number> }
   ): Promise<Opportunity[]> {
-    const markets = await this.getMarkets();
     const minEdge = Number(minEdgePct) || 0;
     const nowIso = new Date().toISOString();
+
+    // Fetch raw Kalshi markets (with ticker, event_ticker, yes_ask, etc.)
+    const envPages = parseInt(process.env.KALSHI_MAX_PAGES || '5', 10);
+    const maxPages = Number.isFinite(envPages) && envPages > 0 ? envPages : 3;
+
+    // Fetch all markets - series_ticker filtering returned 0 results
+    // TODO: Investigate correct series_ticker format for filtering
+    const apiMarkets = await this.getMarketsParallel(1000, maxPages);
 
     const prognoEvents = await getPrognoProbabilities();
     const getCbPrice = options?.getCoinbasePrice;
 
     const opps: Opportunity[] = [];
-    for (const m of markets) {
-      const yesPrice = Number(m.yesPrice || 50);
-      const noPrice = Number(m.noPrice || 50);
-      const title = m.title || '';
-      const category = m.category || '';
 
-      let modelProbability: number | null = null;
-      let source = 'Kalshi';
-      let reasoning: string[] = ['Heuristic contrarian edge'];
+    // 1) Sports: use Probability Bridge matching → net edge vs YES ask
+    for (const ev of prognoEvents) {
+      const matched = matchKalshiMarketToProgno(ev, apiMarkets);
+      if (!matched) continue;
 
-      const prognoMatch = matchKalshiMarketToProgno(title, category, prognoEvents);
-      if (prognoMatch) {
-        modelProbability = prognoMatch.modelProbability;
-        source = 'PROGNO';
-        const leaguePart = prognoMatch.league ? ` (${prognoMatch.league})` : '';
-        reasoning = [`Progno model${leaguePart}: ${prognoMatch.label} → ${modelProbability}%`];
-      }
+      const modelProb = Math.max(1, Math.min(99, ev.modelProbability)); // 0-100
+      const yesAsk = typeof matched.yes_ask === 'number' ? matched.yes_ask : 50; // 0-100 cents
+      const edge = modelProb - yesAsk; // pct points edge vs entry price (ask)
+      if (edge < minEdge) continue;
 
-      if (modelProbability == null && getCbPrice) {
-        const cryptoProb = await getCryptoModelProbability(title, getCbPrice);
-        if (cryptoProb) {
-          modelProbability = cryptoProb.modelProbability;
-          source = 'Coinbase';
-          reasoning = [`Crypto rule: ${cryptoProb.label} → ${modelProbability}%`];
-        }
-      }
-
-      if (modelProbability == null) {
-        modelProbability = yesPrice > 50 ? Math.max(1, yesPrice - 5) : Math.min(99, yesPrice + 5);
-      }
-
-      const yesEdge = modelProbability - yesPrice;
-      const noEdge = (100 - modelProbability) - noPrice;
-
-      let side: 'yes' | 'no' | null = null;
-      let edge = 0;
-      if (yesEdge >= minEdge) {
-        side = 'yes';
-        edge = yesEdge;
-      } else if (noEdge >= minEdge) {
-        side = 'no';
-        edge = noEdge;
-      }
-      if (!side) continue;
-
-      const confidence = Math.min(92, Math.max(52, modelProbability));
+      const confidence = Math.min(92, Math.max(52, modelProb));
       opps.push({
-        id: `kalshi_${m.id}_${side}_${Date.now()}`,
+        id: `kalshi_${matched.ticker}_YES_${Date.now()}`,
         type: 'prediction_market',
-        source,
-        title: `${side.toUpperCase()}: ${title}`,
-        description: `${source} edge ${edge.toFixed(1)}% at ${side === 'yes' ? yesPrice : noPrice}¢`,
+        source: 'PROGNO',
+        title: `YES: ${matched.title}`,
+        description: `Progno edge ${edge.toFixed(1)}% at ${yesAsk}¢`,
         confidence,
         expectedValue: edge,
-        riskLevel: source === 'PROGNO' ? 'low' : 'medium',
+        riskLevel: 'low',
         timeframe: '48h',
         requiredCapital: 5,
         potentialReturn: 5 * (edge / 100),
-        reasoning,
-        dataPoints: (m.volume != null && m.volume > 0)
-          ? [{ source: 'Kalshi', metric: 'Volume', value: m.volume, relevance: 80, timestamp: nowIso }]
-          : [],
+        reasoning: [`Progno model${ev.league ? ` (${ev.league})` : ''}: ${ev.label} → ${modelProb}%`],
+        dataPoints: [
+          ...(typeof matched.volume === 'number' ? [{ source: 'Kalshi', metric: 'Volume', value: matched.volume, relevance: 80, timestamp: nowIso }] : []),
+        ],
         action: {
           platform: 'kalshi',
           actionType: 'bet',
           amount: 5,
-          target: `${m.id} ${side.toUpperCase()}`,
-          instructions: [`Place ${side.toUpperCase()} on ${m.id} at ≤${side === 'yes' ? yesPrice : noPrice}¢`],
-          autoExecute: source === 'PROGNO',
+          target: `${matched.ticker} YES`,
+          instructions: [`Place YES on ${matched.ticker} at ≤${yesAsk}¢`],
+          autoExecute: true,
         },
-        expiresAt: m.expiresAt || nowIso,
+        expiresAt: nowIso,
         createdAt: nowIso,
       });
     }
 
+    // 2) Crypto fallback: use Coinbase-based probability model
+    if (getCbPrice) {
+      for (const m of apiMarkets) {
+        const title = m?.title || '';
+        if (!title) continue;
+        const cryptoProb = await getCryptoModelProbability(title, getCbPrice);
+        if (!cryptoProb) continue;
+
+        const modelProb = Math.max(1, Math.min(99, cryptoProb.modelProbability));
+        const yesAsk = typeof m?.yes_ask === 'number' ? m.yes_ask : 50;
+        const edge = modelProb - yesAsk;
+        if (edge < minEdge) continue;
+
+        const confidence = Math.min(90, Math.max(52, modelProb));
+        const ticker = m?.ticker || String(m?.id || 'unknown');
+        opps.push({
+          id: `kalshi_${ticker}_YES_${Date.now()}`,
+          type: 'prediction_market',
+          source: 'Coinbase',
+          title: `YES: ${title}`,
+          description: `Crypto rule edge ${edge.toFixed(1)}% at ${yesAsk}¢`,
+          confidence,
+          expectedValue: edge,
+          riskLevel: 'medium',
+          timeframe: '48h',
+          requiredCapital: 5,
+          potentialReturn: 5 * (edge / 100),
+          reasoning: [`Crypto rule: ${cryptoProb.label} → ${modelProb}%`],
+          dataPoints: [
+            ...(typeof m?.volume === 'number' ? [{ source: 'Kalshi', metric: 'Volume', value: m.volume, relevance: 80, timestamp: nowIso }] : []),
+          ],
+          action: {
+            platform: 'kalshi',
+            actionType: 'bet',
+            amount: 5,
+            target: `${ticker} YES`,
+            instructions: [`Place YES on ${ticker} at ≤${yesAsk}¢`],
+            autoExecute: false,
+          },
+          expiresAt: nowIso,
+          createdAt: nowIso,
+        });
+      }
+    }
+
+    // Sort best-first by edge before caller applies extra ranking
     opps.sort((a, b) => b.expectedValue - a.expectedValue);
     return opps;
   }

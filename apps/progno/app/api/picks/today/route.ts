@@ -59,6 +59,20 @@ const SPORT_TO_API_SPORTS: Record<string, string> = {
   'cbb': 'cbb',  // College Baseball short form
 }
 
+// API-Sports game interface
+interface ApiSportsGame {
+  id: string | number;
+  sport: string;
+  homeTeam: string;
+  awayTeam: string;
+  startTime: string;
+  odds: {
+    moneyline: { home?: number; away?: number };
+    spread: { home?: number; away?: number };
+    total: { line?: number; over?: number; under?: number };
+  };
+}
+
 /**
  * Convert API-Sports game to The-Odds format for buildPickFromRawGame
  */

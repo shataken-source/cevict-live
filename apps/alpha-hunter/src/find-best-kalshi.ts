@@ -28,6 +28,8 @@ async function findBestKalshiToday() {
 
   const trader = new KalshiTrader();
   const minVolume = typeof process.env.MIN_VOLUME !== 'undefined' ? parseInt(process.env.MIN_VOLUME, 10) : undefined;
+  const envPages = parseInt(process.env.KALSHI_MAX_PAGES || '10', 10);
+  const maxPages = Number.isFinite(envPages) && envPages > 0 ? envPages : 10;
   if (minVolume != null && !Number.isNaN(minVolume)) {
     console.log(`📊 MIN_VOLUME=${minVolume} — will prefer/filter by volume\n`);
   }
@@ -80,12 +82,8 @@ async function findBestKalshiToday() {
     // Find opportunities: use Progno + crypto model probs when available, else heuristic
     console.log('🔍 Analyzing opportunities (Progno + crypto bridge when available)...');
     let opportunities = await trader.findOpportunitiesWithExternalProbs(3, { getCoinbasePrice });
-    
-    if (opportunities.length === 0) {
-      console.log('❌ No opportunities found with sufficient edge (min 3%)');
-      return;
-    }
 
+    // 1) Volume filter first to remove ghost markets
     if (minVolume != null && !Number.isNaN(minVolume) && minVolume > 0) {
       const before = opportunities.length;
       opportunities = opportunities.filter((o) => {
@@ -97,32 +95,40 @@ async function findBestKalshiToday() {
       }
     }
 
-    // Dedupe by normalized title + side (Kalshi often has many contracts with same title)
+    // 2) Dedupe by market ticker + side to keep distinct strikes
     const seen = new Set<string>();
     opportunities = opportunities.filter((o) => {
-      const key = `${o.title.replace(/^(YES|NO):\s*/i, '').trim()}|${o.title.startsWith('YES:') ? 'YES' : 'NO'}`;
+      const side = o.title.startsWith('YES:') ? 'YES' : 'NO';
+      const key = (o.action?.target ? `${o.action.target}` : `${o.title}|${side}`).trim();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
-    // Sort: Progno first, then by expected value, then by volume
+    // 3) Sort by Source rank -> Simplified Kelly score -> Volume
     const sourceRank = (s: string) => (s === 'PROGNO' ? 2 : s === 'Coinbase' ? 1 : 0);
     const sorted = opportunities
       .sort((a, b) => {
         const rA = sourceRank(a.source);
         const rB = sourceRank(b.source);
         if (rB !== rA) return rB - rA;
-        if (b.expectedValue !== a.expectedValue) return b.expectedValue - a.expectedValue;
+        const scoreA = (Math.max(0, Math.min(100, a.confidence)) / 100) * a.expectedValue;
+        const scoreB = (Math.max(0, Math.min(100, b.confidence)) / 100) * b.expectedValue;
+        if (scoreB !== scoreA) return scoreB - scoreA;
         const volA = a.dataPoints?.find((dp) => dp.metric === 'Volume')?.value as number | undefined;
         const volB = b.dataPoints?.find((dp) => dp.metric === 'Volume')?.value as number | undefined;
         return (volB ?? 0) - (volA ?? 0);
       })
-      .slice(0, 20); // Top 20
+      .slice(0, 20);
 
-    const fromProgno = opportunities.filter((o) => o.source === 'PROGNO').length;
-    const fromCoinbase = opportunities.filter((o) => o.source === 'Coinbase').length;
-    console.log(`\n✅ Found ${opportunities.length} opportunities (${fromProgno} from Progno, ${fromCoinbase} from Coinbase)`);
+    if (sorted.length === 0) {
+      console.log('❌ No opportunities found after filtering.');
+      return;
+    }
+
+    const fromProgno = sorted.filter((o) => o.source === 'PROGNO').length;
+    const fromCoinbase = sorted.filter((o) => o.source === 'Coinbase').length;
+    console.log(`\n✅ Found ${sorted.length} opportunities (${fromProgno} from Progno, ${fromCoinbase} from Coinbase)`);
     if (prognoEvents.length > 0 && fromProgno === 0) {
       console.log('   (No Kalshi markets in this batch matched Progno team names; sports markets may use different wording or be in a later page.)');
     }
@@ -134,7 +140,7 @@ async function findBestKalshiToday() {
       // Extract market info from opportunity
       const title = opp.title.replace(/^(YES|NO):\s*/, '');
       const side = opp.title.startsWith('YES:') ? 'YES' : 'NO';
-      const daysUntilExpiry = opp.expiresAt 
+      const daysUntilExpiry = opp.expiresAt
         ? Math.ceil((new Date(opp.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
         : 'N/A';
 
