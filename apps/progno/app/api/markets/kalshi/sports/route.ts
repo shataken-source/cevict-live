@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { KalshiClient } from '@/app/lib/markets/kalshi-client';
-import { SportsProbabilityEngine, SportsMarket } from '@/app/lib/markets/sports-probability-engine';
+import { KalshiClient } from '@/lib/markets/kalshi-client';
+import { SportsProbabilityEngine, SportsMarket } from '@/lib/markets/sports-probability-engine';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

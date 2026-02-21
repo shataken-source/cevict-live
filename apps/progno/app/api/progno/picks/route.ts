@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { EspnOddsService } from '@/app/lib/espn-odds-service';
-import { TierAssignmentService } from '@/app/lib/tier-assignment-service';
-import { MasterIntegrationService } from '@/app/lib/master-integration-service';
-import { ElitePicksEnhancer } from '@/app/lib/elite-picks-enhancer';
-import { EVCalculator } from '@/app/lib/ev-calculator';
-import { AlertSystem } from '@/app/lib/alert-system';
+import { EspnOddsService } from '@/lib/espn-odds-service';
+import { TierAssignmentService } from '@/lib/tier-assignment-service';
+import { MasterIntegrationService } from '@/lib/master-integration-service';
+import { ElitePicksEnhancer } from '@/lib/elite-picks-enhancer';
+import { EVCalculator } from '@/lib/ev-calculator';
+import { AlertSystem } from '@/lib/alert-system';
 
 const masterService = new MasterIntegrationService(10000);
 const eliteEnhancer = new ElitePicksEnhancer();

@@ -10,8 +10,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { ClaudeEffectEngine } from '@/app/lib/claude-effect';
-import { gatherClaudeEffectData, applyClaudeEffect } from '@/app/lib/claude-effect-integration';
+import { ClaudeEffectEngine } from '@/lib/claude-effect';
+import { gatherClaudeEffectData, applyClaudeEffect } from '@/lib/claude-effect-integration';
 
 export const runtime = 'nodejs';
 

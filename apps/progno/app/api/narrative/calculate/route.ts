@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { NarrativeDetector } from '@/app/lib/narrative/detector';
-import { NarrativeMomentumCalculator } from '@/app/lib/narrative/momentum-calculator';
+import { NarrativeDetector } from '@/lib/narrative/detector';
+import { NarrativeMomentumCalculator } from '@/lib/narrative/momentum-calculator';
 
 /**
  * POST /api/narrative/calculate
