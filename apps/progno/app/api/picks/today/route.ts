@@ -13,11 +13,10 @@ import { createClient } from '@supabase/supabase-js'
 import { runPickEngine, rankPicks } from '@/app/lib/modules/pick-engine'
 import { MonteCarloEngine } from '@/app/lib/monte-carlo-engine'
 import { GameData } from '@/app/lib/prediction-engine'
-import { getPrimaryKey } from '../../../keys-store'
+import { getPrimaryKey } from '../../keys-store'
 import { estimateTeamStatsFromOdds, estimateTeamStatsEnhanced, shinDevig } from '@/app/lib/odds-helpers'
 import { warmStatsCache, setCurrentGameContext, clearCurrentGameContext } from '@/app/lib/espn-team-stats-service'
-import { predictScoreComprehensive } from '../../../score-prediction-service'
-import { OddsService } from '@/app/lib/odds-service'
+import { predictScoreComprehensive } from '../../score-prediction-service'
 // import { fetchApiSportsOdds, ApiSportsGame } from '@/app/lib/api-sports-client' // TODO: Fix this import - file doesn't exist
 import { SPORT_VARIANCE, applySportVariance, getCalibratedWinProbability } from '@/app/lib/model-calibration'
 import { calculateTrueEdge, getStadiumElevation, TRUE_EDGE_ENGINE } from '@/app/lib/true-edge-engine'
@@ -398,9 +397,9 @@ async function fetchFreeEarlyLines(sportKey: string): Promise<any[]> {
 const EV_DISPLAY_CAP = 150
 /** Regular picks: today + next day (0–1 days ahead). */
 const REGULAR_MAX_DAYS_AHEAD = 1
-/** Early lines: 2–5 days ahead (so you can compare when those games hit regular window). */
-const EARLY_LINES_MIN_DAYS = 2
-const EARLY_LINES_MAX_DAYS = 5
+/** Early lines: 0–4 days ahead (all 4 days from run date). */
+const EARLY_LINES_MIN_DAYS = 0
+const EARLY_LINES_MAX_DAYS = 4
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -696,21 +695,32 @@ export async function GET(request: Request) {
         let games: any[] = []
 
         // Primary: The-Odds API
-        // For early lines, pass commenceTimeFrom/commenceTimeTo so the API returns
-        // games 2-5 days ahead. Without these params it only returns ~48hr window.
+        // Note: The-Odds API doesn't support commenceTimeFrom/To params (returns 422)
+        // It returns all upcoming games in the next ~7 days by default
+        // We'll filter by date after fetching
         let oddsApiUrl = `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${oddsApiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
         if (earlyLines) {
-          const now = new Date()
-          const from = new Date(now); from.setDate(from.getDate() + EARLY_LINES_MIN_DAYS); from.setHours(0, 0, 0, 0)
-          const to = new Date(now); to.setDate(to.getDate() + EARLY_LINES_MAX_DAYS); to.setHours(23, 59, 59, 999)
-          oddsApiUrl += `&commenceTimeFrom=${from.toISOString()}&commenceTimeTo=${to.toISOString()}`
-          console.log(`[EarlyLines] Fetching ${sport} from ${from.toISOString().split('T')[0]} to ${to.toISOString().split('T')[0]}`)
+          console.log(`[EarlyLines] Fetching ${sport} (will filter for ${EARLY_LINES_MIN_DAYS}-${EARLY_LINES_MAX_DAYS} days out)`)
         }
         const response = await fetch(oddsApiUrl)
         if (response.ok) {
           const data = await response.json()
-          if (Array.isArray(data)) games = data
-          console.log(`[Picks API] The-Odds ${sport}: ${games.length} games${earlyLines ? ' (early window)' : ''}`)
+          if (Array.isArray(data)) {
+            // Filter by date range if early lines requested
+            if (earlyLines) {
+              const now = new Date()
+              const minDate = new Date(now); minDate.setDate(minDate.getDate() + EARLY_LINES_MIN_DAYS); minDate.setHours(0, 0, 0, 0)
+              const maxDate = new Date(now); maxDate.setDate(maxDate.getDate() + EARLY_LINES_MAX_DAYS); maxDate.setHours(23, 59, 59, 999)
+              games = data.filter((g: any) => {
+                const gameDate = new Date(g.commence_time)
+                return gameDate >= minDate && gameDate <= maxDate
+              })
+              console.log(`[Picks API] The-Odds ${sport}: ${games.length} games in early window (${data.length} total)`)
+            } else {
+              games = data
+              console.log(`[Picks API] The-Odds ${sport}: ${games.length} games`)
+            }
+          }
         } else {
           console.warn(`[Picks API] The-Odds ${sport} HTTP ${response.status}`)
         }
@@ -1449,23 +1459,30 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   const bestValueBet = valueBets.length > 0 ? valueBets[0] : null
   const VALUE_PICK_MIN_EDGE = 10
   let recommendedPick = favorite
-  let recommendedType = bestValueBet?.type?.toUpperCase() || 'MONEYLINE'
+  let recommendedType = 'MONEYLINE'
   let recommendedOdds = favoriteOdds
   let recommendedLine: number | undefined
+
+  // If we have a strong value bet (edge >= 10%), use it
   if (bestValueBet && bestValueBet.edge >= VALUE_PICK_MIN_EDGE) {
     recommendedPick = bestValueBet.side
     recommendedType = bestValueBet.type.toUpperCase()
     if (bestValueBet.type === 'moneyline') {
       recommendedOdds = bestValueBet.side === game.home_team ? homeOdds.price : awayOdds.price
+    } else if (bestValueBet.type === 'spread') {
+      recommendedOdds = bestValueBet.odds || -110
+      if (bestValueBet.line != null) recommendedLine = bestValueBet.line
     } else {
       recommendedOdds = -110
       if (bestValueBet.line != null) recommendedLine = bestValueBet.line
     }
-  } else if (bestValueBet && bestValueBet.edge >= 5 && (bestValueBet.type === 'spread' || bestValueBet.type === 'total')) {
-    recommendedPick = bestValueBet.side
-    recommendedType = bestValueBet.type.toUpperCase()
-    recommendedOdds = -110
-    if (bestValueBet.line != null) recommendedLine = bestValueBet.line
+  }
+  // If value bet has moderate edge (5-10%) but is spread/total, default back to moneyline
+  else if (bestValueBet && bestValueBet.edge >= 5 && (bestValueBet.type === 'spread' || bestValueBet.type === 'total')) {
+    // Don't use spread/total for moderate edge - stick with moneyline for clarity
+    recommendedPick = favorite
+    recommendedType = 'MONEYLINE'
+    recommendedOdds = favoriteOdds
   }
 
   // Post-selection odds filter: catch value bets that exceed strategy limits

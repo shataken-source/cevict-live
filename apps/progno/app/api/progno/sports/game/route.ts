@@ -1,22 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'node:fs';
-import path from 'node:path';
-import { predictGameWithEnrichment } from '@/app/lib/data-sources/predict-with-enrichment';
-import { Game, ModelCalibration } from '@/app/weekly-analyzer';
+import { predictionEngine, GameData } from '@/app/lib/prediction-engine';
 
 export const runtime = 'nodejs';
-
-function loadCalibration(): ModelCalibration | undefined {
-  try {
-    const prognoDir = path.join(process.cwd(), '.progno');
-    const file = path.join(prognoDir, 'calibration.json');
-    if (!fs.existsSync(file)) return undefined;
-    const raw = fs.readFileSync(file, 'utf8');
-    return JSON.parse(raw) as ModelCalibration;
-  } catch {
-    return undefined;
-  }
-}
 
 function validateBody(body: any) {
   const errors: string[] = [];
@@ -67,64 +52,31 @@ export async function POST(request: NextRequest) {
     const sport: string = body.league || body.sport;
     const now = new Date();
 
-    const game: Game = {
-      id:
-        body.gameId ||
-        `${sport}-${body.homeTeam}-${body.awayTeam}-${now.toISOString().slice(0, 10)}`,
+    const game: GameData = {
       homeTeam: body.homeTeam,
       awayTeam: body.awayTeam,
+      league: sport,
       sport,
-      date: body.date ? new Date(body.date) : now,
+      date: body.date ? new Date(body.date).toISOString() : now.toISOString(),
+      venue: body.venue || 'Unknown',
       odds: {
         home: Number(body.odds?.home),
         away: Number(body.odds?.away),
-        spread:
-          body.odds?.spread != null ? Number(body.odds.spread) : body.line != null ? Number(body.line) : undefined,
+        spread: body.odds?.spread != null ? Number(body.odds.spread) : body.line != null ? Number(body.line) : undefined,
         total: body.odds?.total != null ? Number(body.odds.total) : undefined,
       },
-      venue: body.venue || 'Unknown',
-      weather: body.weather
-        ? {
-            temperature: Number(body.weather.temperature ?? 70),
-            conditions: String(body.weather.conditions ?? 'Clear'),
-            windSpeed: Number(body.weather.windSpeed ?? 5),
-          }
-        : undefined,
-      injuries: body.injuries
-        ? {
-            homeImpact:
-              body.injuries.homeImpact != null ? Number(body.injuries.homeImpact) : undefined,
-            awayImpact:
-              body.injuries.awayImpact != null ? Number(body.injuries.awayImpact) : undefined,
-          }
-        : undefined,
-      turnoversPerGame: body.turnoversPerGame
-        ? {
-            home:
-              body.turnoversPerGame.home != null
-                ? Number(body.turnoversPerGame.home)
-                : undefined,
-            away:
-              body.turnoversPerGame.away != null
-                ? Number(body.turnoversPerGame.away)
-                : undefined,
-          }
-        : undefined,
-      homeFieldAdvantage:
-        body.homeFieldAdvantage != null ? Number(body.homeFieldAdvantage) : undefined,
-      pace: body.pace
-        ? {
-            home: body.pace.home != null ? Number(body.pace.home) : undefined,
-            away: body.pace.away != null ? Number(body.pace.away) : undefined,
-          }
-        : undefined,
+      weather: body.weather ? {
+        temperature: Number(body.weather.temperature ?? 70),
+        conditions: String(body.weather.conditions ?? 'Clear'),
+        windSpeed: Number(body.weather.windSpeed ?? 5),
+      } : undefined,
+      injuries: body.injuries ? {
+        homeImpact: body.injuries.homeImpact != null ? Number(body.injuries.homeImpact) : undefined,
+        awayImpact: body.injuries.awayImpact != null ? Number(body.injuries.awayImpact) : undefined,
+      } : undefined,
     };
 
-    const calibration = loadCalibration();
-
-    // Use enriched prediction with all purchased data sources
-    // Includes: SportsDataIO, Rotowire API, API-Football, The Odds API, Historical data
-    const prediction = await predictGameWithEnrichment(game, calibration);
+    const prediction = await predictionEngine.predict(game);
 
     return NextResponse.json({
       success: true,
