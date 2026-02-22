@@ -49,6 +49,10 @@ body {
   @apply bg-slate-900/60 rounded-xl p-4 flex flex-col gap-1;
 }
 
+button.kpiTile {
+  @apply cursor-pointer;
+}
+
 /* Badges */
 .badge {
   @apply text-xs px-2 py-0.5 rounded-full font-medium;

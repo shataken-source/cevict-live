@@ -1,11 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Settings, Bluetooth, Wifi, Usb, Radio, Save, Info, Database, Key } from 'lucide-react';
+import { Settings, Bluetooth, Wifi, Usb, Radio, Save, Info, Database, MapPin } from 'lucide-react';
 import { useSolar, SYSTEM_CONFIG, AMPINVT_TOPICS } from '../context/SolarContext';
+import { useSettings } from '../context/SettingsContext';
 
 export default function ControlsTab() {
   const { dataSource, setDataSource, isConnected } = useSolar();
+  const { zipCode, setZipCode } = useSettings();
+  const [zipInput, setZipInput] = useState(zipCode);
+  const [zipSaved, setZipSaved] = useState(false);
   const [mqttBroker, setMqttBroker] = useState(() =>
     typeof window !== 'undefined' ? localStorage.getItem('accusolar_mqtt') || '' : ''
   );
@@ -13,6 +17,14 @@ export default function ControlsTab() {
     typeof window !== 'undefined' ? localStorage.getItem('accusolar_mqtt_port') || '1883' : '1883'
   );
   const [saved, setSaved] = useState(false);
+
+  const saveZip = () => {
+    if (zipInput.length === 5 && /^\d{5}$/.test(zipInput)) {
+      setZipCode(zipInput);
+      setZipSaved(true);
+      setTimeout(() => setZipSaved(false), 2000);
+    }
+  };
 
   const save = () => {
     localStorage.setItem('accusolar_mqtt', mqttBroker);
@@ -23,6 +35,40 @@ export default function ControlsTab() {
 
   return (
     <div className="space-y-4">
+      {/* Location / ZIP */}
+      <div className="panel">
+        <div className="panelTitleRow">
+          <MapPin className="w-4 h-4 text-emerald-400" />
+          <span className="panelTitle">Location</span>
+          <span className="ml-auto text-xs text-slate-500">Used for weather &amp; solar forecasting</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">ZIP Code</label>
+            <input
+              type="text"
+              value={zipInput}
+              onChange={e => setZipInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && saveZip()}
+              maxLength={5}
+              placeholder="e.g. 90210"
+              className="w-36 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
+          <button
+            onClick={saveZip}
+            className={`mt-5 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${zipSaved ? 'bg-emerald-700 text-white' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              }`}>
+            <Save className="w-4 h-4" />
+            {zipSaved ? 'Saved!' : 'Save ZIP'}
+          </button>
+          {zipCode && (
+            <div className="mt-5 text-sm text-slate-400">
+              Current: <span className="text-slate-200 font-medium">{zipCode}</span>
+            </div>
+          )}
+        </div>
+      </div>
       {/* Data Source */}
       <div className="panel">
         <div className="panelTitleRow">

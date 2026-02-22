@@ -16,12 +16,12 @@ const ControlsTab = dynamic(() => import('./ControlsTab'), { ssr: false });
 type TabId = 'overview' | 'telemetry' | 'battery' | 'weather' | 'ai' | 'controls';
 
 const TABS: { id: TabId; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { id: 'overview',  label: 'Overview',  icon: Sun },
+  { id: 'overview', label: 'Overview', icon: Sun },
   { id: 'telemetry', label: 'Telemetry', icon: Activity },
-  { id: 'battery',   label: 'Battery',   icon: Battery },
-  { id: 'weather',   label: 'Weather',   icon: Cloud },
-  { id: 'ai',        label: 'AI Setup',  icon: MessageSquare },
-  { id: 'controls',  label: 'Controls',  icon: Settings },
+  { id: 'battery', label: 'Battery', icon: Battery },
+  { id: 'weather', label: 'Weather', icon: Cloud },
+  { id: 'ai', label: 'AI Setup', icon: MessageSquare },
+  { id: 'controls', label: 'Settings', icon: Settings },
 ];
 
 export default function AccuSolarApp() {
@@ -105,11 +105,10 @@ export default function AccuSolarApp() {
               const active = activeTab === tab.id;
               return (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
-                    active
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${active
                       ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                       : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                  }`}>
+                    }`}>
                   <tab.icon className="w-4 h-4" />
                   <span className="hidden sm:inline">{tab.label}</span>
                 </button>
@@ -121,12 +120,12 @@ export default function AccuSolarApp() {
 
       {/* Main content */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-4">
-        {activeTab === 'overview'  && <OverviewTab />}
+        {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'telemetry' && <TelemetryTab />}
-        {activeTab === 'battery'   && <BatteryTab />}
-        {activeTab === 'weather'   && <WeatherTab />}
-        {activeTab === 'ai'        && <AITab />}
-        {activeTab === 'controls'  && <ControlsTab />}
+        {activeTab === 'battery' && <BatteryTab />}
+        {activeTab === 'weather' && <WeatherTab />}
+        {activeTab === 'ai' && <AITab />}
+        {activeTab === 'controls' && <ControlsTab />}
       </main>
 
       {/* Footer */}

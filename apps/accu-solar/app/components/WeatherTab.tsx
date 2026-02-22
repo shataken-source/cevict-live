@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Cloud, Sun, Wind, Droplets, Thermometer, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Sun, Wind, Droplets, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { useSolar } from '../context/SolarContext';
+import { useSettings } from '../context/SettingsContext';
 
 interface WeatherData {
   temp: number;
@@ -55,17 +55,16 @@ async function geocodeZip(zip: string): Promise<{ lat: number; lon: number } | n
     if (!res.ok) return null;
     const d = await res.json();
     if (d.places?.[0]) return { lat: parseFloat(d.places[0].latitude), lon: parseFloat(d.places[0].longitude) };
-  } catch {}
+  } catch { }
   return null;
 }
 
 export default function WeatherTab() {
+  const { zipCode } = useSettings();
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [forecast, setForecast] = useState<ForecastDay[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [zip, setZip] = useState('');
-  const [zipInput, setZipInput] = useState('');
 
   const fetchWeather = useCallback(async (z: string) => {
     setLoading(true);
@@ -120,46 +119,23 @@ export default function WeatherTab() {
     }
   }, []);
 
-  // Load saved ZIP on mount
+  // Fetch whenever zipCode changes
   useEffect(() => {
-    const stored = typeof window !== 'undefined' ? localStorage.getItem('accusolar_zip') : null;
-    const z = stored || '90210';
-    setZip(z);
-    setZipInput(z);
-    fetchWeather(z);
-  }, [fetchWeather]);
-
-  const handleZipSubmit = () => {
-    if (zipInput.length === 5) {
-      localStorage.setItem('accusolar_zip', zipInput);
-      setZip(zipInput);
-      fetchWeather(zipInput);
-    }
-  };
+    if (zipCode) fetchWeather(zipCode);
+  }, [zipCode, fetchWeather]);
 
   const solarScore = weather ? solarImpactScore(weather.cloudCover, weather.humidity, weather.uvIndex) : 0;
 
   return (
     <div className="space-y-4">
-      {/* ZIP input */}
+      {/* Location + refresh row */}
       <div className="flex items-center gap-3">
-        <input
-          type="text"
-          value={zipInput}
-          onChange={e => setZipInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleZipSubmit()}
-          placeholder="ZIP Code"
-          maxLength={5}
-          className="w-32 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
-        <button onClick={handleZipSubmit}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm transition-colors">
-          Update
-        </button>
-        <button onClick={() => fetchWeather(zip)} disabled={loading}
+        <span className="text-sm text-slate-400">Location: <span className="text-slate-200 font-medium">ZIP {zipCode}</span></span>
+        <button onClick={() => fetchWeather(zipCode)} disabled={loading} title="Refresh weather"
           className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-colors">
           <RefreshCw className={`w-4 h-4 text-slate-400 ${loading ? 'animate-spin' : ''}`} />
         </button>
+        <span className="text-xs text-slate-500">Change ZIP in Settings tab</span>
         {error && <span className="text-rose-400 text-sm">{error}</span>}
       </div>
 
