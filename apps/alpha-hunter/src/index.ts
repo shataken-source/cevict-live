@@ -95,54 +95,49 @@ class AlphaHunter {
 
   private setupScheduledJobs(): void {
     console.log('\n📅 Setting up scheduled jobs...');
+    const tz = (process.env.ALPHA_TIMEZONE || 'America/New_York').trim();
 
-    // Morning scan at 6:00 AM
     const morningScan = new CronJob('0 6 * * *', async () => {
       console.log('\n🌅 Morning scan starting...');
       await this.runDailyScan();
-    }, null, false, 'America/New_York');
+    }, null, false, tz);
     this.jobs.push(morningScan);
-    console.log('   ├─ Morning scan: 6:00 AM ET');
+    console.log(`   ├─ Morning scan: 6:00 AM (${tz})`);
 
-    // Main hunt at 9:00 AM (market open)
     const mainHunt = new CronJob('0 9 * * *', async () => {
       console.log('\n🦅 Main hunt starting...');
       await this.runDailyHunt();
-    }, null, false, 'America/New_York');
+    }, null, false, tz);
     this.jobs.push(mainHunt);
-    console.log('   ├─ Main hunt: 9:00 AM ET');
+    console.log(`   ├─ Main hunt: 9:00 AM (${tz})`);
 
-    // Midday check at 12:00 PM
     const middayCheck = new CronJob('0 12 * * *', async () => {
       console.log('\n☀️ Midday check...');
       await this.checkProgress();
-    }, null, false, 'America/New_York');
+    }, null, false, tz);
     this.jobs.push(middayCheck);
-    console.log('   ├─ Midday check: 12:00 PM ET');
+    console.log(`   ├─ Midday check: 12:00 PM (${tz})`);
 
-    // Evening sports scan at 5:00 PM
     const sportsScan = new CronJob('0 17 * * *', async () => {
       console.log('\n🏈 Evening sports scan...');
       await this.runSportsScan();
-    }, null, false, 'America/New_York');
+    }, null, false, tz);
     this.jobs.push(sportsScan);
-    console.log('   ├─ Sports scan: 5:00 PM ET');
+    console.log(`   ├─ Sports scan: 5:00 PM (${tz})`);
 
-    // Nightly summary at 10:00 PM
     const nightlySummary = new CronJob('0 22 * * *', async () => {
       console.log('\n🌙 Nightly summary...');
       await this.sendDailySummary();
-    }, null, false, 'America/New_York');
+    }, null, false, tz);
     this.jobs.push(nightlySummary);
-    console.log('   ├─ Nightly summary: 10:00 PM ET');
+    console.log(`   ├─ Nightly summary: 10:00 PM (${tz})`);
 
-    // Reset daily counters at midnight
     const dailyReset = new CronJob('0 0 * * *', async () => {
       console.log('\n🔄 Resetting daily counters...');
       await this.funds.resetDailyCounters();
-    }, null, false, 'America/New_York');
+    }, null, false, tz);
     this.jobs.push(dailyReset);
-    console.log('   └─ Daily reset: 12:00 AM ET');
+    console.log(`   └─ Daily reset: 12:00 AM (${tz})`);
   }
 
   startScheduler(): void {
@@ -294,6 +289,10 @@ async function main() {
       });
       break;
 
+    case 'hunt':
+      await hunter.runDailyHunt();
+      break;
+
     case 'scan':
       await hunter.runDailyScan();
       break;
@@ -325,18 +324,39 @@ async function main() {
       break;
 
     default:
-      console.log('Usage:');
-      console.log('  npm start run      - Start scheduler');
-      console.log('  npm start scan     - Run single scan');
-      console.log('  npm start sports   - Scan sports only');
-      console.log('  npm start status   - Show status');
-      console.log('  npm start deposit <amount>');
-      console.log('  npm start withdraw <amount>');
+      if ((process.env.ALPHA_AUTO_START || '').trim() === '1') {
+        hunter.startScheduler();
+        // Keep alive so cron jobs can run
+        process.on('SIGINT', () => {
+          hunter.stopScheduler();
+          process.exit(0);
+        });
+      } else {
+        console.log('Usage:');
+        console.log('  npm start run      - Start scheduler');
+        console.log('  npm start hunt     - Run main hunt now');
+        console.log('  npm start scan     - Run single scan');
+        console.log('  npm start sports   - Scan sports only');
+        console.log('  npm start status   - Show status');
+        console.log('  npm start deposit <amount>');
+        console.log('  npm start withdraw <amount>');
+      }
       break;
   }
 }
 
 main().catch(console.error);
+
+// Auto-start scheduler in dev if enabled via env
+if ((process.env.ALPHA_AUTO_START || '').trim() === '1') {
+  // Minimal async bootstrap to ensure initialize() has run
+  setTimeout(() => {
+    try {
+      const hunter = (global as any).alphaHunterInstance as any;
+      if (hunter && typeof hunter.startScheduler === 'function') hunter.startScheduler();
+    } catch { }
+  }, 0);
+}
 
 export { AlphaHunter };
 

@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { LocationProvider } from "./context/LocationContext";
 import { ProfileProvider } from "./context/ProfileContext";
+import { SolarProvider } from "./context/SolarContext";
+import { WeatherProvider } from "./context/WeatherContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +33,11 @@ export default function RootLayout({
       >
         <ProfileProvider>
           <LocationProvider>
-            {children}
+            <SolarProvider>
+              <WeatherProvider>
+                {children}
+              </WeatherProvider>
+            </SolarProvider>
           </LocationProvider>
         </ProfileProvider>
       </body>

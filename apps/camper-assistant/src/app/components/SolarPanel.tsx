@@ -275,7 +275,7 @@ export default function SolarPanel() {
       {/* Main Dashboard Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_1fr] gap-4">
         {/* Left Column - System Overview */}
-        <div className="space-y-6">
+        <div className="space-y-6 min-w-0">
           {/* Hero Production Panel */}
           <div className="bg-slate-800/80 rounded-xl p-6 border border-slate-700">
             <div className="flex items-center justify-between mb-4">
@@ -456,68 +456,68 @@ export default function SolarPanel() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Right Column - System Health & Alerts */}
-      <div className="space-y-6">
-        {/* System Health */}
-        <div className="bg-slate-800/80 rounded-xl p-6 border border-slate-700">
-          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">SYSTEM HEALTH</h3>
+        {/* Right Column - System Health & Alerts */}
+        <div className="space-y-6 min-w-0">
+          {/* System Health */}
+          <div className="bg-slate-800/80 rounded-xl p-6 border border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">SYSTEM HEALTH</h3>
 
-          {/* Inverter Temp */}
-          <div className="mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-slate-400">INVERTER TEMP</span>
-              <span className={`text-lg font-bold ${solarData.inverterTemp > 65 ? 'text-red-400' : 'text-emerald-400'
-                }`}>
-                {isConnected ? `${solarData.inverterTemp.toFixed(1)}°C` : '--'}
-              </span>
+            {/* Inverter Temp */}
+            <div className="mb-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-slate-400">INVERTER TEMP</span>
+                <span className={`text-lg font-bold ${solarData.inverterTemp > 65 ? 'text-red-400' : 'text-emerald-400'
+                  }`}>
+                  {isConnected ? `${solarData.inverterTemp.toFixed(1)}°C` : '--'}
+                </span>
+              </div>
+              <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${solarData.inverterTemp > 65 ? 'bg-red-500' : 'bg-emerald-500'
+                    }`}
+                  style={{ width: `${isConnected ? Math.min(100, (solarData.inverterTemp / 80) * 100) : 0}%` }}
+                />
+              </div>
             </div>
-            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${solarData.inverterTemp > 65 ? 'bg-red-500' : 'bg-emerald-500'
-                  }`}
-                style={{ width: `${isConnected ? Math.min(100, (solarData.inverterTemp / 80) * 100) : 0}%` }}
-              />
+
+            {/* Status Indicators */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 p-2 bg-slate-900/50 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm text-slate-300">Inverter Online</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-slate-900/50 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm text-slate-300">Battery Healthy</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-slate-900/50 rounded-lg">
+                <Wifi className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm text-slate-300">MQTT Connected</span>
+              </div>
             </div>
           </div>
 
-          {/* Status Indicators */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 p-2 bg-slate-900/50 rounded-lg">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-slate-300">Inverter Online</span>
-            </div>
-            <div className="flex items-center gap-2 p-2 bg-slate-900/50 rounded-lg">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-slate-300">Battery Healthy</span>
-            </div>
-            <div className="flex items-center gap-2 p-2 bg-slate-900/50 rounded-lg">
-              <Wifi className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-slate-300">MQTT Connected</span>
-            </div>
+          {/* Alerts */}
+          <div className="bg-slate-800/80 rounded-xl p-6 border border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">🚨 ALERTS</h3>
+            {solarData.inverterTemp > 65 ? (
+              <div className="p-3 bg-red-900/30 border border-red-700/50 rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-400" />
+                <span className="text-sm text-red-300">High Inverter Temp</span>
+              </div>
+            ) : (
+              <div className="p-3 bg-emerald-900/30 border border-emerald-700/50 rounded-lg flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm text-emerald-300">All Systems Normal</span>
+              </div>
+            )}
           </div>
-        </div>
 
-        {/* Alerts */}
-        <div className="bg-slate-800/80 rounded-xl p-6 border border-slate-700">
-          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">🚨 ALERTS</h3>
-          {solarData.inverterTemp > 65 ? (
-            <div className="p-3 bg-red-900/30 border border-red-700/50 rounded-lg flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <span className="text-sm text-red-300">High Inverter Temp</span>
-            </div>
-          ) : (
-            <div className="p-3 bg-emerald-900/30 border border-emerald-700/50 rounded-lg flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span className="text-sm text-emerald-300">All Systems Normal</span>
-            </div>
-          )}
-        </div>
-
-        {/* Last Updated */}
-        <div className="text-center text-sm text-slate-500">
-          Last updated: {mounted ? formatTime(lastUpdated) : '--:--:--'}
+          {/* Last Updated */}
+          <div className="text-center text-sm text-slate-500">
+            Last updated: {mounted ? formatTime(lastUpdated) : '--:--:--'}
+          </div>
         </div>
       </div>
     </div>

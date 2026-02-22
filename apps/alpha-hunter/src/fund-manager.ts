@@ -96,15 +96,41 @@ export class UnifiedFundManager {
     try {
       console.log('   🔄 Hydrating fund manager from Supabase...');
 
-      // Load account data
-      const { data: accountData, error: accountError } = await this.supabase
-        .from('alpha_hunter_accounts')
-        .select('*')
-        .eq('id', 'alpha_hunter_main')
-        .single();
+      const acctEnv = (process.env.ALPHA_HUNTER_ACCOUNT_ID || '').trim();
+      const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(acctEnv);
+
+      let accountData: any = null;
+      let accountError: any = null;
+
+      if (uuidLike) {
+        const res = await this.supabase
+          .from('alpha_hunter_accounts')
+          .select('*')
+          .eq('id', acctEnv)
+          .single();
+        accountData = res.data;
+        accountError = res.error;
+      } else {
+        const res = await this.supabase
+          .from('alpha_hunter_accounts')
+          .select('*')
+          .eq('user_id', 'alpha_hunter_main')
+          .single();
+        accountData = res.data;
+        accountError = res.error;
+      }
 
       if (accountError && accountError.code !== 'PGRST116') {
         console.warn('   ⚠️ Could not load account:', accountError.message);
+      }
+
+      if (!accountData) {
+        const created = await this.supabase
+          .from('alpha_hunter_accounts')
+          .insert({ user_id: 'alpha_hunter_main', balance: 0, available_funds: 0, total_profit: 0 })
+          .select('*')
+          .single();
+        if (!created.error) accountData = created.data;
       }
 
       if (accountData) {

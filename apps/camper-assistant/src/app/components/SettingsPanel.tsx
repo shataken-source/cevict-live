@@ -135,20 +135,20 @@ export default function SettingsPanel() {
 
   const handleSubscribe = async () => {
     if (!emailInput.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) return
-    
+
     saveSettings({
       email: emailInput,
       name: nameInput,
       smsEnabled: false
     })
-    
+
     try {
       const response = await fetch("/api/subscribe/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: emailInput, name: nameInput })
       })
-      
+
       if (response.ok) {
         setSubscribed(true)
         setTimeout(() => setSubscribed(false), 3000)
@@ -189,7 +189,7 @@ export default function SettingsPanel() {
             type="text"
             value={zipInput}
             onChange={(e) => setZipInput(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
             onBlur={handleZipUpdate}
             placeholder="ZIP Code"
             className="w-32 bg-slate-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -267,16 +267,15 @@ export default function SettingsPanel() {
           {ALL_TABS.map((tab) => {
             const Icon = tab.icon
             const isEnabled = settings.enabledTabs.includes(tab.id)
-            
+
             return (
               <button
                 key={tab.id}
                 onClick={() => toggleTab(tab.id)}
-                className={`flex items-center gap-2 p-3 rounded-lg border transition-all text-left ${
-                  isEnabled
+                className={`flex items-center gap-2 p-3 rounded-lg border transition-all text-left ${isEnabled
                     ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400"
                     : "bg-slate-700/50 border-slate-700 text-slate-400 hover:bg-slate-700"
-                }`}
+                  }`}
               >
                 <Icon className="w-4 h-4 shrink-0" />
                 <span className="text-sm font-medium">{tab.label}</span>
@@ -285,7 +284,7 @@ export default function SettingsPanel() {
             )
           })}
         </div>
-        
+
         <p className="mt-4 text-xs text-slate-500">
           Tip: Keep your most-used tabs enabled for quick access. Dashboard is always visible.
         </p>
