@@ -1,19 +1,25 @@
 import type { ReactNode } from 'react';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import { SolarProvider } from './context/SolarContext';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Accu Solar',
-  description: 'Home solar system monitoring',
+  description: 'Home solar system monitoring dashboard',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <header className="border-b border-slate-800 px-4 py-3 flex items-center justify-between">
-          <div className="font-semibold">Accu Solar</div>
-        </header>
-        <main className="px-4 py-4 max-w-6xl mx-auto">{children}</main>
+        <SolarProvider>
+          {children}
+        </SolarProvider>
       </body>
     </html>
   );

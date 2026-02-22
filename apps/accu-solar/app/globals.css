@@ -4,4 +4,87 @@
 
 body {
   @apply min-h-screen bg-slate-950 text-slate-100;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Tablet-first layout grid */
+.analyticsGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .analyticsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Glass hero panel */
+.heroPanel {
+  @apply bg-slate-800/60 border border-slate-700/60 rounded-2xl p-5 backdrop-blur-sm;
+}
+
+/* Standard panel */
+.panel {
+  @apply bg-slate-800 border border-slate-700 rounded-xl p-4;
+}
+
+.panelTitleRow {
+  @apply flex items-center gap-2 mb-3;
+}
+
+.panelTitle {
+  @apply text-sm font-semibold text-slate-300;
+}
+
+/* Large glowing KPI value */
+.kpiValueLarge {
+  @apply text-4xl font-bold tabular-nums;
+  text-shadow: 0 0 20px currentColor;
+}
+
+/* KPI tile */
+.kpiTile {
+  @apply bg-slate-900/60 rounded-xl p-4 flex flex-col gap-1;
+}
+
+/* Badges */
+.badge {
+  @apply text-xs px-2 py-0.5 rounded-full font-medium;
+}
+
+.statusBadge {
+  @apply badge bg-emerald-500/20 text-emerald-400 border border-emerald-500/30;
+}
+
+.alertBadge {
+  @apply badge bg-amber-500/20 text-amber-400 border border-amber-500/30;
+}
+
+.criticalBadge {
+  @apply badge bg-rose-500/20 text-rose-400 border border-rose-500/30;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-900;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-500;
+}
+
+/* Chart tooltip */
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  @apply bg-slate-800 border-slate-700 rounded-lg text-sm;
 }

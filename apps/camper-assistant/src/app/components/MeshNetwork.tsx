@@ -501,58 +501,59 @@ export default function MeshNetwork() {
           </div>
         </div>
 
-        {/* Air Utilization & Channel Congestion */}
-        <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-          <div className="flex items-center gap-2 mb-3">
-            <Activity className="w-5 h-5 text-purple-400" />
-            <h3 className="font-semibold">Channel Activity</h3>
+      </div>
+
+      {/* Air Utilization & Channel Congestion - full width */}
+      <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <div className="flex items-center gap-2 mb-3">
+          <Activity className="w-5 h-5 text-purple-400" />
+          <h3 className="font-semibold">Channel Activity</h3>
+        </div>
+
+        <div className="space-y-3">
+          {/* Air Utilization */}
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-slate-400">Air Utilization (TX)</span>
+              <span className={airUtilization > 25 ? 'text-red-400' : airUtilization > 15 ? 'text-amber-400' : 'text-emerald-400'}>
+                {airUtilization}%
+              </span>
+            </div>
+            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${airUtilization > 25 ? 'bg-red-400' : airUtilization > 15 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                style={{ width: `${airUtilization}%` }}
+              />
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              {airUtilization > 25 ? '⚠️ Channel congested - reduce chatter' :
+                airUtilization > 15 ? 'Moderate activity' :
+                  'Clear channel'}
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {/* Air Utilization */}
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-400">Air Utilization (TX)</span>
-                <span className={airUtilization > 25 ? 'text-red-400' : airUtilization > 15 ? 'text-amber-400' : 'text-emerald-400'}>
-                  {airUtilization}%
-                </span>
-              </div>
-              <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${airUtilization > 25 ? 'bg-red-400' : airUtilization > 15 ? 'bg-amber-400' : 'bg-emerald-400'}`}
-                  style={{ width: `${airUtilization}%` }}
-                />
-              </div>
-              <div className="text-xs text-slate-500 mt-1">
-                {airUtilization > 25 ? '⚠️ Channel congested - reduce chatter' :
-                  airUtilization > 15 ? 'Moderate activity' :
-                    'Clear channel'}
-              </div>
+          {/* Channel Utilization */}
+          <div>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-slate-400">Channel Utilization</span>
+              <span className={channelUtilization > 50 ? 'text-red-400' : channelUtilization > 25 ? 'text-amber-400' : 'text-emerald-400'}>
+                {channelUtilization}%
+              </span>
             </div>
+            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${channelUtilization > 50 ? 'bg-red-400' : channelUtilization > 25 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                style={{ width: `${channelUtilization}%` }}
+              />
+            </div>
+          </div>
 
-            {/* Channel Utilization */}
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-slate-400">Channel Utilization</span>
-                <span className={channelUtilization > 50 ? 'text-red-400' : channelUtilization > 25 ? 'text-amber-400' : 'text-emerald-400'}>
-                  {channelUtilization}%
-                </span>
-              </div>
-              <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${channelUtilization > 50 ? 'bg-red-400' : channelUtilization > 25 ? 'bg-amber-400' : 'bg-emerald-400'}`}
-                  style={{ width: `${channelUtilization}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Live indicator */}
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-              <span>Monitoring mesh traffic</span>
-              <span className="text-slate-600">|</span>
-              <span>{packetLog.length} packets logged</span>
-            </div>
+          {/* Live indicator */}
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+            <span>Monitoring mesh traffic</span>
+            <span className="text-slate-600">|</span>
+            <span>{packetLog.length} packets logged</span>
           </div>
         </div>
       </div>
@@ -599,12 +600,12 @@ export default function MeshNetwork() {
 
       {/* Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Node List & Map */}
+        {/* Left: Node List */}
         <div className="space-y-4">
-          <h3 className="font-semibold text-lg flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Network Nodes
-          </h3>
+          <div className="flex items-center gap-2 px-1">
+            <Users className="w-5 h-5 text-slate-400" />
+            <h3 className="font-semibold text-lg">Network Nodes</h3>
+          </div>
 
           {nodes.map((node) => {
             const isExpanded = expandedNode === node.id;
@@ -767,10 +768,10 @@ export default function MeshNetwork() {
 
         {/* Right: Messages */}
         <div className="space-y-4">
-          <h3 className="font-semibold text-lg flex items-center gap-2">
-            <MessageSquare className="w-5 h-5" />
-            Mesh Chat
-          </h3>
+          <div className="flex items-center gap-2 px-1">
+            <MessageSquare className="w-5 h-5 text-slate-400" />
+            <h3 className="font-semibold text-lg">Mesh Chat</h3>
+          </div>
 
           {/* Message List */}
           <div className="bg-slate-800 rounded-xl border border-slate-700 h-96 overflow-y-auto">
