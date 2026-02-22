@@ -265,11 +265,10 @@ Ask me about panel tilt angles by season, wiring configurations, battery care, e
                   <Bot className="w-4 h-4 text-emerald-400" />
                 </div>
               )}
-              <div className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed ${
-                msg.role === 'user'
+              <div className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed ${msg.role === 'user'
                   ? 'bg-blue-900/40 border border-blue-700/40 text-blue-100'
                   : 'bg-slate-800 border border-slate-700'
-              }`}>
+                }`}>
                 {renderContent(msg.content)}
               </div>
               {msg.role === 'user' && (
@@ -299,7 +298,7 @@ Ask me about panel tilt angles by season, wiring configurations, battery care, e
         {/* Quick questions */}
         <div className="flex flex-wrap gap-2 mb-3">
           {quickQuestions.map(q => (
-            <button key={q} onClick={() => { setInput(q); }}
+            <button key={q} onClick={() => { setInput(q); setTimeout(() => { setInput(''); setMessages(prev => [...prev, { role: 'user', content: q }]); setLoading(true); const localAnswer = getLocalAnswer(q, systemContext); if (localAnswer) { setTimeout(() => { setMessages(prev => [...prev, { role: 'assistant', content: localAnswer }]); setLoading(false); }, 400); } else { setMessages(prev => [...prev, { role: 'assistant', content: "I don't have a built-in answer for that. Try asking about panel tilt, wiring, battery care, or production estimates." }]); setLoading(false); } }, 0); }}
               className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded-full transition-colors">
               {q}
             </button>

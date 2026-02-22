@@ -229,7 +229,11 @@ function DashboardOverview({ onNavigate }: { onNavigate: (tab: string) => void }
             <group.icon className="w-5 h-5 text-emerald-400 mb-2" />
             <div className="text-sm font-medium text-white">{group.label}</div>
             {group.children && (
-              <div className="text-xs text-slate-500 mt-1">{group.children.length} tools</div>
+              <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                {group.children.map(c => (
+                  <div key={c.id} className="truncate">{c.label}</div>
+                ))}
+              </div>
             )}
           </button>
         ))}

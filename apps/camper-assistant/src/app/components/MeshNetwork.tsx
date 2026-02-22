@@ -863,7 +863,7 @@ export default function MeshNetwork() {
                 type="text"
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                 placeholder="Type your message..."
                 className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
               />

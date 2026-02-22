@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CloudRain, Sun, Wind, Droplets, Thermometer, AlertTriangle, MapPin, Loader2, RefreshCw, Navigation } from 'lucide-react';
+import { useSettings } from './SettingsPanel';
 
 interface WeatherData {
   temp: number;
@@ -185,8 +186,9 @@ const getConditionText = (code: number): string => {
   return conditions[code] || 'Unknown';
 };
 export default function WeatherWidget() {
-  const [zipCode, setZipCode] = useState('90210');
-  const [location, setLocation] = useState('Beverly Hills, CA');
+  const { settings } = useSettings();
+  const zipCode = settings.zipCode || '90210';
+  const [location, setLocation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [useRealData, setUseRealData] = useState(true);
@@ -431,8 +433,8 @@ export default function WeatherWidget() {
   };
 
   useEffect(() => {
-    if (useRealData) fetchWeather();
-  }, []);
+    if (useRealData && zipCode) fetchWeather();
+  }, [zipCode]);
 
   const getUVColor = (uv: number): string => {
     if (uv <= 2) return 'text-green-400';
@@ -462,22 +464,15 @@ export default function WeatherWidget() {
               <p className="text-slate-400">{location}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={zipCode}
-              onChange={(e) => setZipCode(e.target.value.slice(0, 5))}
-              onKeyDown={(e) => e.key === 'Enter' && fetchWeather()}
-              placeholder="ZIP"
-              className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white w-20 text-center"
-            />
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500">ZIP {zipCode} · Change in Settings</span>
             <button
               onClick={fetchWeather}
               disabled={loading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
+              title="Refresh weather"
+              className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              Update
             </button>
           </div>
         </div>
