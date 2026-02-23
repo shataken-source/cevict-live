@@ -613,7 +613,11 @@ export default function AdminPage() {
                 </Btn>
               </div>
               {cronLog && <StatusLine ok={cronLog.ok} msg={cronLog.msg} />}
-              {tradeMsg && <StatusLine ok={!tradeMsg.startsWith('Enter') && !tradeMsg.toLowerCase().includes('fail') && !tradeMsg.toLowerCase().includes('error')} msg={tradeMsg} />}
+              {tradeMsg && (() => {
+                const isErr = tradeMsg.startsWith('Enter') || tradeMsg.toLowerCase().includes('fail') || tradeMsg.toLowerCase().includes('error');
+                const col = isErr ? C.red : C.blue;
+                return <div style={{ marginTop: 10, padding: '10px 14px', background: `${col}10`, border: `1px solid ${col}30`, borderRadius: 5, fontFamily: C.mono, fontSize: 12, color: col }}>{isErr ? '✗ ' : '⚡ '}{tradeMsg}</div>;
+              })()}
             </Card>
 
             <div style={{ marginBottom: 16 }}>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AdSenseBanner from '@/components/AdSenseBanner';
 
 interface PrognoTrade {
   id: string;
@@ -275,15 +274,6 @@ function TradingDashboardContent() {
           </div>
         )}
 
-        {/* In-Content Ad */}
-        <div className="mb-12">
-          <AdSenseBanner
-            adSlot={process.env.NEXT_PUBLIC_ADSENSE_CONTENT_SLOT || '1234567891'}
-            format="horizontal"
-            style={{ height: '90px' }}
-            className="w-full"
-          />
-        </div>
 
         {/* Trades List */}
         <section className="mb-12">
@@ -394,15 +384,6 @@ function TradingDashboardContent() {
           )}
         </section>
 
-        {/* Footer Ad */}
-        <div className="mb-12">
-          <AdSenseBanner
-            adSlot={process.env.NEXT_PUBLIC_ADSENSE_FOOTER_SLOT || '1234567892'}
-            format="horizontal"
-            style={{ height: '90px' }}
-            className="w-full"
-          />
-        </div>
 
         {/* Footer */}
         <footer className="border-t border-white/10 pt-8 pb-12 text-center">
