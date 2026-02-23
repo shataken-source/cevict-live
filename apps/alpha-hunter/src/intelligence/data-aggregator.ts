@@ -4,7 +4,7 @@
  * Feeds consolidated intelligence to trading bots
  */
 
-import { MassagerClient } from './massager-client';
+import { MassagerClient, KellyResult, ArbitrageResult } from './massager-client';
 
 interface MarketData {
   fearGreedIndex: { value: number; classification: string };
@@ -79,8 +79,8 @@ export class DataAggregator {
    */
   async getFearGreed(): Promise<{ value: number; classification: string }> {
     const data = await this.cached('feargreed', async () => {
-      const res = await fetch('https://api.alternative.me/fng/?limit=1', { 
-        signal: AbortSignal.timeout(5000) 
+      const res = await fetch('https://api.alternative.me/fng/?limit=1', {
+        signal: AbortSignal.timeout(5000)
       });
       return res.ok ? res.json() : null;
     }, 300000); // 5 min cache
@@ -99,8 +99,8 @@ export class DataAggregator {
    */
   async getGlobalData(): Promise<{ btcDominance: number; totalMarketCap: number; volume24h: number }> {
     const data = await this.cached('global', async () => {
-      const res = await fetch('https://api.coingecko.com/api/v3/global', { 
-        signal: AbortSignal.timeout(5000) 
+      const res = await fetch('https://api.coingecko.com/api/v3/global', {
+        signal: AbortSignal.timeout(5000)
       });
       return res.ok ? res.json() : null;
     }, 300000);
@@ -120,8 +120,8 @@ export class DataAggregator {
    */
   async getTrending(): Promise<string[]> {
     const data = await this.cached('trending', async () => {
-      const res = await fetch('https://api.coingecko.com/api/v3/search/trending', { 
-        signal: AbortSignal.timeout(5000) 
+      const res = await fetch('https://api.coingecko.com/api/v3/search/trending', {
+        signal: AbortSignal.timeout(5000)
       });
       return res.ok ? res.json() : null;
     }, 600000); // 10 min cache
@@ -138,17 +138,17 @@ export class DataAggregator {
   async getMovers(): Promise<{ gainers: { symbol: string; change: number }[]; losers: { symbol: string; change: number }[] }> {
     const data = await this.cached('movers', async () => {
       const res = await fetch(
-        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&price_change_percentage=24h', 
+        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&price_change_percentage=24h',
         { signal: AbortSignal.timeout(8000) }
       );
       return res.ok ? res.json() : null;
     }, 300000);
 
     if (data && Array.isArray(data)) {
-      const sorted = [...data].sort((a, b) => 
+      const sorted = [...data].sort((a, b) =>
         (b.price_change_percentage_24h || 0) - (a.price_change_percentage_24h || 0)
       );
-      
+
       return {
         gainers: sorted.slice(0, 5).map((c: any) => ({
           symbol: c.symbol.toUpperCase(),
@@ -300,8 +300,8 @@ export class DataAggregator {
     if (news.sentiment === 'bullish') bullishSignals++;
     if (news.sentiment === 'bearish') bearishSignals++;
 
-    const tradingBias = bullishSignals > bearishSignals ? 'bullish' : 
-                        bearishSignals > bullishSignals ? 'bearish' : 'neutral';
+    const tradingBias = bullishSignals > bearishSignals ? 'bullish' :
+      bearishSignals > bullishSignals ? 'bearish' : 'neutral';
     const confidence = Math.min(90, 50 + Math.abs(bullishSignals - bearishSignals) * 10);
 
     this.lastFullUpdate = new Date();
@@ -393,14 +393,14 @@ ${data.news.headlines.slice(0, 3).map(h => `║   • ${h.substring(0, 55).padEn
   /**
    * Get Kelly Criterion recommendation
    */
-  async getKellyRecommendation(winProbability: number, odds: number, bankroll: number) {
+  async getKellyRecommendation(winProbability: number, odds: number, bankroll: number): Promise<KellyResult> {
     return this.massager.calculateKelly(winProbability, odds, bankroll);
   }
 
   /**
    * Check for arbitrage opportunities
    */
-  async checkArbitrage(odds1: number, odds2: number, stake: number = 100) {
+  async checkArbitrage(odds1: number, odds2: number, stake: number = 100): Promise<ArbitrageResult> {
     return this.massager.calculateArbitrage(odds1, odds2, stake);
   }
 }
