@@ -78,11 +78,11 @@ export class MassagerClient {
       stake2,
       reasoning: exists
         ? [
-            `Total implied probability: ${(totalImplied * 100).toFixed(2)}%`,
-            `Guaranteed profit: ${profit.toFixed(2)}%`,
-            `Stake $${stake1.toFixed(2)} on outcome 1`,
-            `Stake $${stake2.toFixed(2)} on outcome 2`,
-          ]
+          `Total implied probability: ${(totalImplied * 100).toFixed(2)}%`,
+          `Guaranteed profit: ${profit.toFixed(2)}%`,
+          `Stake $${stake1.toFixed(2)} on outcome 1`,
+          `Stake $${stake2.toFixed(2)} on outcome 2`,
+        ]
         : ['No arbitrage opportunity exists'],
     };
   }
@@ -295,8 +295,8 @@ export class MassagerClient {
         requiredWinRate > 70
           ? ['⚠️ Required win rate is very high - consider larger bankroll or lower target']
           : requiredWinRate > 60
-          ? ['⚠️ Required win rate is challenging - focus on high-value picks only']
-          : [],
+            ? ['⚠️ Required win rate is challenging - focus on high-value picks only']
+            : [],
     };
   }
 

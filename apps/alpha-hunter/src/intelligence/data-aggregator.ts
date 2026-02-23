@@ -47,7 +47,7 @@ interface AggregatedData {
   confidence: number;
 }
 
-export class DataAggregator {
+class DataAggregator {
   private massager: MassagerClient;
   private cache: Map<string, { data: any; expires: number }> = new Map();
   private lastFullUpdate: Date | null = null;
