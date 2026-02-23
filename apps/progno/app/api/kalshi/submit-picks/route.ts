@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import crypto from 'crypto'
+import { normalizeTeamName } from '../../../team-names'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -66,23 +67,23 @@ function sanitizeToken(s: string): string {
     .trim()
 }
 
-function teamSearchTokens(team: string): string[] {
+function teamSearchTokens(team: string, sport?: string): string[] {
   if (!team || !team.trim()) return []
-  const t = sanitizeToken(team)
+
+  // First normalize using team-names.ts (handles aliases)
+  const normalized = normalizeTeamName(team, sport)
+
+  const t = sanitizeToken(normalized)
   const words = t.split(/\s+/).filter(Boolean)
   const tokens: string[] = [t]
+
+  // Add individual words
   if (words.length > 1) {
-    tokens.push(words[words.length - 1])
-    if (words.length >= 2) tokens.push(words.slice(0, -1).join(' '))
+    tokens.push(words[words.length - 1]) // Last word (mascot)
+    if (words.length >= 2) tokens.push(words.slice(0, -1).join(' ')) // Without mascot
   }
 
-  // Add version without mascot/nickname (last word)
-  if (words.length > 1) {
-    const withoutMascot = words.slice(0, -1).join(' ')
-    if (withoutMascot) tokens.push(withoutMascot)
-  }
-
-  // Add common alias variants for better matching
+  // Add common alias variants
   const stateAbbrev = t.replace(/\bstate\b/g, 'st')
   const stateExpand = t.replace(/\bst\b/g, 'state')
   const saintAbbrev = t.replace(/\bsaint\b/g, 'st')
@@ -91,6 +92,12 @@ function teamSearchTokens(team: string): string[] {
       const vv = v.trim()
       if (vv && vv !== t) tokens.push(vv)
     })
+
+  // Also add the original unsanitized team name tokens
+  const origWords = team.toLowerCase().split(/\s+/).filter(Boolean)
+  if (origWords.length > 1) {
+    tokens.push(origWords.slice(0, -1).join(' ')) // Without last word
+  }
 
   return [...new Set(tokens)].filter(Boolean)
 }
@@ -105,8 +112,8 @@ async function findMarketForPick(pick: any): Promise<any | null> {
   const recommendedLine = pick.recommended_line
 
   // Generate search tokens for team matching
-  const homeTokens = teamSearchTokens(homeTeam)
-  const awayTokens = teamSearchTokens(awayTeam)
+  const homeTokens = teamSearchTokens(homeTeam, sport)
+  const awayTokens = teamSearchTokens(awayTeam, sport)
 
   // Fetch ALL open sports markets with pagination
   let allMarkets: any[] = []
