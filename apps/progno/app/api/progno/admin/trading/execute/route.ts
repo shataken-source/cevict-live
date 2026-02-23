@@ -136,8 +136,8 @@ function normSport(s: string): string {
   if (u.includes('NCAAF') || u.includes('CFB') || u.includes('COLLEGE FOOTBALL')) return 'NCAAF'
   if (u.includes('NFL')) return 'NFL'
   if (u.includes('NHL') || u.includes('HOCKEY')) return 'NHL'
-  // College baseball must come BEFORE MLB check
-  if (u.includes('NCAA') || u.includes('COLLEGE')) return 'NCAA'
+  // College basketball is the most common NCAA sport on Kalshi
+  if (u.includes('NCAA') || u.includes('COLLEGE')) return 'NCAAB'
   if (u.includes('MLB') || (u.includes('BASEBALL') && !u.includes('NCAA'))) return 'MLB'
   return u
 }
@@ -178,18 +178,29 @@ function kalshiHdrs(apiKeyId: string, privateKey: string, method: string, urlPat
 // with_nested_markets=true returns the individual YES/NO markets inside each event.
 // Filter by category=Sports and game series prefixes confirmed by live API testing.
 const GAME_SERIES: Array<{ prefix: string; sport: string }> = [
+  // Winner/Game markets (highest priority)
   { prefix: 'KXNBAGAME', sport: 'NBA' },
-  { prefix: 'KXNCAAMBGAME', sport: 'NCAAB' },   // College Basketball (confirmed live)
+  { prefix: 'KXNCAAMBGAME', sport: 'NCAAB' },
   { prefix: 'KXNCAABGAME', sport: 'NCAAB' },
-  { prefix: 'KXNCAAWBGAME', sport: 'NCAAB' },   // NCAA Women's Basketball
   { prefix: 'KXNFLGAME', sport: 'NFL' },
   { prefix: 'KXNHLGAME', sport: 'NHL' },
-  { prefix: 'KXSHLGAME', sport: 'NHL' },         // SHL (Swedish Hockey League)
+  { prefix: 'KXSHLGAME', sport: 'NHL' },
   { prefix: 'KXMLBGAME', sport: 'MLB' },
   { prefix: 'KXNCAAFGAME', sport: 'NCAAF' },
-  { prefix: 'KXNCAABASEBALL', sport: 'NCAA' },
-  { prefix: 'KXCBGAME', sport: 'NCAA' },
-  { prefix: 'KXUNRIVALEDGAME', sport: 'NBA' },   // UNRIVALED basketball
+  { prefix: 'KXUNRIVALEDGAME', sport: 'NBA' },
+  // Spread markets (some games only have spread, no winner market)
+  { prefix: 'KXNCAAMBSPREAD', sport: 'NCAAB' },
+  { prefix: 'KXNBASPREAD', sport: 'NBA' },
+  { prefix: 'KXNFLSPREAD', sport: 'NFL' },
+  { prefix: 'KXNHLSPREAD', sport: 'NHL' },
+  // Total markets
+  { prefix: 'KXNCAAMBTOTAL', sport: 'NCAAB' },
+  { prefix: 'KXNBATOTAL', sport: 'NBA' },
+  { prefix: 'KXNFLTOTAL', sport: 'NFL' },
+  { prefix: 'KXNHLTOTAL', sport: 'NHL' },
+  // Other
+  { prefix: 'KXNCAABASEBALL', sport: 'NCAAB' },
+  { prefix: 'KXCBGAME', sport: 'NCAAB' },
 ]
 
 async function fetchSportsMarkets(apiKeyId: string, privateKey: string): Promise<{ markets: any[]; error: string | null }> {
@@ -225,6 +236,8 @@ async function fetchSportsMarkets(apiKeyId: string, privateKey: string): Promise
         const cat = (ev.category || '').toUpperCase()
         if (cat !== 'SPORTS') continue
         const et = (ev.event_ticker || '').toUpperCase()
+        // Skip women's sports (NCAAWB, WNBA, etc.) — Progno only predicts men's
+        if (/NCAAWB|WNBA|WCBB|WOMEN/i.test(et)) continue
         const gs = GAME_SERIES.find(s => et.startsWith(s.prefix))
         if (!gs) continue
         // Flatten nested markets, tagging each with sport and event_ticker
@@ -243,8 +256,15 @@ async function fetchSportsMarkets(apiKeyId: string, privateKey: string): Promise
     }
   }
 
-  console.log(`[kalshi] fetched ${all.length} sports game markets from events endpoint, error=${fetchError}`)
-  return { markets: all, error: fetchError }
+  // Log sport breakdown
+  const sportCounts: Record<string, number> = {}
+  for (const m of all) { sportCounts[m._sport] = (sportCounts[m._sport] || 0) + 1 }
+  console.log(`[kalshi] fetched ${all.length} sports game markets from events endpoint. Breakdown: ${JSON.stringify(sportCounts)}, error=${fetchError}`)
+  // Log sample titles for debugging
+  if (all.length > 0) {
+    all.slice(0, 5).forEach(m => console.log(`[kalshi]   sample: ticker=${m.ticker} title="${m.title}" sport=${m._sport} event=${m.event_ticker}`))
+  }
+  return { markets: all, error: fetchError } as any
 }
 
 // ── Match pick to market + determine side ─────────────────────────────────────
@@ -287,6 +307,8 @@ function matchPickToMarket(pick: any, markets: any[]): any | null {
   const pickSport = normSport(pick.league || pick.sport || '')
   const sportMarkets = markets.filter((m: any) => !m._sport || m._sport === pickSport)
 
+  console.log(`[match] Pick: "${pick.pick}" sport=${pickSport} | total markets=${markets.length} sport-filtered=${sportMarkets.length}`)
+
   // Group markets by event_ticker first — each event = one game
   const eventGroups = new Map<string, any[]>()
   for (const m of sportMarkets) {
@@ -295,10 +317,28 @@ function matchPickToMarket(pick: any, markets: any[]): any | null {
     eventGroups.get(ek)!.push(m)
   }
 
+  console.log(`[match] Event groups: ${eventGroups.size}`)
+
+  // Sort event groups: GAME (winner) first, then SPREAD, then TOTAL
+  // This ensures we match winner markets before spread/total for the same game
+  const sortedGroups = [...eventGroups.entries()].sort(([a], [b]) => {
+    const priority = (ek: string) => {
+      const u = ek.toUpperCase()
+      if (u.includes('GAME')) return 0
+      if (u.includes('SPREAD')) return 1
+      if (u.includes('TOTAL')) return 2
+      return 3
+    }
+    return priority(a) - priority(b)
+  })
+
   // Find the event whose markets match BOTH teams from the pick
-  for (const [, group] of eventGroups) {
+  let checked = 0
+  for (const [ek, group] of sortedGroups) {
     const title = (group[0].title || '').toLowerCase().replace(/winner\?/g, '')
     if (!titleMatchesBothTeams(title, homeLower, awayLower, group)) continue
+    checked++
+    console.log(`[match] BOTH-TEAMS HIT: event=${ek} title="${title}" suffixes=${group.map(m => tickerSuffix(m.ticker)).join(',')}`)
 
     // Correct game found — now pick the market for the specific pick team
     // Strategy 1: ticker suffix → ABBREV_MAP (pro teams)
@@ -328,6 +368,12 @@ function matchPickToMarket(pick: any, markets: any[]): any | null {
     }
     // Last resort: return first market in the correct game
     return group[0]
+  }
+  console.log(`[match] NO MATCH for "${pick.pick}" (${pickSport}). sportMarkets=${sportMarkets.length} eventGroups=${eventGroups.size} bothTeamsHits=${checked}`)
+  if (sportMarkets.length > 0 && sportMarkets.length <= 10) {
+    sportMarkets.forEach(m => console.log(`[match]   sample: ticker=${m.ticker} title="${m.title}" sport=${m._sport}`))
+  } else if (sportMarkets.length > 10) {
+    sportMarkets.slice(0, 5).forEach(m => console.log(`[match]   sample: ticker=${m.ticker} title="${m.title}" sport=${m._sport}`))
   }
   return null
 }
@@ -479,6 +525,8 @@ export async function POST(request: NextRequest) {
     const dryRuns = results.filter(r => r.status === 'dry_run').length
     const noMarket = results.filter(r => r.status === 'no_market').length
     const errors = results.filter(r => r.status === 'error').length
+    const statusBreakdown = results.map(r => `${r.pick?.slice(0, 15)}=${r.status}`).join(', ')
+    console.log(`[execute] RESPONSE: submitted=${submitted} dryRuns=${dryRuns} noMarket=${noMarket} errors=${errors} | ${statusBreakdown}`)
 
     return NextResponse.json({
       success: true,
