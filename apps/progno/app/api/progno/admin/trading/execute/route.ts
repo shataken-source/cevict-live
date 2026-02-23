@@ -27,14 +27,19 @@ function getBaseUrl(req: NextRequest): string {
   try { const u = new URL(req.url); return `${u.protocol}//${u.host}` } catch { return process.env.CRON_APP_URL || 'http://localhost:3008' }
 }
 
-// ── Settings ──────────────────────────────────────────────────────────────────
-async function loadSettings(baseUrl: string, authHeader: string) {
-  const res = await fetch(`${baseUrl}/api/progno/admin/trading/settings`, {
-    headers: { Authorization: authHeader }, cache: 'no-store'
-  })
-  const j = await res.json().catch(() => ({}))
-  if (!res.ok || !j?.success) throw new Error(j?.error || 'Failed to load settings')
-  return j.settings as { enabled: boolean; stakeCents: number; minConfidence: number; maxPicksPerDay: number; dryRun: boolean }
+// ── Settings (read directly from file — no self-HTTP call) ───────────────────
+function loadSettings(): { enabled: boolean; stakeCents: number; minConfidence: number; maxPicksPerDay: number; dryRun: boolean } {
+  const defaults = { enabled: false, stakeCents: 500, minConfidence: 60, maxPicksPerDay: 25, dryRun: true }
+  try {
+    const settingsPath = path.join(process.cwd(), '.progno', 'trading-settings.json')
+    if (!fs.existsSync(settingsPath)) return defaults
+    const raw = fs.readFileSync(settingsPath, 'utf8')
+    const parsed = JSON.parse(raw)
+    return { ...defaults, ...parsed }
+  } catch (e) {
+    console.warn('[execute] Failed to read trading-settings.json, using defaults:', (e as Error).message)
+    return defaults
+  }
 }
 
 // ── Load picks from both predictions files ────────────────────────────────────
@@ -435,8 +440,8 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const base = getBaseUrl(request)
-    const settings = await loadSettings(base, `Bearer ${auth.token}`)
+    const settings = loadSettings()
+    console.log(`[execute] settings loaded: enabled=${settings.enabled} dryRun=${settings.dryRun} stake=${settings.stakeCents}`)
 
     const apiKeyId = process.env.KALSHI_API_KEY_ID || ''
     const rawKey = process.env.KALSHI_PRIVATE_KEY || ''

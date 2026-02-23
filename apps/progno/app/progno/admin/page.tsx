@@ -227,6 +227,12 @@ export default function AdminPage() {
   };
   const runKalshiNow = async () => {
     if (!secret.trim()) { setTradeMsg('Enter admin secret first.'); return; }
+    // Save current settings first so execute reads the latest dryRun/enabled state
+    if (tradeSettings) {
+      try {
+        await fetch('/api/progno/admin/trading/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` }, body: JSON.stringify(tradeSettings) });
+      } catch { /* proceed anyway */ }
+    }
     setTradeMsg('Running...');
     try {
       const res = await fetch('/api/progno/admin/trading/execute', { method: 'POST', headers: { Authorization: `Bearer ${secret.trim()}` } });
