@@ -101,6 +101,8 @@ async function findMarketForPick(pick: any): Promise<any | null> {
   const awayTeam = pick.away_team || ''
   const pickTeam = pick.pick || ''
   const sport = pick.sport || pick.league || ''
+  const pickType = (pick.pick_type || 'MONEYLINE').toUpperCase()
+  const recommendedLine = pick.recommended_line
 
   // Generate search tokens for team matching
   const homeTokens = teamSearchTokens(homeTeam)
@@ -125,30 +127,53 @@ async function findMarketForPick(pick: any): Promise<any | null> {
       console.log(`[DEBUG] Sample markets:`, JSON.stringify(sampleMarkets, null, 2))
     }
 
-    // Find a market whose title contains both teams
+    // Find a market matching the pick type
     const match = markets.find((m: any) => {
       const title = (m.title || '').toLowerCase()
       const ticker = (m.ticker || '').toLowerCase()
 
-      // Skip non-sports markets (spread, total, props)
-      if (title.includes('spread') || title.includes('total') || title.includes('points') ||
-        title.includes('over') && title.includes('under')) {
-        return false
+      // Match based on pick type
+      if (pickType === 'SPREAD') {
+        // For spread picks, find spread markets with the recommended line
+        const isSpreadMarket = title.includes('wins by over') || title.includes('wins by under') ||
+          title.includes('spread') || title.includes('cover')
+        if (!isSpreadMarket) return false
+
+        // Check if line matches (e.g., "16.5" in title)
+        if (recommendedLine) {
+          const lineStr = Math.abs(recommendedLine).toString()
+          if (!title.includes(lineStr)) return false
+        }
+      } else if (pickType === 'MONEYLINE') {
+        // For moneyline picks, skip spread/total/prop markets
+        if (title.includes('spread') || title.includes('total') || title.includes('points') ||
+          title.includes('over') || title.includes('under') || title.includes('1st half') ||
+          title.includes('quarter')) {
+          return false
+        }
+      } else if (pickType === 'TOTAL') {
+        // For total picks, find over/under markets
+        const isTotalMarket = (title.includes('over') || title.includes('under')) &&
+          title.includes('points')
+        if (!isTotalMarket) return false
       }
 
-      // Check if both teams are mentioned (using any token)
-      const hasHome = homeTokens.some(token => title.includes(token))
-      const hasAway = awayTokens.some(token => title.includes(token))
+      // Check if team is mentioned (for spread, only pick team needs to match)
+      const pickTokens = teamSearchTokens(pickTeam)
+      const hasPick = pickTokens.some(token => title.includes(token))
 
-      if (sport === 'NCAAB' && (hasHome || hasAway)) {
-        console.log(`[DEBUG] Checking: ${title}`, { hasHome, hasAway, homeTokens, awayTokens })
+      if (pickType === 'SPREAD') {
+        return hasPick // Spread markets only mention one team
+      } else {
+        // Moneyline markets mention both teams
+        const hasHome = homeTokens.some(token => title.includes(token))
+        const hasAway = awayTokens.some(token => title.includes(token))
+        return hasHome && hasAway
       }
-
-      return hasHome && hasAway
     })
 
     if (sport === 'NCAAB' || sport === 'NBA') {
-      console.log(`[DEBUG] Match result for ${homeTeam} vs ${awayTeam}:`, match ? match.title : 'NO MATCH')
+      console.log(`[DEBUG] ${pickType} pick for ${pickTeam}:`, match ? match.title : 'NO MATCH')
     }
 
     return match || null
