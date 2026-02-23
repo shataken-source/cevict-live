@@ -98,17 +98,8 @@ async function findMarketForPick(pick: any): Promise<any | null> {
   const homeTokens = teamSearchTokens(homeTeam)
   const awayTokens = teamSearchTokens(awayTeam)
 
-  // Fetch open sports markets - filter by sport if possible
-  let path = `/markets?status=open&limit=1000`
-
-  // Add sport-specific series ticker filter
-  if (sport === 'NBA') {
-    path += '&series_ticker=KXNBA'
-  } else if (sport === 'NCAAB' || sport === 'NCAA') {
-    path += '&series_ticker=KXNCAAMB'
-  } else if (sport === 'NFL') {
-    path += '&series_ticker=KXNFL'
-  }
+  // Fetch open sports markets
+  const path = `/markets?status=open&limit=1000`
 
   try {
     const headers = buildAuthHeaders('GET', path)
@@ -117,8 +108,17 @@ async function findMarketForPick(pick: any): Promise<any | null> {
     const data = await res.json()
     const markets: any[] = data.markets || []
 
+    // Debug: Log first few market titles for NBA games
+    if (sport === 'NBA') {
+      console.log(`[DEBUG] Looking for ${homeTeam} vs ${awayTeam}`)
+      console.log(`[DEBUG] Home tokens:`, homeTokens)
+      console.log(`[DEBUG] Away tokens:`, awayTokens)
+      const sampleMarkets = markets.slice(0, 10).map(m => ({ title: m.title, ticker: m.ticker }))
+      console.log(`[DEBUG] Sample markets:`, JSON.stringify(sampleMarkets, null, 2))
+    }
+
     // Find a market whose title contains both teams and is a winner market
-    return markets.find((m: any) => {
+    const match = markets.find((m: any) => {
       const title = (m.title || '').toLowerCase()
       const ticker = (m.ticker || '').toLowerCase()
 
@@ -131,8 +131,18 @@ async function findMarketForPick(pick: any): Promise<any | null> {
       const hasHome = homeTokens.some(token => title.includes(token))
       const hasAway = awayTokens.some(token => title.includes(token))
 
+      if (sport === 'NBA' && (hasHome || hasAway)) {
+        console.log(`[DEBUG] Partial match: ${title}`, { hasHome, hasAway, homeTokens, awayTokens })
+      }
+
       return hasHome && hasAway
-    }) || null
+    })
+
+    if (sport === 'NBA') {
+      console.log(`[DEBUG] Match result:`, match ? match.title : 'NO MATCH')
+    }
+
+    return match || null
   } catch {
     return null
   }
