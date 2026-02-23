@@ -160,49 +160,89 @@ async function findMarketForPick(pick: any): Promise<any | null> {
       console.log(`[DEBUG] Sample markets:`, JSON.stringify(sampleMarkets, null, 2))
     }
 
-    // Find a market matching the pick type
+    // Find a market matching the pick (using alpha-hunter logic)
+    const sportsPrefixes = [
+      'KXNBAGAME', 'KXNCAABGAME', 'KXNFLGAME', 'KXNHLGAME', 'KXMLBGAME', 'KXNCAAFGAME',
+      'KXNCAAMBMONEY', 'KXNBAMONEY', 'KXNFLMONEY', 'KXNHLMONEY',
+      'KXNCAAMBSPREAD', 'KXNBASPREAD', 'KXNFLSPREAD', 'KXNHLSPREAD',
+      'KXMVNBA', 'KXMVNCAAB', 'KXMVNFL', 'KXMVNHL', 'KXMVMLB', 'KXMVNCAAF'
+    ]
+
+    const pickTokens = teamSearchTokens(pickTeam, sport)
+
     const match = allMarkets.find((m: any) => {
-      const title = (m.title || '').toLowerCase()
-      const ticker = (m.ticker || '').toLowerCase()
+      // Skip invalid markets
+      if (!m || typeof m !== 'object') return false
+
+      // Check market status
+      const status = (m.status || '').toLowerCase()
+      if (status === 'settled' || status === 'suspended' || status === 'closed') return false
+
+      // Validate yes_ask bounds
+      const yesAsk = typeof m.yes_ask === 'number' ? m.yes_ask : null
+      if (yesAsk === null || yesAsk <= 0 || yesAsk >= 100) return false
+
+      // Get market title
+      const title = String(m.title || '')
+      if (!title) return false
+      const titleLower = title.toLowerCase()
+      const sanitizedTitle = sanitizeToken(titleLower)
+
+      // Skip TOTAL markets (unless pick is TOTAL)
+      if (pickType !== 'TOTAL' && /\bTOTAL\b|Total Points/i.test(title)) return false
+
+      // Skip prop markets (First Half, Quarter, etc.)
+      if (/First Half|1st Half|Quarter|Period|Inning/i.test(title)) return false
+
+      // Check event_ticker OR ticker for sports prefix
+      const eventTicker = (m.event_ticker || '').toUpperCase()
+      const tickerStr = (m.ticker || '').toUpperCase()
+      const hasSportsPrefix = sportsPrefixes.some(p => eventTicker.startsWith(p) || tickerStr.startsWith(p))
 
       // Match based on pick type
       if (pickType === 'SPREAD') {
-        // For spread picks, find spread markets with the recommended line
-        const isSpreadMarket = title.includes('wins by over') || title.includes('wins by under') ||
-          title.includes('spread') || title.includes('cover')
+        // For spread picks, find spread markets with the line
+        const isSpreadMarket = titleLower.includes('wins by over') || titleLower.includes('wins by under') ||
+          titleLower.includes('spread') || titleLower.includes('cover')
         if (!isSpreadMarket) return false
 
-        // Check if line matches (e.g., "16.5" in title)
+        // Check if line matches
         if (recommendedLine) {
           const lineStr = Math.abs(recommendedLine).toString()
-          if (!title.includes(lineStr)) return false
+          if (!titleLower.includes(lineStr)) return false
         }
+
+        // Check if pick team is mentioned
+        const hasPick = pickTokens.some(t => t.length >= 3 && sanitizedTitle.includes(t))
+        return hasPick
       } else if (pickType === 'MONEYLINE') {
-        // For moneyline picks, skip spread/total/prop markets
-        if (title.includes('spread') || title.includes('total') || title.includes('points') ||
-          title.includes('over') || title.includes('under') || title.includes('1st half') ||
-          title.includes('quarter')) {
+        // For moneyline, skip spread/total markets
+        if (titleLower.includes('spread') || titleLower.includes('total') ||
+          titleLower.includes('over') || titleLower.includes('under')) {
           return false
         }
+
+        // Check if both teams are mentioned
+        const hasHome = homeTokens.some(t => t.length >= 3 && sanitizedTitle.includes(t))
+        const hasAway = awayTokens.some(t => t.length >= 3 && sanitizedTitle.includes(t))
+        const bothTeamsPresent = hasHome && hasAway
+
+        // For GAME markets, allow single-team match with "Winner?" in title
+        const isGameMarket = eventTicker.includes('GAME') || tickerStr.includes('GAME') || /winner\?/i.test(title)
+        const hasPick = pickTokens.some(t => t.length >= 3 && sanitizedTitle.includes(t))
+
+        if (bothTeamsPresent) return true
+        if (isGameMarket && hasPick && /winner\?|win\b/i.test(titleLower)) return true
+
+        return false
       } else if (pickType === 'TOTAL') {
         // For total picks, find over/under markets
-        const isTotalMarket = (title.includes('over') || title.includes('under')) &&
-          title.includes('points')
-        if (!isTotalMarket) return false
+        const isTotalMarket = (titleLower.includes('over') || titleLower.includes('under')) &&
+          titleLower.includes('points')
+        return isTotalMarket
       }
 
-      // Check if team is mentioned (for spread, only pick team needs to match)
-      const pickTokens = teamSearchTokens(pickTeam)
-      const hasPick = pickTokens.some(token => title.includes(token))
-
-      if (pickType === 'SPREAD') {
-        return hasPick // Spread markets only mention one team
-      } else {
-        // Moneyline markets mention both teams
-        const hasHome = homeTokens.some(token => title.includes(token))
-        const hasAway = awayTokens.some(token => title.includes(token))
-        return hasHome && hasAway
-      }
+      return false
     })
 
     if (sport === 'NCAAB' || sport === 'NBA') {
