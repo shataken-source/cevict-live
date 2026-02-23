@@ -14,6 +14,7 @@ import { useStore } from '@/store/useStore';
 import { PlaylistManager } from '@/services/PlaylistManager';
 import { IPTVService, IPTVCredentials } from '@/services/IPTVService';
 import { M3UParser } from '@/services/M3UParser';
+import { UpdateService } from '@/services/UpdateService';
 
 interface SettingsScreenProps {
   navigation: any;
@@ -22,6 +23,8 @@ interface SettingsScreenProps {
 export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const { playlists, currentPlaylist, setCurrentPlaylist, addPlaylist, setPlaylists, adConfig, setAdConfig, epgUrl, setEpgUrl } = useStore();
   const [autoPlay, setAutoPlay] = useState(true);
+  const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(true);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
 
   const [showCredentials, setShowCredentials] = useState(false);
   const [username, setUsername] = useState('');
@@ -36,6 +39,11 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
 
   const adBlockEnabled = adConfig.enabled;
   const adVolumeReduction = adConfig.volumeReductionPercent;
+
+  useEffect(() => {
+    // Load auto-update preference
+    UpdateService.isAutoUpdateEnabled().then(setAutoUpdateEnabled);
+  }, []);
 
   const handleSelectPlaylist = (playlistId: string) => {
     const playlist = playlists.find(p => p.id === playlistId);
@@ -164,6 +172,48 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     } catch (error) {
       Alert.alert('Error', 'Failed to load Dezor playlist. Check credentials and try again.');
     }
+  };
+
+  const handleCheckForUpdates = async () => {
+    setCheckingUpdate(true);
+    try {
+      const result = await UpdateService.checkForUpdates();
+      await UpdateService.saveLastUpdateCheck();
+
+      if (result.error) {
+        Alert.alert('Update Check Failed', `Could not check for updates: ${result.error}`);
+      } else if (result.updateAvailable && result.latestVersion) {
+        const { version, releaseNotes, fileSize, downloadUrl } = result.latestVersion;
+        Alert.alert(
+          'Update Available',
+          `Version ${version} is available (${UpdateService.formatFileSize(fileSize)})\n\n${releaseNotes}`,
+          [
+            { text: 'Later', style: 'cancel' },
+            {
+              text: 'Download',
+              onPress: async () => {
+                try {
+                  await UpdateService.downloadUpdate(downloadUrl);
+                } catch (error) {
+                  Alert.alert('Error', 'Failed to open download link');
+                }
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Up to Date', `You're running the latest version (${result.currentVersion})`);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to check for updates');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  const handleToggleAutoUpdate = async (enabled: boolean) => {
+    setAutoUpdateEnabled(enabled);
+    await UpdateService.setAutoUpdateEnabled(enabled);
   };
 
   return (
@@ -382,6 +432,27 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             trackColor={{ false: '#767577', true: '#007AFF' }}
           />
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Updates</Text>
+        <View style={styles.settingRow}>
+          <Text style={styles.label}>Auto-check for updates</Text>
+          <Switch
+            value={autoUpdateEnabled}
+            onValueChange={handleToggleAutoUpdate}
+            trackColor={{ false: '#767577', true: '#34C759' }}
+          />
+        </View>
+        <TouchableOpacity
+          style={[styles.updateButton, { marginTop: 15 }]}
+          onPress={handleCheckForUpdates}
+          disabled={checkingUpdate}>
+          <Text style={styles.buttonText}>
+            {checkingUpdate ? 'Checking...' : 'Check for Updates'}
+          </Text>
+        </TouchableOpacity>
+        <Text style={styles.aboutText}>Current version: {UpdateService.getCurrentVersion()}</Text>
       </View>
 
       <View style={styles.section}>
