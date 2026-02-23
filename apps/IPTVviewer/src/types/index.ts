@@ -6,6 +6,7 @@ export interface Channel {
   group?: string;
   tvgId?: string;
   country?: string;
+  channelNumber?: string;
 }
 
 export interface Playlist {
@@ -14,6 +15,7 @@ export interface Playlist {
   url: string;
   channels: Channel[];
   lastUpdated: Date;
+  expiresAt?: Date;
 }
 
 export interface EPGProgram {

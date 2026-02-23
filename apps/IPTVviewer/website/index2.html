@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Switchback TV — Professional IPTV Player for Providers</title>
+<meta name="description" content="Switchback TV is a professional Android TV IPTV player built for providers. Instant onboarding, QR setup, modular features, and scalable configuration system.">
+
+<!-- SEO -->
+<link rel="canonical" href="https://YOUR_DOMAIN.com/">
+<meta property="og:title" content="Switchback TV — IPTV Player for Providers">
+<meta property="og:description" content="Reduce support tickets. Accelerate onboarding. Professional IPTV app for Android TV.">
+<meta property="og:type" content="website">
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'GA_MEASUREMENT_ID');
+</script>
+
+<style>
+:root{
+--primary:#4CAF50;
+--secondary:#00C2FF;
+--bg:#0c0f14;
+--panel:#161b22;
+--text:#ffffff;
+--muted:#8b949e;
+--border:rgba(255,255,255,0.08);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+font-family:'Inter',sans-serif;
+background:var(--bg);
+color:var(--text);
+scroll-behavior:smooth;
+}
+
+section{
+padding:140px 20px;
+max-width:1200px;
+margin:auto;
+}
+
+h1,h2{
+font-weight:900;
+}
+
+.hero{
+text-align:center;
+padding-top:200px;
+position:relative;
+overflow:hidden;
+}
+
+.hero::before{
+content:'';
+position:absolute;
+top:-200px;
+left:50%;
+width:900px;
+height:900px;
+background:radial-gradient(circle, rgba(0,194,255,0.15), transparent 60%);
+transform:translateX(-50%);
+z-index:-1;
+animation:float 12s infinite alternate ease-in-out;
+}
+
+@keyframes float{
+0%{transform:translateX(-50%) translateY(0);}
+100%{transform:translateX(-50%) translateY(40px);}
+}
+
+.hero h1{
+font-size:4.2rem;
+background:linear-gradient(90deg,var(--primary),var(--secondary));
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+.hero p{
+margin-top:25px;
+font-size:1.4rem;
+color:var(--muted);
+max-width:700px;
+margin-left:auto;
+margin-right:auto;
+}
+
+.btn{
+padding:16px 40px;
+border-radius:14px;
+font-weight:600;
+text-decoration:none;
+display:inline-block;
+margin:15px;
+transition:0.3s;
+}
+
+.btn-primary{
+background:linear-gradient(90deg,var(--primary),var(--secondary));
+color:white;
+box-shadow:0 15px 40px rgba(0,194,255,0.2);
+}
+
+.btn-primary:hover{
+transform:translateY(-4px);
+}
+
+.story{
+opacity:0;
+transform:translateY(40px);
+transition:0.8s;
+}
+
+.story.visible{
+opacity:1;
+transform:translateY(0);
+}
+
+.features-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+gap:30px;
+margin-top:60px;
+}
+
+.card{
+background:var(--panel);
+padding:35px;
+border-radius:18px;
+border:1px solid var(--border);
+transition:0.3s;
+}
+
+.card:hover{
+transform:translateY(-8px);
+border-color:var(--primary);
+}
+
+.download{
+text-align:center;
+padding:160px 20px;
+background:linear-gradient(90deg,var(--primary),var(--secondary));
+color:white;
+}
+
+footer{
+text-align:center;
+padding:60px 20px;
+border-top:1px solid var(--border);
+background:var(--panel);
+}
+
+@media(max-width:768px){
+.hero h1{font-size:2.4rem;}
+}
+</style>
+</head>
+
+<body>
+
+<!-- HERO -->
+<section class="hero">
+<h1>Built for IPTV Providers</h1>
+<p>Switchback TV eliminates onboarding friction, reduces support load, and gives your customers a professional Android TV experience.</p>
+<a href="#download" class="btn btn-primary" onclick="trackDownload()">Download APK</a>
+<a href="#features" class="btn btn-primary" style="background:#1f2937;">Explore Platform</a>
+</section>
+
+<!-- STORY 1 -->
+<section class="story">
+<h2>Stop Losing Customers at Setup</h2>
+<p style="color:var(--muted);margin-top:20px;">
+Manual credential entry creates friction, errors, and support tickets. Switchback replaces it with instant QR or JSON configuration import.
+</p>
+</section>
+
+<!-- STORY 2 -->
+<section id="features" class="story">
+<h2>Designed for Scale</h2>
+
+<div class="features-grid">
+
+<div class="card">
+<h3>QR Code Onboarding</h3>
+<p>Customers scan and watch instantly.</p>
+</div>
+
+<div class="card">
+<h3>Config Automation</h3>
+<p>Generate JSON configs from your backend automatically.</p>
+</div>
+
+<div class="card">
+<h3>Modular Features</h3>
+<p>Enable DVR, Chromecast, or Voice per tier.</p>
+</div>
+
+<div class="card">
+<h3>Professional UI</h3>
+<p>Modern Android TV design built for performance.</p>
+</div>
+
+</div>
+</section>
+
+<!-- PROVIDER CTA -->
+<section class="story">
+<h2>Infrastructure, Not Just an App</h2>
+<p style="color:var(--muted);margin-top:20px;">
+Switchback TV becomes your front-end delivery layer. Reduce churn. Increase professionalism. Scale cleanly.
+</p>
+</section>
+
+<!-- DOWNLOAD -->
+<section id="download" class="download">
+<h2>Ready to Deploy?</h2>
+<p style="margin-top:20px;">Download Switchback TV for Android TV devices.</p>
+<a href="switchback.apk" class="btn" style="background:white;color:var(--primary);" onclick="trackDownload()">Download Latest APK</a>
+<p style="margin-top:20px;">Version 1.0.0 • Android 5.1+</p>
+</section>
+
+<footer>
+<h3>Switchback TV</h3>
+<p>© 2026 Switchback TV. Professional IPTV infrastructure.</p>
+</footer>
+
+<script>
+const observer = new IntersectionObserver(entries=>{
+entries.forEach(entry=>{
+if(entry.isIntersecting){
+entry.target.classList.add('visible');
+}
+});
+});
+
+document.querySelectorAll('.story').forEach(el=>{
+observer.observe(el);
+});
+
+function trackDownload(){
+gtag('event', 'download_click', {
+event_category: 'engagement',
+event_label: 'APK Download'
+});
+}
+</script>
+
+</body>
+</html>

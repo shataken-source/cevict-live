@@ -145,13 +145,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   const loadDezorPlaylist = async () => {
     try {
-      const dezorUrl = ''; // Credentials removed for security
-      if (!dezorUrl) return;
+      // DezorIPTV credentials
+      const dezorUrl = 'http://cf.like-cdn.com/get.php?username=jascodezorptv&password=19e9a1x16&type=m3u_plus&output=ts';
 
       const playlist = await M3UParser.fetchAndParse(
         dezorUrl,
         'dezor-playlist',
-        'Dezor IPTV Channels'
+        'DezorIPTV - jascodezorptv'
       );
 
       addPlaylist(playlist);

@@ -18,6 +18,7 @@ export class M3UParser {
           logo: info.logo,
           group: info.group,
           tvgId: info.tvgId,
+          channelNumber: info.channelNumber,
         };
       } else if (line && !line.startsWith('#') && currentChannel.name) {
         currentChannel.url = line;
@@ -40,6 +41,7 @@ export class M3UParser {
     logo?: string;
     group?: string;
     tvgId?: string;
+    channelNumber?: string;
   } {
     const nameMatch = line.match(/,(.+)$/);
     const name = nameMatch ? nameMatch[1].trim() : 'Unknown';
@@ -53,7 +55,10 @@ export class M3UParser {
     const tvgIdMatch = line.match(/tvg-id="([^"]+)"/);
     const tvgId = tvgIdMatch ? tvgIdMatch[1] : undefined;
 
-    return { name, logo, group, tvgId };
+    const channelNumberMatch = line.match(/tvg-chno="([^"]+)"/);
+    const channelNumber = channelNumberMatch ? channelNumberMatch[1] : undefined;
+
+    return { name, logo, group, tvgId, channelNumber };
   }
 
   static async fetchAndParse(url: string, playlistId: string, playlistName: string): Promise<Playlist> {

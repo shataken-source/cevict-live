@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Switchback TV — Professional IPTV Player</title>
+    <meta name="description"
+        content="Professional IPTV player for Android TV with instant setup, modular features, and provider-friendly configuration.">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
     <script src="https://js.stripe.com/v3/"></script>
@@ -36,10 +38,12 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: var(--bg);
+            background: radial-gradient(circle at 20% 20%, rgba(76, 175, 80, 0.15), transparent 40%),
+                radial-gradient(circle at 80% 0%, rgba(0, 194, 255, 0.12), transparent 40%),
+                var(--bg);
             color: var(--text);
             scroll-behavior: smooth;
-            transition: 0.3s;
+            transition: background 0.3s, color 0.3s;
         }
 
         nav {
@@ -50,7 +54,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             background: rgba(0, 0, 0, 0.4);
             border-bottom: 1px solid var(--border);
             z-index: 1000;
@@ -58,9 +63,11 @@
 
         nav h2 {
             font-weight: 800;
+            letter-spacing: 1px;
             background: linear-gradient(90deg, var(--primary), var(--secondary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         nav a {
@@ -68,6 +75,7 @@
             text-decoration: none;
             color: var(--muted);
             font-weight: 500;
+            transition: 0.3s;
         }
 
         nav a:hover {
@@ -81,6 +89,11 @@
             border: 1px solid var(--border);
             border-radius: 20px;
             font-size: 0.8rem;
+            transition: 0.3s;
+        }
+
+        .toggle:hover {
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .hero {
@@ -89,20 +102,20 @@
         }
 
         .hero h1 {
-            font-size: 4.2rem;
+            font-size: 4.5rem;
             font-weight: 900;
             background: linear-gradient(90deg, var(--primary), var(--secondary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
         }
 
         .hero p {
-            margin-top: 20px;
             font-size: 1.4rem;
             color: var(--muted);
             max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
+            margin: 0 auto 40px;
         }
 
         .btn {
@@ -112,8 +125,9 @@
             font-weight: 600;
             display: inline-block;
             margin: 15px;
-            transition: 0.3s;
+            transition: all 0.3s;
             cursor: pointer;
+            border: none;
         }
 
         .btn-primary {
@@ -124,58 +138,17 @@
 
         .btn-primary:hover {
             transform: translateY(-4px);
+            box-shadow: 0 15px 40px rgba(0, 194, 255, 0.35);
         }
 
         .btn-outline {
             border: 1px solid var(--border);
             color: var(--text);
+            background: transparent;
         }
 
-        .section {
-            padding: 120px 20px;
-            max-width: 1200px;
-            margin: auto;
-        }
-
-        .section h2 {
-            text-align: center;
-            font-size: 2.6rem;
-            margin-bottom: 60px;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-        }
-
-        .card {
-            background: var(--panel);
-            padding: 35px;
-            border-radius: 18px;
-            border: 1px solid var(--border);
-            transition: 0.4s;
-            opacity: 0;
-            transform: translateY(40px);
-        }
-
-        .card.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .card:hover {
-            transform: translateY(-8px);
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            margin-bottom: 12px;
-            background: rgba(76, 175, 80, 0.15);
-            color: var(--primary);
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .tv-container {
@@ -192,6 +165,34 @@
             box-shadow: 0 0 100px rgba(0, 194, 255, 0.15);
             border: 6px solid #333;
             background: #000;
+            position: relative;
+        }
+
+        .tv::before {
+            content: "LIVE";
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: #FF0000;
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            border-radius: 4px;
+            z-index: 10;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 1;
+            }
         }
 
         .tv video {
@@ -200,8 +201,121 @@
             object-fit: cover;
         }
 
+        .tv-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #4CAF50, #00C2FF, #4CAF50);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 2rem;
+        }
+
+        @keyframes gradient {
+            0% {
+                background-position: 0% 50%
+            }
+
+            50% {
+                background-position: 100% 50%
+            }
+
+            100% {
+                background-position: 0% 50%
+            }
+        }
+
+        .section {
+            padding: 120px 20px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .section h2 {
+            text-align: center;
+            font-size: 2.8rem;
+            margin-bottom: 70px;
+            font-weight: 800;
+        }
+
+        .section h3 {
+            text-align: center;
+            font-weight: 600;
+            margin: 80px 0 40px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .card {
+            background: var(--panel);
+            padding: 35px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            transition: all 0.4s;
+            opacity: 0;
+            transform: translateY(40px);
+        }
+
+        .card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            color: var(--primary);
+            font-size: 1.3rem;
+        }
+
+        .card p {
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            margin-bottom: 12px;
+            background: rgba(76, 175, 80, 0.15);
+            color: var(--primary);
+        }
+
+        .badge-advanced {
+            background: rgba(0, 194, 255, 0.15);
+            color: var(--secondary);
+        }
+
+        .badge-experimental {
+            background: rgba(255, 107, 107, 0.15);
+            color: #FF6B6B;
+        }
+
         .pricing {
             text-align: center;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 40px;
+            max-width: 900px;
+            margin: 60px auto 0;
         }
 
         .price-box {
@@ -209,8 +323,16 @@
             padding: 40px;
             border-radius: 18px;
             border: 1px solid var(--border);
-            max-width: 400px;
-            margin: auto;
+            transition: 0.3s;
+        }
+
+        .price-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .price-box.featured {
+            border: 2px solid var(--secondary);
         }
 
         .price-box h3 {
@@ -222,6 +344,34 @@
             font-size: 3rem;
             font-weight: 800;
             margin: 20px 0;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .providers {
+            background: linear-gradient(180deg, var(--panel), var(--bg));
+            padding: 100px 20px;
+        }
+
+        .provider-box {
+            background: var(--panel);
+            padding: 30px;
+            border-left: 4px solid var(--primary);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            transition: 0.3s;
+        }
+
+        .provider-box:hover {
+            transform: translateX(5px);
+        }
+
+        .provider-box h4 {
+            margin-bottom: 10px;
+            color: var(--primary);
+            font-size: 1.2rem;
         }
 
         .download {
@@ -231,11 +381,26 @@
             color: white;
         }
 
+        .download h2 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .download p {
+            margin-bottom: 30px;
+            font-size: 1.2rem;
+        }
+
         footer {
             text-align: center;
             padding: 60px 20px;
-            border-top: 1px solid var(--border);
             background: var(--panel);
+            border-top: 1px solid var(--border);
+        }
+
+        footer p {
+            color: var(--muted);
+            margin-top: 10px;
         }
 
         @media(max-width:768px) {
@@ -247,6 +412,19 @@
                 width: 100%;
                 height: 220px;
             }
+
+            nav {
+                padding: 15px 20px;
+            }
+
+            nav a {
+                margin-left: 15px;
+                font-size: 0.9rem;
+            }
+
+            .section {
+                padding: 80px 20px;
+            }
         }
     </style>
 </head>
@@ -257,19 +435,20 @@
         <h2>Switchback TV</h2>
         <div>
             <a href="#features">Features</a>
-            <a href="#pricing">Upgrade</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#providers">Providers</a>
             <a href="#download">Download</a>
-            <span class="toggle" onclick="toggleMode()">Toggle</span>
+            <span class="toggle" onclick="toggleMode()">🌙</span>
         </div>
     </nav>
 
     <section class="hero">
-        <h1>The Modern IPTV Experience</h1>
-        <p style="font-size:1.6rem;font-weight:600;margin-bottom:15px;">⇄ Instantly Return to Your Previous Channel</p>
+        <h1>Switchback TV</h1>
+        <p style="font-size:1.8rem;font-weight:600;margin-bottom:15px;">⇄ Instantly Return to Your Previous Channel</p>
         <p>The only IPTV player built around the feature you actually use — quick channel switching. Plus instant setup,
             modular features, and provider-friendly configuration.</p>
         <a href="#download" class="btn btn-primary">Download APK</a>
-        <a href="#pricing" class="btn btn-outline">See All Features</a>
+        <a href="#features" class="btn btn-outline">See All Features</a>
 
         <div class="tv-container">
             <div class="tv">
@@ -283,9 +462,14 @@
     <section id="features" class="section">
         <h2>25 Powerful Features</h2>
 
-        <h3 style="text-align:center;color:var(--muted);margin-bottom:40px;font-weight:600;">BASIC TIER — Always Free
-        </h3>
+        <h3 style="color:var(--muted);">BASIC TIER — Always Free</h3>
         <div class="grid">
+            <div class="card" style="border:2px solid var(--primary);">
+                <div class="badge">★ Signature</div>
+                <h3>⇄ Switchback Button</h3>
+                <p>Instantly jump back to your previous channel with one button press. The feature that defines the app.
+                </p>
+            </div>
             <div class="card">
                 <div class="badge">Core</div>
                 <h3>M3U Playlists</h3>
@@ -294,7 +478,7 @@
             <div class="card">
                 <div class="badge">Core</div>
                 <h3>Live Playback</h3>
-                <p>Watch live TV channels in HD.</p>
+                <p>Watch live TV channels in HD quality.</p>
             </div>
             <div class="card">
                 <div class="badge">Core</div>
@@ -309,7 +493,7 @@
             <div class="card">
                 <div class="badge">Core</div>
                 <h3>Full EPG</h3>
-                <p>Current and upcoming show info.</p>
+                <p>Current and upcoming show information.</p>
             </div>
             <div class="card">
                 <div class="badge">Core</div>
@@ -318,102 +502,100 @@
             </div>
         </div>
 
-        <h3 style="text-align:center;color:var(--primary);margin:80px 0 40px;font-weight:600;">ADVANCED TIER — $9
-            One-Time</h3>
+        <h3 style="color:var(--primary);">ADVANCED TIER — $9 One-Time</h3>
         <div class="grid">
             <div class="card">
-                <div class="badge">Advanced</div>
+                <div class="badge badge-advanced">Advanced</div>
                 <h3>QR Setup</h3>
                 <p>Scan QR codes for instant config.</p>
             </div>
             <div class="card">
-                <div class="badge">Advanced</div>
+                <div class="badge badge-advanced">Advanced</div>
                 <h3>Ad Detection</h3>
                 <p>Auto-detect and mute commercials.</p>
             </div>
             <div class="card">
-                <div class="badge">Advanced</div>
+                <div class="badge badge-advanced">Advanced</div>
                 <h3>Chromecast</h3>
                 <p>Cast streams to other devices.</p>
             </div>
             <div class="card">
-                <div class="badge">Advanced</div>
+                <div class="badge badge-advanced">Advanced</div>
                 <h3>DVR Recording</h3>
                 <p>Record live streams for later.</p>
             </div>
             <div class="card">
-                <div class="badge">Advanced</div>
+                <div class="badge badge-advanced">Advanced</div>
                 <h3>Time Shifting</h3>
                 <p>Pause and rewind live TV.</p>
             </div>
             <div class="card">
-                <div class="badge">Advanced</div>
+                <div class="badge badge-advanced">Advanced</div>
                 <h3>Sleep Timer</h3>
                 <p>Auto-stop after set time.</p>
             </div>
             <div class="card">
-                <div class="badge">Advanced</div>
+                <div class="badge badge-advanced">Advanced</div>
                 <h3>Parental Controls</h3>
                 <p>PIN-protect channels.</p>
             </div>
             <div class="card">
-                <div class="badge">Advanced</div>
+                <div class="badge badge-advanced">Advanced</div>
                 <h3>Multi-Audio</h3>
                 <p>Switch between languages.</p>
             </div>
             <div class="card">
-                <div class="badge">Advanced</div>
+                <div class="badge badge-advanced">Advanced</div>
                 <h3>Subtitles</h3>
                 <p>Display closed captions.</p>
             </div>
         </div>
 
-        <h3 style="text-align:center;color:var(--secondary);margin:80px 0 40px;font-weight:600;">EXPERIMENTAL TIER — $19
-            One-Time</h3>
+        <h3 style="color:var(--secondary);">EXPERIMENTAL TIER — $19 One-Time</h3>
         <div class="grid">
             <div class="card">
-                <div class="badge">Experimental</div>
+                <div class="badge badge-experimental">Experimental</div>
                 <h3>Voice Control</h3>
                 <p>Hands-free navigation.</p>
             </div>
             <div class="card">
-                <div class="badge">Experimental</div>
+                <div class="badge badge-experimental">Experimental</div>
                 <h3>VPN Integration</h3>
                 <p>Built-in VPN support.</p>
             </div>
             <div class="card">
-                <div class="badge">Experimental</div>
+                <div class="badge badge-experimental">Experimental</div>
                 <h3>Weather Overlay</h3>
                 <p>Live weather on screen.</p>
             </div>
             <div class="card">
-                <div class="badge">Experimental</div>
+                <div class="badge badge-experimental">Experimental</div>
                 <h3>News Ticker</h3>
                 <p>Scrolling headlines.</p>
             </div>
             <div class="card">
-                <div class="badge">Experimental</div>
+                <div class="badge badge-experimental">Experimental</div>
                 <h3>Gesture Controls</h3>
                 <p>Swipe to change channels.</p>
             </div>
             <div class="card">
-                <div class="badge">Experimental</div>
+                <div class="badge badge-experimental">Experimental</div>
                 <h3>AI Recommendations</h3>
                 <p>Smart channel suggestions.</p>
             </div>
             <div class="card">
-                <div class="badge">Experimental</div>
+                <div class="badge badge-experimental">Experimental</div>
                 <h3>Picture-in-Picture</h3>
                 <p>Watch while multitasking.</p>
             </div>
             <div class="card">
-                <div class="badge">Experimental</div>
+                <div class="badge badge-experimental">Experimental</div>
                 <h3>Multi-View</h3>
                 <p>4 channels at once.</p>
             </div>
         </div>
 
-        <h3 style="text-align:center;color:var(--muted);margin:80px 0 40px;font-weight:600;">BONUS FEATURES</h3>
+        <h3 style="color:var(--muted);">BONUS FEATURES</h3>
         <div class="grid">
             <div class="card">
                 <div class="badge">Included</div>
@@ -430,11 +612,10 @@
 
     <section id="pricing" class="section pricing">
         <h2>Unlock Premium Features</h2>
-        <p style="color:var(--muted);max-width:600px;margin:0 auto 60px;">All basic features are free forever. Upgrade
+        <p style="color:var(--muted);max-width:600px;margin:0 auto 20px;">All basic features are free forever. Upgrade
             to unlock advanced and experimental features.</p>
 
-        <div
-            style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:40px;max-width:900px;margin:auto;">
+        <div class="pricing-grid">
             <div class="price-box">
                 <h3>Advanced Tier</h3>
                 <div class="price">$9</div>
@@ -443,7 +624,7 @@
                 <button class="btn btn-primary" onclick="checkout('advanced')">Upgrade to Advanced</button>
             </div>
 
-            <div class="price-box" style="border:2px solid var(--secondary);">
+            <div class="price-box featured">
                 <h3>Experimental Tier</h3>
                 <div class="price">$19</div>
                 <p style="margin-bottom:30px;">All 25 features including Voice Control, AI Recommendations, Multi-View,
@@ -456,42 +637,103 @@
             access.</p>
     </section>
 
+    <section id="providers" class="providers">
+        <div class="section">
+            <h2>For IPTV Providers</h2>
+            <p style="text-align:center;color:var(--muted);max-width:700px;margin:0 auto 40px;">Make customer onboarding
+                effortless with our provider-friendly configuration system.</p>
+
+            <div class="provider-box">
+                <h4>📉 Reduce Support Tickets by 90%</h4>
+                <p>No more "how do I enter my credentials?" questions. Config files eliminate setup confusion.</p>
+            </div>
+
+            <div class="provider-box">
+                <h4>⚡ Customers Watching in Under 60 Seconds</h4>
+                <p>Best first impression possible. QR code → channels loaded → streaming.</p>
+            </div>
+
+            <div class="provider-box">
+                <h4>✨ Professional Customer Experience</h4>
+                <p>Show customers you care about their experience with modern setup tools.</p>
+            </div>
+
+            <div class="provider-box">
+                <h4>🎯 Zero Setup Errors</h4>
+                <p>No manual URL entry means no typos, no connection failures, happier customers.</p>
+            </div>
+
+            <div class="provider-box">
+                <h4>📈 Scalable to Thousands of Users</h4>
+                <p>Automate config generation for thousands of customers with simple JSON files.</p>
+            </div>
+
+            <div class="provider-box">
+                <h4>🔧 Easy Backend Integration</h4>
+                <p>Simple JSON format works with any backend. PHP, Node.js, Python examples included.</p>
+            </div>
+        </div>
+    </section>
+
     <section id="download" class="download">
         <h2>Ready to Stream?</h2>
         <p>Download the latest version of Switchback TV for Android TV.</p>
         <a href="http://192.168.8.152:9000/switchback-v2.apk" class="btn btn-outline"
             style="background:white;color:var(--primary);">Download APK (2.4 MB)</a>
-        <p style="margin-top:20px;">Version 1.0.0 • Android 5.1+ • Updated Feb 2026</p>
+        <p style="margin-top:20px;opacity:0.9;">Version 1.0.0 • Android 5.1+ • Updated Feb 2026</p>
         <p style="margin-top:10px;font-size:0.9rem;opacity:0.8;">Full IPTVviewer build coming March 1st</p>
     </section>
 
     <footer>
         <h3>Switchback TV</h3>
-        <p> 2026 Switchback TV. Built for modern IPTV streaming.</p>
+        <p>&copy; 2026 Switchback TV. Built for modern IPTV streaming.</p>
+        <p style="margin-top:15px;">
+            <a href="https://github.com/shataken/switchback-tv"
+                style="color:var(--primary);text-decoration:none;">GitHub</a> •
+            <a href="mailto:support@switchback.tv" style="color:var(--primary);text-decoration:none;">Support</a> •
+            <a href="#features" style="color:var(--primary);text-decoration:none;">Documentation</a>
+        </p>
     </footer>
 
     <script>
+        // Persistent theme toggle
         if (localStorage.getItem("mode") === "light") {
             document.body.classList.add("light");
         }
 
         function toggleMode() {
             document.body.classList.toggle("light");
+            const toggle = document.querySelector('.toggle');
+            toggle.textContent = document.body.classList.contains("light") ? "☀️" : "🌙";
             localStorage.setItem("mode",
                 document.body.classList.contains("light") ? "light" : "dark");
         }
 
+        // Set initial icon
+        document.querySelector('.toggle').textContent =
+            document.body.classList.contains("light") ? "☀️" : "🌙";
+
+        // Scroll-triggered card animations
         const observer = new IntersectionObserver(entries => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add("visible");
                 }
             });
-        });
+        }, { threshold: 0.1 });
 
         document.querySelectorAll('.card').forEach(card => {
             observer.observe(card);
         });
+
+        // Handle missing demo video gracefully
+        const video = document.querySelector('.tv video');
+        if (video) {
+            video.addEventListener('error', function () {
+                const tvDiv = document.querySelector('.tv');
+                tvDiv.innerHTML = '<div class="tv-placeholder">Streaming Demo Preview</div>';
+            });
+        }
 
         // Stripe integration (replace with your actual keys)
         const STRIPE_KEY = "YOUR_STRIPE_PUBLISHABLE_KEY";
@@ -513,21 +755,6 @@
                 mode: "payment",
                 successUrl: window.location.href + "?upgraded=" + tier,
                 cancelUrl: window.location.href
-            });
-        }
-
-        // Handle missing demo video gracefully
-        const video = document.querySelector('.tv video');
-        if (video) {
-            video.addEventListener('error', function () {
-                // Replace with animated gradient if video fails to load
-                const tvDiv = document.querySelector('.tv');
-                tvDiv.innerHTML = '<div style="width:100%;height:100%;background:linear-gradient(45deg,#4CAF50,#00C2FF,#4CAF50);background-size:400% 400%;animation:gradient 15s ease infinite;"></div>';
-
-                // Add animation keyframes
-                const style = document.createElement('style');
-                style.textContent = '@keyframes gradient{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}';
-                document.head.appendChild(style);
             });
         }
     </script>

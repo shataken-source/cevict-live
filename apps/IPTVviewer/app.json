@@ -4,6 +4,10 @@
     "slug": "switchback-tv",
     "version": "1.0.0",
     "orientation": "landscape",
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/b038e856-9899-41b9-add6-c834cb69b6b4"
+    },
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {

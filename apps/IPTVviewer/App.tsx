@@ -1,7 +1,10 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import HomeScreen from './src/screens/HomeScreen';
+import TVHomeScreen from './src/screens/TVHomeScreen';
+import ChannelsScreen from './src/screens/ChannelsScreen';
+import MoviesScreen from './src/screens/MoviesScreen';
+import SeriesScreen from './src/screens/SeriesScreen';
 import PlayerScreen from './src/screens/PlayerScreen';
 import EPGScreen from './src/screens/EPGScreen';
 import FavoritesScreen from './src/screens/FavoritesScreen';
@@ -15,22 +18,30 @@ export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Home"
+        initialRouteName="TVHome"
         screenOptions={{
-          headerStyle: { backgroundColor: '#1a1a1a' },
-          headerTintColor: '#fff',
-          headerTitleStyle: { fontWeight: 'bold' },
+          headerShown: false,
         }}
       >
         <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ title: 'Switchback TV' }}
+          name="TVHome"
+          component={TVHomeScreen}
+        />
+        <Stack.Screen
+          name="Channels"
+          component={ChannelsScreen}
+        />
+        <Stack.Screen
+          name="Movies"
+          component={MoviesScreen}
+        />
+        <Stack.Screen
+          name="Series"
+          component={SeriesScreen}
         />
         <Stack.Screen
           name="Player"
           component={PlayerScreen}
-          options={{ headerShown: false }}
         />
         <Stack.Screen name="EPG" component={EPGScreen} />
         <Stack.Screen name="Favorites" component={FavoritesScreen} />
