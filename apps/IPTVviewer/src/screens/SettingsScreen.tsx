@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { useStore } from '@/store/useStore';
 import { PlaylistManager } from '@/services/PlaylistManager';
 import { IPTVService, IPTVCredentials } from '@/services/IPTVService';
@@ -19,7 +20,7 @@ interface SettingsScreenProps {
 }
 
 export default function SettingsScreen({ navigation }: SettingsScreenProps) {
-  const { playlists, currentPlaylist, setCurrentPlaylist, addPlaylist, adConfig, setAdConfig, epgUrl, setEpgUrl } = useStore();
+  const { playlists, currentPlaylist, setCurrentPlaylist, addPlaylist, setPlaylists, adConfig, setAdConfig, epgUrl, setEpgUrl } = useStore();
   const [autoPlay, setAutoPlay] = useState(true);
 
   const [showCredentials, setShowCredentials] = useState(false);
@@ -43,13 +44,20 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
     }
   };
 
-  const handleDeletePlaylist = async (playlistId: string) => {
-    const updatedPlaylists = playlists.filter(p => p.id !== playlistId);
-    await PlaylistManager.savePlaylists(updatedPlaylists);
-
-    if (currentPlaylist?.id === playlistId && updatedPlaylists.length > 0) {
-      setCurrentPlaylist(updatedPlaylists[0]);
-    }
+  const handleDeletePlaylist = (playlistId: string) => {
+    Alert.alert('Delete Playlist', 'Remove this playlist?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive', onPress: async () => {
+          const updatedPlaylists = playlists.filter(p => p.id !== playlistId);
+          setPlaylists(updatedPlaylists);
+          await PlaylistManager.savePlaylists(updatedPlaylists);
+          if (currentPlaylist?.id === playlistId) {
+            setCurrentPlaylist(updatedPlaylists[0] ?? null);
+          }
+        },
+      },
+    ]);
   };
 
   const handleTestConnection = async () => {
@@ -72,6 +80,33 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       } else {
         Alert.alert('Error', 'Both servers failed to connect. Check credentials.');
       }
+    }
+  };
+
+  const handleImportConfig = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/json', 'text/plain'],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const file = result.assets[0];
+      const response = await fetch(file.uri);
+      const text = await response.text();
+      const config = JSON.parse(text);
+
+      // Populate fields from config
+      if (config.server) setServer(config.server);
+      if (config.username) setUsername(config.username);
+      if (config.password) setPassword(config.password);
+      if (config.alt) setAltServer(config.alt);
+      if (config.epg) setEpgUrl(config.epg);
+
+      Alert.alert('Success', 'Config imported! Tap "Update Credentials" to load channels.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to import config: ' + (error as Error).message);
     }
   };
 
@@ -217,6 +252,12 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
               onChangeText={setAltServer}
               autoCapitalize="none"
             />
+
+            <TouchableOpacity
+              style={styles.importButton}
+              onPress={handleImportConfig}>
+              <Text style={styles.buttonText}>📁 Import Provider Config</Text>
+            </TouchableOpacity>
 
             <View style={styles.buttonRow}>
               <TouchableOpacity
@@ -460,6 +501,14 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  importButton: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 15,
+    marginBottom: 5,
   },
   buttonText: {
     color: '#fff',

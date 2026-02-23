@@ -41,6 +41,7 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
   const [isAdPlaying, setIsAdPlaying] = useState(false);
   const [currentProgram, setCurrentProgram] = useState<EPGProgram | null>(null);
   const adDetectionService = useRef(new AdDetectionService()).current;
+  const originalVolumeRef = useRef(50); // initialized to store default; updated on ad detection
 
   const {
     setCurrentChannel,
@@ -53,7 +54,6 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
     epgUrl,
   } = useStore();
 
-  // originalVolume must be declared after volume from store
   const [originalVolume, setOriginalVolume] = useState(volume);
 
   // Handle previous channel switch - FLAWLESS IMPLEMENTATION
@@ -144,6 +144,7 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
   const handleAdDetected = (result: AdDetectionResult) => {
     console.log('Ad detected:', result);
     setIsAdPlaying(true);
+    originalVolumeRef.current = volume;
     setOriginalVolume(volume);
 
     if (result.action === 'mute') {
@@ -157,7 +158,7 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
   const handleAdEnded = () => {
     console.log('Ad ended, restoring volume');
     setIsAdPlaying(false);
-    setVolume(originalVolume);
+    setVolume(originalVolumeRef.current);
   };
 
   const simulateAdCheck = async () => {
@@ -214,6 +215,12 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
         volume={isMuted ? 0 : volume / 100}
         shouldPlay
         onError={(error: any) => console.error('Video error:', error)}
+      />
+
+      <TouchableOpacity
+        style={styles.touchArea}
+        onPress={showControlsTemporarily}
+        activeOpacity={1}
       />
 
       {showControls && (
@@ -285,11 +292,6 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
         </View>
       )}
 
-      <TouchableOpacity
-        style={styles.touchArea}
-        onPress={showControlsTemporarily}
-        activeOpacity={1}
-      />
     </View>
   );
 }

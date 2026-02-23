@@ -195,7 +195,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       setPlaylistUrl('');
     } catch (error) {
       console.error('Error adding playlist:', error);
-      alert('Failed to load playlist. Please check the URL and try again.');
+      Alert.alert('Error', 'Failed to load playlist. Please check the URL and try again.');
     } finally {
       setLoading(false);
     }

@@ -24,12 +24,12 @@ export interface LicenseInfo {
     isLifetime: boolean;
 }
 
-// Get Supabase client
+// Get Supabase client — uses anon key (safe for client-side React Native)
 const getSupabase = () => {
     // @ts-ignore - process.env is injected by build system
     const supabaseUrl = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_URL ? process.env.NEXT_PUBLIC_SUPABASE_URL : '';
-    // @ts-ignore
-    const supabaseKey = typeof process !== 'undefined' && process.env.SUPABASE_SERVICE_ROLE_KEY ? process.env.SUPABASE_SERVICE_ROLE_KEY : '';
+    // @ts-ignore - use anon/public key only; never use service role key in client code
+    const supabaseKey = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY : '';
     return createClient(supabaseUrl, supabaseKey);
 };
 
@@ -132,10 +132,10 @@ class DeviceLicensingServiceImpl {
         try {
             const supabase = getSupabase();
 
-            // Get device and subscription
+            // Get device
             const { data: device } = await supabase
                 .from('iptv_devices')
-                .select('*, user:iptv_subscriptions(*)')
+                .select('*')
                 .eq('device_id', deviceId)
                 .eq('license_key', licenseKey)
                 .single();
@@ -144,14 +144,31 @@ class DeviceLicensingServiceImpl {
                 return { valid: false, licenseInfo: null, message: 'Invalid license' };
             }
 
+            // Get subscription separately
+            const { data: subscription } = await supabase
+                .from('iptv_subscriptions')
+                .select('*')
+                .eq('user_id', device.user_id)
+                .single();
+
+            if (!subscription) {
+                return { valid: false, licenseInfo: null, message: 'No active subscription found' };
+            }
+
             // Check subscription expiry for non-lifetime
-            const subscription = device.user;
-            if (!subscription || !subscription.is_lifetime) {
+            if (!subscription.is_lifetime) {
                 const expiresAt = new Date(subscription.expires_at);
                 if (expiresAt < new Date()) {
                     return { valid: false, licenseInfo: null, message: 'Subscription expired' };
                 }
             }
+
+            // Count active devices for this user
+            const { count: activeDevices } = await supabase
+                .from('iptv_devices')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', device.user_id)
+                .eq('is_active', true);
 
             // Update last seen
             await supabase
@@ -165,7 +182,7 @@ class DeviceLicensingServiceImpl {
                     tierId: subscription.tier_id,
                     tierName: subscription.tier_name,
                     maxDevices: subscription.max_devices,
-                    activeDevices: 0, // Would need another query
+                    activeDevices: activeDevices ?? 0,
                     expiresAt: subscription.expires_at,
                     isLifetime: subscription.is_lifetime,
                 },

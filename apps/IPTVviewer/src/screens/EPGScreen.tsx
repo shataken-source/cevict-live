@@ -70,16 +70,17 @@ export default function EPGScreen({ navigation }: EPGScreenProps) {
     }, [viewStartTime, hours]);
 
     // Get programs for each channel in view range
+    // Use tvgId for EPG matching (XMLTV channel IDs), fall back to channel.id
     const channelProgramsMap = useMemo(() => {
         if (!channels.length) return new Map<string, EPGProgram[]>();
-        const channelIds = channels.map(c => c.id);
+        const channelIds = channels.map(c => c.tvgId || c.id);
         return EPGService.getProgramsForChannels(programs, channelIds, viewStartTime, viewEndTime);
     }, [programs, channels, viewStartTime, viewEndTime]);
 
     // Get current programs for all channels
     const currentProgramMap = useMemo(() => {
         const now = new Date();
-        const channelIds = channels.map(c => c.id);
+        const channelIds = channels.map(c => c.tvgId || c.id);
         return EPGService.getProgramsAtTime(programs, channelIds, now);
     }, [programs, channels]);
 
@@ -250,8 +251,7 @@ export default function EPGScreen({ navigation }: EPGScreenProps) {
                     data={channels}
                     renderItem={renderChannelRow}
                     keyExtractor={item => item.id}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
+                    showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.gridContent}
                     getItemLayout={(_, index) => ({
                         length: EPG_CONFIG.channelRowHeight,

@@ -106,17 +106,28 @@ export class EPGService {
   }
 
   private static parseXMLTVDate(dateStr: string): Date {
-    if (!dateStr || dateStr.length < 14) {
+    const trimmed = dateStr.trim();
+    if (!trimmed || trimmed.length < 14) {
       throw new Error('Invalid date format');
     }
-    const year = parseInt(dateStr.substring(0, 4));
-    const month = parseInt(dateStr.substring(4, 6)) - 1;
-    const day = parseInt(dateStr.substring(6, 8));
-    const hour = parseInt(dateStr.substring(8, 10));
-    const minute = parseInt(dateStr.substring(10, 12));
-    const second = parseInt(dateStr.substring(12, 14));
+    const year = parseInt(trimmed.substring(0, 4));
+    const month = parseInt(trimmed.substring(4, 6)) - 1;
+    const day = parseInt(trimmed.substring(6, 8));
+    const hour = parseInt(trimmed.substring(8, 10));
+    const minute = parseInt(trimmed.substring(10, 12));
+    const second = parseInt(trimmed.substring(12, 14));
 
-    const date = new Date(year, month, day, hour, minute, second);
+    // Parse optional timezone offset: " +0530" or " -0500"
+    let offsetMinutes = 0;
+    const tzMatch = trimmed.substring(14).match(/\s*([+-])(\d{2})(\d{2})/);
+    if (tzMatch) {
+      const sign = tzMatch[1] === '+' ? 1 : -1;
+      offsetMinutes = sign * (parseInt(tzMatch[2]) * 60 + parseInt(tzMatch[3]));
+    }
+
+    // Build UTC timestamp then apply offset
+    const utcMs = Date.UTC(year, month, day, hour, minute, second) - offsetMinutes * 60000;
+    const date = new Date(utcMs);
     if (isNaN(date.getTime())) {
       throw new Error('Invalid date value');
     }

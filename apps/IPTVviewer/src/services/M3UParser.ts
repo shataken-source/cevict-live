@@ -57,8 +57,17 @@ export class M3UParser {
   }
 
   static async fetchAndParse(url: string, playlistId: string, playlistName: string): Promise<Playlist> {
-    const response = await fetch(url);
-    const content = await response.text();
-    return this.parse(content, playlistId, playlistName);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const content = await response.text();
+      return this.parse(content, playlistId, playlistName);
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 }

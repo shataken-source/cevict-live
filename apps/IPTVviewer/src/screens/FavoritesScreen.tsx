@@ -9,18 +9,21 @@ import {
     Modal,
     ScrollView,
     Share,
-    Clipboard,
 } from 'react-native';
+import { Clipboard } from 'react-native';
 import { Channel } from '@/types';
 import { useStore } from '@/store/useStore';
 import { SmartFavoritesService, SmartFavoriteResult, FavoriteCategory } from '@/services/SmartFavoritesService';
 
 interface FavoritesScreenProps {
-    onChannelSelect: (channel: Channel) => void;
-    onClose: () => void;
+    navigation: any;
 }
 
-export function FavoritesScreen({ onChannelSelect, onClose }: FavoritesScreenProps) {
+export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
+    const onChannelSelect = (channel: Channel) => {
+        navigation.navigate('Player', { channel });
+    };
+    const onClose = () => navigation.goBack();
     const { playlists, favorites, toggleFavorite, channelHistory } = useStore();
     const [allChannels, setAllChannels] = useState<Channel[]>([]);
     const [smartMatches, setSmartMatches] = useState<SmartFavoriteResult[]>([]);

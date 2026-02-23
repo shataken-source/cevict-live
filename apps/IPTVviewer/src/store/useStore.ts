@@ -35,7 +35,8 @@ interface AppState extends PlayerState {
   toggleMute: () => void;
 
   addPlaylist: (playlist: Playlist) => void;
-  setCurrentPlaylist: (playlist: Playlist) => void;
+  setPlaylists: (playlists: Playlist[]) => void;
+  setCurrentPlaylist: (playlist: Playlist | null) => void;
   toggleFavorite: (channelId: string) => void;
   setFavorites: (favorites: string[]) => void;
   setAdConfig: (config: Partial<AdConfig>) => void;
@@ -114,7 +115,9 @@ export const useStore = create<AppState>((set, get) => ({
     }));
   },
 
-  setCurrentPlaylist: (playlist: Playlist) => set({ currentPlaylist: playlist }),
+  setPlaylists: (playlists: Playlist[]) => set({ playlists }),
+
+  setCurrentPlaylist: (playlist: Playlist | null) => set({ currentPlaylist: playlist }),
 
   toggleFavorite: (channelId: string) => {
     set((state) => {
