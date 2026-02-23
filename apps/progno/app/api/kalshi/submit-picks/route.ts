@@ -10,7 +10,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import crypto from 'crypto'
-import { normalizeTeamName } from '../../../team-names'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -58,11 +57,34 @@ async function searchKalshiMarkets(query: string): Promise<any[]> {
   }
 }
 
-// Generate search tokens from team name
-function getTeamTokens(team: string, sport?: string): string[] {
-  const normalized = normalizeTeamName(team, sport)
-  const tokens = normalized.toLowerCase().split(' ').filter(t => t.length > 2)
-  return [normalized.toLowerCase(), ...tokens]
+// Sanitize and normalize team names for matching (from alpha-hunter)
+function sanitizeToken(s: string): string {
+  return (s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function teamSearchTokens(team: string): string[] {
+  if (!team || !team.trim()) return []
+  const t = sanitizeToken(team)
+  const words = t.split(/\s+/).filter(Boolean)
+  const tokens: string[] = [t]
+  if (words.length > 1) {
+    tokens.push(words[words.length - 1])
+    if (words.length >= 2) tokens.push(words.slice(0, -1).join(' '))
+  }
+  // Add common alias variants for better matching
+  const stateAbbrev = t.replace(/\bstate\b/g, 'st')
+  const stateExpand = t.replace(/\bst\b/g, 'state')
+  const saintAbbrev = t.replace(/\bsaint\b/g, 'st')
+  const saintExpand = t.replace(/\bst\b/g, 'saint')
+    ;[stateAbbrev, stateExpand, saintAbbrev, saintExpand].forEach(v => {
+      const vv = v.trim()
+      if (vv && vv !== t) tokens.push(vv)
+    })
+  return [...new Set(tokens)].filter(Boolean)
 }
 
 async function findMarketForPick(pick: any): Promise<any | null> {
@@ -72,9 +94,9 @@ async function findMarketForPick(pick: any): Promise<any | null> {
   const pickTeam = pick.pick || ''
   const sport = pick.sport || pick.league || ''
 
-  // Normalize team names and generate search tokens
-  const homeTokens = getTeamTokens(homeTeam, sport)
-  const awayTokens = getTeamTokens(awayTeam, sport)
+  // Generate search tokens for team matching
+  const homeTokens = teamSearchTokens(homeTeam)
+  const awayTokens = teamSearchTokens(awayTeam)
 
   // Fetch open sports markets - filter by sport if possible
   let path = `/markets?status=open&limit=1000`
