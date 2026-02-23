@@ -108,27 +108,44 @@ async function findMarketForPick(pick: any): Promise<any | null> {
   const homeTokens = teamSearchTokens(homeTeam)
   const awayTokens = teamSearchTokens(awayTeam)
 
-  // Fetch open sports markets
-  const path = `/markets?status=open&limit=1000`
+  // Fetch ALL open sports markets with pagination
+  let allMarkets: any[] = []
+  let cursor: string | undefined = undefined
+  const maxPages = 20 // Fetch up to 20 pages (20,000 markets)
 
   try {
-    const headers = buildAuthHeaders('GET', path)
-    const res = await fetch(`${KALSHI_BASE}${path}`, { headers })
-    if (!res.ok) return null
-    const data = await res.json()
-    const markets: any[] = data.markets || []
+    for (let page = 0; page < maxPages; page++) {
+      let path = `/markets?status=open&limit=1000`
+      if (cursor) {
+        path += `&cursor=${cursor}`
+      }
+
+      const headers = buildAuthHeaders('GET', path)
+      const res = await fetch(`${KALSHI_BASE}${path}`, { headers })
+      if (!res.ok) break
+
+      const data = await res.json()
+      const markets = data.markets || []
+      allMarkets.push(...markets)
+
+      // Check if there are more pages
+      cursor = data.cursor
+      if (!cursor || markets.length === 0) break
+    }
+
+    console.log(`[DEBUG] Fetched ${allMarkets.length} total markets across ${allMarkets.length / 1000} pages`)
 
     // Debug: Log first few market titles for NBA games
     if (sport === 'NBA') {
       console.log(`[DEBUG] Looking for ${homeTeam} vs ${awayTeam}`)
       console.log(`[DEBUG] Home tokens:`, homeTokens)
       console.log(`[DEBUG] Away tokens:`, awayTokens)
-      const sampleMarkets = markets.slice(0, 10).map(m => ({ title: m.title, ticker: m.ticker }))
+      const sampleMarkets = allMarkets.slice(0, 10).map(m => ({ title: m.title, ticker: m.ticker }))
       console.log(`[DEBUG] Sample markets:`, JSON.stringify(sampleMarkets, null, 2))
     }
 
     // Find a market matching the pick type
-    const match = markets.find((m: any) => {
+    const match = allMarkets.find((m: any) => {
       const title = (m.title || '').toLowerCase()
       const ticker = (m.ticker || '').toLowerCase()
 
