@@ -233,7 +233,7 @@ export default function AdminPage() {
       const j = await res.json();
       if (res.ok && j.success) {
         const mode = j.dryRun ? 'DRY-RUN' : 'LIVE';
-        const matched = j.submitted ?? j.dryRuns ?? 0;
+        const matched = (j.matched ?? 0) || ((j.dryRuns || 0) + (j.submitted || 0));
         const counts = `${j.totalPicks} picks · ${matched} matched · ${j.noMarket ?? 0} no market · ${j.errors ?? 0} errors`;
         console.log('[kalshi-debug]', j.debug);
         setTradeMsg(`${mode}: ${counts} @ ${j.stakePerPick ?? '$5.00'} each | markets fetched: ${j.debug?.marketsFetched ?? '?'} | configured: ${j.configured}`);
