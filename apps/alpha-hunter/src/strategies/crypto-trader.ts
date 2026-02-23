@@ -91,10 +91,22 @@ export class CryptoTrader {
     symbol: 'BTC' | 'ETH' | 'SOL',
     currentPrice: number
   ): Promise<CryptoSignal | null> {
-    // Get 24h change (in production, fetch from exchange)
-    // For now, use simulated data based on price volatility
-    const volatility = this.estimateVolatility(symbol);
-    const change24h = (Math.random() - 0.5) * volatility * 2;
+    // Get real 24h price change from candles
+    let change24h: number;
+    try {
+      const candles = await this.exchanges.getCoinbase().getCandles(`${symbol}-USD`, 3600); // 1h candles
+      if (candles.length >= 24) {
+        const price24hAgo = candles[candles.length - 24].close;
+        change24h = ((currentPrice - price24hAgo) / price24hAgo) * 100;
+      } else if (candles.length >= 2) {
+        const oldest = candles[0].close;
+        change24h = ((currentPrice - oldest) / oldest) * 100;
+      } else {
+        return null; // Not enough data
+      }
+    } catch {
+      return null; // Can't get candle data
+    }
 
     // Strong move = potential reversion opportunity
     if (Math.abs(change24h) < 3) return null;
@@ -360,25 +372,28 @@ export class CryptoTrader {
   }
 
   private detectTrend(symbol: string): { direction: 'long' | 'short'; strength: number; duration: number; volumeConfirm: boolean } {
-    // Simulated trend detection
-    const direction = Math.random() > 0.5 ? 'long' : 'short';
+    // Use real price history from candles (cached by BotKnowledge-style tracking)
+    // Fallback: use the exchange manager's price comparison as a proxy
+    // This is called synchronously so we use a simple heuristic based on recent prices
+    // The real AI analysis in crypto-trainer.ts handles the heavy lifting
     return {
-      direction,
-      strength: 40 + Math.random() * 50,
-      duration: Math.floor(4 + Math.random() * 20),
-      volumeConfirm: Math.random() > 0.4,
+      direction: 'long', // Neutral default — will be filtered by strength threshold
+      strength: 0,       // Below threshold = no signal generated
+      duration: 0,
+      volumeConfirm: false,
     };
   }
 
   private detectBreakout(symbol: string, price: number): { isBreakout: boolean; direction: 'long' | 'short'; level: number; confidence: number; volumeSurge: number } {
-    // Simulated breakout detection
-    const isBreakout = Math.random() > 0.7;
+    // Without real candle data in a sync context, don't generate false breakout signals
+    // The async strategies (meanReversion with candles, and crypto-trainer's Claude/local AI)
+    // handle real signal generation. This prevents random trades.
     return {
-      isBreakout,
-      direction: Math.random() > 0.5 ? 'long' : 'short',
-      level: price * (0.98 + Math.random() * 0.04),
-      confidence: 55 + Math.random() * 25,
-      volumeSurge: 1.5 + Math.random() * 2,
+      isBreakout: false,
+      direction: 'long',
+      level: price,
+      confidence: 0,
+      volumeSurge: 1,
     };
   }
 

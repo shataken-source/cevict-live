@@ -154,28 +154,28 @@ export class ExchangeManager {
       const ticker = await this.coinbase.getTicker(`${crypto}-USD`);
       comparison.coinbase = ticker.price;
       prices.push({ exchange: 'Coinbase', price: ticker.price });
-    } catch {}
+    } catch { }
 
     // Crypto.com
     try {
       const ticker = await this.cryptoCom.getTicker(`${crypto}_USDT`);
       comparison.cryptoCom = ticker.price;
       prices.push({ exchange: 'Crypto.com', price: ticker.price });
-    } catch {}
+    } catch { }
 
     // Binance
     try {
       const ticker = await this.binance.getTicker(`${crypto}USDT`);
       comparison.binance = ticker.price;
       prices.push({ exchange: 'Binance', price: ticker.price });
-    } catch {}
+    } catch { }
 
     // Find best price (lowest for buying)
     if (prices.length > 0) {
       const sorted = prices.sort((a, b) => a.price - b.price);
       comparison.best = sorted[0].exchange;
       comparison.bestPrice = sorted[0].price;
-      
+
       if (prices.length > 1) {
         const highest = sorted[sorted.length - 1].price;
         comparison.spread = ((highest - comparison.bestPrice) / comparison.bestPrice) * 100;
@@ -204,7 +204,7 @@ export class ExchangeManager {
 
     // Check balances on best exchange
     const balances = await this.getTotalBalance();
-    const bestExchange = balances.byExchange.find(b => 
+    const bestExchange = balances.byExchange.find(b =>
       b.exchange.toLowerCase().includes(prices.best.toLowerCase())
     );
 
@@ -246,35 +246,64 @@ export class ExchangeManager {
       switch (exchange.toLowerCase()) {
         case 'coinbase':
           const cbSymbol = `${crypto}-USD`;
-          const cbOrder = side === 'buy'
-            ? await this.coinbase.marketBuy(cbSymbol, usdAmount)
-            : await this.coinbase.marketSell(cbSymbol, usdAmount);
-          result.orderId = cbOrder.id;
-          result.price = cbOrder.price || 0;
-          result.fee = cbOrder.fillFees;
-          result.success = cbOrder.status === 'FILLED' || cbOrder.status === 'done';
+          if (side === 'buy') {
+            const cbOrder = await this.coinbase.marketBuy(cbSymbol, usdAmount);
+            result.orderId = cbOrder.id;
+            result.price = cbOrder.price || 0;
+            result.fee = cbOrder.fillFees;
+            result.success = cbOrder.status === 'FILLED' || cbOrder.status === 'done' || cbOrder.status === 'pending';
+          } else {
+            // marketSell expects crypto amount, not USD — convert first
+            const cbPrice = await this.coinbase.getPrice(cbSymbol);
+            if (cbPrice <= 0) throw new Error(`Could not get price for ${cbSymbol}`);
+            const cryptoAmount = usdAmount / cbPrice;
+            const cbOrder = await this.coinbase.marketSell(cbSymbol, cryptoAmount);
+            result.orderId = cbOrder.id;
+            result.price = cbPrice;
+            result.fee = cbOrder.fillFees;
+            result.success = cbOrder.status === 'FILLED' || cbOrder.status === 'done' || cbOrder.status === 'pending';
+          }
           break;
 
         case 'crypto.com':
           const cdcSymbol = `${crypto}_USDT`;
-          const cdcOrder = side === 'buy'
-            ? await this.cryptoCom.marketBuy(cdcSymbol, usdAmount)
-            : await this.cryptoCom.marketSell(cdcSymbol, usdAmount);
-          result.orderId = cdcOrder.id;
-          result.price = cdcOrder.avgPrice;
-          result.fee = cdcOrder.fee;
-          result.success = cdcOrder.status === 'FILLED';
+          if (side === 'buy') {
+            const cdcOrder = await this.cryptoCom.marketBuy(cdcSymbol, usdAmount);
+            result.orderId = cdcOrder.id;
+            result.price = cdcOrder.avgPrice;
+            result.fee = cdcOrder.fee;
+            result.success = cdcOrder.status === 'FILLED';
+          } else {
+            // marketSell expects crypto amount — convert first
+            const cdcTicker = await this.cryptoCom.getTicker(cdcSymbol);
+            if (cdcTicker.price <= 0) throw new Error(`Could not get price for ${cdcSymbol}`);
+            const cryptoAmount = usdAmount / cdcTicker.price;
+            const cdcOrder = await this.cryptoCom.marketSell(cdcSymbol, cryptoAmount);
+            result.orderId = cdcOrder.id;
+            result.price = cdcTicker.price;
+            result.fee = cdcOrder.fee;
+            result.success = cdcOrder.status === 'FILLED';
+          }
           break;
 
         case 'binance':
         case 'binance.us':
           const bnbSymbol = `${crypto}USDT`;
-          const bnbOrder = side === 'buy'
-            ? await this.binance.marketBuy(bnbSymbol, usdAmount)
-            : await this.binance.marketSell(bnbSymbol, usdAmount);
-          result.orderId = bnbOrder.orderId.toString();
-          result.price = bnbOrder.cummulativeQuoteQty / bnbOrder.executedQty;
-          result.success = bnbOrder.status === 'FILLED';
+          if (side === 'buy') {
+            const bnbOrder = await this.binance.marketBuy(bnbSymbol, usdAmount);
+            result.orderId = bnbOrder.orderId.toString();
+            result.price = bnbOrder.cummulativeQuoteQty / bnbOrder.executedQty;
+            result.success = bnbOrder.status === 'FILLED';
+          } else {
+            // marketSell expects crypto amount — convert first
+            const bnbTicker = await this.binance.getTicker(bnbSymbol);
+            if (bnbTicker.price <= 0) throw new Error(`Could not get price for ${bnbSymbol}`);
+            const cryptoAmount = usdAmount / bnbTicker.price;
+            const bnbOrder = await this.binance.marketSell(bnbSymbol, cryptoAmount);
+            result.orderId = bnbOrder.orderId.toString();
+            result.price = bnbTicker.price;
+            result.success = bnbOrder.status === 'FILLED';
+          }
           break;
 
         default:
@@ -374,9 +403,9 @@ export class ExchangeManager {
    * Check if any exchange is configured
    */
   hasConfiguredExchange(): boolean {
-    return this.coinbase.isConfigured() || 
-           this.cryptoCom.isConfigured() || 
-           this.binance.isConfigured();
+    return this.coinbase.isConfigured() ||
+      this.cryptoCom.isConfigured() ||
+      this.binance.isConfigured();
   }
 }
 

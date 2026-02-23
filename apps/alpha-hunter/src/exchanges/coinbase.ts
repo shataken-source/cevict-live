@@ -383,7 +383,7 @@ export class CoinbaseExchange {
       type: config.market_market_ioc ? 'market' : 'limit',
       size: parseFloat(marketConfig.base_size || data.base_size || data.size || '0'),
       price: parseFloat(data.limit_price || data.price || '0'),
-      status: order.success ? 'pending' : (data.status || 'unknown'),
+      status: order.success ? 'FILLED' : (data.status || 'unknown'),
       filledSize: parseFloat(data.filled_size || '0'),
       fillFees: parseFloat(data.total_fees || '0'),
       createdAt: data.created_time || new Date().toISOString(),

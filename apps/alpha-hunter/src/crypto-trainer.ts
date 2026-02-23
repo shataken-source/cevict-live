@@ -797,7 +797,9 @@ Respond JSON only: {"signal": "buy|sell|hold", "confidence": 0-100, "reason": "y
       // Calculate P&L with fees
       // Coinbase fees: 0.6% taker fee for market orders (both buy and sell)
       const grossPnL = (currentPrice - trade.entryPrice) * trade.size;
-      const buyFee = trade.usdValue * 0.006; // 0.6% on entry
+      // trade.usdValue is already net of entry fee, so recover gross for fee calc
+      const grossEntryValue = trade.usdValue / (1 - 0.006); // reverse the fee deduction
+      const buyFee = grossEntryValue * 0.006; // 0.6% on entry
       const sellFee = (currentPrice * trade.size) * 0.006; // 0.6% on exit
       const totalFees = buyFee + sellFee;
       const pnl = grossPnL - totalFees;
