@@ -2,6 +2,32 @@
 
 import { useState } from 'react';
 
+// Dark theme matching admin page
+const T = {
+  bg: '#080f1a',
+  card: '#0c1526',
+  border: '#12233a',
+  borderBright: '#1e3a5f',
+  green: '#00e676',
+  blue: '#29b6f6',
+  amber: '#ffc107',
+  red: '#ef5350',
+  purple: '#ab47bc',
+  text: '#c8ddf0',
+  textBright: '#eef4fb',
+  textDim: '#4a6a8a',
+  mono: '"JetBrains Mono","Fira Code","Cascadia Code",Consolas,monospace',
+};
+
+const btnColors: Record<string, string> = {
+  'performance-by-sport': '#6f42c1',
+  'value-bets-analysis': '#28a745',
+  'confidence-vs-results': '#17a2b8',
+  'monthly-summary': '#fd7e14',
+  'streak-analysis': '#dc3545',
+  'roi-by-odds-range': '#20c997',
+};
+
 interface ReportResult {
   type: string;
   data: any;
@@ -13,6 +39,16 @@ interface ReportsSectionProps {
   date: string;
 }
 
+function profitColor(v: number): string {
+  return v > 0 ? T.green : v < 0 ? T.red : T.text;
+}
+
+function fmtProfit(v: any): string {
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  if (isNaN(n)) return '$0.00';
+  return `${n >= 0 ? '+' : ''}$${n.toFixed(2)}`;
+}
+
 export default function ReportsSection({ secret, date }: ReportsSectionProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [report, setReport] = useState<ReportResult | null>(null);
@@ -22,23 +58,15 @@ export default function ReportsSection({ secret, date }: ReportsSectionProps) {
     setLoading(reportType);
     setError(null);
     setReport(null);
-    
     try {
       const response = await fetch('/api/progno/admin/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          secret: secret.trim(), 
-          reportType,
-          date 
-        })
+        body: JSON.stringify({ secret: secret.trim(), reportType, date })
       });
-      
-      if (!response.ok) {
-        throw new Error(`Report failed: ${response.statusText}`);
-      }
-      
+      if (!response.ok) throw new Error(`Report failed: ${response.statusText}`);
       const data = await response.json();
+      if (data.error) throw new Error(data.error);
       setReport({ type: reportType, data, generatedAt: new Date().toISOString() });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -49,27 +77,22 @@ export default function ReportsSection({ secret, date }: ReportsSectionProps) {
 
   const exportToCSV = () => {
     if (!report) return;
-    
-    let csvContent = '';
-    
+    let csv = '';
     if (report.type === 'performance-by-sport') {
-      csvContent = 'Sport,Wins,Losses,Pushes,Win Rate,Total Bets\n';
-      report.data.sports.forEach((s: any) => {
-        csvContent += `${s.sport},${s.wins},${s.losses},${s.pushes},${s.winRate}%,${s.total}\n`;
-      });
-    } else if (report.type === 'value-bets-analysis') {
-      csvContent = 'Edge Range,Wins,Losses,Win Rate,Total Bets,Profit/Loss\n';
-      report.data.ranges.forEach((r: any) => {
-        csvContent += `${r.range},${r.wins},${r.losses},${r.winRate}%,${r.total},$${r.profit}\n`;
-      });
+      csv = 'Sport,Wins,Losses,Win Rate,Bets,Profit\n';
+      (report.data.sports || []).forEach((s: any) => { csv += `${s.sport},${s.wins},${s.losses},${s.winRate}%,${s.total},$${s.profit}\n`; });
+    } else if (report.type === 'value-bets-analysis' || report.type === 'roi-by-odds-range') {
+      csv = 'Range,Wins,Losses,Win Rate,Bets,Profit\n';
+      (report.data.ranges || []).forEach((r: any) => { csv += `${r.range},${r.wins},${r.losses},${r.winRate}%,${r.total},$${r.profit}\n`; });
     } else if (report.type === 'confidence-vs-results') {
-      csvContent = 'Confidence Range,Wins,Losses,Win Rate,Total Bets\n';
-      report.data.ranges.forEach((r: any) => {
-        csvContent += `${r.range},${r.wins},${r.losses},${r.winRate}%,${r.total}\n`;
-      });
+      csv = 'Range,Wins,Losses,Win Rate,Bets\n';
+      (report.data.ranges || []).forEach((r: any) => { csv += `${r.range},${r.wins},${r.losses},${r.winRate}%,${r.total}\n`; });
+    } else if (report.type === 'monthly-summary') {
+      csv = 'Month,Bets,Wins,Losses,Win Rate,Profit,Avg/Bet\n';
+      (report.data.months || []).forEach((m: any) => { csv += `${m.month},${m.bets},${m.wins},${m.losses},${m.winRate}%,$${m.profit},$${m.avgProfitPerBet}\n`; });
     }
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    if (!csv) return;
+    const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -80,181 +103,113 @@ export default function ReportsSection({ secret, date }: ReportsSectionProps) {
     window.URL.revokeObjectURL(url);
   };
 
+  const thStyle: React.CSSProperties = { padding: '10px 12px', textAlign: 'left', color: T.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 10, fontFamily: T.mono, textTransform: 'uppercase', borderBottom: `1px solid ${T.borderBright}` };
+  const thR: React.CSSProperties = { ...thStyle, textAlign: 'right' };
+  const tdStyle: React.CSSProperties = { padding: '9px 12px', color: T.textBright, fontSize: 13, fontFamily: T.mono, borderBottom: `1px solid ${T.border}` };
+  const tdR: React.CSSProperties = { ...tdStyle, textAlign: 'right' };
+  const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
+
+  const buttons = [
+    { id: 'performance-by-sport', label: '🏆 Performance by Sport' },
+    { id: 'value-bets-analysis', label: '💰 Value Bets Analysis' },
+    { id: 'confidence-vs-results', label: '📊 Confidence vs Results' },
+    { id: 'monthly-summary', label: '📅 Monthly Summary' },
+    { id: 'streak-analysis', label: '🔥 Streak Analysis' },
+    { id: 'roi-by-odds-range', label: '📈 ROI by Odds Range' },
+  ];
+
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-        <button
-          onClick={() => runReport('performance-by-sport')}
-          disabled={loading === 'performance-by-sport' || !secret.trim()}
-          style={{
-            padding: '12px 16px',
-            background: loading === 'performance-by-sport' ? '#ccc' : '#6f42c1',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          {loading === 'performance-by-sport' ? 'Running…' : '🏆 Performance by Sport'}
-        </button>
-        
-        <button
-          onClick={() => runReport('value-bets-analysis')}
-          disabled={loading === 'value-bets-analysis' || !secret.trim()}
-          style={{
-            padding: '12px 16px',
-            background: loading === 'value-bets-analysis' ? '#ccc' : '#28a745',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          {loading === 'value-bets-analysis' ? 'Running…' : '💰 Value Bets Analysis'}
-        </button>
-        
-        <button
-          onClick={() => runReport('confidence-vs-results')}
-          disabled={loading === 'confidence-vs-results' || !secret.trim()}
-          style={{
-            padding: '12px 16px',
-            background: loading === 'confidence-vs-results' ? '#ccc' : '#17a2b8',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          {loading === 'confidence-vs-results' ? 'Running…' : '📊 Confidence vs Results'}
-        </button>
-        
-        <button
-          onClick={() => runReport('monthly-summary')}
-          disabled={loading === 'monthly-summary' || !secret.trim()}
-          style={{
-            padding: '12px 16px',
-            background: loading === 'monthly-summary' ? '#ccc' : '#fd7e14',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          {loading === 'monthly-summary' ? 'Running…' : '📅 Monthly Summary'}
-        </button>
-        
-        <button
-          onClick={() => runReport('streak-analysis')}
-          disabled={loading === 'streak-analysis' || !secret.trim()}
-          style={{
-            padding: '12px 16px',
-            background: loading === 'streak-analysis' ? '#ccc' : '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          {loading === 'streak-analysis' ? 'Running…' : '🔥 Streak Analysis'}
-        </button>
-        
-        <button
-          onClick={() => runReport('roi-by-odds-range')}
-          disabled={loading === 'roi-by-odds-range' || !secret.trim()}
-          style={{
-            padding: '12px 16px',
-            background: loading === 'roi-by-odds-range' ? '#ccc' : '#20c997',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px'
-          }}
-        >
-          {loading === 'roi-by-odds-range' ? 'Running…' : '📈 ROI by Odds Range'}
-        </button>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '20px' }}>
+        {buttons.map(b => {
+          const isActive = loading === b.id;
+          const color = btnColors[b.id] || T.blue;
+          return (
+            <button key={b.id} onClick={() => runReport(b.id)} disabled={isActive || !secret.trim()}
+              style={{ padding: '10px 14px', background: isActive ? `${color}40` : `${color}25`, color: isActive ? T.textDim : color, border: `1px solid ${color}50`, borderRadius: 6, cursor: isActive ? 'wait' : 'pointer', fontSize: 13, fontFamily: T.mono, fontWeight: 600, letterSpacing: '0.3px', transition: 'all 0.15s' }}>
+              {isActive ? 'Running…' : b.label}
+            </button>
+          );
+        })}
       </div>
-      
+
       {error && (
-        <div style={{ 
-          padding: '12px', 
-          background: '#ffe6e6', 
-          borderRadius: '6px', 
-          color: '#c00',
-          marginBottom: '16px'
-        }}>
-          Error: {error}
+        <div style={{ padding: '12px 16px', background: `${T.red}15`, border: `1px solid ${T.red}40`, borderRadius: 6, color: T.red, fontFamily: T.mono, fontSize: 12, marginBottom: 16 }}>
+          ✗ {error}
         </div>
       )}
-      
+
       {report && (
-        <div style={{
-          padding: '20px',
-          background: '#f8f9fa',
-          borderRadius: '8px',
-          border: '1px solid #dee2e6'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '16px',
-            flexWrap: 'wrap',
-            gap: '12px'
-          }}>
+        <div style={{ padding: '20px', background: T.card, borderRadius: 8, border: `1px solid ${T.border}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
             <div>
-              <h3 style={{ margin: 0, textTransform: 'capitalize' }}>
+              <h3 style={{ margin: 0, color: T.textBright, fontSize: 16, fontWeight: 600, textTransform: 'capitalize' }}>
                 {report.type.replace(/-/g, ' ')}
               </h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
+              <p style={{ margin: '4px 0 0 0', fontSize: 11, color: T.textDim, fontFamily: T.mono }}>
                 Generated {new Date(report.generatedAt).toLocaleString()}
+                {report.data.totalRows != null && ` · ${report.data.totalRows} graded picks`}
               </p>
             </div>
-            <button
-              onClick={exportToCSV}
-              style={{
-                padding: '8px 14px',
-                background: '#6c757d',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '13px'
-              }}
-            >
+            <button onClick={exportToCSV}
+              style={{ padding: '7px 14px', background: `${T.blue}18`, color: T.blue, border: `1px solid ${T.blue}40`, borderRadius: 5, cursor: 'pointer', fontSize: 12, fontFamily: T.mono, fontWeight: 600 }}>
               Export CSV
             </button>
           </div>
 
-          {report.type === 'performance-by-sport' && (
+          {report.data.totalRows === 0 && (
+            <div style={{ padding: '20px', textAlign: 'center', color: T.textDim, fontFamily: T.mono, fontSize: 13 }}>
+              No graded results found. Run the daily-results cron to grade predictions first.
+            </div>
+          )}
+
+          {report.type === 'performance-by-sport' && report.data.sports?.length > 0 && (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ background: '#e9ecef' }}>
-                    <th style={{ textAlign: 'left', padding: '8px' }}>Sport</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Wins</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Losses</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Pushes</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Win rate</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Bets</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Profit</th>
-                  </tr>
-                </thead>
+              <table style={tableStyle}>
+                <thead><tr>
+                  <th style={thStyle}>Sport</th><th style={thR}>Wins</th><th style={thR}>Losses</th>
+                  <th style={thR}>Win rate</th><th style={thR}>Bets</th><th style={thR}>Profit</th>
+                </tr></thead>
                 <tbody>
-                  {report.data.sports.map((s: any) => (
-                    <tr key={s.sport} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '8px' }}>{s.sport}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{s.wins}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{s.losses}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{s.pushes}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{s.winRate}%</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{s.total}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>${s.profit.toFixed?.(2) ?? s.profit}</td>
+                  {report.data.sports.map((s: any, i: number) => (
+                    <tr key={s.sport} style={{ background: i % 2 ? '#070e18' : 'transparent' }}>
+                      <td style={{ ...tdStyle, color: T.blue, fontWeight: 600 }}>{s.sport}</td>
+                      <td style={{ ...tdR, color: T.green }}>{s.wins}</td>
+                      <td style={{ ...tdR, color: T.red }}>{s.losses}</td>
+                      <td style={{ ...tdR, color: parseFloat(s.winRate) >= 55 ? T.green : parseFloat(s.winRate) >= 45 ? T.amber : T.red }}>{s.winRate}%</td>
+                      <td style={tdR}>{s.total}</td>
+                      <td style={{ ...tdR, color: profitColor(s.profit) }}>{fmtProfit(s.profit)}</td>
+                    </tr>
+                  ))}
+                  {report.data.summary && (
+                    <tr style={{ borderTop: `2px solid ${T.borderBright}` }}>
+                      <td style={{ ...tdStyle, fontWeight: 700, color: T.textBright }}>TOTAL</td>
+                      <td style={tdR}></td><td style={tdR}></td><td style={tdR}></td>
+                      <td style={{ ...tdR, fontWeight: 700 }}>{report.data.summary.totalBets}</td>
+                      <td style={{ ...tdR, fontWeight: 700, color: profitColor(report.data.summary.totalProfit) }}>{fmtProfit(report.data.summary.totalProfit)}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {report.type === 'value-bets-analysis' && report.data.ranges?.length > 0 && (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={tableStyle}>
+                <thead><tr>
+                  <th style={thStyle}>Edge band</th><th style={thR}>Wins</th><th style={thR}>Losses</th>
+                  <th style={thR}>Win rate</th><th style={thR}>Bets</th><th style={thR}>Profit</th>
+                </tr></thead>
+                <tbody>
+                  {report.data.ranges.map((r: any, i: number) => (
+                    <tr key={r.range} style={{ background: i % 2 ? '#070e18' : 'transparent' }}>
+                      <td style={{ ...tdStyle, color: T.amber }}>{r.range}</td>
+                      <td style={{ ...tdR, color: T.green }}>{r.wins}</td>
+                      <td style={{ ...tdR, color: T.red }}>{r.losses}</td>
+                      <td style={{ ...tdR, color: parseFloat(r.winRate) >= 55 ? T.green : parseFloat(r.winRate) >= 45 ? T.amber : T.red }}>{r.winRate}%</td>
+                      <td style={tdR}>{r.total}</td>
+                      <td style={{ ...tdR, color: profitColor(r.profit) }}>{fmtProfit(r.profit)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -262,28 +217,21 @@ export default function ReportsSection({ secret, date }: ReportsSectionProps) {
             </div>
           )}
 
-          {report.type === 'value-bets-analysis' && (
+          {report.type === 'confidence-vs-results' && report.data.ranges?.length > 0 && (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ background: '#e9ecef' }}>
-                    <th style={{ textAlign: 'left', padding: '8px' }}>Edge band</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Wins</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Losses</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Win rate</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Bets</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Profit</th>
-                  </tr>
-                </thead>
+              <table style={tableStyle}>
+                <thead><tr>
+                  <th style={thStyle}>Confidence band</th><th style={thR}>Wins</th><th style={thR}>Losses</th>
+                  <th style={thR}>Win rate</th><th style={thR}>Bets</th>
+                </tr></thead>
                 <tbody>
-                  {report.data.ranges.map((r: any) => (
-                    <tr key={r.range} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '8px' }}>{r.range}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.wins}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.losses}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.winRate}%</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.total}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>${r.profit.toFixed?.(2) ?? r.profit}</td>
+                  {report.data.ranges.map((r: any, i: number) => (
+                    <tr key={r.range} style={{ background: i % 2 ? '#070e18' : 'transparent' }}>
+                      <td style={{ ...tdStyle, color: T.purple }}>{r.range}</td>
+                      <td style={{ ...tdR, color: T.green }}>{r.wins}</td>
+                      <td style={{ ...tdR, color: T.red }}>{r.losses}</td>
+                      <td style={{ ...tdR, color: parseFloat(r.winRate) >= 55 ? T.green : parseFloat(r.winRate) >= 45 ? T.amber : T.red }}>{r.winRate}%</td>
+                      <td style={tdR}>{r.total}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -291,57 +239,23 @@ export default function ReportsSection({ secret, date }: ReportsSectionProps) {
             </div>
           )}
 
-          {report.type === 'confidence-vs-results' && (
+          {report.type === 'monthly-summary' && report.data.months?.length > 0 && (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ background: '#e9ecef' }}>
-                    <th style={{ textAlign: 'left', padding: '8px' }}>Confidence band</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Wins</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Losses</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Win rate</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Bets</th>
-                  </tr>
-                </thead>
+              <table style={tableStyle}>
+                <thead><tr>
+                  <th style={thStyle}>Month</th><th style={thR}>Bets</th><th style={thR}>Wins</th>
+                  <th style={thR}>Losses</th><th style={thR}>Win rate</th><th style={thR}>Profit</th><th style={thR}>Avg / bet</th>
+                </tr></thead>
                 <tbody>
-                  {report.data.ranges.map((r: any) => (
-                    <tr key={r.range} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '8px' }}>{r.range}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.wins}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.losses}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.winRate}%</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.total}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {report.type === 'monthly-summary' && (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ background: '#e9ecef' }}>
-                    <th style={{ textAlign: 'left', padding: '8px' }}>Month</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Bets</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Wins</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Losses</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Win rate</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Profit</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Avg profit / bet</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {report.data.months?.map((m: any) => (
-                    <tr key={m.month} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '8px' }}>{m.month}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{m.bets}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{m.wins}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{m.losses}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{m.winRate}%</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>${m.profit.toFixed?.(2) ?? m.profit}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>${m.avgProfitPerBet}</td>
+                  {report.data.months.map((m: any, i: number) => (
+                    <tr key={m.month} style={{ background: i % 2 ? '#070e18' : 'transparent' }}>
+                      <td style={{ ...tdStyle, color: T.blue, fontWeight: 600 }}>{m.month}</td>
+                      <td style={tdR}>{m.bets}</td>
+                      <td style={{ ...tdR, color: T.green }}>{m.wins}</td>
+                      <td style={{ ...tdR, color: T.red }}>{m.losses}</td>
+                      <td style={{ ...tdR, color: parseFloat(m.winRate) >= 55 ? T.green : parseFloat(m.winRate) >= 45 ? T.amber : T.red }}>{m.winRate}%</td>
+                      <td style={{ ...tdR, color: profitColor(m.profit) }}>{fmtProfit(m.profit)}</td>
+                      <td style={{ ...tdR, color: T.textDim }}>${m.avgProfitPerBet}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -350,56 +264,40 @@ export default function ReportsSection({ secret, date }: ReportsSectionProps) {
           )}
 
           {report.type === 'streak-analysis' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', fontSize: '13px' }}>
-              <div style={{ background: 'white', padding: '12px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Current streak</div>
-                <div style={{ fontSize: '18px', fontWeight: 600 }}>{report.data.currentStreak} {report.data.currentStreakType || ''}</div>
-              </div>
-              <div style={{ background: 'white', padding: '12px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Max win streak</div>
-                <div style={{ fontSize: '18px', fontWeight: 600 }}>{report.data.maxWinStreak}</div>
-              </div>
-              <div style={{ background: 'white', padding: '12px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Max loss streak</div>
-                <div style={{ fontSize: '18px', fontWeight: 600 }}>{report.data.maxLossStreak}</div>
-              </div>
-              <div style={{ background: 'white', padding: '12px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Last 5</div>
-                <div>W {report.data.last5.wins} / L {report.data.last5.losses}</div>
-                <div>Profit ${report.data.last5.profit}</div>
-              </div>
-              <div style={{ background: 'white', padding: '12px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '11px', color: '#666', textTransform: 'uppercase', marginBottom: '4px' }}>Last 10</div>
-                <div>W {report.data.last10.wins} / L {report.data.last10.losses}</div>
-                <div>Profit ${report.data.last10.profit}</div>
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, fontSize: 13 }}>
+              {[
+                { label: 'Current streak', value: `${report.data.currentStreak} ${report.data.currentStreakType || ''}`, color: report.data.currentStreakType === 'win' ? T.green : report.data.currentStreakType === 'loss' ? T.red : T.text },
+                { label: 'Max win streak', value: report.data.maxWinStreak, color: T.green },
+                { label: 'Max loss streak', value: report.data.maxLossStreak, color: T.red },
+                { label: 'Last 5', value: `W${report.data.last5?.wins} / L${report.data.last5?.losses}`, sub: fmtProfit(report.data.last5?.profit || 0), color: T.blue },
+                { label: 'Last 10', value: `W${report.data.last10?.wins} / L${report.data.last10?.losses}`, sub: fmtProfit(report.data.last10?.profit || 0), color: T.blue },
+              ].map((item, i) => (
+                <div key={i} style={{ background: '#0a1422', padding: 14, borderRadius: 6, border: `1px solid ${T.border}` }}>
+                  <div style={{ fontSize: 10, color: T.textDim, textTransform: 'uppercase', marginBottom: 6, fontFamily: T.mono, letterSpacing: 1 }}>{item.label}</div>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: item.color, fontFamily: T.mono }}>{item.value}</div>
+                  {item.sub && <div style={{ fontSize: 12, color: T.textDim, marginTop: 4, fontFamily: T.mono }}>{item.sub}</div>}
+                </div>
+              ))}
             </div>
           )}
 
-          {report.type === 'roi-by-odds-range' && (
+          {report.type === 'roi-by-odds-range' && report.data.ranges?.length > 0 && (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ background: '#e9ecef' }}>
-                    <th style={{ textAlign: 'left', padding: '8px' }}>Odds band</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Wins</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Losses</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Win rate</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Bets</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>Profit</th>
-                    <th style={{ textAlign: 'right', padding: '8px' }}>ROI</th>
-                  </tr>
-                </thead>
+              <table style={tableStyle}>
+                <thead><tr>
+                  <th style={thStyle}>Odds band</th><th style={thR}>Wins</th><th style={thR}>Losses</th>
+                  <th style={thR}>Win rate</th><th style={thR}>Bets</th><th style={thR}>Profit</th><th style={thR}>ROI</th>
+                </tr></thead>
                 <tbody>
-                  {report.data.ranges.map((r: any) => (
-                    <tr key={r.range} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '8px' }}>{r.range}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.wins}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.losses}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.winRate}%</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.total}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>${r.profit.toFixed?.(2) ?? r.profit}</td>
-                      <td style={{ padding: '8px', textAlign: 'right' }}>{r.roi}%</td>
+                  {report.data.ranges.map((r: any, i: number) => (
+                    <tr key={r.range} style={{ background: i % 2 ? '#070e18' : 'transparent' }}>
+                      <td style={{ ...tdStyle, color: T.amber }}>{r.range}</td>
+                      <td style={{ ...tdR, color: T.green }}>{r.wins}</td>
+                      <td style={{ ...tdR, color: T.red }}>{r.losses}</td>
+                      <td style={{ ...tdR, color: parseFloat(r.winRate) >= 55 ? T.green : parseFloat(r.winRate) >= 45 ? T.amber : T.red }}>{r.winRate}%</td>
+                      <td style={tdR}>{r.total}</td>
+                      <td style={{ ...tdR, color: profitColor(r.profit) }}>{fmtProfit(r.profit)}</td>
+                      <td style={{ ...tdR, color: parseFloat(r.roi) > 0 ? T.green : parseFloat(r.roi) < 0 ? T.red : T.text }}>{r.roi}%</td>
                     </tr>
                   ))}
                 </tbody>

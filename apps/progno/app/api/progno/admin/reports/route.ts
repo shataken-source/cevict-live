@@ -1,265 +1,218 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { createClient } from '@supabase/supabase-js';
 
 const SECRET = process.env.PROGNO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || process.env.CRON_SECRET || '';
 
-interface BetResult {
-  game_id: string;
-  sport: string;
-  pick: string;
-  odds: number;
-  confidence: number;
-  result: 'win' | 'loss' | 'push';
-  profit: number;
-  edge?: number;
-  pick_type?: string;
-}
-
 function verifySecret(secret: string): boolean {
-  // If no secret is configured, allow all requests (for dev/local use)
   if (!SECRET || SECRET === '') return true;
-  // Allow if secret matches
   return secret === SECRET;
 }
 
-function loadResultsData(date: string): BetResult[] {
-  try {
-    const resultsPath = join(process.cwd(), 'results-' + date + '.json');
-    const data = JSON.parse(readFileSync(resultsPath, 'utf-8'));
-    return data.results || [];
-  } catch {
-    return [];
-  }
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
 }
 
-function loadPredictionsData(date: string): any[] {
-  try {
-    const predPath = join(process.cwd(), 'predictions-' + date + '.json');
-    const data = JSON.parse(readFileSync(predPath, 'utf-8'));
-    return data.picks || [];
-  } catch {
-    return [];
-  }
-}
-
-function getAllDates(): string[] {
-  try {
-    const files = readdirSync(process.cwd());
-    const resultFiles = files.filter(f => f.startsWith('results-') && f.endsWith('.json'));
-    return resultFiles.map(f => f.replace('results-', '').replace('.json', '')).sort().reverse();
-  } catch {
-    return [];
-  }
-}
-
-function calculateWinRate(wins: number, total: number): string {
+function winRate(wins: number, total: number): string {
   if (total === 0) return '0.0';
   return ((wins / total) * 100).toFixed(1);
 }
 
-function performanceBySport(results: BetResult[]) {
-  const bySport: Record<string, { wins: number; losses: number; pushes: number; total: number; profit: number }> = {};
+/** Calculate profit from American odds for a $100 flat bet */
+function profitFromOdds(odds: number, won: boolean): number {
+  if (!won) return -100;
+  if (odds > 0) return odds;       // +200 wins $200
+  return (100 / Math.abs(odds)) * 100; // -150 wins $66.67
+}
 
-  results.forEach(r => {
-    if (!bySport[r.sport]) {
-      bySport[r.sport] = { wins: 0, losses: 0, pushes: 0, total: 0, profit: 0 };
+interface Row {
+  game_date: string;
+  sport: string;
+  league: string;
+  pick: string;
+  confidence: number;
+  status: 'win' | 'lose' | 'pending';
+  odds?: number;
+  value_bet_edge?: number;
+}
+
+/** Load graded results from Supabase, joined with picks for odds/edge data */
+async function loadResults(dateFilter?: string): Promise<{ rows: Row[]; error?: string }> {
+  const sb = getSupabase();
+  if (!sb) return { rows: [], error: 'Supabase not configured' };
+
+  // Load graded prediction_results
+  let q = sb.from('prediction_results').select('*').in('status', ['win', 'lose']);
+  if (dateFilter) q = q.eq('game_date', dateFilter);
+  const { data: results, error: resErr } = await q.order('game_date', { ascending: false }).limit(5000);
+  if (resErr) return { rows: [], error: resErr.message };
+  if (!results || results.length === 0) return { rows: [] };
+
+  // Load picks to get odds + edge (join by game_date + home_team + away_team)
+  const dates = [...new Set(results.map((r: any) => r.game_date))];
+  let picksMap = new Map<string, any>();
+  for (let i = 0; i < dates.length; i += 50) {
+    const batch = dates.slice(i, i + 50);
+    const { data: picks } = await sb.from('picks').select('game_date,home_team,away_team,odds,value_bet_edge,expected_value').in('game_date', batch);
+    if (picks) {
+      for (const p of picks) {
+        const key = `${p.game_date}|${(p.home_team || '').toLowerCase()}|${(p.away_team || '').toLowerCase()}`;
+        picksMap.set(key, p);
+      }
     }
-    bySport[r.sport][r.result]++;
-    bySport[r.sport].total++;
-    bySport[r.sport].profit += r.profit || 0;
+  }
+
+  const rows: Row[] = results.map((r: any) => {
+    const key = `${r.game_date}|${(r.home_team || '').toLowerCase()}|${(r.away_team || '').toLowerCase()}`;
+    const pick = picksMap.get(key);
+    return {
+      game_date: r.game_date,
+      sport: (r.sport || r.league || 'unknown').toUpperCase(),
+      league: (r.league || r.sport || 'unknown').toUpperCase(),
+      pick: r.pick,
+      confidence: Number(r.confidence) || 0,
+      status: r.status as 'win' | 'lose',
+      odds: pick?.odds ? Number(pick.odds) : undefined,
+      value_bet_edge: pick?.value_bet_edge ? Number(pick.value_bet_edge) : undefined,
+    };
   });
 
+  return { rows };
+}
+
+function performanceBySport(rows: Row[]) {
+  const bySport: Record<string, { wins: number; losses: number; total: number; profit: number }> = {};
+  for (const r of rows) {
+    const sport = r.sport || 'UNKNOWN';
+    if (!bySport[sport]) bySport[sport] = { wins: 0, losses: 0, total: 0, profit: 0 };
+    const won = r.status === 'win';
+    if (won) bySport[sport].wins++;
+    else bySport[sport].losses++;
+    bySport[sport].total++;
+    bySport[sport].profit += profitFromOdds(r.odds || -110, won);
+  }
   return {
-    sports: Object.entries(bySport).map(([sport, stats]) => ({
-      sport,
-      ...stats,
-      winRate: calculateWinRate(stats.wins, stats.total - stats.pushes)
-    })),
-    summary: {
-      totalSports: Object.keys(bySport).length,
-      totalBets: results.length,
-      totalProfit: results.reduce((acc, r) => acc + (r.profit || 0), 0)
-    }
+    sports: Object.entries(bySport)
+      .map(([sport, s]) => ({ sport, ...s, winRate: winRate(s.wins, s.total), profit: Math.round(s.profit * 100) / 100 }))
+      .sort((a, b) => b.total - a.total),
+    summary: { totalSports: Object.keys(bySport).length, totalBets: rows.length, totalProfit: Math.round(rows.reduce((a, r) => a + profitFromOdds(r.odds || -110, r.status === 'win'), 0) * 100) / 100 }
   };
 }
 
-function valueBetsAnalysis(results: BetResult[], predictions: any[]) {
-  const ranges: Array<{ min: number; max: number; range: string; wins: number; losses: number; total: number; profit: number; winRate?: string }> = [
+function valueBetsAnalysis(rows: Row[]) {
+  const ranges = [
     { min: 0, max: 5, range: '0-5%', wins: 0, losses: 0, total: 0, profit: 0 },
     { min: 5, max: 10, range: '5-10%', wins: 0, losses: 0, total: 0, profit: 0 },
     { min: 10, max: 20, range: '10-20%', wins: 0, losses: 0, total: 0, profit: 0 },
     { min: 20, max: 50, range: '20-50%', wins: 0, losses: 0, total: 0, profit: 0 },
-    { min: 50, max: Infinity, range: '50%+', wins: 0, losses: 0, total: 0, profit: 0 }
+    { min: 50, max: Infinity, range: '50%+', wins: 0, losses: 0, total: 0, profit: 0 },
   ];
-
-  results.forEach(r => {
-    const pred = predictions.find(p => p.game_id === r.game_id);
-    const edge = pred?.value_bet_edge || 0;
-
-    const range = ranges.find(rng => edge >= rng.min && edge < rng.max);
-    if (range) {
-      range[r.result === 'win' ? 'wins' : 'losses']++;
-      range.total++;
-      range.profit += r.profit || 0;
-    }
-  });
-
+  for (const r of rows) {
+    const edge = r.value_bet_edge || 0;
+    const rng = ranges.find(x => edge >= x.min && edge < x.max);
+    if (!rng) continue;
+    const won = r.status === 'win';
+    if (won) rng.wins++; else rng.losses++;
+    rng.total++;
+    rng.profit += profitFromOdds(r.odds || -110, won);
+  }
   return {
-    ranges: ranges.map(r => ({
-      ...r,
-      winRate: calculateWinRate(r.wins, r.total)
-    })),
-    summary: {
-      totalAnalyzed: results.length,
-      bestPerformingRange: ranges.reduce((best, r) =>
-        (r.profit > best.profit ? r : best), ranges[0]).range
-    }
+    ranges: ranges.map(r => ({ ...r, winRate: winRate(r.wins, r.total), profit: Math.round(r.profit * 100) / 100 })),
+    summary: { totalAnalyzed: rows.length, bestPerformingRange: ranges.reduce((b, r) => r.profit > b.profit ? r : b, ranges[0]).range }
   };
 }
 
-function confidenceVsResults(results: BetResult[]) {
-  const ranges: Array<{ min: number; max: number; range: string; wins: number; losses: number; total: number; winRate?: string }> = [
+function confidenceVsResults(rows: Row[]) {
+  const ranges = [
     { min: 0, max: 70, range: '<70%', wins: 0, losses: 0, total: 0 },
     { min: 70, max: 80, range: '70-80%', wins: 0, losses: 0, total: 0 },
     { min: 80, max: 85, range: '80-85%', wins: 0, losses: 0, total: 0 },
     { min: 85, max: 90, range: '85-90%', wins: 0, losses: 0, total: 0 },
     { min: 90, max: 95, range: '90-95%', wins: 0, losses: 0, total: 0 },
-    { min: 95, max: 100, range: '95-100%', wins: 0, losses: 0, total: 0 }
+    { min: 95, max: 101, range: '95-100%', wins: 0, losses: 0, total: 0 },
   ];
-
-  results.forEach(r => {
-    const range = ranges.find(rng => r.confidence >= rng.min && r.confidence < rng.max);
-    if (range) {
-      range[r.result === 'win' ? 'wins' : 'losses']++;
-      range.total++;
-    }
-  });
-
+  for (const r of rows) {
+    const rng = ranges.find(x => r.confidence >= x.min && r.confidence < x.max);
+    if (!rng) continue;
+    if (r.status === 'win') rng.wins++; else rng.losses++;
+    rng.total++;
+  }
   return {
-    ranges: ranges.map(r => ({
-      ...r,
-      winRate: calculateWinRate(r.wins, r.total)
-    })),
-    insight: ranges.reduce((highest, r) =>
-      (r.winRate > highest.winRate && r.total >= 5 ? r : highest), ranges[0])
+    ranges: ranges.map(r => ({ ...r, winRate: winRate(r.wins, r.total) })),
+    insight: ranges.reduce((h, r) => (parseFloat(winRate(r.wins, r.total)) > parseFloat(winRate(h.wins, h.total)) && r.total >= 5 ? r : h), ranges[0])
   };
 }
 
-function monthlySummary(dates: string[]) {
-  const byMonth: Record<string, { dates: string[]; wins: number; losses: number; profit: number; bets: number }> = {};
-
-  dates.forEach(date => {
-    const month = date.substring(0, 7); // YYYY-MM
-    const results = loadResultsData(date);
-
-    if (!byMonth[month]) {
-      byMonth[month] = { dates: [], wins: 0, losses: 0, profit: 0, bets: 0 };
-    }
-
-    byMonth[month].dates.push(date);
-    results.forEach(r => {
-      if (r.result === 'win') byMonth[month].wins++;
-      if (r.result === 'loss') byMonth[month].losses++;
-      byMonth[month].profit += r.profit || 0;
-      byMonth[month].bets++;
-    });
-  });
-
+function monthlySummary(rows: Row[]) {
+  const byMonth: Record<string, { wins: number; losses: number; profit: number; bets: number }> = {};
+  for (const r of rows) {
+    const month = (r.game_date || '').substring(0, 7);
+    if (!month) continue;
+    if (!byMonth[month]) byMonth[month] = { wins: 0, losses: 0, profit: 0, bets: 0 };
+    const won = r.status === 'win';
+    if (won) byMonth[month].wins++; else byMonth[month].losses++;
+    byMonth[month].bets++;
+    byMonth[month].profit += profitFromOdds(r.odds || -110, won);
+  }
   return {
-    months: Object.entries(byMonth).map(([month, stats]) => ({
-      month,
-      ...stats,
-      winRate: calculateWinRate(stats.wins, stats.bets),
-      avgProfitPerBet: stats.bets > 0 ? (stats.profit / stats.bets).toFixed(2) : '0.00'
+    months: Object.entries(byMonth).map(([month, s]) => ({
+      month, ...s, profit: Math.round(s.profit * 100) / 100,
+      winRate: winRate(s.wins, s.bets),
+      avgProfitPerBet: s.bets > 0 ? (s.profit / s.bets).toFixed(2) : '0.00'
     })).sort((a, b) => b.month.localeCompare(a.month)),
-    summary: {
-      totalMonths: Object.keys(byMonth).length,
-      bestMonth: Object.entries(byMonth).reduce((best, [m, s]) =>
-        (s.profit > best.profit ? { month: m, ...s } : best), { month: '', profit: -Infinity }).month
-    }
+    summary: { totalMonths: Object.keys(byMonth).length }
   };
 }
 
-function streakAnalysis(results: BetResult[]) {
-  let currentStreak = 0;
-  let maxWinStreak = 0;
-  let maxLossStreak = 0;
-  let currentStreakType: 'win' | 'loss' | null = null;
-
-  const sorted = [...results].sort((a, b) => a.game_id.localeCompare(b.game_id));
-
-  sorted.forEach(r => {
-    if (r.result === 'win') {
-      if (currentStreakType === 'win') {
-        currentStreak++;
-      } else {
-        currentStreakType = 'win';
-        currentStreak = 1;
-      }
+function streakAnalysis(rows: Row[]) {
+  const sorted = [...rows].sort((a, b) => (a.game_date || '').localeCompare(b.game_date || ''));
+  let currentStreak = 0, maxWinStreak = 0, maxLossStreak = 0;
+  let currentStreakType: 'win' | 'lose' | null = null;
+  for (const r of sorted) {
+    if (r.status === 'win') {
+      if (currentStreakType === 'win') currentStreak++; else { currentStreakType = 'win'; currentStreak = 1; }
       maxWinStreak = Math.max(maxWinStreak, currentStreak);
-    } else if (r.result === 'loss') {
-      if (currentStreakType === 'loss') {
-        currentStreak++;
-      } else {
-        currentStreakType = 'loss';
-        currentStreak = 1;
-      }
-      maxLossStreak = Math.max(maxLossStreak, currentStreak);
     } else {
-      currentStreak = 0;
-      currentStreakType = null;
+      if (currentStreakType === 'lose') currentStreak++; else { currentStreakType = 'lose'; currentStreak = 1; }
+      maxLossStreak = Math.max(maxLossStreak, currentStreak);
     }
+  }
+  const last5 = sorted.slice(-5), last10 = sorted.slice(-10);
+  const sliceStats = (s: Row[]) => ({
+    wins: s.filter(r => r.status === 'win').length,
+    losses: s.filter(r => r.status === 'lose').length,
+    profit: Math.round(s.reduce((a, r) => a + profitFromOdds(r.odds || -110, r.status === 'win'), 0) * 100) / 100,
   });
-
-  const last5 = sorted.slice(-5);
-  const last10 = sorted.slice(-10);
-
-  return {
-    currentStreak,
-    currentStreakType,
-    maxWinStreak,
-    maxLossStreak,
-    last5: {
-      wins: last5.filter(r => r.result === 'win').length,
-      losses: last5.filter(r => r.result === 'loss').length,
-      profit: last5.reduce((acc, r) => acc + (r.profit || 0), 0)
-    },
-    last10: {
-      wins: last10.filter(r => r.result === 'win').length,
-      losses: last10.filter(r => r.result === 'loss').length,
-      profit: last10.reduce((acc, r) => acc + (r.profit || 0), 0)
-    }
-  };
+  return { currentStreak, currentStreakType: currentStreakType === 'lose' ? 'loss' : currentStreakType, maxWinStreak, maxLossStreak, last5: sliceStats(last5), last10: sliceStats(last10) };
 }
 
-function roiByOddsRange(results: BetResult[]) {
+function roiByOddsRange(rows: Row[]) {
   const ranges = [
-    { min: -10000, max: -200, range: 'Heavy Favorite (-200+)', wins: 0, losses: 0, total: 0, profit: 0 },
+    { min: -10000, max: -200, range: 'Heavy Fav (-200+)', wins: 0, losses: 0, total: 0, profit: 0 },
     { min: -200, max: -100, range: 'Favorite (-200 to -100)', wins: 0, losses: 0, total: 0, profit: 0 },
     { min: -100, max: 100, range: 'Pick em (-100 to +100)', wins: 0, losses: 0, total: 0, profit: 0 },
-    { min: 100, max: 200, range: 'Underdog (+100 to +200)', wins: 0, losses: 0, total: 0, profit: 0 },
-    { min: 200, max: 500, range: 'Big Underdog (+200 to +500)', wins: 0, losses: 0, total: 0, profit: 0 },
-    { min: 500, max: Infinity, range: 'Longshot (+500+)', wins: 0, losses: 0, total: 0, profit: 0 }
+    { min: 100, max: 200, range: 'Dog (+100 to +200)', wins: 0, losses: 0, total: 0, profit: 0 },
+    { min: 200, max: 500, range: 'Big Dog (+200 to +500)', wins: 0, losses: 0, total: 0, profit: 0 },
+    { min: 500, max: Infinity, range: 'Longshot (+500+)', wins: 0, losses: 0, total: 0, profit: 0 },
   ];
-
-  results.forEach(r => {
-    const range = ranges.find(rng => r.odds >= rng.min && r.odds < rng.max);
-    if (range) {
-      range[r.result === 'win' ? 'wins' : 'losses']++;
-      range.total++;
-      range.profit += r.profit || 0;
-    }
-  });
-
+  for (const r of rows) {
+    const odds = r.odds || 0;
+    const rng = ranges.find(x => odds >= x.min && odds < x.max);
+    if (!rng) continue;
+    const won = r.status === 'win';
+    if (won) rng.wins++; else rng.losses++;
+    rng.total++;
+    rng.profit += profitFromOdds(r.odds || -110, won);
+  }
   return {
     ranges: ranges.map(r => ({
-      ...r,
-      winRate: calculateWinRate(r.wins, r.total),
+      ...r, profit: Math.round(r.profit * 100) / 100,
+      winRate: winRate(r.wins, r.total),
       roi: r.total > 0 ? ((r.profit / (r.total * 100)) * 100).toFixed(1) : '0.0'
     })),
-    bestRange: ranges.reduce((best, r) =>
-      (r.profit > best.profit ? r : best), ranges[0]).range
+    bestRange: ranges.reduce((b, r) => r.profit > b.profit ? r : b, ranges[0]).range
   };
 }
 
@@ -272,41 +225,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const dates = getAllDates();
-
-    let results: BetResult[] = [];
-    let predictions: any[] = [];
-
-    if (date) {
-      results = loadResultsData(date);
-      predictions = loadPredictionsData(date);
-    } else {
-      // Load all available results
-      dates.forEach(d => {
-        results.push(...loadResultsData(d));
-      });
+    const { rows, error: loadError } = await loadResults(date);
+    if (loadError) {
+      return NextResponse.json({ error: loadError }, { status: 500 });
     }
 
     let reportData;
-
     switch (reportType) {
       case 'performance-by-sport':
-        reportData = performanceBySport(results);
+        reportData = performanceBySport(rows);
         break;
       case 'value-bets-analysis':
-        reportData = valueBetsAnalysis(results, predictions);
+        reportData = valueBetsAnalysis(rows);
         break;
       case 'confidence-vs-results':
-        reportData = confidenceVsResults(results);
+        reportData = confidenceVsResults(rows);
         break;
       case 'monthly-summary':
-        reportData = monthlySummary(dates);
+        reportData = monthlySummary(rows);
         break;
       case 'streak-analysis':
-        reportData = streakAnalysis(results);
+        reportData = streakAnalysis(rows);
         break;
       case 'roi-by-odds-range':
-        reportData = roiByOddsRange(results);
+        reportData = roiByOddsRange(rows);
         break;
       default:
         return NextResponse.json({ error: 'Unknown report type' }, { status: 400 });
@@ -315,10 +257,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       reportType,
       generatedAt: new Date().toISOString(),
-      dateRange: date ? { single: date } : { all: dates.length },
+      totalRows: rows.length,
+      dateRange: date ? { single: date } : { all: 'all graded results' },
       ...reportData
     });
-
   } catch (error) {
     console.error('Reports API error:', error);
     return NextResponse.json(
