@@ -58,48 +58,101 @@ async function searchKalshiMarkets(query: string): Promise<any[]> {
   }
 }
 
-// Sanitize and normalize team names for matching (from alpha-hunter)
-function sanitizeToken(s: string): string {
-  return (s || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+// Elite Team Matcher (from alpha-hunter/EliteTeamMatcher.ts)
+const MASCOT_WORDS = [
+  'wildcats', 'bulldogs', 'tigers', 'eagles', 'red storm', 'huskies', 'knights',
+  'longhorns', 'bruins', 'gators', 'cowboys', 'privateers', 'lumberjacks',
+  'highlanders', 'waves', 'mustangs', 'cougars', 'vaqueros', 'delta devils',
+  'rockets', 'jazz', 'lakers', 'magic', 'grizzlies', 'kings'
+]
+
+function normalize(raw: string): string {
+  let name = raw.toLowerCase()
+  name = name.replace(/[.,'()-]/g, '')
+  name = name.replace(/\bst\b|\bst\.\b/g, 'saint')
+  MASCOT_WORDS.forEach(word => {
+    name = name.replace(new RegExp(`\\b${word}\\b`, 'g'), '')
+  })
+  name = name.replace(/\s+/g, ' ').trim()
+  return name
 }
 
-function teamSearchTokens(team: string, sport?: string): string[] {
-  if (!team || !team.trim()) return []
-
-  // First normalize using team-names.ts (handles aliases)
-  const normalized = normalizeTeamName(team, sport)
-
-  const t = sanitizeToken(normalized)
-  const words = t.split(/\s+/).filter(Boolean)
-  const tokens: string[] = [t]
-
-  // Add individual words
-  if (words.length > 1) {
-    tokens.push(words[words.length - 1]) // Last word (mascot)
-    if (words.length >= 2) tokens.push(words.slice(0, -1).join(' ')) // Without mascot
+function levenshtein(a: string, b: string): number {
+  const matrix = []
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i]
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1]
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        )
+      }
+    }
   }
+  return matrix[b.length][a.length]
+}
 
-  // Add common alias variants
-  const stateAbbrev = t.replace(/\bstate\b/g, 'st')
-  const stateExpand = t.replace(/\bst\b/g, 'state')
-  const saintAbbrev = t.replace(/\bsaint\b/g, 'st')
-  const saintExpand = t.replace(/\bst\b/g, 'saint')
-    ;[stateAbbrev, stateExpand, saintAbbrev, saintExpand].forEach(v => {
-      const vv = v.trim()
-      if (vv && vv !== t) tokens.push(vv)
-    })
+function similarityScore(a: string, b: string): number {
+  const distance = levenshtein(a, b)
+  const maxLen = Math.max(a.length, b.length)
+  return 1 - distance / maxLen
+}
 
-  // Also add the original unsanitized team name tokens
-  const origWords = team.toLowerCase().split(/\s+/).filter(Boolean)
-  if (origWords.length > 1) {
-    tokens.push(origWords.slice(0, -1).join(' ')) // Without last word
+function tokenSimilarity(a: string, b: string): number {
+  const tokensA = new Set(a.split(' '))
+  const tokensB = new Set(b.split(' '))
+  const intersection = [...tokensA].filter(t => tokensB.has(t)).length
+  const union = new Set([...tokensA, ...tokensB]).size
+  return union === 0 ? 0 : intersection / union
+}
+
+function extractTeams(title: string): [string, string] {
+  const lower = title.toLowerCase()
+  if (lower.includes(' vs ')) {
+    const [a, b] = lower.split(' vs ')
+    return [a.trim(), b.trim()]
   }
+  if (lower.includes(' @ ')) {
+    const [away, home] = lower.split(' @ ')
+    return [home.trim(), away.trim()]
+  }
+  if (lower.includes(' at ')) {
+    const [away, home] = lower.split(' at ')
+    return [home.trim(), away.trim()]
+  }
+  return ['', '']
+}
 
-  return [...new Set(tokens)].filter(Boolean)
+function eliteMatch(sbHome: string, sbAway: string, marketTitle: string): { isMatch: boolean; confidence: number } {
+  const [kA, kB] = extractTeams(marketTitle)
+  if (!kA || !kB) return { isMatch: false, confidence: 0 }
+
+  const sbHomeNorm = normalize(sbHome)
+  const sbAwayNorm = normalize(sbAway)
+  const kalshiHomeNorm = normalize(kA)
+  const kalshiAwayNorm = normalize(kB)
+
+  const directScore = (
+    similarityScore(sbHomeNorm, kalshiHomeNorm) +
+    similarityScore(sbAwayNorm, kalshiAwayNorm) +
+    tokenSimilarity(sbHomeNorm, kalshiHomeNorm) +
+    tokenSimilarity(sbAwayNorm, kalshiAwayNorm)
+  ) / 4
+
+  const swappedScore = (
+    similarityScore(sbHomeNorm, kalshiAwayNorm) +
+    similarityScore(sbAwayNorm, kalshiHomeNorm) +
+    tokenSimilarity(sbHomeNorm, kalshiAwayNorm) +
+    tokenSimilarity(sbAwayNorm, kalshiHomeNorm)
+  ) / 4
+
+  const confidence = Math.max(directScore, swappedScore)
+  return { isMatch: confidence > 0.7, confidence }
 }
 
 async function findMarketForPick(pick: any): Promise<any | null> {
@@ -110,10 +163,6 @@ async function findMarketForPick(pick: any): Promise<any | null> {
   const sport = pick.sport || pick.league || ''
   const pickType = (pick.pick_type || 'MONEYLINE').toUpperCase()
   const recommendedLine = pick.recommended_line
-
-  // Generate search tokens for team matching
-  const homeTokens = teamSearchTokens(homeTeam, sport)
-  const awayTokens = teamSearchTokens(awayTeam, sport)
 
   // Fetch ALL open sports markets with pagination
   let allMarkets: any[] = []
@@ -154,22 +203,11 @@ async function findMarketForPick(pick: any): Promise<any | null> {
     // Debug: Log first few market titles for NBA games
     if (sport === 'NBA') {
       console.log(`[DEBUG] Looking for ${homeTeam} vs ${awayTeam}`)
-      console.log(`[DEBUG] Home tokens:`, homeTokens)
-      console.log(`[DEBUG] Away tokens:`, awayTokens)
       const sampleMarkets = allMarkets.slice(0, 10).map(m => ({ title: m.title, ticker: m.ticker }))
       console.log(`[DEBUG] Sample markets:`, JSON.stringify(sampleMarkets, null, 2))
     }
 
-    // Find a market matching the pick (using alpha-hunter logic)
-    const sportsPrefixes = [
-      'KXNBAGAME', 'KXNCAABGAME', 'KXNFLGAME', 'KXNHLGAME', 'KXMLBGAME', 'KXNCAAFGAME',
-      'KXNCAAMBMONEY', 'KXNBAMONEY', 'KXNFLMONEY', 'KXNHLMONEY',
-      'KXNCAAMBSPREAD', 'KXNBASPREAD', 'KXNFLSPREAD', 'KXNHLSPREAD',
-      'KXMVNBA', 'KXMVNCAAB', 'KXMVNFL', 'KXMVNHL', 'KXMVMLB', 'KXMVNCAAF'
-    ]
-
-    const pickTokens = teamSearchTokens(pickTeam, sport)
-
+    // Find a market matching the pick (using EliteTeamMatcher)
     const match = allMarkets.find((m: any) => {
       // Skip invalid markets
       if (!m || typeof m !== 'object') return false
@@ -186,18 +224,12 @@ async function findMarketForPick(pick: any): Promise<any | null> {
       const title = String(m.title || '')
       if (!title) return false
       const titleLower = title.toLowerCase()
-      const sanitizedTitle = sanitizeToken(titleLower)
 
       // Skip TOTAL markets (unless pick is TOTAL)
       if (pickType !== 'TOTAL' && /\bTOTAL\b|Total Points/i.test(title)) return false
 
       // Skip prop markets (First Half, Quarter, etc.)
       if (/First Half|1st Half|Quarter|Period|Inning/i.test(title)) return false
-
-      // Check event_ticker OR ticker for sports prefix
-      const eventTicker = (m.event_ticker || '').toUpperCase()
-      const tickerStr = (m.ticker || '').toUpperCase()
-      const hasSportsPrefix = sportsPrefixes.some(p => eventTicker.startsWith(p) || tickerStr.startsWith(p))
 
       // Match based on pick type
       if (pickType === 'SPREAD') {
@@ -212,9 +244,9 @@ async function findMarketForPick(pick: any): Promise<any | null> {
           if (!titleLower.includes(lineStr)) return false
         }
 
-        // Check if pick team is mentioned
-        const hasPick = pickTokens.some(t => t.length >= 3 && sanitizedTitle.includes(t))
-        return hasPick
+        // Use elite matching for team validation
+        const pickMatch = eliteMatch(pickTeam, '', title)
+        return pickMatch.isMatch && pickMatch.confidence > 0.6
       } else if (pickType === 'MONEYLINE') {
         // For moneyline, skip spread/total markets
         if (titleLower.includes('spread') || titleLower.includes('total') ||
@@ -222,24 +254,18 @@ async function findMarketForPick(pick: any): Promise<any | null> {
           return false
         }
 
-        // Check if both teams are mentioned
-        const hasHome = homeTokens.some(t => t.length >= 3 && sanitizedTitle.includes(t))
-        const hasAway = awayTokens.some(t => t.length >= 3 && sanitizedTitle.includes(t))
-        const bothTeamsPresent = hasHome && hasAway
-
-        // For GAME markets, allow single-team match with "Winner?" in title
-        const isGameMarket = eventTicker.includes('GAME') || tickerStr.includes('GAME') || /winner\?/i.test(title)
-        const hasPick = pickTokens.some(t => t.length >= 3 && sanitizedTitle.includes(t))
-
-        if (bothTeamsPresent) return true
-        if (isGameMarket && hasPick && /winner\?|win\b/i.test(titleLower)) return true
-
-        return false
+        // Use elite matching to check if both teams match
+        const teamMatch = eliteMatch(homeTeam, awayTeam, title)
+        return teamMatch.isMatch && teamMatch.confidence > 0.7
       } else if (pickType === 'TOTAL') {
         // For total picks, find over/under markets
         const isTotalMarket = (titleLower.includes('over') || titleLower.includes('under')) &&
           titleLower.includes('points')
-        return isTotalMarket
+        if (!isTotalMarket) return false
+
+        // Use elite matching to verify it's the right game
+        const teamMatch = eliteMatch(homeTeam, awayTeam, title)
+        return teamMatch.isMatch && teamMatch.confidence > 0.7
       }
 
       return false
