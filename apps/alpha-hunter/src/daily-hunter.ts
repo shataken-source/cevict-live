@@ -95,7 +95,7 @@ class DailyHunter {
       if (this.autoExecute && openTrades.length < maxPositions) {
         const additionalOpps = analysis.allOpportunities
           .slice(1, maxPositions - openTrades.length + 1)
-          .filter(opp => 
+          .filter(opp =>
             opp.confidence >= 70 &&
             opp.action.autoExecute &&
             opp.type !== analysis.topOpportunity!.type // Diversify
@@ -142,15 +142,17 @@ class DailyHunter {
         const parts = opp.action.target.split(' ');
         const marketId = parts[0];
         const side = parts[1]?.toLowerCase() as 'yes' | 'no' || 'yes';
-        const price = opp.type === 'prediction_market' ? 50 : 100; // Default max price
-        
+        // Parse actual ask price from instructions (e.g., "at ≤65¢") instead of hardcoding
+        const priceMatch = (opp.action.instructions[0] || '').match(/(\d+)¢/);
+        const price = priceMatch ? parseInt(priceMatch[1], 10) : 50;
+
         trade = await this.kalshi.placeLimitOrderUsd(marketId, side, opp.requiredCapital, price);
         break;
 
       case 'manual':
         console.log('📝 Manual execution required:');
         opp.action.instructions.forEach((inst, i) => console.log(`   ${i + 1}. ${inst}`));
-        
+
         // Create tracking record
         trade = {
           id: `manual_${Date.now()}`,
@@ -200,7 +202,7 @@ class DailyHunter {
 
   async settleTrades(): Promise<void> {
     console.log('\n🔄 Checking for trades to settle...');
-    
+
     const openTrades = await this.funds.getOpenTrades();
     console.log(`📊 Open trades: ${openTrades.length}`);
 
@@ -213,7 +215,7 @@ class DailyHunter {
         // Check Kalshi positions
         const positions = await this.kalshi.getPositions();
         const position = positions.find(p => p.marketId === trade.target.split(' ')[0]);
-        
+
         if (position && position.pnl !== 0) {
           const profit = position.pnl;
           const isWin = profit > 0;

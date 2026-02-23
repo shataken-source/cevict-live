@@ -81,10 +81,10 @@ class AlphaHunter {
     console.log('\n🔌 Checking integrations...');
 
     const kalshiBalance = await this.kalshi.getBalance();
-    const kalshiLabel = kalshiBalance === 500
+    const kalshiLabel = kalshiBalance < 0
       ? '❌ Auth error'
-      : (kalshiBalance > 0 ? '✅ Connected' : '⚠️ Demo mode');
-    console.log(`   ├─ Kalshi: ${kalshiLabel} ($${kalshiBalance})`);
+      : (kalshiBalance > 0 ? '✅ Connected' : '⚠️ Zero balance');
+    console.log(`   ├─ Kalshi: ${kalshiLabel}${kalshiBalance >= 0 ? ` ($${kalshiBalance})` : ''}`);
 
     const prognoStatus = process.env.PROGNO_BASE_URL ? '✅ Connected' : '⚠️ Using defaults';
     console.log(`   ├─ PROGNO: ${prognoStatus}`);
@@ -231,15 +231,12 @@ class AlphaHunter {
   async sendDailySummary(): Promise<void> {
     const account = await this.funds.getAccount();
     const trades = await this.funds.getOpenTrades();
-
-    // In production, this would calculate actual wins/losses
-    const wins = 0;
-    const losses = 0;
+    const stats = await this.funds.getPerformanceStats();
 
     await this.sms.sendDailySummary(
       trades.length,
-      wins,
-      losses,
+      stats.wins,
+      stats.losses,
       account.todayProfit,
       account.balance
     );
@@ -352,16 +349,6 @@ async function main() {
 
 main().catch(console.error);
 
-// Auto-start scheduler in dev if enabled via env
-if ((process.env.ALPHA_AUTO_START || '').trim() === '1') {
-  // Minimal async bootstrap to ensure initialize() has run
-  setTimeout(() => {
-    try {
-      const hunter = (global as any).alphaHunterInstance as any;
-      if (hunter && typeof hunter.startScheduler === 'function') hunter.startScheduler();
-    } catch { }
-  }, 0);
-}
 
 export { AlphaHunter };
 

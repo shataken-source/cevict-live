@@ -301,13 +301,13 @@ export class KalshiTrader {
   }
 
   async getBalance(): Promise<number> {
-    if (!this.keyConfigured) return 500;
+    if (!this.keyConfigured) return -1;
     try {
       const fullPath = '/trade-api/v2/portfolio/balance';
       const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
       if (!signature) {
         console.log('[kalshi][balance] sign=fail');
-        return 500;
+        return -1;
       }
       const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
       assertKalshiRequestUrlIsDemo(apiUrl);
@@ -324,11 +324,11 @@ export class KalshiTrader {
       if (!response.ok) {
         const body = await response.text().catch(() => '');
         console.log(`[kalshi][balance] error=${response.status} ${response.statusText} ${body ? body.slice(0, 160) : ''}`);
-        return 500;
+        return -1;
       }
       const data = await response.json();
       return (data.balance || 0) / 100;
-    } catch (e) { return 500; }
+    } catch (e) { return -1; }
   }
 
   /**

@@ -11,17 +11,8 @@ export interface PrognoEventProbability {
   mcWinProbability?: number;
 }
 
-// Some runtimes may evaluate call sites before function hoisting due to transpilation nuances.
-// Provide a safe wrapper to avoid ReferenceError and ensure uppercase fallback.
-const safeNormalizeLeague = (raw: string): string => {
-  try {
-    // @ts-ignore runtime guard if symbol not yet bound
-    const fn = (typeof normalizeLeague === 'function') ? normalizeLeague : undefined;
-    return fn ? fn(raw) : (raw ? String(raw).toUpperCase() : 'NBA');
-  } catch {
-    return raw ? String(raw).toUpperCase() : 'NBA';
-  }
-};
+// Wrapper kept for call-site compatibility; normalizeLeague is a function declaration so it's hoisted.
+const safeNormalizeLeague = (raw: string): string => normalizeLeague(raw);
 
 export interface KalshiMarketMatch {
   ticker: string;
@@ -263,8 +254,8 @@ export function matchKalshiMarketToProgno(
 ): KalshiMarketMatch | null {
   const sportsPrefixes = [
     // Winner/Game/Money markets (highest priority - these are moneyline)
-    'KXNBAGAME', 'KXNCAABGAME', 'KXNFLGAME', 'KXNHLGAME', 'KXMLBGAME', 'KXNCAAFGAME', 'KXNASCARGAME',
-    'KXNCAAWBGAME', // Women's basketball
+    'KXNBAGAME', 'KXNCAAMBGAME', 'KXNFLGAME', 'KXNHLGAME', 'KXMLBGAME', 'KXNCAAFGAME', 'KXNASCARGAME',
+    'KXNCAABBGAME', // College baseball
     'KXNCAAMBMONEY', 'KXNBAMONEY', 'KXNFLMONEY', 'KXNHLMONEY', // Moneyline markets
     'KXMVNBA', 'KXMVNCAAB', 'KXMVNFL', 'KXMVNHL', 'KXMVMLB', 'KXMVNCAAF', 'KXMVNASCAR',
     // Spread/Total/Winner variants (lower priority)

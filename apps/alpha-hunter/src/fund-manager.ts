@@ -660,20 +660,23 @@ export class UnifiedFundManager {
     this.allocatedFunds.delete(opportunityId);
 
     const totalReturn = originalAmount + profit;
+    const isWin = profit > 0;
 
-    // Add back to appropriate platform with profit
-    // For simplicity, add to crypto balance
-    this.updateCryptoBalance(
-      this.cryptoBalance.available + totalReturn,
-      this.cryptoBalance.inPositions - allocated,
-      this.cryptoBalance.pending
-    );
-
-    // Update stats
-    if (profit > 0) {
-      this.updateCryptoStats(profit, true);
+    // Credit back to the platform that has the position (inPositions > 0)
+    if (this.kalshiBalance.inPositions >= allocated) {
+      this.updateKalshiBalance(
+        this.kalshiBalance.available + totalReturn,
+        this.kalshiBalance.inPositions - allocated,
+        this.kalshiBalance.pending
+      );
+      this.updateKalshiStats(profit, isWin);
     } else {
-      this.updateCryptoStats(profit, false);
+      this.updateCryptoBalance(
+        this.cryptoBalance.available + totalReturn,
+        this.cryptoBalance.inPositions - Math.min(allocated, this.cryptoBalance.inPositions),
+        this.cryptoBalance.pending
+      );
+      this.updateCryptoStats(profit, isWin);
     }
   }
 

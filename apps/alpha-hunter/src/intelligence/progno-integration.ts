@@ -281,16 +281,23 @@ export class PrognoIntegration {
     const books = game.books;
     if (!books || books.length < 2) return null;
 
-    // Find best odds for each side
+    // Find best odds for each side across all books
     let bestHome = { odds: -Infinity, book: '' };
     let bestAway = { odds: -Infinity, book: '' };
 
     for (const book of books) {
-      if (book.moneyline > bestHome.odds) {
-        bestAway = bestHome; // Second best becomes away
-        bestHome = { odds: book.moneyline, book: book.bookmaker };
+      const homeOdds = book.homeML ?? book.home_moneyline ?? book.moneyline;
+      const awayOdds = book.awayML ?? book.away_moneyline ?? (book.moneyline ? -book.moneyline : undefined);
+      if (typeof homeOdds === 'number' && homeOdds > bestHome.odds) {
+        bestHome = { odds: homeOdds, book: book.bookmaker || book.key || '' };
+      }
+      if (typeof awayOdds === 'number' && awayOdds > bestAway.odds) {
+        bestAway = { odds: awayOdds, book: book.bookmaker || book.key || '' };
       }
     }
+
+    // Need valid odds from different books for real arbitrage
+    if (bestHome.odds === -Infinity || bestAway.odds === -Infinity) return null;
 
     // Convert American odds to decimal
     const decimalHome = bestHome.odds > 0 ? (bestHome.odds / 100) + 1 : (100 / Math.abs(bestHome.odds)) + 1;

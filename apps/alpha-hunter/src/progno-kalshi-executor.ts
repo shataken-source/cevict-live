@@ -35,11 +35,18 @@ const EXECUTED_FILE = path.join(alphaRoot, 'progno-executor-executed.json');
 const BASE_URL = 'https://api.elections.kalshi.com';
 const GAME_SERIES: Array<{ ticker: string; sport: string }> = [
   { ticker: 'KXNBAGAME', sport: 'NBA' },
-  { ticker: 'KXNCAABGAME', sport: 'NCAAB' },
+  { ticker: 'KXNCAAMBGAME', sport: 'NCAAB' },
+  { ticker: 'KXNCAABBGAME', sport: 'NCAAB' },
   { ticker: 'KXNFLGAME', sport: 'NFL' },
   { ticker: 'KXNHLGAME', sport: 'NHL' },
   { ticker: 'KXMLBGAME', sport: 'MLB' },
   { ticker: 'KXNCAAFGAME', sport: 'NCAAF' },
+  { ticker: 'KXNCAAMBSPREAD', sport: 'NCAAB' },
+  { ticker: 'KXNCAAMBTOTAL', sport: 'NCAAB' },
+  { ticker: 'KXNBASPREAD', sport: 'NBA' },
+  { ticker: 'KXNBATOTAL', sport: 'NBA' },
+  { ticker: 'KXNHLSPREAD', sport: 'NHL' },
+  { ticker: 'KXNHLTOTAL', sport: 'NHL' },
 ];
 const DRY_RUN = process.argv.includes('--dry-run');
 const ONCE = process.argv.includes('--once');
@@ -136,7 +143,7 @@ function tickerSuffix(ticker: string): string {
 function normSport(s: string): string {
   const u = (s || '').toUpperCase();
   if (u.includes('NBA')) return 'NBA';
-  if (u.includes('NCAAB') || u.includes('CBB') || u.includes('COLLEGE BASKETBALL')) return 'NCAAB';
+  if (u === 'NCAA' || u.includes('NCAAB') || u.includes('CBB') || u.includes('COLLEGE BASKETBALL')) return 'NCAAB';
   if (u.includes('NCAAF') || u.includes('CFB') || u.includes('COLLEGE FOOTBALL')) return 'NCAAF';
   if (u.includes('NFL')) return 'NFL';
   if (u.includes('NHL') || u.includes('HOCKEY')) return 'NHL';
@@ -392,9 +399,10 @@ async function executePicks(picks: PrognoPick[], client: KalshiClient, markets: 
 }
 
 function todayDateStr(): string {
-  const now = new Date();
-  const cst = new Date(now.getTime() + (-6 * 60 * 60 * 1000));
-  return cst.toISOString().split('T')[0];
+  const tz = (process.env.ALPHA_TIMEZONE || 'America/Chicago').trim();
+  // Use Intl to get the correct local date in the configured timezone (handles DST)
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  return parts; // en-CA format is YYYY-MM-DD
 }
 
 function findLatestPredictionsFile(): string | null {
