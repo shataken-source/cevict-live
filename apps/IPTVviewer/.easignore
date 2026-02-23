@@ -1,0 +1,46 @@
+# Exclude node_modules - EAS installs dependencies on the server
+node_modules/
+
+# Exclude build artifacts
+.expo/
+.expo-shared/
+dist/
+build/
+
+# Exclude git
+.git/
+.gitignore
+
+# Exclude IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Exclude logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Exclude OS files
+.DS_Store
+Thumbs.db
+
+# Exclude test files
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Exclude documentation (not needed for build)
+docs/
+*.md
+!README.md
+
+# Exclude snapshots
+.snapshots/
+
+# Exclude worktrees
+.worktrees/

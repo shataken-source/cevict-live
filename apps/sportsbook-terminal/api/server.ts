@@ -3,6 +3,9 @@
  * Production-grade backend for institutional probability trading
  */
 
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';

@@ -6,33 +6,42 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 export const SYSTEM_CONFIG = {
   panelWatts: 300,
   panelCount: 8,
-  panelWiring: '4S2P',           // 4 strings of 2 panels
+  panelWiring: '4S2P',           // 4 strings of 2 panels in series → ~74V Voc
   peakWatts: 2400,               // 8 × 300W
-  batteryVoltage: 12,
-  batteryAh: 280,
+  batteryVoltage: 48,            // 4S2P battery bank: 4× 12V in series = 48V
+  batteryAh: 560,                // 2 parallel strings × 280Ah = 560Ah @ 48V
   batteryCount: 8,
-  totalAh: 2240,                 // 8 × 280Ah
-  totalKwh: 26.88,               // 2240Ah × 12V / 1000
+  totalAh: 560,                  // 560Ah @ 48V
+  totalKwh: 26.88,               // 560Ah × 48V / 1000
   usableKwh: 21.5,               // ~80% DoD for LiFePO4
-  controller: 'AmpinVT 150/80',
-  maxChargeAmps: 80,
-  maxInputVolts: 150,
+  controller: 'EG4 6000EHV-48', // Hybrid inverter with built-in MPPT
+  maxChargeAmps: 120,            // EG4 6000EHV-48 max charge current
+  maxInputVolts: 500,            // EG4 max PV input voltage (74V Voc is safe)
+  // Battery bank wiring: 4S2P — 4 batteries in series (String 1 + String 2), 2 strings in parallel
+  // String 1: Batt 1→2→3→4 in series = 48V
+  // String 2: Batt 5→6→7→8 in series = 48V
+  // Both strings joined at busbars = 560Ah @ 48V
+  // HC02 balancers: one per string (5-wire tap across all 4 batteries)
+  // 500A shunt on negative side between batteries and busbar
+  // 2× 150A Class T fuses (one per string positive)
+  // 150A DC main breaker on positive busbar → inverter
+  // 63A PV disconnect on solar input (safe for 4S2P ~32A)
 };
 
 // ─── AmpinVT ESPHome MQTT Topics ─────────────────────────────────────────────
 export const AMPINVT_TOPICS = {
-  solarPower:       'ampinvt/sensor/solar_power/state',
-  panelVoltage:     'ampinvt/sensor/panel_voltage/state',
-  panelCurrent:     'ampinvt/sensor/panel_current/state',
-  batteryVoltage:   'ampinvt/sensor/battery_voltage/state',
-  batteryCurrent:   'ampinvt/sensor/battery_current/state',
-  batterySoc:       'ampinvt/sensor/battery_soc/state',
-  todayProduction:  'ampinvt/sensor/today_production/state',
-  chargingStatus:   'ampinvt/binary_sensor/charging_status/state',
-  mpptStatus:       'ampinvt/binary_sensor/mppt_tracking_status/state',
-  floatStatus:      'ampinvt/binary_sensor/float_charging_status/state',
-  controllerTemp:   'ampinvt/sensor/controller_temperature/state',
-  overheatStatus:   'ampinvt/binary_sensor/overheat_status/state',
+  solarPower: 'ampinvt/sensor/solar_power/state',
+  panelVoltage: 'ampinvt/sensor/panel_voltage/state',
+  panelCurrent: 'ampinvt/sensor/panel_current/state',
+  batteryVoltage: 'ampinvt/sensor/battery_voltage/state',
+  batteryCurrent: 'ampinvt/sensor/battery_current/state',
+  batterySoc: 'ampinvt/sensor/battery_soc/state',
+  todayProduction: 'ampinvt/sensor/today_production/state',
+  chargingStatus: 'ampinvt/binary_sensor/charging_status/state',
+  mpptStatus: 'ampinvt/binary_sensor/mppt_tracking_status/state',
+  floatStatus: 'ampinvt/binary_sensor/float_charging_status/state',
+  controllerTemp: 'ampinvt/sensor/controller_temperature/state',
+  overheatStatus: 'ampinvt/binary_sensor/overheat_status/state',
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -115,7 +124,7 @@ function makeDemoReading(prev?: SolarReading): SolarReading {
 
   const systemHealth: SystemHealth =
     controllerTemp > 65 || batterySoc < 10 ? 'Critical' :
-    controllerTemp > 50 || batterySoc < 20 ? 'Warning' : 'Normal';
+      controllerTemp > 50 || batterySoc < 20 ? 'Warning' : 'Normal';
 
   return {
     solarPowerW: Math.round(solarPowerW),
@@ -148,7 +157,7 @@ const SolarContext = createContext<SolarContextValue>({
   isConnected: false,
   dataSource: 'demo',
   lastUpdated: new Date(),
-  setDataSource: () => {},
+  setDataSource: () => { },
 });
 
 export function SolarProvider({ children }: { children: ReactNode }) {

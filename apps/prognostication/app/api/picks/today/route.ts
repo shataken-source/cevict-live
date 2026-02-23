@@ -204,8 +204,20 @@ async function fetchPicksFromDatabase(): Promise<EnginePick[] | null> {
       return null;
     }
 
+    // Deduplicate by game_id — keep the most recent row per game
+    const seen = new Map<string, typeof data[0]>();
+    for (const record of data) {
+      const key = record.game_id || record.id || '';
+      if (!key) continue;
+      if (!seen.has(key) || record.created_at > seen.get(key)!.created_at) {
+        seen.set(key, record);
+      }
+    }
+    const deduped = Array.from(seen.values());
+    console.log(`[PICKS_API] Deduped ${data.length} rows → ${deduped.length} unique games`);
+
     // Transform database records to EnginePick format
-    const picks: EnginePick[] = data.map((record: { game_id?: string; id?: string; game?: string; away_team?: string; home_team?: string; sport?: string; pick_selection?: string; confidence?: number; edge?: number; game_time?: string; created_at: string; analysis?: string }) => ({
+    const picks: EnginePick[] = deduped.map((record: { game_id?: string; id?: string; game?: string; away_team?: string; home_team?: string; sport?: string; pick_selection?: string; confidence?: number; edge?: number; game_time?: string; created_at: string; analysis?: string }) => ({
       gameId: record.game_id || record.id || '',
       game: record.game || `${record.away_team || ''} vs ${record.home_team || ''}`,
       sport: (record.sport || 'NFL').toUpperCase(),

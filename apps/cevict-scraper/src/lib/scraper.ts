@@ -36,8 +36,8 @@ const AD_DOMAINS = [
   'adsrvr.org', 'moatads.com', 'hotjar.com', 'mouseflow.com', 'fullstory.com',
 ];
 
-// Block heavy resource types by default for speed
-const BLOCK_TYPES = ['image', 'stylesheet', 'font', 'media'];
+// Resource types that can optionally be blocked (NOT blocked by default — breaks many sites)
+const BLOCKABLE_TYPES = ['image', 'stylesheet', 'font', 'media', 'other'];
 
 const rua = () => UAS[Math.floor(Math.random() * UAS.length)];
 const rnd = (a: number, b: number) => Math.floor(Math.random() * (b - a + 1)) + a;
@@ -52,6 +52,7 @@ export class CevictScraper extends EventEmitter {
   private rateLimits: Map<string, RateLimitEntry> = new Map();
   private proxyIdx = 0;
   private isShuttingDown = false;
+  private logger: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void; debug: (m: string) => void } | null = null;
 
   private stats: ScrapingStats = {
     totalJobs: 0, completedJobs: 0, failedJobs: 0, averageDuration: 0,
@@ -63,20 +64,32 @@ export class CevictScraper extends EventEmitter {
     maxConcurrentJobs: 5, jobTimeout: 30000, retryAttempts: 3, retryDelay: 1000,
     defaultViewport: { width: 1920, height: 1080 }, defaultUserAgent: rua(),
     respectRobotsTxt: false, rateLimitPerDomain: 500,
-    cacheEnabled: true, cacheTTL: 300_000,
+    cacheEnabled: false, cacheTTL: 300_000,
     stealthMode: true, blockAds: true, maxQueueSize: 500,
   };
 
   private pool: BrowserPoolOptions;
 
-  constructor(options: BrowserPoolOptions = {}) {
+  constructor(
+    options: BrowserPoolOptions = {},
+    cfgOverrides: Partial<ScrapingConfig> = {},
+    externalLogger?: { info: (m: string) => void; warn: (m: string) => void; error: (m: string) => void; debug?: (m: string) => void },
+  ) {
     super();
     this.pool = { maxBrowsers: 3, maxPagesPerBrowser: 8, headless: true, timeout: 30000, ...options };
+    this.cfg = { ...this.cfg, ...cfgOverrides };
+    this.logger = externalLogger ? {
+      info: (m) => externalLogger.info(m),
+      warn: (m) => externalLogger.warn(m),
+      error: (m) => externalLogger.error(m),
+      debug: (m) => externalLogger.debug ? externalLogger.debug(m) : undefined,
+    } : null;
     if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
   }
 
   // ── Logging ──────────────────────────────────────────────────────────────────
-  private log(lvl: string, msg: string) {
+  private log(lvl: 'info' | 'warn' | 'error' | 'debug', msg: string) {
+    if (this.logger) { this.logger[lvl](msg); return; }
     const line = `[CevictScraper][${lvl.toUpperCase()}] ${msg}`;
     if (lvl === 'error') console.error(line);
     else if (lvl === 'warn') console.warn(line);
@@ -214,18 +227,33 @@ export class CevictScraper extends EventEmitter {
   }
 
   // ── Request interception ──────────────────────────────────────────────────────
+  // Called once per page. Uses unroute-all before re-registering to prevent
+  // stacking duplicate handlers on retry.
   private async intercept(page: Page, rules?: BlockRules): Promise<void> {
-    const types = rules?.resources || (this.cfg.blockAds ? BLOCK_TYPES : []);
-    const domains = [...AD_DOMAINS, ...(rules?.domains || [])];
+    // Only block resource types if explicitly requested via blockRules.resources
+    // OR if blockAds is on AND the caller passed no custom rules (opt-in, not default)
+    const types: string[] = rules?.resources
+      ? rules.resources.filter(r => BLOCKABLE_TYPES.includes(r))
+      : [];
+    const domains = this.cfg.blockAds ? [...AD_DOMAINS, ...(rules?.domains || [])] : (rules?.domains || []);
     const patterns = (rules?.patterns || []).map((p: string) => new RegExp(p));
+
+    // Nothing to intercept — skip route registration entirely (faster)
+    if (!types.length && !domains.length && !patterns.length) return;
+
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
     await page.route('**/*', (r: Route) => {
       const url = r.request().url();
       const type = r.request().resourceType();
-      if (types.includes(type) || domains.some((d: string) => url.includes(d)) || patterns.some((p: RegExp) => p.test(url))) {
+      if (
+        types.includes(type) ||
+        domains.some((d: string) => url.includes(d)) ||
+        patterns.some((p: RegExp) => p.test(url))
+      ) {
         this.stats.blockedRequests++;
-        r.abort();
+        r.abort().catch(() => { });
       } else {
-        r.continue();
+        r.continue().catch(() => { });
       }
     });
   }
@@ -271,7 +299,8 @@ export class CevictScraper extends EventEmitter {
   // ── Core scrape ───────────────────────────────────────────────────────────────
   async scrape(o: ScrapeOptions, retry = 0): Promise<ScrapeResult> {
     const t0 = Date.now();
-    this.stats.totalJobs++;
+    // Only count the first attempt, not retries
+    if (retry === 0) this.stats.totalJobs++;
     const hit = this.fromCache(o);
     if (hit) return hit;
     await this.rateLimit(o.url);
@@ -289,7 +318,15 @@ export class CevictScraper extends EventEmitter {
       if (o.typeInto) { await page.locator(o.typeInto.selector).fill(o.typeInto.text); if (o.humanize) await this.wait(rnd(100, 400)); }
       if (o.infiniteScroll) await this.infiniteScroll(page, o.infiniteScroll);
       let scriptResult: any = null;
-      if (o.executeScript) scriptResult = await page.evaluate(o.executeScript);
+      if (o.executeScript) {
+        // Wrap bare expressions in a function so multi-line scripts work correctly.
+        // If the string starts with 'function' or '(' it's already a function — use as-is.
+        const script = o.executeScript.trim();
+        const wrapped = /^(function|\(|async\s)/.test(script)
+          ? script
+          : `() => { try { return (${script}); } catch(e) { return { __error: e.message }; } }`;
+        scriptResult = await page.evaluate(wrapped);
+      }
       const html = await page.content();
       const text = await page.evaluate(() => document.body?.innerText || '');
       const title = await page.title();
@@ -324,11 +361,19 @@ export class CevictScraper extends EventEmitter {
   async multiExtract(opts: MultiExtractOptions): Promise<MultiExtractResult> {
     const t0 = Date.now();
     const so: ScrapeOptions = { ...(opts.scrapeOptions || {}), url: opts.url };
+    // Apply rate limiting and cookies the same way scrape() does
+    await this.rateLimit(opts.url);
     const { page, release } = await this.getPage(so);
     const data: Record<string, any> = {}, errors: Record<string, string> = {};
     try {
       await this.intercept(page, opts.scrapeOptions?.blockRules);
-      await page.goto(opts.url, { waitUntil: 'domcontentloaded', timeout: this.cfg.jobTimeout });
+      if (so.cookies?.length) await page.context().addCookies(so.cookies.map((c: any) => ({ ...c, path: '/', expires: -1 })));
+      const wt = so.waitForNetworkIdle ? 'networkidle' : 'domcontentloaded';
+      await page.goto(opts.url, { waitUntil: wt, timeout: so.timeout || this.cfg.jobTimeout });
+      if (so.waitFor) {
+        if (typeof so.waitFor === 'number') await page.waitForTimeout(so.waitFor);
+        else await page.waitForSelector(so.waitFor, { timeout: so.timeout || 10000 }).catch(() => { });
+      }
       for (const [f, ex] of Object.entries(opts.fields)) {
         try { data[f] = (await this.extract(page, ex)).data; } catch (e: any) { errors[f] = e.message; }
       }
@@ -392,7 +437,99 @@ export class CevictScraper extends EventEmitter {
     } catch { return { selector: o.selector, data: null, count: 0 }; }
   }
 
-  // ── Page interaction helpers ──────────────────────────────────────────────────
+  // ── Interact: multi-step page automation ─────────────────────────────────────
+  async interact(opts: {
+    url: string;
+    actions: Array<
+      | { type: 'fill'; selector: string; value: string; pressEnter?: boolean }
+      | { type: 'click'; selector: string; waitForNavigation?: boolean }
+      | { type: 'scroll'; direction?: string; amount?: number; selector?: string }
+      | { type: 'wait'; value: number }
+      | { type: 'select'; selector: string; value: string }
+    >;
+    waitFor?: string | number;
+    screenshot?: boolean;
+  }): Promise<ScrapeResult> {
+    const t0 = Date.now();
+    this.stats.totalJobs++;
+    await this.rateLimit(opts.url);
+    const { page, release } = await this.getPage({ url: opts.url });
+    try {
+      await this.intercept(page);
+      await page.goto(opts.url, { waitUntil: 'domcontentloaded', timeout: this.cfg.jobTimeout });
+      if (opts.waitFor) {
+        if (typeof opts.waitFor === 'number') await page.waitForTimeout(opts.waitFor);
+        else await page.waitForSelector(opts.waitFor, { timeout: 10000 }).catch(() => { });
+      }
+      for (const action of opts.actions) {
+        switch (action.type) {
+          case 'fill': {
+            const loc = page.locator(action.selector);
+            await loc.fill(action.value);
+            if (action.pressEnter) await loc.press('Enter');
+            break;
+          }
+          case 'click': {
+            const loc = page.locator(action.selector);
+            if (action.waitForNavigation) {
+              await Promise.all([page.waitForNavigation({ timeout: 10000 }).catch(() => { }), loc.click()]);
+            } else {
+              await loc.click();
+            }
+            break;
+          }
+          case 'scroll': {
+            if (action.selector) {
+              await page.locator(action.selector).scrollIntoViewIfNeeded();
+            } else {
+              const amt = action.amount || 500;
+              const dir = action.direction || 'down';
+              await page.evaluate(([d, a]: [string, number]) =>
+                window.scrollBy(d === 'left' ? -a : d === 'right' ? a : 0, d === 'up' ? -a : d === 'down' ? a : 0),
+                [dir, amt] as [string, number]);
+            }
+            break;
+          }
+          case 'wait':
+            await page.waitForTimeout(action.value);
+            break;
+          case 'select':
+            await page.locator(action.selector).selectOption(action.value);
+            break;
+        }
+      }
+      const html = await page.content();
+      const text = await page.evaluate(() => document.body?.innerText || '');
+      const title = await page.title();
+      let screenshot: Buffer | undefined;
+      if (opts.screenshot) screenshot = await page.screenshot({ fullPage: false, type: 'png' }) as Buffer;
+      const dur = Date.now() - t0;
+      this.stats.completedJobs++;
+      return { success: true, url: opts.url, finalUrl: page.url(), html, text, title, screenshot, duration: dur, timestamp: new Date().toISOString() };
+    } catch (err: any) {
+      this.stats.failedJobs++;
+      return { success: false, url: opts.url, error: err.message, duration: Date.now() - t0, timestamp: new Date().toISOString() };
+    } finally { await release(); }
+  }
+
+  // ── PDF generation ────────────────────────────────────────────────────────────
+  async pdf(opts: { url: string; waitFor?: string | number; format?: string; printBackground?: boolean }): Promise<Buffer | null> {
+    await this.rateLimit(opts.url);
+    const { page, release } = await this.getPage({ url: opts.url });
+    try {
+      await page.goto(opts.url, { waitUntil: 'networkidle', timeout: this.cfg.jobTimeout });
+      if (opts.waitFor) {
+        if (typeof opts.waitFor === 'number') await page.waitForTimeout(opts.waitFor);
+        else await page.waitForSelector(opts.waitFor, { timeout: 10000 }).catch(() => { });
+      }
+      return await page.pdf({ format: (opts.format as any) || 'A4', printBackground: opts.printBackground ?? true }) as Buffer;
+    } catch (err: any) {
+      this.log('error', `PDF failed for ${opts.url}: ${err.message}`);
+      return null;
+    } finally { await release(); }
+  }
+
+  // ── Page interaction helpers (kept for direct library use) ────────────────────
   async fillForm(page: Page, o: { selector: string; value: string; clear?: boolean; pressEnter?: boolean }) {
     const loc = page.locator(o.selector);
     if (o.clear !== false) await loc.fill('');

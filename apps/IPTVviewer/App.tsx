@@ -5,7 +5,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import PlayerScreen from './src/screens/PlayerScreen';
 import EPGScreen from './src/screens/EPGScreen';
 import FavoritesScreen from './src/screens/FavoritesScreen';
-import HistoryScreen from './src/screens/HistoryScreen';
+import ChannelHistoryScreen from './src/screens/ChannelHistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import PricingScreen from './src/screens/PricingScreen';
 
@@ -22,19 +22,19 @@ export default function App() {
           headerTitleStyle: { fontWeight: 'bold' },
         }}
       >
-        <Stack.Screen 
-          name="Home" 
+        <Stack.Screen
+          name="Home"
           component={HomeScreen}
           options={{ title: 'Switchback TV' }}
         />
-        <Stack.Screen 
-          name="Player" 
+        <Stack.Screen
+          name="Player"
           component={PlayerScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen name="EPG" component={EPGScreen} />
         <Stack.Screen name="Favorites" component={FavoritesScreen} />
-        <Stack.Screen name="History" component={HistoryScreen} />
+        <Stack.Screen name="History" component={ChannelHistoryScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Pricing" component={PricingScreen} />
       </Stack.Navigator>

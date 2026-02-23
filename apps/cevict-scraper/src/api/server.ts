@@ -5,19 +5,66 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { scraper } from '../lib/scraper';
+import * as dotenv from 'dotenv';
+import { createLogger, format, transports } from 'winston';
+import { CevictScraper } from '../lib/scraper';
 import { ScrapeOptions, CrawlOptions, MultiExtractOptions } from '../types';
 
-const app = express();
+dotenv.config();
+
 const PORT = process.env.PORT || 3009;
+const LOG_LVL = process.env.LOG_LEVEL || 'info';
+
+// ── Logger ────────────────────────────────────────────────────────────────────
+const logger = createLogger({
+  level: LOG_LVL,
+  format: format.combine(
+    format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    format.printf(({ timestamp, level, message }) => `[${timestamp}] [${level.toUpperCase()}] ${message}`),
+  ),
+  transports: [new transports.Console()],
+});
+
+// ── Build scraper from env ────────────────────────────────────────────────────
+const scraper = new CevictScraper({
+  maxBrowsers: parseInt(process.env.MAX_BROWSERS || '3'),
+  maxPagesPerBrowser: parseInt(process.env.MAX_PAGES_PER_BROWSER || '8'),
+  headless: process.env.HEADLESS !== 'false',
+  timeout: parseInt(process.env.BROWSER_TIMEOUT || '30000'),
+}, {
+  rateLimitPerDomain: parseInt(process.env.RATE_LIMIT_PER_DOMAIN || '500'),
+  cacheEnabled: process.env.CACHE_ENABLED === 'true',
+  cacheTTL: parseInt(process.env.CACHE_TTL || '300000'),
+  blockAds: process.env.BLOCK_ADS !== 'false',
+}, logger);
+
+// ── Concurrency cap for batch ─────────────────────────────────────────────────
+const BATCH_CONCURRENCY = parseInt(process.env.BATCH_CONCURRENCY || '5');
+async function pLimit<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
+  const results: T[] = [];
+  let i = 0;
+  async function worker() {
+    while (i < tasks.length) {
+      const idx = i++;
+      results[idx] = await tasks[idx]();
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
+  return results;
+}
+
+const app = express();
 
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: '*', methods: ['GET', 'POST', 'DELETE'] }));
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['*'];
+app.use(cors({ origin: allowedOrigins.includes('*') ? '*' : allowedOrigins, methods: ['GET', 'POST', 'DELETE'] }));
 app.use(express.json({ limit: '10mb' }));
 
 // ── Logging middleware ────────────────────────────────────────────────────────
 app.use((req: Request, _res: Response, next: any) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  logger.info(`${req.method} ${req.path}`);
   next();
 });
 
@@ -58,12 +105,14 @@ app.post('/screenshot', async (req: Request, res: Response) => {
   }
 });
 
-// ── Batch scrape ──────────────────────────────────────────────────────────────
+// ── Batch scrape (concurrency-capped) ────────────────────────────────────────
 app.post('/batch', async (req: Request, res: Response) => {
   try {
-    const { urls, options }: { urls: string[]; options?: Partial<ScrapeOptions> } = req.body;
+    const { urls, options, concurrency }: { urls: string[]; options?: Partial<ScrapeOptions>; concurrency?: number } = req.body;
     if (!Array.isArray(urls) || !urls.length) return res.status(400).json({ error: 'urls array is required' }) as any;
-    const results = await Promise.all(urls.map(url => scraper.scrape({ ...options, url })));
+    const cap = Math.min(concurrency || BATCH_CONCURRENCY, 20);
+    const tasks = urls.map(url => () => scraper.scrape({ ...options, url }));
+    const results = await pLimit(tasks, cap);
     res.json({
       success: true, total: urls.length,
       successful: results.filter(r => r.success).length,
@@ -119,12 +168,16 @@ app.post('/multi-extract', async (req: Request, res: Response) => {
   }
 });
 
-// ── Crawler ───────────────────────────────────────────────────────────────────
+// ── Crawler (with server-side timeout) ───────────────────────────────────────
 app.post('/crawl', async (req: Request, res: Response) => {
   try {
     const opts: CrawlOptions = req.body;
     if (!opts.startUrl) return res.status(400).json({ error: 'startUrl is required' }) as any;
-    const result = await scraper.crawl(opts);
+    const timeoutMs = (opts.timeoutMs || 120000);
+    const result = await Promise.race([
+      scraper.crawl(opts),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`Crawl timed out after ${timeoutMs}ms`)), timeoutMs)),
+    ]);
     res.json(result);
   } catch (e: any) {
     res.status(500).json({ success: false, error: e.message, timestamp: new Date().toISOString() });
@@ -145,6 +198,49 @@ app.get('/sessions', (_req: Request, res: Response) => {
 app.delete('/sessions/:id', async (req: Request, res: Response) => {
   await scraper.deleteSession(req.params.id);
   res.json({ success: true, deleted: req.params.id, timestamp: new Date().toISOString() });
+});
+
+// ── Page interaction (fillForm / click / scroll) ────────────────────────────
+app.post('/interact', async (req: Request, res: Response) => {
+  try {
+    const { url, actions, waitFor, screenshot }: {
+      url: string;
+      actions: Array<
+        | { type: 'fill'; selector: string; value: string; pressEnter?: boolean }
+        | { type: 'click'; selector: string; waitForNavigation?: boolean }
+        | { type: 'scroll'; direction?: string; amount?: number; selector?: string }
+        | { type: 'wait'; value: number }
+        | { type: 'select'; selector: string; value: string }
+      >;
+      waitFor?: string | number;
+      screenshot?: boolean;
+    } = req.body;
+    if (!url || !Array.isArray(actions)) return res.status(400).json({ error: 'url and actions[] are required' }) as any;
+    const result = await scraper.interact({ url, actions, waitFor, screenshot });
+    res.status(result.success ? 200 : 500).json(result);
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message, timestamp: new Date().toISOString() });
+  }
+});
+
+// ── PDF generation ────────────────────────────────────────────────────────────
+app.post('/pdf', async (req: Request, res: Response) => {
+  try {
+    const { url, waitFor, format: fmt, printBackground }: {
+      url: string; waitFor?: string | number; format?: string; printBackground?: boolean;
+    } = req.body;
+    if (!url) return res.status(400).json({ error: 'url is required' }) as any;
+    const pdf = await scraper.pdf({ url, waitFor, format: fmt, printBackground });
+    if (pdf) {
+      res.set('Content-Type', 'application/pdf')
+        .set('Content-Disposition', 'attachment; filename="page.pdf"')
+        .send(pdf);
+    } else {
+      res.status(500).json({ success: false, error: 'PDF generation failed', timestamp: new Date().toISOString() });
+    }
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message, timestamp: new Date().toISOString() });
+  }
 });
 
 // ── Extract links/images/json from page ───────────────────────────────────────
@@ -174,30 +270,25 @@ async function start() {
   try {
     await scraper.initialize();
     app.listen(PORT, () => {
-      console.log(`[CevictScraper] Running on port ${PORT}`);
-      console.log(`  GET  /health`);
-      console.log(`  GET  /stats`);
-      console.log(`  POST /scrape`);
-      console.log(`  POST /batch`);
-      console.log(`  POST /screenshot`);
-      console.log(`  POST /extract`);
-      console.log(`  POST /extract-table`);
-      console.log(`  POST /execute`);
-      console.log(`  POST /multi-extract`);
-      console.log(`  POST /crawl`);
-      console.log(`  DEL  /cache`);
-      console.log(`  GET  /sessions`);
-      console.log(`  DEL  /sessions/:id`);
+      logger.info(`CevictScraper running on port ${PORT}`);
+      logger.info('Endpoints:');
+      [
+        'GET  /health', 'GET  /stats',
+        'POST /scrape', 'POST /batch', 'POST /screenshot', 'POST /pdf',
+        'POST /extract', 'POST /extract-table', 'POST /execute',
+        'POST /multi-extract', 'POST /interact', 'POST /crawl',
+        'DEL  /cache', 'GET  /sessions', 'DEL  /sessions/:id',
+      ].forEach(e => logger.info(`  ${e}`));
     });
     const graceful = async (sig: string) => {
-      console.log(`${sig} - shutting down`);
+      logger.info(`${sig} — shutting down`);
       await scraper.shutdown();
       process.exit(0);
     };
     process.on('SIGTERM', () => graceful('SIGTERM'));
     process.on('SIGINT', () => graceful('SIGINT'));
   } catch (e) {
-    console.error('Failed to start:', e);
+    logger.error(`Failed to start: ${e}`);
     process.exit(1);
   }
 }

@@ -131,75 +131,62 @@ async function logSyndicationEvent(
 
 /**
  * Store picks for tier distribution
+ * Uses direct REST API to bypass PostgREST schema cache issues on cold starts.
  */
 async function storePicksForTier(tier: string, picks: any[], batchId: string): Promise<{ success: boolean; errors: string[] }> {
   const errors: string[] = [];
 
   if (!supabaseUrl || !supabaseKey) {
     console.log('[SYNDICATION_WEBHOOK] Supabase not configured, skipping storage');
-    return { success: true, errors }; // Allow to pass if no storage
+    return { success: true, errors };
   }
 
-  try {
-    const supabase = createClient(supabaseUrl, supabaseKey);
+  // Transform picks — only include columns that exist in the table
+  const records = picks.map((pick, index) => ({
+    batch_id: batchId,
+    tier,
+    pick_index: index,
+    game_id: pick.game_id || pick.gameId || `pick-${index}`,
+    sport: pick.sport || pick.league || 'unknown',
+    home_team: pick.home_team || pick.homeTeam,
+    away_team: pick.away_team || pick.awayTeam,
+    pick_selection: pick.pick,
+    confidence: pick.confidence,
+    odds: pick.odds ?? null,
+    expected_value: pick.expected_value || pick.expectedValue || null,
+    edge: pick.value_bet_edge || pick.edge || null,
+    analysis: pick.analysis || null,
+    created_at: new Date().toISOString(),
+  }));
 
-    // Transform picks for storage
-    const records = picks.map((pick, index) => ({
-      batch_id: batchId,
-      tier,
-      pick_index: index,
-      game_id: pick.game_id || pick.gameId || `pick-${index}`,
-      sport: pick.sport || pick.league || 'unknown',
-      home_team: pick.home_team || pick.homeTeam,
-      away_team: pick.away_team || pick.awayTeam,
-      pick_selection: pick.pick,
-      confidence: pick.confidence,
-      odds: pick.odds,
-      expected_value: pick.expected_value || pick.expectedValue,
-      edge: pick.value_bet_edge || pick.edge,
-      analysis: pick.analysis,
-      created_at: new Date().toISOString(),
-      raw_data: pick, // Store full pick for reference
-    }));
+  const BATCH_SIZE = 50;
+  const restUrl = `${supabaseUrl}/rest/v1/syndicated_picks`;
+  const headers = {
+    'apikey': supabaseKey,
+    'Authorization': `Bearer ${supabaseKey}`,
+    'Content-Type': 'application/json',
+    // Upsert on game_id + tier — prevents duplicate rows when cron re-runs
+    'Prefer': 'resolution=merge-duplicates,return=minimal',
+  };
 
-    // Insert in batches to avoid payload limits
-    // Resilient: if a column is missing (PGRST204), strip it and retry once
-    const BATCH_SIZE = 50;
-    const OPTIONAL_COLS = ['game_time', 'source_file', 'recommended_line', 'mc_win_probability', 'pick_type', 'raw_data'];
-    let stripCols: string[] = [];
-
-    for (let i = 0; i < records.length; i += BATCH_SIZE) {
-      let batch = records.slice(i, i + BATCH_SIZE);
-      if (stripCols.length > 0) {
-        batch = batch.map((r: any) => { const c = { ...r }; stripCols.forEach(k => delete c[k]); return c; });
+  for (let i = 0; i < records.length; i += BATCH_SIZE) {
+    const batch = records.slice(i, i + BATCH_SIZE);
+    try {
+      const res = await fetch(`${restUrl}?on_conflict=game_id,tier`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(batch),
+      });
+      if (!res.ok) {
+        const errText = await res.text();
+        errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1} insert failed: ${errText}`);
       }
-      const { error } = await supabase.from('syndicated_picks').insert(batch);
-
-      if (error) {
-        // PGRST204 = column not found in schema cache — strip it and retry this batch
-        if (error.code === 'PGRST204') {
-          const match = error.message.match(/\'([^']+)\' column/);
-          const badCol = match?.[1];
-          if (badCol && OPTIONAL_COLS.includes(badCol) && !stripCols.includes(badCol)) {
-            console.warn(`[SYNDICATION_WEBHOOK] Column '${badCol}' missing from table, stripping and retrying`);
-            stripCols.push(badCol);
-            const cleanBatch = batch.map((r: any) => { const c = { ...r }; stripCols.forEach(k => delete c[k]); return c; });
-            const { error: retryErr } = await supabase.from('syndicated_picks').insert(cleanBatch);
-            if (retryErr) errors.push(`Batch ${i / BATCH_SIZE + 1} retry failed: ${retryErr.message}`);
-          } else {
-            errors.push(`Batch ${i / BATCH_SIZE + 1} insert failed: ${error.message}`);
-          }
-        } else {
-          errors.push(`Batch ${i / BATCH_SIZE + 1} insert failed: ${error.message}`);
-        }
-      }
+    } catch (err: any) {
+      errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1} fetch error: ${err.message}`);
     }
-
-    return { success: errors.length === 0, errors };
-  } catch (error: any) {
-    errors.push(`Storage error: ${error.message}`);
-    return { success: false, errors };
   }
+
+  return { success: errors.length === 0, errors };
 }
 
 /**

@@ -33,6 +33,7 @@ export interface CrawlOptions {
   maxPages?: number;        // total page cap (default 50)
   sameDomain?: boolean;     // only follow same-domain links (default true)
   urlPattern?: string;      // regex to filter which URLs to crawl
+  timeoutMs?: number;       // server-side wall-clock timeout for the entire crawl (default 120000)
   scrapeOptions?: Partial<ScrapeOptions>;
 }
 

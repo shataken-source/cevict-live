@@ -1,0 +1,123 @@
+{
+  "topics": [
+    {
+      "keywords": [
+        "inverter",
+        "inverter size",
+        "what size inverter",
+        "pure sine"
+      ],
+      "title": "Choosing an Inverter for Your System",
+      "content": "For a 12V system with 8× 280Ah batteries (26.9 kWh), size your inverter to your peak simultaneous load.\n\n**Recommendations by load:**\n- 2000W continuous: Renogy 2000W Pure Sine (~$200)\n- 3000W continuous: Giandel 3000W (~$280)\n- 5000W continuous: Aims Power 5000W (~$450)\n\n**Rule:** Size to 1.25× your largest simultaneous load. Pure sine wave is required for sensitive electronics, motors, and appliances.\n\n**12V note:** High-wattage inverters (3000W+) draw 250A+ from a 12V bank. Use short, thick cables (2/0 AWG or larger) and a proper fuse within 18 inches of the battery."
+    },
+    {
+      "keywords": [
+        "fuse",
+        "wire size",
+        "cable",
+        "awg",
+        "breaker",
+        "wiring safety"
+      ],
+      "title": "Fusing & Wire Sizing",
+      "content": "**Critical safety rule:** Every positive wire must be fused within 18 inches of the battery.\n\n**Wire sizing guide (12V DC):**\n| Current | Wire Size | Use Case |\n|---------|-----------|----------|\n| Up to 30A | 10 AWG | Small loads |\n| Up to 60A | 6 AWG | Controller output |\n| Up to 80A | 4 AWG | Controller (your AmpinVT) |\n| Up to 150A | 2/0 AWG | Inverter |\n| Up to 300A | 4/0 AWG | Large inverter |\n\n**Your AmpinVT 150/80:** Use 4 AWG minimum on battery side, fused at 100A (ANL or MIDI fuse).\n\n**Panel wiring:** Use 10 AWG for each string, rated for outdoor/UV exposure (USE-2 or PV wire)."
+    },
+    {
+      "keywords": [
+        "balance",
+        "equalize",
+        "cell balance",
+        "balancer",
+        "active balancer"
+      ],
+      "title": "Battery Balancing",
+      "content": "**Cell balance** is the difference in voltage between your highest and lowest battery/cell.\n\n**Accu-Solar thresholds:**\n- Normal: spread < 50mV\n- Warning: spread 50–100mV\n- Critical: spread > 100mV\n\n**How to fix imbalance:**\n1. **Passive balancing:** Your BMS does this automatically during charging — just let it run a full charge cycle\n2. **Active balancer:** A $15–30 active balancer board continuously moves energy from high cells to low cells — highly recommended for 8-battery banks\n3. **Manual equalization:** Disconnect the low battery, charge it individually to 14.6V, reconnect\n\n**Prevention:** Always charge all batteries together, never mix old and new batteries in the same bank."
+    },
+    {
+      "keywords": [
+        "temperature",
+        "cold weather",
+        "winter charging",
+        "freeze",
+        "cold"
+      ],
+      "title": "Cold Weather & LiFePO4 Batteries",
+      "content": "**LiFePO4 and cold temperatures:**\n\n- **Discharge:** Safe down to -20°C (-4°F) — just reduced capacity\n- **Charging:** Do NOT charge below 0°C (32°F) — causes permanent lithium plating damage\n\n**Your system at 9°C (48°F):** Currently fine for charging. Watch for overnight temps dropping below freezing.\n\n**Solutions for cold climates:**\n1. **Self-heating BMS:** Some JBD BMS units have a heating pad — check your BMS app\n2. **Insulated enclosure:** Foam insulation around battery bank retains heat from normal operation\n3. **Low-temp cutoff:** Set your BMS to stop charging below 5°C as a safety margin\n\n**Capacity loss:** At 0°C, LiFePO4 delivers ~80% of rated capacity. At -20°C, ~60%."
+    },
+    {
+      "keywords": [
+        "expand",
+        "add battery",
+        "more batteries",
+        "upgrade",
+        "add panels",
+        "more panels"
+      ],
+      "title": "Expanding Your System",
+      "content": "**Adding more batteries:**\n- Add in parallel (same voltage, more Ah)\n- Match chemistry, age, and capacity — never mix old and new LiFePO4\n- Each new battery needs its own BMS or use a shared BMS rated for the full bank\n- Rebalance the bank after adding\n\n**Adding more panels:**\n- The EG4 6000EHV-48 has built-in MPPT rated up to 6000W PV input\n- You can add up to ~20× 300W panels before hitting the EG4's limit\n- Wire additional panels into the same 4S2P config or add a second PV string input\n\n**Upgrading storage:**\n- Add a second 4S2P string (4 more 12V batteries) in parallel with your existing bank\n- Doubles capacity to 53.76 kWh @ 48V"
+    },
+    {
+      "keywords": [
+        "eg4",
+        "eg4 6000",
+        "inverter",
+        "hybrid inverter",
+        "6000ehv",
+        "eg4 inverter"
+      ],
+      "title": "EG4 6000EHV-48 Hybrid Inverter",
+      "content": "**Your inverter: EG4 6000EHV-48**\n\n**Key specs:**\n- Continuous output: 6000W AC\n- Battery voltage: 48V nominal\n- Max PV input: 500V, up to 6000W\n- Built-in MPPT charge controller (replaces external controller)\n- Max charge current: 120A\n- Hybrid: can use solar, battery, and grid simultaneously\n\n**Why this replaces the AmpinVT:**\nThe EG4 has MPPT built in — solar panels connect directly to the EG4's PV terminals. No separate charge controller needed.\n\n**Solar wiring for EG4:**\n- Your 4S2P array: ~74V Voc, ~32A — well within 500V limit ✅\n- Connect MC4 cables from PV disconnect directly to EG4 PV+ and PV−\n\n**First power-up:** Always use a pre-charge resistor (20–30Ω, 10W) across the DC breaker terminals for 10 seconds before flipping the breaker ON. This prevents capacitor inrush damage."
+    },
+    {
+      "keywords": [
+        "48v",
+        "48 volt",
+        "4s2p battery",
+        "series battery",
+        "battery wiring",
+        "rewire"
+      ],
+      "title": "48V Battery Bank Wiring (4S2P)",
+      "content": "**Your 8× 12V 280Ah batteries → 48V 560Ah bank**\n\n**Wiring: 4S2P (4 in series, 2 strings in parallel)**\n\n**String 1 (Batteries 1–4):**\n- Neg 1 → Pos 2 → Neg 2 → Pos 3 → Neg 3 → Pos 4\n- Free ends: Pos 1 (+48V) and Neg 4 (ground)\n- Attach HC02 balancer 5-wire tap across all 4 batteries\n\n**String 2 (Batteries 5–8):**\n- Same series wiring as String 1\n- Attach second HC02 balancer\n\n**Joining at busbars:**\n- Pos 1 and Pos 5 → each through a 150A Class T fuse → Positive busbar\n- Neg 4 and Neg 8 → through 500A shunt → Negative busbar\n- Positive busbar → 150A DC main breaker → EG4 battery positive\n- Negative busbar → EG4 battery negative\n\n**Result:** 48V nominal, 560Ah, 26.88 kWh total, ~21.5 kWh usable"
+    },
+    {
+      "keywords": [
+        "pre-charge",
+        "precharge",
+        "pop",
+        "spark",
+        "inrush",
+        "capacitor",
+        "power up",
+        "first time"
+      ],
+      "title": "Pre-Charge Procedure (No Sparks!)",
+      "content": "**Why pre-charge?** The EG4 inverter has large internal capacitors. Connecting a full battery bank instantly causes a massive inrush current — a loud pop, arc flash, and potential damage.\n\n**Pre-charge resistor:** 20–30 Ohm, 10W (a $2 resistor from Amazon or any electronics store)\n\n**Step-by-step power-up sequence:**\n1. PV Disconnect: **OFF**\n2. DC Main Breaker: **OFF**\n3. Hold the resistor across both studs of the 150A DC Main Breaker (In and Out terminals)\n4. Hold for **10 seconds** — capacitors charge slowly through the resistor\n5. Flip the 150A DC Main Breaker **ON** (EG4 screen lights up silently — no pop)\n6. Flip the 63A PV Disconnect **ON** — solar starts flowing\n7. Press the EG4 power button\n\n**Shutdown sequence (always do this order):**\n1. PV Disconnect **OFF** first\n2. Then DC Main Breaker **OFF**\n3. Never disconnect battery while solar is charging — arcing will damage terminals"
+    },
+    {
+      "keywords": [
+        "hc02",
+        "balancer",
+        "equalizer",
+        "battery equalizer",
+        "active balancer",
+        "cell equalizer"
+      ],
+      "title": "HC02 Battery Equalizer / Balancer",
+      "content": "**HC02 48V Battery Equalizer**\n\nThe HC02 actively moves energy between cells in a series string to keep all batteries at equal voltage — critical for long battery life in a 4S configuration.\n\n**Wiring (5-wire tap):**\n- Wire 1 → Negative terminal of Battery 1 (system ground of string)\n- Wire 2 → Junction between Battery 1 and 2\n- Wire 3 → Junction between Battery 2 and 3\n- Wire 4 → Junction between Battery 3 and 4\n- Wire 5 → Positive terminal of Battery 4 (top of string)\n\n**One HC02 per string** — you need 2 total for your 4S2P bank.\n\n**When it works:** Continuously while the bank is connected. No on/off switch needed.\n\n**Target spread:** < 50mV between batteries. HC02 will correct up to ~200mV imbalance.\n\n**LED indicators:** Green = balancing active, Red = fault (check connections)"
+    },
+    {
+      "keywords": [
+        "safety",
+        "sequence",
+        "shutdown",
+        "startup",
+        "power up",
+        "power down"
+      ],
+      "title": "Safety Sequence for Startup and Shutdown",
+      "content": "**Startup sequence:**\n1. PV Disconnect: **OFF**\n2. DC Main Breaker: **OFF**\n3. Pre-charge resistor: **ON** (10 seconds)\n4. 150A DC Main Breaker: **ON**\n5. 63A PV Disconnect: **ON**\n6. Press the EG4 power button\n\n**Shutdown sequence:**\n1. PV Disconnect: **OFF**\n2. 150A DC Main Breaker: **OFF**\n3. Never disconnect battery while solar is charging — arcing will damage terminals"
+    }
+  ],
+  "systemContext": "This is a real off-grid solar installation upgrading to 48V. The owner has 8x ECO-Worthy 12V 280Ah LiFePO4 batteries being rewired 4S2P for 48V/560Ah. The inverter is an EG4 6000EHV-48 hybrid with built-in MPPT. Solar is 8x 300W panels in 4S2P (~74V Voc, ~32A). Live BMS telemetry is connected via Bluetooth and MQTT. The system is actively running with real data visible in all dashboard tabs."
+}

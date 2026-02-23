@@ -9,9 +9,29 @@ interface Message {
   content: string;
 }
 
+interface KnowledgeTopic {
+  keywords: string[];
+  title: string;
+  content: string;
+}
+
+interface ExternalKnowledge {
+  topics: KnowledgeTopic[];
+  systemContext?: string;
+}
+
 // Built-in knowledge base for solar setup assistance
-function getLocalAnswer(question: string, systemContext: string): string | null {
+function getLocalAnswer(question: string, systemContext: string, external?: ExternalKnowledge): string | null {
   const q = question.toLowerCase();
+
+  // Check external knowledge file first
+  if (external?.topics) {
+    for (const topic of external.topics) {
+      if (topic.keywords.some(kw => q.includes(kw.toLowerCase()))) {
+        return `**${topic.title}**\n\n${topic.content}`;
+      }
+    }
+  }
 
   if (q.includes('tilt') || q.includes('angle') || q.includes('panel angle')) {
     return `**Optimal Panel Tilt by Season:**
@@ -120,11 +140,117 @@ Shading is the #1 cause of underperformance. With series wiring, **one shaded ce
 **Rule:** No shade on panels from 9am–3pm solar time.`;
   }
 
+  if (q.includes('bluetooth') || q.includes('ble') || q.includes('bms') || q.includes('live data') || q.includes('real data') || q.includes('connect batter') || q.includes('telemetry')) {
+    return `**Connecting Your Batteries via Bluetooth (BLE → MQTT)**
+
+Your ECO-Worthy 280Ah batteries use a **JBD BMS** (device name: DP04S007L4S200A) with built-in BLE.
+
+**Quick setup on your PC:**
+
+1. Install deps:
+\`pip install bleak paho-mqtt\`
+
+2. Install Mosquitto broker:
+\`winget install mosquitto\`
+
+3. Scan for your batteries:
+\`python scripts/eco_worthy_bridge.py scan\`
+
+4. Run the bridge:
+\`$env:BMS_ADDRESS = "AA:BB:CC:DD:EE:FF"\`
+\`python scripts/eco_worthy_bridge.py\`
+
+5. Connect Accu-Solar:
+**Settings tab → AmpinVT MQTT → Broker: localhost → Port: 1883 → Save**
+
+**Live data you get:** Voltage, current, SoC%, power (W), temperature (°C), cycle count, individual cell voltages, cell balance health.
+
+**Batteries far away?** A Raspberry Pi Zero 2W (~$15) sits next to the batteries and forwards data over WiFi. Full guide in \`BMS-SETUP.md\`.
+
+**BLE range:** ~10 feet. Pi Zero 2W eliminates this limitation entirely.`;
+  }
+
+  if (q.includes('clipping') || q.includes('curtailment') || q.includes('wasted') || q.includes('second controller')) {
+    return `**Solar Clipping — What It Is & How to Fix It**
+
+Clipping happens when your panels produce more power than your controller can pass through.
+
+**Your situation:**
+- Array peak: 2,400W
+- AmpinVT 150/80 max output: 80A × 14.4V = **1,152W**
+- Potential clip: ~1,248W lost on peak sunny days
+
+**Solutions:**
+1. **Add a second AmpinVT 150/80** (~$120) — wire half your panels to each controller. Doubles throughput to 2,304W. Best ROI.
+2. **Reduce string voltage** — rewire from 4S2P to 2S4P. Lower voltage = more current headroom. Tradeoff: higher wire losses.
+3. **Upgrade to a higher-amp controller** — e.g. 150/100 or 150/120. More expensive but single unit.
+
+**Is clipping bad?** Not harmful to equipment. Just wasted potential. On partly cloudy days you rarely hit the clip point anyway — it only matters on clear peak-sun hours.
+
+**Rule of thumb:** If you're clipping >20% regularly, a second controller pays for itself in 1–2 years.`;
+  }
+
+  if (q.includes('raspberry pi') || q.includes('pi zero') || q.includes('remote') || q.includes('garage') || q.includes('shed')) {
+    return `**Raspberry Pi Zero 2W — BMS Bridge for Remote Batteries**
+
+Use a Pi when your batteries are in a garage/shed beyond PC Bluetooth range (~10 feet).
+
+**What to buy (~$31 total):**
+- Pi Zero 2W — $15 (has built-in BLE + WiFi)
+- MicroSD 16GB (Samsung Endurance) — $8
+- 5V 2A micro USB power supply — $8
+
+**Where to buy:** rpilocator.com (stock tracker), Adafruit, Vilros, PiShop.us
+
+**Do NOT buy:** Pi Zero (original, no W) — it has no WiFi or BLE.
+
+**Setup summary:**
+1. Flash Raspberry Pi OS Lite (64-bit) via Pi Imager — set WiFi + SSH in settings
+2. SSH in: \`ssh pi@bms-bridge.local\`
+3. Install: \`pip install bleak paho-mqtt\`
+4. Copy bridge script via \`scp\`
+5. Set \`MQTT_BROKER\` to your PC's IP (192.168.8.152)
+6. Enable auto-start via systemd service
+
+**Power draw:** ~0.8W running — less than a night light (~$0.07/month).
+
+**Full step-by-step guide:** See \`BMS-SETUP.md\` in the accu-solar project root.`;
+  }
+
+  if (q.includes('mqtt') || q.includes('mosquitto') || q.includes('broker')) {
+    return `**MQTT & Mosquitto — How It Works in Accu-Solar**
+
+MQTT is a lightweight messaging protocol. Mosquitto is the broker (server) that routes messages.
+
+**Architecture:**
+\`Battery BMS → bridge script → Mosquitto → Accu-Solar\`
+
+**Install Mosquitto (Windows):**
+\`winget install mosquitto\`
+It runs as a Windows service automatically on port 1883.
+
+**Topics published by the bridge:**
+- \`accusolar/battery/voltage\` — pack voltage (V)
+- \`accusolar/battery/soc\` — state of charge (%)
+- \`accusolar/battery/current\` — current (A)
+- \`accusolar/battery/power\` — power (W)
+- \`accusolar/battery/temperature\` — temp (°C)
+- \`accusolar/battery/cells\` — JSON array of cell voltages
+- \`accusolar/system/health\` — Normal / Warning / Critical
+
+**Connect Accu-Solar:**
+Settings tab → AmpinVT MQTT → Broker: \`localhost\` → Port: \`1883\` → Save
+
+**Verify messages are flowing:**
+\`mosquitto_sub -h localhost -t "accusolar/#" -v\``;
+  }
+
   return null;
 }
 
 export default function AITab() {
   const { data } = useSolar();
+  const [externalKnowledge, setExternalKnowledge] = useState<ExternalKnowledge | undefined>(undefined);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
@@ -142,6 +268,13 @@ Ask me about panel tilt angles by season, wiring configurations, battery care, e
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    fetch('/ai-knowledge.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setExternalKnowledge(d); })
+      .catch(() => { });
+  }, []);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -155,7 +288,7 @@ Ask me about panel tilt angles by season, wiring configurations, battery care, e
     setLoading(true);
 
     // Try local knowledge base first
-    const localAnswer = getLocalAnswer(userMsg, systemContext);
+    const localAnswer = getLocalAnswer(userMsg, systemContext, externalKnowledge);
     if (localAnswer) {
       setTimeout(() => {
         setMessages(prev => [...prev, { role: 'assistant', content: localAnswer }]);
@@ -174,7 +307,21 @@ Ask me about panel tilt angles by season, wiring configurations, battery care, e
           body: JSON.stringify({
             model: 'gpt-4o-mini',
             messages: [
-              { role: 'system', content: `You are a solar energy expert assistant. ${systemContext} Help users maximize solar production, optimize panel placement, configure their system, and troubleshoot issues. Be concise and practical.` },
+              {
+                role: 'system', content: `You are a solar energy expert assistant for the Accu-Solar app. ${systemContext}
+
+SYSTEM KNOWLEDGE:
+- Batteries: 8× ECO-Worthy 12V 280Ah LiFePO4. Each has a JBD BMS with built-in BLE (device name: DP04S007L4S200A).
+- BLE UUIDs: service 0000ff00, TX notify ff01, RX write ff02. JBD protocol (0xDD frames, 0x77 terminator).
+- Bridge script: scripts/eco_worthy_bridge.py reads BMS via bleak, publishes to MQTT (topics: accusolar/battery/voltage, current, soc, power, temperature, cells, accusolar/system/health).
+- MQTT broker: Mosquitto on localhost:1883 (winget install mosquitto). Accu-Solar connects via Controls tab → AmpinVT MQTT.
+- For remote batteries: Raspberry Pi Zero 2W (~$15, built-in BLE+WiFi) runs the bridge script next to the batteries, publishes to PC's MQTT broker over WiFi.
+- Clipping: AmpinVT 150/80 max output is 1152W (80A × 14.4V). With 2400W array, up to 1248W can be clipped on peak days. Fix: add second controller or upgrade to 150/100.
+- Cell health: spread >100mV = Critical, 50-100mV = Warning, <50mV = Normal.
+
+Help users with: panel tilt, wiring, battery care, BLE/MQTT setup, Raspberry Pi bridge, clipping, production estimates, troubleshooting. Be concise and practical.
+${externalKnowledge?.systemContext ? `\nADDITIONAL CONTEXT: ${externalKnowledge.systemContext}` : ''}`
+              },
               ...messages.map(m => ({ role: m.role, content: m.content })),
               { role: 'user', content: userMsg },
             ],
@@ -201,6 +348,10 @@ Ask me about panel tilt angles by season, wiring configurations, battery care, e
     'How do I care for my batteries?',
     'How much will I generate daily?',
     'How does shading affect my array?',
+    'How do I connect my batteries via Bluetooth?',
+    'What is solar clipping and how do I fix it?',
+    'How do I set up a Raspberry Pi for remote batteries?',
+    'How does MQTT work with Accu-Solar?',
   ];
 
   // Simple markdown-like renderer
@@ -266,8 +417,8 @@ Ask me about panel tilt angles by season, wiring configurations, battery care, e
                 </div>
               )}
               <div className={`max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed ${msg.role === 'user'
-                  ? 'bg-blue-900/40 border border-blue-700/40 text-blue-100'
-                  : 'bg-slate-800 border border-slate-700'
+                ? 'bg-blue-900/40 border border-blue-700/40 text-blue-100'
+                : 'bg-slate-800 border border-slate-700'
                 }`}>
                 {renderContent(msg.content)}
               </div>

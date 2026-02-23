@@ -61,13 +61,13 @@ export default function AccuSolarApp() {
             <div className="flex items-center gap-1.5">
               <Sun className="w-3.5 h-3.5 text-amber-400" />
               <span className="text-slate-400">Solar</span>
-              <span className="font-semibold text-amber-400 tabular-nums">{(data.solarPowerW / 1000).toFixed(2)} kW</span>
+              <span suppressHydrationWarning className="font-semibold text-amber-400 tabular-nums">{(data.solarPowerW / 1000).toFixed(2)} kW</span>
             </div>
             <div className="w-px h-4 bg-slate-700" />
             <div className="flex items-center gap-1.5">
               <Battery className="w-3.5 h-3.5 text-blue-400" />
               <span className="text-slate-400">Batt</span>
-              <span className={`font-semibold tabular-nums ${data.batterySoc < 20 ? 'text-rose-400' : data.batterySoc < 40 ? 'text-amber-400' : 'text-blue-400'}`}>
+              <span suppressHydrationWarning className={`font-semibold tabular-nums ${data.batterySoc < 20 ? 'text-rose-400' : data.batterySoc < 40 ? 'text-amber-400' : 'text-blue-400'}`}>
                 {Math.round(data.batterySoc)}%
               </span>
             </div>
@@ -75,7 +75,7 @@ export default function AccuSolarApp() {
             <div className="flex items-center gap-1.5">
               <Zap className="w-3.5 h-3.5 text-purple-400" />
               <span className="text-slate-400">Load</span>
-              <span className="font-semibold text-purple-400 tabular-nums">{(data.loadPowerW / 1000).toFixed(2)} kW</span>
+              <span suppressHydrationWarning className="font-semibold text-purple-400 tabular-nums">{(data.loadPowerW / 1000).toFixed(2)} kW</span>
             </div>
           </div>
 
