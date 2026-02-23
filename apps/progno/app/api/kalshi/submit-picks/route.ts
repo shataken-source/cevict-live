@@ -122,18 +122,27 @@ async function findMarketForPick(pick: any): Promise<any | null> {
 
       const headers = buildAuthHeaders('GET', path)
       const res = await fetch(`${KALSHI_BASE}${path}`, { headers })
-      if (!res.ok) break
+      if (!res.ok) {
+        console.log(`[DEBUG] Page ${page} fetch failed: ${res.status}`)
+        break
+      }
 
       const data = await res.json()
       const markets = data.markets || []
       allMarkets.push(...markets)
 
+      console.log(`[DEBUG] Page ${page}: fetched ${markets.length} markets, total so far: ${allMarkets.length}`)
+      console.log(`[DEBUG] Cursor in response:`, data.cursor)
+
       // Check if there are more pages
       cursor = data.cursor
-      if (!cursor || markets.length === 0) break
+      if (!cursor || markets.length === 0) {
+        console.log(`[DEBUG] Stopping pagination: cursor=${cursor}, markets.length=${markets.length}`)
+        break
+      }
     }
 
-    console.log(`[DEBUG] Fetched ${allMarkets.length} total markets across ${allMarkets.length / 1000} pages`)
+    console.log(`[DEBUG] Final: Fetched ${allMarkets.length} total markets`)
 
     // Debug: Log first few market titles for NBA games
     if (sport === 'NBA') {
