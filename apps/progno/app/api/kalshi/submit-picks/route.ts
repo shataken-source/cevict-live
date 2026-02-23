@@ -199,13 +199,11 @@ async function findMarketForPick(pick: any): Promise<any | null> {
     }
 
     console.log(`[DEBUG] Final: Fetched ${allMarkets.length} total markets`)
+    console.log(`[DEBUG] Searching for ${sport} ${pickType} pick: ${pickTeam} (${homeTeam} vs ${awayTeam})`)
 
-    // Debug: Log first few market titles for NBA games
-    if (sport === 'NBA') {
-      console.log(`[DEBUG] Looking for ${homeTeam} vs ${awayTeam}`)
-      const sampleMarkets = allMarkets.slice(0, 10).map(m => ({ title: m.title, ticker: m.ticker }))
-      console.log(`[DEBUG] Sample markets:`, JSON.stringify(sampleMarkets, null, 2))
-    }
+    // Log first 5 markets to see what we're working with
+    const sampleMarkets = allMarkets.slice(0, 5).map(m => ({ title: m.title, ticker: m.ticker, status: m.status }))
+    console.log(`[DEBUG] Sample markets:`, JSON.stringify(sampleMarkets, null, 2))
 
     // Find a market matching the pick (using EliteTeamMatcher)
     const match = allMarkets.find((m: any) => {
@@ -231,8 +229,12 @@ async function findMarketForPick(pick: any): Promise<any | null> {
       // Skip prop markets (First Half, Quarter, etc.)
       if (/First Half|1st Half|Quarter|Period|Inning/i.test(title)) return false
 
+      // Debug logging for each market check
+      let debugReason = ''
+
       // Match based on pick type
       if (pickType === 'SPREAD') {
+        debugReason = 'Checking SPREAD'
         // For spread picks, find spread markets with the line
         const isSpreadMarket = titleLower.includes('wins by over') || titleLower.includes('wins by under') ||
           titleLower.includes('spread') || titleLower.includes('cover')
@@ -248,7 +250,14 @@ async function findMarketForPick(pick: any): Promise<any | null> {
         // Spread markets like "Grambling St. wins by over 16.5 Points" only mention one team
         const pickNorm = normalize(pickTeam)
         const titleNorm = normalize(title)
-        return titleNorm.includes(pickNorm) || pickNorm.split(' ').some(word => word.length >= 4 && titleNorm.includes(word))
+        const matches = titleNorm.includes(pickNorm) || pickNorm.split(' ').some(word => word.length >= 4 && titleNorm.includes(word))
+
+        if (sport === 'NCAAB' && matches) {
+          console.log(`[DEBUG] SPREAD MATCH FOUND: ${title}`)
+          console.log(`[DEBUG]   pickNorm: ${pickNorm}, titleNorm: ${titleNorm}`)
+        }
+
+        return matches
       } else if (pickType === 'MONEYLINE') {
         // For moneyline, skip spread/total markets
         if (titleLower.includes('spread') || titleLower.includes('total') ||
@@ -258,6 +267,12 @@ async function findMarketForPick(pick: any): Promise<any | null> {
 
         // Use elite matching to check if both teams match
         const teamMatch = eliteMatch(homeTeam, awayTeam, title)
+
+        if (sport === 'NBA' && teamMatch.confidence > 0.5) {
+          console.log(`[DEBUG] MONEYLINE check: ${title}`)
+          console.log(`[DEBUG]   confidence: ${teamMatch.confidence.toFixed(2)}, isMatch: ${teamMatch.isMatch}`)
+        }
+
         return teamMatch.isMatch && teamMatch.confidence > 0.7
       } else if (pickType === 'TOTAL') {
         // For total picks, find over/under markets
@@ -273,8 +288,20 @@ async function findMarketForPick(pick: any): Promise<any | null> {
       return false
     })
 
-    if (sport === 'NCAAB' || sport === 'NBA') {
-      console.log(`[DEBUG] ${pickType} pick for ${pickTeam}:`, match ? match.title : 'NO MATCH')
+    console.log(`[DEBUG] ${sport} ${pickType} pick for ${pickTeam}:`, match ? `MATCHED: ${match.title}` : 'NO MATCH')
+
+    if (!match && allMarkets.length > 0) {
+      console.log(`[DEBUG] No match found. Checked ${allMarkets.length} markets.`)
+      // Show a few markets that might be close
+      const closeMatches = allMarkets.filter(m => {
+        const title = String(m.title || '').toLowerCase()
+        return title.includes(homeTeam.toLowerCase().split(' ')[0]) ||
+          title.includes(awayTeam.toLowerCase().split(' ')[0]) ||
+          title.includes(pickTeam.toLowerCase().split(' ')[0])
+      }).slice(0, 3)
+      if (closeMatches.length > 0) {
+        console.log(`[DEBUG] Possible close matches:`, closeMatches.map(m => m.title))
+      }
     }
 
     return match || null
