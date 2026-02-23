@@ -5,8 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import fs from 'node:fs'
-import path from 'node:path'
+import { loadPredictionsSnapshot } from '@/app/lib/early-lines'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -37,44 +36,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const appRoot = process.cwd()
-    const earlyPath = path.join(appRoot, `predictions-early-${earlyDate}.json`)
-    const regularPath = path.join(appRoot, `predictions-${regularDate}.json`)
-
-    function listPredictionFiles(): string[] {
-      try {
-        const names = fs.readdirSync(appRoot)
-        return names.filter(
-          (n) => n.startsWith('predictions-') && n.endsWith('.json')
-        ).sort()
-      } catch {
-        return []
-      }
+    const earlyData = await loadPredictionsSnapshot(earlyDate, true)
+    const regularData = await loadPredictionsSnapshot(regularDate, false)
+    if (!earlyData) {
+      return NextResponse.json({ success: false, error: `Early file not found: predictions-early-${earlyDate}.json` }, { status: 404 })
     }
-
-    const availableFiles = listPredictionFiles()
-
-    if (!fs.existsSync(earlyPath)) {
-      return NextResponse.json({
-        success: false,
-        error: `Early file not found: predictions-early-${earlyDate}.json`,
-        path: earlyPath,
-        availableFiles,
-        hint: availableFiles.length ? 'Use a date that matches an existing file (e.g. predictions-early-2026-02-05.json → Early date 2026-02-05).' : 'Run "Get predictions" with Early lines first.',
-      }, { status: 404 })
+    if (!regularData) {
+      return NextResponse.json({ success: false, error: `Regular file not found: predictions-${regularDate}.json` }, { status: 404 })
     }
-    if (!fs.existsSync(regularPath)) {
-      return NextResponse.json({
-        success: false,
-        error: `Regular file not found: predictions-${regularDate}.json`,
-        path: regularPath,
-        availableFiles,
-        hint: availableFiles.length ? 'Use a date that matches an existing file (e.g. predictions-2026-02-05.json → Regular date 2026-02-05).' : 'Run "Get predictions" with Regular (0–2 days) first.',
-      }, { status: 404 })
-    }
-
-    const earlyData = JSON.parse(fs.readFileSync(earlyPath, 'utf8'))
-    const regularData = JSON.parse(fs.readFileSync(regularPath, 'utf8'))
     const earlyPicks = Array.isArray(earlyData.picks) ? earlyData.picks : []
     const regularPicks = Array.isArray(regularData.picks) ? regularData.picks : []
 

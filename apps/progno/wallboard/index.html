@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CEVICT Command Center</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <div id="app-wrapper">
+
+    <!-- TOP TICKER BAR -->
+    <div class="ticker-bar">
+      <div class="ticker-label">LIVE</div>
+      <div class="ticker-track">
+        <div class="ticker-scroll" id="tickerScroll"></div>
+      </div>
+      <div class="ticker-right">
+        <span id="clockDisplay" class="clock"></span>
+        <span id="streamStatus" class="stream-dot disconnected"></span>
+      </div>
+    </div>
+
+    <!-- MAIN 3-COLUMN LAYOUT -->
+    <div class="main-grid">
+
+      <!-- LEFT: BANKROLL + MY PICKS -->
+      <div class="col-left">
+
+        <!-- BANKROLL WIDGET -->
+        <div class="panel bankroll-widget">
+          <div class="bk-label">BANKROLL</div>
+          <div class="bk-value" id="bankrollValue">$100,000</div>
+          <div class="bk-stats">
+            <div class="bk-stat">
+              <div class="bk-stat-label">TODAY P/L</div>
+              <div class="bk-stat-value green" id="todayPnl">+$0</div>
+            </div>
+            <div class="bk-stat">
+              <div class="bk-stat-label">TOTAL STAKE</div>
+              <div class="bk-stat-value" id="exposure">$0</div>
+            </div>
+            <div class="bk-stat">
+              <div class="bk-stat-label">WIN RATE</div>
+              <div class="bk-stat-value cyan" id="winRate">--%</div>
+            </div>
+          </div>
+          <div class="risk-bar">
+            <div class="risk-fill" id="riskFill"></div>
+          </div>
+          <div class="risk-label" id="riskLabel">RISK: LOW</div>
+        </div>
+
+        <!-- MY PICKS / POSITIONS -->
+        <div class="panel picks-panel">
+          <div class="panel-header">
+            <span class="panel-title">MY PICKS</span>
+            <span class="badge-count" id="picksCount">0</span>
+          </div>
+          <div id="picksList" class="picks-list"></div>
+        </div>
+
+        <!-- ROTATING STATS -->
+        <div class="panel stats-panel">
+          <div class="panel-header">
+            <span class="panel-title">PERFORMANCE</span>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-tile">
+              <div class="stat-tile-label">ROI</div>
+              <div class="stat-tile-value green" id="statROI">0.0%</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-tile-label">AVG EDGE</div>
+              <div class="stat-tile-value cyan" id="statAvgEdge">--%</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-tile-label">OPEN BETS</div>
+              <div class="stat-tile-value" id="statOpenBets">0</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-tile-label">RECORD</div>
+              <div class="stat-tile-value" id="statRecord">0-0</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CENTER: PRIMARY GAME FOCUS -->
+      <div class="col-center">
+
+        <!-- SELECTED GAME HERO -->
+        <div class="panel game-hero">
+          <div class="game-hero-header">
+            <span class="sport-badge" id="gameSport">NBA</span>
+            <span class="game-status" id="gameStatus">LIVE</span>
+            <span class="game-clock" id="gameClock">Q3 4:22</span>
+          </div>
+
+          <div class="scoreboard">
+            <div class="team-block away">
+              <div class="team-abbr" id="awayAbbr">AWAY</div>
+              <div class="team-score away-score" id="awayScore">0</div>
+              <div class="team-record" id="awayRecord"></div>
+            </div>
+            <div class="score-divider">
+              <div class="vs-text">VS</div>
+              <div class="game-period" id="gamePeriod">—</div>
+            </div>
+            <div class="team-block home">
+              <div class="team-abbr" id="homeAbbr">HOME</div>
+              <div class="team-score home-score" id="homeScore">0</div>
+              <div class="team-record" id="homeRecord"></div>
+            </div>
+          </div>
+
+          <!-- MOMENTUM BAR -->
+          <div class="momentum-section">
+            <span class="momentum-team" id="momentumAway">AWAY</span>
+            <div class="momentum-bar">
+              <div class="momentum-fill" id="momentumFill"></div>
+              <div class="momentum-marker" id="momentumMarker"></div>
+            </div>
+            <span class="momentum-team" id="momentumHome">HOME</span>
+          </div>
+
+          <!-- WIN PROBABILITY -->
+          <div class="win-prob-section">
+            <div class="win-prob-block">
+              <div class="win-prob-pct away-color" id="awayWinPct">50%</div>
+              <div class="win-prob-label">WIN PROB</div>
+              <div class="win-prob-pct home-color" id="homeWinPct">50%</div>
+            </div>
+            <div class="prob-bar-wrap">
+              <div class="prob-bar">
+                <div class="prob-fill" id="probFill"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EDGE MODULE -->
+        <div class="panel edge-panel" id="edgePanel">
+          <div class="panel-header">
+            <span class="panel-title">EDGE ANALYSIS</span>
+            <span class="edge-badge" id="edgeBadge">--</span>
+          </div>
+          <div class="edge-grid">
+            <div class="edge-item">
+              <div class="edge-item-label">MODEL PROB</div>
+              <div class="edge-item-value cyan" id="modelProb">--%</div>
+            </div>
+            <div class="edge-item">
+              <div class="edge-item-label">MARKET PROB</div>
+              <div class="edge-item-value" id="marketProb">--%</div>
+            </div>
+            <div class="edge-item">
+              <div class="edge-item-label">EDGE</div>
+              <div class="edge-item-value large" id="edgeValue">--%</div>
+            </div>
+            <div class="edge-item">
+              <div class="edge-item-label">CONFIDENCE</div>
+              <div class="edge-item-value" id="confidenceValue">--%</div>
+            </div>
+          </div>
+          <div class="edge-meter-wrap">
+            <div class="edge-meter">
+              <div class="edge-meter-fill" id="edgeMeterFill"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ALERTS FEED -->
+        <div class="panel alerts-panel">
+          <div class="panel-header">
+            <span class="panel-title">ALERTS</span>
+            <span class="badge-count red" id="alertCount">0</span>
+          </div>
+          <div id="alertsFeed" class="alerts-feed"></div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: INTEL PANEL -->
+      <div class="col-right">
+
+        <!-- MY POSITION ON THIS GAME -->
+        <div class="panel position-panel" id="positionPanel">
+          <div class="panel-header">
+            <span class="panel-title">MY POSITION</span>
+            <span class="position-pick" id="positionPick">—</span>
+          </div>
+          <div class="position-details" id="positionDetails">
+            <div class="pos-row">
+              <span class="pos-label">ENTRY</span>
+              <span class="pos-value" id="posEntry">—</span>
+            </div>
+            <div class="pos-row">
+              <span class="pos-label">STAKE</span>
+              <span class="pos-value" id="posStake">—</span>
+            </div>
+            <div class="pos-row">
+              <span class="pos-label">LIVE EV</span>
+              <span class="pos-value green" id="posLiveEv">—</span>
+            </div>
+            <div class="pos-row large">
+              <span class="pos-label">IF WINS</span>
+              <span class="pos-value green" id="posIfWins">—</span>
+            </div>
+          </div>
+          <div class="no-position" id="noPosition">No open position on this game</div>
+        </div>
+
+        <!-- INTEL ROTATOR: WEATHER / INJURIES / TRENDS -->
+        <div class="panel intel-panel">
+          <div class="panel-header">
+            <span class="panel-title" id="intelTitle">WEATHER</span>
+          </div>
+          <div class="intel-content" id="intelContent"></div>
+        </div>
+
+        <!-- SHARP ACTION / STEAM DETECTOR -->
+        <div class="panel steam-panel">
+          <div class="panel-header">
+            <span class="panel-title">SHARP ACTION</span>
+            <span class="steam-indicator" id="steamIndicator">QUIET</span>
+          </div>
+          <div id="steamFeed" class="steam-feed"></div>
+        </div>
+
+        <!-- KEYBOARD SHORTCUTS -->
+        <div class="panel shortcuts-panel">
+          <div class="shortcuts-grid">
+            <div class="shortcut btn-shortcut" onclick="toggleFullscreen()"><kbd>F</kbd> Fullscreen</div>
+            <div class="shortcut btn-shortcut" id="muteBtn" onclick="toggleMute()"><kbd>M</kbd> Mute</div>
+            <div class="shortcut btn-shortcut" onclick="reloadPicks()"><kbd>L</kbd> Load Picks</div>
+            <div class="shortcut btn-shortcut" onclick="pushAlert('yellow','Test Alert','Alert system working')">
+              <kbd>T</kbd> Test Alert
+            </div>
+            <div class="shortcut btn-shortcut btn-nav" onclick="prevPick()">&#9664; Prev Pick</div>
+            <div class="shortcut btn-shortcut btn-nav" onclick="nextPick()">Next Pick &#9654;</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- end app-wrapper -->
+
+  <audio id="cheerSound" preload="auto" src="crowd-cheer.mp3"></audio>
+  <audio id="booSound" preload="auto" src="croed-disappointment.mp3"></audio>
+
+  <script>
+    function fixZoom() {
+      // Detect browser zoom by comparing screen width to window inner width
+      // On a TV at 150% zoom, window.innerWidth will be 2/3 of screen.width
+      const ratio = window.devicePixelRatio || 1;
+      const zoom = Math.round((window.outerWidth / window.innerWidth) * 100) / 100;
+      // If zoom > 1 (browser is zoomed in), scale font down proportionally
+      const base = 1.1; // vw units
+      const adjusted = base / (zoom > 1.05 ? zoom : 1);
+      const pct = Math.max(0.6, Math.min(adjusted, 1.4));
+      document.documentElement.style.fontSize = pct + 'vw';
+    }
+    fixZoom();
+    window.addEventListener('resize', fixZoom);
+  </script>
+  <script src="app.js"></script>
+</body>
+
+</html>

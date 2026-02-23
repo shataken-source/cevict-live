@@ -32,7 +32,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  // Use CST timezone (UTC-6) for date calculation
+  const now = new Date()
+  const cstOffset = -6 * 60 // CST is UTC-6
+  const cstDate = new Date(now.getTime() + (cstOffset * 60 * 1000))
+  const today = cstDate.toISOString().split('T')[0]
+
   const baseUrl = getBaseUrl()
   const urlObj = request.url ? new URL(request.url) : null
   const earlyLines = urlObj?.searchParams?.get('earlyLines') === '1' || urlObj?.searchParams?.get('earlyLines') === 'true'
@@ -118,6 +123,7 @@ export async function GET(request: Request) {
           game_id: p.game_id || p.id || null,
           game_date: runDate,
           game_time: p.commence_time || null,   // verify-results cron reads this
+          game_matchup: p.game_matchup || `${p.away_team} @ ${p.home_team}`,
           home_team: p.home_team,
           away_team: p.away_team,
           sport: (p.sport || 'unknown').toLowerCase(),
@@ -142,7 +148,7 @@ export async function GET(request: Request) {
           console.log(`[CRON daily-predictions] Persisted ${pickRows.length} picks to Supabase`)
         }
 
-        // Store predictions JSON in Supabase Storage instead of filesystem
+        // Store predictions JSON in Supabase Storage
         const jsonContent = JSON.stringify(payload, null, 2)
         const { error: _storErr } = await _sb.storage
           .from('predictions')
@@ -154,6 +160,17 @@ export async function GET(request: Request) {
           console.warn(`[CRON daily-predictions] Supabase Storage upload:`, _storErr.message)
         } else {
           console.log(`[CRON daily-predictions] Uploaded ${fileName} to Supabase Storage`)
+        }
+
+        // Also write to local filesystem for other tooling
+        try {
+          const { writeFileSync } = await import('fs')
+          const { join } = await import('path')
+          const localPath = join(process.cwd(), fileName)
+          writeFileSync(localPath, jsonContent, 'utf8')
+          console.log(`[CRON daily-predictions] Wrote local file: ${localPath}`)
+        } catch (_fsErr: any) {
+          console.warn(`[CRON daily-predictions] Local file write failed:`, _fsErr?.message)
         }
       } catch (_e: any) {
         console.warn(`[CRON daily-predictions] Supabase picks write skipped:`, _e?.message)

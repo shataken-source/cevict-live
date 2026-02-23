@@ -9,7 +9,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
 
-const CRON_JOBS = ['daily-predictions', 'daily-results'] as const
+const CRON_JOBS = ['daily-predictions', 'daily-results', 'daily-kalshi'] as const
 
 function getBaseUrl(): string {
   if (process.env.CRON_APP_URL) return process.env.CRON_APP_URL.replace(/\/$/, '')

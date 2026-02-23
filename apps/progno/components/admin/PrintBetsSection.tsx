@@ -9,6 +9,7 @@ interface Pick {
   away_team: string;
   pick: string;
   pick_type: string;
+  recommended_line?: number;
   odds: number;
   confidence: number;
   game_time: string;
@@ -72,9 +73,9 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
 
     const formatDate = (dateStr: string) => {
       const d = new Date(dateStr);
-      return d.toLocaleDateString('en-US', { 
-        weekday: 'short', 
-        month: 'short', 
+      return d.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
         day: 'numeric',
         year: 'numeric'
       });
@@ -82,8 +83,8 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
 
     const formatTime = (timeStr: string) => {
       const d = new Date(timeStr);
-      return d.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
+      return d.toLocaleTimeString('en-US', {
+        hour: 'numeric',
         minute: '2-digit',
         timeZoneName: 'short'
       });
@@ -105,29 +106,29 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
       body { background: white; }
     }
     * { box-sizing: border-box; }
-    body { 
-      font-family: 'Segoe UI', Arial, sans-serif; 
-      margin: 0; 
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
       padding: 20px;
       background: #f5f5f5;
     }
-    .container { 
-      max-width: 800px; 
-      margin: 0 auto; 
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
       background: white;
       padding: 30px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-    .header { 
-      text-align: center; 
-      border-bottom: 3px solid #333; 
-      padding-bottom: 15px; 
+    .header {
+      text-align: center;
+      border-bottom: 3px solid #333;
+      padding-bottom: 15px;
       margin-bottom: 20px;
     }
     .header h1 { margin: 0; font-size: 28px; }
-    .header .date { 
-      font-size: 16px; 
-      color: #666; 
+    .header .date {
+      font-size: 16px;
+      color: #666;
       margin-top: 5px;
     }
     .summary {
@@ -208,7 +209,7 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
     .confidence-high { color: #28a745; }
     .confidence-medium { color: #ffc107; }
     .confidence-low { color: #dc3545; }
-    
+
     .checkbox-section {
       display: flex;
       gap: 30px;
@@ -232,7 +233,7 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
       font-size: 14px;
       font-weight: bold;
     }
-    
+
     .notes-section {
       margin-top: 10px;
     }
@@ -246,7 +247,7 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
       height: 20px;
       margin-bottom: 5px;
     }
-    
+
     .score-prediction {
       background: #f0f4f8;
       padding: 8px 12px;
@@ -254,20 +255,20 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
       font-size: 13px;
       margin-top: 8px;
     }
-    
+
     .totals-section {
       margin-top: 8px;
       font-size: 13px;
       color: #555;
     }
-    
+
     .totals-highlight {
       background: #fff3cd;
       padding: 2px 6px;
       border-radius: 3px;
       font-weight: bold;
     }
-    
+
     .print-btn {
       display: block;
       width: 100%;
@@ -284,7 +285,7 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
     .print-btn:hover {
       background: #0051a8;
     }
-    
+
     .footer {
       margin-top: 30px;
       padding-top: 20px;
@@ -293,7 +294,7 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
       font-size: 12px;
       color: #666;
     }
-    
+
     .daily-summary-table {
       width: 100%;
       border-collapse: collapse;
@@ -321,7 +322,7 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
       <h1>📋 CEVICT BETTING TRACKER</h1>
       <div class="date">${formatDate(date)} | ${picksData.picks.length} Picks</div>
     </div>
-    
+
     <div class="summary">
       <div class="summary-item">
         <div class="label">Total Bets</div>
@@ -343,11 +344,11 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
         <span class="bet-number">Bet #${index + 1}</span>
         <span class="sport-tag">${pick.sport}</span>
       </div>
-      
+
       <div class="teams">
         ${pick.away_team} @ ${pick.home_team}
       </div>
-      
+
       <div class="pick-info">
         <div class="pick-info-item">
           <div class="label">PICK</div>
@@ -355,7 +356,7 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
         </div>
         <div class="pick-info-item">
           <div class="label">TYPE</div>
-          <div class="value">${pick.pick_type}</div>
+          <div class="value">${pick.pick_type}${pick.recommended_line != null ? ` ${pick.recommended_line > 0 ? '+' : ''}${pick.recommended_line}` : ''}</div>
         </div>
         <div class="pick-info-item">
           <div class="label">ODDS</div>
@@ -372,27 +373,27 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
         </div>
         ` : ''}
       </div>
-      
+
       ${pick.mc_predicted_score ? `
       <div class="score-prediction">
         🎯 Predicted Score: ${pick.mc_predicted_score.away} - ${pick.mc_predicted_score.home}
       </div>
       ` : ''}
-      
+
       ${pick.total && pick.total.prediction ? `
       <div class="totals-section">
-        📊 Total: <span class="totals-highlight">${pick.total.prediction.toUpperCase()} ${pick.total.line}</span> 
+        📊 Total: <span class="totals-highlight">${pick.total.prediction.toUpperCase()} ${pick.total.line}</span>
         (Edge: ${pick.total.edge?.toFixed(1)}%)
       </div>
       ` : ''}
-      
+
       <div class="pick-info" style="margin-top: 8px;">
         <div class="pick-info-item">
           <div class="label">GAME TIME</div>
           <div class="value">${formatTime(pick.game_time)}</div>
         </div>
       </div>
-      
+
       <div class="checkbox-section">
         <div class="checkbox-item">
           <span class="checkbox"></span>
@@ -411,7 +412,7 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
           <span class="checkbox-label">NO BET</span>
         </div>
       </div>
-      
+
       <div class="notes-section">
         <div class="notes-label">Notes:</div>
         <div class="notes-line"></div>
@@ -419,7 +420,7 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
       </div>
     </div>
     `).join('')}
-    
+
     <div class="footer">
       <p><strong>End of Day Summary</strong></p>
       <table class="daily-summary-table">
@@ -456,12 +457,12 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
           </tr>
         </tbody>
       </table>
-      
+
       <p style="margin-top: 20px; font-style: italic;">
         Generated by Cevict Flex AI • ${new Date().toLocaleString()}
       </p>
     </div>
-    
+
     <button class="print-btn no-print" onclick="window.print()">
       🖨️ Print This Sheet
     </button>
@@ -492,7 +493,7 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
         >
           {loading ? 'Loading…' : '📂 Load Picks for Date'}
         </button>
-        
+
         <button
           onClick={generatePrintableSheet}
           disabled={!picksData}
@@ -510,23 +511,23 @@ export default function PrintBetsSection({ date }: PrintBetsSectionProps) {
           🖨️ Generate Printable Sheet
         </button>
       </div>
-      
+
       {error && (
-        <div style={{ 
-          padding: '12px', 
-          background: '#ffe6e6', 
-          borderRadius: '6px', 
+        <div style={{
+          padding: '12px',
+          background: '#ffe6e6',
+          borderRadius: '6px',
           color: '#c00',
           marginBottom: '16px'
         }}>
           Error: {error}
         </div>
       )}
-      
+
       {picksData && (
-        <div style={{ 
-          padding: '12px 16px', 
-          background: '#d4edda', 
+        <div style={{
+          padding: '12px 16px',
+          background: '#d4edda',
           borderRadius: '6px',
           marginBottom: '16px'
         }}>

@@ -193,6 +193,8 @@ export async function GET(request: Request) {
       : `No valid picks to grade (file had ${rawPicks.length} entries but missing home_team/away_team or pick; use daily-predictions cron format).`)
     : null
 
+  console.log(`[GRADE] Loaded ${picks.length} picks from ${fileName}:`, picks.map(p => `${p.away_team} @ ${p.home_team} (${p.sport || p.league || 'unknown'})`).join(', '))
+
   // Fetch scores for all sports (daysFrom=2 to catch games that finished yesterday)
   const scoresByKey: Record<string, { home: string; away: string; homeScore: number; awayScore: number; gameId?: string }[]> = {}
   for (const [league, sportKey] of Object.entries(SPORT_KEY_MAP)) {
@@ -212,6 +214,9 @@ export async function GET(request: Request) {
         const awayScore = Number(awayEntry?.score ?? awayEntry?.points ?? 0)
         return { home, away, homeScore, awayScore, gameId: g.id as string | undefined }
       }).filter((x: any) => x.homeScore !== undefined && x.awayScore !== undefined)
+      if (scoresByKey[league].length > 0) {
+        console.log(`[GRADE] ${league}: ${scoresByKey[league].length} completed games from Odds API`)
+      }
     } catch {
       scoresByKey[league] = []
     }
@@ -393,6 +398,8 @@ export async function GET(request: Request) {
     }
 
     if (!match) {
+      console.log(`[GRADE] No match for ${p.home_team} vs ${p.away_team} (${sport}). Available games in ${sport}:`,
+        scoresByKey[leagueHint || '']?.map(g => `${g.away} @ ${g.home}`).join(', ') || 'none')
       results.push({
         home_team: p.home_team,
         away_team: p.away_team,

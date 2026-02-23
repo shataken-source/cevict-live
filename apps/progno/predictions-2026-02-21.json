@@ -1,0 +1,1078 @@
+{
+  "date": "2026-02-21",
+  "generatedAt": "2026-02-21T23:18:29.458Z",
+  "count": 9,
+  "message": "Top 9 picks (of 91 games) — Cevict Flex + Triple Alignment — Regular (0–1 days)",
+  "earlyLines": false,
+  "picks": [
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Northwestern St Demons",
+      "away_team": "Houston Christian Huskies",
+      "game_matchup": "Houston Christian Huskies @ Northwestern St Demons",
+      "pick": "Northwestern St Demons",
+      "pick_type": "SPREAD",
+      "recommended_line": -16.3,
+      "odds": -124,
+      "confidence": 95,
+      "game_time": "2026-02-21T21:30:00Z",
+      "game_id": "d5e8527468b5b9e0cbc36778a7623aea",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 99,
+      "expected_value": 88.85,
+      "value_bet_edge": 46.54,
+      "value_bet_ev": 88.85,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.89,
+      "mc_predicted_score": {
+        "home": 74,
+        "away": 55,
+        "homeRange": [
+          56,
+          92
+        ],
+        "awayRange": [
+          40,
+          73
+        ]
+      },
+      "mc_spread_probability": 0.9892,
+      "mc_total_probability": 0.5678,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (98% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sentiment favors home (14%)",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "MC: 89.0% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -0.6707629574933566,
+          "favors": "away",
+          "scores": {
+            "SF": 0.14410308687555365,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.006707629574933566
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Northwestern St Demons",
+          "line": -16.3,
+          "edge": 46.54,
+          "probability": 0.989,
+          "expected_value": 88.85,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Houston Christian Huskies",
+          "edge": 9.03,
+          "probability": 0.11,
+          "expected_value": 274,
+          "kelly_fraction": 0.021
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 126,
+          "edge": 4.4,
+          "probability": 0.568,
+          "expected_value": 8.4,
+          "kelly_fraction": 0.023
+        }
+      ],
+      "analysis": "🎯 Northwestern St Demons (95%). [true-edge] Heavy favorite (98% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Toledo Rockets",
+      "away_team": "Eastern Michigan Eagles",
+      "game_matchup": "Eastern Michigan Eagles @ Toledo Rockets",
+      "pick": "Toledo Rockets",
+      "pick_type": "SPREAD",
+      "recommended_line": -20.1,
+      "odds": -113,
+      "confidence": 95,
+      "game_time": "2026-02-21T22:03:22Z",
+      "game_id": "e44b2d61f81a4044cff3f48f77a6805f",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 99,
+      "expected_value": 90.45,
+      "value_bet_edge": 47.38,
+      "value_bet_ev": 90.45,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.928,
+      "mc_predicted_score": {
+        "home": 90,
+        "away": 67,
+        "homeRange": [
+          72,
+          108
+        ],
+        "awayRange": [
+          49,
+          85
+        ]
+      },
+      "mc_spread_probability": 0.9976,
+      "mc_total_probability": 0.5602,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (98% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sentiment favors home (14%)",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "MC: 92.8% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -0.6707629574933566,
+          "favors": "away",
+          "scores": {
+            "SF": 0.14410308687555365,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.006707629574933566
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Toledo Rockets",
+          "line": -20.1,
+          "edge": 47.38,
+          "probability": 0.998,
+          "expected_value": 90.45,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Eastern Michigan Eagles",
+          "edge": 5.23,
+          "probability": 0.072,
+          "expected_value": 144.8,
+          "kelly_fraction": 0.011
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 154,
+          "edge": 3.64,
+          "probability": 0.56,
+          "expected_value": 6.95,
+          "kelly_fraction": 0.019
+        }
+      ],
+      "analysis": "🎯 Toledo Rockets (95%). [true-edge] Heavy favorite (98% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Gonzaga Bulldogs",
+      "away_team": "Pacific Tigers",
+      "game_matchup": "Pacific Tigers @ Gonzaga Bulldogs",
+      "pick": "Gonzaga Bulldogs",
+      "pick_type": "SPREAD",
+      "recommended_line": -21.5,
+      "odds": -112,
+      "confidence": 95,
+      "game_time": "2026-02-22T02:00:00Z",
+      "game_id": "dd44916542f5aad5de6baf8b00ed5ce0",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 99,
+      "expected_value": 90.57,
+      "value_bet_edge": 47.44,
+      "value_bet_ev": 90.57,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.9396,
+      "mc_predicted_score": {
+        "home": 85,
+        "away": 61,
+        "homeRange": [
+          67,
+          103
+        ],
+        "awayRange": [
+          43,
+          79
+        ]
+      },
+      "mc_spread_probability": 0.9982,
+      "mc_total_probability": 0.5714,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (96% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sentiment favors home (14%)",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "MC: 94.0% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -0.7267605622823591,
+          "favors": "away",
+          "scores": {
+            "SF": 0.13943661980980346,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.007267605622823591
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Gonzaga Bulldogs",
+          "line": -21.5,
+          "edge": 47.44,
+          "probability": 0.998,
+          "expected_value": 90.57,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 143,
+          "edge": 4.76,
+          "probability": 0.571,
+          "expected_value": 9.09,
+          "kelly_fraction": 0.025
+        }
+      ],
+      "analysis": "🎯 Gonzaga Bulldogs (95%). [true-edge] Heavy favorite (96% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NBA",
+      "league": "NBA",
+      "home_team": "San Antonio Spurs",
+      "away_team": "Sacramento Kings",
+      "game_matchup": "Sacramento Kings @ San Antonio Spurs",
+      "pick": "San Antonio Spurs",
+      "pick_type": "SPREAD",
+      "recommended_line": -18.1,
+      "odds": -112,
+      "confidence": 91,
+      "game_time": "2026-02-22T01:10:00Z",
+      "game_id": "18bb557cee2cf5d5c9aede6c6e34b942",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 98.2,
+      "expected_value": 87.59,
+      "value_bet_edge": 45.88,
+      "value_bet_ev": 87.59,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.8496,
+      "mc_predicted_score": {
+        "home": 124,
+        "away": 106,
+        "homeRange": [
+          104,
+          145
+        ],
+        "awayRange": [
+          85,
+          126
+        ]
+      },
+      "mc_spread_probability": 0.9826,
+      "mc_total_probability": 0.4748,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (93% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sentiment favors home (13%)",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "MC: 85.0% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -0.8542505329244254,
+          "favors": "away",
+          "scores": {
+            "SF": 0.12881245558963125,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.008542505329244254
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "San Antonio Spurs",
+          "line": -18.1,
+          "edge": 45.88,
+          "probability": 0.983,
+          "expected_value": 87.59,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Sacramento Kings",
+          "edge": 7.98,
+          "probability": 0.15,
+          "expected_value": 65.14,
+          "kelly_fraction": 0.016
+        }
+      ],
+      "analysis": "🎯 San Antonio Spurs (91%). [true-edge] Heavy favorite (93% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NCAA",
+      "league": "NCAA",
+      "home_team": "Florida Gators",
+      "away_team": "Kennesaw St Owls",
+      "game_matchup": "Kennesaw St Owls @ Florida Gators",
+      "pick": "Florida Gators",
+      "pick_type": "SPREAD",
+      "recommended_line": -8.5,
+      "odds": -140,
+      "confidence": 92,
+      "game_time": "2026-02-21T22:30:00Z",
+      "game_id": "e9e2c7fce1a43aca8a4dfc30a96eacb5",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 97.5,
+      "expected_value": 78.12,
+      "value_bet_edge": 40.92,
+      "value_bet_ev": 78.12,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.7654,
+      "mc_predicted_score": {
+        "home": 16,
+        "away": 7,
+        "homeRange": [
+          0,
+          32
+        ],
+        "awayRange": [
+          0,
+          21
+        ]
+      },
+      "mc_spread_probability": 0.933,
+      "mc_total_probability": 0.6428,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (97% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sentiment favors home (14%)",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "MC: 76.5% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -0.6902016816423561,
+          "favors": "away",
+          "scores": {
+            "SF": 0.14248319319647038,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.006902016816423561
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Florida Gators",
+          "line": -8.5,
+          "edge": 40.92,
+          "probability": 0.933,
+          "expected_value": 78.12,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Kennesaw St Owls",
+          "edge": 20.53,
+          "probability": 0.235,
+          "expected_value": 380.93,
+          "kelly_fraction": 0.049
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 17,
+          "edge": 11.9,
+          "probability": 0.643,
+          "expected_value": 22.72,
+          "kelly_fraction": 0.05
+        }
+      ],
+      "analysis": "🎯 Florida Gators (92%). [true-edge] Heavy favorite (97% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NBA",
+      "league": "NBA",
+      "home_team": "Miami Heat",
+      "away_team": "Memphis Grizzlies",
+      "game_matchup": "Memphis Grizzlies @ Miami Heat",
+      "pick": "Miami Heat",
+      "pick_type": "SPREAD",
+      "recommended_line": -12.1,
+      "odds": -110,
+      "confidence": 84,
+      "game_time": "2026-02-22T01:10:00Z",
+      "game_id": "6d8e789e50597eda49fecfade742c637",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 95.3,
+      "expected_value": 76.93,
+      "value_bet_edge": 40.3,
+      "value_bet_ev": 76.93,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.7578,
+      "mc_predicted_score": {
+        "home": 126,
+        "away": 114,
+        "homeRange": [
+          105,
+          146
+        ],
+        "awayRange": [
+          95,
+          132
+        ]
+      },
+      "mc_spread_probability": 0.9268,
+      "mc_total_probability": 0.567,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (84% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sentiment favors home (10%)",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "MC: 75.8% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -1.1854341735872818,
+          "favors": "away",
+          "scores": {
+            "SF": 0.10121381886772655,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.011854341735872818
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Miami Heat",
+          "line": -12.1,
+          "edge": 40.3,
+          "probability": 0.927,
+          "expected_value": 76.93,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Memphis Grizzlies",
+          "edge": 7.96,
+          "probability": 0.242,
+          "expected_value": 30.79,
+          "kelly_fraction": 0.017
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 236,
+          "edge": 4.32,
+          "probability": 0.567,
+          "expected_value": 8.25,
+          "kelly_fraction": 0.023
+        }
+      ],
+      "analysis": "🎯 Miami Heat (84%). [true-edge] Heavy favorite (84% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NBA",
+      "league": "NBA",
+      "home_team": "Atlanta Hawks",
+      "away_team": "Brooklyn Nets",
+      "game_matchup": "Brooklyn Nets @ Atlanta Hawks",
+      "pick": "Atlanta Hawks",
+      "pick_type": "SPREAD",
+      "recommended_line": -8.5,
+      "odds": -111,
+      "confidence": 77,
+      "game_time": "2026-02-22T20:40:00Z",
+      "game_id": "8cfa733d2c4b4d6bc9b588892a933983",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 82.6,
+      "expected_value": 56.09,
+      "value_bet_edge": 29.38,
+      "value_bet_ev": 56.09,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.6882,
+      "mc_predicted_score": {
+        "home": 119,
+        "away": 108,
+        "homeRange": [
+          100,
+          139
+        ],
+        "awayRange": [
+          78,
+          139
+        ]
+      },
+      "mc_spread_probability": 0.8176,
+      "mc_total_probability": 0.3998,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (76% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "MC: 68.8% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -1.4334264169910143,
+          "favors": "away",
+          "scores": {
+            "SF": 0.07685340060214657,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 0.97,
+            "EPD": 0,
+            "totalEffect": -0.014334264169910143
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Atlanta Hawks",
+          "line": -8.5,
+          "edge": 29.38,
+          "probability": 0.818,
+          "expected_value": 56.09,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Brooklyn Nets",
+          "edge": 6.8,
+          "probability": 0.312,
+          "expected_value": 16.61,
+          "kelly_fraction": 0.015
+        },
+        {
+          "type": "total",
+          "side": "Under",
+          "line": 232,
+          "edge": 5.76,
+          "probability": 0.581,
+          "expected_value": 10.99,
+          "kelly_fraction": 0.03
+        }
+      ],
+      "analysis": "🎯 Atlanta Hawks (77%). [true-edge] Heavy favorite (76% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NCAA",
+      "league": "NCAA",
+      "home_team": "McNeese Cowboys",
+      "away_team": "Kansas Jayhawks",
+      "game_matchup": "Kansas Jayhawks @ McNeese Cowboys",
+      "pick": "McNeese Cowboys",
+      "pick_type": "MONEYLINE",
+      "odds": 190,
+      "confidence": 71,
+      "game_time": "2026-02-22T17:00:00Z",
+      "game_id": "4c372627e59aeb3f372a669b9d3af63c",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": false,
+      "triple_align": true,
+      "composite_score": 81.3,
+      "expected_value": 65.76,
+      "value_bet_edge": 25.63,
+      "value_bet_ev": 65.76,
+      "value_bet_kelly": 0.043,
+      "has_value": true,
+      "mc_win_probability": 0.5716,
+      "mc_predicted_score": {
+        "home": 25,
+        "away": 22,
+        "homeRange": [
+          9,
+          41
+        ],
+        "awayRange": [
+          5,
+          38
+        ]
+      },
+      "mc_spread_probability": 0.5716,
+      "mc_total_probability": 0.564,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Clear favorite (68% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sharp signal: backing home",
+        "[home-away-bias] Away-team pick (-19% ROI backtest — penalty applied)",
+        "MC: 57.2% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": 0.9069261087117305,
+          "favors": "home",
+          "scores": {
+            "SF": -0.05541871918284106,
+            "NM": 0,
+            "IAI": 0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 0.97,
+            "EPD": 0,
+            "totalEffect": 0.009069261087117305
+          }
+        },
+        "home-away-bias": {
+          "delta": -5,
+          "favors": "away",
+          "scores": {
+            "penalty": -5
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "moneyline",
+          "side": "McNeese Cowboys",
+          "edge": 25.63,
+          "probability": 0.572,
+          "expected_value": 65.76,
+          "kelly_fraction": 0.043
+        },
+        {
+          "type": "spread",
+          "side": "McNeese Cowboys",
+          "line": 0,
+          "edge": 4.78,
+          "probability": 0.572,
+          "expected_value": 9.12,
+          "kelly_fraction": 0.025
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 44,
+          "edge": 4.02,
+          "probability": 0.564,
+          "expected_value": 7.67,
+          "kelly_fraction": 0.021
+        }
+      ],
+      "analysis": "🎯 McNeese Cowboys (71%). [true-edge] Clear favorite (68% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NCAA",
+      "league": "NCAA",
+      "home_team": "USC Trojans",
+      "away_team": "Rice Owls",
+      "game_matchup": "Rice Owls @ USC Trojans",
+      "pick": "USC Trojans",
+      "pick_type": "SPREAD",
+      "recommended_line": -3.9,
+      "odds": -30,
+      "confidence": 79,
+      "game_time": "2026-02-22T02:00:00Z",
+      "game_id": "5ea2f7f2e5a741b8ce7bf18c9a0c57a6",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 76.1,
+      "expected_value": 50.32,
+      "value_bet_edge": 26.36,
+      "value_bet_ev": 50.32,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.644,
+      "mc_predicted_score": {
+        "home": 12,
+        "away": 7,
+        "homeRange": [
+          0,
+          27
+        ],
+        "awayRange": [
+          0,
+          21
+        ]
+      },
+      "mc_spread_probability": 0.7874,
+      "mc_total_probability": 0.6434,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (80% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sentiment favors home (9%)",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "MC: 64.4% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -1.3069543358400977,
+          "favors": "away",
+          "scores": {
+            "SF": 0.0910871386799919,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.013069543358400977
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "USC Trojans",
+          "line": -3.9,
+          "edge": 26.36,
+          "probability": 0.787,
+          "expected_value": 50.32,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Rice Owls",
+          "edge": 15.96,
+          "probability": 0.356,
+          "expected_value": 54.5,
+          "kelly_fraction": 0.041
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 13,
+          "edge": 11.96,
+          "probability": 0.643,
+          "expected_value": 22.83,
+          "kelly_fraction": 0.05
+        }
+      ],
+      "analysis": "🎯 USC Trojans (79%). [true-edge] Heavy favorite (80% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    }
+  ]
+}

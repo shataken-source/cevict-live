@@ -168,6 +168,7 @@ export default function AdminPage() {
   const [gameDate, setGameDate] = useState(() => getToday());
   const [earlyOffset, setEarlyOffset] = useState(4);
   const earlyDate = subtractDays(gameDate, earlyOffset);
+  // Note: earlyOffset is MAX days for the range (0 to earlyOffset)
   const regularDate = gameDate;
   const resultsDate = getYesterday();
   const cronFileDate = getToday();
@@ -201,6 +202,70 @@ export default function AdminPage() {
   const [keyLabel, setKeyLabel] = useState('');
   const [keyValue, setKeyValue] = useState('');
   const [keyLog, setKeyLog] = useState<string | null>(null);
+
+  // trading settings
+  const [tradeSettings, setTradeSettings] = useState<{ enabled: boolean; stakeCents: number; minConfidence: number; maxPicksPerDay: number; dryRun: boolean } | null>(null);
+  const [tradeMsg, setTradeMsg] = useState<string | null>(null);
+  const loadTrading = async () => {
+    if (!secret.trim()) { setTradeMsg('Enter admin secret first.'); return; }
+    setTradeMsg(null);
+    try {
+      const res = await fetch('/api/progno/admin/trading/settings', { headers: { Authorization: `Bearer ${secret.trim()}` }, cache: 'no-store' });
+      const j = await res.json();
+      if (res.ok && j.success) setTradeSettings(j.settings);
+      else setTradeMsg(j.error || 'Failed to load trading settings');
+    } catch (e: any) { setTradeMsg(e?.message || 'Failed to load'); }
+  };
+  const saveTrading = async () => {
+    if (!secret.trim() || !tradeSettings) { setTradeMsg('Enter secret and adjust settings.'); return; }
+    setTradeMsg(null);
+    try {
+      const res = await fetch('/api/progno/admin/trading/settings', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` }, body: JSON.stringify(tradeSettings) });
+      const j = await res.json();
+      if (res.ok && j.success) { setTradeSettings(j.settings); setTradeMsg('Saved.'); } else setTradeMsg(j.error || 'Save failed');
+    } catch (e: any) { setTradeMsg(e?.message || 'Save failed'); }
+  };
+  const runKalshiNow = async () => {
+    if (!secret.trim()) { setTradeMsg('Enter admin secret first.'); return; }
+    setTradeMsg('Running...');
+    try {
+      const res = await fetch('/api/progno/admin/trading/execute', { method: 'POST', headers: { Authorization: `Bearer ${secret.trim()}` } });
+      const j = await res.json();
+      if (res.ok && j.success) {
+        const mode = j.dryRun ? 'DRY-RUN' : 'LIVE';
+        const matched = j.submitted ?? j.dryRuns ?? 0;
+        const counts = `${j.totalPicks} picks · ${matched} matched · ${j.noMarket ?? 0} no market · ${j.errors ?? 0} errors`;
+        console.log('[kalshi-debug]', j.debug);
+        setTradeMsg(`${mode}: ${counts} @ ${j.stakePerPick ?? '$5.00'} each | markets fetched: ${j.debug?.marketsFetched ?? '?'} | configured: ${j.configured}`);
+      } else setTradeMsg(j.error || 'Execute failed');
+    } catch (e: any) { setTradeMsg(e?.message || 'Execute failed'); }
+  };
+
+  // cron jobs editor
+  const [cronJobs, setCronJobs] = useState<any[]>([]);
+  const [cronMsg, setCronMsg] = useState<string | null>(null);
+  const loadCronJobs = async () => {
+    if (!secret.trim()) { setCronMsg('Enter admin secret first.'); return; }
+    setCronMsg(null);
+    try {
+      const res = await fetch('/api/progno/admin/cron/jobs', { headers: { Authorization: `Bearer ${secret.trim()}` }, cache: 'no-store' });
+      const j = await res.json();
+      if (res.ok && j.success) setCronJobs(Array.isArray(j.jobs) ? j.jobs : []);
+      else setCronMsg(j.error || 'Failed to load jobs');
+    } catch (e: any) { setCronMsg(e?.message || 'Failed to load'); }
+  };
+  const addCronJob = async (name: string, url: string, schedule: string) => {
+    if (!secret.trim()) return;
+    try {
+      const res = await fetch('/api/progno/admin/cron/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` }, body: JSON.stringify({ name, url, schedule, method: 'GET', enabled: true }) });
+      const j = await res.json();
+      if (res.ok && j.success) { setCronJobs(j.jobs || []); setCronMsg('Job saved.'); } else setCronMsg(j.error || 'Failed to save job');
+    } catch (e: any) { setCronMsg(e?.message || 'Failed to save job'); }
+  };
+  const deleteCronJob = async (id: string) => {
+    if (!secret.trim()) return;
+    try { const res = await fetch('/api/progno/admin/cron/jobs', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` }, body: JSON.stringify({ id }) }); const j = await res.json(); if (res.ok && j.success) setCronJobs(j.jobs || []); } catch { }
+  };
 
   useEffect(() => {
     const today = getToday();
@@ -529,13 +594,13 @@ export default function AdminPage() {
                   <code style={{ color: C.amber, fontSize: 11 }}>predictions-early-{cronFileDate}.json</code>
                 </div>
                 <div>
-                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 4 }}>EARLY OFFSET</div>
+                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 4 }}>EARLY RANGE (0-N days)</div>
                   <select
                     value={earlyOffset}
                     onChange={e => setEarlyOffset(Number(e.target.value))}
                     style={{ padding: '4px 8px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11 }}
                   >
-                    {[2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n} days out</option>)}
+                    {[2, 3, 4, 5].map(n => <option key={n} value={n}>0-{n} days</option>)}
                   </select>
                 </div>
               </div>
@@ -543,8 +608,12 @@ export default function AdminPage() {
                 <Btn onClick={runBothPredictions} disabled={!!cronLoading} color={C.green}>
                   {cronLoading === 'daily-predictions' ? '⟳ RUNNING BOTH...' : '▶ RUN PREDICTIONS (BOTH)'}
                 </Btn>
+                <Btn onClick={runKalshiNow} disabled={!secret.trim()} color={C.blue}>
+                  💰 SUBMIT TO KALSHI ($5 each)
+                </Btn>
               </div>
               {cronLog && <StatusLine ok={cronLog.ok} msg={cronLog.msg} />}
+              {tradeMsg && <StatusLine ok={!tradeMsg.startsWith('Enter') && !tradeMsg.toLowerCase().includes('fail') && !tradeMsg.toLowerCase().includes('error')} msg={tradeMsg} />}
             </Card>
 
             <div style={{ marginBottom: 16 }}>
@@ -632,13 +701,13 @@ export default function AdminPage() {
                   <code style={{ color: C.green, fontSize: 11 }}>predictions-{regularDate}.json</code>
                 </div>
                 <div>
-                  <span style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1 }}>OFFSET: </span>
+                  <span style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1 }}>RANGE: </span>
                   <select
                     value={earlyOffset}
                     onChange={e => setEarlyOffset(Number(e.target.value))}
                     style={{ padding: '4px 8px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11, marginLeft: 6 }}
                   >
-                    {[2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n} days</option>)}
+                    {[2, 3, 4, 5].map(n => <option key={n} value={n}>0-{n} days</option>)}
                   </select>
                 </div>
               </div>
@@ -777,6 +846,69 @@ export default function AdminPage() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {ENV_VARS.map(v => <Badge key={v} color={C.textDim}>{v}</Badge>)}
               </div>
+            </Card>
+
+            <Card>
+              <SectionLabel>TRADING — KALSHI AUTO-EXECUTE ($5/pick default)</SectionLabel>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                <Btn onClick={loadTrading} disabled={!secret.trim()} color={C.textDim}>↺ LOAD</Btn>
+                <Btn onClick={saveTrading} disabled={!secret.trim() || !tradeSettings} color={C.green}>💾 SAVE</Btn>
+                <Btn onClick={runKalshiNow} disabled={!secret.trim()} color={C.blue}>▶ RUN NOW</Btn>
+              </div>
+              {tradeSettings && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim }}>ENABLED</span>
+                    <input type="checkbox" checked={!!tradeSettings.enabled} onChange={e => setTradeSettings({ ...(tradeSettings as any), enabled: e.target.checked })} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim }}>STAKE (cents)</span>
+                    <input type="number" value={tradeSettings.stakeCents} onChange={e => setTradeSettings({ ...(tradeSettings as any), stakeCents: Number(e.target.value) })} style={{ padding: '6px 8px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim }}>MIN CONF (%)</span>
+                    <input type="number" value={tradeSettings.minConfidence} onChange={e => setTradeSettings({ ...(tradeSettings as any), minConfidence: Number(e.target.value) })} style={{ padding: '6px 8px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim }}>MAX PICKS/DAY</span>
+                    <input type="number" value={tradeSettings.maxPicksPerDay} onChange={e => setTradeSettings({ ...(tradeSettings as any), maxPicksPerDay: Number(e.target.value) })} style={{ padding: '6px 8px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono }} />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim }}>DRY RUN</span>
+                    <input type="checkbox" checked={!!tradeSettings.dryRun} onChange={e => setTradeSettings({ ...(tradeSettings as any), dryRun: e.target.checked })} />
+                  </label>
+                </div>
+              )}
+              {tradeMsg && <div style={{ marginTop: 8, fontFamily: C.mono, fontSize: 11, color: C.textDim }}>{tradeMsg}</div>}
+              <div style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim, marginTop: 10 }}>Requires env: KALSHI_API_KEY_ID, KALSHI_PRIVATE_KEY. Uses limit buy at yes_ask for each qualifying market.</div>
+            </Card>
+
+            <Card style={{ gridColumn: '1 / -1' }}>
+              <SectionLabel>CRON JOBS — MANAGE</SectionLabel>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                <Btn onClick={loadCronJobs} disabled={!secret.trim()} color={C.textDim}>↺ LOAD JOBS</Btn>
+                <Btn onClick={() => addCronJob('Daily Kalshi', '/api/cron/daily-kalshi', '0 9 * * *')} disabled={!secret.trim()} color={C.green}>+ ADD DAILY KALSHI (9:00)</Btn>
+                <Btn onClick={() => runCron('daily-kalshi')} disabled={!secret.trim()} color={C.blue}>▶ RUN KALSHI NOW</Btn>
+              </div>
+              {cronMsg && <div style={{ fontFamily: C.mono, fontSize: 11, color: C.textDim, marginBottom: 8 }}>{cronMsg}</div>}
+              {cronJobs.length > 0 ? (
+                <div style={{ border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                  {cronJobs.map(j => (
+                    <div key={j.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, padding: '8px 10px', borderBottom: `1px solid ${C.border}` }}>
+                      <div>
+                        <div style={{ color: C.textBright, fontFamily: C.mono, fontSize: 12 }}>{j.name || j.id}</div>
+                        <div style={{ color: C.textDim, fontFamily: C.mono, fontSize: 10 }}>{j.schedule} — {j.method || 'GET'} {j.url}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <Btn onClick={() => deleteCronJob(j.id)} color={C.red}>✗ DELETE</Btn>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontFamily: C.mono, fontSize: 12, color: C.textDim }}>No cron jobs saved.</div>
+              )}
+              <div style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim, marginTop: 8 }}>Note: This stores jobs in .progno/cron-jobs.json for tracking. Use Vercel Cron or Windows Task Scheduler to hit the shown URLs on schedule.</div>
             </Card>
 
             <Card style={{ gridColumn: '1 / -1' }}>

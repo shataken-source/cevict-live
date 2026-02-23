@@ -229,6 +229,9 @@ export default function PromoTools() {
   const [emailStatus, setEmailStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [emailMessage, setEmailMessage] = useState('');
 
+  // Calculate conversion result
+  const conversion = calculatePromoConversion(promoType, promoAmount, odds1, odds2);
+
   const filteredBooks = state
     ? SPORTSBOOKS.filter(
       (sb) => sb.states.includes(state.toUpperCase()) || sb.states.includes('ALL')

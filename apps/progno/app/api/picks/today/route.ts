@@ -16,7 +16,7 @@ import { GameData } from '@/app/lib/prediction-engine'
 import { getPrimaryKey } from '../../keys-store'
 import { estimateTeamStatsFromOdds, estimateTeamStatsEnhanced, shinDevig } from '@/app/lib/odds-helpers'
 import { warmStatsCache, setCurrentGameContext, clearCurrentGameContext } from '@/app/lib/espn-team-stats-service'
-import { predictScoreComprehensive } from '../../score-prediction-service'
+// import { predictScoreComprehensive } from '../../score-prediction-service' // TODO: Fix this import - file doesn't exist
 // import { fetchApiSportsOdds, ApiSportsGame } from '@/app/lib/api-sports-client' // TODO: Fix this import - file doesn't exist
 import { SPORT_VARIANCE, applySportVariance, getCalibratedWinProbability } from '@/app/lib/model-calibration'
 import { calculateTrueEdge, getStadiumElevation, TRUE_EDGE_ENGINE } from '@/app/lib/true-edge-engine'
@@ -774,6 +774,8 @@ export async function GET(request: Request) {
           if (!pick) continue
           // Tag pick with early_lines flag so DB rows are distinguishable
           pick.early_lines = earlyLines
+          // Ensure game_matchup is always set (not-null constraint)
+          if (!pick.game_matchup) pick.game_matchup = `${pick.away_team} @ ${pick.home_team}`
           // Favorite-only (backtest showed underdog value bets lose; favorite-only is profitable)
           if (favoriteOnly && !pick.is_favorite_pick) continue
           // Save to Supabase if available
@@ -1786,37 +1788,7 @@ export async function getSingleGamePick(gameId: string, sportHint?: string): Pro
     }
   }
 
-  // Step 2: Try API-Sports as fallback
-  console.log(`[getSingleGamePick] Game ${gameId} not found in The-Odds, trying API-Sports with sportHint: ${sportHint}...`)
-  const apiSportsSport = sportHint ? SPORT_TO_API_SPORTS[sportHint] : undefined
-  const apiSportsSports = apiSportsSport ? [apiSportsSport] : Object.values(SPORT_TO_API_SPORTS).filter((v, i, arr) => arr.indexOf(v) === i)
-
-  console.log(`[getSingleGamePick] Searching API-Sports sports:`, apiSportsSports)
-
-  for (const sport of apiSportsSports) {
-    if (!sport) continue
-    try {
-      console.log(`[getSingleGamePick] Fetching API-Sports ${sport}...`)
-      const games = await fetchApiSportsOdds(sport)
-      console.log(`[getSingleGamePick] API-Sports ${sport} returned ${games.length} games`)
-
-      // Log first few game IDs for debugging
-      if (games.length > 0) {
-        console.log(`[getSingleGamePick] First 3 game IDs in ${sport}:`, games.slice(0, 3).map((g: ApiSportsGame) => g.id))
-      }
-
-      const foundGame = games.find((g: ApiSportsGame) => g.id.toString() === gameId.toString())
-      if (foundGame) {
-        console.log(`[getSingleGamePick] Game found in API-Sports ${sport}:`, foundGame.homeTeam, 'vs', foundGame.awayTeam)
-        const oddsFormatGame = convertApiSportsToOddsFormat(foundGame)
-        const oddsApiSportKey = Object.entries(SPORT_TO_API_SPORTS).find(([_, v]) => v === sport)?.[0] || sport
-        const pick = await buildPickFromRawGame(oddsFormatGame, oddsApiSportKey)
-        return pick ?? null
-      }
-    } catch (error) {
-      console.error(`[getSingleGamePick] API-Sports failed for ${sport}:`, error)
-    }
-  }
+  // Step 2: API-Sports fallback disabled (api-sports-client module not available)
 
   console.log(`[getSingleGamePick] Game ${gameId} not found in any source`)
   return null

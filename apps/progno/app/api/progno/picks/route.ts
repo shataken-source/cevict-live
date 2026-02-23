@@ -109,20 +109,34 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Try file fallback
-    if (picks.length === 0) {
+    // Try Supabase Storage fallback
+    if (picks.length === 0 && supabase) {
       try {
-        const predictionsPath = join(process.cwd(), 'predictions-' + date + '.json');
-        const data = JSON.parse(readFileSync(predictionsPath, 'utf-8'));
-        picks = data.picks || data;
-        source = 'file';
+        const fileName = `predictions-${date}.json`;
+        const { data: fileData, error: storageError } = await supabase.storage
+          .from('predictions')
+          .download(fileName);
+
+        if (!storageError && fileData) {
+          const text = await fileData.text();
+          const parsed = JSON.parse(text);
+          picks = parsed.picks || parsed;
+          source = 'storage';
+        }
       } catch (error) {
-        // Try early predictions
+        // Try early predictions from storage
         try {
-          const earlyPath = join(process.cwd(), 'predictions-early-' + date + '.json');
-          const data = JSON.parse(readFileSync(earlyPath, 'utf-8'));
-          picks = data.picks || data;
-          source = 'early-file';
+          const earlyFileName = `predictions-early-${date}.json`;
+          const { data: earlyData, error: earlyError } = await supabase.storage
+            .from('predictions')
+            .download(earlyFileName);
+
+          if (!earlyError && earlyData) {
+            const text = await earlyData.text();
+            const parsed = JSON.parse(text);
+            picks = parsed.picks || parsed;
+            source = 'storage-early';
+          }
         } catch {
           // Try ESPN fallback
           if (includeEspn) {

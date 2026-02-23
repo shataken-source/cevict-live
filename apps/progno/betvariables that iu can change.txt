@@ -1,0 +1,52 @@
+
+
+
+# Overall strategy (baseline/best/balanced)
+FILTER_STRATEGY=best
+ 
+# Odds range for "best" strategy
+PROGNO_MIN_ODDS=-200        # Don't bet heavy favorites (worse than -200)
+PROGNO_MAX_ODDS=500         # Don't bet huge underdogs (better than +500)
+ 
+# Minimum confidence to generate a pick
+PROGNO_MIN_CONFIDENCE=57    # 57% is calibrated to Shin-devig output
+ 
+# Home-only mode (backtest shows home picks +117% ROI vs away -18%)
+HOME_ONLY_MODE=1            # Set to 0 to disable
+Bias Adjustments
+bash
+PROGNO_HOME_BIAS_BOOST=5        # Add 5% confidence to home picks
+PROGNO_AWAY_BIAS_PENALTY=5      # Subtract 5% from away picks
+Early Lines Decay (confidence penalty for games far in future)
+bash
+PROGNO_EARLY_DECAY_2D=0.97      # 2 days ahead: 97% of confidence
+PROGNO_EARLY_DECAY_3D=0.93      # 3 days ahead: 93% of confidence
+PROGNO_EARLY_DECAY_4D=0.88      # 4 days ahead: 88% of confidence
+PROGNO_EARLY_DECAY_5D=0.82      # 5 days ahead: 82% of confidence
+PROGNO_EARLY_DECAY_5DPLUS=0.75  # 5+ days: 75% of confidence
+League-Specific Confidence Floors
+bash
+PROGNO_FLOOR_NCAAF=62    # College football needs 62% minimum
+PROGNO_FLOOR_NCAAB=57    # College basketball needs 57% minimum
+PROGNO_FLOOR_NBA=57      # NBA needs 57% minimum
+PROGNO_FLOOR_NFL=62      # NFL needs 62% minimum
+PROGNO_FLOOR_NHL=57      # NHL needs 57% minimum
+PROGNO_FLOOR_MLB=57      # MLB needs 57% minimum
+How to Use
+Local development: Add to c:\cevict-live\apps\progno.env.local
+
+Production (Vercel): Add in Vercel Dashboard → Settings → Environment Variables
+
+Example - More aggressive picks:
+
+bash
+PROGNO_MIN_CONFIDENCE=50    # Lower threshold
+PROGNO_MAX_ODDS=800         # Allow bigger underdogs
+HOME_ONLY_MODE=0            # Include away picks
+Example - More conservative:
+
+bash
+PROGNO_MIN_CONFIDENCE=65    # Higher threshold
+PROGNO_MAX_ODDS=300         # Only slight underdogs
+PROGNO_MIN_ODDS=-150        # Only slight favorites
+The defaults shown in your screenshot are backtest-calibrated from 11,107 games in 2024, so they're already optimized. But you can tweak them to match your risk tolerance!

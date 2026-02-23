@@ -39,7 +39,8 @@ import {
   FileText,
   Award,
   Percent,
-  Users
+  Users,
+  Send
 } from 'lucide-react';
 import { format, subDays, parseISO } from 'date-fns';
 
@@ -153,6 +154,52 @@ export default function PrognoAdminDashboard() {
       console.error('Error fetching report:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [syndicateStatus, setSyndicateStatus] = useState<{ status: 'idle' | 'running' | 'success' | 'error'; message: string; details?: any }>({ status: 'idle', message: '' });
+  const [kalshiStatus, setKalshiStatus] = useState<{ status: 'idle' | 'running' | 'success' | 'error'; message: string; results?: any[] }>({ status: 'idle', message: '' });
+
+  const syndicateToProg = async (dryRun = false) => {
+    setSyndicateStatus({ status: 'running', message: dryRun ? 'Running dry run...' : 'Syndicating picks...' });
+    try {
+      const res = await fetch('/api/progno/admin/syndicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: selectedDate, dryRun }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const summary = data.results?.map((r: any) => `${r.tier}: ${r.count}`).join(', ');
+        setSyndicateStatus({ status: 'success', message: `${dryRun ? '[DRY RUN] ' : ''}Sent ${data.totalPicks} picks (${summary})`, details: data });
+      } else {
+        setSyndicateStatus({ status: 'error', message: data.error || 'Syndication failed', details: data });
+      }
+    } catch (error: any) {
+      setSyndicateStatus({ status: 'error', message: error.message || 'Request failed' });
+    }
+  };
+
+  const submitToKalshi = async (dryRun = true) => {
+    setKalshiStatus({ status: 'running', message: dryRun ? 'Dry run — checking markets...' : 'Submitting $5 orders to Kalshi...' });
+    try {
+      const res = await fetch('/api/progno/admin/trading/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: selectedDate, dryRun, secret: '' }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const matched = (data.dryRuns || 0) + (data.submitted || 0);
+        const summary = dryRun
+          ? `✗ DRY-RUN: ${data.totalPicks} picks · ${matched} matched · ${data.noMarket} no market · ${data.errors} errors @ $${(data.debug?.stakePerPick || data.stakePerPick || '5.00').replace('$', '')} each | markets fetched: ${data.debug?.marketsFetched ?? '?'} | configured: ${data.configured}`
+          : `Submitted ${data.submitted}/${data.totalPicks} picks at $5 each`;
+        setKalshiStatus({ status: 'success', message: summary, results: data.results });
+      } else {
+        setKalshiStatus({ status: 'error', message: data.error || 'Kalshi submit failed' });
+      }
+    } catch (err: any) {
+      setKalshiStatus({ status: 'error', message: err.message || 'Request failed' });
     }
   };
 
@@ -474,7 +521,7 @@ export default function PrognoAdminDashboard() {
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3">
                       <p className="text-sm text-gray-600">Avg Edge</p>
-                      <p className="text-xl font-bold text-blue-600">12.5%</p>
+                      <p className="text-xl font-bold text-gray-900">{reportData['value-bets-analysis'].summary.avgEdge ? `${reportData['value-bets-analysis'].summary.avgEdge}%` : '—'}</p>
                     </div>
                   </div>
                 )}
@@ -516,6 +563,184 @@ export default function PrognoAdminDashboard() {
                             <span className={sport.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
                               ${sport.profit.toFixed(2)}
                             </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Confidence vs Results */}
+            {reportData['confidence-vs-results']?.ranges && !loading && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <h3 className="text-lg font-semibold text-gray-900">Confidence vs Results</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence Range</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Wins</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Losses</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Win Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {reportData['confidence-vs-results'].ranges.map((r: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{r.range}</td>
+                          <td className="px-6 py-4 text-sm text-center text-green-600 font-semibold">{r.wins}</td>
+                          <td className="px-6 py-4 text-sm text-center text-red-600 font-semibold">{r.losses}</td>
+                          <td className="px-6 py-4 text-sm text-center text-gray-900">{r.total}</td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${parseFloat(r.winRate) >= 55 ? 'bg-green-100 text-green-800' : parseFloat(r.winRate) >= 45 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                              {r.winRate}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Monthly Summary */}
+            {reportData['monthly-summary']?.months && !loading && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Monthly Summary</h3>
+                  {reportData['monthly-summary'].summary?.bestMonth && (
+                    <span className="text-sm text-gray-600">Best month: <span className="font-semibold text-green-600">{reportData['monthly-summary'].summary.bestMonth}</span></span>
+                  )}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Bets</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Wins</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Losses</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Win Rate</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Profit</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Avg/Bet</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {reportData['monthly-summary'].months.map((m: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{m.month}</td>
+                          <td className="px-6 py-4 text-sm text-center text-gray-900">{m.bets}</td>
+                          <td className="px-6 py-4 text-sm text-center text-green-600 font-semibold">{m.wins}</td>
+                          <td className="px-6 py-4 text-sm text-center text-red-600 font-semibold">{m.losses}</td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${parseFloat(m.winRate) >= 55 ? 'bg-green-100 text-green-800' : parseFloat(m.winRate) >= 45 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                              {m.winRate}%
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-right font-semibold">
+                            <span className={m.profit >= 0 ? 'text-green-600' : 'text-red-600'}>${m.profit.toFixed(2)}</span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-right text-gray-900">${m.avgProfitPerBet}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Streak Analysis */}
+            {reportData['streak-analysis'] && !loading && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Streak Analysis</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-gray-50 rounded-lg p-4 text-center">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Current Streak</p>
+                    <p className={`text-2xl font-bold ${reportData['streak-analysis'].currentStreakType === 'win' ? 'text-green-600' : reportData['streak-analysis'].currentStreakType === 'loss' ? 'text-red-600' : 'text-gray-900'}`}>
+                      {reportData['streak-analysis'].currentStreak}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1 capitalize">{reportData['streak-analysis'].currentStreakType || 'none'}</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-4 text-center">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Best Win Streak</p>
+                    <p className="text-2xl font-bold text-green-600">{reportData['streak-analysis'].maxWinStreak}</p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-4 text-center">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Worst Loss Streak</p>
+                    <p className="text-2xl font-bold text-red-600">{reportData['streak-analysis'].maxLossStreak}</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-4 text-center">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Last 10</p>
+                    <p className="text-2xl font-bold text-blue-600">{reportData['streak-analysis'].last10?.wins}-{reportData['streak-analysis'].last10?.losses}</p>
+                    <p className={`text-xs mt-1 font-semibold ${reportData['streak-analysis'].last10?.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${reportData['streak-analysis'].last10?.profit?.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm font-medium text-gray-900 mb-2">Last 5 Bets</p>
+                    <p className="text-lg font-bold text-gray-900">{reportData['streak-analysis'].last5?.wins}W – {reportData['streak-analysis'].last5?.losses}L</p>
+                    <p className={`text-sm font-semibold ${reportData['streak-analysis'].last5?.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${reportData['streak-analysis'].last5?.profit?.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm font-medium text-gray-900 mb-2">Last 10 Bets</p>
+                    <p className="text-lg font-bold text-gray-900">{reportData['streak-analysis'].last10?.wins}W – {reportData['streak-analysis'].last10?.losses}L</p>
+                    <p className={`text-sm font-semibold ${reportData['streak-analysis'].last10?.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${reportData['streak-analysis'].last10?.profit?.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ROI by Odds Range */}
+            {reportData['roi-by-odds-range']?.ranges && !loading && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">ROI by Odds Range</h3>
+                  {reportData['roi-by-odds-range'].bestRange && (
+                    <span className="text-sm text-gray-600">Best range: <span className="font-semibold text-green-600">{reportData['roi-by-odds-range'].bestRange}</span></span>
+                  )}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Odds Range</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Wins</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Losses</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Win Rate</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ROI</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Profit</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {reportData['roi-by-odds-range'].ranges.map((r: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900">{r.range}</td>
+                          <td className="px-6 py-4 text-sm text-center text-gray-900">{r.total}</td>
+                          <td className="px-6 py-4 text-sm text-center text-green-600 font-semibold">{r.wins}</td>
+                          <td className="px-6 py-4 text-sm text-center text-red-600 font-semibold">{r.losses}</td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${parseFloat(r.winRate) >= 55 ? 'bg-green-100 text-green-800' : parseFloat(r.winRate) >= 45 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                              {r.winRate}%
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <span className={`font-semibold ${parseFloat(r.roi) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{r.roi}%</span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-right font-semibold">
+                            <span className={r.profit >= 0 ? 'text-green-600' : 'text-red-600'}>${r.profit.toFixed(2)}</span>
                           </td>
                         </tr>
                       ))}
@@ -647,6 +872,93 @@ export default function PrognoAdminDashboard() {
                   ) : 'Sync Now'}
                 </button>
               </div>
+
+              {/* Submit to Kalshi */}
+              <div className="bg-white rounded-xl shadow-sm border border-emerald-100 p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="p-3 bg-emerald-100 rounded-xl">
+                    <DollarSign className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Submit to Kalshi</h3>
+                    <p className="text-sm text-gray-500">Place $5 orders on today's picks</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => submitToKalshi(false)}
+                  disabled={kalshiStatus.status === 'running'}
+                  className="w-full py-2 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
+                >
+                  {kalshiStatus.status === 'running' ? (
+                    <span className="flex items-center justify-center">
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Submitting...
+                    </span>
+                  ) : '💰 Submit $5 Each'}
+                </button>
+                <button
+                  onClick={() => submitToKalshi(true)}
+                  disabled={kalshiStatus.status === 'running'}
+                  className="w-full py-2 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                >
+                  Dry Run (Preview)
+                </button>
+                {kalshiStatus.status !== 'idle' && (
+                  <div className={`mt-3 p-2 rounded text-xs ${kalshiStatus.status === 'success' ? 'bg-green-50 text-green-700' : kalshiStatus.status === 'error' ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
+                    {kalshiStatus.message}
+                    {kalshiStatus.results && kalshiStatus.results.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {kalshiStatus.results.slice(0, 5).map((r, i) => (
+                          <li key={i} className="truncate">
+                            {r.status === 'dry_run' ? '🔍' : r.status === 'submitted' ? '✅' : r.status === 'no_market' ? '⚠️' : '❌'} {r.game} → {r.pick} {r.note || r.estimatedCost || ''}
+                          </li>
+                        ))}
+                        {kalshiStatus.results.length > 5 && <li>...and {kalshiStatus.results.length - 5} more</li>}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Syndicate to Prognostication */}
+              <div className="bg-white rounded-xl shadow-sm border border-orange-100 p-6 hover:shadow-md transition-shadow">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="p-3 bg-orange-100 rounded-xl">
+                    <Send className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Send to Prognostication</h3>
+                    <p className="text-sm text-gray-500">Syndicate picks to website tiers</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => syndicateToProg(false)}
+                  disabled={syndicateStatus.status === 'running'}
+                  className="w-full py-2 px-4 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mb-2"
+                >
+                  {syndicateStatus.status === 'running' ? (
+                    <span className="flex items-center justify-center">
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Syndicating...
+                    </span>
+                  ) : 'Syndicate Now'}
+                </button>
+                <button
+                  onClick={() => syndicateToProg(true)}
+                  disabled={syndicateStatus.status === 'running'}
+                  className="w-full py-2 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                >
+                  Dry Run
+                </button>
+                {syndicateStatus.status !== 'idle' && (
+                  <div className={`mt-3 p-2 rounded text-xs ${syndicateStatus.status === 'success' ? 'bg-green-50 text-green-700' :
+                    syndicateStatus.status === 'error' ? 'bg-red-50 text-red-700' :
+                      'bg-blue-50 text-blue-700'
+                    }`}>
+                    {syndicateStatus.message}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Quick Links */}
@@ -683,38 +995,41 @@ export default function PrognoAdminDashboard() {
               </div>
             </div>
           </div>
-        )}
+        )
+        }
 
         {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Environment Variables</h3>
-            <p className="text-gray-600 mb-4">Edit these in <code className="bg-gray-100 px-2 py-1 rounded text-sm">apps/progno/.env.local</code></p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                'CRON_SECRET', 'ODDS_API_KEY', 'API_SPORTS_KEY',
-                'ADMIN_PASSWORD', 'OPENWEATHER_API_KEY', 'SCRAPINGBEE_API_KEY',
-                'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'
-              ].map((envVar) => (
-                <div key={envVar} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <code className="text-sm font-mono text-blue-600">{envVar}</code>
-                  <span className="text-xs text-gray-400">••••••••</span>
-                </div>
-              ))}
-            </div>
+        {
+          activeTab === 'settings' && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Environment Variables</h3>
+              <p className="text-gray-600 mb-4">Edit these in <code className="bg-gray-100 px-2 py-1 rounded text-sm">apps/progno/.env.local</code></p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  'CRON_SECRET', 'ODDS_API_KEY', 'API_SPORTS_KEY',
+                  'ADMIN_PASSWORD', 'OPENWEATHER_API_KEY', 'SCRAPINGBEE_API_KEY',
+                  'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'
+                ].map((envVar) => (
+                  <div key={envVar} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <code className="text-sm font-mono text-blue-600">{envVar}</code>
+                    <span className="text-xs text-gray-400">••••••••</span>
+                  </div>
+                ))}
+              </div>
 
-            <div className="mt-8 pt-6 border-t border-gray-100">
-              <h4 className="font-medium text-gray-900 mb-2">Documentation</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><Link href="#" className="text-blue-600 hover:underline">PROGNO-DEBUG-CHEATSHEET.md</Link> — Key files and troubleshooting</li>
-                <li><Link href="#" className="text-blue-600 hover:underline">CRON-SCHEDULE.md</Link> — Cron timing and Task Scheduler setup</li>
-                <li>Predictions: <code className="text-xs bg-gray-100 px-1 rounded">predictions-YYYY-MM-DD.json</code></li>
-                <li>Results: <code className="text-xs bg-gray-100 px-1 rounded">results-YYYY-MM-DD.json</code></li>
-              </ul>
+              <div className="mt-8 pt-6 border-t border-gray-100">
+                <h4 className="font-medium text-gray-900 mb-2">Documentation</h4>
+                <ul className="space-y-2 text-sm text-gray-600">
+                  <li><Link href="#" className="text-blue-600 hover:underline">PROGNO-DEBUG-CHEATSHEET.md</Link> — Key files and troubleshooting</li>
+                  <li><Link href="#" className="text-blue-600 hover:underline">CRON-SCHEDULE.md</Link> — Cron timing and Task Scheduler setup</li>
+                  <li>Predictions: <code className="text-xs bg-gray-100 px-1 rounded">predictions-YYYY-MM-DD.json</code></li>
+                  <li>Results: <code className="text-xs bg-gray-100 px-1 rounded">results-YYYY-MM-DD.json</code></li>
+                </ul>
+              </div>
             </div>
-          </div>
-        )}
-      </main>
-    </div>
+          )
+        }
+      </main >
+    </div >
   );
 }

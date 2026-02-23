@@ -1,15 +1,5 @@
-/**
- * Lightweight Progno v2 API used by app/progno/page.ts
- *
- * Actions:
- * - action=games&sport=nhl        -> list of upcoming games with basic odds
- * - action=live-scores&sport=nhl  -> live/final scores for yesterday/today
- * - action=prediction&gameId=ID&sport=nhl -> simple probability-based pick for a single game
- */
-
 import { NextResponse } from 'next/server'
 import { throttledFetch } from '@/app/lib/external-api-throttle'
-import { getPrimaryKey } from '../../keys-store'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,6 +26,14 @@ function toId(home: string, away: string, commence: string | Date | undefined): 
   return `${home}__${away}__${d}`
 }
 
+function getPrimaryKey(): string | null {
+  const key =
+    (typeof process !== 'undefined' ? process.env.ODDS_API_KEY : undefined) ||
+    (typeof process !== 'undefined' ? process.env.THE_ODDS_API_KEY : undefined) ||
+    null
+  return key
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url || '')
   const action = url.searchParams.get('action') || 'games'
@@ -48,14 +46,28 @@ export async function GET(request: Request) {
   }
 
   const apiKey = getPrimaryKey()
-  if (!apiKey) {
-    return NextResponse.json({ success: false, error: 'Odds API key not set' }, { status: 500 })
+
+  // Debug aid: call with &debug=1 to see routing and key presence without hitting externals
+  if (url.searchParams.get('debug') === '1') {
+    return NextResponse.json({
+      success: true,
+      debug: {
+        action,
+        sport,
+        oddsKey,
+        hasKey: !!apiKey,
+      },
+    })
   }
 
   try {
     if (action === 'games') {
-      const url = `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
-      const res = await throttledFetch('the-odds-api', url, { cache: 'no-store' })
+      if (!apiKey) {
+        // Graceful fallback: no key available, return empty list but success true
+        return NextResponse.json({ success: true, data: [] })
+      }
+      const remote = `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
+      const res = await throttledFetch('the-odds-api', remote, { cache: 'no-store' })
       if (!res.ok) {
         return NextResponse.json({ success: false, error: `Odds API ${res.status}` }, { status: 502 })
       }
@@ -87,8 +99,12 @@ export async function GET(request: Request) {
     }
 
     if (action === 'live-scores') {
-      const url = `https://api.the-odds-api.com/v4/sports/${oddsKey}/scores/?daysFrom=2&apiKey=${apiKey}`
-      const res = await throttledFetch('the-odds-api', url, { cache: 'no-store' })
+      if (!apiKey) {
+        // Graceful fallback: no key available, return empty list but success true
+        return NextResponse.json({ success: true, data: [] })
+      }
+      const remote = `https://api.the-odds-api.com/v4/sports/${oddsKey}/scores/?daysFrom=2&apiKey=${apiKey}`
+      const res = await throttledFetch('the-odds-api', remote, { cache: 'no-store' })
       if (!res.ok) {
         return NextResponse.json({ success: false, error: `Scores API ${res.status}` }, { status: 502 })
       }
@@ -110,9 +126,11 @@ export async function GET(request: Request) {
     }
 
     if (action === 'prediction') {
-      // Fetch games to find the one requested
-      const url = `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
-      const res = await throttledFetch('the-odds-api', url, { cache: 'no-store' })
+      if (!apiKey) {
+        return NextResponse.json({ success: false, error: 'Odds API key not set' }, { status: 400 })
+      }
+      const remote = `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
+      const res = await throttledFetch('the-odds-api', remote, { cache: 'no-store' })
       if (!res.ok) {
         return NextResponse.json({ success: false, error: `Odds API ${res.status}` }, { status: 502 })
       }

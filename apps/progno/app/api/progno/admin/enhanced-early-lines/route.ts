@@ -8,9 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import fs from 'node:fs'
-import path from 'node:path'
-import { createClient } from '@supabase/supabase-js'
+import { loadPredictionsSnapshot } from '@/app/lib/early-lines'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -103,35 +101,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Helper: load predictions from local FS or Supabase Storage
-    async function loadPredictions(date: string, isEarly: boolean): Promise<any> {
-      const fileName = isEarly ? `predictions-early-${date}.json` : `predictions-${date}.json`
-      // Try local file first (dev convenience)
-      try {
-        const appRoot = process.cwd()
-        const p = path.join(appRoot, fileName)
-        if (fs.existsSync(p)) {
-          const raw = fs.readFileSync(p, 'utf8')
-          return JSON.parse(raw)
-        }
-      } catch { }
-      // Fallback: Supabase Storage
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-      if (!supabaseUrl || !supabaseKey) {
-        throw new Error(`${fileName} not found locally and Supabase env not configured`)
-      }
-      const sb = createClient(supabaseUrl, supabaseKey)
-      const { data: file, error } = await sb.storage.from('predictions').download(fileName)
-      if (error || !file) throw new Error(`${fileName} not found in storage`)
-      const text = await file.text()
-      const clean = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
-      return JSON.parse(clean)
-    }
-
     // Load data (supports both environments)
-    const earlyData = await loadPredictions(earlyDate, true)
-    const regularData = await loadPredictions(regularDate, false)
+    const earlyData = await loadPredictionsSnapshot(earlyDate, true)
+    const regularData = await loadPredictionsSnapshot(regularDate, false)
     const earlyPicks: Pick[] = Array.isArray(earlyData.picks) ? earlyData.picks : []
     const regularPicks: Pick[] = Array.isArray(regularData.picks) ? regularData.picks : []
 
