@@ -28,14 +28,14 @@ const PROVIDER_CONFIGS: Record<string, ThrottleConfig> = {
   'api-sports': {
     maxPerMinute: 10,
     maxPerDay: 100,
-    minIntervalMs: 6500,
+    minIntervalMs: 2000,
     backoffMultiplier: 2,
     maxBackoffMs: 60000,
   },
   'the-odds-api': {
     maxPerMinute: 15,
     maxPerDay: 500,
-    minIntervalMs: 4000,
+    minIntervalMs: 1000,
     backoffMultiplier: 2,
     maxBackoffMs: 30000,
   },

@@ -1,6 +1,7 @@
 "use client"
 
-import { TrendingUp, TrendingDown, Activity, Clock } from "lucide-react"
+import { TrendingUp, TrendingDown, Activity, Clock, Copy, ExternalLink } from "lucide-react"
+import { useState } from "react"
 
 interface Signal {
   id: string
@@ -15,6 +16,7 @@ interface Signal {
   timeframe: string
   timestamp: string
   status?: "active" | "expired" | "won" | "lost"
+  marketId?: string
 }
 
 interface SignalCardProps {
@@ -25,9 +27,25 @@ interface SignalCardProps {
 export function SignalCard({ signal, onClick }: SignalCardProps) {
   const isLong = signal.direction === "YES" || signal.direction === "LONG"
   const isHighConfidence = signal.confidence === "HIGH"
-  
+  const [copied, setCopied] = useState(false)
+
+  const copyToClipboard = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const text = `${signal.market}\n${signal.direction} @ ${(signal.marketProbability * 100).toFixed(0)}%\nEdge: ${(signal.edge * 100).toFixed(1)}%\nConfidence: ${signal.confidence}`
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const openKalshi = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (signal.platform === "Kalshi" && signal.marketId) {
+      window.open(`https://kalshi.com/markets/${signal.marketId}`, '_blank')
+    }
+  }
+
   return (
-    <div 
+    <div
       onClick={onClick}
       className="bg-panel border border-border rounded-xl p-6 hover:border-primary transition-all cursor-pointer group"
     >
@@ -44,11 +62,10 @@ export function SignalCard({ signal, onClick }: SignalCardProps) {
           </div>
           <h3 className="font-semibold text-text-primary">{signal.market}</h3>
         </div>
-        <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-          isLong 
-            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" 
-            : "bg-rose-500/10 text-rose-400 border border-rose-500/30"
-        }`}>
+        <div className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${isLong
+          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+          : "bg-rose-500/10 text-rose-400 border border-rose-500/30"
+          }`}>
           {isLong ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
           {signal.direction}
         </div>
@@ -70,9 +87,8 @@ export function SignalCard({ signal, onClick }: SignalCardProps) {
         </div>
         <div>
           <div className="text-xs text-text-muted mb-1">Edge</div>
-          <div className={`text-lg font-semibold ${
-            signal.edge > 0 ? "text-success" : "text-danger"
-          }`}>
+          <div className={`text-lg font-semibold ${signal.edge > 0 ? "text-success" : "text-danger"
+            }`}>
             {signal.edge > 0 ? "+" : ""}{(signal.edge * 100).toFixed(1)}%
           </div>
         </div>
@@ -91,14 +107,13 @@ export function SignalCard({ signal, onClick }: SignalCardProps) {
           </span>
         </div>
         <div className="w-full bg-border h-2 rounded-full overflow-hidden">
-          <div 
-            className={`h-full rounded-full transition-all duration-500 ${
-              signal.confidence === "HIGH" 
-                ? "bg-gradient-to-r from-primary to-accent w-[90%]" 
-                : signal.confidence === "MEDIUM"
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${signal.confidence === "HIGH"
+              ? "bg-gradient-to-r from-primary to-accent w-[90%]"
+              : signal.confidence === "MEDIUM"
                 ? "bg-gradient-to-r from-primary to-accent w-[70%]"
                 : "bg-gradient-to-r from-warning to-accent w-[50%]"
-            }`}
+              }`}
           />
         </div>
       </div>
@@ -122,6 +137,24 @@ export function SignalCard({ signal, onClick }: SignalCardProps) {
             `}>
               {signal.status.toUpperCase()}
             </span>
+          )}
+          <button
+            onClick={copyToClipboard}
+            className="flex items-center gap-1 px-2 py-1 rounded hover:bg-surface transition"
+            title="Copy pick details"
+          >
+            <Copy size={12} />
+            {copied ? "Copied!" : "Copy"}
+          </button>
+          {signal.platform === "Kalshi" && signal.marketId && (
+            <button
+              onClick={openKalshi}
+              className="flex items-center gap-1 px-2 py-1 rounded hover:bg-surface transition text-primary"
+              title="Open in Kalshi"
+            >
+              <ExternalLink size={12} />
+              Trade
+            </button>
           )}
           <span className="group-hover:text-primary transition">View Details →</span>
         </div>

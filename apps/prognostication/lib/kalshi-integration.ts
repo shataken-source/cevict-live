@@ -69,15 +69,14 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
   }
 
   try {
-    // Query bot_predictions table for Kalshi predictions
-    // Filter: platform='kalshi', confidence >= 50%, only open predictions
+    // Query trade_history table for Kalshi trades (where Alpha Hunter stores actual trades)
+    // Filter: platform='kalshi', outcome='open' (active trades)
     let query = supabase
-      .from('bot_predictions')
+      .from('trade_history')
       .select('*')
       .eq('platform', 'kalshi')
-      .gte('confidence', 50) // Matches your new 50% threshold
-      .is('actual_outcome', null) // Only open predictions (not yet resolved)
-      .order('predicted_at', { ascending: false })
+      .eq('outcome', 'open') // Only open trades
+      .order('opened_at', { ascending: false })
       .limit(100); // Get more to account for duplicates (will deduplicate later, then limit to 20)
 
     // Filter by category if provided
@@ -107,79 +106,54 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
     }
 
     if (!data || data.length === 0) {
-      console.log('â„¹ï¸ No Kalshi predictions found in bot_predictions table');
+      console.log('ℹ️ No open Kalshi trades found in trade_history table');
       return [];
     }
 
-    // CRITICAL: Deduplicate by market_id - keep only the most recent/highest confidence prediction per market
+    // CRITICAL: Deduplicate by market_id - keep only the most recent/highest confidence trade per market
     const marketMap = new Map<string, any>();
-    for (const pred of data) {
-      const marketId = pred.market_id || pred.id || '';
+    for (const trade of data) {
+      const marketId = trade.market_id || trade.id || '';
       if (!marketId) continue;
 
       const existing = marketMap.get(marketId);
       if (!existing) {
-        marketMap.set(marketId, pred);
+        marketMap.set(marketId, trade);
       } else {
         // Keep the one with higher confidence, or if equal, the more recent one
-        const existingDate = new Date(existing.predicted_at || existing.created_at || 0);
-        const currentDate = new Date(pred.predicted_at || pred.created_at || 0);
+        const existingDate = new Date(existing.opened_at || existing.created_at || 0);
+        const currentDate = new Date(trade.opened_at || trade.created_at || 0);
 
-        if (pred.confidence > existing.confidence ||
-          (pred.confidence === existing.confidence && currentDate > existingDate)) {
-          marketMap.set(marketId, pred);
+        if (trade.confidence > existing.confidence ||
+          (trade.confidence === existing.confidence && currentDate > existingDate)) {
+          marketMap.set(marketId, trade);
         }
       }
     }
 
     // Convert map back to array, sort by edge (highest first), and limit to top 20
-    const uniquePredictions = Array.from(marketMap.values())
+    const uniqueTrades = Array.from(marketMap.values())
       .sort((a: any, b: any) => (b.edge || 0) - (a.edge || 0))
       .slice(0, 20); // Limit to top 20 after deduplication
 
     // Transform database records to API format
-    return uniquePredictions.map((pred: any) => {
-      // Map prediction field ('yes'/'no') to pick ('YES'/'NO')
-      const predictedOutcome = (pred.prediction || '').toLowerCase();
-      const pick = predictedOutcome === 'yes' ? 'YES' : 'NO';
+    return uniqueTrades.map((trade: any) => {
+      // Map trade_type ('buy'/'sell') to pick ('YES'/'NO')
+      // 'buy' means buying YES contracts, 'sell' means buying NO contracts (shorting YES)
+      const pick = trade.trade_type === 'buy' ? 'YES' : 'NO';
 
-      // Extract reasoning with multiple fallbacks
+      // Create reasoning from trade data
       let reasoning = '';
-      try {
-        if (Array.isArray(pred.reasoning) && pred.reasoning.length > 0) {
-          reasoning = pred.reasoning
-            .filter((r: any) => r != null && (typeof r === 'string' ? r.trim() : String(r)))
-            .map((r: any) => typeof r === 'string' ? r.trim() : String(r))
-            .join(' ');
-        } else if (pred.reasoning && typeof pred.reasoning === 'string') {
-          reasoning = pred.reasoning.trim();
-        } else if (Array.isArray(pred.factors) && pred.factors.length > 0) {
-          reasoning = pred.factors
-            .filter((f: any) => f != null && (typeof f === 'string' ? f.trim() : String(f)))
-            .map((f: any) => typeof f === 'string' ? f.trim() : String(f))
-            .join(', ');
-        } else if (pred.factors && typeof pred.factors === 'string') {
-          reasoning = pred.factors.trim();
-        }
-      } catch (e) {
-        // If extraction fails, will use fallback below
-        reasoning = '';
+      if (trade.symbol) {
+        const confidence = trade.confidence || 50;
+        const entryPrice = trade.entry_price || 50;
+        reasoning = `${trade.symbol} - ${pick} at ${entryPrice}¢ (confidence: ${confidence}%)`;
+      } else {
+        reasoning = `${pick} position opened at ${trade.entry_price || 50}¢`;
       }
 
-      // If still empty, create a meaningful default based on the prediction
-      if (!reasoning || reasoning.length === 0) {
-        const marketTitle = (pred.market_title || '').toLowerCase();
-        if (marketTitle.includes('ipo') || marketTitle.includes('openai') || marketTitle.includes('anthropic')) {
-          reasoning = pick === 'NO' ? 'OpenAI closer to profitability' : 'Anthropic has stronger IPO prospects';
-        } else if (marketTitle.includes('leader') || marketTitle.includes('prime minister') || marketTitle.includes('ccp')) {
-          reasoning = 'Based on current political dynamics and historical patterns';
-        } else {
-          reasoning = `AI analysis indicates ${pick === 'YES' ? 'higher' : 'lower'} probability based on market data and historical patterns`;
-        }
-      }
-
-      // Map category to valid categories (handle technology -> world, etc.)
-      let category = (pred.bot_category || 'unknown').toLowerCase();
+      // Map category to valid categories
+      let category = (trade.bot_category || 'unknown').toLowerCase();
       const categoryMap: Record<string, string> = {
         'kalshi_sports': 'sports',
         'sports': 'sports',
@@ -198,45 +172,32 @@ export async function fetchLiveKalshiPicks(category?: string): Promise<KalshiPic
         'crypto': 'crypto',
         'world': 'world',
       };
-      category = categoryMap[category] || 'world'; // Default to 'world' if unknown
+      category = categoryMap[category] || 'world';
 
-      // Extract historical patterns from learned_from array
-      let historicalPattern: string | undefined = undefined;
-      try {
-        if (Array.isArray(pred.learned_from) && pred.learned_from.length > 0) {
-          historicalPattern = pred.learned_from
-            .filter((l: any) => l != null && (typeof l === 'string' ? l.trim() : String(l)))
-            .map((l: any) => typeof l === 'string' ? l.trim() : String(l))
-            .join(', ');
-        }
-      } catch (e) {
-        // If extraction fails, leave undefined
-        historicalPattern = undefined;
+      // Calculate probability from entry price and edge
+      const entryPrice = trade.entry_price || 50;
+      const edge = trade.edge || 0;
+      let probability = entryPrice + edge;
+      if (pick === 'NO') {
+        probability = 100 - probability;
       }
-
-      // Convert market_price to cents (Kalshi uses 0-100 cents)
-      // If stored as decimal (0.50), multiply by 100. If already in cents (50), use as-is
-      let marketPrice = pred.market_price || 50;
-      if (marketPrice < 1 && marketPrice > 0) {
-        marketPrice = marketPrice * 100; // Convert decimal to cents
-      }
-      marketPrice = Math.round(marketPrice);
+      probability = Math.max(0, Math.min(100, Math.round(probability)));
 
       return {
-        id: pred.market_id || pred.id || '',
-        marketId: pred.market_id || undefined, // For Kalshi referral links
-        market: pred.market_title || 'Unknown Market',
+        id: trade.market_id || trade.id || '',
+        marketId: trade.market_id || undefined,
+        market: trade.symbol || 'Unknown Market',
         category: category,
         pick: pick as 'YES' | 'NO',
-        probability: Math.round(pred.probability || 50),
-        edge: Math.max(0, Math.round((pred.edge || 0) * 100) / 100), // Ensure non-negative, round to 2 decimals
-        marketPrice: marketPrice,
-        expires: pred.expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        probability: probability,
+        edge: Math.max(0, Math.round((trade.edge || 0) * 100) / 100),
+        marketPrice: Math.round(trade.entry_price || 50),
+        expires: trade.closed_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         reasoning: reasoning,
-        confidence: Math.round(pred.confidence || 0),
-        historicalPattern: historicalPattern,
-        predictedAt: pred.predicted_at || pred.created_at || undefined,
-        amount: pred.amount || pred.stake_size || undefined, // Trade amount if available
+        confidence: Math.round(trade.confidence || 0),
+        historicalPattern: undefined,
+        predictedAt: trade.opened_at || trade.created_at || undefined,
+        amount: trade.amount || trade.contracts || undefined,
       };
     });
   } catch (error) {
