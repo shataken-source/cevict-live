@@ -2,10 +2,18 @@ name: Build Android APK (Native)
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, gcc-vessels]
+    paths:
+      - 'apps/IPTVviewer/**'
   pull_request:
-    branches: [main, master]
+    branches: [main, master, gcc-vessels]
+    paths:
+      - 'apps/IPTVviewer/**'
   workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: apps/IPTVviewer
 
 jobs:
   build-android:
@@ -37,8 +45,7 @@ jobs:
         run: chmod +x android/gradlew
 
       - name: Build Android APK
-        working-directory: android
-        run: ./gradlew assembleRelease --no-daemon
+        run: cd android && ./gradlew assembleRelease --no-daemon
 
       - name: Sign APK (if keystore provided)
         if: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
