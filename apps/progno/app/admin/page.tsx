@@ -189,8 +189,9 @@ export default function PrognoAdminDashboard() {
         body: JSON.stringify({ date: selectedDate, dryRun, secret: '' }),
       });
       const data = await res.json();
+      console.log('[kalshi-debug] response:', JSON.stringify({ matched: data.matched, dryRuns: data.dryRuns, submitted: data.submitted, noMarket: data.noMarket, errors: data.errors, totalPicks: data.totalPicks, success: data.success }));
       if (res.ok && data.success) {
-        const matched = (data.dryRuns || 0) + (data.submitted || 0);
+        const matched = data.matched ?? ((data.dryRuns || 0) + (data.submitted || 0));
         const summary = dryRun
           ? `✗ DRY-RUN: ${data.totalPicks} picks · ${matched} matched · ${data.noMarket} no market · ${data.errors} errors @ $${(data.debug?.stakePerPick || data.stakePerPick || '5.00').replace('$', '')} each | markets fetched: ${data.debug?.marketsFetched ?? '?'} | configured: ${data.configured}`
           : `Submitted ${data.submitted}/${data.totalPicks} picks at $5 each`;

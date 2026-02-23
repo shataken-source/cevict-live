@@ -198,7 +198,8 @@ const GAME_SERIES: Array<{ prefix: string; sport: string }> = [
   { prefix: 'KXNBATOTAL', sport: 'NBA' },
   { prefix: 'KXNFLTOTAL', sport: 'NFL' },
   { prefix: 'KXNHLTOTAL', sport: 'NHL' },
-  // Other
+  // College Baseball
+  { prefix: 'KXNCAABBGAME', sport: 'NCAAB' },
   { prefix: 'KXNCAABASEBALL', sport: 'NCAAB' },
   { prefix: 'KXCBGAME', sport: 'NCAAB' },
 ]
@@ -234,6 +235,13 @@ async function fetchSportsMarkets(apiKeyId: string, privateKey: string): Promise
       }
       for (const ev of events) {
         const cat = (ev.category || '').toUpperCase()
+        // DEBUG: find fresno/pepperdine/cal poly events regardless of category/prefix
+        const evTitle = (ev.title || '').toLowerCase()
+        const evMktTitles = (ev.markets || []).map((m: any) => (m.title || '').toLowerCase()).join(' ')
+        if (evTitle.includes('fresno') || evTitle.includes('pepperdine') || evTitle.includes('cal poly') || evMktTitles.includes('fresno') || evMktTitles.includes('pepperdine') || evMktTitles.includes('cal poly')) {
+          console.log(`[DEBUG-FIND] event=${ev.event_ticker} cat=${ev.category} title="${ev.title}" markets=${(ev.markets || []).length}`)
+            ; (ev.markets || []).slice(0, 3).forEach((m: any) => console.log(`[DEBUG-FIND]   mkt=${m.ticker} "${m.title}"`))
+        }
         if (cat !== 'SPORTS') continue
         const et = (ev.event_ticker || '').toUpperCase()
         // Skip women's sports (NCAAWB, WNBA, etc.) — Progno only predicts men's
@@ -534,6 +542,7 @@ export async function POST(request: NextRequest) {
       dryRun: settings.dryRun || !settings.enabled,
       today,
       totalPicks: picks.length,
+      matched: dryRuns + submitted,
       submitted,
       dryRuns,
       noMarket,
