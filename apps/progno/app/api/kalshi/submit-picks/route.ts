@@ -57,14 +57,44 @@ async function searchKalshiMarkets(query: string): Promise<any[]> {
   }
 }
 
+// Normalize team names for matching
+function normalizeTeamName(team: string): string[] {
+  const normalized = team.toLowerCase()
+    .replace(/\bst\b/g, 'state')
+    .replace(/\bst\./g, 'state')
+    .replace(/\bu\b/g, 'university')
+    .replace(/\buc\b/g, 'university of california')
+    .replace(/\but\b/g, 'university of texas')
+    .trim()
+
+  // Return multiple variations
+  const tokens = normalized.split(' ').filter(t => t.length > 2)
+  return [normalized, ...tokens]
+}
+
 async function findMarketForPick(pick: any): Promise<any | null> {
   // Search by team names in open sports markets
-  const homeTeam = (pick.home_team || '').toLowerCase()
-  const awayTeam = (pick.away_team || '').toLowerCase()
-  const pickTeam = (pick.pick || '').toLowerCase()
+  const homeTeam = pick.home_team || ''
+  const awayTeam = pick.away_team || ''
+  const pickTeam = pick.pick || ''
+  const sport = pick.sport || pick.league || ''
 
-  // Fetch open sports markets
-  const path = `/markets?status=open&limit=1000`
+  // Normalize team names
+  const homeTokens = normalizeTeamName(homeTeam)
+  const awayTokens = normalizeTeamName(awayTeam)
+
+  // Fetch open sports markets - filter by sport if possible
+  let path = `/markets?status=open&limit=1000`
+
+  // Add sport-specific series ticker filter
+  if (sport === 'NBA') {
+    path += '&series_ticker=KXNBA'
+  } else if (sport === 'NCAAB' || sport === 'NCAA') {
+    path += '&series_ticker=KXNCAAMB'
+  } else if (sport === 'NFL') {
+    path += '&series_ticker=KXNFL'
+  }
+
   try {
     const headers = buildAuthHeaders('GET', path)
     const res = await fetch(`${KALSHI_BASE}${path}`, { headers })
@@ -75,10 +105,18 @@ async function findMarketForPick(pick: any): Promise<any | null> {
     // Find a market whose title contains both teams and is a winner market
     return markets.find((m: any) => {
       const title = (m.title || '').toLowerCase()
-      const hasHome = homeTeam && title.includes(homeTeam.split(' ').pop() || homeTeam)
-      const hasAway = awayTeam && title.includes(awayTeam.split(' ').pop() || awayTeam)
-      const isWinner = title.includes('winner') || title.includes('win') || m.ticker?.includes('GAME')
-      return hasHome && hasAway && isWinner
+      const ticker = (m.ticker || '').toLowerCase()
+
+      // Must be a winner/game market
+      const isWinner = title.includes('winner') || title.includes('win') ||
+        ticker.includes('game') || ticker.includes('winner')
+      if (!isWinner) return false
+
+      // Check if both teams are mentioned (using any token)
+      const hasHome = homeTokens.some(token => title.includes(token))
+      const hasAway = awayTokens.some(token => title.includes(token))
+
+      return hasHome && hasAway
     }) || null
   } catch {
     return null
@@ -127,7 +165,7 @@ function loadPredictions(date: string, earlyLines: boolean): any[] {
 // ── Handler ────────────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   let body: any = {}
-  try { body = await request.json() } catch {}
+  try { body = await request.json() } catch { }
 
   const today = new Date().toISOString().split('T')[0]
   const date = body.date || today
