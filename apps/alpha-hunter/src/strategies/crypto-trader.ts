@@ -6,6 +6,10 @@
 
 import { ExchangeManager } from '../exchanges/exchange-manager';
 import { Opportunity, Trade, LearningData } from '../types';
+import { tradeLimiter } from '../lib/trade-limiter';
+import { smsAlerter } from '../lib/sms-alerter';
+import { emergencyStop } from '../lib/emergency-stop';
+import { beeper } from '../lib/beep';
 
 interface CryptoSignal {
   symbol: 'BTC' | 'ETH' | 'SOL';
@@ -34,7 +38,7 @@ export class CryptoTrader {
 
   constructor() {
     this.exchanges = new ExchangeManager();
-    
+
     this.config = {
       maxTradeSize: parseFloat(process.env.CRYPTO_MAX_TRADE_SIZE || '50'),
       takeProfitPercent: parseFloat(process.env.CRYPTO_TAKE_PROFIT || '5'),
@@ -108,7 +112,7 @@ export class CryptoTrader {
         `Historical reversion rate: ${(65 + Math.random() * 10).toFixed(1)}%`,
       ],
       entryPrice: currentPrice,
-      targetPrice: direction === 'long' 
+      targetPrice: direction === 'long'
         ? currentPrice * (1 + Math.abs(change24h) * 0.003)
         : currentPrice * (1 - Math.abs(change24h) * 0.003),
       stopLoss: direction === 'long'
@@ -127,7 +131,7 @@ export class CryptoTrader {
   ): Promise<CryptoSignal | null> {
     // Check for consistent direction (simulated for now)
     const trend = this.detectTrend(symbol);
-    
+
     if (Math.abs(trend.strength) < 60) return null;
 
     const direction = trend.direction;
@@ -162,7 +166,7 @@ export class CryptoTrader {
   ): Promise<CryptoSignal | null> {
     // Detect breakout (simulated)
     const breakout = this.detectBreakout(symbol, currentPrice);
-    
+
     if (!breakout.isBreakout) return null;
 
     return {
@@ -188,9 +192,21 @@ export class CryptoTrader {
    * Execute the best signal
    */
   async executeBestSignal(): Promise<Trade | null> {
-    // Check daily limits
-    if (this.dailyTrades >= this.config.maxDailyTrades) {
-      console.log(`⚠️ Daily trade limit (${this.config.maxDailyTrades}) reached`);
+    // Check emergency stop
+    const emergencyCheck = emergencyStop.canTrade();
+    if (!emergencyCheck.allowed) {
+      console.log(`🛑 Emergency stop active: ${emergencyCheck.reason}`);
+      return null;
+    }
+
+    // Check persistent daily limit
+    const limitCheck = tradeLimiter.canTrade(this.config.maxTradeSize, 'crypto');
+    if (!limitCheck.allowed) {
+      console.log(`⏸️ ${limitCheck.reason}`);
+      await smsAlerter.dailyLimitReached(
+        tradeLimiter.getStats().tradeCount,
+        tradeLimiter.getStats().totalSpent
+      );
       return null;
     }
 
@@ -206,6 +222,26 @@ export class CryptoTrader {
     console.log(`   Confidence: ${best.confidence}%`);
     best.reasoning.forEach(r => console.log(`   • ${r}`));
 
+    // Check spending limit before trade
+    const stats = tradeLimiter.getStats();
+    const canAfford = await emergencyStop.checkSpendingLimit(
+      stats.totalSpent,
+      this.config.maxTradeSize
+    );
+    if (!canAfford) {
+      console.log('🛑 Trade blocked by emergency stop');
+      return null;
+    }
+
+    // BEEP AND ALERT BEFORE EXECUTING TRADE
+    await beeper.tradeExecuted();
+    await smsAlerter.tradeExecuted(
+      best.symbol,
+      this.config.maxTradeSize,
+      best.direction === 'long' ? 'BUY' : 'SELL',
+      'Coinbase'
+    );
+
     // Execute trade
     const result = await this.exchanges.smartTrade(
       best.symbol,
@@ -218,6 +254,8 @@ export class CryptoTrader {
       return null;
     }
 
+    // Record trade in persistent counter
+    tradeLimiter.recordTrade(best.symbol, result.amount, 'crypto');
     this.dailyTrades++;
 
     return {
@@ -288,13 +326,17 @@ export class CryptoTrader {
   async getStatus(): Promise<string> {
     const exchangeStatus = await this.exchanges.getStatus();
     const signals = await this.generateSignals();
+    const stats = tradeLimiter.getStats();
+    const emergencyState = emergencyStop.getState();
 
     let status = exchangeStatus;
     status += '\n╔═══════════════════════════════════════════════╗\n';
     status += '║            📊 CRYPTO TRADER STATUS            ║\n';
     status += '╠═══════════════════════════════════════════════╣\n';
-    status += `║  Daily Trades: ${this.dailyTrades}/${this.config.maxDailyTrades}`.padEnd(46) + '║\n';
+    status += `║  Daily Trades: ${stats.tradeCount}/${this.config.maxDailyTrades} (${stats.remainingTrades} left)`.padEnd(46) + '║\n';
+    status += `║  Daily Spent: $${stats.totalSpent.toFixed(2)}/$${stats.totalSpent + stats.remainingBudget} ($${stats.remainingBudget.toFixed(2)} left)`.padEnd(46) + '║\n';
     status += `║  Daily P&L: ${this.dailyPnL >= 0 ? '+' : ''}$${this.dailyPnL.toFixed(2)}`.padEnd(46) + '║\n';
+    status += `║  Emergency Stop: ${emergencyState.stopped ? '🛑 ACTIVE' : '✅ Ready'}`.padEnd(46) + '║\n';
     status += `║  Active Signals: ${signals.length}`.padEnd(46) + '║\n';
     status += '╠═══════════════════════════════════════════════╣\n';
 
