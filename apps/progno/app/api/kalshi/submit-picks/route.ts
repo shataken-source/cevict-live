@@ -73,6 +73,8 @@ async function fetchAllMarkets() {
   let all: any[] = [];
   let cursor: string | undefined;
 
+  console.log(`[KALSHI] Starting deep market fetch (MAX_PAGES=${MAX_PAGES})`);
+
   for (let i = 0; i < MAX_PAGES; i++) {
     let path = `/markets?status=open&limit=1000`;
     if (cursor) path += `&cursor=${cursor}`;
@@ -81,17 +83,26 @@ async function fetchAllMarkets() {
       headers: auth("GET", path),
     });
 
-    if (!res.ok) break;
+    if (!res.ok) {
+      console.log(`[KALSHI] Page ${i} fetch failed: ${res.status}`);
+      break;
+    }
 
     const data = await res.json();
     const markets = data.markets || [];
 
     all.push(...markets);
+    console.log(`[KALSHI] Page ${i}: fetched ${markets.length} markets, total=${all.length}, cursor=${data.cursor ? 'present' : 'null'}`);
+
     cursor = data.cursor;
 
-    if (!cursor || markets.length === 0) break;
+    if (!cursor || markets.length === 0) {
+      console.log(`[KALSHI] Stopping: cursor=${cursor}, markets.length=${markets.length}`);
+      break;
+    }
   }
 
+  console.log(`[KALSHI] Final: ${all.length} total markets fetched`);
   return all;
 }
 
