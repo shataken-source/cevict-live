@@ -75,6 +75,13 @@ function teamSearchTokens(team: string): string[] {
     tokens.push(words[words.length - 1])
     if (words.length >= 2) tokens.push(words.slice(0, -1).join(' '))
   }
+
+  // Add version without mascot/nickname (last word)
+  if (words.length > 1) {
+    const withoutMascot = words.slice(0, -1).join(' ')
+    if (withoutMascot) tokens.push(withoutMascot)
+  }
+
   // Add common alias variants for better matching
   const stateAbbrev = t.replace(/\bstate\b/g, 'st')
   const stateExpand = t.replace(/\bst\b/g, 'state')
@@ -84,6 +91,7 @@ function teamSearchTokens(team: string): string[] {
       const vv = v.trim()
       if (vv && vv !== t) tokens.push(vv)
     })
+
   return [...new Set(tokens)].filter(Boolean)
 }
 
@@ -117,29 +125,30 @@ async function findMarketForPick(pick: any): Promise<any | null> {
       console.log(`[DEBUG] Sample markets:`, JSON.stringify(sampleMarkets, null, 2))
     }
 
-    // Find a market whose title contains both teams and is a winner market
+    // Find a market whose title contains both teams
     const match = markets.find((m: any) => {
       const title = (m.title || '').toLowerCase()
       const ticker = (m.ticker || '').toLowerCase()
 
-      // Must be a winner/game market
-      const isWinner = title.includes('winner') || title.includes('win') ||
-        ticker.includes('game') || ticker.includes('winner')
-      if (!isWinner) return false
+      // Skip non-sports markets (spread, total, props)
+      if (title.includes('spread') || title.includes('total') || title.includes('points') ||
+        title.includes('over') && title.includes('under')) {
+        return false
+      }
 
       // Check if both teams are mentioned (using any token)
       const hasHome = homeTokens.some(token => title.includes(token))
       const hasAway = awayTokens.some(token => title.includes(token))
 
-      if (sport === 'NBA' && (hasHome || hasAway)) {
-        console.log(`[DEBUG] Partial match: ${title}`, { hasHome, hasAway, homeTokens, awayTokens })
+      if (sport === 'NCAAB' && (hasHome || hasAway)) {
+        console.log(`[DEBUG] Checking: ${title}`, { hasHome, hasAway, homeTokens, awayTokens })
       }
 
       return hasHome && hasAway
     })
 
-    if (sport === 'NBA') {
-      console.log(`[DEBUG] Match result:`, match ? match.title : 'NO MATCH')
+    if (sport === 'NCAAB' || sport === 'NBA') {
+      console.log(`[DEBUG] Match result for ${homeTeam} vs ${awayTeam}:`, match ? match.title : 'NO MATCH')
     }
 
     return match || null
