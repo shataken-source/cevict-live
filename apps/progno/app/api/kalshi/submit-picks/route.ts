@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import crypto from 'crypto'
+import { normalizeTeamName } from '../../../team-names'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -57,19 +58,11 @@ async function searchKalshiMarkets(query: string): Promise<any[]> {
   }
 }
 
-// Normalize team names for matching
-function normalizeTeamName(team: string): string[] {
-  const normalized = team.toLowerCase()
-    .replace(/\bst\b/g, 'state')
-    .replace(/\bst\./g, 'state')
-    .replace(/\bu\b/g, 'university')
-    .replace(/\buc\b/g, 'university of california')
-    .replace(/\but\b/g, 'university of texas')
-    .trim()
-
-  // Return multiple variations
-  const tokens = normalized.split(' ').filter(t => t.length > 2)
-  return [normalized, ...tokens]
+// Generate search tokens from team name
+function getTeamTokens(team: string, sport?: string): string[] {
+  const normalized = normalizeTeamName(team, sport)
+  const tokens = normalized.toLowerCase().split(' ').filter(t => t.length > 2)
+  return [normalized.toLowerCase(), ...tokens]
 }
 
 async function findMarketForPick(pick: any): Promise<any | null> {
@@ -79,9 +72,9 @@ async function findMarketForPick(pick: any): Promise<any | null> {
   const pickTeam = pick.pick || ''
   const sport = pick.sport || pick.league || ''
 
-  // Normalize team names
-  const homeTokens = normalizeTeamName(homeTeam)
-  const awayTokens = normalizeTeamName(awayTeam)
+  // Normalize team names and generate search tokens
+  const homeTokens = getTeamTokens(homeTeam, sport)
+  const awayTokens = getTeamTokens(awayTeam, sport)
 
   // Fetch open sports markets - filter by sport if possible
   let path = `/markets?status=open&limit=1000`
