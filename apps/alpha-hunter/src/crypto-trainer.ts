@@ -15,6 +15,9 @@ import Anthropic from '@anthropic-ai/sdk';
 import { fundManager } from './fund-manager';
 import { dataAggregator } from './intelligence/data-aggregator';
 import { marketLearner } from './intelligence/market-learner';
+import { localAI } from './lib/local-ai';
+import { tradeLogger } from './lib/logger';
+import { beeper } from './lib/beep';
 
 // ANSI Color Codes & Beep Utilities
 const colors = {
@@ -53,7 +56,7 @@ function beep(count: number = 1, interval: number = 100): void {
   for (let i = 0; i < count; i++) {
     process.stdout.write('\x07'); // ASCII bell
     if (i < count - 1) {
-      setTimeout(() => {}, interval);
+      setTimeout(() => { }, interval);
     }
   }
 }
@@ -266,10 +269,14 @@ class CryptoTrainer {
   private claude: Anthropic | null;
   private trades: TradeRecord[] = [];
   private learning: LearningState;
-  private maxTradeUSD = 10; // Increased to $10 max per trade
-  private minProfitPercent = 1.5; // Take profit at 1.5%
-  private maxLossPercent = 2; // Stop loss at 2%
-  private tradingPairs = ['BTC-USD', 'ETH-USD', 'SOL-USD'];
+  private maxTradeUSD = parseFloat(process.env.CRYPTO_MAX_TRADE_SIZE || '5');
+  private minProfitPercent = parseFloat(process.env.CRYPTO_TAKE_PROFIT || '3');
+  private maxLossPercent = parseFloat(process.env.CRYPTO_STOP_LOSS || '2');
+  private tradingPairs = process.env.CRYPTO_USE_USDC === 'true'
+    ? ['BTC-USDC', 'ETH-USDC', 'SOL-USDC']
+    : ['BTC-USD', 'ETH-USD', 'SOL-USD'];
+  private useUSDC = process.env.CRYPTO_USE_USDC === 'true';
+  private disableAutoConvert = process.env.CRYPTO_DISABLE_AUTO_CONVERT === 'true';
   private isRunning = false;
   private learnedConcepts: Set<string> = new Set(); // Track learned crypto concepts
 
@@ -277,6 +284,7 @@ class CryptoTrainer {
   private conversionAttempted = false;
   private totalConvertedThisSession = 0;
   private maxConversionPerSession = 500; // Never convert more than this per session
+  private baseCurrency = process.env.CRYPTO_USE_USDC === 'true' ? 'USDC' : 'USD';
 
   // Track estimated USD (invisible to API but usable)
   private estimatedUSD = 0;
@@ -285,6 +293,14 @@ class CryptoTrainer {
   private balanceRefreshInterval = 60000; // Refresh every 60 seconds minimum
 
   constructor() {
+    // Debug: Verify env vars are loaded
+    if (!process.env.COINBASE_API_KEY) {
+      console.error('❌ COINBASE_API_KEY not found in environment!');
+    }
+    if (!process.env.COINBASE_API_SECRET) {
+      console.error('❌ COINBASE_API_SECRET not found in environment!');
+    }
+
     this.coinbase = new CoinbaseExchange();
     this.claude = process.env.ANTHROPIC_API_KEY
       ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -346,11 +362,11 @@ class CryptoTrainer {
     let usdCash = 0;
 
     for (const acc of withAssets) {
-      if (acc.currency === 'USD') {
+      if (acc.currency === this.baseCurrency) {
         usdCash = acc.available;
         totalUSD += acc.available;
         totalHeldUSD += acc.hold || 0;
-        let line = `  💵 USD: $${acc.available.toFixed(2)}`;
+        let line = `  💵 ${this.baseCurrency}: $${acc.available.toFixed(2)}`;
         if (acc.hold > 0) line += ` (+ $${acc.hold.toFixed(2)} held)`;
         console.log(line);
       } else {
@@ -400,8 +416,9 @@ class CryptoTrainer {
 
   async getUSDBalance(): Promise<number> {
     const accounts = await this.coinbase.getAccounts();
-    const usd = accounts.find(a => a.currency === 'USD');
-    return usd?.available || 0;
+    const currency = this.baseCurrency;
+    const account = accounts.find(a => a.currency === currency);
+    return account?.available || 0;
   }
 
   /**
@@ -431,7 +448,7 @@ class CryptoTrainer {
       const stablecoins = ['USDC', 'DAI', 'USDT', 'GUSD', 'PAX', 'BUSD'];
 
       for (const acc of withAssets) {
-        if (acc.currency === 'USD') {
+        if (acc.currency === this.baseCurrency) {
           usdCash = acc.available;
           totalPortfolioUSD += acc.available;
           unstakingUSD += acc.hold || 0;
@@ -499,6 +516,19 @@ class CryptoTrainer {
     }
   }
 
+  private formatDuration(start: Date, end: Date): string {
+    const ms = end.getTime() - start.getTime();
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ${hours % 24}h`;
+    if (hours > 0) return `${hours}h ${minutes % 60}m`;
+    if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+    return `${seconds}s`;
+  }
+
   async analyzeMarket(pair: string): Promise<{
     signal: 'buy' | 'sell' | 'hold';
     confidence: number;
@@ -519,12 +549,38 @@ class CryptoTrainer {
       } catch (err: any) {
         const errMsg = err.message || String(err);
         if (errMsg.includes('credit') || errMsg.includes('balance')) {
-          console.log(`   ⚠️ AI: Need API credits`);
+          console.log(`   ⚠️ Claude: Need API credits`);
         } else if (errMsg.includes('rate')) {
-          console.log(`   ⚠️ AI: Rate limited, waiting...`);
+          console.log(`   ⚠️ Claude: Rate limited, waiting...`);
         } else {
-          console.log(`   ⚠️ AI offline: ${errMsg.substring(0, 60)}`);
+          console.log(`   ⚠️ Claude offline: ${errMsg.substring(0, 60)}`);
         }
+      }
+    }
+
+    // Try local AI if available
+    if (localAI.isEnabled() && await localAI.isAvailable()) {
+      try {
+        const momentum = knowledge.getMomentum(pair);
+        const localAnalysis = await localAI.analyzeCrypto({
+          symbol: pair,
+          price: ticker.price,
+          momentum,
+          fearGreed: 50, // Would get from real API
+          btcDominance: 56.3, // Would get from real API
+          volume24h: ticker.volume * ticker.price
+        });
+
+        console.log(`   🤖 Local AI (${localAI.getModel()}): ${localAnalysis.signal}`);
+
+        return {
+          signal: localAnalysis.signal.toLowerCase() as 'buy' | 'sell' | 'hold',
+          confidence: localAnalysis.confidence,
+          reason: localAnalysis.reason,
+          price: ticker.price
+        };
+      } catch (err: any) {
+        console.log(`   ⚠️ Local AI failed: ${err.message}`);
       }
     }
 
@@ -674,6 +730,18 @@ Respond JSON only: {"signal": "buy|sell|hold", "confidence": 0-100, "reason": "y
       console.log(`   🎯 Take Profit: $${takeProfitPrice.toFixed(2)} (+${this.minProfitPercent}%)`);
       console.log(`   🛑 Stop Loss: $${stopLossPrice.toFixed(2)} (-${this.maxLossPercent}%)`);
 
+      // Log trade and beep
+      tradeLogger.logTrade({
+        action: side.toUpperCase() as 'BUY' | 'SELL',
+        pair,
+        amount: order.filledSize || usdAmount / ticker.price,
+        price: entryPrice,
+        total: usdAmount,
+        confidence: 0, // Will be set by caller
+        reason
+      });
+      await beeper.tradeExecuted();
+
       // Wait for order to settle, then refresh balance
       console.log(`   ⏳ Waiting for order to settle...`);
       await new Promise(r => setTimeout(r, 2000));
@@ -756,13 +824,25 @@ Respond JSON only: {"signal": "buy|sell|hold", "confidence": 0-100, "reason": "y
       this.learning.totalTrades++;
       this.learning.totalProfit += actualPnL; // Use net profit after fees
 
+      // Log trade close
+      const duration = this.formatDuration(trade.timestamp, new Date());
+      tradeLogger.logTradeClose({
+        pair: trade.pair,
+        entryPrice: trade.entryPrice,
+        exitPrice: currentPrice,
+        profit: actualPnL,
+        profitPercent: pnlPercent,
+        duration
+      });
+      await beeper.tradeClosed(actualPnL);
+
       if (actualPnL > 0) {
         this.learning.wins++;
-      fundManager.updateCryptoStats(actualPnL, true);
+        fundManager.updateCryptoStats(actualPnL, true);
         celebrateWin(`💰 WIN: +${actualPnL.toFixed(4)} (+${pnlPercent.toFixed(2)}%)`);
       } else {
         this.learning.losses++;
-      fundManager.updateCryptoStats(actualPnL, false);
+        fundManager.updateCryptoStats(actualPnL, false);
         alertLoss(`💸 LOSS: ${actualPnL.toFixed(4)} (${pnlPercent.toFixed(2)}%)`);
       }
 
@@ -785,7 +865,7 @@ Respond JSON only: {"signal": "buy|sell|hold", "confidence": 0-100, "reason": "y
   }
 
 
-    showLearningStats(): void {
+  showLearningStats(): void {
     const winRate = this.learning.totalTrades > 0
       ? (this.learning.wins / this.learning.totalTrades * 100)
       : 0;
@@ -837,8 +917,8 @@ ${colors.bright}╚════════════════════�
     console.log(`📊 Trades this session: ${this.tradesThisSession}`);
     console.log('');
 
-    // If low on USD, convert some crypto to get trading capital
-    if (this.estimatedUSD < 10 && !this.conversionAttempted) {
+    // If low on USD, convert some crypto to get trading capital (DISABLED if CRYPTO_DISABLE_AUTO_CONVERT=true)
+    if (this.estimatedUSD < 10 && !this.conversionAttempted && !this.disableAutoConvert) {
       console.log('💱 Getting trading capital...');
       const accounts = await this.coinbase.getAccounts();
 
@@ -915,6 +995,15 @@ ${colors.bright}╚════════════════════�
     const openCount = this.trades.filter(t => !t.closed).length;
     console.log(`\n📊 Session: ${this.tradesThisSession} trades | ${openCount} open | P&L: $${this.learning.totalProfit.toFixed(2)}`);
     console.log('');
+
+    // Log cycle stats
+    tradeLogger.logCycle({
+      timestamp: new Date().toISOString(),
+      usdcBalance: this.estimatedUSD,
+      openTrades: openCount,
+      sessionPnL: this.learning.totalProfit,
+      totalTrades: this.learning.totalTrades
+    });
 
     // LEARN NEW CRYPTO CONCEPTS: Learn about pairs we haven't studied yet
     for (const pair of this.tradingPairs) {
@@ -1024,21 +1113,43 @@ async function main() {
   const trainer = new CryptoTrainer();
   await trainer.initialize();
 
-  console.log(`
+  // Check if running via scheduled task (single cycle mode)
+  const isCronMode = process.env.CRON_MODE === 'true' || process.argv.includes('--single-cycle');
+
+  if (isCronMode) {
+    console.log(`
+╔══════════════════════════════════════════════════════════════╗
+║           🔄 SINGLE CYCLE MODE (Scheduled Task) 🔄           ║
+║                                                              ║
+║  • Running one analysis cycle                                ║
+║  • Checking BTC-USDC, ETH-USDC, SOL-USDC                     ║
+║  • Using local AI (Ollama)                                   ║
+║  • Max $5 per trade, 70% min confidence                      ║
+║  • Will exit after cycle completes                           ║
+╚══════════════════════════════════════════════════════════════╝
+    `);
+
+    // Run single cycle and exit
+    await trainer.runTrainingCycle();
+    console.log('\n✅ Cycle complete. Exiting.\n');
+    process.exit(0);
+  } else {
+    console.log(`
 ╔══════════════════════════════════════════════════════════════╗
 ║              🚀 RUNNING FULLY AUTONOMOUS 🚀                  ║
 ║                                                              ║
 ║  • Monitoring BTC, ETH, SOL every 20 seconds                 ║
-║  • Auto take-profit at +1.5%                                 ║
+║  • Auto take-profit at +3%                                   ║
 ║  • Auto stop-loss at -2%                                     ║
-║  • AI-powered decisions (Claude Haiku)                       ║
+║  • Local AI powered (Ollama)                                 ║
 ║  • Max $5 per trade                                          ║
 ║                                                              ║
-║  Watch your Coinbase app for live trades!                    ║
+║  Press Ctrl+C to stop                                        ║
 ╚══════════════════════════════════════════════════════════════╝
-  `);
+    `);
 
-  await trainer.startTraining(20); // Run every 20 seconds for faster monitoring
+    await trainer.startTraining(20); // Run every 20 seconds for faster monitoring
+  }
 }
 
 main().catch(console.error);

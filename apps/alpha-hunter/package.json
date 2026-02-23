@@ -58,7 +58,10 @@
     "test-polymarket": "tsx test-polymarket.ts",
     "test-kalshi": "tsx test-kalshi.ts",
     "backtest": "tsx backtest-progno.ts",
-    "paper": "tsx paper-trading.ts"
+    "paper": "tsx paper-trading.ts",
+    "execute": "tsx src/progno-kalshi-executor.ts --once",
+    "execute:dry": "tsx src/progno-kalshi-executor.ts --once --dry-run",
+    "execute:watch": "tsx src/progno-kalshi-executor.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",

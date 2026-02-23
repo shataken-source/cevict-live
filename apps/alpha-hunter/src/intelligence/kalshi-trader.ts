@@ -72,15 +72,21 @@ export class KalshiTrader {
 
     const secrets = loadAlphaHunterSecrets();
 
-    this.apiKeyId = (process.env.KALSHI_API_KEY_ID || secrets?.kalshi?.apiKeyId || '')
-      .replace(/^"(.*)"$/, '$1')
-      .trim();
+    const envKeyIdRaw = process.env.KALSHI_API_KEY_ID || '';
+    const secretsKeyIdRaw = secrets?.kalshi?.apiKeyId || '';
+    const usedKeyIdRaw = envKeyIdRaw || secretsKeyIdRaw || '';
+    this.apiKeyId = usedKeyIdRaw.replace(/^"(.*)"$/, '$1').trim();
 
     let rawKey = process.env.KALSHI_PRIVATE_KEY || secrets?.kalshi?.privateKey || '';
+    if (typeof rawKey === 'string' && rawKey.trim().length === 0) {
+      rawKey = '';
+    }
 
     // Optional: load from PEM file to avoid .env newline/quoting issues.
     if (!rawKey) {
-      const keyPath = (process.env.KALSHI_PRIVATE_KEY_PATH || secrets?.kalshi?.privateKeyPath || '').trim();
+      const keyPathEnv = (process.env.KALSHI_PRIVATE_KEY_PATH || '').trim();
+      const keyPathSecrets = (secrets?.kalshi?.privateKeyPath || '').trim();
+      const keyPath = (keyPathEnv || keyPathSecrets).trim();
       if (keyPath) {
         this.privateKeyPath = keyPath;
         this.privateKeyPathExists = fs.existsSync(keyPath);
@@ -130,6 +136,14 @@ export class KalshiTrader {
         this.keyConfigured = false;
       }
     }
+    // Non-secret init debug (helps confirm correct env is loaded)
+    try {
+      const maskedId = (this.apiKeyId || '').slice(0, 6);
+      const src = envKeyIdRaw ? 'env' : (secretsKeyIdRaw ? 'secrets' : 'unset');
+      const pathInfo = this.privateKeyPath ? `${this.privateKeyPath} exists=${this.privateKeyPathExists}${this.privateKeyPathBytes ? ` bytes=${this.privateKeyPathBytes}` : ''}` : 'none';
+      console.log(`[kalshi][init] key=${maskedId}… src=${src} pem=${pathInfo}`);
+    } catch { }
+
     // Use production base URL - execution-gate.ts now allows production
     this.baseUrl = getKalshiBaseUrl();
     this.isProduction = true;
@@ -291,9 +305,14 @@ export class KalshiTrader {
     try {
       const fullPath = '/trade-api/v2/portfolio/balance';
       const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
-      if (!signature) return 500;
+      if (!signature) {
+        console.log('[kalshi][balance] sign=fail');
+        return 500;
+      }
       const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
       assertKalshiRequestUrlIsDemo(apiUrl);
+      const maskedKey = (this.apiKeyId || '').slice(0, 6);
+      console.log(`[kalshi][balance] url=${apiUrl} key=${maskedKey}…`);
       const response = await fetch(apiUrl, {
         headers: {
           'KALSHI-ACCESS-KEY': this.apiKeyId,
@@ -301,6 +320,12 @@ export class KalshiTrader {
           'KALSHI-ACCESS-TIMESTAMP': timestamp,
         },
       });
+      console.log(`[kalshi][balance] status=${response.status}`);
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        console.log(`[kalshi][balance] error=${response.status} ${response.statusText} ${body ? body.slice(0, 160) : ''}`);
+        return 500;
+      }
       const data = await response.json();
       return (data.balance || 0) / 100;
     } catch (e) { return 500; }

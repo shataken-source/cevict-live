@@ -46,8 +46,7 @@ export class PrognosticationSync {
   private minEdge: number = 2.0; // Minimum edge to post
 
   constructor() {
-    // Prognostication API endpoint (runs on port 3005 by default)
-    this.prognoBaseUrl = process.env.PROGNOSTICATION_URL || 'http://localhost:3005';
+    this.prognoBaseUrl = (process.env.PROGNOSTICATION_URL || 'https://prognostication.com').replace(/\/$/, '');
     this.prognoApiKey = process.env.PROGNO_INTERNAL_API_KEY || '';
   }
 
@@ -142,18 +141,39 @@ export class PrognosticationSync {
    * POST picks to Prognostication API endpoint
    */
   private async postToPrognosticationAPI(picks: KalshiPickForPrognostication[]): Promise<void> {
+    if (!this.prognoApiKey) {
+      console.log('   ⚠️  PROGNO_INTERNAL_API_KEY not set — skipping API post');
+      return;
+    }
     try {
-      const response = await fetch(`${this.prognoBaseUrl}/api/kalshi/picks`, {
+      const batchId = `alpha-kalshi-${Date.now()}`;
+      const payload = {
+        tier: 'elite',
+        picks: picks.map(p => ({
+          game_id: p.marketId,
+          sport: p.category?.toUpperCase() || 'KALSHI',
+          home_team: '',
+          away_team: '',
+          pick: p.prediction === 'yes' ? p.title : `NO: ${p.title}`,
+          confidence: p.confidence,
+          odds: null,
+          expected_value: p.edge,
+          edge: p.edge,
+          analysis: p.reasoning.join(' '),
+        })),
+        batchId,
+        timestamp: new Date().toISOString(),
+        source: 'alpha-hunter',
+        checksum: batchId,
+      };
+
+      const response = await fetch(`${this.prognoBaseUrl}/api/webhooks/progno`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': this.prognoApiKey,
+          'x-progno-api-key': this.prognoApiKey,
         },
-        body: JSON.stringify({
-          picks,
-          source: 'alpha-hunter',
-          timestamp: new Date().toISOString(),
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -161,9 +181,8 @@ export class PrognosticationSync {
       }
 
       const data = await response.json();
-      console.log(`   🌐 Posted to Prognostication API: ${data.received} picks received`);
+      console.log(`   🌐 Posted ${picks.length} Kalshi picks to Prognostication (processed: ${data.processed})`);
     } catch (error: any) {
-      // Don't fail if API is down, we already wrote to file
       console.log(`   ⚠️  Prognostication API unavailable: ${error.message} (file fallback active)`);
     }
   }

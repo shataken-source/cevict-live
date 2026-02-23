@@ -105,7 +105,7 @@ export class CoinbaseExchange {
     }
   }
 
-  private async request(method: string, path: string, body?: any, queryParams?: Record<string, string>): Promise<any> {
+  private async request(method: string, path: string, body?: any, queryParams?: Record<string, string>, retries: number = 2): Promise<any> {
     if (!this.configured) {
       console.log(`   🔍 [COINBASE SIMULATION] ${method} ${path}`);
       return this.simulatedResponse(method, path, body);
@@ -115,35 +115,48 @@ export class CoinbaseExchange {
     const fullPath = `/api/v3/brokerage${path}`;
     const uri = `${method} api.coinbase.com${fullPath}`;
     console.log(`   🔍 [COINBASE REAL API] ${method} ${fullPath}`);
-    const jwt = await createJWT(this.apiKey, this.apiSecret, uri);
-    const bodyStr = body ? JSON.stringify(body) : undefined;
 
-    // Build URL with query params (not included in JWT)
-    let url = `${this.baseUrl}${path}`;
-    if (queryParams && Object.keys(queryParams).length > 0) {
-      const params = new URLSearchParams(queryParams);
-      url += `?${params.toString()}`;
-    }
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const jwt = await createJWT(this.apiKey, this.apiSecret, uri);
+        const bodyStr = body ? JSON.stringify(body) : undefined;
 
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${jwt}`,
-          'Content-Type': 'application/json',
-        },
-        body: bodyStr,
-      });
+        // Build URL with query params (not included in JWT)
+        let url = `${this.baseUrl}${path}`;
+        if (queryParams && Object.keys(queryParams).length > 0) {
+          const params = new URLSearchParams(queryParams);
+          url += `?${params.toString()}`;
+        }
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Coinbase API error: ${response.status} - ${error}`);
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Authorization': `Bearer ${jwt}`,
+            'Content-Type': 'application/json',
+          },
+          body: bodyStr,
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+
+          // Retry on 401 (auth issues can be transient)
+          if (response.status === 401 && attempt < retries) {
+            console.log(`   ⚠️ 401 error, retrying (${attempt + 1}/${retries})...`);
+            await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+            continue;
+          }
+
+          throw new Error(`Coinbase API error: ${response.status} - ${error}`);
+        }
+
+        return response.json();
+      } catch (error: any) {
+        if (attempt === retries) {
+          console.error(`[COINBASE] Request failed after ${retries + 1} attempts: ${error.message}`);
+          throw error;
+        }
       }
-
-      return response.json();
-    } catch (error: any) {
-      console.error(`[COINBASE] Request failed: ${error.message}`);
-      throw error;
     }
   }
 

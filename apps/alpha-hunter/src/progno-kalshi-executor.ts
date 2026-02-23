@@ -18,12 +18,18 @@ import crypto from 'crypto';
 
 const alphaRoot = path.resolve(__dirname, '..');
 dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
-dotenv.config({ path: path.join(alphaRoot, '.env'), override: false });
+// NOTE: Do NOT load .env here — it contains a stale inline KALSHI_PRIVATE_KEY that
+// would override the path-based key from .env.local (even with override:false, it fills
+// empty vars). .env.local is the single authoritative source for this app.
 
 const STAKE_PER_PICK = 5;
 const SELL_LONG_TERM_DAYS = 14;
 const WATCH_INTERVAL_MS = 60_000;
-const PROGNO_DIR = path.resolve(alphaRoot, '..', 'progno');
+// predictions-YYYY-MM-DD.json is written to apps/progno/.progno/ by run-progno-today.ts
+const PROGNO_APP_DIR = path.resolve(alphaRoot, '..', 'progno');
+const PROGNO_DIR = fs.existsSync(path.join(PROGNO_APP_DIR, '.progno'))
+  ? path.join(PROGNO_APP_DIR, '.progno')
+  : PROGNO_APP_DIR;
 const LOG_FILE = path.join(alphaRoot, 'progno-executor.log');
 const EXECUTED_FILE = path.join(alphaRoot, 'progno-executor-executed.json');
 const BASE_URL = 'https://api.elections.kalshi.com';
@@ -189,7 +195,11 @@ class KalshiClient {
     }
     this.privateKey = raw;
     if (this.apiKeyId && raw.includes('BEGIN') && raw.includes('PRIVATE KEY')) {
-      try { crypto.createPrivateKey(raw); this.isConfigured = true; log(`✅ Kalshi configured (${this.apiKeyId.substring(0, 8)}...)`); }
+      try {
+        crypto.createPrivateKey(raw);
+        this.isConfigured = true;
+        log(`✅ Kalshi configured (${this.apiKeyId.substring(0, 8)}...)`);
+      }
       catch (e: any) { log(`❌ Bad private key: ${e.message}`); this.isConfigured = false; }
     } else { log('⚠️  Kalshi keys missing — DRY-RUN only'); this.isConfigured = false; }
   }
@@ -224,9 +234,12 @@ class KalshiClient {
   async fetchSportsMarkets(): Promise<KalshiMarket[]> {
     if (!this.isConfigured) return [];
     const all: KalshiMarket[] = [];
+
+    // Try series_ticker per sport first (fast path)
     for (const { ticker: seriesTicker, sport } of GAME_SERIES) {
       try {
         let cursor: string | undefined;
+        let seriesTotal = 0;
         for (let pg = 0; pg < 5; pg++) {
           const params = new URLSearchParams({ series_ticker: seriesTicker, status: 'open', limit: '200' });
           if (cursor) params.set('cursor', cursor);
@@ -236,13 +249,48 @@ class KalshiClient {
           if (!r.ok) { if (r.status === 429) await sleep(2000); break; }
           const d = await r.json();
           const ms: KalshiMarket[] = (d.markets || []).map((m: KalshiMarket) => ({ ...m, _sport: sport }));
-          all.push(...ms); cursor = d.cursor;
+          all.push(...ms); seriesTotal += ms.length; cursor = d.cursor;
           if (ms.length < 200 || !cursor) break;
           await sleep(200);
         }
+        if (seriesTotal > 0) log(`   ✅ ${seriesTicker}: ${seriesTotal} markets`);
       } catch (e: any) { log(`⚠️  ${seriesTicker}: ${e.message}`); }
     }
-    log(`📡 Fetched ${all.length} markets`);
+
+    // If series_ticker returned nothing (API format issue), fall back to broad fetch
+    // filtered by known game ticker prefixes
+    if (all.length === 0) {
+      log('⚠️  series_ticker returned 0 markets — falling back to broad fetch with prefix filter');
+      const sportPrefixes = GAME_SERIES.map(s => s.ticker.toUpperCase());
+      try {
+        let cursor: string | undefined;
+        for (let pg = 0; pg < 15; pg++) {
+          const params = new URLSearchParams({ status: 'open', limit: '1000' });
+          if (cursor) params.set('cursor', cursor);
+          const p = `/trade-api/v2/markets?${params}`;
+          const { sig, ts } = await this.sign('GET', p);
+          const r = await fetch(`${BASE_URL}${p}`, { headers: this.hdrs(sig, ts) });
+          if (!r.ok) { if (r.status === 429) await sleep(2000); break; }
+          const d = await r.json();
+          const page: KalshiMarket[] = d.markets || [];
+          // Keep only game-winner markets matching known sport series prefixes
+          const sports = page.filter(m => {
+            const t = (m.ticker || '').toUpperCase();
+            return sportPrefixes.some(pfx => t.startsWith(pfx));
+          }).map(m => {
+            const sport = GAME_SERIES.find(s => m.ticker.toUpperCase().startsWith(s.ticker.toUpperCase()))?.sport;
+            return { ...m, _sport: sport };
+          });
+          all.push(...sports);
+          cursor = d.cursor;
+          if (page.length < 1000 || !cursor) break;
+          await sleep(150);
+        }
+        log(`   Broad fetch found ${all.length} sports markets`);
+      } catch (e: any) { log(`❌ Broad fetch failed: ${e.message}`); }
+    }
+
+    log(`📡 Fetched ${all.length} total sports markets`);
     return all;
   }
 
@@ -343,6 +391,12 @@ async function executePicks(picks: PrognoPick[], client: KalshiClient, markets: 
   return results;
 }
 
+function todayDateStr(): string {
+  const now = new Date();
+  const cst = new Date(now.getTime() + (-6 * 60 * 60 * 1000));
+  return cst.toISOString().split('T')[0];
+}
+
 function findLatestPredictionsFile(): string | null {
   if (!fs.existsSync(PROGNO_DIR)) return null;
   const files = fs.readdirSync(PROGNO_DIR).filter(f => /^predictions-\d{4}-\d{2}-\d{2}\.json$/.test(f) && !f.includes('early')).sort().reverse();
@@ -350,18 +404,54 @@ function findLatestPredictionsFile(): string | null {
   return null;
 }
 
+async function fetchPicksFromSupabaseStorage(date: string): Promise<PrognoPick[]> {
+  const supaUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim();
+  const supaKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  if (!supaUrl || !supaKey) { log('⚠️  Supabase env vars not set — cannot fetch from storage'); return []; }
+  const hdrs = { apikey: supaKey, Authorization: `Bearer ${supaKey}` };
+  const base = `${supaUrl}/storage/v1/object/predictions`;
+  for (const fileName of [`predictions-${date}.json`, `predictions-early-${date}.json`]) {
+    try {
+      const r = await fetch(`${base}/${fileName}`, { headers: hdrs });
+      if (!r.ok) continue;
+      const parsed = await r.json();
+      const picks: PrognoPick[] = parsed.picks || parsed;
+      if (Array.isArray(picks) && picks.length > 0) {
+        log(`📦 Loaded ${picks.length} picks from Supabase Storage (${fileName})`);
+        return picks;
+      }
+    } catch { /* try next */ }
+  }
+  return [];
+}
+
 async function run(client: KalshiClient, lastFile: string | null): Promise<string | null> {
   const file = findLatestPredictionsFile();
-  if (!file) { log('⚠️  No predictions file'); return lastFile; }
-  if (file === lastFile) { log(`ℹ️  No new file (${path.basename(file)})`); return lastFile; }
-
-  log(`\n${'═'.repeat(68)}\n🚀 NEW FILE: ${path.basename(file)}\n${'═'.repeat(68)}`);
+  const today = todayDateStr();
 
   let picks: PrognoPick[] = [];
-  try { picks = (JSON.parse(fs.readFileSync(file, 'utf8'))).picks || []; }
-  catch (e: any) { log(`❌ Parse error: ${e.message}`); return lastFile; }
+  let fileKey: string;
 
-  if (!picks.length) { log('⚠️  No picks'); return file; }
+  if (!file) {
+    log(`⚠️  No local predictions file — fetching from Supabase Storage (${today})...`);
+    picks = await fetchPicksFromSupabaseStorage(today);
+    if (!picks.length) { log('❌ No picks found locally or in Supabase Storage'); return lastFile; }
+    fileKey = `supabase:${today}`;
+  } else {
+    if (file === lastFile) { log(`ℹ️  No new file (${path.basename(file)})`); return lastFile; }
+    log(`\n${'═'.repeat(68)}\n🚀 NEW FILE: ${path.basename(file)}\n${'═'.repeat(68)}`);
+    try { picks = (JSON.parse(fs.readFileSync(file, 'utf8'))).picks || []; }
+    catch (e: any) { log(`❌ Parse error: ${e.message}`); return lastFile; }
+    fileKey = file;
+  }
+
+  if (fileKey === lastFile) { log(`ℹ️  Already processed ${fileKey}`); return lastFile; }
+  log(`\n${'═'.repeat(68)}\n🚀 SOURCE: ${fileKey}\n${'═'.repeat(68)}`);
+
+  // reassign file to fileKey for return value tracking
+  const resolvedFile = fileKey;
+
+  if (!picks.length) { log('⚠️  No picks'); return resolvedFile; }
   log(`📊 Loaded ${picks.length} picks`);
 
   const bal = await client.getBalance();
@@ -371,12 +461,12 @@ async function run(client: KalshiClient, lastFile: string | null): Promise<strin
 
   log('\n📡 Fetching Kalshi sports markets...');
   const markets = await client.fetchSportsMarkets();
-  if (!markets.length && client.isConfigured) { log('❌ No markets — aborting'); return file; }
+  if (!markets.length && client.isConfigured) { log('❌ No markets — aborting'); return resolvedFile; }
 
   log(`\n🎯 Executing ${picks.length} picks @ $${STAKE_PER_PICK} each...`);
   const executed = loadExecuted();
   const results = await executePicks(picks, client, markets, executed);
-  saveExecuted(executed);
+  if (!DRY_RUN) saveExecuted(executed);
 
   const placed = results.filter(r => r.status === 'placed' || r.status === 'simulated');
   const skipped = results.filter(r => r.status === 'skipped');
@@ -387,7 +477,7 @@ async function run(client: KalshiClient, lastFile: string | null): Promise<strin
   log(`   ❌ Errors:  ${errors.length}`);
   if (DRY_RUN) log('   ⚠️  DRY-RUN — no real orders');
   log(`${'─'.repeat(68)}\n`);
-  return file;
+  return resolvedFile;
 }
 
 async function main() {

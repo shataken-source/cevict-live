@@ -10,6 +10,8 @@
  */
 
 import 'dotenv/config';
+import './lib/load-env';
+import './lib/console-timestamps';
 import { CronJob } from 'cron';
 import { AIBrain } from './ai-brain';
 import { UnifiedFundManager } from './fund-manager';
@@ -79,7 +81,10 @@ class AlphaHunter {
     console.log('\n🔌 Checking integrations...');
 
     const kalshiBalance = await this.kalshi.getBalance();
-    console.log(`   ├─ Kalshi: ${kalshiBalance > 0 ? '✅ Connected' : '⚠️ Demo mode'} ($${kalshiBalance})`);
+    const kalshiLabel = kalshiBalance === 500
+      ? '❌ Auth error'
+      : (kalshiBalance > 0 ? '✅ Connected' : '⚠️ Demo mode');
+    console.log(`   ├─ Kalshi: ${kalshiLabel} ($${kalshiBalance})`);
 
     const prognoStatus = process.env.PROGNO_BASE_URL ? '✅ Connected' : '⚠️ Using defaults';
     console.log(`   ├─ PROGNO: ${prognoStatus}`);

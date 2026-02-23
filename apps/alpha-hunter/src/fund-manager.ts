@@ -4,7 +4,10 @@
  * Allocates capital intelligently across platforms
  */
 
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+
 import { createClient } from '@supabase/supabase-js';
 import { FundAccount, Trade, Opportunity } from './types';
 
