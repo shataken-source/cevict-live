@@ -244,9 +244,11 @@ async function findMarketForPick(pick: any): Promise<any | null> {
           if (!titleLower.includes(lineStr)) return false
         }
 
-        // Use elite matching for team validation
-        const pickMatch = eliteMatch(pickTeam, '', title)
-        return pickMatch.isMatch && pickMatch.confidence > 0.6
+        // For spread markets, check if the pick team is mentioned
+        // Spread markets like "Grambling St. wins by over 16.5 Points" only mention one team
+        const pickNorm = normalize(pickTeam)
+        const titleNorm = normalize(title)
+        return titleNorm.includes(pickNorm) || pickNorm.split(' ').some(word => word.length >= 4 && titleNorm.includes(word))
       } else if (pickType === 'MONEYLINE') {
         // For moneyline, skip spread/total markets
         if (titleLower.includes('spread') || titleLower.includes('total') ||
