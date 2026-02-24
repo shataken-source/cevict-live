@@ -31,6 +31,8 @@ jobs:
         run: |
           rm -f package-lock.json
           npm install --legacy-peer-deps
+          # Generate package-lock.json for expo prebuild (it runs npm ci internally)
+          npm install --package-lock-only --legacy-peer-deps
 
       - name: Verify install
         run: |
@@ -38,9 +40,13 @@ jobs:
           npm -v
           ls node_modules/react-native/package.json && node -e "console.log('RN', require('./node_modules/react-native/package.json').version)"
           ls node_modules/react-native-reanimated/package.json && node -e "console.log('Reanimated', require('./node_modules/react-native-reanimated/package.json').version)"
+          ls package-lock.json && echo "package-lock.json exists"
 
       - name: Generate native Android project
-        run: npx expo prebuild --platform android --clean
+        env:
+          NPM_CONFIG_YES: "true"
+          CI: "1"
+        run: npx expo prebuild --platform android --clean --no-install
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
