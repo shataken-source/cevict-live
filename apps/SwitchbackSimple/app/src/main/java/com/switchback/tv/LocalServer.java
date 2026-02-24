@@ -5,7 +5,6 @@ import android.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.InetAddress;
 import java.net.URL;
 import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
@@ -172,17 +171,20 @@ public class LocalServer extends NanoHTTPD {
 
     private boolean isPrivateHost(String host) {
         if (host == null || host.isEmpty()) return true;
+        String h = host.toLowerCase().trim();
         // Block localhost variants
-        if (host.equals("localhost") || host.equals("127.0.0.1") || host.equals("::1") || host.equals("0.0.0.0")) {
+        if (h.equals("localhost") || h.equals("127.0.0.1") || h.equals("::1") || h.equals("0.0.0.0")) {
             return true;
         }
-        // Block common private IP ranges
-        try {
-            InetAddress addr = InetAddress.getByName(host);
-            return addr.isLoopbackAddress() || addr.isLinkLocalAddress() || addr.isSiteLocalAddress();
-        } catch (Exception e) {
-            return false;
+        // Block private IP ranges by pattern (no DNS lookup — avoids hangs on Android TV)
+        if (h.startsWith("10.") || h.startsWith("192.168.") || h.startsWith("169.254.")) return true;
+        if (h.startsWith("172.")) {
+            try {
+                int second = Integer.parseInt(h.split("\\.")[1]);
+                if (second >= 16 && second <= 31) return true;
+            } catch (Exception e) { /* not an IP, allow */ }
         }
+        return false;
     }
 
     private String getMimeType(String path) {

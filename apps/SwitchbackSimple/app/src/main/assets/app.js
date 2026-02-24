@@ -125,9 +125,10 @@ function fetchXtream(server, user, pass) {
   var api = base + '/player_api.php?username=' + encodeURIComponent(user) + '&password=' + encodeURIComponent(pass);
   var pid = 'xt-' + Date.now();
 
-  setStat('● Authenticating…', '#FFD700');
+  setStat('● Authenticating with ' + base + '…', '#FFD700');
   return proxyGet(api).then(function (authText) {
-    var auth = JSON.parse(authText);
+    var auth;
+    try { auth = JSON.parse(authText); } catch (e) { throw new Error('Auth response not JSON: ' + authText.substring(0, 100)); }
     if (!auth.user_info || auth.user_info.auth !== 1) {
       throw new Error('Authentication failed — check credentials');
     }
