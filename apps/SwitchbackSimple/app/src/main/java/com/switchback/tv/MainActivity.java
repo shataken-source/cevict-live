@@ -2,18 +2,30 @@ package com.switchback.tv;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.view.KeyEvent;
+import android.util.Log;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
+    private static final String TAG = "SwitchbackTV";
+    private static final int PORT = 8123;
     private WebView webView;
+    private LocalServer server;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Start local web server to serve assets over HTTP
+        try {
+            server = new LocalServer(PORT, getAssets());
+            server.start();
+            Log.i(TAG, "Local server started on port " + PORT);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start local server", e);
+        }
 
         webView = new WebView(this);
         setContentView(webView);
@@ -22,8 +34,6 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(true);
-        settings.setAllowUniversalAccessFromFileURLs(true);
-        settings.setAllowFileAccessFromFileURLs(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(false);
 
@@ -35,8 +45,8 @@ public class MainActivity extends Activity {
         webView.setWebChromeClient(new WebChromeClient());
         webView.setWebViewClient(new WebViewClient());
 
-        // Load the IPTV interface
-        webView.loadUrl("file:///android_asset/index.html");
+        // Load from local HTTP server — no more file:// CORS issues
+        webView.loadUrl("http://localhost:" + PORT + "/index.html");
     }
 
     @Override
@@ -46,5 +56,13 @@ public class MainActivity extends Activity {
         } else {
             super.onBackPressed();
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (server != null) {
+            server.stop();
+        }
+        super.onDestroy();
     }
 }
