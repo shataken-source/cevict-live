@@ -513,6 +513,7 @@ export async function POST(request: NextRequest) {
           action: 'buy',
           count,
           type: 'limit',
+          time_in_force: 'good_till_canceled',
         }
         if (side === 'yes') order.yes_price = price; else order.no_price = price
         console.log(`[execute] placing order: ${JSON.stringify(order)}`)
