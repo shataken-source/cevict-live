@@ -28,10 +28,9 @@ jobs:
           java-version: 17
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Align dependencies to Expo SDK version
-        run: npx expo install --fix
+        run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
 
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean
