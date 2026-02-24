@@ -362,6 +362,8 @@ function setGroup(g) {
   filterCh();
 }
 
+var RENDER_BATCH = 100;
+
 function filterCh() {
   var q = ($('srch').value || '').toLowerCase();
   var list = S.channels;
@@ -375,38 +377,57 @@ function filterCh() {
       return c.name.toLowerCase().indexOf(q) >= 0 || (c.group || '').toLowerCase().indexOf(q) >= 0;
     });
   }
-  renderChList(list);
+  S._filteredList = list;
+  S._renderOffset = 0;
+  renderChList(list, 0, true);
 }
 
-function renderChList(list) {
+function renderChItem(ch) {
+  var isFav = S.favorites.indexOf(ch.id) >= 0;
+  var isActive = S.currentChannel && S.currentChannel.id === ch.id;
+  var abbr = esc(ch.name.substring(0, 3).toUpperCase());
+  var logo;
+  if (ch.logo) {
+    logo = '<img class="cl" src="' + esc(ch.logo) + '" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'" loading="lazy"><div class="cp" style="display:none">' + abbr + '</div>';
+  } else {
+    logo = '<div class="cp">' + abbr + '</div>';
+  }
+  var h = '<div class="ci' + (isActive ? ' on' : '') + '" tabindex="0" data-chid="' + esc(ch.id) + '" onclick="playCh(' + JSON.stringify(ch.id) + ')">';
+  h += logo;
+  h += '<div class="ci-info"><div class="cn">' + esc(ch.name) + '</div>';
+  if (ch.group) h += '<div class="cg">' + esc(ch.group) + '</div>';
+  h += '</div>';
+  h += '<button class="cf" tabindex="0" onclick="event.stopPropagation();togFav(' + JSON.stringify(ch.id) + ')">' + (isFav ? '\u2605' : '\u2606') + '</button>';
+  h += '</div>';
+  return h;
+}
+
+function renderChList(list, offset, clear) {
   var el = $('cl');
   if (!list.length) {
     el.innerHTML = '<div style="padding:24px;color:var(--mu);font-size:14px;text-align:center">No channels found</div>';
     $('icount').textContent = '';
     return;
   }
+  var end = Math.min(offset + RENDER_BATCH, list.length);
   var html = '';
-  for (var i = 0; i < list.length; i++) {
-    var ch = list[i];
-    var isFav = S.favorites.indexOf(ch.id) >= 0;
-    var isActive = S.currentChannel && S.currentChannel.id === ch.id;
-    var abbr = esc(ch.name.substring(0, 3).toUpperCase());
-    var logo;
-    if (ch.logo) {
-      logo = '<img class="cl" src="' + esc(ch.logo) + '" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'" loading="lazy"><div class="cp" style="display:none">' + abbr + '</div>';
-    } else {
-      logo = '<div class="cp">' + abbr + '</div>';
-    }
-    html += '<div class="ci' + (isActive ? ' on' : '') + '" tabindex="0" data-chid="' + esc(ch.id) + '" onclick="playCh(' + JSON.stringify(ch.id) + ')">';
-    html += logo;
-    html += '<div class="ci-info"><div class="cn">' + esc(ch.name) + '</div>';
-    if (ch.group) html += '<div class="cg">' + esc(ch.group) + '</div>';
-    html += '</div>';
-    html += '<button class="cf" tabindex="0" onclick="event.stopPropagation();togFav(' + JSON.stringify(ch.id) + ')">' + (isFav ? '\u2605' : '\u2606') + '</button>';
-    html += '</div>';
+  for (var i = offset; i < end; i++) {
+    html += renderChItem(list[i]);
   }
-  el.innerHTML = html;
-  $('icount').textContent = list.length + ' channels';
+  if (clear) {
+    el.innerHTML = html;
+  } else {
+    el.insertAdjacentHTML('beforeend', html);
+  }
+  S._renderOffset = end;
+  var showing = Math.min(end, list.length);
+  $('icount').textContent = showing + ' of ' + list.length + ' channels';
+}
+
+function loadMoreChannels() {
+  if (!S._filteredList || S._renderOffset >= S._filteredList.length) return false;
+  renderChList(S._filteredList, S._renderOffset, false);
+  return true;
 }
 
 // ── Playback ──────────────────────────────────
@@ -1073,6 +1094,16 @@ function setupDpadNav() {
           items[next].focus();
           items[next].scrollIntoView({ block: 'nearest' });
           e.preventDefault();
+        } else if (isDown && container.id === 'cl') {
+          // At bottom of rendered list — load more channels
+          if (loadMoreChannels()) {
+            var newItems = container.querySelectorAll('[tabindex]');
+            if (newItems.length > items.length) {
+              newItems[items.length].focus();
+              newItems[items.length].scrollIntoView({ block: 'nearest' });
+            }
+            e.preventDefault();
+          }
         }
         return;
       }
