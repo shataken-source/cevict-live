@@ -39,7 +39,6 @@ public class MainActivity extends Activity {
 
         // Disable WebView cache — always load fresh assets from local server
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
-        settings.setAppCacheEnabled(false);
         webView.clearCache(true);
 
         // Android TV: ensure WebView can receive D-pad focus
