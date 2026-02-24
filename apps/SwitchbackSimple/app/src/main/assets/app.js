@@ -415,6 +415,8 @@ function openSettings() {
   $('s-epg').value = S.settings.epg;
 
   $('mb').classList.add('on');
+  // Auto-focus first input for Android TV
+  setTimeout(() => $('s-srv').focus(), 100);
 }
 
 function closeMod() { $('mb').classList.remove('on'); }
