@@ -24,10 +24,12 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.13
 
       - name: Create gradlew for Linux
         run: |
-          gradle wrapper
+          gradle wrapper --gradle-version 8.13
           chmod +x gradlew
 
       - name: Build release APK
