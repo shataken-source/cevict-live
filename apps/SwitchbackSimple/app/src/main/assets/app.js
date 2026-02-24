@@ -1,5 +1,6 @@
 // Switchback TV — app.js
 // Self-contained IPTV player for Android WebView
+var APP_VERSION = '2.1.0';
 
 const S = {
   playlists: [],
@@ -47,6 +48,13 @@ function persist() {
 
 function restore() {
   try {
+    // Clear stale cache when app version changes (new APK installed)
+    var savedVer = localStorage.getItem('sb_ver');
+    if (savedVer !== APP_VERSION) {
+      console.log('App updated ' + (savedVer || 'fresh') + ' -> ' + APP_VERSION + ', clearing playlist cache');
+      localStorage.removeItem('sb_pl');
+      localStorage.setItem('sb_ver', APP_VERSION);
+    }
     const pl = localStorage.getItem('sb_pl'); if (pl) S.playlists = JSON.parse(pl);
     const fav = localStorage.getItem('sb_fav'); if (fav) S.favorites = JSON.parse(fav);
     const hist = localStorage.getItem('sb_hist'); if (hist) S.history = JSON.parse(hist);
