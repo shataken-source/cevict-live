@@ -792,32 +792,36 @@
             <div id="mbd">
                 <div id="plsec"></div>
                 <label style="margin-top:0">IPTV Server URL</label>
-                <input id="s-srv" type="url" value="http://blogyfy.xyz" placeholder="http://yourserver.com:80">
+                <input id="s-srv" type="url" value="http://blogyfy.xyz" placeholder="http://yourserver.com:80"
+                    tabindex="0" focusable="true">
                 <label>Username</label>
-                <input id="s-usr" type="text" value="jascodezoriptv" placeholder="username" autocomplete="off">
+                <input id="s-usr" type="text" value="jascodezoriptv" placeholder="username" autocomplete="off"
+                    tabindex="0" focusable="true">
                 <label>Password</label>
-                <input id="s-pw" type="password" value="19e993b7f5" placeholder="password" autocomplete="off">
+                <input id="s-pw" type="password" value="19e993b7f5" placeholder="password" autocomplete="off"
+                    tabindex="0" focusable="true">
                 <label>Alternate Server (optional)</label>
-                <input id="s-alt" type="url" placeholder="http://altserver.com:80">
+                <input id="s-alt" type="url" placeholder="http://altserver.com:80" tabindex="0" focusable="true">
                 <label>EPG / XMLTV URL (optional)</label>
                 <input id="s-epg" type="url"
                     value="http://blogyfy.xyz/xmltv.php?username=jascodezoriptv&password=19e993b7f5"
-                    placeholder="http://yourserver.com/xmltv.php?...">
+                    placeholder="http://yourserver.com/xmltv.php?..." tabindex="0" focusable="true">
                 <div style="height:1px;background:var(--bd);margin:16px 0"></div>
                 <label style="margin-top:0">Import Config File</label>
                 <input type="file" id="cfg-file" accept=".json,.txt" style="display:none"
                     onchange="importConfig(event)">
                 <div style="display:flex;gap:8px;margin-top:8px">
-                    <button class="btn" style="flex:1;padding:10px"
+                    <button class="btn" style="flex:1;padding:10px" tabindex="0" focusable="true"
                         onclick="document.getElementById('cfg-file').click()">📁 Import File</button>
-                    <button class="btn ac" style="flex:1;padding:10px" onclick="pasteConfig()">📋 Paste Config</button>
+                    <button class="btn ac" style="flex:1;padding:10px" tabindex="0" focusable="true"
+                        onclick="pasteConfig()">📋 Paste Config</button>
                 </div>
                 <label style="margin-top:14px;font-size:11px;color:#555">Credentials stored locally on this device
                     only.</label>
             </div>
             <div id="mf">
-                <button id="mc" onclick="closeMod()">Cancel</button>
-                <button id="ms" onclick="saveSettings()">Save &amp; Load</button>
+                <button id="mc" onclick="closeMod()" tabindex="0" focusable="true">Cancel</button>
+                <button id="ms" onclick="saveSettings()" tabindex="0" focusable="true">Save &amp; Load</button>
             </div>
         </div>
     </div>
