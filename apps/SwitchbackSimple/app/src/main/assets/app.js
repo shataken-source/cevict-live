@@ -138,9 +138,15 @@ function fetchXtream(server, user, pass) {
     var catMap = {};
     cats.forEach(function (c) { catMap[c.category_id] = c.category_name; });
 
+    // Filter to US/4K/Sports categories only to avoid 820+ requests and rate limiting
+    var usPattern = /^US\s*\||^4K\s*\||SPORTS|PPV|ESPN|NFL|NBA|NHL|MLB|UFC|WWE/i;
+    var filteredCats = cats.filter(function (c) { return usPattern.test(c.category_name); });
+    if (filteredCats.length === 0) filteredCats = cats; // fallback to all if no match
+    console.log('Categories: ' + filteredCats.length + ' matched out of ' + cats.length + ' total');
+
     // Load channels per category to avoid massive 17MB+ single response
     var allChannels = [];
-    var catIds = cats.map(function (c) { return c.category_id; });
+    var catIds = filteredCats.map(function (c) { return c.category_id; });
     var loaded = 0;
 
     function loadNextCategory(index) {
@@ -164,11 +170,12 @@ function fetchXtream(server, user, pass) {
             url: base + '/' + encodeURIComponent(user) + '/' + encodeURIComponent(pass) + '/' + s.stream_id,
           });
         });
-        return loadNextCategory(index + 1);
+        // Small delay between requests to avoid rate limiting (HTTP 513)
+        return new Promise(function (r) { setTimeout(r, 100); }).then(function () { return loadNextCategory(index + 1); });
       }).catch(function (e) {
         // Skip failed categories, continue loading
         console.warn('Failed to load category ' + catName + ': ' + e.message);
-        return loadNextCategory(index + 1);
+        return new Promise(function (r) { setTimeout(r, 200); }).then(function () { return loadNextCategory(index + 1); });
       });
     }
 
