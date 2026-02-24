@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Switchback TV — Provider Config Generator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        :root {
+            --bg: #0a0a0f;
+            --s1: #141419;
+            --s2: #1e1e26;
+            --s3: #282833;
+            --bd: #2a2a35;
+            --ac: #3b82f6;
+            --ac2: #60a5fa;
+            --gr: #22c55e;
+            --rd: #ef4444;
+            --tx: #f1f5f9;
+            --mu: #64748b
+        }
+
+        html,
+        body {
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--tx);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 6px
+        }
+
+        h1 span {
+            color: var(--ac)
+        }
+
+        .subtitle {
+            color: var(--mu);
+            font-size: 14px;
+            margin-bottom: 32px;
+            line-height: 1.5
+        }
+
+        .card {
+            background: var(--s1);
+            border: 1px solid var(--bd);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ac2);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .card-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--bd)
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px
+        }
+
+        .form-row.full {
+            grid-template-columns: 1fr
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px
+        }
+
+        label {
+            font-size: 12px;
+            color: var(--mu);
+            font-weight: 500
+        }
+
+        input,
+        textarea {
+            background: var(--s2);
+            border: 1px solid var(--bd);
+            color: var(--tx);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color .15s
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: var(--ac)
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: #444
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 60px
+        }
+
+        .prefix-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            margin-top: 8px
+        }
+
+        .prefix-chip {
+            background: var(--s2);
+            border: 1px solid var(--bd);
+            color: var(--mu);
+            padding: 8px 4px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all .15s;
+            -webkit-user-select: none;
+            user-select: none
+        }
+
+        .prefix-chip:hover {
+            border-color: var(--ac)
+        }
+
+        .prefix-chip.on {
+            background: rgba(59, 130, 246, .2);
+            border-color: var(--ac);
+            color: var(--ac2)
+        }
+
+        .prefix-chip.on::before {
+            content: '\2713 '
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px
+        }
+
+        .btn {
+            background: var(--s2);
+            border: 1px solid var(--bd);
+            color: var(--tx);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all .15s
+        }
+
+        .btn:hover {
+            background: var(--s3);
+            border-color: var(--ac)
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 24px
+        }
+
+        .action-btn {
+            background: var(--ac);
+            border: none;
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .action-btn:hover {
+            background: #2563eb
+        }
+
+        .action-btn.secondary {
+            background: var(--s2);
+            border: 1px solid var(--bd);
+            color: var(--tx)
+        }
+
+        .action-btn.secondary:hover {
+            background: var(--s3);
+            border-color: var(--ac)
+        }
+
+        .action-btn.green {
+            background: var(--gr)
+        }
+
+        .action-btn.green:hover {
+            background: #16a34a
+        }
+
+        .output-area {
+            margin-top: 24px;
+            display: none
+        }
+
+        .output-area.on {
+            display: block
+        }
+
+        .output-box {
+            background: var(--s2);
+            border: 1px solid var(--bd);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 12px
+        }
+
+        .output-label {
+            font-size: 12px;
+            color: var(--mu);
+            margin-bottom: 6px;
+            font-weight: 600
+        }
+
+        .output-value {
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 13px;
+            word-break: break-all;
+            color: var(--gr);
+            cursor: pointer;
+            padding: 8px;
+            background: rgba(0, 0, 0, .3);
+            border-radius: 6px;
+            -webkit-user-select: all;
+            user-select: all
+        }
+
+        .output-value:hover {
+            background: rgba(59, 130, 246, .1)
+        }
+
+        .hint {
+            font-size: 11px;
+            color: var(--mu);
+            margin-top: 6px;
+            font-style: italic
+        }
+
+        .copy-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--gr);
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity .3s;
+            z-index: 100;
+            pointer-events: none
+        }
+
+        .copy-toast.on {
+            opacity: 1
+        }
+
+        hr {
+            border: none;
+            height: 1px;
+            background: var(--bd);
+            margin: 20px 0
+        }
+
+        .bulk-section {
+            margin-top: 12px
+        }
+
+        .bulk-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 8px;
+            align-items: end;
+            margin-bottom: 8px
+        }
+
+        .bulk-row .btn {
+            padding: 10px 12px
+        }
+
+        #bulk-list {
+            max-height: 200px;
+            overflow-y: auto
+        }
+
+        .bulk-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--s2);
+            border: 1px solid var(--bd);
+            border-radius: 8px;
+            margin-bottom: 4px;
+            font-size: 13px
+        }
+
+        .bulk-item button {
+            background: none;
+            border: none;
+            color: var(--rd);
+            cursor: pointer;
+            font-size: 16px
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr
+            }
+
+            .prefix-grid {
+                grid-template-columns: repeat(3, 1fr)
+            }
+
+            .actions {
+                flex-direction: column
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1><span>Switchback</span> TV — Provider Config Generator</h1>
+        <p class="subtitle">
+            Create config files for your IPTV customers. They import the file into Switchback TV and everything is
+            set up automatically — no manual server entry, no typos, no support calls.<br>
+            Generate individual configs or bulk configs for multiple users.
+        </p>
+
+        <!-- Provider Branding -->
+        <div class="card">
+            <div class="card-title">Your Brand (Optional)</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Provider Name</label>
+                    <input id="p-name" type="text" placeholder="e.g. SuperTV, PrimeStreams">
+                </div>
+                <div class="form-group">
+                    <label>Logo URL</label>
+                    <input id="p-logo" type="url" placeholder="https://yoursite.com/logo.png">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Support URL</label>
+                    <input id="p-support" type="url" placeholder="https://yoursite.com/support">
+                </div>
+                <div class="form-group">
+                    <label>Website</label>
+                    <input id="p-website" type="url" placeholder="https://yoursite.com">
+                </div>
+            </div>
+            <div class="form-row full">
+                <div class="form-group">
+                    <label>Welcome Message</label>
+                    <input id="p-welcome" type="text" placeholder="Welcome! Enjoy 10,000+ live channels.">
+                </div>
+            </div>
+        </div>
+
+        <!-- Server Settings -->
+        <div class="card">
+            <div class="card-title">Server Settings</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Server URL *</label>
+                    <input id="c-server" type="url" placeholder="http://yourserver.com:80" required>
+                </div>
+                <div class="form-group">
+                    <label>Alternate Server</label>
+                    <input id="c-alt" type="url" placeholder="http://backup.yourserver.com:80">
+                </div>
+            </div>
+            <div class="form-row full">
+                <div class="form-group">
+                    <label>EPG / XMLTV URL Template</label>
+                    <input id="c-epg" type="text"
+                        placeholder="http://yourserver.com/xmltv.php?username={username}&password={password}">
+                    <p class="hint">Use {username} and {password} as placeholders — they'll be replaced per user.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Single User -->
+        <div class="card">
+            <div class="card-title">User Credentials</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Username *</label>
+                    <input id="c-user" type="text" placeholder="customer_username">
+                </div>
+                <div class="form-group">
+                    <label>Password *</label>
+                    <input id="c-pass" type="text" placeholder="customer_password">
+                </div>
+            </div>
+        </div>
+
+        <!-- Region Prefixes -->
+        <div class="card">
+            <div class="card-title">Recommended Regions</div>
+            <p class="hint" style="margin-bottom:8px">Pre-select which channel regions your customer should load.
+                Fewer = faster loading for them.</p>
+            <div class="prefix-grid" id="prefix-grid"></div>
+            <div class="btn-row">
+                <button class="btn" onclick="selectAll()">Select All</button>
+                <button class="btn" onclick="selectNone()">Clear</button>
+            </div>
+        </div>
+
+        <!-- Generate -->
+        <div class="actions">
+            <button class="action-btn" onclick="generateSingle()">Download .switchback File</button>
+            <button class="action-btn secondary" onclick="generateJSON()">Copy JSON to Clipboard</button>
+            <button class="action-btn secondary" onclick="generateActivationCode()">Generate Activation Code</button>
+        </div>
+
+        <!-- Output -->
+        <div class="output-area" id="output">
+            <div class="card">
+                <div class="card-title">Generated Output</div>
+                <div id="output-content"></div>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- Bulk Generation -->
+        <div class="card">
+            <div class="card-title">Bulk Generation</div>
+            <p class="hint" style="margin-bottom:12px">Generate configs for multiple users at once. Add each
+                user below, then download all as a ZIP-like batch or individual files.</p>
+            <div class="bulk-section">
+                <div class="bulk-row">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input id="b-user" type="text" placeholder="username">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input id="b-pass" type="text" placeholder="password">
+                    </div>
+                    <button class="btn" onclick="addBulkUser()" style="margin-bottom:0">Add</button>
+                </div>
+                <div id="bulk-list"></div>
+                <div class="btn-row" style="margin-top:12px">
+                    <button class="action-btn green" onclick="downloadBulk()">Download All Configs</button>
+                    <span id="bulk-count" style="color:var(--mu);font-size:13px;align-self:center"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="card">
+            <div class="card-title">How To Distribute To Customers</div>
+            <div style="font-size:13px;color:var(--mu);line-height:1.8">
+                <p><b style="color:var(--tx)">Option 1 — Config File:</b> Email the .switchback file to your customer.
+                    They open it on their Android TV device (via file manager, USB, or cloud storage) and Switchback TV
+                    sets itself up automatically.</p>
+                <p style="margin-top:8px"><b style="color:var(--tx)">Option 2 — Activation Code:</b> Give them the
+                    short code. They open Switchback TV, tap "Enter Activation Code", paste it, and they're watching
+                    instantly.</p>
+                <p style="margin-top:8px"><b style="color:var(--tx)">Option 3 — Paste JSON:</b> For tech-savvy
+                    customers, they can paste the JSON directly into Settings &gt; Paste Config.</p>
+                <p style="margin-top:8px"><b style="color:var(--tx)">Option 4 — Host a URL:</b> Upload the JSON to
+                    your web server. Customers enter the URL as an activation code. Perfect for auto-provisioning
+                    systems.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="copy-toast" id="toast">Copied!</div>
+
+    <script>
+        var PREFIXES = [
+            { key: 'US', label: 'US' },
+            { key: 'UK', label: 'UK' },
+            { key: 'CA', label: 'Canada' },
+            { key: 'AU', label: 'Australia' },
+            { key: 'IE', label: 'Ireland' },
+            { key: 'MX', label: 'Mexico' },
+            { key: 'DE', label: 'Germany' },
+            { key: 'FR', label: 'France' },
+            { key: 'ES', label: 'Spain' },
+            { key: 'IT', label: 'Italy' },
+            { key: 'PT', label: 'Portugal' },
+            { key: 'NL', label: 'Netherlands' },
+            { key: 'IN', label: 'India' },
+            { key: 'PK', label: 'Pakistan' },
+            { key: 'PH', label: 'Philippines' },
+            { key: 'AR', label: 'Arabic' },
+            { key: '4K', label: '4K/UHD' },
+            { key: 'SPORTS', label: 'Sports' },
+            { key: 'NEWS', label: 'News' },
+            { key: 'KIDS', label: 'Kids' },
+        ];
+
+        var selectedPrefixes = ['US', '4K', 'SPORTS'];
+        var bulkUsers = [];
+
+        function $(id) { return document.getElementById(id); }
+
+        function renderPrefixes() {
+            var grid = $('prefix-grid');
+            grid.innerHTML = PREFIXES.map(function (p) {
+                var on = selectedPrefixes.indexOf(p.key) >= 0;
+                return '<div class="prefix-chip' + (on ? ' on' : '') + '" onclick="togglePrefix(\'' + p.key + '\')">' + p.label + '</div>';
+            }).join('');
+        }
+
+        function togglePrefix(key) {
+            var i = selectedPrefixes.indexOf(key);
+            if (i >= 0) selectedPrefixes.splice(i, 1);
+            else selectedPrefixes.push(key);
+            renderPrefixes();
+        }
+
+        function selectAll() {
+            selectedPrefixes = PREFIXES.map(function (p) { return p.key; });
+            renderPrefixes();
+        }
+
+        function selectNone() {
+            selectedPrefixes = [];
+            renderPrefixes();
+        }
+
+        function buildConfig(username, password) {
+            var server = $('c-server').value.trim();
+            if (!server) { alert('Server URL is required'); return null; }
+            var user = username || $('c-user').value.trim();
+            var pass = password || $('c-pass').value.trim();
+            if (!user || !pass) { alert('Username and password are required'); return null; }
+
+            var config = {
+                _switchback: 1,
+                server: server,
+                username: user,
+                password: pass,
+                autoLoad: true,
+            };
+
+            // Provider branding
+            var pName = $('p-name').value.trim();
+            var pLogo = $('p-logo').value.trim();
+            var pSupport = $('p-support').value.trim();
+            var pWebsite = $('p-website').value.trim();
+            var pWelcome = $('p-welcome').value.trim();
+            if (pName || pLogo || pSupport || pWebsite || pWelcome) {
+                config.provider = {};
+                if (pName) config.provider.name = pName;
+                if (pLogo) config.provider.logo = pLogo;
+                if (pSupport) config.provider.support = pSupport;
+                if (pWebsite) config.provider.website = pWebsite;
+                if (pWelcome) config.provider.welcome = pWelcome;
+            }
+
+            // Alt server
+            var alt = $('c-alt').value.trim();
+            if (alt) config.alt = alt;
+
+            // EPG with template replacement
+            var epgTpl = $('c-epg').value.trim();
+            if (epgTpl) {
+                config.epg = epgTpl.replace(/\{username\}/g, user).replace(/\{password\}/g, pass);
+            }
+
+            // Prefixes
+            if (selectedPrefixes.length > 0) {
+                config.prefixes = selectedPrefixes.slice();
+            }
+
+            return config;
+        }
+
+        function generateSingle() {
+            var config = buildConfig();
+            if (!config) return;
+            var json = JSON.stringify(config, null, 2);
+            var blob = new Blob([json], { type: 'application/json' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            var pName = $('p-name').value.trim() || 'switchback';
+            a.download = pName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + config.username + '.switchback';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+            showOutput('<div class="output-label">File downloaded!</div><p class="hint">Send this .switchback file to your customer. They open it in Switchback TV and everything sets up automatically.</p>');
+        }
+
+        function generateJSON() {
+            var config = buildConfig();
+            if (!config) return;
+            var json = JSON.stringify(config, null, 2);
+            navigator.clipboard.writeText(json).then(function () {
+                showToast('JSON copied to clipboard!');
+            });
+            showOutput(
+                '<div class="output-label">Config JSON</div>' +
+                '<div class="output-value" onclick="navigator.clipboard.writeText(this.textContent);showToast(\'Copied!\')">' + escHtml(json) + '</div>' +
+                '<p class="hint">Customer pastes this into Settings > Paste Config in Switchback TV.</p>'
+            );
+        }
+
+        function generateActivationCode() {
+            var config = buildConfig();
+            if (!config) return;
+            var json = JSON.stringify(config);
+            // Encode as base64url data URI that the app can decode
+            var b64 = btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+            // Also make a short code if they host it as a URL
+            showOutput(
+                '<div class="output-label">Activation Code (paste-able)</div>' +
+                '<div class="output-value" onclick="navigator.clipboard.writeText(this.textContent);showToast(\'Copied!\')">' + escHtml(b64) + '</div>' +
+                '<p class="hint">Customer opens Switchback TV > Enter Activation Code > pastes this. Config is embedded in the code itself.</p>' +
+                '<div style="margin-top:16px"></div>' +
+                '<div class="output-label">Alternative: Host as URL</div>' +
+                '<p class="hint">Upload the JSON file to your server and give customers the URL. They can enter it as an activation code too. Example:<br><code style="color:var(--ac2)">https://yoursite.com/configs/' + config.username + '.json</code></p>'
+            );
+        }
+
+        // Bulk
+        function addBulkUser() {
+            var user = $('b-user').value.trim();
+            var pass = $('b-pass').value.trim();
+            if (!user || !pass) { alert('Enter both username and password'); return; }
+            bulkUsers.push({ user: user, pass: pass });
+            $('b-user').value = '';
+            $('b-pass').value = '';
+            renderBulkList();
+        }
+
+        function removeBulkUser(i) {
+            bulkUsers.splice(i, 1);
+            renderBulkList();
+        }
+
+        function renderBulkList() {
+            var html = '';
+            for (var i = 0; i < bulkUsers.length; i++) {
+                html += '<div class="bulk-item"><span>' + escHtml(bulkUsers[i].user) + ' / ' + escHtml(bulkUsers[i].pass) + '</span><button onclick="removeBulkUser(' + i + ')">✕</button></div>';
+            }
+            $('bulk-list').innerHTML = html;
+            $('bulk-count').textContent = bulkUsers.length ? bulkUsers.length + ' user(s) queued' : '';
+        }
+
+        function downloadBulk() {
+            if (!bulkUsers.length) { alert('Add at least one user first'); return; }
+            var server = $('c-server').value.trim();
+            if (!server) { alert('Server URL is required'); return; }
+
+            for (var i = 0; i < bulkUsers.length; i++) {
+                var config = buildConfig(bulkUsers[i].user, bulkUsers[i].pass);
+                if (!config) return;
+                var json = JSON.stringify(config, null, 2);
+                var blob = new Blob([json], { type: 'application/json' });
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                var pName = $('p-name').value.trim() || 'switchback';
+                a.download = pName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + bulkUsers[i].user + '.switchback';
+                document.body.appendChild(a);
+                // Stagger downloads
+                (function (anchor, url) {
+                    setTimeout(function () {
+                        anchor.click();
+                        document.body.removeChild(anchor);
+                        URL.revokeObjectURL(url);
+                    }, i * 200);
+                })(a, a.href);
+            }
+
+            showOutput('<div class="output-label">' + bulkUsers.length + ' config files downloading!</div><p class="hint">Each file is named with the username. Distribute one per customer.</p>');
+        }
+
+        // Helpers
+        function escHtml(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function showOutput(html) {
+            var el = $('output');
+            el.classList.add('on');
+            $('output-content').innerHTML = html;
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function showToast(msg) {
+            var t = $('toast');
+            t.textContent = msg;
+            t.classList.add('on');
+            setTimeout(function () { t.classList.remove('on'); }, 2000);
+        }
+
+        // Init
+        renderPrefixes();
+    </script>
+</body>
+
+</html>
