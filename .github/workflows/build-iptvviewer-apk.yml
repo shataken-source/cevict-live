@@ -18,13 +18,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            apps/IPTVviewer
+          sparse-checkout-cone-mode: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: apps/iptvviewer/package-lock.json
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -33,7 +35,7 @@ jobs:
           java-version: 17
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Setup Expo CLI
         run: npx expo install expo-dev-client 2>/dev/null || true
