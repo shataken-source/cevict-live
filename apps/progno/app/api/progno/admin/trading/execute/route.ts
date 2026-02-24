@@ -10,17 +10,16 @@ export const maxDuration = 120
 // ── Auth ──────────────────────────────────────────────────────────────────────
 function isAuthorized(request: NextRequest, bodySecret?: string): { ok: boolean; token?: string } {
   const SECRET = process.env.PROGNO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || process.env.CRON_SECRET || ''
-  // If no secret configured, allow all (matches /api/progno/admin/reports pattern)
-  if (!SECRET) return { ok: true, token: '' }
+  if (!SECRET) {
+    console.warn('[execute] WARNING: No admin secret configured — all requests blocked. Set PROGNO_ADMIN_PASSWORD.')
+    return { ok: false, token: '' }
+  }
   const auth = request.headers.get('authorization') || ''
   const headerSecret = request.headers.get('x-admin-secret') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : headerSecret
   const candidates = [token, bodySecret].filter(Boolean)
   const ok = candidates.some(t => t === SECRET)
-  // Also allow if called from same origin with no token (internal admin page)
-  const origin = request.headers.get('origin') || request.headers.get('referer') || ''
-  const isInternal = origin.includes('localhost') || origin.includes('127.0.0.1')
-  return { ok: ok || isInternal, token: candidates[0] || SECRET }
+  return { ok, token: candidates[0] || '' }
 }
 
 function getBaseUrl(req: NextRequest): string {
@@ -240,13 +239,6 @@ async function fetchSportsMarkets(apiKeyId: string, privateKey: string): Promise
       }
       for (const ev of events) {
         const cat = (ev.category || '').toUpperCase()
-        // DEBUG: find fresno/pepperdine/cal poly events regardless of category/prefix
-        const evTitle = (ev.title || '').toLowerCase()
-        const evMktTitles = (ev.markets || []).map((m: any) => (m.title || '').toLowerCase()).join(' ')
-        if (evTitle.includes('fresno') || evTitle.includes('pepperdine') || evTitle.includes('cal poly') || evMktTitles.includes('fresno') || evMktTitles.includes('pepperdine') || evMktTitles.includes('cal poly')) {
-          console.log(`[DEBUG-FIND] event=${ev.event_ticker} cat=${ev.category} title="${ev.title}" markets=${(ev.markets || []).length}`)
-            ; (ev.markets || []).slice(0, 3).forEach((m: any) => console.log(`[DEBUG-FIND]   mkt=${m.ticker} "${m.title}"`))
-        }
         if (cat !== 'SPORTS') continue
         const et = (ev.event_ticker || '').toUpperCase()
         // Skip women's sports (NCAAWB, WNBA, etc.) — Progno only predicts men's
@@ -556,7 +548,7 @@ export async function POST(request: NextRequest) {
       debug: {
         marketsFetched: openMarkets.length,
         marketFetchError,
-        sampleMarkets: openMarkets.map(m => ({ ticker: m.ticker, title: m.title, sport: m._sport })),
+        sampleMarkets: openMarkets.slice(0, 5).map(m => ({ ticker: m.ticker, title: m.title, sport: m._sport })),
         samplePicks: picks.slice(0, 3).map(p => ({ pick: p.pick, home: p.home_team, away: p.away_team })),
       },
       results,

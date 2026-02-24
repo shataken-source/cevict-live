@@ -285,7 +285,7 @@ export default function AdminPage() {
     setOddsLoading(true);
     setOddsError(null);
     try {
-      const res = await fetch(`/api/progno/admin/live-odds?secret=${encodeURIComponent(secret.trim())}&sports=${selectedSports.join(',')}`);
+      const res = await fetch(`/api/progno/admin/live-odds?sports=${selectedSports.join(',')}`, { headers: { Authorization: `Bearer ${secret.trim()}` }, cache: 'no-store' });
       const data = await res.json();
       if (data.success) {
         setLiveOdds(data.games || []);

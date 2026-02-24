@@ -4,13 +4,13 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 const SPORTS = [
-  { key: 'basketball_nba',         label: 'NBA' },
-  { key: 'basketball_ncaab',       label: 'NCAAB' },
-  { key: 'icehockey_nhl',          label: 'NHL' },
-  { key: 'americanfootball_nfl',   label: 'NFL' },
-  { key: 'baseball_mlb',           label: 'MLB' },
+  { key: 'basketball_nba', label: 'NBA' },
+  { key: 'basketball_ncaab', label: 'NCAAB' },
+  { key: 'icehockey_nhl', label: 'NHL' },
+  { key: 'americanfootball_nfl', label: 'NFL' },
+  { key: 'baseball_mlb', label: 'MLB' },
   { key: 'americanfootball_ncaaf', label: 'NCAAF' },
-  { key: 'baseball_ncaa',          label: 'NCAAB Baseball' },
+  { key: 'baseball_ncaa', label: 'NCAAB Baseball' },
 ]
 
 function getPrimaryKey(): string | undefined {
@@ -32,13 +32,26 @@ function noVigProb(homeOdds: number, awayOdds: number) {
   return { home: rawHome / overround * 100, away: rawAway / overround * 100 }
 }
 
-export async function GET(request: NextRequest) {
+function isAuthorized(request: NextRequest): boolean {
+  // Accept secret via header (preferred) or query param (legacy fallback)
+  const auth = request.headers.get('authorization') || ''
+  const headerToken = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
   const { searchParams } = new URL(request.url)
-  const secret = searchParams.get('secret')
+  const queryToken = searchParams.get('secret') || ''
+  const token = headerToken || queryToken
+  if (!token) return false
+  const cronSecret = process.env.CRON_SECRET
+  const adminPassword = process.env.PROGNO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD
+  if (!cronSecret && !adminPassword) return false
+  return (cronSecret && token === cronSecret) || (adminPassword && token === adminPassword)
+}
 
-  if (secret !== process.env.ADMIN_PASSWORD && secret !== process.env.PROGNO_ADMIN_PASSWORD && secret !== process.env.CRON_SECRET) {
+export async function GET(request: NextRequest) {
+  if (!isAuthorized(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const { searchParams } = new URL(request.url)
 
   const sportParam = searchParams.get('sports') || 'basketball_nba,basketball_ncaab,icehockey_nhl'
   const requestedSports = sportParam.split(',').map(s => s.trim()).filter(Boolean)

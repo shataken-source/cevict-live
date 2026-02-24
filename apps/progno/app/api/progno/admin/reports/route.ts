@@ -4,7 +4,10 @@ import { createClient } from '@supabase/supabase-js';
 const SECRET = process.env.PROGNO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || process.env.CRON_SECRET || '';
 
 function verifySecret(secret: string): boolean {
-  if (!SECRET || SECRET === '') return true;
+  if (!SECRET || SECRET === '') {
+    console.warn('[reports] WARNING: No admin secret configured — all requests blocked. Set PROGNO_ADMIN_PASSWORD.');
+    return false;
+  }
   return secret === SECRET;
 }
 
