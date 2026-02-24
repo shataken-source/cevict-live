@@ -15,7 +15,7 @@ export interface DezorCredentials {
 
 export class DezorIPTVService {
   private static readonly STORAGE_KEY = 'dezor_credentials';
-  private static readonly DEFAULT_SERVER = 'http://cf.like-cdn.com';
+  private static readonly DEFAULT_SERVER = 'http://blogyfy.xyz';
 
   /**
    * Get M3U playlist URL for DezorIPTV
@@ -23,7 +23,7 @@ export class DezorIPTVService {
   static getPlaylistUrl(credentials: DezorCredentials): string {
     const { username, password, server } = credentials;
     const baseServer = server || this.DEFAULT_SERVER;
-    
+
     // DezorIPTV M3U URL format
     return `${baseServer}/get.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&type=m3u_plus&output=ts`;
   }
@@ -34,7 +34,7 @@ export class DezorIPTVService {
   static getEPGUrl(credentials: DezorCredentials): string {
     const { username, password, server } = credentials;
     const baseServer = server || this.DEFAULT_SERVER;
-    
+
     return `${baseServer}/xmltv.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
   }
 
@@ -43,7 +43,7 @@ export class DezorIPTVService {
    */
   static async downloadPlaylist(credentials: DezorCredentials): Promise<Playlist> {
     const url = this.getPlaylistUrl(credentials);
-    
+
     try {
       const playlist = await M3UParser.fetchAndParse(
         url,
@@ -73,11 +73,11 @@ export class DezorIPTVService {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch(url, { 
+      const response = await fetch(url, {
         signal: controller.signal,
         method: 'HEAD' // Just check if URL is accessible
       });
-      
+
       clearTimeout(timeout);
       return response.ok;
     } catch (error) {
@@ -139,22 +139,22 @@ export class DezorIPTVService {
     try {
       const { username, password, server } = credentials;
       const baseServer = server || this.DEFAULT_SERVER;
-      
+
       // DezorIPTV account info endpoint
       const url = `${baseServer}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
-      
+
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
 
       const data = await response.json();
-      
+
       return {
         username: data.user_info?.username || username,
         status: data.user_info?.status || 'unknown',
-        expiresAt: data.user_info?.exp_date 
-          ? new Date(parseInt(data.user_info.exp_date) * 1000) 
+        expiresAt: data.user_info?.exp_date
+          ? new Date(parseInt(data.user_info.exp_date) * 1000)
           : undefined,
         maxConnections: data.user_info?.max_connections || 1,
       };
@@ -171,9 +171,9 @@ export class DezorIPTVService {
     try {
       const { username, password, server } = credentials;
       const baseServer = server || this.DEFAULT_SERVER;
-      
+
       const url = `${baseServer}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_categories`;
-      
+
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);

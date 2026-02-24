@@ -311,10 +311,12 @@ class DeviceLicensingServiceImpl {
      */
     private generateLicenseKey(): string {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        const randomBytes = new Uint8Array(16);
+        crypto.getRandomValues(randomBytes);
         let key = '';
         for (let i = 0; i < 16; i++) {
             if (i > 0 && i % 4 === 0) key += '-';
-            key += chars.charAt(Math.floor(Math.random() * chars.length));
+            key += chars.charAt(randomBytes[i] % chars.length);
         }
         return key;
     }

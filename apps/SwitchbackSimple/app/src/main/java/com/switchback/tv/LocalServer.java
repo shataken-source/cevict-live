@@ -5,22 +5,31 @@ import android.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URL;
 import java.util.Map;
 import fi.iki.elonen.NanoHTTPD;
 
 public class LocalServer extends NanoHTTPD {
     private static final String TAG = "LocalServer";
+    private static final int MAX_REDIRECTS = 5;
     private final AssetManager assets;
 
     public LocalServer(int port, AssetManager assets) {
-        super(port);
+        super("127.0.0.1", port);
         this.assets = assets;
     }
 
     @Override
     public Response serve(IHTTPSession session) {
         String uri = session.getUri();
+
+        // Only allow requests from localhost
+        String remoteIp = session.getRemoteIpAddress();
+        if (remoteIp != null && !remoteIp.equals("127.0.0.1") && !remoteIp.equals("::1") && !remoteIp.equals("0:0:0:0:0:0:0:1")) {
+            Log.w(TAG, "Blocked non-local request from: " + remoteIp);
+            return newFixedLengthResponse(Response.Status.FORBIDDEN, "text/plain", "Forbidden");
+        }
 
         // Proxy endpoint: /proxy?url=<encoded_url>
         if (uri.equals("/proxy")) {
@@ -29,6 +38,11 @@ public class LocalServer extends NanoHTTPD {
 
         if (uri.equals("/")) uri = "/index.html";
         String path = uri.substring(1);
+
+        // Prevent path traversal
+        if (path.contains("..") || path.startsWith("/")) {
+            return newFixedLengthResponse(Response.Status.FORBIDDEN, "text/plain", "Forbidden");
+        }
 
         try {
             InputStream is = assets.open(path);
@@ -62,6 +76,23 @@ public class LocalServer extends NanoHTTPD {
             return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Missing url parameter");
         }
 
+        // SSRF protection: only allow http/https schemes
+        if (!targetUrl.startsWith("http://") && !targetUrl.startsWith("https://")) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Only http/https URLs allowed");
+        }
+
+        // SSRF protection: block requests to private/loopback addresses
+        try {
+            URL parsedUrl = new URL(targetUrl);
+            String host = parsedUrl.getHost();
+            if (isPrivateHost(host)) {
+                Log.w(TAG, "Blocked proxy to private host: " + host);
+                return newFixedLengthResponse(Response.Status.FORBIDDEN, "text/plain", "Proxy to private addresses not allowed");
+            }
+        } catch (Exception e) {
+            return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Invalid URL");
+        }
+
         HttpURLConnection conn = null;
         try {
             Log.i(TAG, "Proxy fetch: " + targetUrl);
@@ -76,32 +107,53 @@ public class LocalServer extends NanoHTTPD {
             int code = conn.getResponseCode();
             Log.i(TAG, "Proxy response: " + code + " for " + targetUrl);
 
-            InputStream is;
             if (code >= 200 && code < 400) {
-                is = conn.getInputStream();
+                InputStream is = conn.getInputStream();
+                String contentType = conn.getContentType();
+                if (contentType == null) contentType = "text/plain";
+
+                Response resp = newChunkedResponse(Response.Status.OK, contentType, is);
+                resp.addHeader("Access-Control-Allow-Origin", "*");
+                return resp;
             } else {
-                InputStream errStream = conn.getErrorStream();
                 String errBody = "";
+                InputStream errStream = conn.getErrorStream();
                 if (errStream != null) {
-                    byte[] buf = new byte[1024];
-                    int n = errStream.read(buf);
-                    if (n > 0) errBody = new String(buf, 0, n);
+                    try {
+                        byte[] buf = new byte[1024];
+                        int n = errStream.read(buf);
+                        if (n > 0) errBody = new String(buf, 0, n, "UTF-8");
+                    } finally {
+                        errStream.close();
+                    }
                 }
                 Log.e(TAG, "Proxy HTTP " + code + ": " + errBody);
                 return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain",
                     "Remote server returned HTTP " + code + ": " + errBody);
             }
-
-            String contentType = conn.getContentType();
-            if (contentType == null) contentType = "text/plain";
-
-            Response resp = newChunkedResponse(Response.Status.OK, contentType, is);
-            resp.addHeader("Access-Control-Allow-Origin", "*");
-            return resp;
         } catch (Exception e) {
             Log.e(TAG, "Proxy error: " + e.getMessage(), e);
             return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain",
                 "Proxy error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    private boolean isPrivateHost(String host) {
+        if (host == null || host.isEmpty()) return true;
+        // Block localhost variants
+        if (host.equals("localhost") || host.equals("127.0.0.1") || host.equals("::1") || host.equals("0.0.0.0")) {
+            return true;
+        }
+        // Block common private IP ranges
+        try {
+            InetAddress addr = InetAddress.getByName(host);
+            return addr.isLoopbackAddress() || addr.isLinkLocalAddress() || addr.isSiteLocalAddress();
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -113,6 +165,8 @@ public class LocalServer extends NanoHTTPD {
         if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
         if (path.endsWith(".svg")) return "image/svg+xml";
         if (path.endsWith(".json")) return "application/json";
+        if (path.endsWith(".woff") || path.endsWith(".woff2")) return "font/woff2";
+        if (path.endsWith(".ico")) return "image/x-icon";
         return "application/octet-stream";
     }
 }
