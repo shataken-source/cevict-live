@@ -3,8 +3,6 @@ name: Build Android APK (SwitchbackSimple)
 on:
   push:
     branches: [master, gcc-vessels]
-    paths:
-      - 'apps/SwitchbackSimple/**'
   workflow_dispatch:
 
 jobs:
