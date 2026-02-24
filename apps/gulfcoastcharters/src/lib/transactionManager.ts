@@ -58,10 +58,17 @@ export async function optimisticBooking(
     }
 
     // 2. Create booking
+    let createdBookingId: string | null = null;
     const { data: booking, error: bookingError } = await transaction.execute(
-      () => supabase.from('bookings').insert(bookingData).select().single(),
       async () => {
-        await supabase.from('bookings').delete().eq('id', bookingData.id);
+        const result = await supabase.from('bookings').insert(bookingData).select().single();
+        if (result.data?.id) createdBookingId = result.data.id;
+        return result;
+      },
+      async () => {
+        if (createdBookingId) {
+          await supabase.from('bookings').delete().eq('id', createdBookingId);
+        }
       }
     );
 

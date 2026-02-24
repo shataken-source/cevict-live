@@ -2,7 +2,7 @@
  * Captain Bookings API
  * GET /api/captain/bookings - Get bookings for authenticated captain
  * POST /api/captain/bookings - Update booking status/notes
- * 
+ *
  * Replaces: supabase.functions.invoke('captain-bookings')
  */
 
@@ -12,17 +12,17 @@ import { getAuthedUser, getSupabaseAdmin } from '../_lib/supabase';
 // Helper function to format bookings with customer info
 async function formatBookings(bookings: any[], admin: any) {
   const userIds = [...new Set(bookings.map(b => b.user_id).filter(Boolean))];
-  
+
   // Get customer info from profiles or shared_users
   let customerMap: Record<string, any> = {};
-  
+
   if (userIds.length > 0) {
     try {
       const { data: profiles } = await admin
         .from('profiles')
         .select('id, email, full_name, phone')
         .in('id', userIds);
-      
+
       if (profiles) {
         profiles.forEach((p: any) => {
           customerMap[p.id] = p;
@@ -31,14 +31,14 @@ async function formatBookings(bookings: any[], admin: any) {
     } catch (err) {
       console.log('Error fetching profiles, trying shared_users:', err);
     }
-    
+
     // Also try shared_users
     try {
       const { data: sharedUsers } = await admin
         .from('shared_users')
         .select('id, email, first_name, last_name')
         .in('id', userIds);
-      
+
       if (sharedUsers) {
         sharedUsers.forEach((u: any) => {
           if (!customerMap[u.id]) {
@@ -57,7 +57,7 @@ async function formatBookings(bookings: any[], admin: any) {
 
   return bookings.map((booking: any) => {
     const customer = customerMap[booking.user_id] || {};
-    
+
     return {
       id: booking.id,
       charterName: booking.trip_type || booking.charter_name || 'Charter',
@@ -80,7 +80,7 @@ export default async function handler(
   res: NextApiResponse
 ) {
   const { user, error: authError } = await getAuthedUser(req, res);
-  
+
   if (authError || !user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -100,30 +100,21 @@ export default async function handler(
     return res.status(403).json({ error: 'User is not a captain' });
   }
 
-  // Try to find captain_id in bookings - it might reference captain_profiles.id or captains.id
-  // First, try using captain_profiles.id
+  // Collect ALL possible captain IDs for this user (captain_profiles.id, captains.id, user.id)
+  // so ownership checks work regardless of which FK the bookings table uses.
+  const myCaptainIds: string[] = [captainProfile.id];
   let captainId = captainProfile.id;
-  
-  // Also check if there's a captains table
+
   try {
     const { data: captainRecord } = await admin
       .from('captains')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle();
-    
+
     if (captainRecord) {
-      // Check which one is actually used in bookings
-      const { data: bookingTest } = await admin
-        .from('bookings')
-        .select('captain_id')
-        .eq('captain_id', captainRecord.id)
-        .limit(1)
-        .maybeSingle();
-      
-      if (bookingTest) {
-        captainId = captainRecord.id;
-      }
+      myCaptainIds.push(captainRecord.id);
+      captainId = captainRecord.id; // prefer captains table id
     }
   } catch (err) {
     // captains table might not exist, use captain_profiles.id
@@ -142,7 +133,7 @@ export default async function handler(
         .eq('captain_id', captainId)
         .order('trip_date', { ascending: false })
         .order('created_at', { ascending: false });
-      
+
       // If that doesn't work, try with captain_profiles relationship
       // (Some schemas might have bookings.captain_id = captain_profiles.id)
       // We'll handle customer info separately
@@ -164,14 +155,14 @@ export default async function handler(
 
       if (error) {
         console.error('Error fetching bookings with captain_id:', error);
-        
+
         // If query fails, try without the join first, then filter
         const { data: allBookings, error: simpleError } = await admin
           .from('bookings')
           .select('*')
           .order('created_at', { ascending: false })
           .limit(500);
-        
+
         if (simpleError || !allBookings) {
           console.error('Error fetching bookings:', simpleError);
           return res.status(200).json({
@@ -181,14 +172,14 @@ export default async function handler(
             note: 'No bookings found or error querying bookings table',
           });
         }
-        
+
         // Filter by checking if captain_id matches any of our captain IDs
-        const filtered = allBookings.filter((b: any) => 
-          b.captain_id === captainProfile.id || 
+        const filtered = allBookings.filter((b: any) =>
+          b.captain_id === captainProfile.id ||
           b.captain_id === user.id ||
           b.captain_id === captainId
         );
-        
+
         // Apply additional filters
         let finalBookings = filtered;
         if (status && status !== 'all') {
@@ -206,7 +197,7 @@ export default async function handler(
             return bookingDate && bookingDate <= endDate;
           });
         }
-        
+
         const formattedBookings = await formatBookings(finalBookings, admin);
         return res.status(200).json({
           success: true,
@@ -244,32 +235,15 @@ export default async function handler(
             return res.status(400).json({ error: 'Missing status' });
           }
 
-          // Try updating with captain_id check (may fail if captain_id doesn't match)
-          let updateError = null;
-          let updateResult = await admin
+          // Always require captain ownership — check all known captain IDs
+          const { error: updateError } = await admin
             .from('bookings')
-            .update({ 
+            .update({
               status,
               updated_at: new Date().toISOString(),
             })
             .eq('id', bookingId)
-            .eq('captain_id', captainId);
-          
-          updateError = updateResult.error;
-          
-          // If that fails, try without captain_id check (in case captain_id is different)
-          if (updateError) {
-            console.log('Update with captain_id check failed, trying without:', updateError);
-            const altResult = await admin
-              .from('bookings')
-              .update({ 
-                status,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', bookingId);
-            
-            updateError = altResult.error;
-          }
+            .in('captain_id', myCaptainIds);
 
           if (updateError) {
             return res.status(500).json({ error: updateError.message });
@@ -280,103 +254,54 @@ export default async function handler(
 
         case 'addNotes': {
           const { notes } = updateData || {};
-          
-          // Try updating with captain_id check
-          let updateError = null;
-          let updateResult = await admin
+
+          const { error: notesError } = await admin
             .from('bookings')
-            .update({ 
+            .update({
               special_requests: notes,
               updated_at: new Date().toISOString(),
             })
             .eq('id', bookingId)
-            .eq('captain_id', captainId);
-          
-          updateError = updateResult.error;
-          
-          // If that fails, try without captain_id check
-          if (updateError) {
-            const altResult = await admin
-              .from('bookings')
-              .update({ 
-                special_requests: notes,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', bookingId);
-            
-            updateError = altResult.error;
-          }
+            .in('captain_id', myCaptainIds);
 
-          if (updateError) {
-            return res.status(500).json({ error: updateError.message });
+          if (notesError) {
+            return res.status(500).json({ error: notesError.message });
           }
 
           return res.status(200).json({ success: true });
         }
 
         case 'acceptBooking': {
-          let updateError = null;
-          let updateResult = await admin
+          const { error: acceptError } = await admin
             .from('bookings')
-            .update({ 
+            .update({
               status: 'confirmed',
               updated_at: new Date().toISOString(),
             })
             .eq('id', bookingId)
-            .eq('captain_id', captainId);
-          
-          updateError = updateResult.error;
-          
-          if (updateError) {
-            const altResult = await admin
-              .from('bookings')
-              .update({ 
-                status: 'confirmed',
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', bookingId);
-            
-            updateError = altResult.error;
-          }
+            .in('captain_id', myCaptainIds);
 
-          if (updateError) {
-            return res.status(500).json({ error: updateError.message });
+          if (acceptError) {
+            return res.status(500).json({ error: acceptError.message });
           }
 
           return res.status(200).json({ success: true });
         }
 
         case 'declineBooking': {
-          let updateError = null;
-          let updateResult = await admin
+          const { error: declineError } = await admin
             .from('bookings')
-            .update({ 
+            .update({
               status: 'cancelled',
               cancellation_reason: 'Declined by captain',
               cancelled_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             })
             .eq('id', bookingId)
-            .eq('captain_id', captainId);
-          
-          updateError = updateResult.error;
-          
-          if (updateError) {
-            const altResult = await admin
-              .from('bookings')
-              .update({ 
-                status: 'cancelled',
-                cancellation_reason: 'Declined by captain',
-                cancelled_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', bookingId);
-            
-            updateError = altResult.error;
-          }
+            .in('captain_id', myCaptainIds);
 
-          if (updateError) {
-            return res.status(500).json({ error: updateError.message });
+          if (declineError) {
+            return res.status(500).json({ error: declineError.message });
           }
 
           return res.status(200).json({ success: true });

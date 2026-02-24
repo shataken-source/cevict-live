@@ -36,8 +36,8 @@ export default async function handler(
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select('*, captains!inner(user_id)')
-      .eq('booking_id', bookingId)
-      .single();
+      .eq('id', bookingId)
+      .maybeSingle();
 
     if (bookingError || !booking) {
       return res.status(404).json({ error: 'Booking not found' });

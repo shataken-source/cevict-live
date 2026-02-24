@@ -1,6 +1,6 @@
 /**
  * Stripe Webhook Handler
- * 
+ *
  * Handles Stripe webhook events (payment success, failure, refunds, etc.)
  * Updates bookings and payments tables accordingly.
  */
@@ -22,7 +22,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     if (supabaseUrl && supabaseServiceKey) {
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
+
       // Log webhook hit to database immediately (non-blocking)
       supabase.from('debug_logs').insert({
         event_type: 'webhook_request_received',
@@ -107,7 +107,7 @@ serve(async (req) => {
       console.error('✅ Webhook signature verified');
       console.error('Event type:', event.type);
       console.error('Event ID:', event.id);
-      
+
       // Log successful verification to database
       await supabase.from('debug_logs').insert({
         event_type: 'webhook_signature_verified',
@@ -246,7 +246,7 @@ serve(async (req) => {
                       <div class="content">
                         <p>Hi ${customerName},</p>
                         <p>Your charter fishing booking has been confirmed! We're excited to have you join us on the water.</p>
-                        
+
                         <div class="booking-details">
                           <h2 style="margin-top: 0; color: #1e40af;">Booking Details</h2>
                           <div class="detail-row">
@@ -280,12 +280,12 @@ serve(async (req) => {
                         </div>
 
                         <p>Your captain will contact you before your trip with meeting location and any additional details.</p>
-                        
+
                         <p>If you have any questions, please don't hesitate to reach out.</p>
-                        
+
                         <p>We look forward to seeing you on the water!</p>
                         <p><strong>The Gulf Coast Charters Team</strong></p>
-                        
+
                         <div class="footer">
                           <p>Booking ID: ${metadata.bookingId}</p>
                           <p>This is an automated confirmation email.</p>
@@ -382,17 +382,17 @@ The Gulf Coast Charters Team
         } else if (metadata.type === 'gift_card' && metadata.gift_certificate_id) {
           // Handle gift card purchases
           console.log(`Processing gift card purchase: ${metadata.gift_certificate_id}`);
-          
+
           // Generate unique gift certificate code
           const { data: codeData, error: codeError } = await supabase.rpc('generate_gift_certificate_code');
-          
+
           if (codeError) {
             console.error('❌ Error generating gift certificate code:', codeError);
             // Continue anyway - we'll use a fallback code
           }
-          
+
           const giftCode = codeData || `GCC-${metadata.gift_certificate_id.substring(0, 8).toUpperCase()}`;
-          
+
           // Update gift certificate to active status with generated code
           const { error: certUpdateError } = await supabase
             .from('gift_certificates')
@@ -423,7 +423,7 @@ The Gulf Coast Charters Team
             email_address: emailAddress,
             email_prefix: emailPrefix,
             user_type: userType,
-            payment_method: 'cash',
+            payment_method: 'stripe',
             amount_paid: amountPaid,
             is_active: true,
           });
@@ -446,7 +446,7 @@ The Gulf Coast Charters Team
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object;
         const metadata = paymentIntent.metadata || {};
-        
+
         console.log(`✅ Payment intent succeeded: ${paymentIntent.id}`);
 
         // Handle tip payments
@@ -465,7 +465,7 @@ The Gulf Coast Charters Team
             console.error('Error updating tip:', tipUpdateError);
           } else {
             console.log(`✅ Tip payment completed: ${metadata.tip_id}`);
-            
+
             // TODO: Send notifications to recipients
             // This would trigger email notifications to captain/crew
           }
@@ -499,7 +499,7 @@ The Gulf Coast Charters Team
               updated_at: new Date().toISOString(),
             })
             .eq('tip_id', metadata.tip_id);
-          
+
           console.log(`❌ Tip payment failed: ${metadata.tip_id}`);
         }
 
@@ -567,7 +567,7 @@ The Gulf Coast Charters Team
 
       default:
         console.error(`⚠️ Unhandled event type: ${event.type}`);
-        
+
         // Log unhandled event to database
         await supabase.from('debug_logs').insert({
           event_type: 'unhandled_event_type',
@@ -580,7 +580,7 @@ The Gulf Coast Charters Team
     }
 
     console.error('=== WEBHOOK PROCESSING COMPLETE ===');
-    
+
     // Log completion to database
     await supabase.from('debug_logs').insert({
       event_type: 'webhook_processing_complete',
@@ -588,7 +588,7 @@ The Gulf Coast Charters Team
         timestamp: new Date().toISOString(),
       },
     });
-    
+
     return new Response(
       JSON.stringify({ received: true }),
       {
@@ -599,13 +599,13 @@ The Gulf Coast Charters Team
   } catch (error: any) {
     console.error('❌ Webhook error:', error);
     console.error('Error stack:', error.stack);
-    
+
     // Log error to database
     try {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
       const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      
+
       await supabase.from('debug_logs').insert({
         event_type: 'webhook_error',
         payload: {
@@ -618,7 +618,7 @@ The Gulf Coast Charters Team
       // If we can't log to database, at least log to console
       console.error('Failed to log error to database:', dbError);
     }
-    
+
     return new Response(
       JSON.stringify({
         error: error.message || 'Webhook processing failed',

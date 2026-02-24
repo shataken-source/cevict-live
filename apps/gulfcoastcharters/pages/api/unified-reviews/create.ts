@@ -7,6 +7,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createUnifiedReview } from '@/lib/unified-reviews';
 import { createClient } from '@supabase/supabase-js';
+import { getAuthedUser } from '../_lib/supabase';
 
 export default async function handler(
   req: NextApiRequest,
@@ -17,11 +18,13 @@ export default async function handler(
   }
 
   try {
-    const { userId, reviewData } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: 'userId required' });
+    const { user, error: authError } = await getAuthedUser(req, res);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Unauthorized', details: authError?.message || 'Sign in required' });
     }
+    const userId = user.id;
+
+    const { reviewData } = req.body;
 
     if (!reviewData || !reviewData.review_type || !reviewData.rating) {
       return res.status(400).json({ error: 'reviewData with review_type and rating required' });
@@ -30,7 +33,7 @@ export default async function handler(
     // Verify user exists in shared_users (using admin client)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
+
     if (!supabaseUrl || !supabaseServiceKey) {
       return res.status(500).json({ error: 'Database not configured' });
     }
