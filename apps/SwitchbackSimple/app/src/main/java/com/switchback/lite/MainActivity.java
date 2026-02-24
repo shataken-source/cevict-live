@@ -1,12 +1,14 @@
 package com.switchback.lite;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import java.io.File;
 
 public class MainActivity extends Activity {
     private static final String TAG = "SwitchbackLite";
@@ -17,6 +19,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Nuke WebView cache on every version upgrade so fresh assets load
+        nukeWebViewCacheIfNeeded();
 
         // Start local web server to serve assets over HTTP
         try {
@@ -51,6 +56,50 @@ public class MainActivity extends Activity {
 
         // Load from local HTTP server — no more file:// CORS issues
         webView.loadUrl("http://localhost:" + PORT + "/index.html");
+    }
+
+    private void nukeWebViewCacheIfNeeded() {
+        int currentVersion = 0;
+        try {
+            currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+        } catch (Exception e) { /* ignore */ }
+
+        SharedPreferences prefs = getSharedPreferences("switchback_prefs", MODE_PRIVATE);
+        int lastVersion = prefs.getInt("last_version_code", 0);
+
+        if (currentVersion != lastVersion) {
+            Log.i(TAG, "Version changed " + lastVersion + " -> " + currentVersion + ", nuking WebView cache");
+
+            // Delete WebView cache directory
+            File cacheDir = getCacheDir();
+            if (cacheDir.exists()) deleteRecursive(cacheDir);
+
+            // Delete WebView data directories
+            File appDir = getFilesDir().getParentFile();
+            String[] webViewDirs = {"app_webview", "app_webview_default", "cache", "code_cache"};
+            for (String dirName : webViewDirs) {
+                File dir = new File(appDir, dirName);
+                if (dir.exists()) {
+                    Log.i(TAG, "Deleting " + dir.getAbsolutePath());
+                    deleteRecursive(dir);
+                }
+            }
+
+            prefs.edit().putInt("last_version_code", currentVersion).apply();
+            Log.i(TAG, "WebView cache nuked");
+        }
+    }
+
+    private void deleteRecursive(File fileOrDir) {
+        if (fileOrDir.isDirectory()) {
+            File[] children = fileOrDir.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteRecursive(child);
+                }
+            }
+        }
+        fileOrDir.delete();
     }
 
     @Override
