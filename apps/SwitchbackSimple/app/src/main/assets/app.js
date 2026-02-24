@@ -221,7 +221,7 @@ function fetchXtream(server, user, pass) {
               logo: s.stream_icon || '',
               group: catName,
               tvgId: s.epg_channel_id || '',
-              url: base + '/live/' + encodeURIComponent(user) + '/' + encodeURIComponent(pass) + '/' + s.stream_id + '.m3u8',
+              url: base + '/live/' + encodeURIComponent(user) + '/' + encodeURIComponent(pass) + '/' + s.stream_id + '.ts',
             });
           });
           return chans;
@@ -397,7 +397,7 @@ function renderChItem(ch) {
   h += '<div class="ci-info"><div class="cn">' + esc(ch.name) + '</div>';
   if (ch.group) h += '<div class="cg">' + esc(ch.group) + '</div>';
   h += '</div>';
-  h += '<button class="cf" tabindex="0" onclick="event.stopPropagation();togFav(' + JSON.stringify(ch.id) + ')">' + (isFav ? '\u2605' : '\u2606') + '</button>';
+  h += '<button class="cf" onclick="event.stopPropagation();togFav(' + JSON.stringify(ch.id) + ')">' + (isFav ? '\u2605' : '\u2606') + '</button>';
   h += '</div>';
   return h;
 }
@@ -1041,13 +1041,35 @@ function showTab(name) {
 }
 
 // ── D-pad / Remote Navigation ─────────────────
-function getAllFocusable(root) {
-  var els = (root || document).querySelectorAll('[tabindex], button, input, a[href], .ci, .hi, .ei, .gb, .tab, .prefix-chip, .cb, .btn');
-  var arr = [];
-  for (var i = 0; i < els.length; i++) {
-    if (els[i].offsetParent !== null && els[i].tabIndex >= 0) arr.push(els[i]);
+function navList(containerId, active, isDown) {
+  var items = $(containerId).querySelectorAll('.ci, .hi, .ei');
+  if (!items.length) return false;
+  var idx = -1;
+  for (var i = 0; i < items.length; i++) { if (items[i] === active) { idx = i; break; } }
+  if (idx === -1) { items[0].focus(); items[0].scrollIntoView({ block: 'nearest' }); return true; }
+  var next = isDown ? idx + 1 : idx - 1;
+  if (isDown && next >= items.length && containerId === 'cl') {
+    if (loadMoreChannels()) {
+      items = $(containerId).querySelectorAll('.ci');
+      next = idx + 1;
+    }
   }
-  return arr;
+  if (next >= 0 && next < items.length) {
+    items[next].focus();
+    items[next].scrollIntoView({ block: 'nearest' });
+    return true;
+  }
+  return false;
+}
+
+function navSiblings(active, cls, isRight) {
+  var sib = isRight ? active.nextElementSibling : active.previousElementSibling;
+  if (sib && sib.classList.contains(cls)) {
+    sib.focus();
+    sib.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    return true;
+  }
+  return false;
 }
 
 function setupDpadNav() {
@@ -1059,124 +1081,131 @@ function setupDpadNav() {
     var setup = $('setup-screen');
     var isSetupOpen = setup && setup.classList.contains('on');
 
-    // Handle Enter/OK — click whatever is focused
+    // Enter/OK
     if (key === 'Enter' || key === 13) {
-      if (active && active !== document.body) {
-        // For channel items, use playCh directly
-        if (active.classList.contains('ci')) {
-          var chid = active.getAttribute('data-chid');
-          if (chid) { playCh(chid); e.preventDefault(); return; }
-        }
-        // For everything else, just click it
-        active.click();
-        e.preventDefault();
+      if (!active || active === document.body) return;
+      if (active.classList.contains('ci')) {
+        var chid = active.getAttribute('data-chid');
+        if (chid) { playCh(chid); e.preventDefault(); return; }
       }
+      active.click();
+      e.preventDefault();
       return;
     }
 
-    // Up / Down — navigate vertically through focusable elements
+    // Up / Down
     if (key === 'ArrowDown' || key === 40 || key === 'ArrowUp' || key === 38) {
       var isDown = key === 'ArrowDown' || key === 40;
       e.preventDefault();
 
-      // Get the right scope for focusable elements
-      var scope = isModalOpen ? $('md') : isSetupOpen ? setup : document;
-      var all = getAllFocusable(scope);
-      if (!all.length) return;
-
-      // Find current index
-      var curIdx = -1;
-      for (var i = 0; i < all.length; i++) {
-        if (all[i] === active) { curIdx = i; break; }
-      }
-
-      // If nothing focused, focus first element
-      if (curIdx === -1) {
-        all[0].focus();
-        all[0].scrollIntoView({ block: 'nearest' });
+      // Modal/Setup — navigate all focusable
+      if (isModalOpen || isSetupOpen) {
+        var mRoot = isModalOpen ? $('md') : setup;
+        var mEls = mRoot.querySelectorAll('[tabindex], input, button, .prefix-chip');
+        var mArr = [];
+        for (var mi = 0; mi < mEls.length; mi++) { if (mEls[mi].offsetParent !== null) mArr.push(mEls[mi]); }
+        var mIdx = mArr.indexOf(active);
+        if (mIdx === -1) { if (mArr.length) mArr[0].focus(); return; }
+        var mN = isDown ? mIdx + 1 : mIdx - 1;
+        if (mN >= 0 && mN < mArr.length) { mArr[mN].focus(); mArr[mN].scrollIntoView({ block: 'nearest' }); }
         return;
       }
 
-      var nextIdx = isDown ? curIdx + 1 : curIdx - 1;
-
-      // At bottom of channel list — load more before giving up
-      if (isDown && nextIdx >= all.length && active.closest && active.closest('#cl')) {
-        if (loadMoreChannels()) {
-          all = getAllFocusable(scope);
-          nextIdx = curIdx + 1;
+      // Channel list — stay in it
+      if (active && active.closest && active.closest('#cl')) {
+        if (!navList('cl', active, isDown) && !isDown) {
+          // Up from first channel → go to group filters
+          var firstGb = $('gf').querySelector('.gb');
+          if (firstGb) firstGb.focus();
         }
+        return;
       }
 
-      // Wrap around
-      if (nextIdx >= all.length) nextIdx = 0;
-      if (nextIdx < 0) nextIdx = all.length - 1;
+      // History list
+      if (active && active.closest && active.closest('#histl')) {
+        navList('histl', active, isDown);
+        return;
+      }
 
-      all[nextIdx].focus();
-      all[nextIdx].scrollIntoView({ block: 'nearest' });
+      // EPG list
+      if (active && active.closest && active.closest('#epgl')) {
+        navList('epgl', active, isDown);
+        return;
+      }
+
+      // Group filter → Down goes to first channel, Up goes to tabs
+      if (active && active.classList.contains('gb')) {
+        if (isDown) {
+          var firstCi = $('cl').querySelector('.ci');
+          if (firstCi) { firstCi.focus(); firstCi.scrollIntoView({ block: 'nearest' }); }
+        } else {
+          var firstTab = $('tabs').querySelector('.tab');
+          if (firstTab) firstTab.focus();
+        }
+        return;
+      }
+
+      // Tabs → Down goes to group filters or channels, Up goes to header
+      if (active && active.classList.contains('tab')) {
+        if (isDown) {
+          var gb = $('gf').querySelector('.gb');
+          if (gb) { gb.focus(); } else {
+            var ci = $('cl').querySelector('.ci');
+            if (ci) ci.focus();
+          }
+        } else {
+          var hBtn = $('hdr').querySelector('button');
+          if (hBtn) hBtn.focus();
+        }
+        return;
+      }
+
+      // Header → Down goes to tabs
+      if (active && active.closest && active.closest('#hdr')) {
+        if (isDown) {
+          var tab = $('tabs').querySelector('.tab');
+          if (tab) tab.focus();
+        }
+        return;
+      }
+
+      // Overlay → navigate overlay buttons
+      if (active && active.closest && active.closest('#ov')) {
+        var ovEls = $('ov').querySelectorAll('button, [tabindex]');
+        var oArr = [];
+        for (var oi = 0; oi < ovEls.length; oi++) { if (ovEls[oi].offsetParent !== null) oArr.push(ovEls[oi]); }
+        var oIdx = oArr.indexOf(active);
+        var oN = isDown ? oIdx + 1 : oIdx - 1;
+        if (oN >= 0 && oN < oArr.length) oArr[oN].focus();
+        return;
+      }
+
+      // Nothing focused — go to first channel
+      var first = $('cl').querySelector('.ci');
+      if (first) { first.focus(); first.scrollIntoView({ block: 'nearest' }); }
       return;
     }
 
-    // Left / Right — tabs, group filters, prefix chips, or header buttons
+    // Left / Right
     if (key === 'ArrowLeft' || key === 37 || key === 'ArrowRight' || key === 39) {
       var isRight = key === 'ArrowRight' || key === 39;
       e.preventDefault();
-
       if (!active || active === document.body) return;
-
-      // For tabs — move between tabs
-      if (active.classList.contains('tab')) {
-        var tabSib = isRight ? active.nextElementSibling : active.previousElementSibling;
-        if (tabSib && tabSib.classList.contains('tab')) {
-          tabSib.focus();
-          tabSib.click();
-        }
-        return;
-      }
-
-      // For group filter buttons — scroll horizontally
-      if (active.classList.contains('gb')) {
-        var gbSib = isRight ? active.nextElementSibling : active.previousElementSibling;
-        if (gbSib && gbSib.classList.contains('gb')) {
-          gbSib.focus();
-          gbSib.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-        }
-        return;
-      }
-
-      // For prefix chips — move horizontally
-      if (active.classList.contains('prefix-chip')) {
-        var chipSib = isRight ? active.nextElementSibling : active.previousElementSibling;
-        if (chipSib && chipSib.classList.contains('prefix-chip')) {
-          chipSib.focus();
-        }
-        return;
-      }
-
-      // For header buttons — move between them
+      if (active.classList.contains('tab')) { navSiblings(active, 'tab', isRight); if (isRight && active.nextElementSibling) active.nextElementSibling.click(); else if (!isRight && active.previousElementSibling) active.previousElementSibling.click(); return; }
+      if (active.classList.contains('gb')) { navSiblings(active, 'gb', isRight); return; }
+      if (active.classList.contains('prefix-chip')) { navSiblings(active, 'prefix-chip', isRight); return; }
       if (active.closest && active.closest('#hdr')) {
-        var hdrBtns = $('hdr').querySelectorAll('button[tabindex]');
-        var hArr = [];
-        for (var hi = 0; hi < hdrBtns.length; hi++) hArr.push(hdrBtns[hi]);
+        var hBtns = $('hdr').querySelectorAll('button[tabindex]');
+        var hArr = []; for (var hi = 0; hi < hBtns.length; hi++) hArr.push(hBtns[hi]);
         var hIdx = hArr.indexOf(active);
-        if (hIdx >= 0) {
-          var hNext = isRight ? hIdx + 1 : hIdx - 1;
-          if (hNext >= 0 && hNext < hArr.length) hArr[hNext].focus();
-        }
+        if (hIdx >= 0) { var hN = isRight ? hIdx + 1 : hIdx - 1; if (hN >= 0 && hN < hArr.length) hArr[hN].focus(); }
         return;
       }
-
-      // For overlay controls — move between them
       if (active.closest && active.closest('#ovb')) {
-        var ovBtns = $('ovb').querySelectorAll('[tabindex], button');
-        var oArr = [];
-        for (var oi = 0; oi < ovBtns.length; oi++) {
-          if (ovBtns[oi].offsetParent !== null) oArr.push(ovBtns[oi]);
-        }
-        var oIdx = oArr.indexOf(active);
-        if (oIdx >= 0) {
-          var oNext = isRight ? oIdx + 1 : oIdx - 1;
-          if (oNext >= 0 && oNext < oArr.length) oArr[oNext].focus();
-        }
+        var ovBtns = $('ovb').querySelectorAll('button');
+        var ovA = []; for (var ovi = 0; ovi < ovBtns.length; ovi++) { if (ovBtns[ovi].offsetParent !== null) ovA.push(ovBtns[ovi]); }
+        var ovIdx = ovA.indexOf(active);
+        if (ovIdx >= 0) { var ovN = isRight ? ovIdx + 1 : ovIdx - 1; if (ovN >= 0 && ovN < ovA.length) ovA[ovN].focus(); }
         return;
       }
     }
@@ -1190,8 +1219,8 @@ function setupDpadNav() {
 
   // Auto-focus first channel when they load
   var observer = new MutationObserver(function () {
-    var first = $('cl').querySelector('.ci[tabindex]');
-    if (first && document.activeElement === document.body) {
+    var first = $('cl').querySelector('.ci');
+    if (first && (document.activeElement === document.body || !document.activeElement)) {
       first.focus();
     }
   });
