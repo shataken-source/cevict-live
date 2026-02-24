@@ -39,13 +39,13 @@ jobs:
         run: |
           APK=$(find app/build/outputs -name "*.apk" -type f | head -1)
           echo "Found: $APK"
-          cp "$APK" switchback-tv-simple.apk
-          ls -la switchback-tv-simple.apk
+          cp "$APK" switchback-lite.apk
+          ls -la switchback-lite.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: switchback-tv-simple
-          path: apps/SwitchbackSimple/switchback-tv-simple.apk
+          name: switchback-lite
+          path: apps/SwitchbackSimple/switchback-lite.apk
           if-no-files-found: error
           retention-days: 30

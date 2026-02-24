@@ -16,6 +16,7 @@
 | **Repo** | `https://github.com/shataken-source/cevict-live` |
 | **Branches** | `master`, `gcc-vessels` (active development) |
 | **Workflow file** | `.github/workflows/build-iptvviewer-apk.yml` |
+| **Version** | 1.1.0 (versionCode 2) |
 | **Artifact** | `switchback-tv-release.apk` (unsigned, 30-day retention) |
 | **Build time** | ~20 minutes on GitHub Actions |
 
@@ -211,33 +212,56 @@ build. GitHub Actions has a 6-hour timeout.
 
 ```
 apps/IPTVviewer/
-├── App.tsx                  # Entry point
+├── App.tsx                  # Entry point + typed RootStackParamList navigator
 ├── app.json                 # Expo config (name, package, icons, plugins)
 ├── package.json             # Dependencies (Expo 54 + RN 0.81.5)
 ├── tsconfig.json            # TypeScript config
 ├── babel.config.js          # Babel config with module-resolver
 ├── assets/                  # Icon, splash, adaptive-icon, favicon
 ├── src/
-│   ├── screens/             # All app screens (Home, Player, Settings, etc.)
-│   ├── services/            # Business logic (playlist, EPG, favorites, etc.)
-│   ├── store/               # Zustand global state
+│   ├── screens/             # 15 screens (see list below)
+│   ├── services/            # 38 service modules
+│   ├── store/               # Zustand global state (useStore.ts)
 │   ├── components/          # Shared components (EPG widgets)
 │   ├── config/              # Feature flags
+│   ├── types/               # TypeScript interfaces (Channel, Playlist, etc.)
 │   └── navigation/          # React Navigation stack config
 └── docs/                    # Error logs and documentation
 ```
+
+### Screens (15)
+
+| Screen | File | Route Name | Params |
+|---|---|---|---|
+| TV Home | `TVHomeScreen.tsx` | `TVHome` | — |
+| Channels | `ChannelsScreen.tsx` | `Channels` | — |
+| Movies | `MoviesScreen.tsx` | `Movies` | — |
+| Series | `SeriesScreen.tsx` | `Series` | — |
+| Player | `PlayerScreen.tsx` | `Player` | `{ channel, fromChannel? }` |
+| EPG | `EPGScreen.tsx` | `EPG` | — |
+| Favorites | `FavoritesScreen.tsx` | `Favorites` | — |
+| History | `ChannelHistoryScreen.tsx` | `History` | — |
+| Settings | `SettingsScreen.tsx` | `Settings` | — |
+| Pricing | `PricingScreen.tsx` | `Pricing` | — |
+| Catch-Up | `CatchUpScreen.tsx` | `CatchUp` | `{ channel }` |
+| Recordings | `RecordingsScreen.tsx` | `Recordings` | — |
+| Quality Settings | `QualitySettingsScreen.tsx` | `QualitySettings` | — |
+| Devices | `DevicesScreen.tsx` | `Devices` | — |
+| Home (legacy) | `HomeScreen.tsx` | — | Not in navigator |
 
 ---
 
 ## 9. Related Apps
 
-| App | Location | Type | Relationship |
+| App | Location | Package | Type |
 |---|---|---|---|
-| **IPTVviewer** | `apps/IPTVviewer/` | React Native / Expo | Full-featured IPTV app |
-| **SwitchbackSimple** | `apps/SwitchbackSimple/` | Native Android WebView | Lightweight alternative, same features, no RN deps |
+| **Switchback TV** | `apps/IPTVviewer/` | `com.switchback.tv` | React Native / Expo — full-featured IPTV app |
+| **Switchback Lite** | `apps/SwitchbackSimple/` | `com.switchback.lite` | Native Android WebView — lightweight, no RN deps |
 
-Both produce APKs with package name `com.switchback.tv`. Only install one at a
-time on a device.
+The two apps have **separate package names** and can be installed side-by-side on
+the same device. They appear as distinct apps on the TV launcher:
+- **Switchback TV** — pink play-button icon
+- **Switchback Lite** — cyan play-button icon
 
 ---
 

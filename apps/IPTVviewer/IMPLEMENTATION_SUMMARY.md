@@ -19,11 +19,11 @@ Switchback TV (IPTVviewer) is now a **premium IPTV viewer** that meets 2026 indu
 - ✅ TV-optimized typography (2-3x larger fonts)
 
 ### **Phase 2: Premium 2026 Features**
-- ✅ **Catch-Up TV** (7-day rewind) - `CatchUpService.ts`
-- ✅ **Cloud DVR** (50GB, 100 recordings) - `CloudDVRService.ts`
-- ✅ **4K/UHD Streaming** (adaptive bitrate) - `StreamQualityService.ts`
+- ✅ **Catch-Up TV** (7-day rewind) - `CatchUpService.ts` + `CatchUpScreen.tsx`
+- ✅ **Cloud DVR** (50GB, 100 recordings) - `CloudDVRService.ts` + `RecordingsScreen.tsx`
+- ✅ **4K/UHD Streaming** (adaptive bitrate) - `StreamQualityService.ts` + `QualitySettingsScreen.tsx`
 - ✅ **Anti-Freeze Technology** (30-60s buffer) - `StreamQualityService.ts`
-- ✅ **Multi-Device Support** (5 connections) - `MultiDeviceService.ts`
+- ✅ **Multi-Device Support** (5 connections) - `MultiDeviceService.ts` + `DevicesScreen.tsx`
 - ✅ **Advanced EPG** (already existed)
 - ✅ **VOD Library** (Movies/Series auto-detection)
 - ✅ **Parental Controls** (already existed)
@@ -49,6 +49,10 @@ Switchback TV (IPTVviewer) is now a **premium IPTV viewer** that meets 2026 indu
 - `src/screens/ChannelsScreen.tsx` - Enhanced channel list with categories
 - `src/screens/MoviesScreen.tsx` - Movie poster grid
 - `src/screens/SeriesScreen.tsx` - Series poster grid
+- `src/screens/CatchUpScreen.tsx` - 7-day catch-up browser with day tabs
+- `src/screens/RecordingsScreen.tsx` - DVR recording list with storage usage
+- `src/screens/QualitySettingsScreen.tsx` - Quality picker + bandwidth test
+- `src/screens/DevicesScreen.tsx` - Device registration + session management
 
 ### **Services:**
 - `src/services/CatchUpService.ts` - 7-day catch-up TV
@@ -68,7 +72,7 @@ Switchback TV (IPTVviewer) is now a **premium IPTV viewer** that meets 2026 indu
 ## 🔧 Files Modified
 
 ### **Core:**
-- `App.tsx` - Updated navigation stack (TVHome, Channels, Movies, Series)
+- `App.tsx` - Typed `RootStackParamList` navigator with 14 registered screens
 - `src/types/index.ts` - Added `channelNumber`, `expiresAt` fields
 - `src/services/M3UParser.ts` - Parse channel numbers from tvg-chno
 - `src/screens/HomeScreen.tsx` - Added DezorIPTV credentials
@@ -284,8 +288,9 @@ adb logcat | grep "Switchback"
 ### **Code Quality:**
 - ~1,100 lines (IBO features)
 - ~1,040 lines (Premium services)
+- ~1,914 lines (Premium screens: CatchUp, Recordings, QualitySettings, Devices)
 - ~200 lines (DezorIPTV)
-- Total: ~2,340 lines of production code
+- Total: ~4,254 lines of production code
 
 ### **User Experience:**
 - TV-optimized interface
@@ -309,15 +314,14 @@ All features implemented and tested:
 - OTA update capability
 
 **Next Steps:**
-1. Wait for APK build to complete
-2. Install on TV via USB
-3. Test all features
-4. Push updates via `iptv-update` command
+1. Test all new screens on TV
+2. Replace CloudDVR simulated recording with real timeshift URLs or backend
+3. Add Supabase backend for real cross-device sync
+4. Test with real IPTV providers that support catch-up/DVR
 
-**Build Status:** In progress (compressing files)
-**Estimated Completion:** 10-15 minutes
-**Installation:** USB to TV
-**Updates:** Wireless OTA
+**Build:** GitHub Actions workflow (`build-iptvviewer-apk.yml`)
+**Installation:** USB sideload or GitHub Actions artifact download
+**Updates:** Wireless OTA via EAS
 
 ---
 

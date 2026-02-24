@@ -2,7 +2,7 @@
   "expo": {
     "name": "Switchback TV",
     "slug": "switchback-tv",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "orientation": "landscape",
     "runtimeVersion": "1.0.0",
     "updates": {
@@ -36,7 +36,7 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
-      "versionCode": 1
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/favicon.png"

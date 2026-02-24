@@ -1,4 +1,4 @@
-package com.switchback.tv;
+package com.switchback.lite;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -9,7 +9,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
-    private static final String TAG = "SwitchbackTV";
+    private static final String TAG = "SwitchbackLite";
     private static final int PORT = 8123;
     private WebView webView;
     private LocalServer server;

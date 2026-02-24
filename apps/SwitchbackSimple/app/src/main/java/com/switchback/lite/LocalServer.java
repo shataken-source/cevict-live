@@ -1,4 +1,4 @@
-package com.switchback.tv;
+package com.switchback.lite;
 
 import android.content.res.AssetManager;
 import android.util.Log;

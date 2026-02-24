@@ -125,23 +125,38 @@ const enabled = FeatureManager.getEnabledFeatures();
 ```
 IPTVviewer/
 ├── src/
-│   ├── screens/          # UI screens
-│   │   ├── HomeScreen.tsx
-│   │   ├── PlayerScreen.tsx
-│   │   ├── SettingsScreen.tsx
-│   │   └── ...
-│   ├── services/         # 31 service modules
+│   ├── screens/          # 15 screens
+│   │   ├── TVHomeScreen.tsx       # Grid home (initial route)
+│   │   ├── ChannelsScreen.tsx     # Channel list with categories
+│   │   ├── PlayerScreen.tsx       # Video player + quality/record/catchup
+│   │   ├── EPGScreen.tsx          # Electronic Program Guide
+│   │   ├── MoviesScreen.tsx       # VOD movies grid
+│   │   ├── SeriesScreen.tsx       # VOD series grid
+│   │   ├── FavoritesScreen.tsx    # Smart favorites
+│   │   ├── ChannelHistoryScreen.tsx
+│   │   ├── SettingsScreen.tsx     # App settings
+│   │   ├── PricingScreen.tsx      # Subscription tiers
+│   │   ├── CatchUpScreen.tsx      # 7-day catch-up browser
+│   │   ├── RecordingsScreen.tsx   # DVR recording manager
+│   │   ├── QualitySettingsScreen.tsx # Quality + bandwidth test
+│   │   ├── DevicesScreen.tsx      # Multi-device management
+│   │   └── HomeScreen.tsx         # Legacy (not in navigator)
+│   ├── services/         # 38 service modules
 │   │   ├── M3UParser.ts
 │   │   ├── EPGService.ts
 │   │   ├── IPTVService.ts
+│   │   ├── CatchUpService.ts     # Catch-up TV (real EPG + mock fallback)
+│   │   ├── CloudDVRService.ts    # Cloud DVR recording
+│   │   ├── StreamQualityService.ts # Adaptive quality + bandwidth
+│   │   ├── MultiDeviceService.ts # Device + session management
 │   │   └── ...
 │   ├── store/            # Zustand state management
 │   │   └── useStore.ts
 │   ├── config/           # Feature flags & config
 │   │   └── features.ts
-│   ├── types/            # TypeScript types
-│   └── components/       # Reusable components
-├── App.tsx               # Main app entry
+│   ├── types/            # TypeScript types (Channel, Playlist, etc.)
+│   └── components/       # Reusable components (EPG widgets)
+├── App.tsx               # Entry point + typed RootStackParamList
 ├── app.json              # Expo configuration
 ├── eas.json              # Build configuration
 └── package.json          # Dependencies
