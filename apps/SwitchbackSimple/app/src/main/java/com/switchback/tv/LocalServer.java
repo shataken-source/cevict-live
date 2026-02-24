@@ -118,7 +118,23 @@ public class LocalServer extends NanoHTTPD {
                     String contentType = conn.getContentType();
                     if (contentType == null) contentType = "text/plain";
 
-                    Response resp = newChunkedResponse(Response.Status.OK, contentType, is);
+                    // Read full response into memory before disconnecting
+                    // (NanoHTTPD reads async — if we use chunked response,
+                    //  the finally block disconnects conn and closes the stream)
+                    java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                    byte[] buf = new byte[8192];
+                    int n;
+                    while ((n = is.read(buf)) != -1) {
+                        baos.write(buf, 0, n);
+                    }
+                    is.close();
+                    conn.disconnect();
+                    conn = null;
+
+                    byte[] body = baos.toByteArray();
+                    Log.i(TAG, "Proxy OK: " + body.length + " bytes for " + targetUrl);
+                    InputStream bodyStream = new java.io.ByteArrayInputStream(body);
+                    Response resp = newFixedLengthResponse(Response.Status.OK, contentType, bodyStream, body.length);
                     resp.addHeader("Access-Control-Allow-Origin", "*");
                     return resp;
                 } else {
