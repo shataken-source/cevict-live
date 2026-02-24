@@ -423,21 +423,32 @@ function importConfig(event) {
   const reader = new FileReader();
   reader.onload = function (e) {
     try {
-      const config = JSON.parse(e.target.result);
-
-      // Populate settings from config
-      if (config.server) $('s-srv').value = config.server;
-      if (config.username) $('s-usr').value = config.username;
-      if (config.password) $('s-pw').value = config.password;
-      if (config.alt) $('s-alt').value = config.alt;
-      if (config.epg) $('s-epg').value = config.epg;
-
+      applyConfig(JSON.parse(e.target.result));
       alert('Config imported! Click "Save & Load" to apply.');
     } catch (err) {
       alert('Invalid config file: ' + err.message);
     }
   };
   reader.readAsText(file);
+}
+
+function pasteConfig() {
+  const raw = prompt('Paste your provider JSON config here:');
+  if (!raw) return;
+  try {
+    applyConfig(JSON.parse(raw));
+    alert('Config imported! Click "Save & Load" to apply.');
+  } catch (err) {
+    alert('Invalid JSON: ' + err.message);
+  }
+}
+
+function applyConfig(config) {
+  if (config.server) $('s-srv').value = config.server;
+  if (config.username) $('s-usr').value = config.username;
+  if (config.password) $('s-pw').value = config.password;
+  if (config.alt) $('s-alt').value = config.alt;
+  if (config.epg) $('s-epg').value = config.epg;
 }
 
 // ── EPG ───────────────────────────────────────

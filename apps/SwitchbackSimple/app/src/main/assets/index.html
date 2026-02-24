@@ -805,8 +805,11 @@
                 <label style="margin-top:0">Import Config File</label>
                 <input type="file" id="cfg-file" accept=".json,.txt" style="display:none"
                     onchange="importConfig(event)">
-                <button class="btn" style="width:100%;padding:10px;margin-top:8px"
-                    onclick="document.getElementById('cfg-file').click()">📁 Import Provider Config</button>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                    <button class="btn" style="flex:1;padding:10px"
+                        onclick="document.getElementById('cfg-file').click()">📁 Import File</button>
+                    <button class="btn ac" style="flex:1;padding:10px" onclick="pasteConfig()">📋 Paste Config</button>
+                </div>
                 <label style="margin-top:14px;font-size:11px;color:#555">Credentials stored locally on this device
                     only.</label>
             </div>
