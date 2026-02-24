@@ -13,7 +13,7 @@ const S = {
   adBlock: true,
   isAdMuted: false,
   epgData: [],
-  settings: { server: 'http://iptvdepo.com', user: 'jesscadezoriptv', pass: '19e993b7f5', alt: '', epg: 'http://iptvdepo.com/xmltv.php?username=jesscadezoriptv&password=19e993b7f5', m3u: 'http://iptvdepo.com/get.php?username=jesscadezoriptv&password=19e993b7f5&type=m3u_plus' },
+  settings: { server: 'http://iptvdepo.com', user: 'jascodezoriptv', pass: '19e993b7f5', alt: '', epg: 'http://iptvdepo.com/xmltv.php?username=jascodezoriptv&password=19e993b7f5', m3u: 'http://iptvdepo.com/get.php?username=jascodezoriptv&password=19e993b7f5&type=m3u_plus' },
   activeGroup: 'All',
   ovTimer: null,
 };
