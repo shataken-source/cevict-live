@@ -93,53 +93,81 @@ public class LocalServer extends NanoHTTPD {
             return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Invalid URL");
         }
 
-        HttpURLConnection conn = null;
-        try {
-            Log.i(TAG, "Proxy fetch: " + targetUrl);
-            URL url = new URL(targetUrl);
-            conn = (HttpURLConnection) url.openConnection();
-            conn.setInstanceFollowRedirects(true);
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(15000);
-            conn.setReadTimeout(60000);
-            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        // Retry up to 2 times for transient errors (e.g. HTTP 513)
+        int maxRetries = 2;
+        for (int attempt = 0; attempt <= maxRetries; attempt++) {
+            HttpURLConnection conn = null;
+            try {
+                Log.i(TAG, "Proxy fetch (attempt " + (attempt + 1) + "): " + targetUrl);
+                URL url = new URL(targetUrl);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setInstanceFollowRedirects(true);
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(30000);
+                conn.setReadTimeout(60000);
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 12; Streaming Box) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+                conn.setRequestProperty("Accept", "*/*");
+                conn.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+                conn.setRequestProperty("Connection", "keep-alive");
+                conn.setRequestProperty("Accept-Encoding", "identity");
 
-            int code = conn.getResponseCode();
-            Log.i(TAG, "Proxy response: " + code + " for " + targetUrl);
+                int code = conn.getResponseCode();
+                Log.i(TAG, "Proxy response: " + code + " for " + targetUrl);
 
-            if (code >= 200 && code < 400) {
-                InputStream is = conn.getInputStream();
-                String contentType = conn.getContentType();
-                if (contentType == null) contentType = "text/plain";
+                if (code >= 200 && code < 400) {
+                    InputStream is = conn.getInputStream();
+                    String contentType = conn.getContentType();
+                    if (contentType == null) contentType = "text/plain";
 
-                Response resp = newChunkedResponse(Response.Status.OK, contentType, is);
-                resp.addHeader("Access-Control-Allow-Origin", "*");
-                return resp;
-            } else {
-                String errBody = "";
-                InputStream errStream = conn.getErrorStream();
-                if (errStream != null) {
-                    try {
-                        byte[] buf = new byte[1024];
-                        int n = errStream.read(buf);
-                        if (n > 0) errBody = new String(buf, 0, n, "UTF-8");
-                    } finally {
-                        errStream.close();
+                    Response resp = newChunkedResponse(Response.Status.OK, contentType, is);
+                    resp.addHeader("Access-Control-Allow-Origin", "*");
+                    return resp;
+                } else {
+                    String errBody = "";
+                    InputStream errStream = conn.getErrorStream();
+                    if (errStream != null) {
+                        try {
+                            byte[] buf = new byte[1024];
+                            int n = errStream.read(buf);
+                            if (n > 0) errBody = new String(buf, 0, n, "UTF-8");
+                        } finally {
+                            errStream.close();
+                        }
                     }
+                    conn.disconnect();
+                    conn = null;
+
+                    // Retry on server errors (5xx) including non-standard 513
+                    if (code >= 500 && attempt < maxRetries) {
+                        Log.w(TAG, "Retrying after HTTP " + code + " (attempt " + (attempt + 1) + ")");
+                        try { Thread.sleep(1000 * (attempt + 1)); } catch (InterruptedException ie) { /* ignore */ }
+                        continue;
+                    }
+
+                    Log.e(TAG, "Proxy HTTP " + code + ": " + errBody);
+                    return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain",
+                        "Remote server returned HTTP " + code + ": " + errBody);
                 }
-                Log.e(TAG, "Proxy HTTP " + code + ": " + errBody);
-                return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain",
-                    "Remote server returned HTTP " + code + ": " + errBody);
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Proxy error: " + e.getMessage(), e);
-            return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain",
-                "Proxy error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
-        } finally {
-            if (conn != null) {
-                conn.disconnect();
+            } catch (Exception e) {
+                if (conn != null) { conn.disconnect(); conn = null; }
+
+                // Retry on connection errors
+                if (attempt < maxRetries) {
+                    Log.w(TAG, "Retrying after error: " + e.getMessage() + " (attempt " + (attempt + 1) + ")");
+                    try { Thread.sleep(1000 * (attempt + 1)); } catch (InterruptedException ie) { /* ignore */ }
+                    continue;
+                }
+
+                Log.e(TAG, "Proxy error: " + e.getMessage(), e);
+                return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain",
+                    "Proxy error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+            } finally {
+                if (conn != null) {
+                    conn.disconnect();
+                }
             }
         }
+        return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Proxy: max retries exceeded");
     }
 
     private boolean isPrivateHost(String host) {
