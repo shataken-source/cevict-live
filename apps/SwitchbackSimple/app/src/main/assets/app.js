@@ -13,7 +13,7 @@ const S = {
   adBlock: true,
   isAdMuted: false,
   epgData: [],
-  settings: { server: 'http://blogyfy.xyz', user: 'jascodezoriptv', pass: '19e993b7f5', alt: '', epg: 'http://blogyfy.xyz/xmltv.php?username=jascodezoriptv&password=19e993b7f5', m3u: 'http://blogyfy.xyz/get.php?username=jascodezoriptv&password=19e993b7f5&type=m3u_plus' },
+  settings: { server: 'http://blogyfy.xyz', user: 'jascodezoriptv', pass: '19e993b7f5', alt: '', epg: 'http://blogyfy.xyz/xmltv.php?username=jascodezoriptv&password=19e993b7f5', m3u: '' },
   activeGroup: 'All',
   ovTimer: null,
 };
@@ -670,7 +670,7 @@ function init() {
         persist();
         setStat('● ' + pl.channels.length + ' channels loaded', 'var(--gr)');
       })
-      .catch(function (e) { setStat('● Failed: ' + e.message, 'var(--rd)'); });
+      .catch(function (e) { setStat('● Failed: ' + e.message, 'var(--rd)'); console.error('fetchXtream error:', e); });
   }
 
   // Load EPG if saved
