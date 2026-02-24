@@ -30,16 +30,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Setup Expo CLI
-        run: npx expo install expo-dev-client 2>/dev/null || true
+      - name: Align dependencies to Expo SDK version
+        run: npx expo install --fix
 
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean
-
-      - name: Pin Gradle 8.6 (required for RN 0.74.x)
-        run: |
-          sed -i 's|gradle-.*-bin.zip|gradle-8.6-bin.zip|' android/gradle/wrapper/gradle-wrapper.properties
-          cat android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
