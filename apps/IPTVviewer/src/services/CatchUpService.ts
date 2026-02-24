@@ -5,6 +5,7 @@
 
 import { Channel } from '@/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { EPGService } from '@/services/EPGService';
 
 export interface CatchUpProgram {
   id: string;
@@ -34,7 +35,8 @@ export class CatchUpService {
    */
   static async getCatchUpForChannel(
     channel: Channel,
-    days: number = 7
+    days: number = 7,
+    epgUrl?: string
   ): Promise<CatchUpDay[]> {
     const catchUpDays: CatchUpDay[] = [];
     const now = new Date();
@@ -44,8 +46,8 @@ export class CatchUpService {
       date.setDate(date.getDate() - i);
       date.setHours(0, 0, 0, 0);
 
-      const programs = await this.getProgramsForDay(channel, date);
-      
+      const programs = await this.getProgramsForDay(channel, date, epgUrl);
+
       if (programs.length > 0) {
         catchUpDays.push({ date, programs });
       }
@@ -55,22 +57,56 @@ export class CatchUpService {
   }
 
   /**
-   * Get programs for a specific day
+   * Get programs for a specific day — uses real EPG when available
    */
   private static async getProgramsForDay(
     channel: Channel,
-    date: Date
+    date: Date,
+    epgUrl?: string
   ): Promise<CatchUpProgram[]> {
-    // In production, this would fetch from EPG API or provider's catch-up API
-    // For now, return mock data based on EPG
-    
-    const programs: CatchUpProgram[] = [];
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(date);
     dayEnd.setHours(23, 59, 59, 999);
 
-    // Mock: Generate 24 hours of programs (1-hour slots)
+    // Try real EPG data first
+    if (epgUrl?.trim()) {
+      try {
+        const allPrograms = await EPGService.fetchEPG(epgUrl.trim());
+        const channelId = channel.tvgId || channel.id;
+        const schedule = EPGService.getChannelSchedule(
+          allPrograms,
+          channelId,
+          dayStart,
+          dayEnd
+        );
+
+        if (schedule.length > 0) {
+          return schedule.map((p, idx) => {
+            const duration = Math.round(
+              (p.end.getTime() - p.start.getTime()) / 60000
+            );
+            return {
+              id: `${channelId}-${p.start.getTime()}-${idx}`,
+              channelId: channel.id,
+              channelName: channel.name,
+              title: p.title,
+              description: p.description,
+              startTime: p.start,
+              endTime: p.end,
+              duration,
+              streamUrl: this.getCatchUpStreamUrl(channel, p.start, duration),
+              genre: p.genre || channel.group,
+            };
+          });
+        }
+      } catch (error) {
+        console.warn('EPG fetch failed for catch-up, falling back to mock:', error);
+      }
+    }
+
+    // Fallback: generate mock 1-hour slots
+    const programs: CatchUpProgram[] = [];
     for (let hour = 0; hour < 24; hour++) {
       const startTime = new Date(dayStart);
       startTime.setHours(hour);
@@ -101,15 +137,17 @@ export class CatchUpService {
    */
   private static getCatchUpStreamUrl(
     channel: Channel,
-    startTime: Date
+    startTime: Date,
+    durationMinutes: number = 60
   ): string {
     const baseUrl = channel.url;
     const timestamp = Math.floor(startTime.getTime() / 1000);
-    
+    const durationSec = durationMinutes * 60;
+
     // Check if URL already has query params
     const separator = baseUrl.includes('?') ? '&' : '?';
-    
-    return `${baseUrl}${separator}utc=${timestamp}&duration=3600`;
+
+    return `${baseUrl}${separator}utc=${timestamp}&duration=${durationSec}`;
   }
 
   /**
@@ -120,7 +158,7 @@ export class CatchUpService {
     // Check for common indicators:
     // - tvg-rec="1" or catchup="1" in M3U
     // - URL contains "timeshift" or "archive"
-    
+
     const url = channel.url.toLowerCase();
     return (
       url.includes('timeshift') ||
@@ -168,7 +206,7 @@ export class CatchUpService {
       if (!data) return [];
 
       const programs: CatchUpProgram[] = JSON.parse(data);
-      
+
       // Convert date strings back to Date objects
       return programs.map(p => ({
         ...p,

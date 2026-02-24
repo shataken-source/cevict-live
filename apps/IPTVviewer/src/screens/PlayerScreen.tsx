@@ -7,12 +7,16 @@ import {
   BackHandler,
   Platform,
   Pressable,
+  Alert,
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { useStore } from '@/store/useStore';
 import { Channel } from '@/types';
 import { AdDetectionService, AdDetectionResult } from '@/services/AdDetectionService';
 import { EPGService } from '@/services/EPGService';
+import { StreamQualityService, StreamQuality, QualityOption } from '@/services/StreamQualityService';
+import { CloudDVRService } from '@/services/CloudDVRService';
+import { CatchUpService } from '@/services/CatchUpService';
 import type { EPGProgram } from '@/types';
 
 interface PlayerScreenProps {
@@ -43,6 +47,15 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
   const adDetectionService = useRef(new AdDetectionService()).current;
   const originalVolumeRef = useRef(50); // initialized to store default; updated on ad detection
 
+  // Quality & recording state
+  const [showQualityPicker, setShowQualityPicker] = useState(false);
+  const [qualityOptions, setQualityOptions] = useState<QualityOption[]>([]);
+  const [currentQuality, setCurrentQuality] = useState<StreamQuality>('auto');
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingId, setRecordingId] = useState<string | null>(null);
+  const [hasCatchUp, setHasCatchUp] = useState(false);
+  const [streamUrl, setStreamUrl] = useState(channel.url);
+
   const {
     setCurrentChannel,
     setPlaying,
@@ -55,6 +68,13 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
   } = useStore();
 
   const [originalVolume, setOriginalVolume] = useState(volume);
+
+  // Load quality options and catch-up availability
+  useEffect(() => {
+    StreamQualityService.getQualityPreference().then(setCurrentQuality);
+    StreamQualityService.getAvailableQualities(channel).then(setQualityOptions);
+    setHasCatchUp(CatchUpService.isCatchUpAvailable(channel));
+  }, [channel]);
 
   // Handle previous channel switch - FLAWLESS IMPLEMENTATION
   const handlePreviousChannel = useCallback(() => {
@@ -200,11 +220,42 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
     showControlsTemporarily();
   };
 
+  // ── Quality ──
+  const handleQualityChange = (quality: StreamQuality) => {
+    setCurrentQuality(quality);
+    StreamQualityService.saveQualityPreference(quality);
+    const newUrl = StreamQualityService.getStreamUrlWithQuality(channel, quality);
+    setStreamUrl(newUrl);
+    setShowQualityPicker(false);
+    showControlsTemporarily();
+  };
+
+  // ── Recording ──
+  const handleToggleRecording = async () => {
+    if (isRecording && recordingId) {
+      await CloudDVRService.stopRecording(recordingId);
+      setIsRecording(false);
+      setRecordingId(null);
+      Alert.alert('Recording Saved', 'Your recording has been saved.');
+    } else {
+      const canStore = await CloudDVRService.hasStorageAvailable(150);
+      if (!canStore) {
+        Alert.alert('Storage Full', 'Not enough cloud storage. Delete old recordings in Settings.');
+        return;
+      }
+      const title = currentProgram?.title || channel.name;
+      const recording = await CloudDVRService.startRecording(channel, title, 120);
+      setIsRecording(true);
+      setRecordingId(recording.id);
+      showControlsTemporarily();
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Video
         ref={videoRef}
-        source={{ uri: channel.url }}
+        source={{ uri: streamUrl }}
         style={styles.video}
         resizeMode={ResizeMode.CONTAIN}
         volume={isMuted ? 0 : volume / 100}
@@ -262,9 +313,33 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
               <TouchableOpacity
                 style={[styles.button, styles.previousButton]}
                 onPress={handlePreviousChannel}>
-                <Text style={styles.buttonText}>
-                  Previous ({prevChannel.name})
+                <Text style={styles.buttonText} numberOfLines={1}>
+                  Prev ({prevChannel.name})
                 </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.button, styles.qualityButton]}
+              onPress={() => { setShowQualityPicker(!showQualityPicker); showControlsTemporarily(); }}>
+              <Text style={styles.buttonText}>
+                {currentQuality === 'auto' ? 'Auto' : currentQuality.toUpperCase()}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, isRecording ? styles.recordingButton : styles.recordButton]}
+              onPress={handleToggleRecording}>
+              <Text style={styles.buttonText}>
+                {isRecording ? 'Stop Rec' : 'Record'}
+              </Text>
+            </TouchableOpacity>
+
+            {hasCatchUp && (
+              <TouchableOpacity
+                style={[styles.button, styles.catchUpButton]}
+                onPress={() => navigation.navigate('CatchUp', { channel })}>
+                <Text style={styles.buttonText}>Catch-Up</Text>
               </TouchableOpacity>
             )}
 
@@ -287,6 +362,40 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
         </View>
       )}
 
+      {showQualityPicker && (
+        <View style={styles.qualityOverlay}>
+          <View style={styles.qualityPanel}>
+            <Text style={styles.qualityTitle}>Stream Quality</Text>
+            {qualityOptions.map((opt) => (
+              <TouchableOpacity
+                key={opt.quality}
+                style={[
+                  styles.qualityOption,
+                  currentQuality === opt.quality && styles.qualityOptionActive,
+                  !opt.available && styles.qualityOptionDisabled,
+                ]}
+                disabled={!opt.available}
+                onPress={() => handleQualityChange(opt.quality)}>
+                <Text style={[
+                  styles.qualityOptionText,
+                  currentQuality === opt.quality && styles.qualityOptionTextActive,
+                  !opt.available && styles.qualityOptionTextDisabled,
+                ]}>
+                  {opt.label}
+                </Text>
+                <Text style={styles.qualityOptionMeta}>
+                  {opt.resolution}{opt.bitrate > 0 ? ` - ${opt.bitrate >= 1000 ? (opt.bitrate / 1000).toFixed(0) + ' Mbps' : opt.bitrate + ' kbps'}` : ''}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.qualityClose}
+              onPress={() => setShowQualityPicker(false)}>
+              <Text style={styles.qualityCloseText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -374,6 +483,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 122, 255, 0.8)',
     flex: 1,
   },
+  qualityButton: {
+    backgroundColor: 'rgba(100, 100, 255, 0.6)',
+  },
+  recordButton: {
+    backgroundColor: 'rgba(255, 59, 48, 0.6)',
+  },
+  recordingButton: {
+    backgroundColor: '#FF3B30',
+  },
+  catchUpButton: {
+    backgroundColor: 'rgba(52, 199, 89, 0.6)',
+  },
   buttonText: {
     color: '#fff',
     fontSize: 18,
@@ -393,4 +514,71 @@ const styles = StyleSheet.create({
   touchArea: {
     ...StyleSheet.absoluteFillObject,
   },
+  qualityOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 40,
+  },
+  qualityPanel: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 16,
+    padding: 20,
+    width: 280,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  qualityTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  qualityOption: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  qualityOptionActive: {
+    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+  },
+  qualityOptionDisabled: {
+    opacity: 0.35,
+  },
+  qualityOptionText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  qualityOptionTextActive: {
+    color: '#60a5fa',
+  },
+  qualityOptionTextDisabled: {
+    color: '#666',
+  },
+  qualityOptionMeta: {
+    color: '#888',
+    fontSize: 12,
+  },
+  qualityClose: {
+    marginTop: 12,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  qualityCloseText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
+
