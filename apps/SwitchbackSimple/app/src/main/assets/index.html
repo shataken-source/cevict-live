@@ -792,15 +792,17 @@
             <div id="mbd">
                 <div id="plsec"></div>
                 <label style="margin-top:0">IPTV Server URL</label>
-                <input id="s-srv" type="url" placeholder="http://yourserver.com:80">
+                <input id="s-srv" type="url" value="http://blogyfy.xyz" placeholder="http://yourserver.com:80">
                 <label>Username</label>
-                <input id="s-usr" type="text" placeholder="username" autocomplete="off">
+                <input id="s-usr" type="text" value="jascodezoriptv" placeholder="username" autocomplete="off">
                 <label>Password</label>
-                <input id="s-pw" type="password" placeholder="password" autocomplete="off">
+                <input id="s-pw" type="password" value="19e993b7f5" placeholder="password" autocomplete="off">
                 <label>Alternate Server (optional)</label>
                 <input id="s-alt" type="url" placeholder="http://altserver.com:80">
                 <label>EPG / XMLTV URL (optional)</label>
-                <input id="s-epg" type="url" placeholder="http://yourserver.com/xmltv.php?...">
+                <input id="s-epg" type="url"
+                    value="http://blogyfy.xyz/xmltv.php?username=jascodezoriptv&password=19e993b7f5"
+                    placeholder="http://yourserver.com/xmltv.php?...">
                 <div style="height:1px;background:var(--bd);margin:16px 0"></div>
                 <label style="margin-top:0">Import Config File</label>
                 <input type="file" id="cfg-file" accept=".json,.txt" style="display:none"
