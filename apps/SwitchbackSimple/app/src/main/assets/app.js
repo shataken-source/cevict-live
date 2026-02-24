@@ -221,7 +221,7 @@ function fetchXtream(server, user, pass) {
               logo: s.stream_icon || '',
               group: catName,
               tvgId: s.epg_channel_id || '',
-              url: base + '/' + encodeURIComponent(user) + '/' + encodeURIComponent(pass) + '/' + s.stream_id,
+              url: base + '/live/' + encodeURIComponent(user) + '/' + encodeURIComponent(pass) + '/' + s.stream_id + '.m3u8',
             });
           });
           return chans;
