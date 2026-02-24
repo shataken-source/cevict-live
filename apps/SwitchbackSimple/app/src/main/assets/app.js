@@ -13,7 +13,7 @@ const S = {
   adBlock: true,
   isAdMuted: false,
   epgData: [],
-  settings: { server: 'http://cflike-cdn.com:8080', user: 'jesscadezediptv', pass: 'jxeeg93t76', alt: '', epg: 'http://cflike-cdn.com:8080/xmltv.php?username=jesscadezediptv&password=jxeeg93t76' },
+  settings: { server: 'http://cflike-cdn.com:8080', user: 'jesscadezediptv', pass: 'jxeeg93t76', alt: '', epg: 'http://cflike-cdn.com:8080/xmltv.php?username=jesscadezediptv&password=jxeeg93t76', m3u: 'http://cflike-cdn.com:8080/get.php?username=jesscadezediptv&password=jxeeg93t76&type=m3u_plus' },
   activeGroup: 'All',
   ovTimer: null,
 };
@@ -83,11 +83,15 @@ function parseM3U(text, pid) {
   return chs;
 }
 
+function proxyUrl(url) {
+  return '/proxy?url=' + encodeURIComponent(url);
+}
+
 function fetchM3U(url, pid, name) {
   return new Promise(function (resolve, reject) {
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.timeout = 15000;
+    xhr.open('GET', proxyUrl(url), true);
+    xhr.timeout = 30000;
     xhr.onload = function () {
       if (xhr.status >= 200 && xhr.status < 400) {
         resolve({ id: pid, name: name, url: url, channels: parseM3U(xhr.responseText, pid) });
@@ -510,8 +514,8 @@ function parseXMLTV(xml) {
 function loadEPG(url) {
   $('epgs').innerHTML = '<span class="sp"></span>';
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', url, true);
-  xhr.timeout = 20000;
+  xhr.open('GET', proxyUrl(url), true);
+  xhr.timeout = 30000;
   xhr.onload = function () {
     if (xhr.status >= 200 && xhr.status < 400) {
       S.epgData = parseXMLTV(xhr.responseText);
@@ -591,9 +595,9 @@ function init() {
   adt.textContent = 'AD: ' + (S.adBlock ? 'ON' : 'OFF');
   adt.className = 'cb' + (S.adBlock ? ' on' : ' off');
 
-  // Auto-load playlist if credentials set but no channels loaded yet
-  if (S.settings.server && S.settings.user && S.settings.pass && !S.playlists.length) {
-    const url = `${S.settings.server}/get.php?username=${encodeURIComponent(S.settings.user)}&password=${encodeURIComponent(S.settings.pass)}&type=m3u_plus&output=ts`;
+  // Auto-load playlist if no channels loaded yet
+  if (!S.playlists.length) {
+    const url = S.settings.m3u || `${S.settings.server}/get.php?username=${encodeURIComponent(S.settings.user)}&password=${encodeURIComponent(S.settings.pass)}&type=m3u_plus&output=ts`;
     setStat('● Loading playlist…', '#FFD700');
     fetchM3U(url, 'cred-' + Date.now(), S.settings.user + "'s Channels")
       .then(pl => {
