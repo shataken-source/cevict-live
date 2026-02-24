@@ -515,11 +515,13 @@ export async function POST(request: NextRequest) {
           type: 'limit',
         }
         if (side === 'yes') order.yes_price = price; else order.no_price = price
+        console.log(`[execute] placing order: ${JSON.stringify(order)}`)
         const placed = await placeOrder(apiKeyId, privateKey, order)
         result.status = 'submitted'
         result.orderId = placed?.order?.order_id || placed?.id || null
         results.push(result)
       } catch (e: any) {
+        console.error(`[execute] ORDER ERROR for ${pick.pick}: ${e.message}`)
         result.status = 'error'
         result.error = e.message
         results.push(result)
