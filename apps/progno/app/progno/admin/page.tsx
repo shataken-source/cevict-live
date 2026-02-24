@@ -242,7 +242,15 @@ export default function AdminPage() {
         const matched = (j.matched ?? 0) || ((j.dryRuns || 0) + (j.submitted || 0));
         const counts = `${j.totalPicks} picks · ${matched} matched · ${j.noMarket ?? 0} no market · ${j.errors ?? 0} errors`;
         console.log('[kalshi-debug]', j.debug);
-        setTradeMsg(`${mode}: ${counts} @ ${j.stakePerPick ?? '$5.00'} each | markets fetched: ${j.debug?.marketsFetched ?? '?'} | configured: ${j.configured}`);
+        console.log('[kalshi-results]', j.results);
+        let msg = `${mode}: ${counts} @ ${j.stakePerPick ?? '$5.00'} each | markets fetched: ${j.debug?.marketsFetched ?? '?'} | configured: ${j.configured}`;
+        // Show first 3 error details so we can diagnose
+        const errResults = (j.results || []).filter((r: any) => r.status === 'error');
+        if (errResults.length > 0) {
+          msg += '\n\nErrors:\n' + errResults.slice(0, 3).map((r: any) => `• ${r.pick}: ${r.error || 'unknown'}`).join('\n');
+          if (errResults.length > 3) msg += `\n...and ${errResults.length - 3} more`;
+        }
+        setTradeMsg(msg);
       } else setTradeMsg(j.error || 'Execute failed');
     } catch (e: any) { setTradeMsg(e?.message || 'Execute failed'); }
   };
@@ -622,7 +630,7 @@ export default function AdminPage() {
               {tradeMsg && (() => {
                 const isErr = tradeMsg.startsWith('Enter') || tradeMsg.toLowerCase().includes('fail') || tradeMsg.toLowerCase().includes('error');
                 const col = isErr ? C.red : C.blue;
-                return <div style={{ marginTop: 10, padding: '10px 14px', background: `${col}10`, border: `1px solid ${col}30`, borderRadius: 5, fontFamily: C.mono, fontSize: 12, color: col }}>{isErr ? '✗ ' : '⚡ '}{tradeMsg}</div>;
+                return <div style={{ marginTop: 10, padding: '10px 14px', background: `${col}10`, border: `1px solid ${col}30`, borderRadius: 5, fontFamily: C.mono, fontSize: 12, color: col, whiteSpace: 'pre-wrap' }}>{isErr ? '✗ ' : '⚡ '}{tradeMsg}</div>;
               })()}
             </Card>
 

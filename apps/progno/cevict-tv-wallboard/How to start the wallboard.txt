@@ -1,0 +1,27 @@
+How to start the wallboard (for next time)
+You need two things running:
+
+1. Progno API (port 3008)
+bash
+cd c:\cevict-live\apps\progno
+npx next dev -p 3008
+This serves the picks/stats/predictions API that the wallboard fetches from.
+
+2. Wallboard server (port 3434)
+bash
+cd c:\cevict-live\apps\progno\wallboard
+node server.js
+This serves the wallboard HTML/JS and proxies /api/* calls to Progno on port 3008.
+
+Then open
+http://localhost:3434
+On your TV browser, use your machine's IP instead: http://192.168.8.152:3434
+
+Keyboard shortcuts on the wallboard
+L — reload picks manually
+F — fullscreen
+M — mute/unmute sounds
+Arrow keys — cycle through picks
+T — test alert
+C — play cheer sound
+Feedback submitted

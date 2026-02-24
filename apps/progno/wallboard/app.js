@@ -138,42 +138,9 @@ function setStreamStatus(connected) {
 // ============================================
 
 async function loadKalshiPicks(date) {
-  try {
-    const res = await fetch(API + '/progno/admin/trading/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ date, dryRun: true, secret: '' }),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!data.success || !data.results) return [];
-    // Only matched picks (dry_run or submitted)
-    const matched = data.results.filter(r => r.status === 'dry_run' || r.status === 'submitted');
-    if (matched.length === 0) return [];
-    pushAlert('green', 'Kalshi Picks Loaded', matched.length + ' matched bets · ' + data.debug?.marketsFetched + ' markets');
-    return matched.map(r => ({
-      id: r.ticker || r.pick,
-      home_team: (r.game || '').split(' @ ')[1] || r.pick,
-      away_team: (r.game || '').split(' @ ')[0] || '',
-      pick: r.pick,
-      confidence: r.confidence || 70,
-      value_bet_edge: 0,
-      sport: r.sport || 'NBA',
-      game_time: null,
-      odds: null,
-      tier: r.side === 'yes' ? 'kalshi-yes' : 'kalshi-no',
-      stake: r.stake_cents ? Math.round(r.stake_cents / 100) : 0, // 0 = no real bet placed
-      _kalshi: true,
-      _ticker: r.ticker,
-      _marketTitle: r.marketTitle,
-      _side: r.side,
-      _price: r.price,
-      _dryRun: r.status === 'dry_run',
-    }));
-  } catch (e) {
-    console.warn('[Kalshi] Failed:', e.message);
-    return [];
-  }
+  // Kalshi-matched picks are not available via a separate endpoint yet.
+  // The main /progno/picks endpoint returns all picks (including any with _kalshi fields).
+  return [];
 }
 
 async function loadPicks() {
@@ -449,7 +416,11 @@ function startPolling() {
     }
   }, SCORES_MS);
 
-  state.picksTimer = setInterval(() => loadPicks(), REFRESH_MS);
+  // Picks only load once at startup (or on manual 'L' key reload).
+  // Polling only refreshes live scores + stats to avoid wiping game state.
+  state.picksTimer = setInterval(async () => {
+    await loadStats();
+  }, REFRESH_MS);
 }
 
 // ============================================
