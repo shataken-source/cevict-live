@@ -48,7 +48,16 @@ jobs:
       - name: Build release APK
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon --info 2>&1 | tail -200
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Locate APK
+        run: |
+          echo "=== Finding APK ==="
+          find android -name "*.apk" -type f
+          APK=$(find android/app/build/outputs -name "*.apk" -type f | head -1)
+          echo "Found: $APK"
+          cp "$APK" switchback-tv-release.apk
+          ls -la switchback-tv-release.apk
 
       - name: Sign APK (if secrets configured)
         if: env.ANDROID_KEYSTORE_BASE64 != ''
@@ -77,8 +86,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: switchback-tv-release
-          path: |
-            apps/IPTVviewer/android/app/build/outputs/apk/release/*.apk
-            apps/IPTVviewer/switchback-tv-release-signed.apk
+          path: apps/IPTVviewer/switchback-tv-release.apk
           if-no-files-found: error
           retention-days: 30
