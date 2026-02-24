@@ -130,21 +130,41 @@ function fetchXtream(server, user, pass) {
     var catMap = {};
     cats.forEach(function (c) { catMap[c.category_id] = c.category_name; });
 
-    setStat('● Loading channels…', '#FFD700');
-    return proxyGet(api + '&action=get_live_streams').then(function (stText) {
-      var streams = JSON.parse(stText);
-      var channels = streams.map(function (s, i) {
-        return {
-          id: pid + '-' + s.stream_id,
-          name: s.name || 'Channel ' + s.stream_id,
-          logo: s.stream_icon || '',
-          group: catMap[s.category_id] || 'Uncategorized',
-          tvgId: s.epg_channel_id || '',
-          url: base + '/' + encodeURIComponent(user) + '/' + encodeURIComponent(pass) + '/' + s.stream_id,
-        };
+    // Load channels per category to avoid massive 17MB+ single response
+    var allChannels = [];
+    var catIds = cats.map(function (c) { return c.category_id; });
+    var loaded = 0;
+
+    function loadNextCategory(index) {
+      if (index >= catIds.length) {
+        return Promise.resolve({ id: pid, name: user + "'s Channels", url: base, channels: allChannels });
+      }
+      var catId = catIds[index];
+      var catName = catMap[catId] || 'Uncategorized';
+      loaded++;
+      setStat('● Loading ' + loaded + '/' + catIds.length + ': ' + catName, '#FFD700');
+
+      return proxyGet(api + '&action=get_live_streams&category_id=' + catId).then(function (stText) {
+        var streams = JSON.parse(stText);
+        streams.forEach(function (s) {
+          allChannels.push({
+            id: pid + '-' + s.stream_id,
+            name: s.name || 'Channel ' + s.stream_id,
+            logo: s.stream_icon || '',
+            group: catName,
+            tvgId: s.epg_channel_id || '',
+            url: base + '/' + encodeURIComponent(user) + '/' + encodeURIComponent(pass) + '/' + s.stream_id,
+          });
+        });
+        return loadNextCategory(index + 1);
+      }).catch(function (e) {
+        // Skip failed categories, continue loading
+        console.warn('Failed to load category ' + catName + ': ' + e.message);
+        return loadNextCategory(index + 1);
       });
-      return { id: pid, name: user + "'s Channels", url: base, channels: channels };
-    });
+    }
+
+    return loadNextCategory(0);
   });
 }
 
