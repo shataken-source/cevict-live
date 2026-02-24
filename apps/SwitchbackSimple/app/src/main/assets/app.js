@@ -1,6 +1,6 @@
 // Switchback TV — app.js
 // Self-contained IPTV player for Android WebView
-var APP_VERSION = '3.2.0';
+var APP_VERSION = '3.3.0';
 
 // ── Region / prefix definitions ──────────────
 var REGION_PREFIXES = [
@@ -42,7 +42,7 @@ const S = {
   adBlock: true,
   isAdMuted: false,
   epgData: [],
-  settings: { server: '', user: '', pass: '', alt: '', epg: '' },
+  settings: { server: 'http://blogyfy.xyz', user: 'jascodezoriptv', pass: '19e993b7f5', alt: '', epg: '' },
   selectedPrefixes: DEFAULT_PREFIXES.slice(),
   activeGroup: 'All',
   ovTimer: null,
@@ -1164,6 +1164,9 @@ function init() {
   var adt = $('adt');
   adt.textContent = 'AD: ' + (S.adBlock ? 'ON' : 'OFF');
   adt.className = 'cb' + (S.adBlock ? ' on' : ' off');
+
+  // Show version in status bar so we can verify which build is running
+  setStat('v' + APP_VERSION, 'var(--mu)');
 
   // First run — show setup screen if no config and not previously set up
   if (!S.setupDone && !S.playlists.length && !S.settings.server) {
