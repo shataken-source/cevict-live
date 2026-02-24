@@ -83,17 +83,22 @@ function parseM3U(text, pid) {
   return chs;
 }
 
-async function fetchM3U(url, pid, name) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 15000);
-  try {
-    const r = await fetch(url, { signal: ctrl.signal });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const txt = await r.text();
-    return { id: pid, name, url, channels: parseM3U(txt, pid) };
-  } finally {
-    clearTimeout(t);
-  }
+function fetchM3U(url, pid, name) {
+  return new Promise(function (resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.timeout = 15000;
+    xhr.onload = function () {
+      if (xhr.status >= 200 && xhr.status < 400) {
+        resolve({ id: pid, name: name, url: url, channels: parseM3U(xhr.responseText, pid) });
+      } else {
+        reject(new Error('HTTP ' + xhr.status));
+      }
+    };
+    xhr.onerror = function () { reject(new Error('Network error')); };
+    xhr.ontimeout = function () { reject(new Error('Timeout')); };
+    xhr.send();
+  });
 }
 
 // ── Channel management ────────────────────────
@@ -502,21 +507,23 @@ function parseXMLTV(xml) {
   return progs;
 }
 
-async function loadEPG(url) {
+function loadEPG(url) {
   $('epgs').innerHTML = '<span class="sp"></span>';
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 20000);
-    const r = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(t);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const xml = await r.text();
-    S.epgData = parseXMLTV(xml);
-    renderEPG();
-    $('epgs').textContent = '(' + S.epgData.length + ' programs)';
-  } catch (e) {
-    $('epgs').textContent = '⚠ Failed';
-  }
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.timeout = 20000;
+  xhr.onload = function () {
+    if (xhr.status >= 200 && xhr.status < 400) {
+      S.epgData = parseXMLTV(xhr.responseText);
+      renderEPG();
+      $('epgs').textContent = '(' + S.epgData.length + ' programs)';
+    } else {
+      $('epgs').textContent = '⚠ HTTP ' + xhr.status;
+    }
+  };
+  xhr.onerror = function () { $('epgs').textContent = '⚠ Failed'; };
+  xhr.ontimeout = function () { $('epgs').textContent = '⚠ Timeout'; };
+  xhr.send();
 }
 
 function renderEPG() {
