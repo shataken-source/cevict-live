@@ -2,7 +2,7 @@ name: Build Android APK (Switchback TV)
 
 on:
   push:
-    branches: [main]
+    branches: [master, gcc-vessels]
     paths:
       - 'apps/IPTVviewer/**'
       - '.github/workflows/build-iptvviewer-apk.yml'
