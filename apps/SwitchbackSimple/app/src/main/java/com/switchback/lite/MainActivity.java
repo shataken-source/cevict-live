@@ -37,6 +37,11 @@ public class MainActivity extends Activity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(false);
 
+        // Disable WebView cache — always load fresh assets from local server
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        settings.setAppCacheEnabled(false);
+        webView.clearCache(true);
+
         // Android TV: ensure WebView can receive D-pad focus
         webView.setFocusable(true);
         webView.setFocusableInTouchMode(true);

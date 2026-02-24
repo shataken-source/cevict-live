@@ -36,6 +36,9 @@ public class LocalServer extends NanoHTTPD {
         }
 
         if (uri.equals("/")) uri = "/index.html";
+        // Strip query string before asset lookup
+        int qIdx = uri.indexOf('?');
+        if (qIdx >= 0) uri = uri.substring(0, qIdx);
         String path = uri.substring(1);
 
         // Prevent path traversal
