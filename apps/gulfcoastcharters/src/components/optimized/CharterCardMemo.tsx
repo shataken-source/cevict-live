@@ -1,5 +1,5 @@
 import React from 'react';
-import { CharterCard } from '../CharterCard';
+import CharterCard from '../CharterCard';
 
 /**
  * Memoized CharterCard for performance optimization

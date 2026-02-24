@@ -3,7 +3,7 @@ import { useAppContext } from '../contexts/AppContext';
 import { ReviewSystem } from './ReviewSystem';
 import { ReviewForm } from './ReviewForm';
 import ComprehensiveWeatherDisplay from './ComprehensiveWeatherDisplay';
-import { BookingCalendar } from './BookingCalendar';
+import BookingCalendar from './BookingCalendar';
 import BookingModal from './BookingModal';
 import ChatWidget from './ChatWidget';
 import { useState } from 'react';
@@ -44,12 +44,12 @@ export default function CharterDetails({ charterId }: CharterDetailsProps) {
         (position) => {
           const { latitude, longitude } = position.coords;
           const destination = `${charter.city}, ${charter.location}`;
-          
+
           // Show options for Google Maps or Waze
           const useGoogleMaps = window.confirm(
             'Choose your navigation app:\n\nOK = Google Maps\nCancel = Waze'
           );
-          
+
           if (useGoogleMaps) {
             // Google Maps URL with directions
             const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${encodeURIComponent(destination)}`;
@@ -103,7 +103,7 @@ export default function CharterDetails({ charterId }: CharterDetailsProps) {
           <div>
             <h1 className="text-4xl font-bold text-gray-900 mb-2">{charter.businessName}</h1>
             <p className="text-xl text-gray-600 mb-4">Captain {charter.captainName}</p>
-            
+
             <div className="flex items-center mb-4">
               <span className="text-yellow-500 text-2xl mr-2">★</span>
               <span className="text-2xl font-semibold">{charter.rating.toFixed(1)}</span>
@@ -137,7 +137,7 @@ export default function CharterDetails({ charterId }: CharterDetailsProps) {
             >
               Contact Captain
             </button>
-            
+
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-semibold text-gray-900 mb-2">Contact Information</h4>
               <div className="space-y-2 text-sm">
@@ -195,10 +195,10 @@ export default function CharterDetails({ charterId }: CharterDetailsProps) {
         <div className="bg-gray-50 rounded-lg p-8 mb-8">
           <h3 className="text-2xl font-bold mb-4">About This Charter</h3>
           <p className="text-gray-700 leading-relaxed">
-            Join Captain {charter.captainName} for an unforgettable fishing experience on the Gulf Coast. 
-            Our {charter.boatLength}ft {charter.boatType} vessel is equipped with top-of-the-line fishing gear 
-            and safety equipment. Whether you're a seasoned angler or first-timer, we'll make sure you have 
-            an amazing day on the water. We specialize in targeting a variety of species and provide all 
+            Join Captain {charter.captainName} for an unforgettable fishing experience on the Gulf Coast.
+            Our {charter.boatLength}ft {charter.boatType} vessel is equipped with top-of-the-line fishing gear
+            and safety equipment. Whether you're a seasoned angler or first-timer, we'll make sure you have
+            an amazing day on the water. We specialize in targeting a variety of species and provide all
             necessary equipment, bait, and tackle.
           </p>
         </div>
@@ -239,8 +239,8 @@ export default function CharterDetails({ charterId }: CharterDetailsProps) {
         />
 
         {/* Chat Widget */}
-        <ChatWidget 
-          charterId={charterId} 
+        <ChatWidget
+          charterId={charterId}
           charterName={charter.businessName}
           customerName="Guest"
         />

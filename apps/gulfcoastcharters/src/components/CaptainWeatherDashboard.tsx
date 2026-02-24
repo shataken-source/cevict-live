@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Wind, Waves, Droplets, Eye, Thermometer, AlertTriangle, CloudRain, Compass, RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
-import { WeatherAlertSystem } from './WeatherAlertSystem';
+import WeatherAlertSystem from './WeatherAlertSystem';
 
 
 interface WeatherData {
@@ -72,12 +72,12 @@ export function CaptainWeatherDashboard({ latitude = 30.3935, longitude = -86.49
   useEffect(() => {
     loadWeather();
     const interval = setInterval(loadWeather, 1800000); // 30 min
-    
+
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('online', handleOnline);
@@ -136,12 +136,8 @@ export function CaptainWeatherDashboard({ latitude = 30.3935, longitude = -86.49
     if (alerts && alerts.length > 0) {
       alerts.forEach(alert => {
         if (alert.severity === 'Severe' || alert.severity === 'Extreme') {
-          toast({
-            title: `⚠️ ${alert.event}`,
-            description: alert.description,
-            variant: 'destructive',
-          });
-          
+          toast.error(`⚠️ ${alert.event}: ${alert.description}`);
+
           if ('Notification' in window && Notification.permission === 'granted') {
             new Notification(`Weather Alert: ${alert.event}`, {
               body: alert.description,
@@ -156,7 +152,7 @@ export function CaptainWeatherDashboard({ latitude = 30.3935, longitude = -86.49
   const getSafetyLevel = () => {
     if (!weather) return { level: 'unknown', color: 'gray' };
     const { windSpeed, waveHeight } = weather.current;
-    
+
     if (windSpeed > 25 || waveHeight > 6) return { level: 'Dangerous', color: 'red' };
     if (windSpeed > 15 || waveHeight > 4) return { level: 'Caution', color: 'yellow' };
     return { level: 'Safe', color: 'green' };
@@ -186,7 +182,7 @@ export function CaptainWeatherDashboard({ latitude = 30.3935, longitude = -86.49
             <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
-        
+
         <div className="flex items-center gap-2 mb-2">
           <Thermometer className="w-6 h-6" />
           <span className="text-4xl font-bold">{weather.current.temp}°F</span>

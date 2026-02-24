@@ -7,8 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { List, Trophy, Calendar as CalendarIcon, Gift, User } from 'lucide-react';
 import BookingHistoryCard from './BookingHistoryCard';
 import ProfileSettings from './ProfileSettings';
-import { LoyaltyRewardsDashboard } from './LoyaltyRewardsDashboard';
-import { ReferralDashboard } from './ReferralDashboard';
+import LoyaltyRewardsDashboard from './LoyaltyRewardsDashboard';
+import ReferralDashboard from './ReferralDashboard';
 import CustomEmailPurchase from './CustomEmailPurchase';
 import ReviewForm from './ReviewForm';
 import { supabase } from '@/lib/supabase';
@@ -39,7 +39,7 @@ export default function CustomerDashboard() {
         setLoading(false);
         return;
       }
-      
+
       setUserEmail(user.email || '');
       setUserId(user.id);
 
@@ -49,7 +49,7 @@ export default function CustomerDashboard() {
         .select('total_points')
         .eq('user_id', user.id)
         .single();
-      
+
       if (pointsData) {
         setUserPoints(pointsData.total_points || 0);
       }
@@ -60,7 +60,7 @@ export default function CustomerDashboard() {
       });
 
       if (error) throw error;
-      
+
       if (data?.bookings) {
         const formattedBookings = data.bookings.map((b: any) => ({
           id: b.id,
@@ -112,7 +112,7 @@ export default function CustomerDashboard() {
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-4xl font-bold mb-8">My Dashboard</h1>
 
-        
+
         <Tabs defaultValue="bookings" className="space-y-6">
           <TabsList>
             <TabsTrigger value="bookings"><List className="w-4 h-4 mr-2" />Bookings</TabsTrigger>
@@ -165,7 +165,7 @@ export default function CustomerDashboard() {
             <ReferralDashboard userEmail={userEmail} />
           </TabsContent>
           <TabsContent value="profile" className="space-y-6">
-            <CustomEmailPurchase 
+            <CustomEmailPurchase
               userId={userId}
               userType="customer"
               currentPoints={userPoints}
