@@ -32,6 +32,13 @@ jobs:
           rm -f package-lock.json
           npm install --legacy-peer-deps
 
+      - name: Verify install
+        run: |
+          node -v
+          npm -v
+          ls node_modules/react-native/package.json && node -e "console.log('RN', require('./node_modules/react-native/package.json').version)"
+          ls node_modules/react-native-reanimated/package.json && node -e "console.log('Reanimated', require('./node_modules/react-native-reanimated/package.json').version)"
+
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean
 
@@ -41,7 +48,7 @@ jobs:
       - name: Build release APK
         run: |
           cd android
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon --info 2>&1 | tail -200
 
       - name: Sign APK (if secrets configured)
         if: env.ANDROID_KEYSTORE_BASE64 != ''
