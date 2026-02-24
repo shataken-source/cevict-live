@@ -1219,7 +1219,7 @@ function init() {
         if (S.provider && S.provider.name) msg = S.provider.name + ': ' + msg;
         setStat(msg, 'var(--gr)');
       })
-      .catch(function (e) { hideLoadBar(); setStat('Failed: ' + e.message, 'var(--rd)'); console.error('fetchXtream error:', e); });
+      .catch(function (e) { hideLoadBar(); setStat('Failed: ' + e.message, 'var(--rd)'); $('cl').innerHTML = '<div style="padding:24px;color:#ef4444;font-size:14px;text-align:center">Error: ' + esc(e.message) + '</div>'; console.error('fetchXtream error:', e); });
   }
 
   if (S.settings.epg) loadEPG(S.settings.epg);
