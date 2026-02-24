@@ -42,4 +42,9 @@ export const en = {
   },
 } as const
 
-export type EnKeys = typeof en
+// Widen literal string values to `string` so translation files can use different text
+type DeepStringify<T> = {
+  [K in keyof T]: T[K] extends string ? string : DeepStringify<T[K]>
+}
+
+export type EnKeys = DeepStringify<typeof en>

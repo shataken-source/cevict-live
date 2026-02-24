@@ -1,11 +1,12 @@
 import { en } from './en'
+import type { EnKeys } from './en'
 import { es } from './es'
 import { fr } from './fr'
 import { pt } from './pt'
 
 export type Locale = 'en' | 'es' | 'fr' | 'pt'
 
-const translations: Record<Locale, typeof en> = { en, es, fr, pt }
+const translations: Record<Locale, EnKeys> = { en, es, fr, pt }
 
 /**
  * Server-side translation: get string by key path and locale.

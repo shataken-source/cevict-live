@@ -64,8 +64,8 @@ export async function PUT(
   }
   if (Array.isArray(body.items)) {
     updates.items = body.items
-    const total = body.items.reduce(
-      (sum: number, i: { price?: number }) => sum + (typeof (i as any)?.price === 'number' ? (i as any).price : 0),
+    const total = (body.items as any[]).reduce(
+      (sum: number, i: any) => sum + (typeof i?.price === 'number' ? i.price : 0),
       0
     )
     updates.total_estimated_cost = total

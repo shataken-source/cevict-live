@@ -69,22 +69,23 @@ export async function POST(request: NextRequest) {
 
   // Also log a lightweight user_event for personalization
   if (user?.id) {
-    await admin
-      .from('user_events')
-      .insert({
-        user_id: user.id,
-        event_type: 'chat_conversation',
-        payload: {
-          platform,
-          bot,
-          session_id: sessionId,
-          sentiment,
-          escalated,
-        },
-      })
-      .catch(() => {
-        // best-effort, ignore failures
-      })
+    try {
+      await admin
+        .from('user_events')
+        .insert({
+          user_id: user.id,
+          event_type: 'chat_conversation',
+          payload: {
+            platform,
+            bot,
+            session_id: sessionId,
+            sentiment,
+            escalated,
+          },
+        })
+    } catch {
+      // best-effort, ignore failures
+    }
   }
 
   return NextResponse.json({ ok: true })

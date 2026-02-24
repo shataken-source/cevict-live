@@ -53,14 +53,17 @@ export async function POST(request: NextRequest) {
 
   // Log event for personalization
   if (user?.id) {
-    await admin
-      .from('user_events')
-      .insert({
-        user_id: user.id,
-        event_type: 'chat_feedback',
-        payload: { conversation_id: conversationId, helpful },
-      })
-      .catch(() => {})
+    try {
+      await admin
+        .from('user_events')
+        .insert({
+          user_id: user.id,
+          event_type: 'chat_feedback',
+          payload: { conversation_id: conversationId, helpful },
+        })
+    } catch {
+      // non-critical — ignore
+    }
   }
 
   return NextResponse.json({ ok: true })

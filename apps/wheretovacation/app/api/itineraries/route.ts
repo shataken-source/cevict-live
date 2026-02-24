@@ -50,8 +50,8 @@ export async function POST(request: NextRequest) {
 
   const name = String(body.name || 'My Trip').trim() || 'My Trip'
   const items = Array.isArray(body.items) ? body.items : []
-  const total = items.reduce(
-    (sum: number, i: { price?: number }) => sum + (typeof (i as any)?.price === 'number' ? (i as any).price : 0),
+  const total = (items as any[]).reduce(
+    (sum: number, i: any) => sum + (typeof i?.price === 'number' ? i.price : 0),
     0
   )
 

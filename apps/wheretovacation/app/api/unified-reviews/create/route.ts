@@ -6,18 +6,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createUnifiedReview } from '@/lib/unified-reviews';
 import { createClient } from '@supabase/supabase-js';
+import { getServerUser } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId, reviewData } = body;
-
-    if (!userId) {
+    const user = await getServerUser();
+    if (!user) {
       return NextResponse.json(
-        { error: 'userId required' },
-        { status: 400 }
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
     }
+    const userId = user.id;
+
+    const body = await request.json();
+    const { reviewData } = body;
 
     if (!reviewData || !reviewData.review_type || !reviewData.rating) {
       return NextResponse.json(
@@ -29,7 +32,7 @@ export async function POST(request: NextRequest) {
     // Verify user exists in shared_users (using admin client)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
+
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json(
         { error: 'Database not configured' },

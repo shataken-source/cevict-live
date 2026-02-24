@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Search, MapPin, Anchor, Loader2, Compass } from 'lucide-react'
 import Link from 'next/link'
@@ -34,7 +34,7 @@ interface SearchResponse {
   boatsError?: string | null
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
   const searchParams = useSearchParams()
   const [selectedActivities, setSelectedActivities] = useState<string[]>([])
   const [destinationName, setDestinationName] = useState('')
@@ -128,11 +128,10 @@ export default function SearchPage() {
                   key={id}
                   type="button"
                   onClick={() => toggleActivity(id)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    selected
-                      ? 'bg-blue-600 text-white ring-2 ring-blue-300'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selected
+                    ? 'bg-blue-600 text-white ring-2 ring-blue-300'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                 >
                   {getActivityLabel(id)}
                 </button>
@@ -307,5 +306,13 @@ export default function SearchPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>}>
+      <SearchPageContent />
+    </Suspense>
   )
 }
