@@ -40,8 +40,24 @@ public class LocalServer extends NanoHTTPD {
     }
 
     private Response handleProxy(IHTTPSession session) {
-        Map<String, String> params = session.getParms();
-        String targetUrl = params.get("url");
+        String rawQuery = session.getQueryParameterString();
+        String targetUrl = null;
+
+        // Extract url= parameter from raw query to avoid double-decoding
+        if (rawQuery != null && rawQuery.startsWith("url=")) {
+            try {
+                targetUrl = java.net.URLDecoder.decode(rawQuery.substring(4), "UTF-8");
+            } catch (Exception e) {
+                targetUrl = rawQuery.substring(4);
+            }
+        }
+
+        if (targetUrl == null || targetUrl.isEmpty()) {
+            // Fallback to parsed params
+            Map<String, String> params = session.getParms();
+            targetUrl = params.get("url");
+        }
+
         if (targetUrl == null || targetUrl.isEmpty()) {
             return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Missing url parameter");
         }
@@ -51,32 +67,41 @@ public class LocalServer extends NanoHTTPD {
             Log.i(TAG, "Proxy fetch: " + targetUrl);
             URL url = new URL(targetUrl);
             conn = (HttpURLConnection) url.openConnection();
+            conn.setInstanceFollowRedirects(true);
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(15000);
-            conn.setReadTimeout(30000);
-            conn.setRequestProperty("User-Agent", "SwitchbackTV/1.0");
+            conn.setReadTimeout(60000);
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 12) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
             int code = conn.getResponseCode();
+            Log.i(TAG, "Proxy response: " + code + " for " + targetUrl);
+
             InputStream is;
             if (code >= 200 && code < 400) {
                 is = conn.getInputStream();
             } else {
-                is = conn.getErrorStream();
+                InputStream errStream = conn.getErrorStream();
+                String errBody = "";
+                if (errStream != null) {
+                    byte[] buf = new byte[1024];
+                    int n = errStream.read(buf);
+                    if (n > 0) errBody = new String(buf, 0, n);
+                }
+                Log.e(TAG, "Proxy HTTP " + code + ": " + errBody);
+                return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain",
+                    "Remote server returned HTTP " + code + ": " + errBody);
             }
 
             String contentType = conn.getContentType();
             if (contentType == null) contentType = "text/plain";
 
-            Response resp = newChunkedResponse(
-                code >= 200 && code < 400 ? Response.Status.OK : Response.Status.BAD_REQUEST,
-                contentType,
-                is
-            );
+            Response resp = newChunkedResponse(Response.Status.OK, contentType, is);
             resp.addHeader("Access-Control-Allow-Origin", "*");
             return resp;
         } catch (Exception e) {
             Log.e(TAG, "Proxy error: " + e.getMessage(), e);
-            return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Proxy error: " + e.getMessage());
+            return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain",
+                "Proxy error: " + e.getClass().getSimpleName() + ": " + e.getMessage());
         }
     }
 

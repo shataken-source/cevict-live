@@ -13,7 +13,7 @@ const S = {
   adBlock: true,
   isAdMuted: false,
   epgData: [],
-  settings: { server: 'http://cflike-cdn.com:8080', user: 'jesscadezediptv', pass: 'jxeeg93t76', alt: '', epg: 'http://cflike-cdn.com:8080/xmltv.php?username=jesscadezediptv&password=jxeeg93t76', m3u: 'http://cflike-cdn.com:8080/get.php?username=jesscadezediptv&password=jxeeg93t76&type=m3u_plus' },
+  settings: { server: 'http://blogyfy.xyz', user: 'jascodezoriptv', pass: '19e993b7f5', alt: '', epg: 'http://blogyfy.xyz/xmltv.php?username=jascodezoriptv&password=19e993b7f5', m3u: 'http://blogyfy.xyz/get.php?username=jascodezoriptv&password=19e993b7f5&type=m3u_plus' },
   activeGroup: 'All',
   ovTimer: null,
 };
@@ -87,21 +87,64 @@ function proxyUrl(url) {
   return '/proxy?url=' + encodeURIComponent(url);
 }
 
-function fetchM3U(url, pid, name) {
+function proxyGet(url) {
   return new Promise(function (resolve, reject) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', proxyUrl(url), true);
-    xhr.timeout = 30000;
+    xhr.timeout = 60000;
     xhr.onload = function () {
       if (xhr.status >= 200 && xhr.status < 400) {
-        resolve({ id: pid, name: name, url: url, channels: parseM3U(xhr.responseText, pid) });
+        resolve(xhr.responseText);
       } else {
-        reject(new Error('HTTP ' + xhr.status));
+        reject(new Error('HTTP ' + xhr.status + ': ' + (xhr.responseText || '').substring(0, 200)));
       }
     };
     xhr.onerror = function () { reject(new Error('Network error')); };
     xhr.ontimeout = function () { reject(new Error('Timeout')); };
     xhr.send();
+  });
+}
+
+function fetchM3U(url, pid, name) {
+  return proxyGet(url).then(function (text) {
+    return { id: pid, name: name, url: url, channels: parseM3U(text, pid) };
+  });
+}
+
+// ── Xtream Codes API ─────────────────────────
+function fetchXtream(server, user, pass) {
+  var base = server.replace(/\/$/, '');
+  var api = base + '/player_api.php?username=' + encodeURIComponent(user) + '&password=' + encodeURIComponent(pass);
+  var pid = 'xt-' + Date.now();
+
+  setStat('● Authenticating…', '#FFD700');
+  return proxyGet(api).then(function (authText) {
+    var auth = JSON.parse(authText);
+    if (!auth.user_info || auth.user_info.auth !== 1) {
+      throw new Error('Authentication failed — check credentials');
+    }
+    setStat('● Loading categories…', '#FFD700');
+    return proxyGet(api + '&action=get_live_categories');
+  }).then(function (catText) {
+    var cats = JSON.parse(catText);
+    var catMap = {};
+    cats.forEach(function (c) { catMap[c.category_id] = c.category_name; });
+
+    setStat('● Loading channels…', '#FFD700');
+    return proxyGet(api + '&action=get_live_streams').then(function (stText) {
+      var streams = JSON.parse(stText);
+      var channels = streams.map(function (s, i) {
+        return {
+          id: pid + '-' + s.stream_id,
+          name: s.name || 'Channel ' + s.stream_id,
+          logo: s.stream_icon || '',
+          group: catMap[s.category_id] || 'Uncategorized',
+          tvgId: s.epg_channel_id || '',
+          url: base + '/' + encodeURIComponent(user) + '/' + encodeURIComponent(pass) + '/' + s.stream_id,
+        };
+      });
+      return { id: pid, name: user + "'s Channels", url: base, channels: channels };
+    });
   });
 }
 
@@ -386,16 +429,15 @@ async function saveSettings() {
   persist();
   closeMod();
 
-  // If credentials provided, auto-load playlist
+  // If credentials provided, load via Xtream API
   if (S.settings.server && S.settings.user && S.settings.pass) {
-    const url = `${S.settings.server}/get.php?username=${encodeURIComponent(S.settings.user)}&password=${encodeURIComponent(S.settings.pass)}&type=m3u_plus&output=ts`;
     const btn = $('ms');
     btn.innerHTML = '<span class="sp"></span> Loading…';
     btn.disabled = true;
     try {
-      const pl = await fetchM3U(url, 'cred-' + Date.now(), S.settings.user + "'s Channels");
+      const pl = await fetchXtream(S.settings.server, S.settings.user, S.settings.pass);
       // Replace any existing credential playlist
-      S.playlists = S.playlists.filter(p => !p.id.startsWith('cred-'));
+      S.playlists = S.playlists.filter(p => !p.id.startsWith('xt-'));
       S.playlists.push(pl);
       mergeChannels();
       renderGroupFilter();
@@ -595,12 +637,10 @@ function init() {
   adt.textContent = 'AD: ' + (S.adBlock ? 'ON' : 'OFF');
   adt.className = 'cb' + (S.adBlock ? ' on' : ' off');
 
-  // Auto-load playlist if no channels loaded yet
-  if (!S.playlists.length) {
-    const url = S.settings.m3u || `${S.settings.server}/get.php?username=${encodeURIComponent(S.settings.user)}&password=${encodeURIComponent(S.settings.pass)}&type=m3u_plus&output=ts`;
-    setStat('● Loading playlist…', '#FFD700');
-    fetchM3U(url, 'cred-' + Date.now(), S.settings.user + "'s Channels")
-      .then(pl => {
+  // Auto-load via Xtream API if no channels loaded yet
+  if (!S.playlists.length && S.settings.server && S.settings.user && S.settings.pass) {
+    fetchXtream(S.settings.server, S.settings.user, S.settings.pass)
+      .then(function (pl) {
         S.playlists.push(pl);
         mergeChannels();
         renderGroupFilter();
@@ -608,7 +648,7 @@ function init() {
         persist();
         setStat('● ' + pl.channels.length + ' channels loaded', 'var(--gr)');
       })
-      .catch(e => setStat('● Failed to load: ' + e.message, 'var(--rd)'));
+      .catch(function (e) { setStat('● Failed: ' + e.message, 'var(--rd)'); });
   }
 
   // Load EPG if saved
