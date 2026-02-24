@@ -1,0 +1,11 @@
+{
+  "SMTP_USER": "jason@cevict.com",
+  "SMTP_PASSWORD": "cfjjjj!&^GGGdn3bbny77wjaa"
+  "VICTORIA_EMAIL": "victoria@example.com",
+  "VICTORIA_SMS": "5551234567@vtext.com",
+  "EMERGENCY_CONTACTS": [
+    "developer_a@company.com",
+    "trusted_human@personal.net"
+  ],
+  "TIMEOUT_DAYS": 7
+}

@@ -1,0 +1,896 @@
+/* Fishy Platform CSS Classes */
+/* Converted from inline styles to maintainable CSS */
+
+/* =============================================
+   FISHY THEME OVERRIDES
+   ============================================= */
+
+/* Ocean gradient backgrounds */
+.fishy-ocean-gradient {
+  background: linear-gradient(to bottom, #0c4a6e, #0e7490, #06b6d4);
+}
+
+.fishy-ocean-gradient-dark {
+  background: linear-gradient(135deg, #0891b2, #0e7490);
+}
+
+.fishy-hero-gradient {
+  background: linear-gradient(135deg, #1e3a8a, #1e40af, #2563eb);
+}
+
+.fishy-sand-gradient {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+}
+
+.fishy-success-gradient {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.fishy-danger-gradient {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.fishy-purple-gradient {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+/* =============================================
+   NAVIGATION STYLES
+   ============================================= */
+
+.fishy-nav-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: linear-gradient(90deg, #1e3a8a, #1e40af, #2563eb);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.fishy-nav-link {
+  color: white;
+  font-weight: bold;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+}
+
+.fishy-nav-link:hover {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.fishy-nav-link.active {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.2);
+}
+
+.fishy-logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: white;
+  font-size: 28px;
+  font-weight: bold;
+  background: linear-gradient(45deg, #10b981, #059669);
+  padding: 10px 20px;
+  border-radius: 50px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  transition: transform 0.3s;
+  cursor: pointer;
+}
+
+.fishy-logo:hover {
+  transform: scale(1.05);
+}
+
+.fishy-logo-icon {
+  font-size: 36px;
+  margin-right: 10px;
+  animation: fishy-swim 2s infinite;
+}
+
+.fishy-glow-button {
+  padding: 10px 20px;
+  background: linear-gradient(45deg, #f59e0b, #fbbf24);
+  border-radius: 25px;
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+  animation: fishy-glow 2s ease-in-out infinite;
+  color: white;
+  font-weight: bold;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.3s;
+}
+
+.fishy-glow-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(251, 191, 36, 0.8);
+}
+
+.fishy-captain-link {
+  color: #fbbf24;
+}
+
+/* =============================================
+   HERO SECTION STYLES
+   ============================================= */
+
+.fishy-hero {
+  color: white;
+  padding: 80px 20px;
+  text-align: center;
+  background: url("/ocean-bg.jpg"), linear-gradient(135deg, #0891b2, #0e7490);
+  background-blend-mode: overlay;
+  position: relative;
+  overflow: hidden;
+}
+
+.fishy-hero-title {
+  font-size: 64px;
+  margin-bottom: 20px;
+  text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+  animation: fishy-float 3s ease-in-out infinite;
+}
+
+.fishy-hero-subtitle {
+  font-size: 32px;
+  margin-bottom: 20px;
+  color: #fbbf24;
+}
+
+.fishy-hero-description {
+  font-size: 20px;
+  margin-bottom: 40px;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+
+.fishy-hero-actions {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.fishy-hero-cta {
+  padding: 20px 50px;
+  background: #10b981;
+  color: white;
+  text-decoration: none;
+  border-radius: 50px;
+  font-size: 22px;
+  font-weight: bold;
+  display: inline-block;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  animation: fishy-pulse 2s infinite;
+  transition: all 0.3s;
+}
+
+.fishy-hero-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+}
+
+.fishy-hero-cta-secondary {
+  padding: 20px 50px;
+  background: #8b5cf6;
+  color: white;
+  text-decoration: none;
+  border-radius: 50px;
+  font-size: 22px;
+  font-weight: bold;
+  display: inline-block;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  transition: all 0.3s;
+}
+
+.fishy-hero-cta-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+}
+
+/* =============================================
+   STATS COMPONENTS
+   ============================================= */
+
+.fishy-live-stats {
+  margin-top: 60px;
+  padding: 20px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.fishy-live-stats-title {
+  font-size: 24px;
+  margin-bottom: 15px;
+  color: #fbbf24;
+}
+
+.fishy-stats-grid {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.fishy-stat-item {
+  text-align: center;
+}
+
+.fishy-stat-value {
+  font-size: 36px;
+  font-weight: bold;
+  color: #fbbf24;
+  margin-bottom: 5px;
+}
+
+.fishy-stat-label {
+  color: white;
+  font-size: 14px;
+}
+
+/* =============================================
+   CHARTER CARDS
+   ============================================= */
+
+.fishy-charter-section {
+  padding: 80px 20px;
+  background: #f0f9ff;
+  text-align: center;
+}
+
+.fishy-charter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.fishy-charter-card {
+  display: block;
+  padding: 30px;
+  background: white;
+  border-radius: 20px;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  transition: all 0.3s;
+  border: 3px solid transparent;
+  cursor: pointer;
+}
+
+.fishy-charter-card:hover {
+  transform: translateY(-5px);
+  border-color: #10b981;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.fishy-charter-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+  text-align: center;
+  transition: transform 0.3s;
+}
+
+.fishy-charter-card:hover .fishy-charter-icon {
+  transform: scale(1.1);
+}
+
+.fishy-charter-title {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #0c4a6e;
+  font-weight: bold;
+}
+
+.fishy-charter-description {
+  color: #64748b;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.fishy-charter-locations {
+  padding: 10px;
+  background: #f0f9ff;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #0891b2;
+  font-weight: 500;
+}
+
+/* =============================================
+   COMMUNITY FEATURES
+   ============================================= */
+
+.fishy-community-section {
+  padding: 80px 20px;
+  background: linear-gradient(to bottom, #1e293b, #0f172a);
+  color: white;
+}
+
+.fishy-community-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 30px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.fishy-community-feature {
+  padding: 30px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255,255,255,0.1);
+  transition: all 0.3s;
+  cursor: pointer;
+  text-align: center;
+}
+
+.fishy-community-feature:hover {
+  background: rgba(255,255,255,0.1);
+  transform: scale(1.05);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.fishy-community-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+  transition: transform 0.3s;
+}
+
+.fishy-community-feature:hover .fishy-community-icon {
+  transform: scale(1.1);
+}
+
+.fishy-community-title {
+  font-size: 24px;
+  margin-bottom: 10px;
+  color: #fbbf24;
+  font-weight: bold;
+}
+
+.fishy-community-description {
+  color: #cbd5e1;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.fishy-community-highlight {
+  padding: 8px;
+  background: rgba(251, 191, 36, 0.2);
+  border-radius: 10px;
+  color: #fbbf24;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+/* =============================================
+   DASHBOARD COMPONENTS
+   ============================================= */
+
+.fishy-dashboard {
+  padding: 40px 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.fishy-dashboard-title {
+  font-size: 48px;
+  margin-bottom: 30px;
+  color: white;
+  text-align: center;
+}
+
+.fishy-stats-grid-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.fishy-dashboard-stat {
+  background: rgba(255,255,255,0.1);
+  padding: 25px;
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  border-left: 5px solid;
+  text-align: center;
+}
+
+.fishy-dashboard-stat.green {
+  border-left-color: #10b981;
+}
+
+.fishy-dashboard-stat.yellow {
+  border-left-color: #f59e0b;
+}
+
+.fishy-dashboard-stat.purple {
+  border-left-color: #8b5cf6;
+}
+
+.fishy-dashboard-stat.orange {
+  border-left-color: #ef4444;
+}
+
+.fishy-dashboard-stat.blue {
+  border-left-color: #06b6d4;
+}
+
+.fishy-dashboard-stat.pink {
+  border-left-color: #ec4899;
+}
+
+.fishy-stat-icon {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.fishy-stat-label {
+  color: #94a3b8;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.fishy-stat-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: white;
+}
+
+/* =============================================
+   ACTION CARDS
+   ============================================= */
+
+.fishy-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
+}
+
+.fishy-action-card {
+  display: block;
+  padding: 25px;
+  border-radius: 20px;
+  text-decoration: none;
+  color: white;
+  transition: transform 0.3s;
+  text-align: center;
+  cursor: pointer;
+}
+
+.fishy-action-card:hover {
+  transform: scale(1.05);
+}
+
+.fishy-action-card.green {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.fishy-action-card.yellow {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.fishy-action-card.purple {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.fishy-action-card.red {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.fishy-action-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
+}
+
+.fishy-action-title {
+  font-size: 20px;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.fishy-action-description {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* =============================================
+   FEED COMPONENTS
+   ============================================= */
+
+.fishy-feed-container {
+  background: rgba(255,255,255,0.1);
+  padding: 30px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.fishy-feed-title {
+  font-size: 32px;
+  margin-bottom: 20px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fishy-feed-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+.fishy-feed-user {
+  font-weight: bold;
+  color: #fbbf24;
+}
+
+.fishy-feed-details {
+  color: #94a3b8;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.fishy-feed-button {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.fishy-feed-button:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+/* =============================================
+   CAPTAIN COMPONENTS
+   ============================================= */
+
+.fishy-captain-notice {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.fishy-captain-notice-title {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.fishy-charter-manifest {
+  background: rgba(255,255,255,0.05);
+  padding: 30px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+}
+
+.fishy-manifest-title {
+  font-size: 32px;
+  margin-bottom: 20px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fishy-charter-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  margin-bottom: 15px;
+}
+
+.fishy-charter-time {
+  font-weight: bold;
+  color: #fbbf24;
+  font-size: 18px;
+}
+
+.fishy-charter-details {
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.fishy-charter-price {
+  color: #10b981;
+  font-weight: bold;
+  margin-top: 4px;
+}
+
+.fishy-charter-button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.fishy-charter-button:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* =============================================
+   TICKER & NOTICES
+   ============================================= */
+
+.fishy-ticker {
+  background: #fbbf24;
+  color: #1e293b;
+  padding: 5px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.fishy-warning-banner {
+  background: linear-gradient(90deg, #dc2626, #ef4444);
+  color: white;
+  padding: 8px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.fishy-cta-banner {
+  margin-top: 60px;
+  padding: 30px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border-radius: 20px;
+  color: white;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.fishy-cta-banner-title {
+  font-size: 28px;
+  margin-bottom: 15px;
+}
+
+.fishy-cta-banner-description {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.fishy-cta-button {
+  display: inline-block;
+  padding: 15px 40px;
+  background: white;
+  color: #f59e0b;
+  border-radius: 30px;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 18px;
+  transition: all 0.3s;
+}
+
+.fishy-cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+/* =============================================
+   ANIMATIONS
+   ============================================= */
+
+@keyframes fishy-swim {
+  0%, 100% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+}
+
+@keyframes fishy-swim-across {
+  0% { left: -50px; }
+  100% { left: 100%; }
+}
+
+@keyframes fishy-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes fishy-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes fishy-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.5); }
+  50% { box-shadow: 0 0 30px rgba(251, 191, 36, 0.8); }
+}
+
+@keyframes fishy-bounce {
+  0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+  50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+
+/* Swimming fish animations */
+.fishy-swimming-fish {
+  position: absolute;
+  animation: fishy-swim-across 15s infinite linear;
+}
+
+.fishy-swimming-fish-delay-1 {
+  animation-delay: 5s;
+}
+
+.fishy-swimming-fish-delay-2 {
+  animation-delay: 10s;
+}
+
+/* =============================================
+   RESPONSIVE DESIGN
+   ============================================= */
+
+@media (max-width: 768px) {
+  .fishy-hero-title {
+    font-size: 48px;
+  }
+  
+  .fishy-hero-subtitle {
+    font-size: 24px;
+  }
+  
+  .fishy-hero-description {
+    font-size: 18px;
+  }
+  
+  .fishy-hero-actions {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+  
+  .fishy-hero-cta,
+  .fishy-hero-cta-secondary {
+    font-size: 18px;
+    padding: 15px 30px;
+  }
+  
+  .fishy-stats-grid {
+    gap: 20px;
+  }
+  
+  .fishy-stat-value {
+    font-size: 28px;
+  }
+  
+  .fishy-charter-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .fishy-community-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .fishy-dashboard-title {
+    font-size: 36px;
+  }
+  
+  .fishy-stats-grid-dashboard {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+  
+  .fishy-actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+  
+  .fishy-feed-item,
+  .fishy-charter-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .fishy-hero {
+    padding: 60px 15px;
+  }
+  
+  .fishy-hero-title {
+    font-size: 36px;
+  }
+  
+  .fishy-hero-subtitle {
+    font-size: 20px;
+  }
+  
+  .fishy-stats-grid-dashboard {
+    grid-template-columns: 1fr;
+  }
+  
+  .fishy-actions-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .fishy-charter-card,
+  .fishy-community-feature {
+    padding: 20px;
+  }
+}
+
+/* =============================================
+   ACCESSIBILITY & PERFORMANCE
+   ============================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus styles for accessibility */
+.fishy-nav-link:focus,
+.fishy-charter-card:focus,
+.fishy-community-feature:focus,
+.fishy-action-card:focus {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .fishy-ticker,
+  .fishy-warning-banner,
+  .fishy-hero-cta,
+  .fishy-hero-cta-secondary {
+    display: none !important;
+  }
+  
+  .fishy-hero {
+    background: #0891b2 !important;
+    color: #000 !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .fishy-charter-card,
+  .fishy-community-feature {
+    border: 2px solid #000;
+  }
+  
+  .fishy-nav-link:hover {
+    background: #000;
+    color: #fff;
+  }
+}

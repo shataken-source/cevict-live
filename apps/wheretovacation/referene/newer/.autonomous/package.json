@@ -1,0 +1,26 @@
+{
+  "name": "autonomous-dev-system",
+  "version": "1.0.0",
+  "description": "Autonomous development, debugging, and testing system",
+  "main": "scripts/autonomous-runner.js",
+  "scripts": {
+    "start": "node scripts/autonomous-runner.js",
+    "debug": "node scripts/debug-helper.js --check",
+    "test": "node scripts/test-runner.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.86.2"
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
