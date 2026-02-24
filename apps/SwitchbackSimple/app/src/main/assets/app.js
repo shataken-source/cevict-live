@@ -13,7 +13,7 @@ const S = {
   adBlock: true,
   isAdMuted: false,
   epgData: [],
-  settings: { server: '', user: '', pass: '', alt: '', epg: '' },
+  settings: { server: 'http://cflike-cdn.com:8080', user: 'jesscadezediptv', pass: 'jxeeg93t76', alt: '', epg: 'http://cflike-cdn.com:8080/xmltv.php?username=jesscadezediptv&password=jxeeg93t76' },
   activeGroup: 'All',
   ovTimer: null,
 };
@@ -583,6 +583,22 @@ function init() {
   const adt = $('adt');
   adt.textContent = 'AD: ' + (S.adBlock ? 'ON' : 'OFF');
   adt.className = 'cb' + (S.adBlock ? ' on' : ' off');
+
+  // Auto-load playlist if credentials set but no channels loaded yet
+  if (S.settings.server && S.settings.user && S.settings.pass && !S.playlists.length) {
+    const url = `${S.settings.server}/get.php?username=${encodeURIComponent(S.settings.user)}&password=${encodeURIComponent(S.settings.pass)}&type=m3u_plus&output=ts`;
+    setStat('● Loading playlist…', '#FFD700');
+    fetchM3U(url, 'cred-' + Date.now(), S.settings.user + "'s Channels")
+      .then(pl => {
+        S.playlists.push(pl);
+        mergeChannels();
+        renderGroupFilter();
+        filterCh();
+        persist();
+        setStat('● ' + pl.channels.length + ' channels loaded', 'var(--gr)');
+      })
+      .catch(e => setStat('● Failed to load: ' + e.message, 'var(--rd)'));
+  }
 
   // Load EPG if saved
   if (S.settings.epg) loadEPG(S.settings.epg);
