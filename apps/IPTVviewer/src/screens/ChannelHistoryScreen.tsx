@@ -11,8 +11,7 @@ import { useStore } from '@/store/useStore';
 import { Channel } from '@/types';
 
 interface ChannelHistoryScreenProps {
-    onChannelSelect: (channel: Channel) => void;
-    onClose: () => void;
+    navigation: any;
 }
 
 interface HistoryItem {
@@ -20,9 +19,8 @@ interface HistoryItem {
     timestamp: Date;
 }
 
-export function ChannelHistoryScreen({
-    onChannelSelect,
-    onClose,
+export default function ChannelHistoryScreen({
+    navigation,
 }: ChannelHistoryScreenProps) {
     const { channelHistory, playlists } = useStore();
     const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
@@ -75,8 +73,7 @@ export function ChannelHistoryScreen({
         <TouchableOpacity
             style={styles.channelItem}
             onPress={() => {
-                onChannelSelect(item.channel);
-                onClose();
+                navigation.navigate('Player', { channel: item.channel });
             }}
         >
             {/* Channel number/index */}
@@ -112,8 +109,7 @@ export function ChannelHistoryScreen({
             <TouchableOpacity
                 style={styles.playButton}
                 onPress={() => {
-                    onChannelSelect(item.channel);
-                    onClose();
+                    navigation.navigate('Player', { channel: item.channel });
                 }}
             >
                 <Text style={styles.playIcon}>▶</Text>
@@ -126,7 +122,7 @@ export function ChannelHistoryScreen({
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.title}>Watch History</Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
                     <Text style={styles.closeText}>✕</Text>
                 </TouchableOpacity>
             </View>

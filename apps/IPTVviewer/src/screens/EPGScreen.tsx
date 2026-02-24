@@ -136,7 +136,7 @@ export default function EPGScreen({ navigation }: EPGScreenProps) {
 
     // Render channel row with programs
     const renderChannelRow = ({ item: channel }: { item: Channel }) => {
-        const channelPrograms = channelProgramsMap.get(channel.id) || [];
+        const channelPrograms = channelProgramsMap.get(channel.tvgId || channel.id) || [];
         const isSelected = selectedChannel?.id === channel.id;
         const isCurrentPlaying = currentChannel?.id === channel.id;
 

@@ -10,7 +10,7 @@ import {
     ScrollView,
     Share,
 } from 'react-native';
-import { Clipboard } from 'react-native';
+import * as ExpoClipboard from 'expo-clipboard';
 import { Channel } from '@/types';
 import { useStore } from '@/store/useStore';
 import { SmartFavoritesService, SmartFavoriteResult, FavoriteCategory } from '@/services/SmartFavoritesService';
@@ -74,7 +74,7 @@ export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
 
     const handleCopyImportUrl = () => {
         const url = SmartFavoritesService.generateShareUrl('https://iptv.cevict.ai', 'user123');
-        Clipboard.setString(url);
+        ExpoClipboard.setStringAsync(url);
     };
 
     const handleImport = () => {

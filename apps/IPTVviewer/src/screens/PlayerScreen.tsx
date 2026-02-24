@@ -116,12 +116,7 @@ export default function PlayerScreen({ route, navigation }: PlayerScreenProps) {
     };
   }, [channel, adConfig.enabled, adConfig.volumeReductionPercent]);
 
-  // Auto-hide controls after 5s when they're shown (tap screen to show again)
-  useEffect(() => {
-    if (!showControls) return;
-    const t = setTimeout(() => setShowControls(false), 5000);
-    return () => clearTimeout(t);
-  }, [showControls]);
+  // Auto-hide controls is handled by showControlsTemporarily()
 
   // EPG: fetch and show current program when epgUrl is set (match by tvgId or channel id)
   useEffect(() => {

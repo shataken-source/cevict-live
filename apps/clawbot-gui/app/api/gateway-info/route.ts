@@ -8,7 +8,7 @@ export async function GET() {
     const configPath = join(homedir(), '.openclaw', 'openclaw.json');
     const raw = readFileSync(configPath, 'utf-8');
     const config = JSON.parse(raw);
-    const token = config?.gateway?.token ?? null;
+    const token = config?.gateway?.auth?.token ?? config?.gateway?.token ?? null;
     const port = config?.gateway?.port ?? 18789;
     return NextResponse.json({ token, port, gatewayUrl: `ws://127.0.0.1:${port}`, dashboardUrl: `http://127.0.0.1:${port}/` });
   } catch {

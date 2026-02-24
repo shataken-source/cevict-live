@@ -15,8 +15,7 @@ interface Tier {
 }
 
 interface PricingScreenProps {
-  onSelectTier: (tierId: string) => void;
-  onClose: () => void;
+  navigation: any;
 }
 
 const TIERS: Tier[] = [
@@ -72,7 +71,7 @@ const TIERS: Tier[] = [
   },
 ];
 
-export function PricingScreen({ onSelectTier, onClose }: PricingScreenProps) {
+export default function PricingScreen({ navigation }: PricingScreenProps) {
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
 
   return (
@@ -83,7 +82,7 @@ export function PricingScreen({ onSelectTier, onClose }: PricingScreenProps) {
         <Text style={styles.subtitle}>
           One device per license • No account sharing
         </Text>
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
           <Text style={styles.closeText}>✕</Text>
         </TouchableOpacity>
       </View>
@@ -99,7 +98,6 @@ export function PricingScreen({ onSelectTier, onClose }: PricingScreenProps) {
             ]}
             onPress={() => {
               setSelectedTier(tier.id);
-              onSelectTier(tier.id);
             }}
           >
             {tier.badge && (
@@ -137,7 +135,6 @@ export function PricingScreen({ onSelectTier, onClose }: PricingScreenProps) {
               style={[styles.selectButton, { backgroundColor: tier.badgeColor || '#007AFF' }]}
               onPress={() => {
                 setSelectedTier(tier.id);
-                onSelectTier(tier.id);
               }}
             >
               <Text style={styles.selectButtonText}>

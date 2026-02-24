@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-  Terminal, Play, MessageSquare, Settings, Activity,
-  Wifi, WifiOff, Users, Brain, Send, Bot, RefreshCw,
-  Power, FileText, Cpu, Puzzle, Trash2, Search,
-  X, Plus, Wand2, RotateCcw, Info, HelpCircle,
+  Terminal, Play, Activity, Users, Send, Bot, RefreshCw,
+  Cpu, Puzzle, Trash2, Plus, RotateCcw, Info,
   MessageCircle, Hash, List, Download, Eye,
-  Globe, Stethoscope, Shield, AlertCircle, CheckCircle,
-  Loader2, ExternalLink, Copy, ChevronRight, Clock,
-  Database, Zap, GitBranch, Key
+  Globe, Stethoscope, Shield, AlertCircle,
+  Loader2, ExternalLink, Clock,
+  Database, Zap, Key
 } from 'lucide-react';
 
 interface ChatMessage { id: string; role: 'user' | 'assistant' | 'system'; content: string; ts: number; }
@@ -17,6 +15,7 @@ interface GatewayInfo { token: string | null; port: number; gatewayUrl: string; 
 interface QuickCmd { id: string; category: string; label: string; command: string; icon: any; description: string; }
 type Tab = 'chat' | 'terminal' | 'commands';
 function uid() { return Math.random().toString(36).slice(2); }
+const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high'] as const;
 
 const QUICK_CMDS: QuickCmd[] = [
   { id: 'status', category: 'Core', label: 'Status', command: 'gateway status', icon: Activity, description: 'Gateway status' },
@@ -40,11 +39,11 @@ export default function Dashboard() {
   const [tab, setTab] = useState<Tab>('chat');
   const [gwInfo, setGwInfo] = useState<GatewayInfo | null>(null);
   const [gwOnline, setGwOnline] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
-  const [wsState, setWsState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
-  const [wsError, setWsError] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [chatThinking, setChatThinking] = useState<string>('medium');
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [termOutput, setTermOutput] = useState('');
   const [termInput, setTermInput] = useState('');
@@ -58,59 +57,47 @@ export default function Dashboard() {
 
   useEffect(() => {
     const check = () => {
-      fetch('http://127.0.0.1:18789/', { signal: AbortSignal.timeout(2000) })
-        .then(() => setGwOnline(true)).catch(() => setGwOnline(false));
+      fetch('/api/exec', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: 'health' }),
+        signal: AbortSignal.timeout(5000),
+      }).then(r => r.json()).then(d => setGwOnline(d.success)).catch(() => setGwOnline(false));
     };
     check();
-    const t = setInterval(check, 10000);
+    const t = setInterval(check, 15000);
     return () => clearInterval(t);
   }, []);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
   useEffect(() => { termEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [termOutput]);
 
-  const connectWs = useCallback(() => {
-    if (!gwInfo) return;
-    wsRef.current?.close();
-    setWsState('connecting');
-    setWsError('');
-    const url = gwInfo.token
-      ? `${gwInfo.gatewayUrl}?token=${encodeURIComponent(gwInfo.token)}`
-      : gwInfo.gatewayUrl;
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
-    ws.onopen = () => {
-      setWsState('connected');
-      setChatMessages(prev => [...prev, { id: uid(), role: 'system', content: '🦞 Connected to OpenClaw gateway.', ts: Date.now() }]);
-    };
-    ws.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        const text = msg?.message?.content ?? msg?.content ?? msg?.text ?? JSON.stringify(msg);
-        setChatMessages(prev => [...prev, { id: uid(), role: 'assistant', content: text, ts: Date.now() }]);
-      } catch {
-        setChatMessages(prev => [...prev, { id: uid(), role: 'assistant', content: e.data, ts: Date.now() }]);
-      }
-    };
-    ws.onerror = () => setWsError('WebSocket error — check gateway is running.');
-    ws.onclose = (e) => {
-      setWsState('disconnected');
-      wsRef.current = null;
-      if (e.code !== 1000) setWsError(`Disconnected (${e.code}): ${e.reason || 'connection closed'}`);
-    };
-  }, [gwInfo]);
-
-  useEffect(() => {
-    if (gwInfo) connectWs();
-    return () => { wsRef.current?.close(); };
-  }, [gwInfo, connectWs]);
-
-  const sendChat = () => {
+  const sendChat = async () => {
     const text = chatInput.trim();
-    if (!text || wsState !== 'connected' || !wsRef.current) return;
-    setChatMessages(prev => [...prev, { id: uid(), role: 'user', content: text, ts: Date.now() }]);
-    wsRef.current.send(JSON.stringify({ type: 'message', content: text }));
+    if (!text || chatLoading) return;
     setChatInput('');
+    setChatMessages(prev => [...prev, { id: uid(), role: 'user', content: text, ts: Date.now() }]);
+    setChatLoading(true);
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, sessionId: chatSessionId, thinking: chatThinking }),
+      });
+      const data = await res.json();
+      if (data.sessionId) setChatSessionId(data.sessionId);
+      setChatMessages(prev => [...prev, {
+        id: uid(), role: 'assistant',
+        content: data.reply || data.error || 'No response.',
+        ts: Date.now(),
+      }]);
+    } catch (err: any) {
+      setChatMessages(prev => [...prev, {
+        id: uid(), role: 'system',
+        content: `Error: ${err.message}`,
+        ts: Date.now(),
+      }]);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   const runCmd = async (command: string) => {
@@ -133,8 +120,6 @@ export default function Dashboard() {
     }
   };
 
-  const wsColor = wsState === 'connected' ? 'text-emerald-400' : wsState === 'connecting' ? 'text-amber-400' : 'text-red-400';
-  const wsLabel = wsState === 'connected' ? 'Connected' : wsState === 'connecting' ? 'Connecting…' : 'Disconnected';
 
   const tabBtn = (t: Tab, label: string, Icon: any) => (
     <button
@@ -163,28 +148,24 @@ export default function Dashboard() {
             <span className="text-slate-400">Gateway</span>
             <span className={gwOnline ? 'text-emerald-400' : 'text-red-400'}>{gwOnline ? 'Online' : 'Offline'}</span>
           </div>
-          {/* WS status */}
-          <div className="flex items-center gap-2 text-xs">
-            {wsState === 'connecting' ? <Loader2 className="w-3 h-3 animate-spin text-amber-400" /> : wsState === 'connected' ? <Wifi className="w-3 h-3 text-emerald-400" /> : <WifiOff className="w-3 h-3 text-red-400" />}
-            <span className={wsColor}>{wsLabel}</span>
-          </div>
-          <button onClick={connectWs} title="Reconnect WebSocket" className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors">
-            <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-          </button>
-          <a href="http://127.0.0.1:18789/" target="_blank" rel="noreferrer"
+          {chatLoading && (
+            <div className="flex items-center gap-2 text-xs">
+              <Loader2 className="w-3 h-3 animate-spin text-orange-400" />
+              <span className="text-orange-400">Agent thinking…</span>
+            </div>
+          )}
+          <a href={gwInfo?.dashboardUrl || 'http://127.0.0.1:18789/'} target="_blank" rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs text-slate-300 transition-colors">
             <ExternalLink className="w-3 h-3" />Dashboard
           </a>
         </div>
       </header>
 
-      {/* Error banner */}
-      {wsError && (
+      {/* Offline banner */}
+      {!gwOnline && (
         <div className="bg-red-950 border-b border-red-800 px-5 py-2 flex items-center gap-2 text-xs text-red-300">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-          <span>{wsError}</span>
-          {gwInfo?.token && <span className="ml-2 text-red-400">Token: {gwInfo.token.slice(0, 12)}…</span>}
-          <button onClick={() => setWsError('')} className="ml-auto text-red-500 hover:text-red-300"><X className="w-3.5 h-3.5" /></button>
+          <span>Gateway offline — run <code className="bg-red-900 px-1 rounded">openclaw gateway start</code> to start it.</span>
         </div>
       )}
 
@@ -238,8 +219,8 @@ export default function Dashboard() {
                 {chatMessages.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-full text-center gap-3 text-slate-600">
                     <Bot className="w-12 h-12 opacity-30" />
-                    <p className="text-sm">Chat with OpenClaw via WebSocket</p>
-                    <p className="text-xs">{wsState === 'disconnected' ? 'Gateway offline — start it with: openclaw gateway start' : wsState === 'connecting' ? 'Connecting to gateway…' : 'Type a message below'}</p>
+                    <p className="text-sm">Chat with OpenClaw Agent</p>
+                    <p className="text-xs">{gwOnline ? 'Type a message below to start a conversation' : 'Gateway offline — start it first'}</p>
                   </div>
                 )}
                 {chatMessages.map(msg => (
@@ -253,21 +234,43 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
+                {chatLoading && (
+                  <div className="flex gap-3">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold bg-purple-600">🦞</div>
+                    <div className="bg-slate-800 rounded-xl px-3 py-2 text-sm text-slate-400">
+                      <div className="flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…</div>
+                    </div>
+                  </div>
+                )}
                 <div ref={chatEndRef} />
               </div>
-              <div className="p-3 border-t border-slate-800 bg-slate-900 flex gap-2">
+              <div className="p-3 border-t border-slate-800 bg-slate-900 flex gap-2 items-center">
+                <select
+                  value={chatThinking}
+                  onChange={e => setChatThinking(e.target.value)}
+                  title="Thinking level"
+                  className="px-2 py-2 bg-slate-800 rounded-lg text-xs text-slate-400 border border-slate-700 focus:border-orange-500 focus:outline-none"
+                >
+                  {THINKING_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
                 <input
                   value={chatInput}
                   onChange={e => setChatInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChat()}
-                  placeholder={wsState === 'connected' ? 'Message OpenClaw… (Enter to send)' : 'Gateway disconnected'}
-                  disabled={wsState !== 'connected'}
+                  placeholder={gwOnline ? 'Message OpenClaw… (Enter to send)' : 'Gateway offline'}
+                  disabled={chatLoading}
                   className="flex-1 px-3 py-2 bg-slate-800 rounded-lg text-sm text-white placeholder-slate-500 border border-slate-700 focus:border-orange-500 focus:outline-none disabled:opacity-40"
                 />
-                <button onClick={sendChat} disabled={wsState !== 'connected' || !chatInput.trim()}
+                <button onClick={sendChat} disabled={chatLoading || !chatInput.trim()}
                   className="px-3 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-white transition-colors disabled:opacity-40">
-                  <Send className="w-4 h-4" />
+                  {chatLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </button>
+                {chatSessionId && (
+                  <button onClick={() => { setChatSessionId(null); setChatMessages([]); }} title="New session"
+                    className="px-2 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 transition-colors">
+                    <Plus className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           )}

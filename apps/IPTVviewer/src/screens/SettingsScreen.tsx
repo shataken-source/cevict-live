@@ -139,8 +139,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       addPlaylist(playlist);
       setCurrentPlaylist(playlist);
 
-      const updatedPlaylists = [...playlists, playlist];
-      await PlaylistManager.savePlaylists(updatedPlaylists);
+      await PlaylistManager.savePlaylists(useStore.getState().playlists);
 
       Alert.alert('Success', 'Playlist loaded with new credentials!');
     } catch (error) {
@@ -165,8 +164,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       addPlaylist(playlist);
       setCurrentPlaylist(playlist);
 
-      const updatedPlaylists = [...playlists, playlist];
-      await PlaylistManager.savePlaylists(updatedPlaylists);
+      await PlaylistManager.savePlaylists(useStore.getState().playlists);
 
       Alert.alert('Success', 'Dezor playlist loaded successfully!');
     } catch (error) {

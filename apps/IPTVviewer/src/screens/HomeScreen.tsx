@@ -14,7 +14,6 @@ import { Channel, Playlist } from '@/types';
 import { M3UParser } from '@/services/M3UParser';
 import { PlaylistManager } from '@/services/PlaylistManager';
 import { SAMPLE_PLAYLIST } from '@/data/sampleData';
-import { IPTVService } from '@/services/IPTVService';
 
 interface HomeScreenProps {
   navigation: any;
@@ -72,8 +71,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   const loadDefaultPlaylists = async () => {
     await loadSamplePlaylist();
-    await loadLink4TVPlaylist();
-    await loadDezorPlaylist();
   };
 
   const loadSamplePlaylist = async () => {
@@ -97,71 +94,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       await PlaylistManager.savePlaylists(updatedPlaylists);
     } catch (error) {
       console.error('Error loading sample playlist:', error);
-    }
-  };
-
-  const loadLink4TVPlaylist = async () => {
-    try {
-      const iptvService = new IPTVService();
-      const playlistUrl = iptvService.getPlaylistUrl();
-
-      const playlist = await M3UParser.fetchAndParse(
-        playlistUrl,
-        'link4tv-playlist',
-        'Link4TV Channels'
-      );
-
-      addPlaylist(playlist);
-      setCurrentPlaylist(playlist);
-
-      await PlaylistManager.savePlaylists(useStore.getState().playlists);
-    } catch (error) {
-      console.error('Error loading Link4TV playlist:', error);
-      await tryAltServer();
-    }
-  };
-
-  const tryAltServer = async () => {
-    try {
-      const iptvService = new IPTVService();
-      const altUrl = iptvService.getAltPlaylistUrl();
-
-      const playlist = await M3UParser.fetchAndParse(
-        altUrl,
-        'link4tv-playlist',
-        'Link4TV Channels (Alt Server)'
-      );
-
-      addPlaylist(playlist);
-      setCurrentPlaylist(playlist);
-
-      // Capture current playlists from store, then save
-      const updatedPlaylists = useStore.getState().playlists;
-      await PlaylistManager.savePlaylists(updatedPlaylists);
-    } catch (error) {
-      console.error('Error loading from alt server:', error);
-    }
-  };
-
-  const loadDezorPlaylist = async () => {
-    try {
-      // DezorIPTV credentials
-      const dezorUrl = 'http://cf.like-cdn.com/get.php?username=jascodezorptv&password=19e9a1x16&type=m3u_plus&output=ts';
-
-      const playlist = await M3UParser.fetchAndParse(
-        dezorUrl,
-        'dezor-playlist',
-        'DezorIPTV - jascodezorptv'
-      );
-
-      addPlaylist(playlist);
-      setCurrentPlaylist(playlist);
-
-      // Capture current playlists from store, then save
-      const updatedPlaylists = useStore.getState().playlists;
-      await PlaylistManager.savePlaylists(updatedPlaylists);
-    } catch (error) {
-      console.error('Error loading Dezor playlist:', error);
     }
   };
 
