@@ -30,8 +30,9 @@ export default function CancellationModal({ isOpen, onClose, bookingId, bookingD
 
     setLoading(true);
     try {
+      // Server must compute refund amount — never trust client-calculated values
       const { error } = await supabase.functions.invoke('cancel-booking', {
-        body: { bookingId, reason, refundAmount }
+        body: { bookingId, reason }
       });
 
       if (error) throw error;
