@@ -682,7 +682,7 @@ export default function AdminPage() {
                 <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {Object.entries(scoresByLeague).map(([league, info]) => (
                     <Badge key={league} color={info.source === 'fallback' ? C.amber : C.green}>
-                      {league}: {info.count} ({info.source === 'fallback' ? 'API-Sports' : 'Odds API'})
+                      {league}: {info.count} ({info.source === 'fallback' ? 'fallback' : 'ESPN'})
                     </Badge>
                   ))}
                 </div>
