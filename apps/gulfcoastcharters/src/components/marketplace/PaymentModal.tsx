@@ -30,39 +30,26 @@ export default function PaymentModal({ open, onClose, listing, amount, buyerId, 
   const handlePayment = async () => {
     setLoading(true);
     try {
-      // In production, you'd use Stripe Elements for secure card input
-      // This is a simplified version
-      const { data, error } = await supabase.functions.invoke('marketplace-manager', {
+      // Create Stripe Checkout session — server validates amount and handles payment
+      const { data, error } = await supabase.functions.invoke('stripe-checkout', {
         body: {
-          action: 'process_payment',
-          listing_id: listing.id,
-          buyer_id: buyerId,
-          seller_id: listing.seller_id,
-          amount: amount,
-          payment_method_id: 'pm_card_visa', // Mock payment method
-          shipping_address: shippingAddress
+          type: 'marketplace_purchase',
+          listingId: listing.id,
+          buyerId,
+          sellerId: listing.seller_id,
+          shippingAddress,
+          successUrl: `${window.location.origin}/marketplace/purchase-success?listing=${listing.id}`,
+          cancelUrl: window.location.href,
         }
       });
 
       if (error) throw error;
 
-      // Send confirmation email
-      await supabase.functions.invoke('mailjet-email-service', {
-        body: {
-          action: 'send_email',
-          to: shippingAddress.name,
-          subject: 'Purchase Confirmation - Gulf Coast Charters Marketplace',
-          html: `
-            <h2>Purchase Confirmed!</h2>
-            <p>Thank you for your purchase of ${listing.title}.</p>
-            <p><strong>Amount:</strong> $${amount}</p>
-            <p><strong>Transaction ID:</strong> ${data.transaction.id}</p>
-            <p>The seller will ship your item soon. You'll receive tracking information via email.</p>
-          `
-        }
-      });
-
-      onSuccess();
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Payment failed');
     } finally {
@@ -85,7 +72,7 @@ export default function PaymentModal({ open, onClose, listing, amount, buyerId, 
 
           <div className="space-y-3">
             <h3 className="font-semibold">Shipping Address</h3>
-            
+
             <div>
               <Label>Full Name</Label>
               <Input
@@ -149,8 +136,8 @@ export default function PaymentModal({ open, onClose, listing, amount, buyerId, 
               <span>Secure payment powered by Stripe</span>
             </div>
 
-            <Button 
-              className="w-full" 
+            <Button
+              className="w-full"
               size="lg"
               onClick={handlePayment}
               disabled={loading || !shippingAddress.name || !shippingAddress.address}

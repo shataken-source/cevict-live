@@ -41,19 +41,19 @@ export default function CreateListingModal({ open, onClose, onSuccess, userId }:
 
     try {
       const imageUrls: string[] = [];
-      
+
       for (const image of images) {
-        const fileName = `${Date.now()}-${image.name}`;
+        const fileName = `${crypto.randomUUID()}-${image.name}`;
         const { data, error } = await supabase.storage
           .from('boat-photos')
           .upload(fileName, image);
-        
+
         if (error) throw error;
-        
+
         const { data: { publicUrl } } = supabase.storage
           .from('boat-photos')
           .getPublicUrl(fileName);
-        
+
         imageUrls.push(publicUrl);
       }
 
@@ -85,7 +85,7 @@ export default function CreateListingModal({ open, onClose, onSuccess, userId }:
         <DialogHeader>
           <DialogTitle>Create New Listing</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>Title</Label>

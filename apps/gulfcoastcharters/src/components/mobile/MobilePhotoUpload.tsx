@@ -32,8 +32,8 @@ export default function MobilePhotoUpload({ bookingId, onUploadComplete }: Mobil
     setUploading(true);
     try {
       const blob = await fetch(preview).then(r => r.blob());
-      const fileName = `${Date.now()}.jpg`;
-      
+      const fileName = `${crypto.randomUUID()}.jpg`;
+
       const { data, error } = await supabase.storage
         .from('trip-photos')
         .upload(fileName, blob);
@@ -66,7 +66,7 @@ export default function MobilePhotoUpload({ bookingId, onUploadComplete }: Mobil
   return (
     <Card className="p-4">
       <h3 className="font-semibold mb-4">Upload Trip Photos</h3>
-      
+
       {!preview ? (
         <div className="space-y-3">
           <Button
@@ -85,7 +85,7 @@ export default function MobilePhotoUpload({ bookingId, onUploadComplete }: Mobil
             <ImageIcon className="w-4 h-4 mr-2" />
             Choose from Gallery
           </Button>
-          
+
           <input
             ref={cameraInputRef}
             type="file"
