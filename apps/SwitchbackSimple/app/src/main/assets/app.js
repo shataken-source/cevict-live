@@ -228,8 +228,12 @@ document.getElementById('save-creds-btn').addEventListener('click', async () => 
   result.textContent = 'Testing connection…';
   result.style.color = 'var(--muted)';
   try {
-    const params = new URLSearchParams({ action: 'get_user_info', server, username: user, password: pass });
-    const res = await fetch(`/api/iptv?${params}`);
+    // Use buildApiUrl with temp creds so proxy routing works on Android too
+    const savedServer = S.server, savedUser = S.user, savedPass = S.pass;
+    S.server = server; S.user = user; S.pass = pass;
+    const testUrl = buildApiUrl('get_user_info');
+    S.server = savedServer; S.user = savedUser; S.pass = savedPass;
+    const res = await fetch(testUrl);
     const data = await res.json();
     if (data?.user_info?.auth === 1 || data?.user_info?.status === 'Active') {
       S.server = server; S.user = user; S.pass = pass;
@@ -876,8 +880,8 @@ async function loadCatchUpEPG(streamId, chans) {
   const epgEl = document.getElementById('catchup-epg');
   epgEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
-    const res = await fetch(`/api/epg?stream_id=${streamId}&server=${encodeURIComponent(S.server)}&username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&limit=20`);
-    const data = await res.json();
+    const fakeCh = { stream_id: streamId };
+    const data = await fetchEpgForChannel(fakeCh);
     const listings = data.epg_listings || [];
     if (!listings.length) { epgEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:10px">No EPG data available</div>'; return; }
     const nowTs = Math.floor(Date.now() / 1000);
@@ -975,28 +979,31 @@ async function loadStream(ch) {
     return;
   }
 
-  // Get HLS URL from proxy
+  // Build HLS URL — Android goes through proxy, Vercel builds direct m3u8
   let hlsUrl;
-  try {
-    const params = new URLSearchParams({
-      action: 'get_stream_url',
-      stream_id: ch.stream_id,
-      server: S.server,
-      username: S.user,
-      password: S.pass,
-    });
-    const data = await fetch(`/api/iptv?${params}`).then(r => r.json());
-    hlsUrl = data.url;
-  } catch (e) {
-    // Fallback: build URL directly
-    hlsUrl = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.m3u8`;
+  if (IS_ANDROID_WEBVIEW) {
+    const target = `${S.server}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${ch.stream_id}.m3u8`;
+    hlsUrl = `http://localhost:8123/proxy?url=${encodeURIComponent(target)}`;
+  } else {
+    try {
+      const data = await fetch(buildApiUrl('get_stream_url', { stream_id: ch.stream_id })).then(r => r.json());
+      hlsUrl = data.url;
+    } catch (e) {
+      hlsUrl = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.m3u8`;
+    }
   }
+
+  // Read buffer size preference
+  const bufSel = document.getElementById('q-buffer-select');
+  const bufSecs = bufSel ? (bufSel.selectedIndex === 0 ? 3 : bufSel.selectedIndex === 2 ? 10 : 5) : 5;
 
   if (typeof Hls !== 'undefined' && Hls.isSupported()) {
     const hls = new Hls({
       enableWorker: true,
       lowLatencyMode: true,
       backBufferLength: 90,
+      maxBufferLength: bufSecs * 6,
+      maxMaxBufferLength: bufSecs * 12,
     });
     S.hlsInstance = hls;
     hls.loadSource(hlsUrl);
@@ -2036,9 +2043,15 @@ S.adBlockVolume = parseInt(localStorage.getItem('adblock_volume') || '50');
 S.autoPlay = localStorage.getItem('autoplay') !== 'false';
 
 // Override initSettings to populate all fields including new ones
-const _origInitSettings = initSettings;
-function initSettings() {
-  _origInitSettings();
+// initSettings() — canonical single version (inlined upgrade logic, no hoisting risk)
+// Redefine using assignment so it replaces the original without a second function declaration.
+initSettings = function () {
+  // Core: populate credentials
+  document.getElementById('cfg-server').value = S.server;
+  document.getElementById('cfg-user').value = S.user;
+  document.getElementById('cfg-pass').value = S.pass;
+  if (S.userInfo) renderAccountInfo(S.userInfo);
+
   // EPG URL
   const epgInput = document.getElementById('cfg-epg');
   if (epgInput) epgInput.value = S.epgUrl;
