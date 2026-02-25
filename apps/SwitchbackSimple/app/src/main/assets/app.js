@@ -250,12 +250,120 @@ function initTVHome() {
     el.addEventListener('click', () => nav(el.dataset.screen)));
 }
 
+// ── LANGUAGE / COUNTRY CHANNEL FILTER ────────────────────────
+// Common foreign-language category keyword patterns to detect and optionally hide.
+// The user checks OFF which ones they want hidden.
+const LANG_FILTER_GROUPS = [
+  { id: 'ar', label: '🇸🇦 Arabic', keywords: ['arabic', 'arab', 'ar |', '| ar', 'بث', 'mbc', 'osn', 'rotana', 'alarabiya', 'aljazeera', 'bein', 'ksa', 'uae', 'qatar', 'iraq', 'egypt', 'saudi', 'kuwait', 'bahrain', 'oman', 'jordan', 'libya', 'algeria', 'morocco', 'tunisia', 'sudan', 'yemen', 'syria'] },
+  { id: 'fr', label: '🇫🇷 French', keywords: ['french', 'france', 'fr |', '| fr', 'tf1', 'm6', 'canal+', 'tmc', 'bfm', 'rmc', 'nrj12', 'arte', 'w9', 'c8', 'cstar', 'gulli'] },
+  { id: 'pt', label: '🇧🇷 Portuguese', keywords: ['portuguese', 'portugal', 'brazil', 'brasil', 'pt |', '| pt', 'globo', 'record', 'sbt', 'band', 'redetv'] },
+  { id: 'es', label: '🇪🇸 Spanish', keywords: ['spanish', 'spain', 'espana', 'español', 'latino', 'mexico', 'colombia', 'argentina', 'es |', '| es', 'telemundo', 'univision', 'telenovela'] },
+  { id: 'tr', label: '🇹🇷 Turkish', keywords: ['turkish', 'turkey', 'turk', 'trt', 'atv', 'show tv', 'star tv', 'kanal d', 'fox tr'] },
+  { id: 'de', label: '🇩🇪 German', keywords: ['german', 'germany', 'deutsch', 'de |', '| de', 'ard', 'zdf', 'sat1', 'pro7', 'rtl', 'kabel1', 'vox de'] },
+  { id: 'it', label: '🇮🇹 Italian', keywords: ['italian', 'italy', 'rai', 'mediaset', 'canale 5', 'italia 1', 'rete 4', 'la7'] },
+  { id: 'ru', label: '🇷🇺 Russian', keywords: ['russian', 'russia', 'россия', 'первый', 'нтв', 'rtvi', 'russia tv', 'ртр', 'рен тв'] },
+  { id: 'hi', label: '🇮🇳 Hindi/Indian', keywords: ['hindi', 'india', 'indian', 'zee', 'star plus', 'sony', 'colors', 'sun tv', 'star vijay', 'zee telugu', 'zee tamil', 'punjabi', 'bengali', 'marathi', 'gujarati', 'malayalam', 'kannada', 'telugu', 'tamil'] },
+  { id: 'zh', label: '🇨🇳 Chinese', keywords: ['chinese', 'china', 'mandarin', 'cantonese', 'cctv', 'tvb', 'phoenix', 'ntdtv', 'dragon tv'] },
+  { id: 'fa', label: '🇮🇷 Persian/Farsi', keywords: ['persian', 'farsi', 'iran', 'afghanistan', 'pashto', 'dari', 'irib', 'gem tv', 'manoto', 'voa farsi'] },
+  { id: 'pl', label: '🇵🇱 Polish', keywords: ['polish', 'poland', 'polskie', 'tvp', 'polsat', 'tvn pl'] },
+  { id: 'nl', label: '🇳🇱 Dutch', keywords: ['dutch', 'netherlands', 'nederland', 'npo', 'rtl nl', 'sbs nl'] },
+  { id: 'ro', label: '🇷🇴 Romanian', keywords: ['romanian', 'romania', 'pro tv', 'antena', 'digi24', 'kanal d ro'] },
+  { id: 'xx', label: '🌍 Other Foreign', keywords: ['albanian', 'albanie', 'bosnian', 'bulgarian', 'croatian', 'czech', 'greek', 'hungarian', 'macedonian', 'serbian', 'slovak', 'slovenian', 'ukrainian', 'swedish', 'danish', 'norwegian', 'finnish', 'hebrew', 'persian', 'kurdish', 'somali', 'hausa', 'amharic', 'swahili', 'tagalog', 'vietnamese', 'thai', 'korean', 'japanese'] },
+];
+
+// Returns the set of category keyword groups the user has HIDDEN
+function getLangFilterHidden() {
+  try { return JSON.parse(localStorage.getItem('lang_filter_hidden') || '[]'); } catch { return []; }
+}
+
+// Apply language filter to a channel list
+function applyLangFilter(channels) {
+  const hidden = getLangFilterHidden();
+  if (!hidden.length) return channels;
+  const hiddenGroups = LANG_FILTER_GROUPS.filter(g => hidden.includes(g.id));
+  if (!hiddenGroups.length) return channels;
+  return channels.filter(ch => {
+    const haystack = ((ch.category_name || '') + ' ' + (ch.name || '')).toLowerCase();
+    for (const group of hiddenGroups) {
+      if (group.keywords.some(kw => haystack.includes(kw))) return false;
+    }
+    return true;
+  });
+}
+
 // ── SETTINGS INIT ────────────────────────────────────────────
 function initSettings() {
   document.getElementById('cfg-server').value = S.server;
   document.getElementById('cfg-user').value = S.user;
   document.getElementById('cfg-pass').value = S.pass;
   if (S.userInfo) renderAccountInfo(S.userInfo);
+  renderLangFilterUI();
+}
+
+function renderLangFilterUI() {
+  const listEl = document.getElementById('lang-filter-list');
+  if (!listEl) return;
+  const hidden = getLangFilterHidden();
+  listEl.innerHTML = LANG_FILTER_GROUPS.map(g => `
+    <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;font-size:13px" tabindex="0" role="checkbox" aria-checked="${hidden.includes(g.id)}">
+      <span style="width:18px;height:18px;border:2px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${hidden.includes(g.id) ? 'var(--primary)' : 'transparent'};font-size:11px">
+        ${hidden.includes(g.id) ? '✓' : ''}
+      </span>
+      <span>${g.label}</span>
+      <span style="margin-left:auto;font-size:10px;color:var(--muted)">Hide</span>
+    </label>`).join('');
+
+  // Click / Enter toggles each checkbox row
+  listEl.querySelectorAll('label').forEach((lbl, i) => {
+    const toggle = () => {
+      const g = LANG_FILTER_GROUPS[i];
+      const hidden = getLangFilterHidden();
+      const idx = hidden.indexOf(g.id);
+      if (idx >= 0) hidden.splice(idx, 1); else hidden.push(g.id);
+      localStorage.setItem('lang_filter_hidden', JSON.stringify(hidden));
+      renderLangFilterUI();
+    };
+    lbl.addEventListener('click', toggle);
+    lbl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+  });
+
+  // Apply button
+  const applyBtn = document.getElementById('lang-filter-apply-btn');
+  if (applyBtn && !applyBtn._wired) {
+    applyBtn._wired = true;
+    applyBtn.addEventListener('click', () => {
+      // Re-filter and reload channels
+      if (S.allChannels.length) {
+        S.channelList = applyLangFilter(S.allChannels);
+        const statusEl = document.getElementById('lang-filter-status');
+        if (statusEl) statusEl.textContent = `Showing ${S.channelList.length.toLocaleString()} of ${S.allChannels.length.toLocaleString()} channels`;
+      }
+      showToast('Channel filters applied — go to Live TV to see results');
+    });
+  }
+
+  // Clear all button
+  const clearBtn = document.getElementById('lang-filter-clear-btn');
+  if (clearBtn && !clearBtn._wired) {
+    clearBtn._wired = true;
+    clearBtn.addEventListener('click', () => {
+      localStorage.removeItem('lang_filter_hidden');
+      renderLangFilterUI();
+      showToast('All language filters cleared');
+    });
+  }
+
+  // Show current status
+  const statusEl = document.getElementById('lang-filter-status');
+  const hidden2 = getLangFilterHidden();
+  if (statusEl) {
+    if (hidden2.length) {
+      const filtered = S.allChannels.length ? applyLangFilter(S.allChannels).length : null;
+      statusEl.textContent = `${hidden2.length} group(s) hidden${filtered !== null ? ` · ${filtered.toLocaleString()} channels visible` : ''}`;
+    } else {
+      statusEl.textContent = 'No filters active — all channels shown';
+    }
+  }
 }
 
 function renderAccountInfo(info) {
@@ -327,7 +435,11 @@ function clearAllData() {
 // ═══════════════════════════════════════════════════════════════
 
 async function initChannels() {
-  if (S.allChannels.length) { renderChannelCats(); return; }
+  if (S.allChannels.length) {
+    S.channelList = applyLangFilter(S.allChannels);
+    renderChannelCats();
+    return;
+  }
   document.getElementById('channel-list').innerHTML = '<div class="loading"><div class="spinner"></div> Loading channels...</div>';
   try {
     const [cats, streams] = await Promise.all([
@@ -336,9 +448,9 @@ async function initChannels() {
     ]);
     S.liveCategories = Array.isArray(cats) ? cats : [];
     S.allChannels = Array.isArray(streams) ? streams : [];
-    S.channelList = S.allChannels;
+    S.channelList = applyLangFilter(S.allChannels);
     document.getElementById('channels-sub').textContent =
-      `${S.allChannels.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
+      `${S.channelList.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
     renderChannelCats();
   } catch (e) {
     document.getElementById('channel-list').innerHTML =
@@ -348,66 +460,45 @@ async function initChannels() {
 
 function renderChannelCats() {
   const pills = document.getElementById('cat-pills');
-  pills.innerHTML = `<button class="pill pill-active" data-cat-id="">All</button>` +
+  pills.innerHTML = `<button class="pill pill-active" data-cat-id="" tabindex="0">All</button>` +
     S.liveCategories.slice(0, 18).map(c =>
-      `<button class="pill pill-inactive" data-cat-id="${esc(c.category_id)}">${esc(c.category_name)}</button>`
+      `<button class="pill pill-inactive" data-cat-id="${esc(c.category_id)}" tabindex="0">${esc(c.category_name)}</button>`
     ).join('');
-  pills.querySelectorAll('.pill').forEach(btn => {
+  const pillBtns = Array.from(pills.querySelectorAll('.pill'));
+  pillBtns.forEach((btn, pi) => {
     btn.addEventListener('click', () => {
-      pills.querySelectorAll('.pill').forEach(p => p.className = 'pill pill-inactive');
+      pillBtns.forEach(p => p.className = 'pill pill-inactive');
       btn.className = 'pill pill-active';
       const catId = btn.dataset.catId;
-      S.channelList = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
+      const base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
+      S.channelList = applyLangFilter(base);
       renderChannelList(S.channelList);
+    });
+    // D-pad left/right between pills
+    btn.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); const n = pillBtns[pi + 1]; if (n) n.focus(); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); const n = pillBtns[pi - 1]; if (n) n.focus(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); focusFirstChannelRow(); }
     });
   });
   renderChannelList(S.channelList);
 }
 
+function focusFirstChannelRow() {
+  const row = document.querySelector('#channel-list .ch-row');
+  if (row) row.focus();
+}
+
 function renderChannelList(list) {
+  // Delegate to the canonical version defined later in the file
+  // (canonical renderChannelList is assigned below via renderChannelList = function(...))
+  // This stub is intentionally minimal — the var-assignment below will override it
+  // when the script reaches that point. However if called before that point, we
+  // fall back to a basic render so the screen is never blank.
   const el = document.getElementById('channel-list');
-  if (!list.length) { el.innerHTML = '<div style="color:var(--muted);padding:20px;font-size:13px">No channels found.</div>'; return; }
-  // render first 200 with virtual scroll hint
-  const slice = list.slice(0, 200);
-  el.innerHTML = slice.map((ch, idx) => {
-    const isFav = S.favorites.some(f => f.stream_id == ch.stream_id);
-    const logo = ch.stream_icon
-      ? `<img src="${esc(ch.stream_icon)}" style="width:100%;height:100%;object-fit:contain;border-radius:6px" onerror="this.style.display='none';this.nextSibling.style.display='flex'" /><span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:11px;font-weight:700">${esc(channelInitials(ch.name))}</span>`
-      : `<span style="font-size:11px;font-weight:700">${esc(channelInitials(ch.name))}</span>`;
-    return `
-      <div class="ch-row" data-idx="${idx}" data-id="${ch.stream_id}">
-        <div class="ch-icon" style="background:${colorFromName(ch.name)}">${logo}</div>
-        <div class="ch-info">
-          <div class="ch-name">${esc(ch.name)}</div>
-          <div class="ch-sub">${esc(ch.category_name || '')}${ch.epg_channel_id ? ' · EPG' : ''}${ch.tv_archive ? ' · Catch-Up' : ''}</div>
-        </div>
-        <div class="ch-meta">
-          ${ch.tv_archive ? '<span class="badge badge-hd" style="margin-right:4px">CU</span>' : ''}
-          <span class="fav-star${isFav ? ' on' : ''}" data-id="${ch.stream_id}">★</span>
-        </div>
-      </div>`;
-  }).join('');
-  if (list.length > 200) {
-    el.innerHTML += `<div style="color:var(--muted);font-size:12px;padding:12px;text-align:center">Showing 200 of ${list.length.toLocaleString()} — use search to filter</div>`;
-  }
-  // click to play
-  el.querySelectorAll('.ch-row').forEach(row => {
-    row.addEventListener('click', (e) => {
-      if (e.target.classList.contains('fav-star')) return;
-      const idx = parseInt(row.dataset.idx);
-      const ch = S.channelList[idx];
-      openPlayer(ch, S.channelList, idx);
-    });
-  });
-  // fav stars
-  el.querySelectorAll('.fav-star').forEach(star => {
-    star.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const id = star.dataset.id;
-      const ch = S.allChannels.find(c => c.stream_id == id);
-      toggleFav(ch, star);
-    });
-  });
+  if (!el) return;
+  if (!list || !list.length) { el.innerHTML = '<div style="color:var(--muted);padding:20px;font-size:13px">No channels found.</div>'; return; }
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Loading...</div>';
 }
 
 // channel search
@@ -2770,7 +2861,7 @@ const SCREEN_FIRST_FOCUS = {
   movies: '.pill, .media-card, #movies-search',
   series: '.pill, .media-card, #series-search',
   search: '#search-input',
-  settings: '#cfg-server, .toggle-sw, .settings-group input, .settings-group button',
+  settings: '#cfg-import-btn, #lang-filter-apply-btn, .toggle-sw, .settings-group button, .settings-group input',
   quality: '#bw-test-btn, .quality-opt, button.btn',
   recordings: '.rec-tab-btn, .rec-card',
   favorites: '.fav-tab-btn, .fav-item, .ch-row',
@@ -2829,6 +2920,27 @@ function makeContentRowsFocusable() {
   document.head.appendChild(style);
 })();
 
+// ── TOGGLE-SW KEYBOARD SUPPORT ───────────────────────────────
+// .toggle-sw elements use onclick; wire Enter/Space for D-pad.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const el = document.activeElement;
+  if (!el || !el.classList.contains('toggle-sw')) return;
+  e.preventDefault();
+  el.click();
+});
+
+// ── CHANNEL ROW: ArrowUp from first row → focus active pill ──
+document.getElementById('channel-list').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowUp') return;
+  const rows = Array.from(document.querySelectorAll('#channel-list .ch-row'));
+  if (document.activeElement === rows[0]) {
+    e.preventDefault();
+    const activePill = document.querySelector('#cat-pills .pill-active');
+    if (activePill) activePill.focus();
+  }
+});
+
 // Boot TV remote support
 initTVRemote();
 
@@ -2838,4 +2950,4 @@ setTimeout(() => {
   if (first) first.focus();
 }, 200);
 
-console.log('[Switchback TV] TV remote nav + nav() fix applied ✓');
+console.log('[Switchback TV] v3.6 — lang filter, pill nav, toggle-sw kb, ch-row focus ✓');

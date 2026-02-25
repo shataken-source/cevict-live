@@ -1362,6 +1362,21 @@
               </div>
             </div>
             <div>
+              <div class="section-title">Channel Filters</div>
+              <div class="settings-group" style="padding:13px" id="lang-filter-group">
+                <div
+                  style="font-size:10px;color:var(--muted);margin-bottom:9px;text-transform:uppercase;letter-spacing:1px">
+                  Hide channels by language / region</div>
+                <div id="lang-filter-list" style="display:flex;flex-direction:column;gap:6px">
+                  <!-- populated by JS -->
+                </div>
+                <div style="margin-top:10px;display:flex;gap:8px">
+                  <button class="btn btn-red btn-sm" id="lang-filter-apply-btn" tabindex="0" style="flex:1">✓ Apply
+                    Filters</button>
+                  <button class="btn btn-ghost btn-sm" id="lang-filter-clear-btn" tabindex="0">Clear All</button>
+                </div>
+                <div id="lang-filter-status" style="margin-top:7px;font-size:11px;color:var(--muted)"></div>
+              </div>
               <div class="section-title">Playback</div>
               <div class="settings-group">
                 <div class="row-item"><span style="font-size:13px">Auto-Play on Start</span>
