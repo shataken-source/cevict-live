@@ -38,7 +38,7 @@ case "$APP_DIR" in
     # Unknown project — check everything except IPTVviewer (old behavior)
     echo ">>> Unknown project, checking all files"
     REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
-    git -C "$REPO_ROOT" diff --quiet HEAD^ HEAD -- . ':!apps/IPTVviewer' 2>/dev/null
+    git -C "$REPO_ROOT" diff --quiet HEAD^ HEAD -- . 2>/dev/null
     exit $?
     ;;
 esac
