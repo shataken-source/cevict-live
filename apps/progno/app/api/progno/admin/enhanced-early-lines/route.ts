@@ -104,8 +104,8 @@ export async function POST(request: NextRequest) {
     // Load data (supports both environments)
     const earlyData = await loadPredictionsSnapshot(earlyDate, true)
     const regularData = await loadPredictionsSnapshot(regularDate, false)
-    const earlyPicks: Pick[] = Array.isArray(earlyData.picks) ? earlyData.picks : []
-    const regularPicks: Pick[] = Array.isArray(regularData.picks) ? regularData.picks : []
+    const earlyPicks: Pick[] = Array.isArray(earlyData?.picks) ? earlyData.picks : []
+    const regularPicks: Pick[] = Array.isArray(regularData?.picks) ? regularData.picks : []
 
     // Index regular picks by game_id
     const regularByGameId: Record<string, Pick> = {}
