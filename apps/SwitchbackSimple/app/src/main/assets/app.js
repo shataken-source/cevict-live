@@ -221,7 +221,7 @@ function fetchXtream(server, user, pass) {
               logo: s.stream_icon || '',
               group: catName,
               tvgId: s.epg_channel_id || '',
-              url: base + '/live/' + encodeURIComponent(user) + '/' + encodeURIComponent(pass) + '/' + s.stream_id + '.ts',
+              url: base + '/live/' + encodeURIComponent(user) + '/' + encodeURIComponent(pass) + '/' + s.stream_id,
             });
           });
           return chans;
@@ -450,7 +450,7 @@ function playCh(id) {
   var vid = $('vid');
   $('nc').style.display = 'none';
   vid.style.display = 'block';
-  vid.src = ch.url;
+  vid.src = proxyUrl(ch.url);
   vid.volume = S.isMuted ? 0 : S.volume / 100;
   vid.play().catch(function () { });
 

@@ -119,11 +119,30 @@ public class LocalServer extends NanoHTTPD {
                 if (code >= 200 && code < 400) {
                     InputStream is = conn.getInputStream();
                     String contentType = conn.getContentType();
-                    if (contentType == null) contentType = "text/plain";
+                    if (contentType == null) contentType = "application/octet-stream";
+                    long contentLength = conn.getContentLengthLong();
 
-                    // Read full response into memory before disconnecting
-                    // (NanoHTTPD reads async — if we use chunked response,
-                    //  the finally block disconnects conn and closes the stream)
+                    // For live streams (no content-length or video/audio types), use chunked streaming
+                    // to avoid buffering an infinite stream into memory
+                    boolean isStream = contentLength < 0
+                        || contentType.startsWith("video/")
+                        || contentType.startsWith("audio/")
+                        || contentType.contains("mpegts")
+                        || contentType.contains("octet-stream")
+                        || contentType.contains("mp2t");
+
+                    if (isStream) {
+                        Log.i(TAG, "Proxy streaming: " + contentType + " for " + targetUrl);
+                        // Do NOT disconnect conn here — NanoHTTPD will read from the InputStream
+                        // The connection stays alive until the client stops reading
+                        final HttpURLConnection streamConn = conn;
+                        conn = null; // prevent finally block from disconnecting
+                        Response resp = newChunkedResponse(Response.Status.OK, contentType, is);
+                        resp.addHeader("Access-Control-Allow-Origin", "*");
+                        return resp;
+                    }
+
+                    // For small API responses, buffer into memory as before
                     java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
                     byte[] buf = new byte[8192];
                     int n;
