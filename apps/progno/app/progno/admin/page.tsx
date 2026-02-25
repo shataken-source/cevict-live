@@ -281,10 +281,7 @@ export default function AdminPage() {
     try { const res = await fetch('/api/progno/admin/cron/jobs', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` }, body: JSON.stringify({ id }) }); const j = await res.json(); if (res.ok && j.success) setCronJobs(j.jobs || []); } catch { }
   };
 
-  useEffect(() => {
-    const today = getToday();
-    if (gameDate !== today) setGameDate(today);
-  }, []);
+  // gameDate already initialized to getToday() — no effect needed
 
   // -- Live Odds ---------------------------------------------------------------
   const fetchLiveOdds = async () => {
@@ -316,7 +313,7 @@ export default function AdminPage() {
   };
 
   // -- Cron --------------------------------------------------------------------
-  const runCron = async (job: 'daily-predictions' | 'daily-results') => {
+  const runCron = async (job: 'daily-predictions' | 'daily-results' | 'daily-kalshi') => {
     if (!secret.trim()) { setCronLog({ job, ok: false, msg: 'Enter admin secret first.' }); return; }
     setCronLoading(job);
     setCronLog(null);
@@ -646,7 +643,7 @@ export default function AdminPage() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {[
                   ['STRATEGY', 'best (FILTER_STRATEGY)'], ['ODDS RANGE', '-200 to +500'], ['MIN CONF', '57% (PROGNO_MIN_CONFIDENCE)'],
-                  ['HOME BIAS', '+5% / Away -5%'], ['HOME ONLY', 'Off (HOME_ONLY_MODE=1 to enable)'],
+                  ['HOME BIAS', '+5% / Away -5%'], ['HOME ONLY', 'On by default (set HOME_ONLY_MODE=0 to disable)'],
                   ['SEASON CHECK', 'On'], ['STREAK WIN 3+', '1.1x'], ['STREAK LOSS 3+', '0.75x'],
                   ['EARLY WINDOW', '2–5 days ahead'], ['EARLY DECAY 2d', '97%'], ['EARLY DECAY 3d', '93%'], ['EARLY DECAY 5d+', '75%'],
                   ['NFL FLOOR', '62% (PROGNO_FLOOR_NFL)'], ['NCAAF FLOOR', '62%'], ['NBA FLOOR', '57%'], ['NHL FLOOR', '57%'],
@@ -674,8 +671,8 @@ export default function AdminPage() {
                   <input type="date" title="Results date" value={resultsDate} onChange={e => setResultsDate(e.target.value)} style={{ background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.blue, fontFamily: C.mono, fontSize: 12, padding: '3px 8px' }} />
                   <Btn onClick={() => setResultsDate(s => addDays(s, 1))} color={C.textDim} style={{ padding: '3px 8px', fontSize: 11 }}>▶</Btn>
                 </div>
-                <Btn onClick={() => runCron('daily-results')} disabled={!!cronLoading} color={C.blue}>
-                  {cronLoading === 'daily-results' ? '⟳ GRADING...' : '◈ GRADE YESTERDAY'}
+                <Btn onClick={() => runCron('daily-results')} disabled={cronLoading === 'daily-results'} color={C.blue}>
+                  {cronLoading === 'daily-results' ? '⟳ GRADING...' : `◈ GRADE ${resultsDate}`}
                 </Btn>
               </div>
               {cronLog && cronLog.job === 'daily-results' && <StatusLine ok={cronLog.ok} msg={cronLog.msg} />}
