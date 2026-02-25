@@ -32,9 +32,10 @@ const S = {
 // SwitchbackSimple Android app serves from localhost:8123 via NanoHTTPD
 // Vercel deployment serves /api/iptv serverless functions
 // We auto-detect and route accordingly.
-const IS_ANDROID_WEBVIEW = window.location.hostname === '127.0.0.1' ||
-  window.location.hostname === 'localhost' &&
-  window.location.port === '8123';
+const IS_ANDROID_WEBVIEW = (
+  window.location.hostname === '127.0.0.1' ||
+  window.location.hostname === 'localhost'
+) && window.location.port === '8123';
 
 function buildApiUrl(action, extra = {}) {
   const xtreamAction = {
@@ -2362,10 +2363,10 @@ function nav(screen) {
     sbItem.focus(); // keep focus on active item for TV remote
   }
   const TITLES = {
-    tvhome:'Home', channels:'Live TV', movies:'Movies', series:'Series',
-    favorites:'Favorites', history:'History', recordings:'Recordings',
-    catchup:'Catch-Up', epg:'TV Guide', search:'Search', devices:'Devices',
-    quality:'Quality', pricing:'Plans', settings:'Settings',
+    tvhome: 'Home', channels: 'Live TV', movies: 'Movies', series: 'Series',
+    favorites: 'Favorites', history: 'History', recordings: 'Recordings',
+    catchup: 'Catch-Up', epg: 'TV Guide', search: 'Search', devices: 'Devices',
+    quality: 'Quality', pricing: 'Plans', settings: 'Settings',
   };
   const titleEl = document.getElementById('topbar-title');
   if (titleEl) titleEl.textContent = TITLES[screen] || screen;
@@ -2381,11 +2382,11 @@ function nav(screen) {
   if (lazy[screen]) lazy[screen]();
 
   // ── Upgrade hooks ─────────────────────────────────────────────
-  if (screen === 'quality')   setTimeout(initQualityScreen, 50);
-  if (screen === 'settings')  setTimeout(() => { initSettings(); patchSettingsToggles(); }, 50);
+  if (screen === 'quality') setTimeout(initQualityScreen, 50);
+  if (screen === 'settings') setTimeout(() => { initSettings(); patchSettingsToggles(); }, 50);
   if (screen === 'favorites') setTimeout(renderFavorites, 50);
-  if (screen === 'recordings')setTimeout(renderRecordings, 50);
-  if (screen === 'epg')       setTimeout(addEpgSearchBtn, 500);
+  if (screen === 'recordings') setTimeout(renderRecordings, 50);
+  if (screen === 'epg') setTimeout(addEpgSearchBtn, 500);
 }
 
 // Re-wire all nav triggers (sidebar items, topbar cog, home tiles)
