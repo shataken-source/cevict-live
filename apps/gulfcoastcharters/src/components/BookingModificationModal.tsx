@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 import { Calendar as CalendarIcon, Clock, AlertCircle } from 'lucide-react';
 import TimeSlotSelector from './booking/TimeSlotSelector';
 
@@ -25,25 +26,37 @@ export default function BookingModificationModal({ isOpen, onClose, booking }: B
       toast.error('Please select a new date and time');
       return;
     }
-    
-    toast.loading('Updating booking...');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    toast.success('Booking rescheduled! Confirmation email sent.');
-    onClose();
+
+    try {
+      const { error } = await supabase.functions.invoke('booking-modification', {
+        body: {
+          action: 'reschedule',
+          bookingId: booking.id,
+          newDate: newDate.toISOString(),
+          newTime,
+        }
+      });
+      if (error) throw error;
+      toast.success('Booking rescheduled! Confirmation email sent.');
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to reschedule booking');
+    }
   };
 
   const handleCancel = async () => {
-    const daysUntil = Math.ceil((new Date(booking.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    let refundAmount = 0;
-    
-    if (daysUntil >= 7) refundAmount = booking.amount;
-    else if (daysUntil >= 3) refundAmount = booking.amount * 0.5;
-    
-    if (confirm(`You will receive a refund of $${refundAmount.toFixed(2)}. Continue?`)) {
-      toast.loading('Processing cancellation...');
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      toast.success(`Booking cancelled. Refund of $${refundAmount.toFixed(2)} will be processed in 5-7 business days.`);
+    if (!confirm('Are you sure you want to cancel this booking? Refund amount will be calculated based on our cancellation policy.')) return;
+
+    try {
+      // Server calculates refund — never trust client-side amount
+      const { data, error } = await supabase.functions.invoke('cancel-booking', {
+        body: { bookingId: booking.id }
+      });
+      if (error) throw error;
+      toast.success(data?.message || 'Booking cancelled. Refund will be processed in 5-7 business days.');
       onClose();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to cancel booking');
     }
   };
 
@@ -81,16 +94,16 @@ export default function BookingModificationModal({ isOpen, onClose, booking }: B
           <div className="space-y-6">
             <div>
               <Label className="text-lg mb-3 block">Select New Date</Label>
-              <Calendar mode="single" selected={newDate} onSelect={setNewDate} 
+              <Calendar mode="single" selected={newDate} onSelect={setNewDate}
                 disabled={(date: Date) => date < new Date()} className="border rounded-lg" />
             </div>
             <div>
               <Label className="text-lg mb-3 block">Select New Time</Label>
-              <TimeSlotSelector 
-                date={newDate} 
-                selectedTime={newTime} 
-                onTimeSelect={setNewTime} 
-                captainId={booking.charterId || booking.captainId || booking.id} 
+              <TimeSlotSelector
+                date={newDate}
+                selectedTime={newTime}
+                onTimeSelect={setNewTime}
+                captainId={booking.charterId || booking.captainId || booking.id}
               />
             </div>
             <Card className="p-4 border-blue-300 bg-blue-50">
