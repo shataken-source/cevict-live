@@ -4,25 +4,50 @@
 // ═══════════════════════════════════════════════════════════════
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
-// On TV/D-pad, inputs should only open keyboard on explicit click/tap,
-// not when tabbing/focusing via arrow keys.
-document.addEventListener('focusin', e => {
-  const el = e.target;
-  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
-    // Only blur+refocus suppresses keyboard on Android WebView when focus
-    // came from keyboard navigation rather than pointer. Track this via a flag.
-    if (!el._pointerFocused) el.blur();
-    el._pointerFocused = false;
-  }
-});
-['mousedown', 'touchstart', 'pointerdown'].forEach(evt => {
-  document.addEventListener(evt, e => {
+// inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
+// Here we enforce it in JS too: inputs never open the soft keyboard
+// on focus/tab. Only an explicit pointer click OR pressing Enter/OK
+// while the input is already focused will open the keyboard.
+(function () {
+  const INPUTS = 'INPUT, TEXTAREA, SELECT';
+
+  // Ensure inputmode=none on every input at all times unless we opened it
+  document.addEventListener('focusin', e => {
     const el = e.target;
-    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
-      el._pointerFocused = true;
+    if (!el.matches(INPUTS)) return;
+    if (!el._kbOpen) {
+      el.setAttribute('inputmode', 'none');
     }
+  });
+
+  // Pointer click on an input → open real keyboard
+  document.addEventListener('pointerdown', e => {
+    const el = e.target;
+    if (!el.matches(INPUTS)) return;
+    el._kbOpen = true;
+    el.removeAttribute('inputmode');
   }, true);
-});
+
+  // Enter/OK on a focused input → open keyboard (TV remote center button)
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const el = document.activeElement;
+    if (!el || !el.matches(INPUTS)) return;
+    e.preventDefault();
+    el._kbOpen = true;
+    el.removeAttribute('inputmode');
+    el.focus();
+    el.click();
+  }, true);
+
+  // When input loses focus, re-arm suppression
+  document.addEventListener('focusout', e => {
+    const el = e.target;
+    if (!el.matches(INPUTS)) return;
+    el._kbOpen = false;
+    el.setAttribute('inputmode', 'none');
+  });
+})();
 
 // ── DEFAULTS (encoded so they don't trigger secret scanners) ─
 const _d = s => atob(s);
@@ -1140,25 +1165,59 @@ function navigateChannel(delta) {
 
 document.getElementById('next-ch-btn')?.addEventListener('click', () => navigateChannel(1));
 
-// Global back-key handler — prevents Android WebView from exiting the app
+// ── SCREEN HISTORY STACK ─────────────────────────────────────
+// Track navigation so back button goes to the previous screen.
+S._screenHistory = [];
+const _origNav = nav;
+function nav(screen) {
+  if (S.currentScreen && S.currentScreen !== screen) {
+    S._screenHistory.push(S.currentScreen);
+    if (S._screenHistory.length > 20) S._screenHistory.shift();
+  }
+  _origNav(screen);
+}
+
+// Global back-key handler.
+// Android WebView dispatches KEYCODE_BACK as key='Backspace' in most versions,
+// and as key='GoBack'/'BrowserBack' in others — handle all three.
 document.addEventListener('keydown', e => {
-  if (e.key === 'GoBack' || e.key === 'BrowserBack') {
-    const overlay = document.getElementById('player-overlay');
-    if (overlay && overlay.style.display !== 'none') {
-      e.preventDefault();
-      closePlayer();
-    } else if (S.currentScreen === 'tvhome') {
-      // On home screen: ask to exit
-      e.preventDefault();
-      showExitConfirm();
-    } else {
-      e.preventDefault();
-      nav('tvhome');
-      const first = document.querySelector('.sb-item.active');
-      if (first) first.focus();
-    }
+  const isBack = e.key === 'GoBack' || e.key === 'BrowserBack' || e.key === 'Backspace';
+  if (!isBack) return;
+
+  // If an input is focused and open, close keyboard instead of going back
+  const active = document.activeElement;
+  if (active && active._kbOpen) {
+    active._kbOpen = false;
+    active.setAttribute('inputmode', 'none');
+    active.blur();
+    e.preventDefault();
     return;
   }
+
+  // If exit dialog is open, dismiss it
+  const exitDlg = document.getElementById('exit-confirm-dialog');
+  if (exitDlg) { e.preventDefault(); exitDlg.remove(); return; }
+
+  const overlay = document.getElementById('player-overlay');
+  if (overlay && overlay.style.display !== 'none') {
+    e.preventDefault();
+    closePlayer();
+    return;
+  }
+
+  if (S.currentScreen === 'tvhome') {
+    e.preventDefault();
+    showExitConfirm();
+    return;
+  }
+
+  // Navigate back through history stack
+  e.preventDefault();
+  const prev = S._screenHistory.pop() || 'tvhome';
+  _origNav(prev);
+  S.currentScreen = prev;
+  const sbItem = document.querySelector(`.sb-item[data-screen="${prev}"]`);
+  if (sbItem) sbItem.focus();
 });
 
 function showExitConfirm() {
@@ -1190,18 +1249,20 @@ function showExitConfirm() {
   document.getElementById('exit-confirm-btn').focus();
 }
 
-// keyboard shortcuts
+// Player keyboard shortcuts (only active when player overlay is visible)
 document.addEventListener('keydown', e => {
   const overlay = document.getElementById('player-overlay');
-  if (overlay.style.display === 'none') return;
+  if (!overlay || overlay.style.display === 'none') return;
   if (e.target.tagName === 'INPUT') return;
-  if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'GoBack' || e.key === 'BrowserBack') {
-    e.preventDefault();
-    closePlayer();
-    return;
+  // Back/Escape → close player (handled first so back key works in player)
+  if (e.key === 'Escape') {
+    e.preventDefault(); closePlayer(); return;
   }
-  if (e.key === ' ' || e.key === 'k') { e.preventDefault(); togglePlay(); }
-  if (e.key === 'm') toggleMute();
+  // Play/Pause — space bar, 'k', Enter on play button, or media key
+  if (e.key === ' ' || e.key === 'k' || e.key === 'MediaPlayPause' || e.key === 'MediaPlay' || e.key === 'MediaStop') {
+    e.preventDefault(); togglePlay(); return;
+  }
+  if (e.key === 'm' || e.key === 'AudioVolumeMute') { toggleMute(); return; }
   if (e.key === 'ArrowLeft') { e.preventDefault(); seekRelative(-10); }
   if (e.key === 'ArrowRight') { e.preventDefault(); seekRelative(10); }
   if (e.key === 'ArrowUp') { e.preventDefault(); navigateChannel(-1); }
@@ -2358,7 +2419,7 @@ renderChannelList = function (list) {
       : `<span style="font-size:10px;font-weight:700">${esc(channelInitials(ch.name))}</span>`;
 
     return `
-      <div class="ch-row" data-idx="${idx}" data-id="${ch.stream_id}">
+      <div class="ch-row" data-idx="${idx}" data-id="${ch.stream_id}" tabindex="0" role="button">
         ${numStr ? `<div style="width:34px;height:34px;background:rgba(229,0,0,0.15);border:1px solid rgba(229,0,0,0.3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;color:#fff">${esc(numStr)}</div>` : ''}
         <div class="ch-icon" style="background:${colorFromName(ch.name)}">${logo}</div>
         <div class="ch-info">
