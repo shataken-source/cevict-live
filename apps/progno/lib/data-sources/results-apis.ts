@@ -12,6 +12,12 @@ import type { GameResult } from './historical-results';
 const PROGNO_LEAGUES = ['NFL', 'NBA', 'NHL', 'MLB', 'NCAAB', 'NCAAF', 'NASCAR'] as const;
 type SportKey = (typeof PROGNO_LEAGUES)[number];
 
+/** Extra query params needed per league for ESPN scoreboard */
+const LEAGUE_TO_ESPN_PARAMS: Record<string, string> = {
+  NCAAB: 'groups=50',  // groups=50 = all D1 conferences; without this only ~2 games returned
+  NCAAF: 'groups=80',  // groups=80 = all FBS conferences
+};
+
 /** Map league to provider sport/league identifiers where needed */
 const LEAGUE_TO_JSONODDS: Record<string, string> = {
   NFL: 'NFL',
@@ -268,7 +274,8 @@ async function fetchESPN(sportKey: SportKey, date: string): Promise<GameResult[]
 
   try {
     const datesParam = date.replace(/-/g, '');
-    const url = `https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${datesParam}`;
+    const extraParams = LEAGUE_TO_ESPN_PARAMS[sportKey] ? `&${LEAGUE_TO_ESPN_PARAMS[sportKey]}` : '';
+    const url = `https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${datesParam}&limit=300${extraParams}`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return [];
     const data = (await res.json()) as any;
@@ -285,11 +292,14 @@ async function fetchESPN(sportKey: SportKey, date: string): Promise<GameResult[]
       const homeScore = Number(home.score);
       const awayScore = Number(away.score);
       if (Number.isNaN(homeScore) || Number.isNaN(awayScore)) continue;
+      // Use displayName as primary; also store shortDisplayName as alternate for matching
+      const homeName = home.team.displayName;
+      const awayName = away.team.displayName;
       results.push(
         toPrognoResult(
           sportKey,
-          home.team.displayName,
-          away.team.displayName,
+          homeName,
+          awayName,
           homeScore,
           awayScore,
           date,

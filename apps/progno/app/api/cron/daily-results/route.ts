@@ -84,6 +84,20 @@ const TEAM_ALIAS_GROUPS: string[][] = [
   ['loyolamarymountlions', 'loyolamarymount', 'lmulions'],
   ['stbonaventurebonnies', 'stbonaventure', 'bonaventure'],
   ['georgiatechyellowjackets', 'georgiatech', 'georgiainstituteoftechnology'],
+  // ESPN uses short names without mascot/state suffix — common mismatches:
+  ['gramblingtigers', 'gramblingstate', 'gramblingststatetigers', 'gramblingst'],
+  ['mississippivalleystatedeltadevils', 'mississippivalleystate', 'missvalleystate', 'missvalleystdeltadevils'],
+  ['akronzips', 'akron'],
+  ['buffalobulls', 'buffalo'],
+  ['memphistigers', 'memphis'],
+  ['jamesmadisondukes', 'jamesmadison'],
+  ['virginiatechhokies', 'virginiatech'],
+  ['atlantahawks', 'atlanta'],
+  ['washingtonwizards', 'washington', 'washingtondc'],
+  ['indianapacers', 'indiana'],
+  ['philadelphia76ers', 'philadelphia', 'sixers', '76ers'],
+  ['michiganwolverines', 'michigan'],
+  ['minnesotangoldengophers', 'minnesota', 'minnesotagoldengophers'],
 ]
 // Normalize alias group entries and build map: for each norm form, list of all equivalent keys
 function buildAliasMap(): Map<string, string[]> {
