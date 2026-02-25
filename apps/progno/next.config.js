@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Use this app dir as Turbopack root so the multi-lockfile warning goes away
-  turbopack: { root: /*turbopackIgnore: true*/ process.cwd() },
-
   // Disable type checking during build (run separately with tsc --noEmit)
   typescript: {
     ignoreBuildErrors: true,
