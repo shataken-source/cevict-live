@@ -1018,8 +1018,10 @@ async function loadStream(ch) {
     });
     hls.on(Hls.Events.ERROR, (_, d) => {
       if (d.fatal) {
-        // Try TS fallback
-        const tsUrl = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
+        const tsRaw = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
+        const tsUrl = IS_ANDROID_WEBVIEW
+          ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
+          : tsRaw;
         video.src = tsUrl;
         video.play().catch(() => { });
       }
@@ -1029,8 +1031,10 @@ async function loadStream(ch) {
     video.src = hlsUrl;
     video.play().catch(() => { });
   } else {
-    // Direct TS stream as last resort
-    video.src = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
+    const tsRaw = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
+    video.src = IS_ANDROID_WEBVIEW
+      ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
+      : tsRaw;
     video.play().catch(() => { });
   }
 
@@ -1041,8 +1045,7 @@ async function loadStream(ch) {
 
 async function fetchCurrentEPG(ch) {
   try {
-    const res = await fetch(`/api/epg?stream_id=${ch.stream_id}&server=${encodeURIComponent(S.server)}&username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&limit=2`);
-    const data = await res.json();
+    const data = await fetchEpgForChannel({ stream_id: ch.stream_id });
     const listings = data.epg_listings || [];
     const nowTs = Math.floor(Date.now() / 1000);
     const current = listings.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
@@ -1223,9 +1226,8 @@ function deleteRecording(idx) {
 
 // ── QUALITY STATS ─────────────────────────────────────────────
 function updateQualityStats() {
-  // Ping via a small fetch
   const t0 = performance.now();
-  fetch(`/api/iptv?action=get_user_info&server=${encodeURIComponent(S.server)}&username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}`)
+  fetch(buildApiUrl('get_user_info'))
     .then(() => {
       const ping = Math.round(performance.now() - t0);
       const pingEl = document.getElementById('q-ping');
@@ -2181,9 +2183,8 @@ async function loadDezorPlaylist() {
 //                  now-playing EPG subtitle
 // ═══════════════════════════════════════════════════════════════
 
-// Override renderChannelList to add channel number + now-playing
-const _origRenderChannelList = renderChannelList;
-function renderChannelList(list) {
+// renderChannelList — canonical version with channel number badge + now-playing EPG subtitle
+renderChannelList = function (list) {
   const el = document.getElementById('channel-list');
   if (!list.length) { el.innerHTML = '<div style="color:var(--muted);padding:20px;font-size:13px">No channels found.</div>'; return; }
   const slice = list.slice(0, 200);
