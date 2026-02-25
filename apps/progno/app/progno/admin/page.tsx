@@ -132,7 +132,7 @@ function DarkResultsTable({ rows }: { rows: any[] }) {
                 <td style={{ padding: '7px 10px', color: C.textDim }}>{i + 1}</td>
                 <td style={{ padding: '7px 10px', color: C.textBright }}>{r.home_team} vs {r.away_team}<br /><span style={{ color: C.textDim, fontSize: 10 }}>{r.sport}</span></td>
                 <td style={{ padding: '7px 10px', color: C.blue }}>{r.pick}</td>
-                <td style={{ padding: '7px 10px' }}><Badge color={r.is_home ? C.green : C.amber}>{r.is_home ? 'H' : 'A'}</Badge></td>
+                <td style={{ padding: '7px 10px' }}>{(() => { const isH = r.is_home_pick ?? r.is_home ?? (r.pick === r.home_team); return <Badge color={isH ? C.green : C.amber}>{isH ? 'H' : 'A'}</Badge>; })()}</td>
                 <td style={{ padding: '7px 10px', color: C.textBright }}>{r.confidence ?? '—'}%</td>
                 <td style={{ padding: '7px 10px', color: (r.odds ?? 0) > 0 ? C.green : C.text }}>{fmt(r.odds)}</td>
                 <td style={{ padding: '7px 10px' }}>{status ? <Badge color={statusColor}>{status.toUpperCase()}</Badge> : <span style={{ color: C.textDim }}>pending</span>}</td>
