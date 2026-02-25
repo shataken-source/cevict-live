@@ -6,6 +6,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { Opportunity, DataPoint, DailyReport, NewsItem, BotConfig, LearningData } from './types';
+import { localAI } from './lib/local-ai';
 import { NewsScanner } from './intelligence/news-scanner';
 import { PrognoIntegration } from './intelligence/progno-integration';
 import { KalshiTrader } from './intelligence/kalshi-trader';
@@ -99,18 +100,70 @@ export class AIBrain {
       };
     }
 
+    // Try local Ollama AI first (free, no API key needed)
+    if (localAI.isEnabled() && await localAI.isAvailable()) {
+      try {
+        const analysis = await this.getOllamaAnalysis(opportunities, news);
+        if (analysis) return analysis;
+      } catch (error) {
+        console.warn('[AI Brain] Ollama analysis failed, trying fallback:', (error as Error).message);
+      }
+    }
+
     // If Claude is available, use AI reasoning
     if (this.anthropic) {
       try {
         const analysis = await this.getClaudeAnalysis(opportunities, news);
         return analysis;
       } catch (error) {
-        console.error('Claude analysis error:', error);
+        console.error('Claude analysis error:', (error as Error).message);
       }
     }
 
     // Fallback to algorithmic ranking
     return this.algorithmicRanking(opportunities, news);
+  }
+
+  private async getOllamaAnalysis(
+    opportunities: Opportunity[],
+    news: NewsItem[]
+  ): Promise<AnalysisResult | null> {
+    const prompt = `You are Alpha Hunter, an expert AI trading bot. Analyze these opportunities and recommend the best one.
+
+OPPORTUNITIES:
+${JSON.stringify(opportunities.slice(0, 5), null, 2)}
+
+NEWS:
+${news.slice(0, 3).map(n => `- ${n.title}`).join('\n')}
+
+Respond ONLY in this exact format:
+BEST_INDEX: [number, 0-based]
+ANALYSIS: [one sentence market analysis]
+RISK: [low/medium/high]
+ACTION: [one sentence recommendation]
+CONFIDENCE: [0-100]`;
+
+    console.log(`   🤖 Using local AI (${localAI.getModel()}) for opportunity analysis...`);
+    const response = await localAI.analyze(prompt);
+    if (!response) return null;
+
+    const indexMatch = response.match(/BEST_INDEX:\s*(\d+)/i);
+    const analysisMatch = response.match(/ANALYSIS:\s*(.+)/i);
+    const riskMatch = response.match(/RISK:\s*(.+)/i);
+    const actionMatch = response.match(/ACTION:\s*(.+)/i);
+    const confMatch = response.match(/CONFIDENCE:\s*(\d+)/i);
+
+    const bestIndex = parseInt(indexMatch?.[1] || '0');
+    console.log(`   ✅ Local AI recommends opportunity #${bestIndex} (confidence: ${confMatch?.[1] || '?'}%)`);
+
+    return {
+      topOpportunity: opportunities[bestIndex] || opportunities[0],
+      allOpportunities: opportunities,
+      marketAnalysis: analysisMatch?.[1]?.trim() || 'Market conditions analyzed by local AI.',
+      riskAssessment: riskMatch?.[1]?.trim() || 'Medium risk.',
+      recommendedAction: actionMatch?.[1]?.trim() || 'Proceed with caution.',
+      confidenceLevel: parseInt(confMatch?.[1] || '60'),
+    };
   }
 
   private async getClaudeAnalysis(
