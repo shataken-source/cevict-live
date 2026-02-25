@@ -1,9 +1,15 @@
-import { createSupabaseClient } from '@/lib/supabase';
+import { createSupabaseServiceClient } from '@/lib/supabase';
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 
-// GET - Get bot statuses for a website
+// GET - Get bot statuses for a website (auth required; must own website)
 export async function GET(request: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const websiteId = searchParams.get('websiteId');
 
@@ -11,7 +17,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Website ID is required' }, { status: 400 });
     }
 
-    const supabase = createSupabaseClient();
+    const supabase = createSupabaseServiceClient();
+    const { data: site } = await supabase
+      .from('monitored_websites')
+      .select('id')
+      .eq('id', websiteId)
+      .eq('owner_id', userId)
+      .single();
+    if (!site) {
+      return NextResponse.json({ error: 'Website not found or access denied' }, { status: 404 });
+    }
+
     const { data, error } = await supabase
       .from('bot_status')
       .select('*')
@@ -30,9 +46,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Update bot status
+// POST - Update bot status (auth required; must own website)
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { websiteId, botName, status, errorMessage, metadata } = body;
 
@@ -50,7 +71,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = createSupabaseClient();
+    const supabase = createSupabaseServiceClient();
+    const { data: site } = await supabase
+      .from('monitored_websites')
+      .select('id, owner_id')
+      .eq('id', websiteId)
+      .eq('owner_id', userId)
+      .single();
+    if (!site) {
+      return NextResponse.json({ error: 'Website not found or access denied' }, { status: 404 });
+    }
 
     // Check if bot status exists
     const { data: existing } = await supabase
@@ -100,6 +130,7 @@ export async function POST(request: NextRequest) {
       await checkAndSendAlert(
         supabase,
         websiteId,
+        site.owner_id,
         'bot',
         'critical',
         `Bot "${botName}" is BROKEN: ${errorMessage || 'Unknown error'}`
@@ -116,6 +147,7 @@ export async function POST(request: NextRequest) {
 async function checkAndSendAlert(
   supabase: any,
   websiteId: string,
+  ownerId: string,
   alertType: string,
   severity: string,
   message: string
@@ -148,8 +180,8 @@ async function checkAndSendAlert(
   const { data: config } = await supabase
     .from('alert_config')
     .select('sms_phone, email, critical_only')
-    .limit(1)
-    .single();
+    .eq('user_id', ownerId)
+    .maybeSingle();
 
   const base = process.env.NEXT_PUBLIC_BASE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3010');
   const alertMsg = `🚨 CRITICAL: ${message}`;

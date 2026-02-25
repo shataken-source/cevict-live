@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 
 /**
  * POST /api/alerts/email
@@ -7,6 +8,18 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function POST(request: NextRequest) {
   try {
+    // Require either Clerk auth or internal caller header
+    const internalSecret = process.env.INTERNAL_API_SECRET;
+    const callerSecret = request.headers.get('x-internal-secret');
+    const isInternal = internalSecret && callerSecret === internalSecret;
+
+    if (!isInternal) {
+      const { userId } = await auth();
+      if (!userId) {
+        return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+      }
+    }
+
     const body = await request.json();
     const { to, subject, message } = body;
 
