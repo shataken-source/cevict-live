@@ -1,537 +1,1369 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Switchback TV — Professional IPTV Player</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Switchback TV</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --panel: #13131a;
+  --panel2: #1a1a24;
+  --border: rgba(255,255,255,0.08);
+  --text: #ffffff;
+  --muted: #8b8b9e;
+  --primary: #e50000;
+  --primary2: #ff3a3a;
+  --accent: #00c2ff;
+  --green: #00e676;
+  --yellow: #ffc107;
+  --purple: #7c4dff;
+  --radius: 12px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { height:100%; overflow:hidden; font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); }
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
-    <script src="https://js.stripe.com/v3/"></script>
+/* ── APP SHELL ── */
+#app { display:flex; height:100vh; }
 
-    <style>
-        :root {
-            --primary: #4CAF50;
-            --secondary: #00C2FF;
-            --bg: #0c0f14;
-            --panel: #161b22;
-            --text: #ffffff;
-            --muted: #8b949e;
-            --border: rgba(255, 255, 255, 0.08);
-        }
+/* ── SIDEBAR ── */
+#sidebar {
+  width:220px; flex-shrink:0; background:var(--panel);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column; overflow:hidden;
+  transition:width 0.25s;
+}
+#sidebar.collapsed { width:64px; }
+.sb-logo { padding:20px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border); }
+.sb-logo-icon { width:32px; height:32px; background:var(--primary); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.sb-logo-text { font-size:15px; font-weight:800; white-space:nowrap; background:linear-gradient(90deg,#ff3a3a,#ff8c00); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.sb-nav { flex:1; padding:12px 8px; overflow-y:auto; }
+.sb-item {
+  display:flex; align-items:center; gap:12px; padding:10px 10px;
+  border-radius:10px; cursor:pointer; margin-bottom:2px;
+  color:var(--muted); font-size:13px; font-weight:500; white-space:nowrap;
+  transition:background 0.15s, color 0.15s;
+}
+.sb-item:hover { background:rgba(255,255,255,0.06); color:#fff; }
+.sb-item.active { background:rgba(229,0,0,0.15); color:var(--primary2); }
+.sb-item .icon { font-size:18px; flex-shrink:0; width:24px; text-align:center; }
+.sb-item .label { overflow:hidden; }
+#sidebar.collapsed .sb-item .label { display:none; }
+#sidebar.collapsed .sb-logo-text { display:none; }
+.sb-section { font-size:10px; font-weight:700; color:#444; text-transform:uppercase; letter-spacing:1px; padding:8px 12px 4px; white-space:nowrap; }
+#sidebar.collapsed .sb-section { display:none; }
+.sb-footer { padding:12px 8px; border-top:1px solid var(--border); }
+.sb-toggle { display:flex; align-items:center; gap:12px; padding:10px; border-radius:10px; cursor:pointer; color:var(--muted); font-size:12px; font-weight:500; }
+.sb-toggle:hover { color:#fff; }
 
-        .light {
-            --bg: #f4f6f9;
-            --panel: #ffffff;
-            --text: #111;
-            --muted: #555;
-            --border: rgba(0, 0, 0, 0.08);
-        }
+/* ── MAIN ── */
+#main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+/* TOP BAR */
+#topbar {
+  height:56px; flex-shrink:0; background:var(--panel); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; padding:0 20px; gap:16px;
+}
+#topbar-title { font-size:16px; font-weight:700; flex:1; }
+.topbar-search { display:flex; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:6px 12px; flex:1; max-width:320px; }
+.topbar-search input { background:none; border:none; outline:none; color:#fff; font-size:13px; width:100%; }
+.topbar-search input::placeholder { color:var(--muted); }
+.topbar-actions { display:flex; gap:8px; }
+.tb-btn { padding:6px 14px; border-radius:8px; border:none; font-size:12px; font-weight:600; cursor:pointer; }
+.tb-btn-red { background:var(--primary); color:#fff; }
+.tb-btn-ghost { background:var(--panel2); color:var(--muted); border:1px solid var(--border); }
+.tb-btn-ghost:hover { color:#fff; }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            scroll-behavior: smooth;
-            transition: 0.3s;
-        }
+/* CONTENT AREA */
+#content { flex:1; overflow-y:auto; }
+#content::-webkit-scrollbar { width:4px; }
+#content::-webkit-scrollbar-thumb { background:#333; border-radius:2px; }
 
-        nav {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            padding: 18px 40px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            backdrop-filter: blur(10px);
-            background: rgba(0, 0, 0, 0.4);
-            border-bottom: 1px solid var(--border);
-            z-index: 1000;
-        }
+/* SCREENS */
+.screen { display:none; padding:24px; }
+.screen.active { display:block; }
 
-        nav h2 {
-            font-weight: 800;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+/* ── SHARED COMPONENTS ── */
+.page-title { font-size:22px; font-weight:800; margin-bottom:4px; }
+.page-sub { font-size:13px; color:var(--muted); margin-bottom:24px; }
+.section-title { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin:20px 0 10px; }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.grid-auto { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; }
 
-        nav a {
-            margin-left: 25px;
-            text-decoration: none;
-            color: var(--muted);
-            font-weight: 500;
-        }
+.card {
+  background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius);
+  padding:16px; transition:border-color 0.15s;
+}
+.card:hover { border-color:rgba(255,255,255,0.15); }
+.card-clickable { cursor:pointer; }
+.card-clickable:hover { background:rgba(255,255,255,0.04); }
 
-        nav a:hover {
-            color: var(--primary);
-        }
+.pill-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+.pill { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:none; }
+.pill-active { background:var(--primary); color:#fff; }
+.pill-inactive { background:var(--panel2); color:var(--muted); border:1px solid var(--border); }
+.pill-inactive:hover { color:#fff; }
 
-        .toggle {
-            cursor: pointer;
-            margin-left: 25px;
-            padding: 6px 12px;
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            font-size: 0.8rem;
-        }
+.badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; }
+.badge-live { background:rgba(229,0,0,0.2); color:#ff5555; border:1px solid rgba(229,0,0,0.3); }
+.badge-hd { background:rgba(0,194,255,0.15); color:var(--accent); border:1px solid rgba(0,194,255,0.2); }
+.badge-green { background:rgba(0,230,118,0.15); color:var(--green); border:1px solid rgba(0,230,118,0.2); }
+.badge-yellow { background:rgba(255,193,7,0.15); color:var(--yellow); }
+.badge-purple { background:rgba(124,77,255,0.15); color:var(--purple); }
 
-        .hero {
-            padding: 180px 20px 100px;
-            text-align: center;
-        }
+.channel-row {
+  display:flex; align-items:center; gap:12px; padding:12px 14px;
+  background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius);
+  margin-bottom:8px; cursor:pointer; transition:background 0.15s;
+}
+.channel-row:hover { background:rgba(255,255,255,0.05); }
+.ch-icon { width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.ch-info { flex:1; }
+.ch-name { font-size:14px; font-weight:600; }
+.ch-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+.ch-meta { display:flex; align-items:center; gap:6px; flex-shrink:0; }
 
-        .hero h1 {
-            font-size: 4.2rem;
-            font-weight: 900;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+input.inp, textarea.inp, select.inp {
+  background:var(--panel2); border:1px solid var(--border); border-radius:8px;
+  padding:9px 13px; color:#fff; font-size:13px; font-family:inherit;
+  outline:none; width:100%; transition:border-color 0.15s;
+}
+input.inp:focus, textarea.inp:focus, select.inp:focus { border-color:var(--primary); }
+input.inp::placeholder { color:var(--muted); }
 
-        .hero p {
-            margin-top: 20px;
-            font-size: 1.4rem;
-            color: var(--muted);
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-        }
+.btn { padding:9px 18px; border-radius:8px; border:none; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+.btn-red { background:var(--primary); color:#fff; }
+.btn-red:hover { background:var(--primary2); }
+.btn-accent { background:var(--accent); color:#000; }
+.btn-ghost { background:var(--panel2); color:var(--muted); border:1px solid var(--border); }
+.btn-ghost:hover { color:#fff; }
+.btn-green { background:var(--green); color:#000; }
+.btn-full { width:100%; text-align:center; }
+.btn-sm { padding:5px 12px; font-size:11px; }
 
-        .btn {
-            padding: 15px 38px;
-            border-radius: 12px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-block;
-            margin: 15px;
-            transition: 0.3s;
-            cursor: pointer;
-        }
+.row-item { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
+.row-item:last-child { border-bottom:none; }
+.row-label { font-size:13px; }
+.row-value { font-size:12px; color:var(--muted); }
 
-        .btn-primary {
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            color: white;
-            box-shadow: 0 10px 30px rgba(0, 194, 255, 0.25);
-        }
+.toggle-sw { width:44px; height:24px; background:#333; border-radius:12px; position:relative; cursor:pointer; transition:background 0.2s; flex-shrink:0; }
+.toggle-sw.on { background:var(--green); }
+.toggle-sw::after { content:''; width:18px; height:18px; background:#fff; border-radius:9px; position:absolute; top:3px; left:3px; transition:transform 0.2s; }
+.toggle-sw.on::after { transform:translateX(20px); }
 
-        .btn-primary:hover {
-            transform: translateY(-4px);
-        }
+.progress-bar { background:#333; border-radius:4px; height:4px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,var(--primary),#ff8c00); }
 
-        .btn-outline {
-            border: 1px solid var(--border);
-            color: var(--text);
-        }
+/* ── TV HOME TILES ── */
+.tv-home { display:grid; grid-template-columns:2fr 1fr 180px; grid-template-rows:1fr auto; gap:16px; height:calc(100vh - 56px - 48px); }
+.tile-large { grid-row:1; background:rgba(229,0,0,0.12); border:2px solid rgba(229,0,0,0.3); border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:all 0.2s; }
+.tile-large:hover { background:rgba(229,0,0,0.2); transform:scale(1.01); }
+.tile { background:var(--panel2); border:1px solid var(--border); border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; padding:24px; transition:all 0.2s; }
+.tile:hover { background:rgba(255,255,255,0.05); transform:scale(1.02); }
+.tile-emoji { font-size:52px; margin-bottom:12px; }
+.tile-label { font-size:18px; font-weight:700; }
+.tile-sub { font-size:12px; color:var(--muted); margin-top:4px; }
+.right-col { display:flex; flex-direction:column; gap:16px; }
+.sidebar-col { display:flex; flex-direction:column; gap:16px; }
+.sidebar-tile { background:rgba(100,100,130,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:14px; padding:18px; display:flex; flex-direction:column; align-items:center; cursor:pointer; gap:8px; transition:all 0.2s; }
+.sidebar-tile:hover { background:rgba(255,255,255,0.08); }
+.sidebar-tile-icon { font-size:28px; }
+.sidebar-tile-text { font-size:13px; font-weight:600; }
+.bottom-row-home { grid-column:1/-1; display:grid; grid-template-columns:repeat(4,1fr); gap:16px; height:120px; }
 
-        .section {
-            padding: 120px 20px;
-            max-width: 1200px;
-            margin: auto;
-        }
+/* ── PLAYER ── */
+.player-screen { display:none; flex-direction:column; height:calc(100vh - 56px); }
+.player-screen.active { display:flex; }
+.player-video { flex:1; background:linear-gradient(135deg,#050510,#0d1226,#050510); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+.player-overlay-top { position:absolute; top:0; left:0; right:0; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(180deg,rgba(0,0,0,0.8),transparent); }
+.player-overlay-bottom { position:absolute; bottom:0; left:0; right:0; padding:16px 20px 10px; background:linear-gradient(0deg,rgba(0,0,0,0.9),transparent); }
+.player-channel-name { font-size:20px; font-weight:700; }
+.player-program { font-size:13px; color:#aaa; margin-top:4px; }
+.player-controls { background:var(--panel); padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-shrink:0; }
+.player-progress { flex:1; }
+.player-seek { width:100%; height:4px; background:#333; border-radius:2px; cursor:pointer; appearance:none; -webkit-appearance:none; }
+.player-seek::-webkit-slider-thumb { appearance:none; width:14px; height:14px; background:var(--primary); border-radius:50%; cursor:pointer; }
+.play-btn { width:46px; height:46px; background:var(--primary); border-radius:23px; border:none; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 
-        .section h2 {
-            text-align: center;
-            font-size: 2.6rem;
-            margin-bottom: 60px;
-        }
+/* ── EPG GRID ── */
+.epg-grid { overflow:auto; position:relative; }
+.epg-header-row { display:flex; position:sticky; top:0; background:var(--panel); z-index:5; border-bottom:1px solid var(--border); }
+.epg-ch-col { width:120px; flex-shrink:0; background:var(--panel); position:sticky; left:0; z-index:6; }
+.epg-time-slots { display:flex; flex:1; }
+.epg-time-slot { min-width:200px; padding:8px 12px; font-size:11px; color:var(--muted); border-right:1px solid var(--border); font-weight:600; }
+.epg-row { display:flex; border-bottom:1px solid var(--border); }
+.epg-ch-cell { width:120px; flex-shrink:0; background:var(--panel2); position:sticky; left:0; z-index:4; padding:8px 10px; display:flex; align-items:center; gap:8px; border-right:1px solid var(--border); }
+.epg-ch-cell-name { font-size:12px; font-weight:700; }
+.epg-programs { display:flex; flex:1; }
+.epg-prog { border-right:1px solid var(--border); padding:8px 10px; cursor:pointer; transition:background 0.15s; min-width:200px; }
+.epg-prog:hover { background:rgba(255,255,255,0.05); }
+.epg-prog.live { background:rgba(229,0,0,0.1); border-left:2px solid var(--primary); }
+.epg-prog-title { font-size:12px; font-weight:600; }
+.epg-prog-time { font-size:10px; color:var(--muted); margin-top:2px; }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-        }
+/* ── PRICING ── */
+.pricing-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; max-width:900px; }
+.price-card { background:var(--panel2); border:1px solid var(--border); border-radius:16px; padding:28px; }
+.price-card.featured { border:2px solid var(--primary); background:rgba(229,0,0,0.05); }
+.price-tier { font-size:13px; font-weight:700; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px; }
+.price-name { font-size:22px; font-weight:800; margin-bottom:4px; }
+.price-amount { font-size:40px; font-weight:900; margin:16px 0 4px; }
+.price-period { font-size:13px; color:var(--muted); margin-bottom:20px; }
+.price-feature { font-size:12px; color:#ccc; padding:5px 0; border-bottom:1px solid var(--border); display:flex; gap:8px; }
+.price-feature:last-child { border-bottom:none; }
+.price-feature .check { color:var(--green); }
+.price-feature .cross { color:#555; }
 
-        .card {
-            background: var(--panel);
-            padding: 35px;
-            border-radius: 18px;
-            border: 1px solid var(--border);
-            transition: 0.4s;
-            opacity: 0;
-            transform: translateY(40px);
-        }
+/* ── RECORDINGS ── */
+.rec-card { background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:10px; }
 
-        .card.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
+/* ── QUALITY ── */
+.quality-option { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px; cursor:pointer; }
+.quality-option.selected { border-color:var(--primary); background:rgba(229,0,0,0.08); }
 
-        .card:hover {
-            transform: translateY(-8px);
-        }
+/* ── DEVICES ── */
+.device-card { background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px; }
 
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            margin-bottom: 12px;
-            background: rgba(76, 175, 80, 0.15);
-            color: var(--primary);
-        }
+/* ── MOVIES / SERIES ── */
+.media-thumb { width:100%; aspect-ratio:2/3; background:var(--panel2); border-radius:var(--radius); overflow:hidden; cursor:pointer; position:relative; border:1px solid var(--border); transition:transform 0.2s; }
+.media-thumb:hover { transform:scale(1.03); }
+.media-thumb-bg { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:40px; }
+.media-thumb-info { padding:8px 4px; }
+.media-thumb-title { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.media-thumb-meta { font-size:11px; color:var(--muted); margin-top:2px; }
 
-        .tv-container {
-            display: flex;
-            justify-content: center;
-            margin-top: 80px;
-        }
+/* ── HISTORY ── */
+.hist-item { display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:8px; }
 
-        .tv {
-            width: 800px;
-            height: 450px;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 0 100px rgba(0, 194, 255, 0.15);
-            border: 6px solid #333;
-            background: #000;
-        }
+/* ── SEARCH ── */
+.search-result { display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:var(--radius); cursor:pointer; }
+.search-result:hover { background:var(--panel2); }
 
-        .tv video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+/* ── CATCH-UP ── */
+.date-pill { padding:8px 16px; border-radius:10px; text-align:center; cursor:pointer; background:var(--panel2); border:1px solid var(--border); min-width:60px; }
+.date-pill.active { background:var(--primary); border-color:var(--primary); }
+.date-pill-day { font-size:10px; font-weight:700; color:var(--muted); }
+.date-pill.active .date-pill-day { color:rgba(255,255,255,0.8); }
+.date-pill-num { font-size:16px; font-weight:800; margin-top:2px; }
 
-        .pricing {
-            text-align: center;
-        }
+/* ── STAT BOX ── */
+.stat-box { background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius); padding:16px; text-align:center; }
+.stat-val { font-size:28px; font-weight:800; }
+.stat-label { font-size:11px; color:var(--muted); margin-top:4px; }
 
-        .price-box {
-            background: var(--panel);
-            padding: 40px;
-            border-radius: 18px;
-            border: 1px solid var(--border);
-            max-width: 400px;
-            margin: auto;
-        }
+/* ── SETTINGS ── */
+.settings-group { background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius); padding:4px 14px; margin-bottom:16px; }
 
-        .price-box h3 {
-            font-size: 2rem;
-            margin-bottom: 15px;
-        }
-
-        .price {
-            font-size: 3rem;
-            font-weight: 800;
-            margin: 20px 0;
-        }
-
-        .download {
-            text-align: center;
-            padding: 120px 20px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            color: white;
-        }
-
-        footer {
-            text-align: center;
-            padding: 60px 20px;
-            border-top: 1px solid var(--border);
-            background: var(--panel);
-        }
-
-        @media(max-width:768px) {
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-
-            .tv {
-                width: 100%;
-                height: 220px;
-            }
-        }
-    </style>
+/* ── SCROLLBAR ── */
+* { scrollbar-width:thin; scrollbar-color:#333 transparent; }
+</style>
 </head>
-
 <body>
+<div id="app">
 
-    <nav>
-        <h2>Switchback TV</h2>
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-icon">📺</div>
+    <span class="sb-logo-text">Switchback TV</span>
+  </div>
+  <div class="sb-nav">
+    <div class="sb-section">Menu</div>
+    <div class="sb-item active" onclick="nav('tvhome')"><span class="icon">🏠</span><span class="label">Home</span></div>
+    <div class="sb-item" onclick="nav('channels')"><span class="icon">📡</span><span class="label">Live TV</span></div>
+    <div class="sb-item" onclick="nav('movies')"><span class="icon">🎬</span><span class="label">Movies</span></div>
+    <div class="sb-item" onclick="nav('series')"><span class="icon">🎭</span><span class="label">Series</span></div>
+    <div class="sb-section">Library</div>
+    <div class="sb-item" onclick="nav('favorites')"><span class="icon">⭐</span><span class="label">Favorites</span></div>
+    <div class="sb-item" onclick="nav('history')"><span class="icon">🕐</span><span class="label">History</span></div>
+    <div class="sb-item" onclick="nav('recordings')"><span class="icon">⏺</span><span class="label">Recordings</span></div>
+    <div class="sb-item" onclick="nav('catchup')"><span class="icon">⏪</span><span class="label">Catch-Up</span></div>
+    <div class="sb-section">Discover</div>
+    <div class="sb-item" onclick="nav('epg')"><span class="icon">📋</span><span class="label">TV Guide</span></div>
+    <div class="sb-item" onclick="nav('search')"><span class="icon">🔍</span><span class="label">Search</span></div>
+    <div class="sb-section">Account</div>
+    <div class="sb-item" onclick="nav('devices')"><span class="icon">📱</span><span class="label">Devices</span></div>
+    <div class="sb-item" onclick="nav('quality')"><span class="icon">📶</span><span class="label">Quality</span></div>
+    <div class="sb-item" onclick="nav('pricing')"><span class="icon">💎</span><span class="label">Plans</span></div>
+    <div class="sb-item" onclick="nav('settings')"><span class="icon">⚙️</span><span class="label">Settings</span></div>
+  </div>
+  <div class="sb-footer">
+    <div class="sb-toggle" onclick="toggleSidebar()">
+      <span class="icon">◀</span>
+      <span class="label" style="font-size:12px">Collapse</span>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN AREA -->
+<div id="main">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <span id="topbar-title">Home</span>
+    <div class="topbar-search">
+      <span style="color:var(--muted);font-size:14px">🔍</span>
+      <input type="text" placeholder="Search channels, movies, shows..." onfocus="nav('search')" />
+    </div>
+    <div class="topbar-actions">
+      <button class="tb-btn tb-btn-ghost" onclick="nav('settings')">⚙️</button>
+      <button class="tb-btn tb-btn-red" onclick="nav('pricing')">Upgrade</button>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- ══════════════════════════════════════════
+         SCREEN: TV HOME
+    ══════════════════════════════════════════ -->
+    <div class="screen active" id="screen-tvhome" style="padding:20px;height:calc(100vh - 56px);display:none;">
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         SCREEN: CHANNELS (Live TV)
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-channels">
+      <div class="page-title">📡 Live TV</div>
+      <div class="page-sub">47,393 channels · 12 categories · HD streams available</div>
+      <div class="pill-row">
+        <button class="pill pill-active" onclick="filterCat(this,'All')">All</button>
+        <button class="pill pill-inactive" onclick="filterCat(this,'Sports')">�� Sports</button>
+        <button class="pill pill-inactive" onclick="filterCat(this,'News')">📰 News</button>
+        <button class="pill pill-inactive" onclick="filterCat(this,'Movies')">🎬 Movies</button>
+        <button class="pill pill-inactive" onclick="filterCat(this,'Kids')">🧸 Kids</button>
+        <button class="pill pill-inactive" onclick="filterCat(this,'Music')">🎵 Music</button>
+        <button class="pill pill-inactive" onclick="filterCat(this,'International')">🌍 International</button>
+      </div>
+      <input class="inp" style="margin-bottom:16px" placeholder="🔍 Search channels..." oninput="filterChannels(this.value)" />
+      <div id="channel-list">
+        <!-- Injected by JS -->
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         SCREEN: PLAYER
+    ══════════════════════════════════════════ -->
+    <!-- Player is full-height, handled separately below content div -->
+
+    <!-- ══════════════════════════════════════════
+         SCREEN: EPG
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-epg">
+      <div class="page-title">📋 TV Guide</div>
+      <div class="page-sub">Program schedule for today · Click any show to watch</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <button class="btn btn-ghost btn-sm">◀ -2h</button>
+        <button class="btn btn-red btn-sm">● Now</button>
+        <button class="btn btn-ghost btn-sm">+2h ▶</button>
+        <div style="flex:1"></div>
+        <span style="font-size:12px;color:var(--muted)">Now: 8:00 PM</span>
+      </div>
+      <div class="epg-grid" style="border:1px solid var(--border);border-radius:var(--radius);overflow:auto;max-height:calc(100vh - 220px)">
+        <div class="epg-header-row">
+          <div class="epg-ch-col" style="padding:8px 10px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-right:1px solid var(--border)">Channel</div>
+          <div class="epg-time-slots">
+            <div class="epg-time-slot">7:00 PM</div>
+            <div class="epg-time-slot">7:30 PM</div>
+            <div class="epg-time-slot">8:00 PM</div>
+            <div class="epg-time-slot">8:30 PM</div>
+            <div class="epg-time-slot">9:00 PM</div>
+            <div class="epg-time-slot">9:30 PM</div>
+            <div class="epg-time-slot">10:00 PM</div>
+          </div>
+        </div>
+        <div id="epg-rows"><!-- injected by JS --></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         SCREEN: FAVORITES
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-favorites">
+      <div class="page-title">⭐ Favorites</div>
+      <div class="page-sub">Your saved channels · Smart suggestions powered by watch history</div>
+      <div style="background:rgba(0,194,255,0.05);border:1px solid rgba(0,194,255,0.15);border-radius:var(--radius);padding:14px;margin-bottom:20px;">
+        <div style="font-size:10px;font-weight:700;color:var(--accent);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">🤖 Smart Suggestions</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Based on your watch history, you might enjoy:</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="badge badge-hd" style="cursor:pointer" onclick="openPlayer('ESPN2','NFL Countdown')">ESPN2</span>
+          <span class="badge badge-hd" style="cursor:pointer" onclick="openPlayer('FS1','Big Noon Kickoff')">FS1</span>
+          <span class="badge badge-hd" style="cursor:pointer" onclick="openPlayer('TNT','NBA on TNT')">TNT</span>
+          <span class="badge badge-hd" style="cursor:pointer" onclick="openPlayer('CNBC','Markets Now')">CNBC</span>
+        </div>
+      </div>
+      <div class="pill-row">
+        <button class="pill pill-active">All (5)</button>
+        <button class="pill pill-inactive">Sports (3)</button>
+        <button class="pill pill-inactive">News (2)</button>
+      </div>
+      <div class="section-title">Sports</div>
+      <div class="channel-row" onclick="openPlayer('ESPN','SportsCenter')">
+        <div class="ch-icon" style="background:rgba(229,0,0,0.15)">🏈</div>
+        <div class="ch-info"><div class="ch-name">ESPN</div><div class="ch-sub">SportsCenter — Live</div></div>
+        <div class="ch-meta"><span class="badge badge-live">LIVE</span><span class="badge badge-hd" style="margin-left:4px">HD</span><span style="color:var(--yellow);margin-left:8px;font-size:18px">★</span></div>
+      </div>
+      <div class="channel-row" onclick="openPlayer('NFL Network','Thursday Night Football')">
+        <div class="ch-icon" style="background:rgba(0,194,255,0.1)">��</div>
+        <div class="ch-info"><div class="ch-name">NFL Network</div><div class="ch-sub">Thursday Night Football</div></div>
+        <div class="ch-meta"><span class="badge badge-live">LIVE</span><span style="color:var(--yellow);margin-left:8px;font-size:18px">★</span></div>
+      </div>
+      <div class="channel-row" onclick="openPlayer('NBA TV','Game of the Week')">
+        <div class="ch-icon" style="background:rgba(124,77,255,0.15)">🏀</div>
+        <div class="ch-info"><div class="ch-name">NBA TV</div><div class="ch-sub">Game of the Week</div></div>
+        <div class="ch-meta"><span class="badge badge-hd">HD</span><span style="color:var(--yellow);margin-left:8px;font-size:18px">★</span></div>
+      </div>
+      <div class="section-title">News</div>
+      <div class="channel-row" onclick="openPlayer('CNN','Breaking News')">
+        <div class="ch-icon" style="background:rgba(229,0,0,0.1)">📺</div>
+        <div class="ch-info"><div class="ch-name">CNN</div><div class="ch-sub">Breaking News</div></div>
+        <div class="ch-meta"><span class="badge badge-live">LIVE</span><span style="color:var(--yellow);margin-left:8px;font-size:18px">★</span></div>
+      </div>
+      <div class="channel-row" onclick="openPlayer('MSNBC','Live Coverage')">
+        <div class="ch-icon" style="background:rgba(0,194,255,0.1)">📰</div>
+        <div class="ch-info"><div class="ch-name">MSNBC</div><div class="ch-sub">Live Coverage</div></div>
+        <div class="ch-meta"><span class="badge badge-live">LIVE</span><span style="color:var(--yellow);margin-left:8px;font-size:18px">★</span></div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         SCREEN: SETTINGS
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-settings">
+      <div class="page-title">⚙️ Settings</div>
+      <div class="page-sub">App configuration and preferences</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:900px">
         <div>
-            <a href="#features">Features</a>
-            <a href="#pricing">Upgrade</a>
-            <a href="#download">Download</a>
-            <span class="toggle" onclick="toggleMode()">Toggle</span>
+          <div class="section-title">Playlist / Provider</div>
+          <div class="settings-group">
+            <div class="row-item"><span class="row-label">Active Playlist</span><span class="row-value" style="color:var(--accent)">Blogyfy Main</span></div>
+            <div class="row-item"><span class="row-label">Total Channels</span><span class="row-value">47,393</span></div>
+            <div class="row-item"><span class="row-label">Last Refreshed</span><span class="row-value">2h ago</span></div>
+            <div class="row-item" style="padding:10px 0"><button class="btn btn-ghost btn-sm btn-full">🔄 Refresh Playlist</button></div>
+            <div class="row-item" style="padding:10px 0"><button class="btn btn-ghost btn-sm btn-full" onclick="nav('playlists')">📋 Manage Playlists</button></div>
+          </div>
+          <div class="section-title">IPTV Credentials</div>
+          <div class="settings-group" style="padding:14px">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">blogyfy.xyz</div>
+            <input class="inp" style="margin-bottom:8px" placeholder="Username" value="jascodezoriptv" />
+            <input class="inp" type="password" style="margin-bottom:8px" placeholder="Password" value="19e993b7f5" />
+            <input class="inp" style="margin-bottom:10px" placeholder="Server URL" value="http://blogyfy.xyz" />
+            <button class="btn btn-green btn-full btn-sm">✓ Test Connection</button>
+          </div>
+          <div class="section-title">EPG / Guide</div>
+          <div class="settings-group" style="padding:14px">
+            <input class="inp" style="margin-bottom:8px" placeholder="XMLTV EPG URL..." />
+            <button class="btn btn-ghost btn-sm btn-full">🔄 Reload EPG</button>
+          </div>
         </div>
-    </nav>
-
-    <section class="hero">
-        <h1>The Modern IPTV Experience</h1>
-        <p style="font-size:1.6rem;font-weight:600;margin-bottom:15px;">⇄ Instantly Return to Your Previous Channel</p>
-        <p>The only IPTV player built around the feature you actually use — quick channel switching. Plus instant setup,
-            modular features, and provider-friendly configuration.</p>
-        <a href="#download" class="btn btn-primary">Download APK</a>
-        <a href="#pricing" class="btn btn-outline">See All Features</a>
-
-        <div class="tv-container">
-            <div class="tv">
-                <video autoplay muted loop playsinline>
-                    <source src="demo.mp4" type="video/mp4">
-                </video>
-            </div>
+        <div>
+          <div class="section-title">Playback</div>
+          <div class="settings-group">
+            <div class="row-item"><span class="row-label">Auto-Play on Start</span><div class="toggle-sw on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="row-item"><span class="row-label">Hardware Decode</span><div class="toggle-sw on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="row-item"><span class="row-label">Auto Quality</span><div class="toggle-sw on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="row-item"><span class="row-label">Buffer Size</span><select class="inp" style="width:auto;padding:4px 8px"><option>Small (3s)</option><option selected>Medium (5s)</option><option>Large (10s)</option></select></div>
+          </div>
+          <div class="section-title">Features</div>
+          <div class="settings-group">
+            <div class="row-item"><span class="row-label">Ad Detection</span><div class="toggle-sw on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="row-item"><span class="row-label">Auto-Updates</span><div class="toggle-sw on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="row-item"><span class="row-label">Smart Favorites</span><div class="toggle-sw on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="row-item"><span class="row-label">Parental PIN</span><div class="toggle-sw" onclick="this.classList.toggle('on')"></div></div>
+          </div>
+          <div class="section-title">App</div>
+          <div class="settings-group">
+            <div class="row-item"><span class="row-label">Version</span><span class="row-value">1.0.0</span></div>
+            <div class="row-item"><span class="row-label">Build</span><span class="row-value">Feb 2026</span></div>
+            <div class="row-item" style="padding:10px 0"><button class="btn btn-ghost btn-sm btn-full">🔄 Check for Updates</button></div>
+            <div class="row-item" style="padding:10px 0"><button class="btn btn-sm btn-full" style="background:rgba(229,0,0,0.15);color:var(--primary2);border:1px solid rgba(229,0,0,0.3)">🗑 Clear All Data</button></div>
+          </div>
         </div>
-    </section>
+      </div>
+    </div>
 
-    <section id="features" class="section">
-        <h2>25 Powerful Features</h2>
 
-        <h3 style="text-align:center;color:var(--muted);margin-bottom:40px;font-weight:600;">BASIC TIER — Always Free
-        </h3>
-        <div class="grid">
-            <div class="card">
-                <div class="badge">Core</div>
-                <h3>M3U Playlists</h3>
-                <p>Load IPTV playlists from any URL.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Core</div>
-                <h3>Live Playback</h3>
-                <p>Watch live TV channels in HD.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Core</div>
-                <h3>Favorites</h3>
-                <p>Mark and organize favorite channels.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Core</div>
-                <h3>Watch History</h3>
-                <p>Track last 50 channels watched.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Core</div>
-                <h3>Full EPG</h3>
-                <p>Current and upcoming show info.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Core</div>
-                <h3>Config Import</h3>
-                <p>One-click provider setup files.</p>
-            </div>
+    <!-- ══════════════════════════════════════════
+         SCREEN: RECORDINGS
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-recordings">
+      <div class="page-title">⏺ DVR Recordings</div>
+      <div class="page-sub">Cloud DVR · Record, schedule, and manage your shows</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+        <div class="stat-box"><div class="stat-val" style="color:var(--primary)">3</div><div class="stat-label">Total Recordings</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:var(--green)">1</div><div class="stat-label">Recording Now</div></div>
+        <div class="stat-box"><div class="stat-val">17 GB</div><div class="stat-label">Used Storage</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:var(--muted)">33 GB</div><div class="stat-label">Available</div></div>
+      </div>
+      <div style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:12px;color:var(--muted)">Storage: 17 / 50 GB</span>
+          <span style="font-size:12px;color:var(--muted)">34%</span>
         </div>
-
-        <h3 style="text-align:center;color:var(--primary);margin:80px 0 40px;font-weight:600;">ADVANCED TIER — $9
-            One-Time</h3>
-        <div class="grid">
-            <div class="card">
-                <div class="badge">Advanced</div>
-                <h3>QR Setup</h3>
-                <p>Scan QR codes for instant config.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Advanced</div>
-                <h3>Ad Detection</h3>
-                <p>Auto-detect and mute commercials.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Advanced</div>
-                <h3>Chromecast</h3>
-                <p>Cast streams to other devices.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Advanced</div>
-                <h3>DVR Recording</h3>
-                <p>Record live streams for later.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Advanced</div>
-                <h3>Time Shifting</h3>
-                <p>Pause and rewind live TV.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Advanced</div>
-                <h3>Sleep Timer</h3>
-                <p>Auto-stop after set time.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Advanced</div>
-                <h3>Parental Controls</h3>
-                <p>PIN-protect channels.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Advanced</div>
-                <h3>Multi-Audio</h3>
-                <p>Switch between languages.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Advanced</div>
-                <h3>Subtitles</h3>
-                <p>Display closed captions.</p>
-            </div>
+        <div class="progress-bar" style="height:8px"><div class="progress-fill" style="width:34%"></div></div>
+      </div>
+      <div class="pill-row">
+        <button class="pill pill-active">All</button>
+        <button class="pill pill-inactive">🔴 Recording Now</button>
+        <button class="pill pill-inactive">✓ Completed</button>
+        <button class="pill pill-inactive">📅 Scheduled</button>
+      </div>
+      <div class="rec-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div>
+            <div style="font-size:15px;font-weight:700">SportsCenter</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">ESPN · Started 8:00 PM · ~45 min remaining</div>
+          </div>
+          <span class="badge badge-live" style="animation:pulse 1.5s infinite">● RECORDING</span>
         </div>
-
-        <h3 style="text-align:center;color:var(--secondary);margin:80px 0 40px;font-weight:600;">EXPERIMENTAL TIER — $19
-            One-Time</h3>
-        <div class="grid">
-            <div class="card">
-                <div class="badge">Experimental</div>
-                <h3>Voice Control</h3>
-                <p>Hands-free navigation.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Experimental</div>
-                <h3>VPN Integration</h3>
-                <p>Built-in VPN support.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Experimental</div>
-                <h3>Weather Overlay</h3>
-                <p>Live weather on screen.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Experimental</div>
-                <h3>News Ticker</h3>
-                <p>Scrolling headlines.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Experimental</div>
-                <h3>Gesture Controls</h3>
-                <p>Swipe to change channels.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Experimental</div>
-                <h3>AI Recommendations</h3>
-                <p>Smart channel suggestions.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Experimental</div>
-                <h3>Picture-in-Picture</h3>
-                <p>Watch while multitasking.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Experimental</div>
-                <h3>Multi-View</h3>
-                <p>4 channels at once.</p>
-            </div>
+        <div class="progress-bar" style="margin-bottom:10px"><div class="progress-fill" style="width:58%;background:var(--green)"></div></div>
+        <div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm">⏹ Stop</button><button class="btn btn-ghost btn-sm">👁 Watch Live</button></div>
+      </div>
+      <div class="rec-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div>
+            <div style="font-size:15px;font-weight:700">The Last of Us — S2 E1</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">HBO · Feb 24 · 1h 12min · 2.4 GB</div>
+          </div>
+          <span class="badge badge-green">✓ Complete</span>
         </div>
-
-        <h3 style="text-align:center;color:var(--muted);margin:80px 0 40px;font-weight:600;">BONUS FEATURES</h3>
-        <div class="grid">
-            <div class="card">
-                <div class="badge">Included</div>
-                <h3>Auto-Updates</h3>
-                <p>Check for updates automatically.</p>
-            </div>
-            <div class="card">
-                <div class="badge">Included</div>
-                <h3>Bluetooth Remote</h3>
-                <p>Hardware remote support.</p>
-            </div>
+        <div style="display:flex;gap:8px"><button class="btn btn-red btn-sm" onclick="openPlayer('HBO','The Last of Us S2')">▶ Play</button><button class="btn btn-ghost btn-sm">�� Delete</button><button class="btn btn-ghost btn-sm">⬇ Download</button></div>
+      </div>
+      <div class="rec-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div>
+            <div style="font-size:15px;font-weight:700">NFL Thursday Night Football</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">NFL Network · Feb 23 · 3h 24min · 6.1 GB</div>
+          </div>
+          <span class="badge badge-green">✓ Complete</span>
         </div>
-    </section>
-
-    <section id="pricing" class="section pricing">
-        <h2>Unlock Premium Features</h2>
-        <p style="color:var(--muted);max-width:600px;margin:0 auto 60px;">All basic features are free forever. Upgrade
-            to unlock advanced and experimental features.</p>
-
-        <div
-            style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:40px;max-width:900px;margin:auto;">
-            <div class="price-box">
-                <h3>Advanced Tier</h3>
-                <div class="price">$9</div>
-                <p style="margin-bottom:30px;">9 premium features including DVR, Chromecast, Time Shifting, and more.
-                </p>
-                <button class="btn btn-primary" onclick="checkout('advanced')">Upgrade to Advanced</button>
-            </div>
-
-            <div class="price-box" style="border:2px solid var(--secondary);">
-                <h3>Experimental Tier</h3>
-                <div class="price">$19</div>
-                <p style="margin-bottom:30px;">All 25 features including Voice Control, AI Recommendations, Multi-View,
-                    and cutting-edge beta features.</p>
-                <button class="btn btn-primary" onclick="checkout('experimental')">Upgrade to Experimental</button>
-            </div>
+        <div style="display:flex;gap:8px"><button class="btn btn-red btn-sm" onclick="openPlayer('NFL Network','Thursday Night Football')">▶ Play</button><button class="btn btn-ghost btn-sm">🗑 Delete</button></div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="section-title">Schedule New Recording</div>
+        <div class="card" style="display:flex;gap:12px;align-items:flex-end">
+          <div style="flex:2"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Channel</label><input class="inp" placeholder="e.g. ESPN" /></div>
+          <div style="flex:2"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Program</label><input class="inp" placeholder="e.g. SportsCenter" /></div>
+          <div style="flex:1"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Date</label><input class="inp" type="date" /></div>
+          <div style="flex:1"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Time</label><input class="inp" type="time" /></div>
+          <button class="btn btn-red" style="flex-shrink:0">+ Schedule</button>
         </div>
+      </div>
+    </div>
 
-        <p style="margin-top:40px;color:var(--muted);font-size:0.9rem;">One-time payment. No subscriptions. Lifetime
-            access.</p>
-    </section>
+    <!-- ══════════════════════════════════════════
+         SCREEN: DEVICES
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-devices">
+      <div class="page-title">📱 Devices</div>
+      <div class="page-sub">Manage connected sessions and authorized devices</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+        <div class="stat-box"><div class="stat-val" style="color:var(--primary)">2</div><div class="stat-label">Active Streams</div></div>
+        <div class="stat-box"><div class="stat-val">3</div><div class="stat-label">Max Allowed</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:var(--green)">4</div><div class="stat-label">Total Devices</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:var(--yellow)">2026-09-12</div><div class="stat-label">Subscription Expires</div></div>
+      </div>
+      <div style="margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:12px;color:var(--muted)">Stream capacity: 2 of 3 used</span><span style="font-size:12px;color:var(--yellow)">67%</span></div>
+        <div class="progress-bar" style="height:8px"><div class="progress-fill" style="width:67%;background:var(--yellow)"></div></div>
+      </div>
+      <div class="section-title">Active Sessions</div>
+      <div class="device-card">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="font-size:32px">📺</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700">Living Room TV</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Amazon Fire TV · Watching: ESPN · 1080p · 8.2 Mbps</div>
+          </div>
+          <span class="badge badge-live">● Active</span>
+          <button class="btn btn-ghost btn-sm" style="color:var(--primary)">Disconnect</button>
+        </div>
+      </div>
+      <div class="device-card">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="font-size:32px">📱</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700">iPhone 15 Pro</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">iOS · Watching: CNN · 720p · 3.2 Mbps</div>
+          </div>
+          <span class="badge badge-live">● Active</span>
+          <button class="btn btn-ghost btn-sm" style="color:var(--primary)">Disconnect</button>
+        </div>
+      </div>
+      <div class="section-title" style="margin-top:20px">All Devices</div>
+      <div class="device-card">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="font-size:32px">💻</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700">MacBook Pro</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">macOS · Chrome · Last seen: 2h ago</div>
+          </div>
+          <span class="badge badge-yellow">Idle</span>
+          <button class="btn btn-ghost btn-sm">Remove</button>
+        </div>
+      </div>
+      <div class="device-card">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="font-size:32px">📟</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700">iPad Pro 12.9"</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">iPadOS · Last seen: 1 day ago</div>
+          </div>
+          <span class="badge badge-yellow">Idle</span>
+          <button class="btn btn-ghost btn-sm">Remove</button>
+        </div>
+      </div>
+      <div style="margin-top:20px;padding:16px;background:rgba(229,0,0,0.06);border:1px solid rgba(229,0,0,0.2);border-radius:var(--radius)">
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">⚠️ Approaching Stream Limit</div>
+        <div style="font-size:12px;color:var(--muted)">You're using 2 of 3 allowed streams. Upgrade to Elite for 5 simultaneous streams.</div>
+        <button class="btn btn-red btn-sm" style="margin-top:10px" onclick="nav('pricing')">Upgrade Plan →</button>
+      </div>
+    </div>
 
-    <section id="download" class="download">
-        <h2>Ready to Stream?</h2>
-        <p>Download the latest version of Switchback TV for Android TV.</p>
-        <a href="http://192.168.8.152:9000/switchback-v2.apk" class="btn btn-outline"
-            style="background:white;color:var(--primary);">Download APK (2.4 MB)</a>
-        <p style="margin-top:20px;">Version 1.0.0 • Android 5.1+ • Updated Feb 2026</p>
-        <p style="margin-top:10px;font-size:0.9rem;opacity:0.8;">Full IPTVviewer build coming March 1st</p>
-    </section>
+    <!-- ══════════════════════════════════════════
+         SCREEN: PRICING
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-pricing">
+      <div class="page-title">💎 Plans & Pricing</div>
+      <div class="page-sub">One-time payment · No subscriptions · Lifetime access</div>
+      <div class="pricing-grid">
+        <div class="price-card">
+          <div class="price-tier">Basic</div>
+          <div class="price-name">Starter</div>
+          <div class="price-amount">$0</div>
+          <div class="price-period">Free forever</div>
+          <div class="price-feature"><span class="check">✓</span>1 simultaneous stream</div>
+          <div class="price-feature"><span class="check">✓</span>Unlimited channels</div>
+          <div class="price-feature"><span class="check">✓</span>M3U playlist support</div>
+          <div class="price-feature"><span class="check">✓</span>10 favorites</div>
+          <div class="price-feature"><span class="check">✓</span>Basic EPG (7 days)</div>
+          <div class="price-feature"><span class="check">✓</span>Watch history</div>
+          <div class="price-feature"><span class="cross">✗</span>DVR / Recordings</div>
+          <div class="price-feature"><span class="cross">✗</span>Ad Detection</div>
+          <div class="price-feature"><span class="cross">✗</span>Catch-Up TV</div>
+          <button class="btn btn-ghost btn-full" style="margin-top:20px">Current Plan</button>
+        </div>
+        <div class="price-card featured">
+          <div style="display:inline-block;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px">★ Most Popular</div>
+          <div class="price-tier" style="color:var(--primary2)">Advanced</div>
+          <div class="price-name">Pro</div>
+          <div class="price-amount" style="color:var(--primary2)">$9</div>
+          <div class="price-period">One-time payment</div>
+          <div class="price-feature"><span class="check">✓</span>3 simultaneous streams</div>
+          <div class="price-feature"><span class="check">✓</span>Unlimited favorites</div>
+          <div class="price-feature"><span class="check">✓</span>Full EPG (14 days)</div>
+          <div class="price-feature"><span class="check">✓</span>HD quality · 1080p</div>
+          <div class="price-feature"><span class="check">✓</span>Ad Detection & Block</div>
+          <div class="price-feature"><span class="check">✓</span>DVR 50 GB cloud storage</div>
+          <div class="price-feature"><span class="check">✓</span>Catch-Up TV (7 days)</div>
+          <div class="price-feature"><span class="check">✓</span>Chromecast support</div>
+          <div class="price-feature"><span class="cross">✗</span>4K / Smart AI features</div>
+          <button class="btn btn-red btn-full" style="margin-top:20px" onclick="alert('Stripe checkout coming soon!\n\nAdvanced Tier: $9 one-time')">Upgrade to Pro →</button>
+        </div>
+        <div class="price-card" style="border-color:rgba(0,194,255,0.3);background:rgba(0,194,255,0.03)">
+          <div class="price-tier" style="color:var(--accent)">Experimental</div>
+          <div class="price-name">Elite</div>
+          <div class="price-amount" style="color:var(--accent)">$19</div>
+          <div class="price-period">One-time payment</div>
+          <div class="price-feature"><span class="check">✓</span>5 simultaneous streams</div>
+          <div class="price-feature"><span class="check">✓</span>4K UHD quality</div>
+          <div class="price-feature"><span class="check">✓</span>DVR 250 GB cloud storage</div>
+          <div class="price-feature"><span class="check">✓</span>Catch-Up TV (30 days)</div>
+          <div class="price-feature"><span class="check">✓</span>AI Smart Recommendations</div>
+          <div class="price-feature"><span class="check">✓</span>Voice Control</div>
+          <div class="price-feature"><span class="check">✓</span>Picture-in-Picture</div>
+          <div class="price-feature"><span class="check">✓</span>Multi-View (4 channels)</div>
+          <div class="price-feature"><span class="check">✓</span>Priority support</div>
+          <button class="btn btn-accent btn-full" style="margin-top:20px" onclick="alert('Stripe checkout coming soon!\n\nElite Tier: $19 one-time')">Go Elite →</button>
+        </div>
+      </div>
+      <div style="margin-top:30px;padding:16px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);max-width:900px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px">📦 Download the App</div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <a href="http://192.168.8.152:9000/switchback-v2.apk" class="btn btn-ghost btn-sm">⬇ Download APK (Android TV)</a>
+          <span style="font-size:12px;color:var(--muted)">Version 1.0.0 · Android 5.1+ · Feb 2026</span>
+        </div>
+      </div>
+    </div>
 
-    <footer>
-        <h3>Switchback TV</h3>
-        <p> 2026 Switchback TV. Built for modern IPTV streaming.</p>
-    </footer>
 
-    <script>
-        if (localStorage.getItem("mode") === "light") {
-            document.body.classList.add("light");
-        }
+    <!-- ══════════════════════════════════════════
+         SCREEN: HISTORY
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-history">
+      <div class="page-title">🕐 Watch History</div>
+      <div class="page-sub">Last 50 channels watched · Resume where you left off</div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+        <button class="btn btn-ghost btn-sm" style="color:var(--primary)">🗑 Clear All</button>
+      </div>
+      <div class="section-title">Today</div>
+      <div class="hist-item">
+        <div class="ch-icon" style="background:rgba(229,0,0,0.15)">🏈</div>
+        <div style="flex:1"><div class="ch-name">ESPN — SportsCenter</div><div class="ch-sub">8:00 PM · Watched 45 min</div></div>
+        <button class="btn btn-red btn-sm" onclick="openPlayer('ESPN','SportsCenter')">▶ Resume</button>
+      </div>
+      <div class="hist-item">
+        <div class="ch-icon" style="background:rgba(229,0,0,0.1)">��</div>
+        <div style="flex:1"><div class="ch-name">CNN — Breaking News</div><div class="ch-sub">6:30 PM · Watched 12 min</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="openPlayer('CNN','Breaking News')">▶ Watch</button>
+      </div>
+      <div class="section-title">Yesterday</div>
+      <div class="hist-item">
+        <div class="ch-icon" style="background:rgba(124,77,255,0.15)">🎬</div>
+        <div style="flex:1"><div class="ch-name">HBO — The Last of Us</div><div class="ch-sub">9:00 PM · Watched 52 min</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="openPlayer('HBO','The Last of Us')">▶ Watch</button>
+      </div>
+      <div class="hist-item">
+        <div class="ch-icon" style="background:rgba(0,194,255,0.1)">🏈</div>
+        <div style="flex:1"><div class="ch-name">NFL Network — Thursday Night Football</div><div class="ch-sub">8:00 PM · Watched 3h 10min</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="openPlayer('NFL Network','Thursday Night Football')">▶ Watch</button>
+      </div>
+      <div class="hist-item">
+        <div class="ch-icon" style="background:rgba(0,230,118,0.1)">🦈</div>
+        <div style="flex:1"><div class="ch-name">Discovery — Shark Week</div><div class="ch-sub">7:00 PM · Watched 28 min</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="openPlayer('Discovery','Shark Week')">▶ Watch</button>
+      </div>
+      <div class="section-title">2 Days Ago</div>
+      <div class="hist-item">
+        <div class="ch-icon" style="background:rgba(124,77,255,0.15)">🏀</div>
+        <div style="flex:1"><div class="ch-name">NBA TV — Game Recap</div><div class="ch-sub">11:00 PM · Watched 18 min</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="openPlayer('NBA TV','Game Recap')">▶ Watch</button>
+      </div>
+      <div class="hist-item">
+        <div class="ch-icon" style="background:rgba(255,193,7,0.1)">📰</div>
+        <div style="flex:1"><div class="ch-name">Fox News — America's Newsroom</div><div class="ch-sub">9:00 AM · Watched 1h 5min</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="openPlayer('Fox News','Americas Newsroom')">▶ Watch</button>
+      </div>
+    </div>
 
-        function toggleMode() {
-            document.body.classList.toggle("light");
-            localStorage.setItem("mode",
-                document.body.classList.contains("light") ? "light" : "dark");
-        }
+    <!-- ══════════════════════════════════════════
+         SCREEN: SEARCH
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-search">
+      <div class="page-title">🔍 Search</div>
+      <div class="page-sub">Find channels, movies, shows, and live programs</div>
+      <input class="inp" id="search-input" placeholder="Search channels, movies, shows..." style="font-size:15px;padding:12px 16px;margin-bottom:16px" oninput="runSearch(this.value)" />
+      <div class="pill-row">
+        <button class="pill pill-active" onclick="searchFilter(this,'All')">All</button>
+        <button class="pill pill-inactive" onclick="searchFilter(this,'Channels')">📡 Channels</button>
+        <button class="pill pill-inactive" onclick="searchFilter(this,'Movies')">🎬 Movies</button>
+        <button class="pill pill-inactive" onclick="searchFilter(this,'Live')">🔴 On Now</button>
+      </div>
+      <div id="search-results">
+        <div class="section-title">Recent Searches</div>
+        <div class="search-result" onclick="openPlayer('ESPN','SportsCenter')"><span style="color:var(--muted)">🕐</span><span style="font-size:13px">ESPN SportsCenter</span></div>
+        <div class="search-result" onclick="openPlayer('NFL Network','NFL Live')"><span style="color:var(--muted)">🕐</span><span style="font-size:13px">NFL Network</span></div>
+        <div class="search-result" onclick="openPlayer('AMC','Breaking Bad')"><span style="color:var(--muted)">🕐</span><span style="font-size:13px">Breaking Bad</span></div>
+        <div class="section-title">Trending Now</div>
+        <div class="channel-row" onclick="openPlayer('CBS','Super Bowl LVIX')">
+          <div class="ch-icon" style="background:rgba(229,0,0,0.15)">🏈</div>
+          <div class="ch-info"><div class="ch-name">Super Bowl LVIX</div><div class="ch-sub">CBS · Feb 9 · 6:30 PM ET</div></div>
+          <div class="ch-meta"><span class="badge" style="background:rgba(255,140,0,0.2);color:#ff8c00;border:1px solid rgba(255,140,0,0.3)">TRENDING</span></div>
+        </div>
+        <div class="channel-row" onclick="openPlayer('ABC','The Oscars')">
+          <div class="ch-icon" style="background:rgba(255,193,7,0.1)">🏆</div>
+          <div class="ch-info"><div class="ch-name">The Oscars</div><div class="ch-sub">ABC · Mar 2 · 8:00 PM ET</div></div>
+          <div class="ch-meta"><span class="badge badge-hd">HD</span></div>
+        </div>
+        <div class="channel-row" onclick="openPlayer('TNT','NBA All-Star Game')">
+          <div class="ch-icon" style="background:rgba(124,77,255,0.15)">🏀</div>
+          <div class="ch-info"><div class="ch-name">NBA All-Star Game</div><div class="ch-sub">TNT · Feb 16 · 8:00 PM ET</div></div>
+          <div class="ch-meta"><span class="badge badge-live">LIVE</span></div>
+        </div>
+        <div class="channel-row" onclick="openPlayer('Netflix','Squid Game S2')">
+          <div class="ch-icon" style="background:rgba(229,0,0,0.15)">🦑</div>
+          <div class="ch-info"><div class="ch-name">Squid Game Season 2</div><div class="ch-sub">Netflix · All episodes available</div></div>
+          <div class="ch-meta"><span class="badge badge-hd">4K</span></div>
+        </div>
+      </div>
+    </div>
 
-        const observer = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add("visible");
-                }
-            });
-        });
+    <!-- ══════════════════════════════════════════
+         SCREEN: CATCH-UP TV
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-catchup">
+      <div class="page-title">⏪ Catch-Up TV</div>
+      <div class="page-sub">Watch missed programs up to 7 days back</div>
+      <div style="display:flex;gap:10px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px">
+        <div class="date-pill active" onclick="selectDate(this)"><div class="date-pill-day">MON</div><div class="date-pill-num">25</div></div>
+        <div class="date-pill" onclick="selectDate(this)"><div class="date-pill-day">SUN</div><div class="date-pill-num">24</div></div>
+        <div class="date-pill" onclick="selectDate(this)"><div class="date-pill-day">SAT</div><div class="date-pill-num">23</div></div>
+        <div class="date-pill" onclick="selectDate(this)"><div class="date-pill-day">FRI</div><div class="date-pill-num">22</div></div>
+        <div class="date-pill" onclick="selectDate(this)"><div class="date-pill-day">THU</div><div class="date-pill-num">21</div></div>
+        <div class="date-pill" onclick="selectDate(this)"><div class="date-pill-day">WED</div><div class="date-pill-num">20</div></div>
+        <div class="date-pill" onclick="selectDate(this)"><div class="date-pill-day">TUE</div><div class="date-pill-num">19</div></div>
+      </div>
+      <div class="section-title">ESPN — Mon Feb 25</div>
+      <div class="channel-row" onclick="openPlayer('ESPN','SportsCenter AM')">
+        <div class="ch-icon" style="background:rgba(229,0,0,0.15)">🏈</div>
+        <div class="ch-info"><div class="ch-name">SportsCenter AM</div><div class="ch-sub">8:00 AM – 9:00 AM · 1h</div></div>
+        <button class="btn btn-red btn-sm" onclick="event.stopPropagation();openPlayer('ESPN','SportsCenter AM')">▶ Watch</button>
+      </div>
+      <div class="channel-row" onclick="openPlayer('ESPN','NFL Live')">
+        <div class="ch-icon" style="background:rgba(229,0,0,0.15)">🏈</div>
+        <div class="ch-info"><div class="ch-name">NFL Live</div><div class="ch-sub">2:00 PM – 3:00 PM · 1h</div></div>
+        <button class="btn btn-red btn-sm" onclick="event.stopPropagation();openPlayer('ESPN','NFL Live')">▶ Watch</button>
+      </div>
+      <div class="channel-row" onclick="openPlayer('ESPN','SportsCenter')">
+        <div class="ch-icon" style="background:rgba(229,0,0,0.15)">🏈</div>
+        <div class="ch-info"><div class="ch-name">SportsCenter</div><div class="ch-sub">8:00 PM – 9:00 PM · 1h</div></div>
+        <button class="btn btn-red btn-sm" onclick="event.stopPropagation();openPlayer('ESPN','SportsCenter')">▶ Watch</button>
+      </div>
+      <div class="section-title">CNN — Mon Feb 25</div>
+      <div class="channel-row" onclick="openPlayer('CNN','CNN This Morning')">
+        <div class="ch-icon" style="background:rgba(229,0,0,0.1)">📺</div>
+        <div class="ch-info"><div class="ch-name">CNN This Morning</div><div class="ch-sub">6:00 AM – 9:00 AM · 3h</div></div>
+        <button class="btn btn-red btn-sm" onclick="event.stopPropagation();openPlayer('CNN','CNN This Morning')">▶ Watch</button>
+      </div>
+      <div class="channel-row" onclick="openPlayer('CNN','Anderson Cooper 360')">
+        <div class="ch-icon" style="background:rgba(229,0,0,0.1)">📺</div>
+        <div class="ch-info"><div class="ch-name">Anderson Cooper 360</div><div class="ch-sub">8:00 PM – 9:00 PM · 1h</div></div>
+        <button class="btn btn-red btn-sm" onclick="event.stopPropagation();openPlayer('CNN','Anderson Cooper 360')">▶ Watch</button>
+      </div>
+      <div class="section-title">HBO — Mon Feb 25</div>
+      <div class="channel-row" onclick="openPlayer('HBO','The White Lotus S3')">
+        <div class="ch-icon" style="background:rgba(124,77,255,0.15)">🏨</div>
+        <div class="ch-info"><div class="ch-name">The White Lotus S3</div><div class="ch-sub">9:00 PM – 10:05 PM · 1h 5min</div></div>
+        <button class="btn btn-red btn-sm" onclick="event.stopPropagation();openPlayer('HBO','The White Lotus S3')">▶ Watch</button>
+      </div>
+    </div>
 
-        document.querySelectorAll('.card').forEach(card => {
-            observer.observe(card);
-        });
+    <!-- ══════════════════════════════════════════
+         SCREEN: QUALITY SETTINGS
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-quality">
+      <div class="page-title">📶 Stream Quality</div>
+      <div class="page-sub">Adjust video quality and buffer settings</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;max-width:600px">
+        <div class="stat-box"><div class="stat-val" style="color:var(--green)">8.4</div><div class="stat-label">Mbps Current</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:var(--accent)">42ms</div><div class="stat-label">Ping</div></div>
+        <div class="stat-box"><div class="stat-val" style="color:var(--green)">99.1%</div><div class="stat-label">Uptime</div></div>
+      </div>
+      <div style="max-width:700px">
+        <div class="section-title">Quality Selection</div>
+        <div class="quality-option selected" onclick="selectQuality(this)">
+          <div><div style="font-size:13px;font-weight:700">Auto (Recommended)</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Adapts to your connection speed</div></div>
+          <span class="badge badge-green">✓ Selected</span>
+        </div>
+        <div class="quality-option" onclick="selectQuality(this)">
+          <div><div style="font-size:13px;font-weight:700">4K UHD</div><div style="font-size:11px;color:var(--muted);margin-top:2px">~25 Mbps required</div></div>
+          <span class="badge badge-purple">Elite Only</span>
+        </div>
+        <div class="quality-option" onclick="selectQuality(this)">
+          <div><div style="font-size:13px;font-weight:700">1080p Full HD</div><div style="font-size:11px;color:var(--muted);margin-top:2px">~8 Mbps required</div></div>
+          <span class="badge badge-hd">Pro+</span>
+        </div>
+        <div class="quality-option" onclick="selectQuality(this)">
+          <div><div style="font-size:13px;font-weight:700">720p HD</div><div style="font-size:11px;color:var(--muted);margin-top:2px">~4 Mbps required</div></div>
+          <span class="badge badge-green">Available</span>
+        </div>
+        <div class="quality-option" onclick="selectQuality(this)">
+          <div><div style="font-size:13px;font-weight:700">480p SD</div><div style="font-size:11px;color:var(--muted);margin-top:2px">~1.5 Mbps required</div></div>
+          <span class="badge badge-green">Available</span>
+        </div>
+        <div class="section-title">Buffer &amp; Performance</div>
+        <div class="card">
+          <div class="row-item"><span class="row-label">Buffer Size</span><select class="inp" style="width:auto;padding:4px 8px"><option>Small (3s)</option><option selected>Medium (5s)</option><option>Large (10s)</option></select></div>
+          <div class="row-item"><span class="row-label">Hardware Decode</span><div class="toggle-sw on" onclick="this.classList.toggle('on')"></div></div>
+          <div class="row-item"><span class="row-label">Low Latency Mode</span><div class="toggle-sw" onclick="this.classList.toggle('on')"></div></div>
+          <div class="row-item"><span class="row-label">Reconnect on Drop</span><div class="toggle-sw on" onclick="this.classList.toggle('on')"></div></div>
+          <div class="row-item"><span class="row-label">Max Reconnect Attempts</span><input class="inp" type="number" value="3" style="width:70px;text-align:center" /></div>
+        </div>
+        <div class="section-title">Stream Statistics</div>
+        <div class="card">
+          <div class="row-item"><span class="row-label">Current Bitrate</span><span class="row-value" style="color:var(--green)">8.4 Mbps</span></div>
+          <div class="row-item"><span class="row-label">Dropped Frames</span><span class="row-value">0 / hr</span></div>
+          <div class="row-item"><span class="row-label">Buffer Health</span><span class="row-value" style="color:var(--green)">Good</span></div>
+          <div class="row-item"><span class="row-label">Codec</span><span class="row-value">H.264 (HW)</span></div>
+          <div class="row-item"><span class="row-label">Container</span><span class="row-value">HLS / TS</span></div>
+        </div>
+      </div>
+    </div>
 
-        // Stripe integration (replace with your actual keys)
-        const STRIPE_KEY = "YOUR_STRIPE_PUBLISHABLE_KEY";
-        const PRICE_IDS = {
-            advanced: "price_ADVANCED_TIER",
-            experimental: "price_EXPERIMENTAL_TIER"
-        };
+    <!-- ══════════════════════════════════════════
+         SCREEN: MOVIES
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-movies">
+      <div class="page-title">🎬 Movies</div>
+      <div class="page-sub">On-demand movies from your IPTV provider</div>
+      <div class="pill-row">
+        <button class="pill pill-active">All</button>
+        <button class="pill pill-inactive">Action</button>
+        <button class="pill pill-inactive">Drama</button>
+        <button class="pill pill-inactive">Comedy</button>
+        <button class="pill pill-inactive">Horror</button>
+        <button class="pill pill-inactive">Sci-Fi</button>
+        <button class="pill pill-inactive">Documentary</button>
+      </div>
+      <input class="inp" style="margin-bottom:20px" placeholder="🔍 Search movies..." />
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px" id="movies-grid">
+      </div>
+    </div>
 
-        function checkout(tier) {
-            // For now, show alert until Stripe is configured
-            if (STRIPE_KEY === "YOUR_STRIPE_PUBLISHABLE_KEY") {
-                alert(`Upgrade to ${tier} tier selected!\n\nStripe integration coming soon.\nPrice: ${tier === 'advanced' ? '$9' : '$19'} one-time payment.`);
-                return;
-            }
+    <!-- ══════════════════════════════════════════
+         SCREEN: SERIES
+    ══════════════════════════════════════════ -->
+    <div class="screen" id="screen-series">
+      <div class="page-title">🎭 Series</div>
+      <div class="page-sub">TV series and shows from your IPTV provider</div>
+      <div class="pill-row">
+        <button class="pill pill-active">All</button>
+        <button class="pill pill-inactive">Drama</button>
+        <button class="pill pill-inactive">Comedy</button>
+        <button class="pill pill-inactive">Crime</button>
+        <button class="pill pill-inactive">Sci-Fi</button>
+        <button class="pill pill-inactive">Reality</button>
+      </div>
+      <input class="inp" style="margin-bottom:20px" placeholder="🔍 Search series..." />
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px" id="series-grid">
+      </div>
+    </div>
 
-            const stripe = Stripe(STRIPE_KEY);
-            stripe.redirectToCheckout({
-                lineItems: [{ price: PRICE_IDS[tier], quantity: 1 }],
-                mode: "payment",
-                successUrl: window.location.href + "?upgraded=" + tier,
-                cancelUrl: window.location.href
-            });
-        }
+  </div><!-- end #content -->
+</div><!-- end #main -->
 
-        // Handle missing demo video gracefully
-        const video = document.querySelector('.tv video');
-        if (video) {
-            video.addEventListener('error', function () {
-                // Replace with animated gradient if video fails to load
-                const tvDiv = document.querySelector('.tv');
-                tvDiv.innerHTML = '<div style="width:100%;height:100%;background:linear-gradient(45deg,#4CAF50,#00C2FF,#4CAF50);background-size:400% 400%;animation:gradient 15s ease infinite;"></div>';
+<!-- ══════════════════════════════════════════
+     PLAYER (full overlay)
+══════════════════════════════════════════ -->
+<div id="player-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:1000;flex-direction:column">
+  <div id="player-video-area" style="flex:1;background:linear-gradient(135deg,#050510,#0d1226,#050510);position:relative;display:flex;align-items:center;justify-content:center">
+    <!-- Simulated video -->
+    <div style="text-align:center;opacity:0.3">
+      <div style="font-size:80px" id="player-channel-icon">📺</div>
+      <div style="font-size:16px;color:#fff;margin-top:8px">Live Stream</div>
+    </div>
+    <!-- Top controls -->
+    <div style="position:absolute;top:0;left:0;right:0;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,rgba(0,0,0,0.85),transparent)">
+      <button class="btn btn-ghost btn-sm" onclick="closePlayer()">← Back</button>
+      <div id="player-channel-name-top" style="font-size:16px;font-weight:700"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="nav('recordings')">⏺ REC</button>
+        <button class="btn btn-ghost btn-sm">📺 Cast</button>
+        <button class="btn btn-ghost btn-sm" onclick="nav('quality')">📶</button>
+      </div>
+    </div>
+    <!-- Bottom info -->
+    <div style="position:absolute;bottom:0;left:0;right:0;padding:20px;background:linear-gradient(0deg,rgba(0,0,0,0.95),transparent)">
+      <div id="player-channel-display" style="font-size:22px;font-weight:800"></div>
+      <div id="player-program-display" style="font-size:14px;color:#aaa;margin-top:4px"></div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:12px;color:#888">LIVE</span>
+        <div class="progress-bar" style="flex:1;height:3px"><div class="progress-fill" style="width:45%"></div></div>
+        <span style="font-size:12px;color:#888" id="player-time">8:27 PM</span>
+      </div>
+    </div>
+  </div>
+  <!-- Controls bar -->
+  <div style="background:#111;padding:14px 24px;display:flex;align-items:center;gap:16px;flex-shrink:0">
+    <button class="btn btn-ghost btn-sm">⏮ Prev</button>
+    <button class="btn btn-ghost btn-sm">⏪ -30s</button>
+    <button id="play-pause-btn" class="play-btn" onclick="togglePlay()">⏸</button>
+    <button class="btn btn-ghost btn-sm">+30s ⏩</button>
+    <button class="btn btn-ghost btn-sm">Next ⏭</button>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm">🔇 Mute</button>
+    <input type="range" style="width:80px" value="80" />
+    <button class="btn btn-ghost btn-sm" onclick="nav('epg')">📋 Guide</button>
+    <button class="btn btn-ghost btn-sm" onclick="closePlayer()">✕</button>
+  </div>
+</div>
 
-                // Add animation keyframes
-                const style = document.createElement('style');
-                style.textContent = '@keyframes gradient{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}';
-                document.head.appendChild(style);
-            });
-        }
-    </script>
+</div><!-- end #app -->
 
+<script>
+// ── DATA ──────────────────────────────────────────────
+const CHANNELS = [
+  { name:'ESPN', group:'Sports', icon:'🏈', color:'rgba(229,0,0,0.15)', program:'SportsCenter', live:true, hd:true },
+  { name:'NFL Network', group:'Sports', icon:'🏈', color:'rgba(0,100,200,0.15)', program:'Thursday Night Football', live:true, hd:true },
+  { name:'NBA TV', group:'Sports', icon:'🏀', color:'rgba(124,77,255,0.15)', program:'Game of the Week', live:false, hd:true },
+  { name:'Fox Sports 1', group:'Sports', icon:'🏆', color:'rgba(255,140,0,0.15)', program:'Big Noon Kickoff', live:true, hd:true },
+  { name:'Golf Channel', group:'Sports', icon:'⛳', color:'rgba(0,200,100,0.15)', program:'PGA Tour Live', live:true, hd:true },
+  { name:'CNN', group:'News', icon:'📺', color:'rgba(229,0,0,0.1)', program:'Breaking News', live:true, hd:true },
+  { name:'Fox News', group:'News', icon:'📰', color:'rgba(0,100,180,0.15)', program:'Americas Newsroom', live:true, hd:false },
+  { name:'MSNBC', group:'News', icon:'🗞', color:'rgba(0,150,255,0.1)', program:'Morning Joe', live:true, hd:true },
+  { name:'BBC World', group:'News', icon:'🌍', color:'rgba(180,0,0,0.15)', program:'BBC News Hour', live:true, hd:true },
+  { name:'HBO', group:'Movies', icon:'🎬', color:'rgba(124,77,255,0.15)', program:'The White Lotus', live:false, hd:true },
+  { name:'Netflix', group:'Movies', icon:'🎭', color:'rgba(229,0,0,0.15)', program:'Squid Game S2', live:false, hd:true },
+  { name:'AMC', group:'Movies', icon:'🎞', color:'rgba(200,150,0,0.15)', program:'Breaking Bad', live:false, hd:true },
+  { name:'Showtime', group:'Movies', icon:'🍿', color:'rgba(200,0,0,0.15)', program:'Billions S7', live:false, hd:true },
+  { name:'Cartoon Network', group:'Kids', icon:'🧸', color:'rgba(0,180,100,0.15)', program:'Adventure Time', live:true, hd:false },
+  { name:'Disney Channel', group:'Kids', icon:'🐭', color:'rgba(0,100,200,0.15)', program:'Gravity Falls', live:true, hd:true },
+  { name:'Nickelodeon', group:'Kids', icon:'🟠', color:'rgba(255,140,0,0.15)', program:'SpongeBob', live:true, hd:false },
+  { name:'MTV', group:'Music', icon:'🎵', color:'rgba(124,77,255,0.15)', program:'TRL', live:true, hd:false },
+  { name:'VH1', group:'Music', icon:'🎶', color:'rgba(200,0,180,0.15)', program:'Behind the Music', live:false, hd:false },
+  { name:'TV5 Monde', group:'International', icon:'🇫🇷', color:'rgba(0,0,200,0.1)', program:'Journal 20h', live:true, hd:true },
+  { name:'Deutsche Welle', group:'International', icon:'🇩🇪', color:'rgba(0,0,0,0.3)', program:'DW News', live:true, hd:true },
+  { name:'Al Jazeera', group:'International', icon:'🌐', color:'rgba(0,150,80,0.15)', program:'The Stream', live:true, hd:true },
+  { name:'Discovery', group:'Kids', icon:'🦈', color:'rgba(0,180,200,0.15)', program:'Shark Week', live:false, hd:true },
+];
+
+const MOVIES = [
+  { title:'Oppenheimer', year:2023, genre:'Drama', emoji:'💣', color:'#1a1a2e' },
+  { title:'Dune: Part Two', year:2024, genre:'Sci-Fi', emoji:'��', color:'#2e1a0a' },
+  { title:'The Batman', year:2022, genre:'Action', emoji:'🦇', color:'#0a0a1a' },
+  { title:'Top Gun: Maverick', year:2022, genre:'Action', emoji:'✈️', color:'#0a1a2e' },
+  { title:'Killers of the Flower Moon', year:2023, genre:'Drama', emoji:'🌙', color:'#1a0a0a' },
+  { title:'Everything Everywhere', year:2022, genre:'Sci-Fi', emoji:'🌌', color:'#1a0a2e' },
+  { title:'Avatar 2', year:2022, genre:'Sci-Fi', emoji:'🌊', color:'#0a1a1a' },
+  { title:'The Menu', year:2022, genre:'Horror', emoji:'🍽', color:'#1a1a0a' },
+  { title:'Glass Onion', year:2022, genre:'Comedy', emoji:'🧅', color:'#0a2e0a' },
+  { title:'Tár', year:2022, genre:'Drama', emoji:'🎵', color:'#1a1a1a' },
+  { title:'Babylon', year:2022, genre:'Drama', emoji:'🎬', color:'#2e1a0a' },
+  { title:'Smile', year:2022, genre:'Horror', emoji:'😁', color:'#1a0a1a' },
+];
+
+const SERIES = [
+  { title:'The Last of Us', seasons:2, genre:'Drama', emoji:'🍄', color:'#1a1a0a' },
+  { title:'House of the Dragon', seasons:2, genre:'Fantasy', emoji:'🐉', color:'#1a0a0a' },
+  { title:'Succession', seasons:4, genre:'Drama', emoji:'💰', color:'#0a1a0a' },
+  { title:'Euphoria', seasons:2, genre:'Drama', emoji:'✨', color:'#1a0a2e' },
+  { title:'Severance', seasons:2, genre:'Sci-Fi', emoji:'🧠', color:'#0a0a1a' },
+  { title:'Yellowstone', seasons:5, genre:'Drama', emoji:'🏔', color:'#0a1a0a' },
+  { title:'The Bear', seasons:3, genre:'Comedy', emoji:'🐻', color:'#1a1a0a' },
+  { title:'Shogun', seasons:1, genre:'Drama', emoji:'⚔️', color:'#1a0a0a' },
+  { title:'True Detective S4', seasons:4, genre:'Crime', emoji:'🔍', color:'#0a0a1a' },
+  { title:'Abbott Elementary', seasons:4, genre:'Comedy', emoji:'🏫', color:'#0a1a1a' },
+  { title:'Reacher', seasons:3, genre:'Action', emoji:'💪', color:'#1a0a0a' },
+  { title:'White Lotus S3', seasons:3, genre:'Drama', emoji:'🏨', color:'#0a1a2e' },
+];
+
+const EPG_DATA = [
+  { ch:'ESPN', icon:'🏈', color:'rgba(229,0,0,0.15)', programs:[
+    { title:'NFL Live', time:'7:00–8:00 PM', live:false },
+    { title:'SportsCenter', time:'8:00–9:00 PM', live:true },
+    { title:'Monday Night Countdown', time:'9:00–10:00 PM', live:false },
+    { title:'Monday Night Football', time:'10:00–1:00 AM', live:false },
+  ]},
+  { ch:'CNN', icon:'📺', color:'rgba(229,0,0,0.1)', programs:[
+    { title:'The Situation Room', time:'7:00–8:00 PM', live:false },
+    { title:'Anderson Cooper 360', time:'8:00–9:00 PM', live:true },
+    { title:'CNN Tonight', time:'9:00–10:00 PM', live:false },
+    { title:'Don Lemon Tonight', time:'10:00–11:00 PM', live:false },
+  ]},
+  { ch:'HBO', icon:'🎬', color:'rgba(124,77,255,0.15)', programs:[
+    { title:'Succession Rerun', time:'7:00–8:00 PM', live:false },
+    { title:'The White Lotus', time:'8:00–9:05 PM', live:true },
+    { title:'The Last of Us', time:'9:05–10:10 PM', live:false },
+    { title:'Euphoria', time:'10:10–11:10 PM', live:false },
+  ]},
+  { ch:'NFL Net', icon:'🏈', color:'rgba(0,100,200,0.15)', programs:[
+    { title:'Good Morning Football', time:'7:00–8:00 PM', live:false },
+    { title:'Thursday Night Football', time:'8:00–12:00 AM', live:true },
+  ]},
+  { ch:'Discovery', icon:'🦈', color:'rgba(0,180,200,0.15)', programs:[
+    { title:'Deadliest Catch', time:'7:00–8:00 PM', live:false },
+    { title:'Shark Week', time:'8:00–9:00 PM', live:false },
+    { title:'Gold Rush', time:'9:00–10:00 PM', live:false },
+    { title:'Mythbusters', time:'10:00–11:00 PM', live:false },
+  ]},
+  { ch:'NBA TV', icon:'🏀', color:'rgba(124,77,255,0.15)', programs:[
+    { title:'NBA GameTime', time:'7:00–8:00 PM', live:false },
+    { title:'Lakers vs Warriors', time:'8:00–10:30 PM', live:true },
+    { title:'Post-Game Show', time:'10:30–11:30 PM', live:false },
+  ]},
+  { ch:'Fox News', icon:'📰', color:'rgba(0,100,180,0.15)', programs:[
+    { title:"Tucker's Show", time:'7:00–8:00 PM', live:false },
+    { title:'Hannity', time:'8:00–9:00 PM', live:true },
+    { title:'Ingraham Angle', time:'9:00–10:00 PM', live:false },
+    { title:'Fox News @ Night', time:'10:00–11:00 PM', live:false },
+  ]},
+];
+
+// ── STATE ──────────────────────────────────────────────
+let currentScreen = 'tvhome';
+let playerPlaying = true;
+let currentChannelFilter = 'All';
+
+// ── NAVIGATION ──────────────────────────────────────────
+const SCREEN_TITLES = {
+  tvhome:'Home', channels:'Live TV', movies:'Movies', series:'Series',
+  favorites:'Favorites', history:'Watch History', recordings:'DVR Recordings',
+  catchup:'Catch-Up TV', epg:'TV Guide', search:'Search',
+  devices:'Devices', quality:'Stream Quality', pricing:'Plans & Pricing',
+  settings:'Settings'
+};
+
+function nav(screen) {
+  // hide all screens
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(s => s.classList.remove('active'));
+  // hide player overlay
+  document.getElementById('player-overlay').style.display = 'none';
+
+  const el = document.getElementById('screen-' + screen);
+  if (el) {
+    el.classList.add('active');
+    // tvhome special layout
+    if (screen === 'tvhome') {
+      el.style.display = 'flex';
+      el.style.flexDirection = 'column';
+    }
+  }
+
+  // update sidebar
+  const sbItems = document.querySelectorAll('.sb-item');
+  sbItems.forEach(item => {
+    if (item.getAttribute('onclick') && item.getAttribute('onclick').includes("'" + screen + "'")) {
+      item.classList.add('active');
+    }
+  });
+
+  document.getElementById('topbar-title').textContent = SCREEN_TITLES[screen] || screen;
+  currentScreen = screen;
+
+  // lazy-init screens
+  if (screen === 'tvhome') initTVHome();
+  if (screen === 'channels') renderChannels();
+  if (screen === 'epg') renderEPG();
+  if (screen === 'movies') renderMovies();
+  if (screen === 'series') renderSeries();
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  sb.classList.toggle('collapsed');
+  const toggleLabel = sb.querySelector('.sb-toggle .label');
+  const toggleIcon = sb.querySelector('.sb-toggle .icon');
+  if (sb.classList.contains('collapsed')) {
+    if (toggleLabel) toggleLabel.textContent = '';
+    if (toggleIcon) toggleIcon.textContent = '▶';
+  } else {
+    if (toggleLabel) toggleLabel.textContent = 'Collapse';
+    if (toggleIcon) toggleIcon.textContent = '◀';
+  }
+}
+
+// ── TV HOME ────────────────────────────────────────────
+function initTVHome() {
+  const el = document.getElementById('screen-tvhome');
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:4px 0">
+      <div>
+        <div style="font-size:32px;font-weight:900;background:linear-gradient(90deg,#ff3a3a,#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Switchback TV</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">Blogyfy Main · 47,393 channels</div>
+      </div>
+      <div style="background:rgba(255,193,7,0.15);border:1px solid rgba(255,193,7,0.3);border-radius:8px;padding:8px 16px;text-align:right">
+        <div style="font-size:10px;color:var(--yellow);font-weight:700;text-transform:uppercase">Subscription</div>
+        <div style="font-size:13px;font-weight:600;margin-top:2px">Expires 2026-09-12</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr 160px;grid-template-rows:1fr 100px;gap:14px;flex:1">
+      <div onclick="nav('channels')" style="grid-row:1;background:rgba(229,0,0,0.12);border:2px solid rgba(229,0,0,0.3);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(229,0,0,0.2)'" onmouseout="this.style.background='rgba(229,0,0,0.12)'">
+        <div style="font-size:64px;margin-bottom:16px">📺</div>
+        <div style="font-size:28px;font-weight:800">Live TV</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:6px">47,393 channels</div>
+      </div>
+      <div style="grid-row:1;display:flex;flex-direction:column;gap:14px">
+        <div onclick="nav('movies')" class="tile" style="flex:1">
+          <div style="font-size:40px;margin-bottom:10px">🎬</div>
+          <div style="font-size:18px;font-weight:700">Movies</div>
+        </div>
+        <div onclick="nav('series')" class="tile" style="flex:1">
+          <div style="font-size:40px;margin-bottom:10px">🎭</div>
+          <div style="font-size:18px;font-weight:700">Series</div>
+        </div>
+      </div>
+      <div style="grid-row:1;display:flex;flex-direction:column;gap:14px">
+        <div onclick="nav('settings')" class="sidebar-tile" style="flex:1">
+          <div class="sidebar-tile-icon">⚙️</div>
+          <div class="sidebar-tile-text">Settings</div>
+        </div>
+        <div onclick="renderChannels();nav('channels')" class="sidebar-tile" style="flex:1">
+          <div class="sidebar-tile-icon">🔄</div>
+          <div class="sidebar-tile-text">Reload</div>
+        </div>
+        <div onclick="nav('pricing')" class="sidebar-tile" style="flex:1">
+          <div class="sidebar-tile-icon">💎</div>
+          <div class="sidebar-tile-text">Upgrade</div>
+        </div>
+      </div>
+      <div style="grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+        <div onclick="nav('favorites')" class="tile">
+          <div style="font-size:28px;margin-bottom:6px">⭐</div>
+          <div style="font-size:14px;font-weight:700">Favorites</div>
+        </div>
+        <div onclick="nav('history')" class="tile">
+          <div style="font-size:28px;margin-bottom:6px">🕐</div>
+          <div style="font-size:14px;font-weight:700">History</div>
+        </div>
+        <div onclick="nav('epg')" class="tile">
+          <div style="font-size:28px;margin-bottom:6px">📋</div>
+          <div style="font-size:14px;font-weight:700">TV Guide</div>
+        </div>
+        <div onclick="nav('recordings')" class="tile">
+          <div style="font-size:28px;margin-bottom:6px">⏺</div>
+          <div style="font-size:14px;font-weight:700">Recordings</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── CHANNELS ──────────────────────────────────────────
+function renderChannels(filter) {
+  if (filter) currentChannelFilter = filter;
+  const list = document.getElementById('channel-list');
+  if (!list) return;
+  const filtered = currentChannelFilter === 'All' ? CHANNELS : CHANNELS.filter(c => c.group === currentChannelFilter);
+  list.innerHTML = filtered.map(ch => `
+    <div class="channel-row" onclick="openPlayer('${ch.name}','${ch.program}')">
+      <div class="ch-icon" style="background:${ch.color}">${ch.icon}</div>
+      <div class="ch-info">
+        <div class="ch-name">${ch.name}</div>
+        <div class="ch-sub">${ch.group} · ${ch.program}</div>
+      </div>
+      <div class="ch-meta">
+        ${ch.live ? '<span class="badge badge-live">LIVE</span>' : ''}
+        ${ch.hd ? '<span class="badge badge-hd" style="margin-left:4px">HD</span>' : ''}
+        <span style="color:var(--muted);margin-left:8px;font-size:18px;cursor:pointer" onclick="event.stopPropagation();toggleFav(this)">☆</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterCat(el, cat) {
+  document.querySelectorAll('#screen-channels .pill').forEach(p => { p.className = 'pill pill-inactive'; });
+  el.className = 'pill pill-active';
+  renderChannels(cat);
+}
+
+function filterChannels(val) {
+  const rows = document.querySelectorAll('#channel-list .channel-row');
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(val.toLowerCase()) ? '' : 'none';
+  });
+}
+
+function toggleFav(el) { el.textContent = el.textContent === '☆' ? '★' : '☆'; el.style.color = el.textContent === '★' ? 'var(--yellow)' : 'var(--muted)'; }
+
+// ── EPG ────────────────────────────────────────────────
+function renderEPG() {
+  const container = document.getElementById('epg-rows');
+  if (!container) return;
+  container.innerHTML = EPG_DATA.map(row => `
+    <div class="epg-row">
+      <div class="epg-ch-cell">
+        <span style="font-size:18px">${row.icon}</span>
+        <div class="epg-ch-cell-name">${row.ch}</div>
+      </div>
+      <div class="epg-programs">
+        ${row.programs.map(p => `
+          <div class="epg-prog${p.live ? ' live' : ''}" onclick="openPlayer('${row.ch}','${p.title}')">
+            <div class="epg-prog-title">${p.title}${p.live ? ' <span style="color:var(--primary);font-size:9px">● NOW</span>' : ''}</div>
+            <div class="epg-prog-time">${p.time}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── MOVIES ─────────────────────────────────────────────
+function renderMovies() {
+  const grid = document.getElementById('movies-grid');
+  if (!grid) return;
+  grid.innerHTML = MOVIES.map(m => `
+    <div onclick="openPlayer('${m.title}','${m.genre} Film')" style="cursor:pointer">
+      <div style="width:100%;aspect-ratio:2/3;background:${m.color};border-radius:10px;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:48px;transition:transform 0.2s;margin-bottom:8px" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">${m.emoji}</div>
+      <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.title}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${m.year} · ${m.genre}</div>
+    </div>
+  `).join('');
+}
+
+// ── SERIES ─────────────────────────────────────────────
+function renderSeries() {
+  const grid = document.getElementById('series-grid');
+  if (!grid) return;
+  grid.innerHTML = SERIES.map(s => `
+    <div onclick="openPlayer('${s.title}','S${s.seasons} E1')" style="cursor:pointer">
+      <div style="width:100%;aspect-ratio:2/3;background:${s.color};border-radius:10px;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:48px;transition:transform 0.2s;margin-bottom:8px" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">${s.emoji}</div>
+      <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.title}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.seasons} Season${s.seasons>1?'s':''} · ${s.genre}</div>
+    </div>
+  `).join('');
+}
+
+// ── SEARCH ─────────────────────────────────────────────
+function runSearch(val) {
+  if (!val) return;
+  const results = document.getElementById('search-results');
+  const matches = CHANNELS.filter(c => c.name.toLowerCase().includes(val.toLowerCase()) || c.program.toLowerCase().includes(val.toLowerCase()));
+  if (matches.length > 0) {
+    results.innerHTML = '<div class="section-title">Channels</div>' + matches.map(ch => `
+      <div class="channel-row" onclick="openPlayer('${ch.name}','${ch.program}')">
+        <div class="ch-icon" style="background:${ch.color}">${ch.icon}</div>
+        <div class="ch-info"><div class="ch-name">${ch.name}</div><div class="ch-sub">${ch.program}</div></div>
+        <div class="ch-meta">${ch.live ? '<span class="badge badge-live">LIVE</span>' : ''}</div>
+      </div>
+    `).join('');
+  }
+}
+
+function searchFilter(el, f) {
+  document.querySelectorAll('#screen-search .pill').forEach(p => p.className = 'pill pill-inactive');
+  el.className = 'pill pill-active';
+}
+
+// ── CATCH-UP ───────────────────────────────────────────
+function selectDate(el) {
+  document.querySelectorAll('.date-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── QUALITY ────────────────────────────────────────────
+function selectQuality(el) {
+  document.querySelectorAll('.quality-option').forEach(q => {
+    q.classList.remove('selected');
+    const badge = q.querySelector('.badge');
+    if (badge && badge.textContent.includes('Selected')) badge.textContent = badge.textContent.replace(' ✓ Selected','');
+  });
+  el.classList.add('selected');
+}
+
+// ── PLAYER ─────────────────────────────────────────────
+function openPlayer(channel, program) {
+  const overlay = document.getElementById('player-overlay');
+  overlay.style.display = 'flex';
+  overlay.style.flexDirection = 'column';
+  document.getElementById('player-channel-name-top').textContent = channel;
+  document.getElementById('player-channel-display').textContent = channel;
+  document.getElementById('player-program-display').textContent = program + ' · Live';
+
+  // channel icon
+  const ch = CHANNELS.find(c => c.name === channel);
+  document.getElementById('player-channel-icon').textContent = ch ? ch.icon : '📺';
+
+  // update time
+  const now = new Date();
+  document.getElementById('player-time').textContent = now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+
+  playerPlaying = true;
+  document.getElementById('play-pause-btn').textContent = '⏸';
+  document.getElementById('topbar-title').textContent = channel + ' — ' + program;
+}
+
+function closePlayer() {
+  document.getElementById('player-overlay').style.display = 'none';
+  document.getElementById('topbar-title').textContent = SCREEN_TITLES[currentScreen] || currentScreen;
+}
+
+function togglePlay() {
+  playerPlaying = !playerPlaying;
+  document.getElementById('play-pause-btn').textContent = playerPlaying ? '⏸' : '▶';
+}
+
+// ── INIT ───────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  nav('tvhome');
+  renderChannels();
+  renderEPG();
+  renderMovies();
+  renderSeries();
+});
+</script>
 </body>
-
 </html>
