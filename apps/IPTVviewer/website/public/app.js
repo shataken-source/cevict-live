@@ -1974,23 +1974,23 @@ async function runBandwidthTest() {
   if (bwEl) { bwEl.textContent = '…'; bwEl.style.color = 'var(--muted)'; }
 
   try {
-    // Ping test
+    // Ping test — use api() so it routes through Android proxy automatically
     const t0 = performance.now();
-    await fetch(`/api/iptv?action=get_user_info&server=${encodeURIComponent(S.server)}&username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}`);
+    await api('get_user_info');
     const ping = Math.round(performance.now() - t0);
 
     if (pingEl) { pingEl.textContent = ping + 'ms'; pingEl.style.color = ping < 100 ? 'var(--green)' : ping < 300 ? 'var(--yellow)' : 'var(--primary)'; }
-    document.getElementById('q-ping').textContent = ping + 'ms';
+    const qPingEl = document.getElementById('q-ping');
+    if (qPingEl) qPingEl.textContent = ping + 'ms';
 
-    // Bandwidth estimate: download a small HLS segment if stream is active
+    // Bandwidth estimate: use HLS if stream active, else time a categories fetch
     let mbps = null;
     if (S.hlsInstance?.bandwidthEstimate) {
       mbps = (S.hlsInstance.bandwidthEstimate / 1000000).toFixed(1);
     } else {
-      // Fallback: fetch a small test via proxy timing
       const t1 = performance.now();
-      const r = await fetch(`/api/iptv?action=get_live_categories&server=${encodeURIComponent(S.server)}&username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}`);
-      const bytes = (await r.blob()).size;
+      const cats = await api('get_live_categories');
+      const bytes = JSON.stringify(cats).length;
       const secs = (performance.now() - t1) / 1000;
       mbps = ((bytes * 8) / secs / 1000000).toFixed(2);
     }
