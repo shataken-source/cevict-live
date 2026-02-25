@@ -37,7 +37,8 @@ case "$APP_DIR" in
   *)
     # Unknown project — check everything except IPTVviewer (old behavior)
     echo ">>> Unknown project, checking all files"
-    git diff --quiet HEAD^ HEAD -- . ':!apps/IPTVviewer' 2>/dev/null
+    REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+    git -C "$REPO_ROOT" diff --quiet HEAD^ HEAD -- . ':!apps/IPTVviewer' 2>/dev/null
     exit $?
     ;;
 esac
@@ -45,10 +46,16 @@ esac
 echo ">>> Checking paths: $CHECK_PATHS"
 
 # Also check shared config files that affect all projects
-SHARED_PATHS="package.json vercel.json tsconfig.json"
+SHARED_PATHS="package.json vercel.json tsconfig.json apps/progno/tsconfig.json apps/gulfcoastcharters/tsconfig.json"
+
+# Navigate to repo root so git diff paths resolve correctly
+# Vercel sets CWD to the project's Root Directory (e.g. /vercel/path0/apps/progno)
+# but git diff paths are relative to the repo root (/vercel/path0)
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo ".")
+echo ">>> Repo root: $REPO_ROOT"
 
 # Check if any relevant files changed between this commit and the previous
-git diff --quiet HEAD^ HEAD -- $CHECK_PATHS $SHARED_PATHS 2>/dev/null
+git -C "$REPO_ROOT" diff --quiet HEAD^ HEAD -- $CHECK_PATHS $SHARED_PATHS 2>/dev/null
 RESULT=$?
 
 if [ $RESULT -eq 0 ]; then
