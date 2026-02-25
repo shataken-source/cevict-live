@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { Shield, Lock } from "lucide-react";
 
 interface PaymentProcessorProps {
   bookingId: string;
@@ -13,37 +13,29 @@ interface PaymentProcessorProps {
 
 export default function PaymentProcessor({ bookingId, amount, onSuccess }: PaymentProcessorProps) {
   const [loading, setLoading] = useState(false);
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvc, setCvc] = useState("");
-  const [name, setName] = useState("");
 
-  const handlePayment = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSecurePayment = async () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("process-payment", {
-        body: { bookingId, amount, cardNumber, expiry, cvc, name },
+      // Create Stripe Checkout session — card data is handled entirely by Stripe (PCI compliant)
+      const { data, error } = await supabase.functions.invoke("stripe-checkout", {
+        body: {
+          bookingId,
+          amount,
+          successUrl: `${window.location.origin}/payment-success?booking=${bookingId}`,
+          cancelUrl: window.location.href,
+          metadata: { bookingId },
+        },
       });
 
       if (error) throw error;
 
-      await supabase.from("payments").insert({
-        booking_id: bookingId,
-        amount,
-        currency: "usd",
-        status: "completed",
-        payment_method: "card",
-      });
-
-      await supabase.from("bookings").update({ 
-        payment_status: "paid",
-        status: "confirmed" 
-      }).eq("id", bookingId);
-
-      toast.success("Payment processed successfully!");
-      onSuccess();
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
     } catch (error: any) {
       toast.error(error.message || "Payment failed");
     } finally {
@@ -54,61 +46,31 @@ export default function PaymentProcessor({ bookingId, amount, onSuccess }: Payme
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Payment Details</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="w-5 h-5 text-green-600" />
+          Payment Details
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handlePayment} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Card Number</label>
-            <Input
-              value={cardNumber}
-              onChange={(e) => setCardNumber(e.target.value)}
-              placeholder="1234 5678 9012 3456"
-              maxLength={19}
-              required
-            />
+      <CardContent className="space-y-4">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-green-800 mb-2">
+            <Lock className="w-4 h-4" />
+            <span className="font-semibold">PCI-DSS Compliant</span>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Expiry</label>
-              <Input
-                value={expiry}
-                onChange={(e) => setExpiry(e.target.value)}
-                placeholder="MM/YY"
-                maxLength={5}
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">CVC</label>
-              <Input
-                value={cvc}
-                onChange={(e) => setCvc(e.target.value)}
-                placeholder="123"
-                maxLength={4}
-                required
-              />
-            </div>
+          <p className="text-sm text-green-700">
+            Your payment is processed securely through Stripe.
+            We never store your card details.
+          </p>
+        </div>
+        <div className="pt-4 border-t">
+          <div className="flex justify-between mb-4">
+            <span className="font-semibold">Total:</span>
+            <span className="text-2xl font-bold">${amount.toFixed(2)}</span>
           </div>
-          <div>
-            <label className="text-sm font-medium">Cardholder Name</label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="John Doe"
-              required
-            />
-          </div>
-          <div className="pt-4 border-t">
-            <div className="flex justify-between mb-4">
-              <span className="font-semibold">Total:</span>
-              <span className="text-2xl font-bold">${amount.toFixed(2)}</span>
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Processing..." : `Pay $${amount.toFixed(2)}`}
-            </Button>
-          </div>
-        </form>
+          <Button onClick={handleSecurePayment} className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
+            {loading ? "Processing..." : `Pay $${amount.toFixed(2)} Securely`}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
