@@ -136,7 +136,7 @@ function DarkResultsTable({ rows }: { rows: any[] }) {
                 <td style={{ padding: '7px 10px', color: C.textBright }}>{r.confidence ?? '—'}%</td>
                 <td style={{ padding: '7px 10px', color: (r.odds ?? 0) > 0 ? C.green : C.text }}>{fmt(r.odds)}</td>
                 <td style={{ padding: '7px 10px' }}>{status ? <Badge color={statusColor}>{status.toUpperCase()}</Badge> : <span style={{ color: C.textDim }}>pending</span>}</td>
-                <td style={{ padding: '7px 10px', color: C.textDim }}>{r.home_score != null ? `${r.home_score}-${r.away_score}` : '—'}</td>
+                <td style={{ padding: '7px 10px', color: C.textDim }}>{r.actualScore ? `${r.actualScore.home}-${r.actualScore.away}` : r.home_score != null ? `${r.home_score}-${r.away_score}` : '—'}</td>
               </tr>
             );
           })}
