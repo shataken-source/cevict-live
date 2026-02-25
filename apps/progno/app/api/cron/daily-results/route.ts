@@ -29,16 +29,22 @@ const SPORT_KEY_MAP: Record<string, string> = {
   CBB: 'baseball_ncaa',
 }
 
-/** Aggressive normalization: strip diacritics, punctuation, spaces; lowercase. */
+/** Aggressive normalization: strip diacritics, punctuation, spaces; lowercase.
+ *  Expands common abbreviations (St→State, Mt→Mount, etc.) so "Tennessee St" matches "Tennessee State". */
 function norm(name: string): string {
-  return (name ?? '')
+  let s = (name ?? '')
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
-    .replace(/['.’'`]/g, '')           // apostrophes and curly/smart quotes
+    .replace(/['.‘’`]/g, '')           // apostrophes and curly/smart quotes
     .replace(/[.\-&]/g, '')           // period, hyphen, ampersand (e.g. Texas A&M)
-    .replace(/\s+/g, '')
     .toLowerCase()
     .trim()
+  // Expand abbreviations BEFORE stripping spaces (word-boundary sensitive)
+  s = s.replace(/\bst\b/g, 'state')
+  s = s.replace(/\bmt\b/g, 'mount')
+  s = s.replace(/\bft\b/g, 'fort')
+  s = s.replace(/\bapp state\b/g, 'appalachian state')  // ESPN uses "App State"
+  return s.replace(/\s+/g, '')
 }
 
 /** Alias groups: each sub-array is equivalent team names (after norm). Builds a map so we can match any variant. */
@@ -288,20 +294,28 @@ export async function GET(request: Request) {
     }
   }
 
-  // Third fallback: external results APIs (Rolling Insights, JsonOdds, TheSportsDB, Score24, BALLDONTLIE)
+  // Third fallback: external results APIs (ESPN free + Rolling Insights, JsonOdds, TheSportsDB, Score24, BALLDONTLIE)
+  // For NCAAB/NCAAF: ALWAYS supplement — Odds API only carries major games, missing small college matchups.
+  // For other leagues: only run if no scores at all from tiers 1+2.
   for (const league of Object.keys(SPORT_KEY_MAP)) {
-    if ((scoresByKey[league] ?? []).length > 0) continue
+    const alwaysSupplement = league === 'NCAAB' || league === 'NCAAF'
+    if (!alwaysSupplement && (scoresByKey[league] ?? []).length > 0) continue
     try {
       const gameResults = await fetchPreviousDayResultsFromProviders(league as 'NFL' | 'NBA' | 'NHL' | 'MLB' | 'NCAAB' | 'NCAAF', date)
       if (gameResults.length > 0) {
-        scoresByKey[league] = gameResults.map((r) => ({
-          home: r.homeTeam,
-          away: r.awayTeam,
-          homeScore: r.homeScore,
-          awayScore: r.awayScore,
-        }))
-        fallbackSummary[league] = `results-apis: ${gameResults.length}`
-        console.log(`[CRON daily-results] Results-APIs fallback: ${league} got ${gameResults.length} scores`)
+        const existing = scoresByKey[league] ?? []
+        // Merge new results with existing, avoiding duplicates
+        const existingKeys = new Set(existing.map(g => `${norm(g.home)}|${norm(g.away)}`))
+        const newGames = gameResults
+          .map((r) => ({ home: r.homeTeam, away: r.awayTeam, homeScore: r.homeScore, awayScore: r.awayScore }))
+          .filter(g => !existingKeys.has(`${norm(g.home)}|${norm(g.away)}`))
+        if (newGames.length > 0) {
+          scoresByKey[league] = [...existing, ...newGames]
+          fallbackSummary[league] = alwaysSupplement
+            ? `results-apis supplement: +${newGames.length} (total ${scoresByKey[league].length})`
+            : `results-apis: ${gameResults.length}`
+          console.log(`[CRON daily-results] Results-APIs ${alwaysSupplement ? 'supplement' : 'fallback'}: ${league} +${newGames.length} new games (total ${scoresByKey[league].length})`)
+        }
       }
     } catch (e) {
       const msg = (e as Error)?.message ?? 'error'
