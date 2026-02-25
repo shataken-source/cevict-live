@@ -138,9 +138,9 @@ npm start
 ## 📊 Current Configuration
 
 ### DezorIPTV Credentials:
-- **Username:** jascodezorptv
-- **Password:** 19e9a1x16
-- **Server:** http://cf.like-cdn.com
+- **Username:** (see app settings or .env)
+- **Password:** (see app settings or .env)
+- **Server:** (see app settings or .env)
 - **Auto-loads on app start**
 
 ### App Features:

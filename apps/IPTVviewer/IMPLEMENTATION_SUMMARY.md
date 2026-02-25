@@ -30,9 +30,9 @@ Switchback TV (IPTVviewer) is now a **premium IPTV viewer** that meets 2026 indu
 
 ### **Phase 3: DezorIPTV Integration**
 - ✅ **DezorIPTV Service** - `DezorIPTVService.ts`
-- ✅ Credentials configured (jascodezorptv)
+- ✅ Credentials configured (see .env or app settings)
 - ✅ Auto-loads playlist on app startup
-- ✅ M3U URL: `http://cf.like-cdn.com/get.php?username=jascodezorptv&password=19e9a1x16&type=m3u_plus&output=ts`
+- ✅ M3U URL built from Xtream credentials at runtime
 
 ### **Phase 4: OTA Updates**
 - ✅ EAS build configured with OTA support
@@ -128,9 +128,9 @@ iptv-update "Fixed bug in channel list"
 - **Heartbeat:** Required every 60 seconds
 
 ### **DezorIPTV:**
-- **Username:** jascodezorptv
-- **Password:** 19e9a1x16
-- **Server:** http://cf.like-cdn.com
+- **Username:** (see app settings or .env)
+- **Password:** (see app settings or .env)
+- **Server:** (see app settings or .env)
 - **EPG:** Auto-detected from provider
 - **Catch-Up:** Supported (7 days)
 
