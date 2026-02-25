@@ -57,7 +57,9 @@ export async function POST(request: NextRequest) {
       cache: 'no-store',
     })
 
-    const data = await res.json().catch(async () => ({ message: await res.text() }))
+    const raw = await res.text()
+    let data: any
+    try { data = JSON.parse(raw) } catch { data = { message: raw } }
 
     if (!res.ok) {
       return NextResponse.json(
