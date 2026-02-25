@@ -122,6 +122,31 @@ public class LocalServer extends NanoHTTPD {
                     if (contentType == null) contentType = "application/octet-stream";
                     long contentLength = conn.getContentLengthLong();
 
+                    // Always buffer m3u8 playlists so we can rewrite segment URLs
+                    boolean isM3u8 = contentType.contains("mpegurl") || contentType.contains("m3u")
+                        || targetUrl.contains(".m3u8") || targetUrl.contains(".m3u");
+
+                    if (isM3u8) {
+                        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                        byte[] buf = new byte[8192];
+                        int n;
+                        while ((n = is.read(buf)) != -1) baos.write(buf, 0, n);
+                        is.close();
+                        conn.disconnect();
+                        conn = null;
+
+                        String playlist = baos.toString("UTF-8");
+                        String rewritten = rewriteM3u8(playlist, targetUrl);
+                        byte[] body = rewritten.getBytes("UTF-8");
+                        Log.i(TAG, "M3U8 rewritten: " + body.length + " bytes");
+                        InputStream bodyStream = new java.io.ByteArrayInputStream(body);
+                        Response resp = newFixedLengthResponse(Response.Status.OK,
+                            "application/vnd.apple.mpegurl", bodyStream, body.length);
+                        resp.addHeader("Access-Control-Allow-Origin", "*");
+                        resp.addHeader("Cache-Control", "no-cache");
+                        return resp;
+                    }
+
                     // For live streams (no content-length or video/audio types), use chunked streaming
                     // to avoid buffering an infinite stream into memory
                     boolean isStream = contentLength < 0
@@ -205,6 +230,68 @@ public class LocalServer extends NanoHTTPD {
             }
         }
         return newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Proxy: max retries exceeded");
+    }
+
+    /**
+     * Rewrites an M3U8 playlist so every URI line (segment .ts, sub-playlist .m3u8, etc.)
+     * is converted to an absolute URL and then wrapped as:
+     *   http://localhost:8123/proxy?url=<encoded_absolute_url>
+     *
+     * This is required because HLS.js resolves segment URLs relative to the m3u8 base URL
+     * and fetches them directly — which fails inside the Android WebView sandbox since the
+     * IPTV server is an external host. Routing everything through the local proxy fixes it.
+     */
+    private String rewriteM3u8(String playlist, String baseUrl) {
+        // Derive the base for resolving relative URLs
+        String base = baseUrl;
+        int lastSlash = base.lastIndexOf('/');
+        if (lastSlash > 8) base = base.substring(0, lastSlash + 1); // keep trailing slash
+
+        StringBuilder sb = new StringBuilder();
+        for (String line : playlist.split("\n")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                // Pass-through comment/tag lines unchanged, but rewrite URI= attributes
+                String out = trimmed;
+                // Rewrite URI="..." inside EXT-X-KEY and EXT-X-MAP tags
+                if (out.contains("URI=\"")) {
+                    out = out.replaceAll("URI=\"([^\"]+)\"", m -> {
+                        String inner = m.replaceFirst("URI=\"", "").replaceFirst("\"$", "");
+                        String abs = resolveUrl(inner, base);
+                        try {
+                            return "URI=\"http://localhost:8123/proxy?url=" + java.net.URLEncoder.encode(abs, "UTF-8") + "\"";
+                        } catch (Exception e) {
+                            return m;
+                        }
+                    });
+                }
+                sb.append(out).append("\n");
+            } else {
+                // Non-comment, non-empty lines are URLs (segments or sub-playlists)
+                String abs = resolveUrl(trimmed, base);
+                try {
+                    String proxied = "http://localhost:8123/proxy?url=" + java.net.URLEncoder.encode(abs, "UTF-8");
+                    sb.append(proxied).append("\n");
+                } catch (Exception e) {
+                    sb.append(trimmed).append("\n");
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    private String resolveUrl(String url, String base) {
+        if (url.startsWith("http://") || url.startsWith("https://")) return url;
+        if (url.startsWith("//")) return "http:" + url;
+        if (url.startsWith("/")) {
+            // Absolute path — extract scheme + host from base
+            try {
+                URL b = new URL(base);
+                return b.getProtocol() + "://" + b.getHost() + (b.getPort() != -1 ? ":" + b.getPort() : "") + url;
+            } catch (Exception e) { return url; }
+        }
+        // Relative path
+        return base + url;
     }
 
     private boolean isPrivateHost(String host) {
