@@ -15,6 +15,8 @@
  * the required API key or scraper is not available.
  */
 
+import { CevictScraperService } from './cevict-scraper-service'
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface CollegeBaseballOdds {
@@ -181,13 +183,47 @@ export async function fetchCollegeBaseballRPI(): Promise<{ team: string; rpi: nu
   return rpiData
 }
 
-// ─── 4. SmartStake / Betstamp / ScoresAndOdds (via cevict-scraper) ───────────
+// ─── 4. SmartStake / Betstamp / ScoresAndOdds / Covers / OddsJam (via cevict-scraper) ─
+
+const SCRAPER_BASE = () => process.env.CEVICT_SCRAPER_URL || 'http://localhost:3009'
+
+/** Lazy singleton — reused across calls within the same request */
+let _scraper: CevictScraperService | null = null
+function getScraper(): CevictScraperService {
+  if (!_scraper) _scraper = new CevictScraperService(SCRAPER_BASE())
+  return _scraper
+}
+
+/** Check if cevict-scraper is running (fast 2s timeout) */
+async function isScraperAvailable(): Promise<boolean> {
+  try {
+    const res = await fetch(`${SCRAPER_BASE()}/health`, { signal: AbortSignal.timeout(2000) })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+/** POST to cevict-scraper endpoint. Returns parsed JSON or null on failure. */
+async function scraperPost(path: string, body: Record<string, unknown>): Promise<any | null> {
+  try {
+    const res = await fetch(`${SCRAPER_BASE()}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
 
 export async function fetchScrapedOddsScreens(sport: string): Promise<CollegeBaseballOdds[]> {
-  const scraperUrl = process.env.CEVICT_SCRAPER_URL || 'http://localhost:3009'
+  if (!(await isScraperAvailable())) return []
+
   const results: CollegeBaseballOdds[] = []
 
-  // ScoresAndOdds has structured data we can extract
   const sportMap: Record<string, string> = {
     NFL: 'nfl', NBA: 'nba', NHL: 'nhl', MLB: 'mlb',
     NCAAB: 'ncaab', NCAAF: 'ncaaf',
@@ -195,31 +231,175 @@ export async function fetchScrapedOddsScreens(sport: string): Promise<CollegeBas
   const slug = sportMap[sport]
   if (!slug) return results
 
+  // ── Source 1: ScoresAndOdds via /scrape + text parsing (JS-rendered SPA) ────
   try {
-    const targetUrl = `https://www.scoresandodds.com/${slug}`
-    const res = await fetch(`${scraperUrl}/extract`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: targetUrl, extractJsonLd: true, timeout: 15000 }),
+    const scraper = getScraper()
+    const saoResult = await scraper.scrape(`https://www.scoresandodds.com/${slug}`, {
+      waitFor: 5000,
+      timeout: 20000,
+      retries: 1,
     })
-    if (!res.ok) return results
-
-    const data = await res.json()
-    // Parse JSON-LD structured data if available
-    for (const item of data.jsonLd || []) {
-      if (item['@type'] === 'SportsEvent') {
-        results.push({
-          gameId: item.identifier || `${item.homeTeam?.name}-${item.awayTeam?.name}`,
-          homeTeam: item.homeTeam?.name || '',
-          awayTeam: item.awayTeam?.name || '',
-          gameDate: item.startDate || '',
-          source: 'scoresandodds',
-        })
+    if (saoResult.success && saoResult.text) {
+      // ScoresAndOdds renders odds as text blocks like:
+      // 501\n76ers\n31-26\n81\n-10.5\n-115\n...\n502\nPacers\n15-43\n70\n...
+      // Parse pairs of lines: odd row number = away, next = home
+      const lines = saoResult.text.split('\n').map(l => l.trim()).filter(Boolean)
+      let i = 0
+      while (i < lines.length - 1) {
+        // Look for game number pattern (3-digit number like 501, 502)
+        if (/^\d{3}$/.test(lines[i])) {
+          const awayTeam = lines[i + 1] || ''
+          // Scan forward for the next 3-digit game number (home team)
+          let j = i + 2
+          let awayML: number | undefined
+          while (j < lines.length && !/^\d{3}$/.test(lines[j])) {
+            // Look for moneyline values (like +270, -375, +800, -1600)
+            const mlMatch = lines[j].match(/^([+-]\d{3,5})$/)
+            if (mlMatch && !awayML) awayML = parseFloat(mlMatch[1])
+            j++
+          }
+          if (j < lines.length - 1) {
+            const homeTeam = lines[j + 1] || ''
+            let homeML: number | undefined
+            let k = j + 2
+            while (k < lines.length && !/^\d{3}$/.test(lines[k]) && !/^LAST PLAY/.test(lines[k])) {
+              const mlMatch = lines[k].match(/^([+-]\d{3,5})$/)
+              if (mlMatch && !homeML) homeML = parseFloat(mlMatch[1])
+              k++
+            }
+            if (awayTeam && homeTeam && awayTeam.length > 2 && homeTeam.length > 2) {
+              results.push({
+                gameId: `sao-${awayTeam}-${homeTeam}`.replace(/\s+/g, ''),
+                awayTeam,
+                homeTeam,
+                gameDate: new Date().toISOString(),
+                source: 'scoresandodds',
+                awayML,
+                homeML,
+              })
+            }
+            i = k // Advance past home team block
+          } else {
+            i = j
+          }
+        } else {
+          i++
+        }
+      }
+      if (results.length > 0) {
+        console.log(`[Scraper] ScoresAndOdds ${sport}: ${results.length} games`)
       }
     }
   } catch (e) {
-    console.warn(`[ScrapedOdds] ${sport} failed:`, (e as Error).message)
+    console.warn(`[Scraper] ScoresAndOdds ${sport} failed:`, (e as Error).message)
   }
+
+  // ── Source 2: Covers.com via /execute (JS-rendered React odds page) ─────────
+  try {
+    const coversData = await scraperPost('/execute', {
+      url: `https://www.covers.com/sport/${slug}/odds`,
+      script: `(() => {
+        var rows = document.querySelectorAll('[class*="GameRows"], [class*="gameRow"], tr[data-event]');
+        return Array.from(rows).slice(0, 50).map(function(r) {
+          var teams = r.querySelectorAll('[class*="team"], .team-name, td:nth-child(1)');
+          var odds = r.querySelectorAll('[class*="odds"], [class*="moneyline"], td:nth-child(2), td:nth-child(3)');
+          return {
+            away: teams[0] ? teams[0].textContent.trim() : '',
+            home: teams[1] ? teams[1].textContent.trim() : '',
+            awayOdds: odds[0] ? odds[0].textContent.trim() : '',
+            homeOdds: odds[1] ? odds[1].textContent.trim() : '',
+          };
+        }).filter(function(g) { return g.away && g.home; });
+      })()`,
+      waitFor: 3000,
+    })
+    if (coversData?.success && Array.isArray(coversData.result)) {
+      for (const g of coversData.result) {
+        results.push({
+          gameId: `covers-${g.away}-${g.home}`.replace(/\s+/g, ''),
+          awayTeam: g.away,
+          homeTeam: g.home,
+          gameDate: new Date().toISOString(),
+          source: 'covers',
+          awayML: parseFloat(g.awayOdds) || undefined,
+          homeML: parseFloat(g.homeOdds) || undefined,
+        })
+      }
+      console.log(`[Scraper] Covers ${sport}: ${coversData.result.length} games`)
+    }
+  } catch (e) {
+    console.warn(`[Scraper] Covers ${sport} failed:`, (e as Error).message)
+  }
+
+  // ── Source 3: OddsJam college baseball via /execute (only CBB/MLB) ─────────
+  if (sport === 'NCAAB' || sport === 'CBB' || sport === 'MLB') {
+    try {
+      const ojData = await scraperPost('/execute', {
+        url: 'https://oddsjam.com/college-baseball/odds',
+        script: `(() => {
+          var rows = document.querySelectorAll('[class*="game-row"], [class*="matchup"], tr');
+          return Array.from(rows).slice(0, 80).map(function(r) {
+            var cells = r.querySelectorAll('td, [class*="team"], [class*="odds"]');
+            return {
+              away: cells[0] ? cells[0].textContent.trim() : '',
+              home: cells[1] ? cells[1].textContent.trim() : '',
+              awayML: cells[2] ? cells[2].textContent.trim() : '',
+              homeML: cells[3] ? cells[3].textContent.trim() : '',
+            };
+          }).filter(function(g) { return g.away && g.home && g.away !== g.home; });
+        })()`,
+        waitFor: 5000,
+      })
+      if (ojData?.success && Array.isArray(ojData.result)) {
+        for (const g of ojData.result) {
+          results.push({
+            gameId: `oddsjam-${g.away}-${g.home}`.replace(/\s+/g, ''),
+            awayTeam: g.away,
+            homeTeam: g.home,
+            gameDate: new Date().toISOString(),
+            source: 'oddsjam',
+            awayML: parseFloat(g.awayML) || undefined,
+            homeML: parseFloat(g.homeML) || undefined,
+          })
+        }
+        console.log(`[Scraper] OddsJam college baseball: ${ojData.result.length} games`)
+      }
+    } catch (e) {
+      console.warn(`[Scraper] OddsJam failed:`, (e as Error).message)
+    }
+  }
+
+  // ── Source 4: D1Baseball via /scrape (college baseball rankings/matchups) ───
+  if (sport === 'NCAAB' || sport === 'CBB' || sport === 'MLB') {
+    try {
+      const scraper = getScraper()
+      const d1Result = await scraper.scrape('https://d1baseball.com/scores/', {
+        waitFor: 'table, .scores, .matchup',
+        timeout: 15000,
+        retries: 1,
+      })
+      if (d1Result.success && d1Result.text) {
+        // Extract matchups from D1Baseball text
+        const matchupPattern = /(\d+)?\s*([A-Z][a-zA-Z .&']+?)\s+(\d+)\s*[-–]\s*(\d+)\s+([A-Z][a-zA-Z .&']+)/g
+        let match
+        while ((match = matchupPattern.exec(d1Result.text)) !== null) {
+          results.push({
+            gameId: `d1bb-${match[2]}-${match[5]}`.replace(/\s+/g, ''),
+            awayTeam: match[2].trim(),
+            homeTeam: match[5].trim(),
+            gameDate: new Date().toISOString(),
+            source: 'd1baseball',
+          })
+        }
+        if (results.filter(r => r.source === 'd1baseball').length > 0) {
+          console.log(`[Scraper] D1Baseball: ${results.filter(r => r.source === 'd1baseball').length} matchups`)
+        }
+      }
+    } catch (e) {
+      console.warn(`[Scraper] D1Baseball failed:`, (e as Error).message)
+    }
+  }
+
   return results
 }
 
