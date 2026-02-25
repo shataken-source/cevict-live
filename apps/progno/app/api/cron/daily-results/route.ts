@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { fetchPreviousDayResultsFromProviders } from '../../../../lib/data-sources/results-apis'
+import { gameTeamsMatch, teamsMatch, normalizeForMatch } from '../../../lib/team-matcher'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,101 +28,13 @@ const SPORT_KEY_MAP: Record<string, string> = {
   CBB: 'baseball_ncaa',
 }
 
-/** Aggressive normalization: strip diacritics, punctuation, spaces; lowercase.
- *  Expands common abbreviations (St→State, Mt→Mount, etc.) so "Tennessee St" matches "Tennessee State". */
+/** Thin wrapper so existing call sites keep working */
 function norm(name: string): string {
-  let s = (name ?? '')
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .replace(/['.‘’`]/g, '')           // apostrophes and curly/smart quotes
-    .replace(/[.\-&]/g, '')           // period, hyphen, ampersand (e.g. Texas A&M)
-    .toLowerCase()
-    .trim()
-  // Expand abbreviations BEFORE stripping spaces (word-boundary sensitive)
-  s = s.replace(/\bst\b/g, 'state')
-  s = s.replace(/\bmt\b/g, 'mount')
-  s = s.replace(/\bft\b/g, 'fort')
-  s = s.replace(/\bapp state\b/g, 'appalachian state')  // ESPN uses "App State"
-  return s.replace(/\s+/g, '')
-}
-
-/** Alias groups: each sub-array is equivalent team names (after norm). Builds a map so we can match any variant. */
-const TEAM_ALIAS_GROUPS: string[][] = [
-  ['utahmammoth', 'utahhockeyclub', 'utahhockey'],  // NHL Utah
-  ['floridaintl', 'floridainternational', 'floridafiu', 'fiu', 'floridagoldenpanthers'],
-  ['gwrevolutionaries', 'georgewashington', 'gw'],
-  ['ncstatewolfpack', 'ncstate', 'northcarolinastate'],
-  ['ulmonroe', 'louisianamonroe', 'ulmonroewarhawks', 'ulm'],
-  ['ucfknights', 'ucf', 'centralflorida'],
-  ['unlvrebels', 'unlv', 'nevadalasvegas'],
-  ['byucougars', 'byu', 'brighamyoung'],
-  ['stthomas', 'stthomastommies'],  // St. Thomas (MN)
-  ['arkansaslittlerocktrojans', 'arkansaslittlerock', 'littlerock', 'ualr'],
-  ['siuedwardsvillecougars', 'siuedwardsville', 'southernillinoisuniversityedwardsville'],
-  ['floridaatlanticowls', 'floridaatlantic', 'fau'],
-  ['georgestpanthers', 'georgiastate', 'georgiastpanthers'],
-  ['texasstatebobcats', 'texasstate'],
-  ['southfloridabulls', 'southflorida', 'usf'],
-  ['northtexasmeangreen', 'northtexas', 'unt'],
-  ['louisianatechbulldogs', 'louisianatech', 'latech'],
-  ['newmexicostateaggies', 'newmexicostate', 'nmstate'],
-  ['stlouisbillikens', 'saintlouis', 'stlouis'],  // NCAAB Saint Louis
-  ['stjohnsredstorm', 'stjohns'],
-  ['georgetownhoyas', 'georgetown'],
-  ['vcurevolutionaries', 'vcu', 'virginiacommonwealth'],
-  ['uicflames', 'uic', 'illinoischicago'],
-  ['youngstownstpenguins', 'youngstownstate', 'youngstownst'],
-  ['wrightstateraiders', 'wrightstate', 'wrightst'],
-  ['detroitmercytitans', 'detroitmercy', 'detroit'],
-  ['southdakotacoyotes', 'southdakota', 'southdakotastate'],
-  ['arizonastsundevils', 'arizonastate', 'arizonast'],
-  ['washingtonstcougars', 'washingtonstate', 'washingtonst'],
-  ['utahstateaggies', 'utahstate'],
-  ['santaclarabroncos', 'santaclara'],
-  ['sandiegotoreros', 'sandiego', 'universityofsandiego'],
-  ['pepperdinewaves', 'pepperdine'],
-  ['seattleredhawks', 'seattle', 'seattleuniversity'],
-  ['loyolamarymountlions', 'loyolamarymount', 'lmulions'],
-  ['stbonaventurebonnies', 'stbonaventure', 'bonaventure'],
-  ['georgiatechyellowjackets', 'georgiatech', 'georgiainstituteoftechnology'],
-  // ESPN uses short names without mascot/state suffix — common mismatches:
-  ['gramblingtigers', 'gramblingstate', 'gramblingststatetigers', 'gramblingst'],
-  ['mississippivalleystatedeltadevils', 'mississippivalleystate', 'missvalleystate', 'missvalleystdeltadevils'],
-  ['akronzips', 'akron'],
-  ['buffalobulls', 'buffalo'],
-  ['memphistigers', 'memphis'],
-  ['jamesmadisondukes', 'jamesmadison'],
-  ['virginiatechhokies', 'virginiatech'],
-  ['atlantahawks', 'atlanta'],
-  ['washingtonwizards', 'washington', 'washingtondc'],
-  ['indianapacers', 'indiana'],
-  ['philadelphia76ers', 'philadelphia', 'sixers', '76ers'],
-  ['michiganwolverines', 'michigan'],
-  ['minnesotangoldengophers', 'minnesota', 'minnesotagoldengophers'],
-]
-// Normalize alias group entries and build map: for each norm form, list of all equivalent keys
-function buildAliasMap(): Map<string, string[]> {
-  const map = new Map<string, string[]>()
-  for (const group of TEAM_ALIAS_GROUPS) {
-    const normalizedGroup = [...new Set(group.map(n => norm(n)))]
-    for (const key of normalizedGroup) {
-      map.set(key, normalizedGroup)
-    }
-  }
-  return map
-}
-const ALIAS_MAP = buildAliasMap()
-
-/** All normalized keys for a team name (norm + any aliases in same group). Used for matching. */
-function allNormKeys(name: string): string[] {
-  const n = norm(name)
-  return ALIAS_MAP.get(n) ?? [n]
+  return normalizeForMatch(name).replace(/\s+/g, '')
 }
 
 function namesMatch(a: string, b: string): boolean {
-  const keysA = allNormKeys(a)
-  const keysB = allNormKeys(b)
-  return keysA.some(k => keysB.includes(k))
+  return teamsMatch(a, b)
 }
 
 type GradedPick = {
@@ -298,7 +211,7 @@ export async function GET(request: Request) {
   for (const p of picks) {
     const sport = (p.sport || p.league || 'NBA').toUpperCase()
     const leagueHint = sport in SPORT_KEY_MAP ? sport : null
-    const homeMatch = (s: any) => namesMatch(s.home, p.home_team ?? '') && namesMatch(s.away, p.away_team ?? '')
+    const homeMatch = (s: any) => gameTeamsMatch(p.home_team ?? '', p.away_team ?? '', s.home, s.away)
     // Try hinted league first; if no match, try all leagues (handles missing sport/league in old predictions)
     let match: { home: string; away: string; homeScore: number; awayScore: number } | undefined
     let matchedLeague: string | undefined
@@ -307,7 +220,8 @@ export async function GET(request: Request) {
       match = scores.find(homeMatch)
       if (match) matchedLeague = leagueHint
     }
-    if (!match) {
+    // Only cross-league search if pick has no known sport — prevents NHL picks matching NBA when NHL=0
+    if (!match && !leagueHint) {
       for (const lk of Object.keys(SPORT_KEY_MAP)) {
         const scores = scoresByKey[lk] ?? []
         match = scores.find(homeMatch)

@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import crypto from 'crypto'
-import { normalizeTeamName } from '../../../team-names'
+import { normalizeForMatch, levenshtein, similarityScore, tokenSimilarity } from '../../../lib/team-matcher'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -58,58 +58,8 @@ async function searchKalshiMarkets(query: string): Promise<any[]> {
   }
 }
 
-// Elite Team Matcher (from alpha-hunter/EliteTeamMatcher.ts)
-const MASCOT_WORDS = [
-  'wildcats', 'bulldogs', 'tigers', 'eagles', 'red storm', 'huskies', 'knights',
-  'longhorns', 'bruins', 'gators', 'cowboys', 'privateers', 'lumberjacks',
-  'highlanders', 'waves', 'mustangs', 'cougars', 'vaqueros', 'delta devils',
-  'rockets', 'jazz', 'lakers', 'magic', 'grizzlies', 'kings'
-]
-
-function normalize(raw: string): string {
-  let name = raw.toLowerCase()
-  name = name.replace(/[.,'()-]/g, '')
-  name = name.replace(/\bst\b|\bst\.\b/g, 'saint')
-  MASCOT_WORDS.forEach(word => {
-    name = name.replace(new RegExp(`\\b${word}\\b`, 'g'), '')
-  })
-  name = name.replace(/\s+/g, ' ').trim()
-  return name
-}
-
-function levenshtein(a: string, b: string): number {
-  const matrix = []
-  for (let i = 0; i <= b.length; i++) matrix[i] = [i]
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1]
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        )
-      }
-    }
-  }
-  return matrix[b.length][a.length]
-}
-
-function similarityScore(a: string, b: string): number {
-  const distance = levenshtein(a, b)
-  const maxLen = Math.max(a.length, b.length)
-  return 1 - distance / maxLen
-}
-
-function tokenSimilarity(a: string, b: string): number {
-  const tokensA = new Set(a.split(' '))
-  const tokensB = new Set(b.split(' '))
-  const intersection = [...tokensA].filter(t => tokensB.has(t)).length
-  const union = new Set([...tokensA, ...tokensB]).size
-  return union === 0 ? 0 : intersection / union
-}
+// Use shared normalize function from team-matcher lib
+const normalize = normalizeForMatch
 
 function extractTeams(title: string): [string, string] {
   const lower = title.toLowerCase()

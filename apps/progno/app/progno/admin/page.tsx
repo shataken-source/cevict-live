@@ -170,7 +170,7 @@ export default function AdminPage() {
   const earlyDate = subtractDays(gameDate, earlyOffset);
   // Note: earlyOffset is MAX days for the range (0 to earlyOffset)
   const regularDate = gameDate;
-  const resultsDate = getYesterday();
+  const [resultsDate, setResultsDate] = useState<string>(getYesterday());
   const cronFileDate = getToday();
 
   // live odds
@@ -668,10 +668,11 @@ export default function AdminPage() {
             <Card style={{ marginBottom: 16 }}>
               <SectionLabel>GRADE RESULTS</SectionLabel>
               <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-                <div>
-                  <span style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1 }}>RESULTS DATE: </span>
-                  <code style={{ color: C.blue, fontSize: 12 }}>{resultsDate}</code>
-                  <span style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, marginLeft: 8 }}>(yesterday)</span>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1 }}>RESULTS DATE:</span>
+                  <Btn onClick={() => setResultsDate(s => subtractDays(s, 1))} color={C.textDim} style={{ padding: '3px 8px', fontSize: 11 }}>◀</Btn>
+                  <input type="date" title="Results date" value={resultsDate} onChange={e => setResultsDate(e.target.value)} style={{ background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.blue, fontFamily: C.mono, fontSize: 12, padding: '3px 8px' }} />
+                  <Btn onClick={() => setResultsDate(s => addDays(s, 1))} color={C.textDim} style={{ padding: '3px 8px', fontSize: 11 }}>▶</Btn>
                 </div>
                 <Btn onClick={() => runCron('daily-results')} disabled={!!cronLoading} color={C.blue}>
                   {cronLoading === 'daily-results' ? '⟳ GRADING...' : '◈ GRADE YESTERDAY'}
