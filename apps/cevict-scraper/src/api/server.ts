@@ -68,7 +68,40 @@ app.use((req: Request, _res: Response, next: any) => {
   next();
 });
 
-// ── Health ────────────────────────────────────────────────────────────────────
+// ── API Key authentication middleware ─────────────────────────────────────────
+const API_KEY = process.env.SCRAPER_API_KEY?.trim();
+function requireAuth(req: Request, res: Response, next: any) {
+  if (!API_KEY) {
+    logger.warn('SCRAPER_API_KEY not set — blocking all authenticated requests');
+    return res.status(503).json({ error: 'SCRAPER_API_KEY not configured' });
+  }
+  const presented = (req.headers.authorization?.replace(/^Bearer\s+/i, '') || req.headers['x-api-key'] || '').toString().trim();
+  if (presented !== API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized — invalid or missing API key' });
+  }
+  next();
+}
+
+// ── SSRF protection: block private/internal IPs ──────────────────────────────
+const BLOCKED_URL_PATTERNS = [
+  /^https?:\/\/localhost/i,
+  /^https?:\/\/127\./,
+  /^https?:\/\/10\./,
+  /^https?:\/\/172\.(1[6-9]|2\d|3[01])\./,
+  /^https?:\/\/192\.168\./,
+  /^https?:\/\/0\./,
+  /^https?:\/\/\[::1\]/,
+  /^https?:\/\/169\.254\./,  // link-local
+  /^file:/i,
+  /^ftp:/i,
+];
+function validateUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  try { new URL(url); } catch { return false; }
+  return !BLOCKED_URL_PATTERNS.some(p => p.test(url));
+}
+
+// ── Health (no auth required) ────────────────────────────────────────────────
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString(), stats: scraper.getStats() });
 });
@@ -78,10 +111,11 @@ app.get('/stats', (_req: Request, res: Response) => {
 });
 
 // ── Core scrape ───────────────────────────────────────────────────────────────
-app.post('/scrape', async (req: Request, res: Response) => {
+app.post('/scrape', requireAuth, async (req: Request, res: Response) => {
   try {
     const options: ScrapeOptions = req.body;
     if (!options.url) return res.status(400).json({ error: 'url is required' }) as any;
+    if (!validateUrl(options.url)) return res.status(400).json({ error: 'URL blocked by SSRF policy' }) as any;
     const result = await scraper.scrape(options);
     res.status(result.success ? 200 : 500).json(result);
   } catch (e: any) {
@@ -90,10 +124,11 @@ app.post('/scrape', async (req: Request, res: Response) => {
 });
 
 // ── Screenshot ────────────────────────────────────────────────────────────────
-app.post('/screenshot', async (req: Request, res: Response) => {
+app.post('/screenshot', requireAuth, async (req: Request, res: Response) => {
   try {
     const options: ScrapeOptions = { ...req.body, screenshot: true };
     if (!options.url) return res.status(400).json({ error: 'url is required' }) as any;
+    if (!validateUrl(options.url)) return res.status(400).json({ error: 'URL blocked by SSRF policy' }) as any;
     const result = await scraper.scrape(options);
     if (result.success && result.screenshot) {
       res.set('Content-Type', 'image/png').send(result.screenshot);
@@ -106,10 +141,12 @@ app.post('/screenshot', async (req: Request, res: Response) => {
 });
 
 // ── Batch scrape (concurrency-capped) ────────────────────────────────────────
-app.post('/batch', async (req: Request, res: Response) => {
+app.post('/batch', requireAuth, async (req: Request, res: Response) => {
   try {
     const { urls, options, concurrency }: { urls: string[]; options?: Partial<ScrapeOptions>; concurrency?: number } = req.body;
     if (!Array.isArray(urls) || !urls.length) return res.status(400).json({ error: 'urls array is required' }) as any;
+    const blocked = urls.filter(u => !validateUrl(u));
+    if (blocked.length) return res.status(400).json({ error: `${blocked.length} URL(s) blocked by SSRF policy` }) as any;
     const cap = Math.min(concurrency || BATCH_CONCURRENCY, 20);
     const tasks = urls.map(url => () => scraper.scrape({ ...options, url }));
     const results = await pLimit(tasks, cap);
@@ -125,10 +162,11 @@ app.post('/batch', async (req: Request, res: Response) => {
 });
 
 // ── Table extraction ──────────────────────────────────────────────────────────
-app.post('/extract-table', async (req: Request, res: Response) => {
+app.post('/extract-table', requireAuth, async (req: Request, res: Response) => {
   try {
     const { url, selector, waitFor }: { url: string; selector: string; waitFor?: string | number } = req.body;
     if (!url || !selector) return res.status(400).json({ error: 'url and selector are required' }) as any;
+    if (!validateUrl(url)) return res.status(400).json({ error: 'URL blocked by SSRF policy' }) as any;
     const result = await scraper.scrape({ url, waitFor, extractTable: selector });
     if (result.success) {
       res.json({ success: true, url, selector, tableData: result.tableData, timestamp: new Date().toISOString() });
@@ -141,10 +179,11 @@ app.post('/extract-table', async (req: Request, res: Response) => {
 });
 
 // ── Execute JS ────────────────────────────────────────────────────────────────
-app.post('/execute', async (req: Request, res: Response) => {
+app.post('/execute', requireAuth, async (req: Request, res: Response) => {
   try {
     const { url, script, waitFor }: { url: string; script: string; waitFor?: string | number } = req.body;
     if (!url || !script) return res.status(400).json({ error: 'url and script are required' }) as any;
+    if (!validateUrl(url)) return res.status(400).json({ error: 'URL blocked by SSRF policy' }) as any;
     const result = await scraper.scrape({ url, waitFor, executeScript: script, waitForNetworkIdle: true });
     if (result.success) {
       res.json({ success: true, url, scriptResult: result.scriptResult, timestamp: new Date().toISOString() });
@@ -157,10 +196,11 @@ app.post('/execute', async (req: Request, res: Response) => {
 });
 
 // ── Multi-field extract (single page load) ────────────────────────────────────
-app.post('/multi-extract', async (req: Request, res: Response) => {
+app.post('/multi-extract', requireAuth, async (req: Request, res: Response) => {
   try {
     const opts: MultiExtractOptions = req.body;
     if (!opts.url || !opts.fields) return res.status(400).json({ error: 'url and fields are required' }) as any;
+    if (!validateUrl(opts.url)) return res.status(400).json({ error: 'URL blocked by SSRF policy' }) as any;
     const result = await scraper.multiExtract(opts);
     res.status(result.success ? 200 : 500).json(result);
   } catch (e: any) {
@@ -169,10 +209,11 @@ app.post('/multi-extract', async (req: Request, res: Response) => {
 });
 
 // ── Crawler (with server-side timeout) ───────────────────────────────────────
-app.post('/crawl', async (req: Request, res: Response) => {
+app.post('/crawl', requireAuth, async (req: Request, res: Response) => {
   try {
     const opts: CrawlOptions = req.body;
     if (!opts.startUrl) return res.status(400).json({ error: 'startUrl is required' }) as any;
+    if (!validateUrl(opts.startUrl)) return res.status(400).json({ error: 'URL blocked by SSRF policy' }) as any;
     const timeoutMs = (opts.timeoutMs || 120000);
     const result = await Promise.race([
       scraper.crawl(opts),
@@ -185,23 +226,23 @@ app.post('/crawl', async (req: Request, res: Response) => {
 });
 
 // ── Cache management ──────────────────────────────────────────────────────────
-app.delete('/cache', (_req: Request, res: Response) => {
+app.delete('/cache', requireAuth, (_req: Request, res: Response) => {
   scraper.clearCache();
   res.json({ success: true, message: 'Cache cleared', timestamp: new Date().toISOString() });
 });
 
 // ── Session management ────────────────────────────────────────────────────────
-app.get('/sessions', (_req: Request, res: Response) => {
+app.get('/sessions', requireAuth, (_req: Request, res: Response) => {
   res.json({ sessions: scraper.listSessions(), timestamp: new Date().toISOString() });
 });
 
-app.delete('/sessions/:id', async (req: Request, res: Response) => {
+app.delete('/sessions/:id', requireAuth, async (req: Request, res: Response) => {
   await scraper.deleteSession(req.params.id);
   res.json({ success: true, deleted: req.params.id, timestamp: new Date().toISOString() });
 });
 
 // ── Page interaction (fillForm / click / scroll) ────────────────────────────
-app.post('/interact', async (req: Request, res: Response) => {
+app.post('/interact', requireAuth, async (req: Request, res: Response) => {
   try {
     const { url, actions, waitFor, screenshot }: {
       url: string;
@@ -216,6 +257,7 @@ app.post('/interact', async (req: Request, res: Response) => {
       screenshot?: boolean;
     } = req.body;
     if (!url || !Array.isArray(actions)) return res.status(400).json({ error: 'url and actions[] are required' }) as any;
+    if (!validateUrl(url)) return res.status(400).json({ error: 'URL blocked by SSRF policy' }) as any;
     const result = await scraper.interact({ url, actions, waitFor, screenshot });
     res.status(result.success ? 200 : 500).json(result);
   } catch (e: any) {
@@ -224,12 +266,13 @@ app.post('/interact', async (req: Request, res: Response) => {
 });
 
 // ── PDF generation ────────────────────────────────────────────────────────────
-app.post('/pdf', async (req: Request, res: Response) => {
+app.post('/pdf', requireAuth, async (req: Request, res: Response) => {
   try {
     const { url, waitFor, format: fmt, printBackground }: {
       url: string; waitFor?: string | number; format?: string; printBackground?: boolean;
     } = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' }) as any;
+    if (!validateUrl(url)) return res.status(400).json({ error: 'URL blocked by SSRF policy' }) as any;
     const pdf = await scraper.pdf({ url, waitFor, format: fmt, printBackground });
     if (pdf) {
       res.set('Content-Type', 'application/pdf')
@@ -244,10 +287,11 @@ app.post('/pdf', async (req: Request, res: Response) => {
 });
 
 // ── Extract links/images/json from page ───────────────────────────────────────
-app.post('/extract', async (req: Request, res: Response) => {
+app.post('/extract', requireAuth, async (req: Request, res: Response) => {
   try {
     const { url, extractLinks, extractImages, extractJson, waitFor, blockRules }: ScrapeOptions = req.body;
     if (!url) return res.status(400).json({ error: 'url is required' }) as any;
+    if (!validateUrl(url)) return res.status(400).json({ error: 'URL blocked by SSRF policy' }) as any;
     const result = await scraper.scrape({ url, waitFor, extractLinks, extractImages, extractJson, blockRules });
     if (result.success) {
       res.json({

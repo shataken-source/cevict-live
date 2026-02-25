@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const sessionToken = searchParams.get('token');
-    
+
     if (!sessionToken) {
       return NextResponse.json({ error: 'Session token required' }, { status: 400 });
     }
@@ -48,10 +48,10 @@ export async function GET(request: NextRequest) {
     // Ensure shared user exists
     await getOrCreateSharedUser(user.id, user.email || '');
 
-    // Update session access time
+    // Invalidate token after single use (prevents replay attacks)
     await supabaseAdmin
       .from('platform_sessions')
-      .update({ last_accessed_at: new Date().toISOString() })
+      .update({ is_active: false, last_accessed_at: new Date().toISOString() })
       .eq('id', session.id);
 
     // Return user info (frontend will create local Supabase session)

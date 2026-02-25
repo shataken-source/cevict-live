@@ -27,11 +27,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const cronSecret = process.env.CRON_SECRET?.trim();
-  if (cronSecret) {
-    const auth = req.headers.authorization?.replace(/^Bearer\s+/i, '') ?? req.query?.secret ?? '';
-    if (auth !== cronSecret) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  if (!cronSecret) {
+    console.warn('[review-requests] CRON_SECRET not set — blocking request');
+    return res.status(403).json({ error: 'CRON_SECRET not configured' });
+  }
+  const auth = req.headers.authorization?.replace(/^Bearer\s+/i, '') ?? req.query?.secret ?? '';
+  if (auth !== cronSecret) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const resendKey = process.env.RESEND_API_KEY?.trim();

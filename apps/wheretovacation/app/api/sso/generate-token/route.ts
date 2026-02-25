@@ -43,8 +43,9 @@ export async function GET(request: NextRequest) {
     // Ensure shared user exists
     await getOrCreateSharedUser(user.id, user.email || '');
 
-    // Generate session token (simple UUID-based token)
-    const sessionToken = `sso_${user.id}_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    // Generate session token (cryptographically secure)
+    const { randomBytes } = await import('crypto');
+    const sessionToken = `sso_${randomBytes(32).toString('hex')}`;
 
     // Create platform session
     const session = await createPlatformSession(
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
       session_token: sessionToken,
       platform: targetPlatform,
       expires_at: session.expires_at,
-      redirect_url: targetPlatform === 'gcc' 
+      redirect_url: targetPlatform === 'gcc'
         ? `${process.env.NEXT_PUBLIC_GCC_URL || 'http://localhost:3000'}/sso/validate?token=${sessionToken}`
         : `${process.env.NEXT_PUBLIC_WTV_URL || 'http://localhost:3001'}/sso/validate?token=${sessionToken}`,
     });

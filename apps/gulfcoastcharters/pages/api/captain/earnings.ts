@@ -2,7 +2,7 @@
  * Captain Earnings API
  * GET /api/captain/earnings - Get earnings data for authenticated captain
  * POST /api/captain/earnings - Request payout
- * 
+ *
  * Replaces: supabase.functions.invoke('captain-earnings')
  */
 
@@ -14,7 +14,7 @@ export default async function handler(
   res: NextApiResponse
 ) {
   const { user, error: authError } = await getAuthedUser(req, res);
-  
+
   if (authError || !user) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -39,7 +39,7 @@ export default async function handler(
       // Get all completed bookings
       // Try with captain_id first, but handle case where it might not match
       let bookings: any[] = [];
-      
+
       const { data: bookingsData, error } = await admin
         .from('bookings')
         .select('total_price, created_at, trip_date, captain_id, status')
@@ -49,22 +49,16 @@ export default async function handler(
 
       if (error) {
         console.error('Error fetching earnings with captain_id:', error);
-        // Try alternative: get all bookings and filter
-        const { data: allBookings, error: altError } = await admin
+        // Try with user_id instead of profile id (some bookings may reference auth user id)
+        const { data: altBookings, error: altError } = await admin
           .from('bookings')
           .select('total_price, created_at, trip_date, captain_id, status')
+          .eq('captain_id', user.id)
           .in('status', ['completed', 'confirmed'])
-          .order('created_at', { ascending: false })
-          .limit(1000);
-        
-        if (!altError && allBookings) {
-          // Filter bookings that match this captain
-          bookings = allBookings.filter((b: any) => 
-            (b.captain_id === captainId || 
-             b.captain_id === captainProfile.user_id ||
-             b.captain_id === user.id) &&
-            (b.status === 'completed' || b.status === 'confirmed')
-          );
+          .order('created_at', { ascending: false });
+
+        if (!altError && altBookings) {
+          bookings = altBookings;
         } else {
           // If still error, return empty earnings instead of error
           return res.status(200).json({

@@ -50,8 +50,8 @@ export default async function handler(
   }
 
   if (!supabaseAdmin) {
-    return res.status(500).json({ 
-      success: false, 
+    return res.status(500).json({
+      success: false,
       error: 'Database not configured',
       points: 0,
       totalPoints: 0
@@ -62,42 +62,29 @@ export default async function handler(
     const { userId, action, metadata } = req.body;
 
     if (!userId || !action) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'Missing userId or action',
         points: 0,
         totalPoints: 0
       });
     }
 
-    // Verify user is authenticated (get user from auth token)
+    // Verify user is authenticated via Bearer token — no fallback
     const authHeader = req.headers.authorization;
     let verifiedUser = null;
-    
+
     if (authHeader) {
-      // Try to verify token
       const token = authHeader.replace('Bearer ', '');
       const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
       if (!authError && user && user.id === userId) {
         verifiedUser = user;
       }
     }
-    
-    // If token verification failed, verify userId exists in auth.users using admin API
-    if (!verifiedUser && userId) {
-      try {
-        const { data: { user }, error } = await supabaseAdmin.auth.admin.getUserById(userId);
-        if (!error && user && user.id === userId) {
-          verifiedUser = user;
-        }
-      } catch (err) {
-        console.error('Error verifying user:', err);
-      }
-    }
-    
+
     if (!verifiedUser || verifiedUser.id !== userId) {
-      return res.status(403).json({ 
-        success: false, 
+      return res.status(403).json({
+        success: false,
         error: 'Unauthorized - user verification failed',
         points: 0,
         totalPoints: 0
@@ -126,8 +113,8 @@ export default async function handler(
         points = MESSAGE_BOARD_POINTS.SHARE_POST;
         break;
       default:
-        return res.status(400).json({ 
-          success: false, 
+        return res.status(400).json({
+          success: false,
           error: 'Invalid action',
           points: 0,
           totalPoints: 0
@@ -154,8 +141,8 @@ export default async function handler(
             source_type: 'message_post',
             source_id: null, // Store post_id in metadata instead
             description: 'First post bonus!',
-            metadata: { 
-              ...metadata, 
+            metadata: {
+              ...metadata,
               is_first_post: true,
               post_id: metadata?.post_id || null,
             },
@@ -185,8 +172,8 @@ export default async function handler(
 
     if (txError) {
       console.error('Error creating loyalty transaction:', txError);
-      return res.status(500).json({ 
-        success: false, 
+      return res.status(500).json({
+        success: false,
         error: txError.message,
         points: 0,
         totalPoints: 0
@@ -243,7 +230,7 @@ export default async function handler(
 
     // Use calculated total (most accurate)
     const totalPoints = calculatedTotal || (sharedUser?.total_points || 0);
-    
+
     console.log('[API] Calculated total:', calculatedTotal, 'Shared users total:', sharedUser?.total_points, 'Returning:', totalPoints);
 
     return res.status(200).json({
@@ -253,8 +240,8 @@ export default async function handler(
     });
   } catch (error: any) {
     console.error('Error awarding message board points:', error);
-    return res.status(500).json({ 
-      success: false, 
+    return res.status(500).json({
+      success: false,
       error: error.message,
       points: 0,
       totalPoints: 0

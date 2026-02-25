@@ -10,10 +10,16 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createVacationPackage, getCustomerPackages } from '@/lib/smart-vacation-packages';
+import { getAuthedUser } from '../../_lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     try {
+      const { user, error: authError } = await getAuthedUser(req, res);
+      if (authError || !user) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+      }
+
       const {
         customerId,
         packageName,

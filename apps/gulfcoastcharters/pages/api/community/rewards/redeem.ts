@@ -4,6 +4,7 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
+import crypto from 'crypto';
 import { getSupabaseAdmin, getAuthedUser } from '../../_lib/supabase';
 
 export default async function handler(
@@ -24,7 +25,7 @@ export default async function handler(
     const { data: reward } = await supabase.from('rewards_catalog').select('reward_id, points_cost, available_quantity, redemption_limit_per_user').eq('reward_id', rewardId).eq('active', true).single();
     if (!reward) return res.status(404).json({ error: 'Reward not found or inactive' });
 
-    const code = 'GCC-' + Math.random().toString(36).slice(2, 10).toUpperCase();
+    const code = 'GCC-' + crypto.randomBytes(5).toString('hex').toUpperCase();
     const { data, error } = await supabase
       .from('rewards_redemptions')
       .insert({

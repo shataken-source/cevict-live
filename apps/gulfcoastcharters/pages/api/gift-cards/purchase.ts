@@ -6,6 +6,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { getAuthedUser } from '../_lib/supabase';
 
 export default async function handler(
   req: NextApiRequest,
@@ -16,13 +17,19 @@ export default async function handler(
   }
 
   try {
-    const { 
-      amount, 
-      recipientName, 
-      recipientEmail, 
-      senderName, 
+    // Require authentication to prevent abuse (spam gift card creation / Stripe session spam)
+    const { user, error: authError } = await getAuthedUser(req, res);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const {
+      amount,
+      recipientName,
+      recipientEmail,
+      senderName,
       senderEmail,
-      message 
+      message
     } = req.body;
 
     // Validate required fields
@@ -65,7 +72,7 @@ export default async function handler(
       .select('id')
       .eq('email', senderEmail)
       .maybeSingle();
-    
+
     if (senderUser) {
       purchaserId = senderUser.id;
     }
@@ -90,9 +97,9 @@ export default async function handler(
 
     if (certError) {
       console.error('Error creating gift certificate:', certError);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to create gift certificate',
-        details: certError.message 
+        details: certError.message
       });
     }
 
@@ -126,16 +133,16 @@ export default async function handler(
 
     if (checkoutError) {
       console.error('Stripe checkout error:', checkoutError);
-      
+
       // Clean up the gift certificate record if checkout fails
       await supabaseAdmin
         .from('gift_certificates')
         .delete()
         .eq('certificate_id', giftCertificate.certificate_id);
-      
-      return res.status(500).json({ 
+
+      return res.status(500).json({
         error: 'Failed to create checkout session',
-        details: checkoutError.message 
+        details: checkoutError.message
       });
     }
 
@@ -150,7 +157,7 @@ export default async function handler(
     });
   } catch (error: any) {
     console.error('Error processing gift card purchase:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: error.message || 'Internal server error',
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });

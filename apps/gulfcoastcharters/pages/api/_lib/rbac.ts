@@ -13,7 +13,7 @@ async function getRoleForUser(user: User): Promise<AppRole | null> {
     const admin = getSupabaseAdmin();
     // Check profiles table - supports both schemas: profiles.id = auth.users.id OR profiles.user_id = auth.users.id
     // Also supports both role models: is_admin (boolean) OR role (text)
-    
+
     // Try profiles.id = auth.users.id (production schema: profiles.id = auth.users.id)
     {
       const { data, error } = await admin.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
@@ -25,7 +25,7 @@ async function getRoleForUser(user: User): Promise<AppRole | null> {
         if ((data as any)?.is_admin === true) return 'admin';
       }
     }
-    
+
     // Try profiles.user_id = auth.users.id (alternative schema)
     {
       const { data, error } = await admin.from('profiles').select('is_admin').eq('user_id', user.id).maybeSingle();
@@ -37,7 +37,7 @@ async function getRoleForUser(user: User): Promise<AppRole | null> {
         if ((data as any)?.is_admin === true) return 'admin';
       }
     }
-    
+
     // Legacy: Try role column if it exists (for backward compatibility with old schemas)
     // Only try this if is_admin didn't work
     try {
@@ -91,11 +91,8 @@ export async function requireRole(req: NextApiRequest, res: NextApiResponse, rol
       foundRole: role,
       requiredRoles: roles,
     });
-    res.status(403).json({ 
-      error: 'Forbidden (insufficient role)', 
-      role: role || 'none',
-      userId: user.id,
-      userEmail: user.email,
+    res.status(403).json({
+      error: 'Forbidden (insufficient role)',
     });
     return false;
   }

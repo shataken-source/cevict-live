@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseAdminClient } from '@/lib/supabase'
+import { getSupabaseAdminClient, getServerUser } from '@/lib/supabase'
 import Stripe from 'stripe'
 
 function getStripe(): Stripe | null {
@@ -12,6 +12,11 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getServerUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const stripe = getStripe()
     if (!stripe) {
       return NextResponse.json(
@@ -21,9 +26,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { rentalId, rentalName, checkIn, checkOut, userId } = body
+    const { rentalId, rentalName, checkIn, checkOut } = body
+    const userId = user.id
 
-    if (!rentalId || !checkIn || !checkOut || !userId) {
+    if (!rentalId || !checkIn || !checkOut) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }

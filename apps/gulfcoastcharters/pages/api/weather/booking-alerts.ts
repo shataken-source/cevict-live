@@ -68,11 +68,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const cronSecret = process.env.CRON_SECRET?.trim();
-  if (cronSecret) {
-    const auth = req.headers.authorization?.replace(/^Bearer\s+/i, '') ?? req.query?.secret ?? '';
-    if (auth !== cronSecret) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+  if (!cronSecret) {
+    console.warn('[booking-alerts] CRON_SECRET not set — blocking request');
+    return res.status(403).json({ error: 'CRON_SECRET not configured' });
+  }
+  const auth = req.headers.authorization?.replace(/^Bearer\s+/i, '') ?? req.query?.secret ?? '';
+  if (auth !== cronSecret) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
 
   const resendKey = process.env.RESEND_API_KEY?.trim();
@@ -149,11 +151,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const firstName = profile?.full_name?.split(/\s+/)[0] || 'there';
     const tripDate = booking.trip_date
       ? new Date(booking.trip_date).toLocaleDateString('en-US', {
-          weekday: 'long',
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric',
-        })
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
       : 'your trip date';
     const subject =
       level === 'danger'

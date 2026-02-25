@@ -16,24 +16,25 @@ export default async function handler(
   }
 
   try {
-    // Test mode bypass (DEV ONLY - NEVER ENABLE IN PRODUCTION)
-    const isTestMode = process.env.ALLOW_TIP_TEST_MODE === 'true';
+    // Test mode bypass — ONLY in development
+    const isDev = process.env.NODE_ENV === 'development';
+    const isTestMode = isDev && process.env.ALLOW_TIP_TEST_MODE === 'true';
     const hasTestHeader = req.headers['x-test-mode'] === 'true';
     const isLocalhost = req.headers.host?.includes('localhost') || req.headers.host?.includes('127.0.0.1');
     const isTestRoute = req.url?.includes('/test-tip');
-    
+
     let user: any = null;
-    
+
     if (isTestMode && hasTestHeader && (isLocalhost || isTestRoute)) {
       // TEST MODE: Use a test user ID (you can customize this)
       console.warn('⚠️ TEST MODE ACTIVE - Auth bypassed for tip creation');
-      
+
       // Get booking first to use its user_id (which definitely exists)
       const supabaseAdmin = getSupabaseAdmin();
       const { bookingId } = req.body;
-      
+
       let testUserId = req.body.testUserId || process.env.TEST_USER_ID;
-      
+
       // If no test user ID provided, try to get one from the booking
       if (!testUserId && bookingId) {
         const { data: booking } = await supabaseAdmin
@@ -41,13 +42,13 @@ export default async function handler(
           .select('user_id')
           .eq('id', bookingId)
           .maybeSingle();
-        
+
         if (booking?.user_id) {
           testUserId = booking.user_id;
           console.log('✅ Using booking owner as test user:', testUserId);
         }
       }
-      
+
       // If still no user ID, try to get any user from profiles
       if (!testUserId) {
         const { data: profile } = await supabaseAdmin
@@ -55,13 +56,13 @@ export default async function handler(
           .select('id, email')
           .limit(1)
           .maybeSingle();
-        
+
         if (profile) {
           testUserId = profile.id;
           console.log('✅ Using profile user for test mode:', testUserId);
         }
       }
-      
+
       if (testUserId) {
         user = {
           id: testUserId,
@@ -70,7 +71,7 @@ export default async function handler(
         console.log('✅ Using test user ID:', user.id);
       } else {
         // Last resort: return error asking for a real user
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'Test mode requires a valid user ID. Options:',
           hint: '1. Set TEST_USER_ID=<real-user-id> in .env.local\n2. Or use a booking that has a user_id\n3. Or create a test user in the database'
         });
@@ -112,7 +113,7 @@ export default async function handler(
 
     // In test mode, skip ownership and timing checks
     const isTestModeActive = isTestMode && hasTestHeader && (isLocalhost || isTestRoute);
-    
+
     if (!isTestModeActive) {
       // PRODUCTION: Verify customer owns this booking
       if (booking.user_id !== user.id) {
@@ -158,7 +159,7 @@ export default async function handler(
     if (tipError) {
       console.error('Error creating tip:', tipError);
       console.error('Tip error details:', JSON.stringify(tipError, null, 2));
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to create tip',
         details: tipError.message,
         code: tipError.code,
@@ -184,7 +185,7 @@ export default async function handler(
         console.error('No captain user_id found for booking:', booking.id);
         return res.status(500).json({ error: 'Captain information not available' });
       }
-      
+
       const { error: distributionError } = await supabase.from('tip_distributions').insert({
         tip_id: tip.tip_id,
         recipient_id: captainUserId,
@@ -192,7 +193,7 @@ export default async function handler(
         amount: netAmount,
         percentage: 100
       });
-      
+
       if (distributionError) {
         console.error('Error creating tip distribution:', distributionError);
         console.error('Distribution error details:', JSON.stringify(distributionError, null, 2));
@@ -203,7 +204,7 @@ export default async function handler(
     // Payment will be processed via Stripe Checkout Session (created by frontend)
     // This keeps the API simple and uses the existing stripe-checkout edge function
     // The webhook will update the tip status when payment succeeds
-    
+
     return res.status(200).json({
       success: true,
       tip,
@@ -212,7 +213,7 @@ export default async function handler(
   } catch (error: any) {
     console.error('Error creating tip:', error);
     console.error('Full error stack:', error.stack);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: error.message || 'Internal server error',
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
