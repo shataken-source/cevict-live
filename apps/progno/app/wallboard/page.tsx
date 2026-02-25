@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface BroadcastInfo {
   gameId: string
@@ -20,10 +20,37 @@ interface Game {
   homeScore: number
   awayScore: number
   status: 'live' | 'final' | 'upcoming'
+  statusDetail: string
   prognoPick?: string
   pickStatus?: 'winning' | 'losing' | 'pending'
   tvChannel?: string
   allChannels?: string[]
+}
+
+const SPORTS = ['ncaab', 'nba', 'nhl', 'nfl', 'mlb'] as const
+
+/** Normalize a team name for fuzzy comparison: lowercase, strip common suffixes/prefixes */
+function normName(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/\b(state|st\.?)\b/g, 'st')
+    .replace(/[^a-z0-9 ]/g, '')
+    .trim()
+}
+
+/** Fuzzy match two team names — handles "Indiana Pacers" vs "Pacers", abbreviations, etc. */
+function fuzzyTeamMatch(a: string, b: string): boolean {
+  if (!a || !b) return false
+  const na = normName(a)
+  const nb = normName(b)
+  if (na === nb) return true
+  // Check if one contains the other (handles "Pacers" matching "Indiana Pacers")
+  if (na.includes(nb) || nb.includes(na)) return true
+  // Check last word (mascot) match: "Indiana Pacers" → "Pacers"
+  const lastA = na.split(' ').pop() || ''
+  const lastB = nb.split(' ').pop() || ''
+  if (lastA.length >= 3 && lastA === lastB) return true
+  return false
 }
 
 export default function SimpleWallboard() {
@@ -33,65 +60,55 @@ export default function SimpleWallboard() {
   const [showTVSchedule, setShowTVSchedule] = useState(false)
   const [tvSchedule, setTvSchedule] = useState<BroadcastInfo[]>([])
   const [tvLoading, setTvLoading] = useState(false)
+  const [picks, setPicks] = useState<any[]>([])
+  const [picksLoaded, setPicksLoaded] = useState(false)
 
-  const SPORTS = ['ncaab', 'nba', 'nhl', 'nfl', 'mlb']
-
-  // Fetch TV broadcast data from ESPN
-  const fetchTVData = useCallback(async (sport: string): Promise<Map<string, BroadcastInfo>> => {
-    const map = new Map<string, BroadcastInfo>()
+  // ── Load picks ONCE on mount (reads from cache, never triggers Odds API) ──
+  const loadPicks = useCallback(async () => {
+    if (picksLoaded) return
     try {
-      const res = await fetch(`/api/tv-schedule?sport=${sport}`, { cache: 'no-store' })
-      if (!res.ok) return map
+      const date = new Date().toISOString().split('T')[0]
+      const res = await fetch(`/api/picks/today?date=${date}`, { cache: 'no-store' })
+      if (!res.ok) return
       const data = await res.json()
-      for (const g of data.games || []) {
-        // Index by normalized team names for fuzzy matching
-        const key1 = g.home.toLowerCase()
-        const key2 = g.away.toLowerCase()
-        map.set(key1, g)
-        map.set(key2, g)
-        map.set(g.gameId, g)
-      }
+      let list: any[] = []
+      if (Array.isArray(data)) list = data
+      else if (data.picks) list = data.picks
+      else if (data.data) list = data.data
+      setPicks(list)
     } catch (e) {
-      console.warn('TV schedule fetch failed:', e)
+      console.warn('Picks load failed:', e)
     }
-    return map
-  }, [])
+    setPicksLoaded(true)
+  }, [picksLoaded])
 
-  // Fetch live scores and today's picks
-  const refreshData = async () => {
+  // ── Fetch live scores from ESPN free API (no Odds API, no quota) ──
+  const refreshScores = useCallback(async (sport: string) => {
     try {
-      // Fetch live scores + TV data in parallel
-      const [scoresRes, picksRes, tvMap] = await Promise.all([
-        fetch(`/api/progno/v2?action=live-scores&sport=${currentSport}`, { cache: 'no-store' }),
-        fetch(`/api/picks/today?date=${new Date().toISOString().split('T')[0]}`, { cache: 'no-store' }),
-        fetchTVData(currentSport),
-      ])
+      const res = await fetch(`/api/espn-scores?sport=${sport}`, { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json()
+      const scores = data.data || []
 
-      const scoresData = await scoresRes.json()
-      const scores = scoresData.data || []
-
-      const picksData = await picksRes.json()
-      let picks: any[] = []
-      if (Array.isArray(picksData)) picks = picksData
-      else if (picksData.picks) picks = picksData.picks
-      else if (picksData.data) picks = picksData.data
-
-      // Match picks to games
+      // Match picks to games using fuzzy team name matching
       const gamesWithPicks = scores.map((score: any) => {
-        const matchingPick = picks.find((p: any) =>
-          (p.home_team === score.home || p.homeTeam === score.home) &&
-          (p.away_team === score.away || p.awayTeam === score.away)
-        )
+        const matchingPick = picks.find((p: any) => {
+          const pH = p.home_team || p.homeTeam || ''
+          const pA = p.away_team || p.awayTeam || ''
+          return fuzzyTeamMatch(pH, score.home) && fuzzyTeamMatch(pA, score.away)
+        })
 
-        let prognoPick = undefined
+        let prognoPick: string | undefined
         let pickStatus: 'winning' | 'losing' | 'pending' = 'pending'
 
         if (matchingPick) {
           prognoPick = matchingPick.pick || matchingPick.side
 
-          if (!score.completed) {
-            const pickingHome = prognoPick?.toLowerCase().includes(score.home.toLowerCase())
-            if (pickingHome) {
+          if (!score.completed && prognoPick) {
+            const pickingHome = fuzzyTeamMatch(prognoPick, score.home)
+            if (score.homeScore === score.awayScore) {
+              pickStatus = 'pending' // Tied = pending, not losing
+            } else if (pickingHome) {
               pickStatus = score.homeScore > score.awayScore ? 'winning' : 'losing'
             } else {
               pickStatus = score.awayScore > score.homeScore ? 'winning' : 'losing'
@@ -99,12 +116,9 @@ export default function SimpleWallboard() {
           }
         }
 
-        // Match TV broadcast info
-        const tvInfo = tvMap.get(score.home?.toLowerCase()) ||
-          tvMap.get(score.away?.toLowerCase()) ||
-          tvMap.get(score.id)
-        const tvChannel = tvInfo?.nationalTV || tvInfo?.channels?.[0] || undefined
-        const allChannels = tvInfo?.channels || []
+        // TV channel comes directly from ESPN scores (channels field)
+        const tvChannel = score.channels?.[0] || undefined
+        const allChannels = score.channels || []
 
         return {
           id: score.id,
@@ -112,32 +126,34 @@ export default function SimpleWallboard() {
           away: score.away,
           homeScore: score.homeScore || 0,
           awayScore: score.awayScore || 0,
-          status: score.completed ? 'final' : 'live',
+          status: score.completed ? 'final' as const : score.live ? 'live' as const : 'upcoming' as const,
+          statusDetail: score.status || '',
           prognoPick,
           pickStatus,
           tvChannel,
           allChannels,
-        } as Game
+        }
       })
 
-      // Sort: live games with picks first, then other live, then final
+      // Sort: live games with picks first, then other live, then upcoming, then final
       const sorted = gamesWithPicks.sort((a: Game, b: Game) => {
-        if (a.status === 'live' && a.prognoPick && (!b.prognoPick || b.status !== 'live')) return -1
-        if (b.status === 'live' && b.prognoPick && (!a.prognoPick || a.status !== 'live')) return 1
-        if (a.status === 'live' && b.status !== 'live') return -1
-        if (b.status === 'live' && a.status !== 'live') return 1
-        return 0
-      }).slice(0, 6)
+        const order = { live: 0, upcoming: 1, final: 2 }
+        const aHasPick = a.prognoPick ? 1 : 0
+        const bHasPick = b.prognoPick ? 1 : 0
+        // Picks first within same status tier
+        if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status]
+        return bHasPick - aHasPick
+      }).slice(0, 8)
 
       setGames(sorted)
       setLastUpdate(new Date().toLocaleTimeString())
     } catch (e) {
-      console.error('Failed to refresh data:', e)
+      console.error('Failed to refresh scores:', e)
     }
-  }
+  }, [picks])
 
   // Full TV schedule popup loader (all sports)
-  const loadFullTVSchedule = async () => {
+  const loadFullTVSchedule = useCallback(async () => {
     setTvLoading(true)
     try {
       const res = await fetch('/api/tv-schedule?sport=all', { cache: 'no-store' })
@@ -149,24 +165,23 @@ export default function SimpleWallboard() {
       console.error('TV schedule load failed:', e)
     }
     setTvLoading(false)
-  }
-
-  // Initial load
-  useEffect(() => {
-    refreshData()
   }, [])
 
-  // Auto-refresh every 15 seconds
-  useEffect(() => {
-    const interval = setInterval(refreshData, 15000)
-    return () => clearInterval(interval)
-  }, [currentSport])
+  // ── Load picks once on mount ──
+  useEffect(() => { loadPicks() }, [loadPicks])
 
-  // Rotate sports every 30 seconds
+  // ── Fetch scores immediately when sport changes, then every 15s ──
+  useEffect(() => {
+    refreshScores(currentSport)
+    const interval = setInterval(() => refreshScores(currentSport), 15000)
+    return () => clearInterval(interval)
+  }, [currentSport, refreshScores])
+
+  // ── Rotate sports every 30 seconds ──
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSport(prev => {
-        const idx = SPORTS.indexOf(prev)
+        const idx = SPORTS.indexOf(prev as typeof SPORTS[number])
         return SPORTS[(idx + 1) % SPORTS.length]
       })
     }, 30000)
@@ -277,11 +292,11 @@ export default function SimpleWallboard() {
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{
-                      fontSize: '18px',
+                      fontSize: '16px',
                       fontWeight: 'bold',
-                      color: g.status === 'live' ? '#00ff9c' : '#ffb300'
+                      color: g.status === 'live' ? '#00ff9c' : g.status === 'upcoming' ? '#00d4ff' : '#ffb300'
                     }}>
-                      {g.status === 'live' ? '🔴 LIVE' : 'FINAL'}
+                      {g.status === 'live' ? '🔴 LIVE' : g.status === 'upcoming' ? '🕐 ' + (g.statusDetail || 'UPCOMING') : 'FINAL'}
                     </div>
                     {/* TV CHANNEL BADGE */}
                     {g.tvChannel && (

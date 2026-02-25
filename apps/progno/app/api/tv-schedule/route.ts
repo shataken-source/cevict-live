@@ -44,39 +44,36 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: 'No valid sports provided' }, { status: 400 })
   }
 
-  const allGames: BroadcastInfo[] = []
+  // Fetch all sports in parallel
+  const results = await Promise.allSettled(
+    sports.map(async (sport): Promise<BroadcastInfo[]> => {
+      const espnPath = SPORT_MAP[sport]
+      if (!espnPath) return []
 
-  for (const sport of sports) {
-    const espnPath = SPORT_MAP[sport]
-    if (!espnPath) continue
-
-    try {
       const res = await fetch(`${ESPN_BASE}/${espnPath}/scoreboard`, {
         next: { revalidate: 300 }, // Cache 5 min
       })
-      if (!res.ok) continue
+      if (!res.ok) return []
 
       const data = await res.json()
+      const games: BroadcastInfo[] = []
 
       for (const event of data.events || []) {
         const comp = event.competitions?.[0]
         if (!comp) continue
 
-        const broadcasts = comp.broadcasts || []
         const channels: string[] = []
         let nationalTV: string | null = null
 
-        for (const bc of broadcasts) {
+        for (const bc of comp.broadcasts || []) {
           for (const name of bc.names || []) {
             channels.push(name)
-            // Identify national networks
             if (isNationalNetwork(name) && !nationalTV) {
               nationalTV = name
             }
           }
         }
 
-        // Also check geoBroadcasts for more detail
         for (const geo of comp.geoBroadcasts || []) {
           const name = geo.media?.shortName || geo.media?.callLetters
           if (name && !channels.includes(name)) {
@@ -90,21 +87,24 @@ export async function GET(request: Request) {
         const homeTeam = comp.competitors?.find((c: any) => c.homeAway === 'home')?.team
         const awayTeam = comp.competitors?.find((c: any) => c.homeAway === 'away')?.team
 
-        allGames.push({
+        games.push({
           gameId: event.id,
           home: homeTeam?.displayName || homeTeam?.shortDisplayName || '',
           away: awayTeam?.displayName || awayTeam?.shortDisplayName || '',
           shortName: event.shortName || `${awayTeam?.abbreviation} @ ${homeTeam?.abbreviation}`,
           startTime: event.date || comp.date || '',
           status: comp.status?.type?.description || 'Scheduled',
-          channels: [...new Set(channels)], // Dedupe
+          channels: [...new Set(channels)],
           nationalTV,
         })
       }
-    } catch (e) {
-      console.warn(`[TV Schedule] Failed to fetch ${sport}:`, (e as Error).message)
-    }
-  }
+      return games
+    })
+  )
+
+  const allGames: BroadcastInfo[] = results.flatMap(r =>
+    r.status === 'fulfilled' ? r.value : []
+  )
 
   // Sort: games with national TV first, then by start time
   allGames.sort((a, b) => {
@@ -120,18 +120,17 @@ export async function GET(request: Request) {
   })
 }
 
-/** Check if a channel name is a major national network */
+/** Check if a channel name is a major national network (exact match only) */
 function isNationalNetwork(name: string): boolean {
-  const national = [
-    'ESPN', 'ESPN2', 'ESPNU', 'ESPN+', 'ABC',
-    'TNT', 'TBS', 'truTV',
-    'FOX', 'FS1', 'FS2', 'FOX Sports 1',
-    'CBS', 'CBS Sports', 'CBSSN',
-    'NBC', 'NBCSN', 'Peacock', 'USA Network', 'USA',
-    'NFL Network', 'NFL', 'MLB Network', 'NHL Network', 'NBA TV',
-    'BTN', 'Big Ten Network', 'SEC Network', 'ACC Network',
-    'Pac-12 Network',
-  ]
-  const n = name.trim()
-  return national.some(net => n.toLowerCase() === net.toLowerCase() || n.toLowerCase().startsWith(net.toLowerCase()))
+  const national = new Set([
+    'espn', 'espn2', 'espnu', 'espn+', 'abc',
+    'tnt', 'tbs', 'trutv',
+    'fox', 'fs1', 'fs2', 'fox sports 1',
+    'cbs', 'cbs sports', 'cbssn',
+    'nbc', 'nbcsn', 'peacock', 'usa network', 'usa',
+    'nfl network', 'mlb network', 'nhl network', 'nba tv',
+    'btn', 'big ten network', 'sec network', 'acc network',
+    'pac-12 network',
+  ])
+  return national.has(name.trim().toLowerCase())
 }

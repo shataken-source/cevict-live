@@ -84,7 +84,7 @@ function loadSounds() {
   const cheer = document.getElementById('cheerSound');
   const boo = document.getElementById('booSound');
   if (cheer) { cheer.src = 'crowd-cheer.mp3'; cheer.volume = 0.6; cheer.load(); }
-  if (boo) { boo.src = 'croed-disappointment.mp3'; boo.volume = 0.65; boo.load(); }
+  if (boo) { boo.src = 'crowd-disappointment.mp3'; boo.volume = 0.65; boo.load(); }
   // Unlock on first interaction
   ['click', 'keydown', 'touchstart'].forEach(evt =>
     document.addEventListener(evt, unlockAudio, { once: false, passive: true })
@@ -112,7 +112,7 @@ function playSound(type) {
 
 function connectWebSocket() {
   try {
-    const ws = new WebSocket('ws://localhost:3008/ws');
+    const ws = new WebSocket((window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.host + '/ws');
     ws.onopen = () => setStreamStatus(true);
     ws.onmessage = (msg) => {
       try {
