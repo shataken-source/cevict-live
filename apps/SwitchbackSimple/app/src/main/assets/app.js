@@ -519,11 +519,31 @@ document.getElementById('series-search').addEventListener('input', function () {
 // ═══════════════════════════════════════════════════════════════
 
 // ── EPG ──────────────────────────────────────────────────────
-async function initEPG() {
+// EPG time offset in hours (controlled by Earlier/Later buttons)
+S.epgOffset = S.epgOffset || 0;
+
+async function fetchEpgForChannel(ch) {
+  if (IS_ANDROID_WEBVIEW) {
+    // On Android, call Xtream API directly through the NanoHTTPD proxy
+    const target = `${S.server}/player_api.php?username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&action=get_short_epg&stream_id=${ch.stream_id}&limit=6`;
+    const proxyUrl = `http://localhost:8123/proxy?url=${encodeURIComponent(target)}`;
+    const r = await fetch(proxyUrl);
+    return r.json();
+  } else {
+    const r = await fetch(`/api/epg?stream_id=${ch.stream_id}&server=${encodeURIComponent(S.server)}&username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&limit=6`);
+    return r.json();
+  }
+}
+
+async function initEPG(offsetDelta = 0) {
+  S.epgOffset = (S.epgOffset || 0) + offsetDelta;
   const wrap = document.getElementById('epg-wrap');
   const timeEl = document.getElementById('epg-time-display');
   const now = new Date();
-  timeEl.textContent = 'Now: ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const offsetMs = S.epgOffset * 3600000;
+  const display = new Date(now.getTime() + offsetMs);
+  timeEl.textContent = (S.epgOffset === 0 ? 'Now: ' : (S.epgOffset > 0 ? '+' : '') + S.epgOffset + 'h: ') +
+    display.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
   if (!S.allChannels.length) {
     wrap.innerHTML = '<div class="loading"><div class="spinner"></div> Loading channels first...</div>';
@@ -536,11 +556,10 @@ async function initEPG() {
 
   wrap.innerHTML = '<div class="loading"><div class="spinner"></div> Loading program guide...</div>';
 
-  // Fetch EPG for all channels in parallel (batched to avoid rate limit)
+  // Fetch EPG for all channels in parallel
   const epgResults = await Promise.allSettled(
     chans.map(ch =>
-      fetch(`/api/epg?stream_id=${ch.stream_id}&server=${encodeURIComponent(S.server)}&username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}&limit=6`)
-        .then(r => r.json())
+      fetchEpgForChannel(ch)
         .then(d => ({ stream_id: ch.stream_id, listings: d.epg_listings || [] }))
         .catch(() => ({ stream_id: ch.stream_id, listings: [] }))
     )
@@ -609,7 +628,14 @@ async function initEPG() {
 }
 
 // EPG nav buttons
-document.getElementById('epg-now')?.addEventListener('click', initEPG);
+document.getElementById('epg-now')?.addEventListener('click', () => { S.epgOffset = 0; initEPG(0); });
+document.getElementById('epg-prev')?.addEventListener('click', () => initEPG(-1));
+document.getElementById('epg-next')?.addEventListener('click', () => initEPG(1));
+// Make EPG nav buttons focusable for D-pad
+['epg-now', 'epg-prev', 'epg-next'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.setAttribute('tabindex', '0');
+});
 
 // ── SEARCH ────────────────────────────────────────────────────
 function initSearch() {
