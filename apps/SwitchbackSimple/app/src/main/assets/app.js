@@ -3,6 +3,27 @@
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
 
+// ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
+// On TV/D-pad, inputs should only open keyboard on explicit click/tap,
+// not when tabbing/focusing via arrow keys.
+document.addEventListener('focusin', e => {
+  const el = e.target;
+  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+    // Only blur+refocus suppresses keyboard on Android WebView when focus
+    // came from keyboard navigation rather than pointer. Track this via a flag.
+    if (!el._pointerFocused) el.blur();
+    el._pointerFocused = false;
+  }
+});
+['mousedown', 'touchstart', 'pointerdown'].forEach(evt => {
+  document.addEventListener(evt, e => {
+    const el = e.target;
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+      el._pointerFocused = true;
+    }
+  }, true);
+});
+
 // ── DEFAULTS (encoded so they don't trigger secret scanners) ─
 const _d = s => atob(s);
 if (!localStorage.getItem('iptv_server')) localStorage.setItem('iptv_server', _d('aHR0cDovL2Jsb2d5ZnkueHl6'));
@@ -886,6 +907,7 @@ async function loadCatchUpEPG(streamId, chans) {
   document.getElementById('catchup-epg-title').textContent = `Programs — ${ch?.name || ''}`;
   const epgEl = document.getElementById('catchup-epg');
   epgEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
   try {
     const fakeCh = { stream_id: streamId };
     const data = await fetchEpgForChannel(fakeCh);
@@ -893,8 +915,8 @@ async function loadCatchUpEPG(streamId, chans) {
     if (!listings.length) { epgEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:10px">No EPG data available</div>'; return; }
     const nowTs = Math.floor(Date.now() / 1000);
     epgEl.innerHTML = listings.map(e => {
-      const title = atob(e.title || '');
-      const desc = e.description ? atob(e.description).slice(0, 120) : '';
+      const title = safeAtob(e.title);
+      const desc = e.description ? safeAtob(e.description).slice(0, 120) : '';
       const timeStr = formatEpgTime(e.start_timestamp) + ' – ' + formatEpgTime(e.stop_timestamp);
       const isPast = e.stop_timestamp < nowTs;
       const isLive = e.start_timestamp <= nowTs && e.stop_timestamp > nowTs;
@@ -1119,16 +1141,18 @@ function navigateChannel(delta) {
 document.getElementById('next-ch-btn')?.addEventListener('click', () => navigateChannel(1));
 
 // Global back-key handler — prevents Android WebView from exiting the app
-// when the player is closed; instead navigates back within the SPA.
 document.addEventListener('keydown', e => {
   if (e.key === 'GoBack' || e.key === 'BrowserBack') {
     const overlay = document.getElementById('player-overlay');
     if (overlay && overlay.style.display !== 'none') {
       e.preventDefault();
       closePlayer();
+    } else if (S.currentScreen === 'tvhome') {
+      // On home screen: ask to exit
+      e.preventDefault();
+      showExitConfirm();
     } else {
       e.preventDefault();
-      // Fall back to Home screen rather than exiting the app
       nav('tvhome');
       const first = document.querySelector('.sb-item.active');
       if (first) first.focus();
@@ -1136,6 +1160,35 @@ document.addEventListener('keydown', e => {
     return;
   }
 });
+
+function showExitConfirm() {
+  const existing = document.getElementById('exit-confirm-dialog');
+  if (existing) return;
+  const dlg = document.createElement('div');
+  dlg.id = 'exit-confirm-dialog';
+  dlg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  dlg.innerHTML = `
+    <div style="background:#1a1a2e;border:1px solid #333;border-radius:16px;padding:32px 40px;text-align:center;min-width:280px">
+      <div style="font-size:32px;margin-bottom:12px">👋</div>
+      <div style="font-size:17px;font-weight:700;margin-bottom:8px">Exit Switchback TV?</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:24px">Are you sure you want to exit?</div>
+      <div style="display:flex;gap:12px;justify-content:center">
+        <button id="exit-cancel-btn" class="btn btn-ghost" style="min-width:100px">Cancel</button>
+        <button id="exit-confirm-btn" class="btn btn-red" style="min-width:100px">Exit</button>
+      </div>
+    </div>`;
+  document.body.appendChild(dlg);
+  document.getElementById('exit-cancel-btn').addEventListener('click', () => dlg.remove());
+  document.getElementById('exit-confirm-btn').addEventListener('click', () => {
+    if (IS_ANDROID_WEBVIEW) {
+      // Signal Android to close the activity
+      window.location.href = 'switchback://exit';
+    } else {
+      window.close();
+    }
+  });
+  document.getElementById('exit-confirm-btn').focus();
+}
 
 // keyboard shortcuts
 document.addEventListener('keydown', e => {
@@ -1655,8 +1708,8 @@ function getSmartCategoryChannels(catId) {
   }).slice(0, 50);
 }
 
-// Override renderFavorites with tabs + smart categories
-function renderFavorites() {
+// renderFavorites — canonical version with tabs (replaces hoisted function declaration)
+renderFavorites = function () {
   const screen = document.getElementById('screen-favorites');
   const activeTab = S.favTab || 'all';
 
@@ -2281,6 +2334,8 @@ async function loadDezorPlaylist() {
 // ═══════════════════════════════════════════════════════════════
 
 // renderChannelList — canonical version with channel number badge + now-playing EPG subtitle
+// Declared as var at top-level so the assignment is valid in all environments.
+if (typeof renderChannelList === 'undefined') var renderChannelList;
 renderChannelList = function (list) {
   const el = document.getElementById('channel-list');
   if (!list.length) { el.innerHTML = '<div style="color:var(--muted);padding:20px;font-size:13px">No channels found.</div>'; return; }
@@ -2322,12 +2377,39 @@ renderChannelList = function (list) {
   }
 
   el.querySelectorAll('.ch-row').forEach(row => {
+    // Short click → open player
     row.addEventListener('click', (e) => {
       if (e.target.classList.contains('fav-star')) return;
+      if (row._longPressed) { row._longPressed = false; return; }
       const idx = parseInt(row.dataset.idx);
       const ch = list[idx];
       openPlayer(ch, list, idx);
     });
+
+    // Long press → toggle favorite
+    let pressTimer = null;
+    const startPress = () => {
+      pressTimer = setTimeout(() => {
+        row._longPressed = true;
+        const idx = parseInt(row.dataset.idx);
+        const ch = list[idx];
+        if (!ch) return;
+        const wasFav = S.favorites.some(f => f.stream_id == ch.stream_id);
+        toggleFav(ch, null);
+        // Update star in this row
+        const star = row.querySelector('.fav-star');
+        if (star) star.classList.toggle('on', !wasFav);
+        showToast(wasFav ? `Removed ${ch.name} from favorites` : `★ Added ${ch.name} to favorites`);
+        if (navigator.vibrate) navigator.vibrate(40);
+      }, 500);
+    };
+    const cancelPress = () => { clearTimeout(pressTimer); };
+    row.addEventListener('mousedown', startPress);
+    row.addEventListener('touchstart', startPress, { passive: true });
+    row.addEventListener('mouseup', cancelPress);
+    row.addEventListener('mouseleave', cancelPress);
+    row.addEventListener('touchend', cancelPress);
+    row.addEventListener('touchcancel', cancelPress);
   });
 
   el.querySelectorAll('.fav-star').forEach(star => {
@@ -2337,6 +2419,20 @@ renderChannelList = function (list) {
       toggleFav(ch, star);
     });
   });
+}
+
+function showToast(msg, duration = 2200) {
+  let t = document.getElementById('sb-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'sb-toast';
+    t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(30,30,50,0.97);color:#fff;padding:10px 22px;border-radius:24px;font-size:13px;font-weight:600;z-index:99998;pointer-events:none;transition:opacity 0.3s;border:1px solid rgba(255,255,255,0.1);';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(() => { t.style.opacity = '0'; }, duration);
 }
 
 // ═══════════════════════════════════════════════════════════════

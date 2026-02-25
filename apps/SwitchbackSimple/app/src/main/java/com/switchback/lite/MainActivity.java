@@ -8,6 +8,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.view.KeyEvent;
 import java.io.File;
 
 public class MainActivity extends Activity {
@@ -52,7 +53,16 @@ public class MainActivity extends Activity {
         webView.requestFocus();
 
         webView.setWebChromeClient(new WebChromeClient());
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (url != null && url.startsWith("switchback://exit")) {
+                    finish();
+                    return true;
+                }
+                return false;
+            }
+        });
 
         // Load from local HTTP server — no more file:// CORS issues
         webView.loadUrl("http://localhost:" + PORT + "/index.html");
@@ -104,11 +114,10 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
+        // Dispatch GoBack key to JavaScript so the SPA handles navigation.
+        // The JS handler shows exit confirm on home screen and closes player otherwise.
+        webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK));
+        webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK));
     }
 
     @Override
