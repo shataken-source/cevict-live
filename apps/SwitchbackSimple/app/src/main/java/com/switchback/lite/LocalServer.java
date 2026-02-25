@@ -255,15 +255,27 @@ public class LocalServer extends NanoHTTPD {
                 String out = trimmed;
                 // Rewrite URI="..." inside EXT-X-KEY and EXT-X-MAP tags
                 if (out.contains("URI=\"")) {
-                    out = out.replaceAll("URI=\"([^\"]+)\"", m -> {
-                        String inner = m.replaceFirst("URI=\"", "").replaceFirst("\"$", "");
+                    StringBuilder rewritten = new StringBuilder();
+                    int pos = 0;
+                    while (pos < out.length()) {
+                        int start = out.indexOf("URI=\"", pos);
+                        if (start < 0) { rewritten.append(out.substring(pos)); break; }
+                        int valStart = start + 5; // after URI="
+                        int valEnd = out.indexOf("\"", valStart);
+                        if (valEnd < 0) { rewritten.append(out.substring(pos)); break; }
+                        String inner = out.substring(valStart, valEnd);
                         String abs = resolveUrl(inner, base);
+                        rewritten.append(out, pos, start);
                         try {
-                            return "URI=\"http://localhost:8123/proxy?url=" + java.net.URLEncoder.encode(abs, "UTF-8") + "\"";
-                        } catch (Exception e) {
-                            return m;
+                            rewritten.append("URI=\"http://localhost:8123/proxy?url=")
+                                     .append(java.net.URLEncoder.encode(abs, "UTF-8"))
+                                     .append("\"");
+                        } catch (Exception enc) {
+                            rewritten.append("URI=\"").append(inner).append("\"");
                         }
-                    });
+                        pos = valEnd + 1;
+                    }
+                    out = rewritten.toString();
                 }
                 sb.append(out).append("\n");
             } else {
