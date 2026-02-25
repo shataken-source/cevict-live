@@ -2340,3 +2340,167 @@ function nav(screen) {
 }
 
 console.log('[Switchback TV] All upgrades loaded ✓');
+
+// ═══════════════════════════════════════════════════════════════
+// FIX: Consolidate all nav() overrides into one clean function
+//      so the chain doesn't break via function hoisting.
+//      Also add TV remote / keyboard D-pad support.
+// ═══════════════════════════════════════════════════════════════
+
+// Replace all overridden nav() variants with a single definitive version
+// that handles every side-effect in one place.
+// We reach back to the *original* nav (line ~121) by its core logic.
+function nav(screen) {
+  // ── Core: switch screen + active states ──────────────────────
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
+  const screenEl = document.getElementById('screen-' + screen);
+  if (screenEl) screenEl.classList.add('active');
+  const sbItem = document.querySelector(`.sb-item[data-screen="${screen}"]`);
+  if (sbItem) {
+    sbItem.classList.add('active');
+    sbItem.focus(); // keep focus on active item for TV remote
+  }
+  const TITLES = {
+    tvhome:'Home', channels:'Live TV', movies:'Movies', series:'Series',
+    favorites:'Favorites', history:'History', recordings:'Recordings',
+    catchup:'Catch-Up', epg:'TV Guide', search:'Search', devices:'Devices',
+    quality:'Quality', pricing:'Plans', settings:'Settings',
+  };
+  const titleEl = document.getElementById('topbar-title');
+  if (titleEl) titleEl.textContent = TITLES[screen] || screen;
+  S.currentScreen = screen;
+
+  // ── Lazy init ─────────────────────────────────────────────────
+  const lazy = {
+    tvhome: initTVHome, channels: initChannels, movies: initMovies,
+    series: initSeries, epg: initEPG, favorites: renderFavorites,
+    history: renderHistory, devices: initDevices, catchup: initCatchUp,
+    search: initSearch, recordings: renderRecordings,
+  };
+  if (lazy[screen]) lazy[screen]();
+
+  // ── Upgrade hooks ─────────────────────────────────────────────
+  if (screen === 'quality')   setTimeout(initQualityScreen, 50);
+  if (screen === 'settings')  setTimeout(() => { initSettings(); patchSettingsToggles(); }, 50);
+  if (screen === 'favorites') setTimeout(renderFavorites, 50);
+  if (screen === 'recordings')setTimeout(renderRecordings, 50);
+  if (screen === 'epg')       setTimeout(addEpgSearchBtn, 500);
+}
+
+// Re-wire all nav triggers (sidebar items, topbar cog, home tiles)
+// using the now-canonical nav() above.
+document.querySelectorAll('.sb-item[data-screen], .tb-btn[data-screen], button[data-screen], [data-screen]').forEach(el => {
+  // Remove any existing listener by cloning
+  const clone = el.cloneNode(true);
+  el.parentNode.replaceChild(clone, el);
+  clone.addEventListener('click', () => nav(clone.dataset.screen));
+});
+
+// ── TV REMOTE / KEYBOARD FOCUS ───────────────────────────────
+// Make all sidebar items focusable and navigable with arrow keys
+function initTVRemote() {
+  const items = Array.from(document.querySelectorAll('.sb-item[data-screen]'));
+
+  items.forEach((item, i) => {
+    item.setAttribute('tabindex', '0');
+    item.setAttribute('role', 'menuitem');
+
+    // Enter / Space → activate
+    item.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        nav(item.dataset.screen);
+      }
+      // ArrowUp / ArrowDown → move focus within sidebar
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = items[i - 1];
+        if (prev) prev.focus();
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = items[i + 1];
+        if (next) next.focus();
+      }
+      // ArrowRight → move focus into content area
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        focusFirstContentItem();
+      }
+    });
+  });
+
+  // Content area: ArrowLeft → back to sidebar
+  document.getElementById('content').addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') {
+      const activeItem = document.querySelector('.sb-item.active');
+      if (activeItem) { e.preventDefault(); activeItem.focus(); }
+    }
+    // ArrowUp/Down navigate focusable rows in content
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      const focusable = Array.from(
+        document.querySelector('.screen.active')?.querySelectorAll(
+          '[tabindex="0"], .ch-row, .media-card, .quality-opt, .rec-card, .fav-item, button.btn'
+        ) || []
+      ).filter(el => el.offsetParent !== null);
+      if (!focusable.length) return;
+      const cur = document.activeElement;
+      const idx = focusable.indexOf(cur);
+      let next;
+      if (e.key === 'ArrowDown') next = focusable[idx + 1] || focusable[0];
+      else next = focusable[idx - 1] || focusable[focusable.length - 1];
+      if (next) { e.preventDefault(); next.focus(); }
+    }
+    // Enter on focused content item → click it
+    if (e.key === 'Enter' && document.activeElement !== document.body) {
+      const el = document.activeElement;
+      if (el && el !== document.getElementById('content')) el.click();
+    }
+  });
+
+  // Make content rows focusable
+  makeContentRowsFocusable();
+}
+
+function focusFirstContentItem() {
+  const screen = document.querySelector('.screen.active');
+  if (!screen) return;
+  const first = screen.querySelector('.ch-row, .media-card, .quality-opt, .rec-card, button.btn-red, [tabindex="0"]');
+  if (first) first.focus();
+}
+
+function makeContentRowsFocusable() {
+  // Any time rows are rendered, give them tabindex so D-pad can reach them
+  const observer = new MutationObserver(() => {
+    document.querySelectorAll('.ch-row:not([tabindex]), .media-card:not([tabindex]), .quality-opt:not([tabindex]), .rec-card:not([tabindex])').forEach(el => {
+      el.setAttribute('tabindex', '0');
+    });
+  });
+  observer.observe(document.getElementById('content'), { childList: true, subtree: true });
+}
+
+// Focus ring style for TV mode — visible highlight on focused items
+(function injectFocusStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    .sb-item:focus { outline: 2px solid var(--primary); background: rgba(229,0,0,0.12) !important; color: #fff !important; }
+    .ch-row:focus, .media-card:focus, .quality-opt:focus, .rec-card:focus { outline: 2px solid var(--primary); }
+    .btn:focus, button:focus { outline: 2px solid var(--accent); }
+    :focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+    :focus:not(:focus-visible) { outline: none; }
+    :focus-visible { outline: 2px solid var(--primary) !important; outline-offset: 2px; }
+  `;
+  document.head.appendChild(style);
+})();
+
+// Boot TV remote support
+initTVRemote();
+
+// Focus first sidebar item on load
+setTimeout(() => {
+  const first = document.querySelector('.sb-item.active');
+  if (first) first.focus();
+}, 200);
+
+console.log('[Switchback TV] TV remote nav + nav() fix applied ✓');
