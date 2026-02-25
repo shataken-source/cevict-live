@@ -924,6 +924,15 @@ function openPlayer(ch, list, idx) {
 
   // Inject player extras (ad-block badge, quality panel, sleep timer)
   setTimeout(injectPlayerExtras, 100);
+
+  // Make all player buttons focusable and auto-focus play-pause for D-pad
+  setTimeout(() => {
+    document.querySelectorAll('#player-overlay button, #player-overlay input[type=range]').forEach(el => {
+      el.setAttribute('tabindex', '0');
+    });
+    const pp = document.getElementById('play-pause-btn');
+    if (pp) pp.focus();
+  }, 150);
 }
 
 async function loadStream(ch) {
@@ -1063,12 +1072,35 @@ function navigateChannel(delta) {
 document.getElementById('prev-ch-btn')?.addEventListener('click', () => navigateChannel(-1));
 document.getElementById('next-ch-btn')?.addEventListener('click', () => navigateChannel(1));
 
+// Global back-key handler — prevents Android WebView from exiting the app
+// when the player is closed; instead navigates back within the SPA.
+document.addEventListener('keydown', e => {
+  if (e.key === 'GoBack' || e.key === 'BrowserBack') {
+    const overlay = document.getElementById('player-overlay');
+    if (overlay && overlay.style.display !== 'none') {
+      e.preventDefault();
+      closePlayer();
+    } else {
+      e.preventDefault();
+      // Fall back to Home screen rather than exiting the app
+      nav('tvhome');
+      const first = document.querySelector('.sb-item.active');
+      if (first) first.focus();
+    }
+    return;
+  }
+});
+
 // keyboard shortcuts
 document.addEventListener('keydown', e => {
   const overlay = document.getElementById('player-overlay');
   if (overlay.style.display === 'none') return;
   if (e.target.tagName === 'INPUT') return;
-  if (e.key === 'Escape' || e.key === 'Backspace') closePlayer();
+  if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'GoBack' || e.key === 'BrowserBack') {
+    e.preventDefault();
+    closePlayer();
+    return;
+  }
   if (e.key === ' ' || e.key === 'k') { e.preventDefault(); togglePlay(); }
   if (e.key === 'm') toggleMute();
   if (e.key === 'ArrowLeft') { e.preventDefault(); seekRelative(-10); }
