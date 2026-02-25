@@ -105,10 +105,10 @@ export default function PostTripTipping({
 
       const response = await fetch('/api/tips/create', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           // Enable test mode if on test page (dev only)
-          ...(window.location.pathname === '/test-tip' ? { 'x-test-mode': 'true' } : {})
+          ...(import.meta.env.DEV && window.location.pathname === '/test-tip' ? { 'x-test-mode': 'true' } : {})
         },
         body: JSON.stringify({
           bookingId: booking.booking_id,
@@ -130,7 +130,7 @@ export default function PostTripTipping({
         try {
           // Get user email for checkout
           const { data: { user: authUser } } = await supabase.auth.getUser();
-          
+
           // Call Next.js API route instead of Edge Function directly (avoids CORS)
           const checkoutResponse = await fetch('/api/tips/checkout', {
             method: 'POST',
@@ -179,7 +179,7 @@ export default function PostTripTipping({
       } else {
         toast.success('Tip submitted successfully!');
       }
-      
+
       onSuccess?.();
       onOpenChange(false);
     } catch (error: any) {

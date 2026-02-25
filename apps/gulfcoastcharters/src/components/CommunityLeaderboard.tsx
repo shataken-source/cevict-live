@@ -10,7 +10,6 @@ import MessageBoardAvatar from './MessageBoardAvatar';
 interface LeaderboardEntry {
   userId: string;
   username: string;
-  email: string;
   points: number;
   tier: string;
   avatar?: string;
@@ -31,7 +30,7 @@ export default function CommunityLeaderboard() {
     try {
       // Get current user for highlighting
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       // Calculate date filter based on period
       let dateFilter = '';
       if (period === 'week') {
@@ -42,7 +41,7 @@ export default function CommunityLeaderboard() {
 
       let query = supabase
         .from('shared_users')
-        .select('id, email, first_name, last_name, total_points, loyalty_tier, avatar_url')
+        .select('id, first_name, last_name, total_points, loyalty_tier, avatar_url')
         .order('total_points', { ascending: false })
         .limit(50);
 
@@ -70,17 +69,16 @@ export default function CommunityLeaderboard() {
         if (userIds.length > 0) {
           const { data: users } = await supabase
             .from('shared_users')
-            .select('id, email, first_name, last_name, loyalty_tier, avatar_url')
+            .select('id, first_name, last_name, loyalty_tier, avatar_url')
             .in('id', userIds);
 
           if (users) {
             const leaderboardData = users
               .map(u => ({
                 userId: u.id,
-                username: u.first_name && u.last_name 
-                  ? `${u.first_name} ${u.last_name}` 
-                  : u.email?.split('@')[0] || 'Anonymous',
-                email: u.email || '',
+                username: u.first_name && u.last_name
+                  ? `${u.first_name} ${u.last_name}`
+                  : 'Anonymous',
                 points: userPointsMap.get(u.id) || 0,
                 tier: u.loyalty_tier || 'bronze',
                 avatar: u.avatar_url || undefined,
@@ -89,7 +87,7 @@ export default function CommunityLeaderboard() {
               .slice(0, 50);
 
             setLeaders(leaderboardData);
-            
+
             // Find current user's rank
             if (user) {
               const rank = leaderboardData.findIndex(l => l.userId === user.id);
@@ -114,17 +112,16 @@ export default function CommunityLeaderboard() {
       } else if (users) {
         const leaderboardData: LeaderboardEntry[] = users.map(u => ({
           userId: u.id,
-          username: u.first_name && u.last_name 
-            ? `${u.first_name} ${u.last_name}` 
-            : u.email?.split('@')[0] || 'Anonymous',
-          email: u.email || '',
+          username: u.first_name && u.last_name
+            ? `${u.first_name} ${u.last_name}`
+            : 'Anonymous',
           points: u.total_points || 0,
           tier: u.loyalty_tier || 'bronze',
           avatar: u.avatar_url || undefined,
         }));
 
         setLeaders(leaderboardData);
-        
+
         // Find current user's rank
         if (user) {
           const rank = leaderboardData.findIndex(l => l.userId === user.id);
@@ -203,13 +200,12 @@ export default function CommunityLeaderboard() {
             )}
             <div className="space-y-3">
               {leaders.map((leader, idx) => (
-                <div 
-                  key={leader.userId} 
-                  className={`flex items-center gap-4 p-4 rounded-lg transition-all ${
-                    idx < 3 
-                      ? 'bg-gradient-to-r from-yellow-50 to-amber-50 shadow-md border-2 border-yellow-300' 
-                      : 'bg-white hover:bg-gray-50 border border-gray-200'
-                  }`}
+                <div
+                  key={leader.userId}
+                  className={`flex items-center gap-4 p-4 rounded-lg transition-all ${idx < 3
+                    ? 'bg-gradient-to-r from-yellow-50 to-amber-50 shadow-md border-2 border-yellow-300'
+                    : 'bg-white hover:bg-gray-50 border border-gray-200'
+                    }`}
                 >
                   <div className="w-12 flex justify-center">{getPositionIcon(idx)}</div>
                   <div className="w-12 h-12">

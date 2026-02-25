@@ -31,7 +31,7 @@ export default function GiftCardPurchase() {
       const { data, error } = await supabase.functions.invoke('stripe-checkout', {
         body: {
           type: 'gift_card',
-          amount: customAmount ? parseFloat(customAmount) : amount,
+          amount: Math.max(25, Math.min(5000, customAmount ? parseFloat(customAmount) : amount)),
           recipientEmail,
           recipientName,
           senderName,

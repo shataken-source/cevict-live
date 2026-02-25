@@ -56,7 +56,7 @@ export default function CatchLogger({ onSuccess }: { onSuccess?: () => void }) {
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const { error: uploadError, data } = await supabase.storage
         .from('catch-photos')
         .upload(fileName, file);
@@ -82,7 +82,7 @@ export default function CatchLogger({ onSuccess }: { onSuccess?: () => void }) {
       photo_url: url,
       latitude: metadata.latitude || null,
       longitude: metadata.longitude || null,
-      location: metadata.latitude && metadata.longitude 
+      location: metadata.latitude && metadata.longitude
         ? `${metadata.latitude.toFixed(6)}, ${metadata.longitude.toFixed(6)}`
         : prev.location
     }));
@@ -92,7 +92,7 @@ export default function CatchLogger({ onSuccess }: { onSuccess?: () => void }) {
 
   const handleAISpeciesSelect = async (speciesName: string, weight: number, length: number) => {
     // Find matching species ID from database
-    const matchedSpecies = species.find(s => 
+    const matchedSpecies = species.find(s =>
       s.name.toLowerCase().includes(speciesName.toLowerCase()) ||
       speciesName.toLowerCase().includes(s.name.toLowerCase())
     );
@@ -197,100 +197,100 @@ export default function CatchLogger({ onSuccess }: { onSuccess?: () => void }) {
       )}
       <Card>
 
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Fish className="w-5 h-5" />
-          Log Your Catch
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label>Species *</Label>
-            <Select value={formData.species_id} onValueChange={(v) => setFormData(prev => ({ ...prev, species_id: v }))}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select species" />
-              </SelectTrigger>
-              <SelectContent>
-                {species.map(s => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Fish className="w-5 h-5" />
+            Log Your Catch
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label>Weight (lbs) *</Label>
-              <Input type="number" step="0.01" value={formData.weight} onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))} required />
+              <Label>Species *</Label>
+              <Select value={formData.species_id} onValueChange={(v) => setFormData(prev => ({ ...prev, species_id: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select species" />
+                </SelectTrigger>
+                <SelectContent>
+                  {species.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div>
-              <Label>Length (inches)</Label>
-              <Input type="number" step="0.1" value={formData.length} onChange={(e) => setFormData(prev => ({ ...prev, length: e.target.value }))} />
-            </div>
-          </div>
 
-          <div>
-            <Label className="flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
-              Location *
-            </Label>
-            <Input value={formData.location} onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))} required />
-          </div>
-
-          <div>
-            <Label className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Date *
-            </Label>
-            <Input type="date" value={formData.catch_date} onChange={(e) => setFormData(prev => ({ ...prev, catch_date: e.target.value }))} required />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Camera className="w-4 h-4" />
-              Photo
-            </Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" onClick={() => setShowCamera(true)} variant="outline" className="w-full">
-                <Camera className="mr-2 w-4 h-4" /> Take Photo
-              </Button>
-              <Button type="button" onClick={() => document.getElementById('file-upload')?.click()} variant="outline" className="w-full">
-                <Upload className="mr-2 w-4 h-4" /> Upload
-              </Button>
-            </div>
-            <Input id="file-upload" type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploading} className="hidden" />
-            {formData.photo_url && (
-              <div className="space-y-3">
-                <div className="relative">
-                  <img src={formData.photo_url} alt="Catch" className="w-full h-48 object-cover rounded-lg" />
-                  {formData.latitude && formData.longitude && (
-                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
-                      {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
-                    </div>
-                  )}
-                </div>
-                <FishSpeciesRecognition
-                  imageUrl={formData.photo_url}
-                  onSpeciesSelect={handleAISpeciesSelect}
-                />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Weight (lbs) *</Label>
+                <Input type="number" step="0.01" value={formData.weight} onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))} required />
               </div>
-            )}
-          </div>
+              <div>
+                <Label>Length (inches)</Label>
+                <Input type="number" step="0.1" value={formData.length} onChange={(e) => setFormData(prev => ({ ...prev, length: e.target.value }))} />
+              </div>
+            </div>
+
+            <div>
+              <Label className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                Location *
+              </Label>
+              <Input value={formData.location} onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))} required />
+            </div>
+
+            <div>
+              <Label className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Date *
+              </Label>
+              <Input type="date" value={formData.catch_date} onChange={(e) => setFormData(prev => ({ ...prev, catch_date: e.target.value }))} required />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Camera className="w-4 h-4" />
+                Photo
+              </Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" onClick={() => setShowCamera(true)} variant="outline" className="w-full">
+                  <Camera className="mr-2 w-4 h-4" /> Take Photo
+                </Button>
+                <Button type="button" onClick={() => document.getElementById('file-upload')?.click()} variant="outline" className="w-full">
+                  <Upload className="mr-2 w-4 h-4" /> Upload
+                </Button>
+              </div>
+              <Input id="file-upload" type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploading} className="hidden" />
+              {formData.photo_url && (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <img src={formData.photo_url} alt="Catch" className="w-full h-48 object-cover rounded-lg" />
+                    {formData.latitude && formData.longitude && (
+                      <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}
+                      </div>
+                    )}
+                  </div>
+                  <FishSpeciesRecognition
+                    imageUrl={formData.photo_url}
+                    onSpeciesSelect={handleAISpeciesSelect}
+                  />
+                </div>
+              )}
+            </div>
 
 
 
-          <div>
-            <Label>Notes</Label>
-            <Textarea value={formData.notes} onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))} rows={3} />
-          </div>
+            <div>
+              <Label>Notes</Label>
+              <Textarea value={formData.notes} onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))} rows={3} />
+            </div>
 
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? 'Logging...' : 'Log Catch'}
-          </Button>
-        </form>
-      </CardContent>
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? 'Logging...' : 'Log Catch'}
+            </Button>
+          </form>
+        </CardContent>
       </Card>
     </>
   );

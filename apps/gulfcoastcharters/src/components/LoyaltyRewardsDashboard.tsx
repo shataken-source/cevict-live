@@ -49,10 +49,55 @@ export default function LoyaltyRewardsDashboard({ userId }: { userId: string }) 
     loadTiers();
   }, [userId]);
 
-  const loadLoyaltyData = () => {
-    const data = localStorage.getItem(`loyalty_${userId}`);
-    if (data) {
-      setLoyaltyData(JSON.parse(data));
+  const loadLoyaltyData = async () => {
+    try {
+      // Load points balance and tier from database
+      const { data: userData } = await supabase
+        .from('shared_users')
+        .select('total_points, loyalty_tier')
+        .eq('id', userId)
+        .maybeSingle();
+
+      // Load recent transactions
+      const { data: txData } = await supabase
+        .from('loyalty_transactions')
+        .select('id, points, type, description, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      // Load redeemed rewards
+      const { data: redeemed } = await supabase
+        .from('rewards_redemptions')
+        .select('redemption_id, points_spent, redemption_code, status, created_at, rewards_catalog(title)')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      // Calculate total earned
+      const totalEarned = (txData || []).filter(t => t.points > 0).reduce((sum, t) => sum + t.points, 0);
+
+      setLoyaltyData({
+        pointsBalance: userData?.total_points || 0,
+        totalEarned,
+        tier: userData?.loyalty_tier || 'Bronze',
+        transactions: (txData || []).map(t => ({
+          id: t.id,
+          points: t.points,
+          type: t.type,
+          description: t.description,
+          date: t.created_at
+        })),
+        redeemedRewards: (redeemed || []).map((r: any) => ({
+          id: r.redemption_id,
+          name: r.rewards_catalog?.title || 'Reward',
+          pointsSpent: r.points_spent,
+          code: r.redemption_code || '',
+          redeemedAt: r.created_at,
+          expiresAt: new Date(new Date(r.created_at).getTime() + 90 * 24 * 60 * 60 * 1000).toISOString()
+        }))
+      });
+    } catch (error) {
+      console.error('Error loading loyalty data:', error);
     }
   };
 
@@ -70,38 +115,30 @@ export default function LoyaltyRewardsDashboard({ userId }: { userId: string }) 
     if (data?.tiers) setTiers(data.tiers);
   };
 
-  const redeemReward = (reward: any) => {
+  const redeemReward = async (reward: any) => {
     if (loyaltyData.pointsBalance < reward.pointsCost) {
       alert('Insufficient points');
       return;
     }
 
-    const code = `REWARD-${Date.now()}`;
-    const newRedemption = {
-      id: Date.now().toString(),
-      name: reward.name,
-      pointsSpent: reward.pointsCost,
-      code,
-      redeemedAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString()
-    };
+    try {
+      const response = await fetch('/api/community/rewards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'redeem', rewardId: reward.id }),
+      });
 
-    const updated = {
-      ...loyaltyData,
-      pointsBalance: loyaltyData.pointsBalance - reward.pointsCost,
-      redeemedRewards: [...loyaltyData.redeemedRewards, newRedemption],
-      transactions: [...loyaltyData.transactions, {
-        id: Date.now().toString(),
-        points: -reward.pointsCost,
-        type: 'redemption',
-        description: `Redeemed: ${reward.name}`,
-        date: new Date().toISOString()
-      }]
-    };
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || 'Failed to redeem reward');
+        return;
+      }
 
-    localStorage.setItem(`loyalty_${userId}`, JSON.stringify(updated));
-    setLoyaltyData(updated);
-    alert(`Reward redeemed! Your code: ${code}`);
+      alert(`Reward redeemed! Your code: ${data.redemptionCode}`);
+      await loadLoyaltyData();
+    } catch (error: any) {
+      alert(error.message || 'Failed to redeem reward');
+    }
   };
 
   const getTierColor = (tier: string) => {
