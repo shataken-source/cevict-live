@@ -959,8 +959,12 @@ function openPlayer(ch, list, idx) {
   // Fetch real stream URL then load HLS
   loadStream(ch);
 
-  // Inject player extras (ad-block badge, quality panel, sleep timer)
-  setTimeout(injectPlayerExtras, 100);
+  // Inject player extras + refresh ad badge and prev-ch label
+  setTimeout(() => {
+    injectPlayerExtras();
+    updateAdBlockBadge();
+    updatePrevChannelBtn();
+  }, 100);
 
   // Make all player buttons focusable and auto-focus play-pause for D-pad
   setTimeout(() => {
@@ -1112,7 +1116,6 @@ function navigateChannel(delta) {
   openPlayer(list[newIdx], list, newIdx);
 }
 
-document.getElementById('prev-ch-btn')?.addEventListener('click', () => navigateChannel(-1));
 document.getElementById('next-ch-btn')?.addEventListener('click', () => navigateChannel(1));
 
 // Global back-key handler — prevents Android WebView from exiting the app
@@ -1148,8 +1151,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'm') toggleMute();
   if (e.key === 'ArrowLeft') { e.preventDefault(); seekRelative(-10); }
   if (e.key === 'ArrowRight') { e.preventDefault(); seekRelative(10); }
-  if (e.key === 'ArrowUp') navigateChannel(-1);
-  if (e.key === 'ArrowDown') navigateChannel(1);
+  if (e.key === 'ArrowUp') { e.preventDefault(); navigateChannel(-1); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); navigateChannel(1); }
 });
 
 function togglePlayerFav() {
@@ -1334,11 +1337,12 @@ function updatePrevChannelBtn() {
   btn.textContent = S.prevChannel ? `⏮ ${S.prevChannel.name.slice(0, 12)}` : '⏮ Prev';
 }
 
-// Prev channel button — use tracked prev not just index
+// Prev channel button — swap current ↔ previous (the core Switchback feature)
 document.getElementById('prev-ch-btn').addEventListener('click', () => {
   if (S.prevChannel) {
     const tmp = S.currentChannel;
-    _origOpenPlayer(S.prevChannel, S.channelList, S.channelList.findIndex(c => c.stream_id == S.prevChannel.stream_id));
+    const prevIdx = S.channelList.findIndex(c => c.stream_id == S.prevChannel.stream_id);
+    openPlayer(S.prevChannel, S.channelList, prevIdx >= 0 ? prevIdx : S.currentChannelIndex);
     S.prevChannel = tmp;
     updatePrevChannelBtn();
   } else {
@@ -1432,13 +1436,8 @@ document.querySelectorAll('#player-overlay-top button').forEach(btn => {
   }
 });
 
-// Show ad badge when player opens
-const origLoadStream = loadStream;
-async function loadStream(ch) {
-  await origLoadStream(ch);
-  updateAdBlockBadge();
-  updatePrevChannelBtn();
-}
+// Ad badge + prev-ch label refresh after stream loads
+// (hooked via MutationObserver on player-overlay visibility instead of override)
 
 // Sleep timer UI
 function showSleepTimerMenu() {
@@ -2153,6 +2152,97 @@ initSettings = function () {
     };
   }
 }
+
+// ── PROVIDER IMPORT CONFIG ───────────────────────────────────
+// Parses Xtream URL, M3U URL, or JSON and auto-fills all credential fields
+function parseProviderConfig(raw) {
+  const s = raw.trim();
+  // 1. JSON blob: { server, username/user, password/pass, epg? }
+  if (s.startsWith('{')) {
+    try {
+      const j = JSON.parse(s);
+      return {
+        server: j.server || j.url || null,
+        user: j.username || j.user || null,
+        pass: j.password || j.pass || null,
+        epg: j.epg || j.epg_url || null,
+      };
+    } catch { }
+  }
+  // 2. Xtream URL: http://server/username/password  (3-segment path)
+  //    or  http://server/player_api.php?username=...&password=...
+  try {
+    const u = new URL(s);
+    const qUser = u.searchParams.get('username');
+    const qPass = u.searchParams.get('password');
+    if (qUser && qPass) {
+      return { server: `${u.protocol}//${u.host}`, user: qUser, pass: qPass, epg: null };
+    }
+    // Path-style: /username/password
+    const parts = u.pathname.replace(/^\//, '').split('/');
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      return { server: `${u.protocol}//${u.host}`, user: parts[0], pass: parts[1], epg: null };
+    }
+  } catch { }
+  // 3. M3U URL with username/password params
+  if (s.includes('get.php') || s.includes('.m3u')) {
+    try {
+      const u2 = new URL(s);
+      const user = u2.searchParams.get('username');
+      const pass = u2.searchParams.get('password');
+      if (user && pass) {
+        return { server: `${u2.protocol}//${u2.host}`, user, pass, epg: null };
+      }
+    } catch { }
+  }
+  return null;
+}
+
+document.getElementById('cfg-import-btn')?.addEventListener('click', async () => {
+  const raw = (document.getElementById('cfg-import-input')?.value || '').trim();
+  const result = document.getElementById('cfg-import-result');
+  if (!raw) { if (result) result.innerHTML = '<span style="color:var(--muted)">Paste a URL or config above first.</span>'; return; }
+
+  const cfg = parseProviderConfig(raw);
+  if (!cfg || !cfg.server || !cfg.user || !cfg.pass) {
+    if (result) result.innerHTML = '<span style="color:var(--primary)">Could not parse. Try: http://server/user/pass or JSON {server,username,password}</span>';
+    return;
+  }
+
+  // Apply to fields
+  if (document.getElementById('cfg-server')) document.getElementById('cfg-server').value = cfg.server;
+  if (document.getElementById('cfg-user')) document.getElementById('cfg-user').value = cfg.user;
+  if (document.getElementById('cfg-pass')) document.getElementById('cfg-pass').value = cfg.pass;
+  if (cfg.epg && document.getElementById('cfg-epg')) document.getElementById('cfg-epg').value = cfg.epg;
+
+  // Persist
+  S.server = cfg.server; S.user = cfg.user; S.pass = cfg.pass;
+  localStorage.setItem('iptv_server', S.server);
+  localStorage.setItem('iptv_user', S.user);
+  localStorage.setItem('iptv_pass', S.pass);
+  if (cfg.epg) { S.epgUrl = cfg.epg; localStorage.setItem('epg_url', cfg.epg); }
+
+  if (result) result.innerHTML = '<span style="color:var(--muted)">Testing connection…</span>';
+
+  // Test connection
+  try {
+    const testUrl = buildApiUrl('get_user_info');
+    const res = await fetch(testUrl);
+    const data = await res.json();
+    const ok = data?.user_info?.auth === 1 || data?.user_info?.username;
+    if (ok) {
+      S.userInfo = data.user_info;
+      renderAccountInfo(data.user_info);
+      S.allChannels = []; S.liveCategories = [];
+      if (result) result.innerHTML = `<span style="color:var(--green)">✓ Connected as <b>${data.user_info.username}</b>. Config applied!</span>`;
+      document.getElementById('cfg-import-input').value = '';
+    } else {
+      if (result) result.innerHTML = '<span style="color:var(--primary)">⚠ Config saved but connection test failed. Check credentials.</span>';
+    }
+  } catch (e) {
+    if (result) result.innerHTML = `<span style="color:var(--primary)">⚠ Config saved. Network error during test: ${e.message}</span>`;
+  }
+});
 
 function adjustAdVol(delta) {
   S.adBlockVolume = Math.max(0, Math.min(100, S.adBlockVolume + delta));

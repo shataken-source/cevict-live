@@ -1315,6 +1315,18 @@
           <div id="settings-status"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:860px">
             <div>
+              <div class="section-title">Quick Setup</div>
+              <div class="settings-group" style="padding:13px" id="import-config-group">
+                <div
+                  style="font-size:10px;color:var(--muted);margin-bottom:9px;text-transform:uppercase;letter-spacing:1px">
+                  Import Provider Config</div>
+                <textarea class="inp" id="cfg-import-input" rows="3"
+                  style="margin-bottom:8px;font-size:12px;resize:vertical"
+                  placeholder="Paste anything: Xtream URL (http://server/username/password), M3U URL, or JSON {server,username,password,epg}"></textarea>
+                <button class="btn btn-red btn-sm btn-full" id="cfg-import-btn" tabindex="0">⚡ Import &amp;
+                  Apply</button>
+                <div id="cfg-import-result" style="margin-top:8px;font-size:12px"></div>
+              </div>
               <div class="section-title">IPTV Provider</div>
               <div class="settings-group" style="padding:13px">
                 <div
