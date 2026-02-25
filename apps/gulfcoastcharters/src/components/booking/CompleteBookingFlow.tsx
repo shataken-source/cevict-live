@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 import { Calendar as CalendarIcon, Users, CreditCard, FileText, CheckCircle } from 'lucide-react';
 import TimeSlotSelector from './TimeSlotSelector';
 import BookingAddons, { AVAILABLE_ADDONS } from './BookingAddons';
@@ -41,22 +42,49 @@ export default function CompleteBookingFlow({ charter, onClose }: CompleteBookin
   const depositAmount = totalAmount * 0.3;
 
   const handlePayment = async () => {
-    // Simulate Stripe checkout
-    toast.loading('Redirecting to secure payment...');
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    toast.success('Payment successful! Confirmation email sent.');
-    setStep(5);
+    try {
+      const amount = paymentType === 'deposit' ? depositAmount : totalAmount;
+
+      // Create Stripe Checkout session via server
+      const { data, error } = await supabase.functions.invoke('stripe-checkout', {
+        body: {
+          type: 'booking',
+          charterId: charter.id,
+          amount,
+          paymentType,
+          date: date?.toISOString(),
+          time: selectedTime,
+          guests,
+          addons: selectedAddons,
+          customerName: formData.name,
+          customerEmail: formData.email,
+          customerPhone: formData.phone,
+          specialRequests: formData.notes,
+          successUrl: `${window.location.origin}/payment-success`,
+          cancelUrl: window.location.href,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Payment failed. Please try again.');
+    }
   };
 
   const renderStep = () => {
-    switch(step) {
+    switch (step) {
       case 1:
         return (
           <div className="space-y-6">
             <div>
               <Label className="text-lg mb-3 block">Select Date</Label>
-              <Calendar mode="single" selected={date} onSelect={setDate} 
+              <Calendar mode="single" selected={date} onSelect={setDate}
                 disabled={(date) => date < new Date()} className="border rounded-lg" />
             </div>
             <div>
@@ -78,7 +106,7 @@ export default function CompleteBookingFlow({ charter, onClose }: CompleteBookin
             </Button>
           </div>
         );
-      
+
       case 2:
         return (
           <div className="space-y-6">
@@ -90,7 +118,7 @@ export default function CompleteBookingFlow({ charter, onClose }: CompleteBookin
             </div>
           </div>
         );
-      
+
       case 3:
         return (
           <div className="space-y-6">
@@ -98,19 +126,19 @@ export default function CompleteBookingFlow({ charter, onClose }: CompleteBookin
             <div className="space-y-4">
               <div>
                 <Label>Full Name *</Label>
-                <Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} />
+                <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
               </div>
               <div>
                 <Label>Email *</Label>
-                <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} />
+                <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
               </div>
               <div>
                 <Label>Phone *</Label>
-                <Input type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
+                <Input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
               </div>
               <div>
                 <Label>Special Requests</Label>
-                <Textarea value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} />
+                <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} />
               </div>
             </div>
             <div className="flex gap-3">
@@ -119,7 +147,7 @@ export default function CompleteBookingFlow({ charter, onClose }: CompleteBookin
             </div>
           </div>
         );
-      
+
       case 4:
         return (
           <div className="space-y-6">
@@ -137,7 +165,7 @@ export default function CompleteBookingFlow({ charter, onClose }: CompleteBookin
                 <div className="flex justify-between font-bold text-base"><span>Total:</span><span>${totalAmount}</span></div>
               </div>
             </Card>
-            
+
             <div>
               <Label className="text-lg mb-3 block">Payment Option</Label>
               <RadioGroup value={paymentType} onValueChange={(v: any) => setPaymentType(v)}>
@@ -180,7 +208,7 @@ export default function CompleteBookingFlow({ charter, onClose }: CompleteBookin
             </div>
           </div>
         );
-      
+
       case 5:
         return (
           <div className="text-center space-y-6 py-8">
@@ -209,7 +237,7 @@ export default function CompleteBookingFlow({ charter, onClose }: CompleteBookin
         </div>
         {step < 5 && (
           <div className="flex gap-2">
-            {[1,2,3,4].map(s => (
+            {[1, 2, 3, 4].map(s => (
               <div key={s} className={`h-2 flex-1 rounded ${s <= step ? 'bg-blue-500' : 'bg-gray-200'}`} />
             ))}
           </div>

@@ -46,22 +46,26 @@ export function FeaturedListingPurchase({ charterId }: { charterId: string }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Create featured listing purchase
-      const { error } = await supabase.from('featured_listings').insert({
-        charter_id: charterId,
-        user_id: user.id,
-        plan_type: optionId,
-        amount: price,
-        status: 'active',
-        expires_at: new Date(Date.now() + getDuration(optionId)).toISOString()
+      // Create Stripe checkout session — listing activated via webhook after payment
+      const response = await fetch('/api/create-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'featured_listing',
+          planId: optionId,
+          charterId,
+          userId: user.id,
+        }),
       });
 
-      if (error) throw error;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to create checkout');
 
-      toast({
-        title: 'Success!',
-        description: 'Your listing is now featured. Expect more bookings!'
-      });
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -83,7 +87,7 @@ export function FeaturedListingPurchase({ charterId }: { charterId: string }) {
     <div className="grid gap-6 md:grid-cols-3">
       {featuredOptions.map((option) => {
         const Icon = option.icon;
-        
+
         return (
           <Card key={option.id} className={option.popular ? 'border-yellow-500 border-2' : ''}>
             {option.popular && (
@@ -114,8 +118,8 @@ export function FeaturedListingPurchase({ charterId }: { charterId: string }) {
                   </li>
                 ))}
               </ul>
-              <Button 
-                className="w-full mt-4" 
+              <Button
+                className="w-full mt-4"
                 disabled={loading === option.id}
                 onClick={() => handlePurchase(option.id, option.price)}
               >
