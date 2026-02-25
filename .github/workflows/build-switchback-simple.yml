@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=512m"
     defaults:
       run:
         working-directory: apps/SwitchbackSimple
