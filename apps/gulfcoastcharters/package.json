@@ -1,6 +1,6 @@
 {
     "name": "charter-booking-platform",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Complete charter fishing booking platform with gamification, weather alerts, and real-time GPS tracking",
     "private": true,
     "packageManager": "npm@10.9.2",
