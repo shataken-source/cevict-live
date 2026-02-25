@@ -23,32 +23,26 @@ export default function ConversationalAIAssistant() {
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
-      const response = await fetch('https://ai.gateway.fastrouter.io/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': 'your-gateway-key'
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+
+      // Route through server-side API to protect API keys
+      const { data, error } = await supabase.functions.invoke('ai-charter-assistant', {
+        body: {
           messages: [
-            { role: 'system', content: 'You are a helpful fishing charter booking assistant. Help users find charters, compare options, set price alerts, and book trips. Be conversational and helpful.' },
             ...messages.map(m => ({ role: m.role, content: m.content })),
             userMsg
           ],
-          temperature: 0.7
-        })
+          userId: user?.id,
+        }
       });
 
-      const data = await response.json();
-      const assistantMsg = { role: 'assistant', content: data.choices[0].message.content };
+      if (error) throw error;
+      const assistantMsg = { role: 'assistant', content: data.reply || data.choices?.[0]?.message?.content || 'Sorry, I could not process that.' };
       setMessages(prev => [...prev, assistantMsg]);
 
     } catch (error) {
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: 'Sorry, I had trouble processing that. Can you try rephrasing?' 
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I had trouble processing that. Can you try rephrasing?'
       }]);
     }
 
@@ -82,9 +76,8 @@ export default function ConversationalAIAssistant() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] rounded-lg p-3 ${
-              msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100'
-            }`}>
+            <div className={`max-w-[80%] rounded-lg p-3 ${msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100'
+              }`}>
               {msg.content}
             </div>
           </div>

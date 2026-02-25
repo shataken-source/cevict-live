@@ -18,7 +18,7 @@ export default function CaptainApplicationFormSecure() {
     fullName: '', email: '', phone: '', location: '', uscgLicense: '',
     yearsExperience: '', specialties: '', bio: '', insuranceProvider: '', insuranceCoverage: ''
   });
-  const [files, setFiles] = useState<{[key: string]: File | null}>({
+  const [files, setFiles] = useState<{ [key: string]: File | null }>({
     uscgLicense: null, insurance: null, certifications: null
   });
 
@@ -34,21 +34,21 @@ export default function CaptainApplicationFormSecure() {
   const uploadDocument = async (file: File, type: string, captainId: string) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${captainId}/${type}-${Date.now()}.${fileExt}`;
-    
+
     const { error } = await supabase.storage
       .from('captain-verification-docs')
       .upload(fileName, file, {
         cacheControl: '3600',
         upsert: false
       });
-    
+
     if (error) throw error;
     return fileName;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Rate limiting
     if (!rateLimiter.limit(`captain_app_${formData.email}`, RATE_LIMITS.AUTH)) {
       toast.error('Too many attempts. Please wait.');
@@ -70,7 +70,7 @@ export default function CaptainApplicationFormSecure() {
       // Create captain account first
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: sanitized.email,
-        password: Math.random().toString(36).slice(-12), // Temp password
+        password: crypto.randomUUID(), // Secure temp password — user resets via email
         options: {
           data: { role: 'captain_pending', full_name: sanitized.fullName }
         }
@@ -80,7 +80,7 @@ export default function CaptainApplicationFormSecure() {
       const captainId = authData.user?.id;
 
       // Upload documents
-      const uploadedDocs: {[key: string]: string} = {};
+      const uploadedDocs: { [key: string]: string } = {};
       for (const [type, file] of Object.entries(files)) {
         if (file) uploadedDocs[type] = await uploadDocument(file, type, captainId!);
       }
@@ -94,7 +94,7 @@ export default function CaptainApplicationFormSecure() {
       });
 
       toast.success('Application submitted! Check your email.');
-      
+
       setFormData({
         fullName: '', email: '', phone: '', location: '', uscgLicense: '',
         yearsExperience: '', specialties: '', bio: '', insuranceProvider: '', insuranceCoverage: ''
@@ -122,12 +122,12 @@ export default function CaptainApplicationFormSecure() {
             <div>
               <Label htmlFor="fullName">Full Name *</Label>
               <Input id="fullName" required value={formData.fullName}
-                onChange={(e) => setFormData({...formData, fullName: e.target.value})} />
+                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })} />
             </div>
             <div>
               <Label htmlFor="email">Email *</Label>
               <Input id="email" type="email" required value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})} />
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
             </div>
           </div>
         </CardContent>

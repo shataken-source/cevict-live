@@ -22,7 +22,7 @@ export default function ReviewPhotoUpload({ onPhotosChange }: ReviewPhotoUploadP
     for (let i = 0; i < Math.min(files.length, 5); i++) {
       const file = files[i];
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error } = await supabase.storage
