@@ -11,9 +11,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getPrimaryKey } from '../../../keys-store'
 import { fetchPreviousDayResultsFromProviders } from '../../../../lib/data-sources/results-apis'
-import { throttledFetch, recordRateLimitHit, ThrottleLimitError } from '@/app/lib/external-api-throttle'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -140,11 +138,6 @@ export async function GET(request: Request) {
   yesterday.setDate(yesterday.getDate() - 1)
   const date = dateParam || yesterday.toISOString().split('T')[0]
 
-  const apiKey = getPrimaryKey()
-  if (!apiKey) {
-    return NextResponse.json({ success: false, error: 'Odds API key not set' }, { status: 500 })
-  }
-
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!supabaseKey) {
@@ -201,125 +194,25 @@ export async function GET(request: Request) {
 
   console.log(`[GRADE] Loaded ${picks.length} picks from ${fileName}:`, picks.map(p => `${p.away_team} @ ${p.home_team} (${p.sport || p.league || 'unknown'})`).join(', '))
 
-  // Fetch scores for all sports (daysFrom=2 to catch games that finished yesterday)
+  // Fetch scores — ESPN free scoreboard is primary (no key, near real-time, full coverage)
   const scoresByKey: Record<string, { home: string; away: string; homeScore: number; awayScore: number; gameId?: string }[]> = {}
-  for (const [league, sportKey] of Object.entries(SPORT_KEY_MAP)) {
-    try {
-      const scoreUrl = `https://api.the-odds-api.com/v4/sports/${sportKey}/scores/?daysFrom=2&apiKey=${apiKey}`
-      const res = await throttledFetch('the-odds-api', scoreUrl, { cache: 'no-store' })
-      if (!res.ok) continue
-      const data = await res.json()
-      if (!Array.isArray(data)) continue
-      const completed = data.filter((g: any) => g.completed && Array.isArray(g.scores))
-      scoresByKey[league] = completed.map((g: any) => {
-        const home = g.home_team
-        const away = g.away_team
-        const homeEntry = g.scores?.find((s: any) => norm(s.name) === norm(home))
-        const awayEntry = g.scores?.find((s: any) => norm(s.name) === norm(away))
-        const homeScore = Number(homeEntry?.score ?? homeEntry?.points ?? 0)
-        const awayScore = Number(awayEntry?.score ?? awayEntry?.points ?? 0)
-        return { home, away, homeScore, awayScore, gameId: g.id as string | undefined }
-      }).filter((x: any) => x.homeScore !== undefined && x.awayScore !== undefined)
-      if (scoresByKey[league].length > 0) {
-        console.log(`[GRADE] ${league}: ${scoresByKey[league].length} completed games from Odds API`)
-      }
-    } catch {
-      scoresByKey[league] = []
-    }
-  }
-
-  // Fallback: when Odds API returned no scores, try API-Sports (same key for all; header: x-apisports-key)
-  // Dashboard: NHL=v1.hockey, NFL/NCAAF=v1.american-football, NCAAB=v1.basketball, MLB=v1.baseball
-  const apiSportsKey = process.env.API_SPORTS_KEY
-  const API_SPORTS_HOSTS: Record<string, string> = {
-    NHL: 'v1.hockey.api-sports.io',
-    NBA: 'v1.basketball.api-sports.io',
-    NFL: 'v1.american-football.api-sports.io',
-    NCAAB: 'v1.basketball.api-sports.io',
-    NCAAF: 'v1.american-football.api-sports.io',
-    MLB: 'v1.baseball.api-sports.io',
-  }
-  const API_SPORTS_LEAGUES: Record<string, string> = {
-    NHL: '57',
-    NBA: '12',
-    NFL: '1',
-    NCAAB: '116',
-    NCAAF: '8',
-    MLB: '1',
-  }
-  const FINISHED_STATUS = new Set(['FT', 'AOT', 'AET', 'AP', 'FT_PEN', 'SO']) // finished / after OT / after penalty / shootout
   const fallbackSummary: Record<string, string | number> = {}
 
-  if (apiSportsKey) {
-    for (const league of Object.keys(SPORT_KEY_MAP)) {
-      const existing = scoresByKey[league] ?? []
-      if (existing.length > 0) continue
-      const host = API_SPORTS_HOSTS[league]
-      const leagueId = API_SPORTS_LEAGUES[league]
-      if (!host || !leagueId) continue
-      try {
-        const url = `https://${host}/games?league=${leagueId}&date=${date}&timezone=America/New_York`
-        const res = await throttledFetch('api-sports', url, {
-          headers: { 'x-apisports-key': apiSportsKey },
-          cache: 'no-store',
-        })
-        if (!res.ok) {
-          const errText = await res.text().catch(() => '')
-          if (res.status === 429) recordRateLimitHit('api-sports')
-          console.warn(`[CRON daily-results] API-Sports ${league} ${res.status}: ${errText}`)
-          fallbackSummary[league] = `${res.status}${errText ? ` ${errText.slice(0, 40)}` : ''}`
-          continue
-        }
-        const json = await res.json()
-        const games = Array.isArray(json?.response) ? json.response : []
-        const finished = games.filter(
-          (g: any) => FINISHED_STATUS.has(String(g.status?.short)) && g.scores?.home?.total != null && g.scores?.away?.total != null
-        )
-        const list = finished.map((g: any) => ({
-          home: (g.teams?.home?.name ?? '').trim(),
-          away: (g.teams?.away?.name ?? '').trim(),
-          homeScore: Number(g.scores.home.total),
-          awayScore: Number(g.scores.away.total),
-        })).filter((x: any) => x.home && x.away)
-        scoresByKey[league] = list
-        fallbackSummary[league] = list.length
-        if (list.length > 0) {
-          console.log(`[CRON daily-results] Fallback API-Sports: ${league} got ${list.length} scores`)
-        }
-      } catch (e) {
-        const msg = (e as Error)?.message ?? 'error'
-        console.warn(`[CRON daily-results] API-Sports fallback ${league}:`, msg)
-        fallbackSummary[league] = `err: ${msg.slice(0, 50)}`
-      }
-    }
-  }
-
-  // Third fallback: external results APIs (ESPN free + Rolling Insights, JsonOdds, TheSportsDB, Score24, BALLDONTLIE)
-  // For NCAAB/NCAAF: ALWAYS supplement — Odds API only carries major games, missing small college matchups.
-  // For other leagues: only run if no scores at all from tiers 1+2.
   for (const league of Object.keys(SPORT_KEY_MAP)) {
-    const alwaysSupplement = league === 'NCAAB' || league === 'NCAAF'
-    if (!alwaysSupplement && (scoresByKey[league] ?? []).length > 0) continue
     try {
       const gameResults = await fetchPreviousDayResultsFromProviders(league as 'NFL' | 'NBA' | 'NHL' | 'MLB' | 'NCAAB' | 'NCAAF', date)
       if (gameResults.length > 0) {
-        const existing = scoresByKey[league] ?? []
-        // Merge new results with existing, avoiding duplicates
-        const existingKeys = new Set(existing.map(g => `${norm(g.home)}|${norm(g.away)}`))
-        const newGames = gameResults
-          .map((r) => ({ home: r.homeTeam, away: r.awayTeam, homeScore: r.homeScore, awayScore: r.awayScore }))
-          .filter(g => !existingKeys.has(`${norm(g.home)}|${norm(g.away)}`))
-        if (newGames.length > 0) {
-          scoresByKey[league] = [...existing, ...newGames]
-          fallbackSummary[league] = alwaysSupplement
-            ? `results-apis supplement: +${newGames.length} (total ${scoresByKey[league].length})`
-            : `results-apis: ${gameResults.length}`
-          console.log(`[CRON daily-results] Results-APIs ${alwaysSupplement ? 'supplement' : 'fallback'}: ${league} +${newGames.length} new games (total ${scoresByKey[league].length})`)
-        }
+        scoresByKey[league] = gameResults.map(r => ({ home: r.homeTeam, away: r.awayTeam, homeScore: r.homeScore, awayScore: r.awayScore }))
+        console.log(`[GRADE] ${league}: ${scoresByKey[league].length} completed games from ESPN`)
+      } else {
+        scoresByKey[league] = []
+        console.log(`[GRADE] ${league}: 0 completed games from ESPN`)
       }
     } catch (e) {
+      scoresByKey[league] = []
       const msg = (e as Error)?.message ?? 'error'
-      console.warn(`[CRON daily-results] Results-APIs fallback ${league}:`, msg)
+      console.warn(`[GRADE] ESPN fetch failed for ${league}:`, msg)
+      fallbackSummary[league] = `err: ${msg.slice(0, 50)}`
     }
   }
 
