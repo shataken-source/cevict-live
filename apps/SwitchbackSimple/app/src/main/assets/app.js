@@ -1062,13 +1062,13 @@ async function loadStream(ch) {
       backBufferLength: 90,
       maxBufferLength: bufSecs * 6,
       maxMaxBufferLength: bufSecs * 12,
+      xhrSetup: (xhr) => { xhr.withCredentials = false; },
     });
     S.hlsInstance = hls;
     hls.loadSource(hlsUrl);
     hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
       video.play().catch(() => { });
-      // update quality stats
       hls.on(Hls.Events.FRAG_LOADED, (_, data) => {
         const bw = Math.round((data.frag.stats?.loaded || 0) * 8 / ((data.frag.stats?.loading?.end - data.frag.stats?.loading?.start) || 1) / 1000);
         if (bw > 0) document.getElementById('q-bitrate').textContent = (bw / 1000).toFixed(1);
@@ -1076,12 +1076,18 @@ async function loadStream(ch) {
     });
     hls.on(Hls.Events.ERROR, (_, d) => {
       if (d.fatal) {
-        const tsRaw = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
-        const tsUrl = IS_ANDROID_WEBVIEW
-          ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
-          : tsRaw;
-        video.src = tsUrl;
-        video.play().catch(() => { });
+        hls.destroy(); S.hlsInstance = null;
+        // Fallback: try native video src directly (works on some Android WebView)
+        video.src = hlsUrl;
+        video.play().catch(() => {
+          // Last resort: .ts stream
+          const tsRaw = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
+          const tsUrl = IS_ANDROID_WEBVIEW
+            ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
+            : tsRaw;
+          video.src = tsUrl;
+          video.play().catch(() => { });
+        });
       }
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -1166,22 +1172,19 @@ function navigateChannel(delta) {
 document.getElementById('next-ch-btn')?.addEventListener('click', () => navigateChannel(1));
 
 // ── SCREEN HISTORY STACK ─────────────────────────────────────
-// Track navigation so back button goes to the previous screen.
+// Populated by the canonical nav() at bottom of file.
 S._screenHistory = [];
-const _origNav = nav;
-function nav(screen) {
-  if (S.currentScreen && S.currentScreen !== screen) {
-    S._screenHistory.push(S.currentScreen);
-    if (S._screenHistory.length > 20) S._screenHistory.shift();
-  }
-  _origNav(screen);
-}
 
 // Global back-key handler.
-// Android WebView dispatches KEYCODE_BACK as key='Backspace' in most versions,
-// and as key='GoBack'/'BrowserBack' in others — handle all three.
+// Android WebView dispatches KEYCODE_BACK as:
+//   key='GoBack' / key='BrowserBack'  — newer WebView
+//   key='Backspace'                   — older WebView / some remotes
+// Guard: never treat Backspace as back when a text input is focused.
 document.addEventListener('keydown', e => {
-  const isBack = e.key === 'GoBack' || e.key === 'BrowserBack' || e.key === 'Backspace';
+  const tag = (document.activeElement || {}).tagName;
+  const inInput = tag === 'INPUT' || tag === 'TEXTAREA';
+  const isBack = e.key === 'GoBack' || e.key === 'BrowserBack'
+    || (e.key === 'Backspace' && !inInput);
   if (!isBack) return;
 
   // If an input is focused and open, close keyboard instead of going back
@@ -1214,10 +1217,7 @@ document.addEventListener('keydown', e => {
   // Navigate back through history stack
   e.preventDefault();
   const prev = S._screenHistory.pop() || 'tvhome';
-  _origNav(prev);
-  S.currentScreen = prev;
-  const sbItem = document.querySelector(`.sb-item[data-screen="${prev}"]`);
-  if (sbItem) sbItem.focus();
+  nav(prev);
 });
 
 function showExitConfirm() {
@@ -2640,10 +2640,16 @@ console.log('[Switchback TV] All upgrades loaded ✓');
 //      Also add TV remote / keyboard D-pad support.
 // ═══════════════════════════════════════════════════════════════
 
-// Replace all overridden nav() variants with a single definitive version
-// that handles every side-effect in one place.
-// We reach back to the *original* nav (line ~121) by its core logic.
+// Canonical nav() — this declaration wins due to JS hoisting (last function declaration wins).
+// All history tracking, lazy init, and upgrade hooks live here.
 function nav(screen) {
+  // ── History tracking for back button ─────────────────────────
+  if (S.currentScreen && S.currentScreen !== screen) {
+    if (!S._screenHistory) S._screenHistory = [];
+    S._screenHistory.push(S.currentScreen);
+    if (S._screenHistory.length > 20) S._screenHistory.shift();
+  }
+
   // ── Core: switch screen + active states ──────────────────────
   document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
