@@ -46,7 +46,7 @@ esac
 echo ">>> Checking paths: $CHECK_PATHS"
 
 # Also check shared config files that affect all projects
-SHARED_PATHS="package.json vercel.json tsconfig.json apps/progno/tsconfig.json apps/gulfcoastcharters/tsconfig.json"
+SHARED_PATHS="package.json vercel.json .vercelignore tsconfig.json apps/progno/tsconfig.json apps/gulfcoastcharters/tsconfig.json"
 
 # Navigate to repo root so git diff paths resolve correctly
 # Vercel sets CWD to the project's Root Directory (e.g. /vercel/path0/apps/progno)
