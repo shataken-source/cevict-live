@@ -62,7 +62,7 @@ export default function ReportsSection({ secret, date }: ReportsSectionProps) {
       const response = await fetch('/api/progno/admin/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: secret.trim(), reportType, date })
+        body: JSON.stringify({ secret: secret.trim(), reportType })
       });
       if (!response.ok) throw new Error(`Report failed: ${response.statusText}`);
       const data = await response.json();
