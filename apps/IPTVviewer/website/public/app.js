@@ -886,6 +886,12 @@ function openPlayer(ch, list, idx) {
   // ch can be a JSON string (from inline onclick) or object
   if (typeof ch === 'string') { try { ch = JSON.parse(ch); } catch { } }
 
+  // Track previous channel before switching (inlined from override)
+  if (S.currentChannel && S.currentChannel.stream_id !== ch.stream_id) {
+    S.prevChannel = S.currentChannel;
+    updatePrevChannelBtn();
+  }
+
   S.currentChannel = ch;
   S.channelList = list || S.channelList;
   S.currentChannelIndex = idx || 0;
@@ -915,6 +921,9 @@ function openPlayer(ch, list, idx) {
 
   // Fetch real stream URL then load HLS
   loadStream(ch);
+
+  // Inject player extras (ad-block badge, quality panel, sleep timer)
+  setTimeout(injectPlayerExtras, 100);
 }
 
 async function loadStream(ch) {
@@ -1243,16 +1252,7 @@ S.sleepTimer = null;
 S.sleepMinutes = 0;
 S.prevChannel = null;  // track explicit previous channel
 
-// Override openPlayer to track prev-channel properly
-const _origOpenPlayer = openPlayer;
-function openPlayer(ch, list, idx) {
-  // Track previous channel before switching
-  if (S.currentChannel && S.currentChannel.stream_id !== (typeof ch === 'string' ? JSON.parse(ch).stream_id : ch.stream_id)) {
-    S.prevChannel = S.currentChannel;
-    updatePrevChannelBtn();
-  }
-  _origOpenPlayer(ch, list, idx);
-}
+// prev-channel tracking inlined into openPlayer above
 
 function updatePrevChannelBtn() {
   const btn = document.getElementById('prev-ch-btn');
@@ -1965,12 +1965,7 @@ async function runBandwidthTest() {
   }
 }
 
-// Hook nav to quality screen
-const _origNav = nav;
-function nav(screen) {
-  _origNav(screen);
-  if (screen === 'quality') setTimeout(initQualityScreen, 50);
-}
+// nav() quality hook consolidated into canonical nav() below
 
 // ═══════════════════════════════════════════════════════════════
 // UPGRADES PART 5: SETTINGS — Dezor provider, EPG URL wiring,
@@ -2249,33 +2244,9 @@ function patchSettingsToggles() {
 // BOOT: call injectPlayerExtras when player opens
 // ═══════════════════════════════════════════════════════════════
 
-// Patch openPlayer to also inject extras
-const _openPlayerForExtras = openPlayer;
-function openPlayer(ch, list, idx) {
-  _openPlayerForExtras(ch, list, idx);
-  setTimeout(injectPlayerExtras, 100);
-}
+// injectPlayerExtras call inlined into openPlayer above
 
-// Patch nav to call patchSettingsToggles on settings screen
-const _navForSettings = nav;
-function nav(screen) {
-  _navForSettings(screen);
-  if (screen === 'settings') {
-    setTimeout(() => {
-      initSettings();
-      patchSettingsToggles();
-    }, 50);
-  }
-  if (screen === 'favorites') {
-    setTimeout(renderFavorites, 50);
-  }
-  if (screen === 'recordings') {
-    setTimeout(renderRecordings, 50);
-  }
-  if (screen === 'quality') {
-    setTimeout(initQualityScreen, 50);
-  }
-}
+// nav() settings/favorites/recordings hooks consolidated into canonical nav() below
 
 // ═══════════════════════════════════════════════════════════════
 // UPGRADES PART 8: CHANNEL NUM — parse tvg-chno from streams
@@ -2333,12 +2304,7 @@ function addEpgSearchBtn() {
   epgHead.appendChild(searchWrap);
 }
 
-// Run EPG search injection when EPG screen opens
-const _navForEpg = nav;
-function nav(screen) {
-  _navForEpg(screen);
-  if (screen === 'epg') setTimeout(addEpgSearchBtn, 500);
-}
+// nav() EPG hook consolidated into canonical nav() below
 
 console.log('[Switchback TV] All upgrades loaded ✓');
 
