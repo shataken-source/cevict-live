@@ -2408,7 +2408,9 @@ function initTVRemote() {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       const focusable = Array.from(
         document.querySelector('.screen.active')?.querySelectorAll(
-          '[tabindex="0"], .ch-row, .media-card, .quality-opt, .rec-card, .fav-item, button.btn'
+          '[tabindex="0"], .ch-row, .media-card, .quality-opt, .rec-card, .fav-item, ' +
+          '.pill, .hist-item, .device-card, .epg-row, .rec-tab-btn, .fav-tab-btn, ' +
+          '.toggle-sw, .price-card, .sb-item-nav, input.inp, button.btn'
         ) || []
       ).filter(el => el.offsetParent !== null);
       if (!focusable.length) return;
@@ -2430,21 +2432,55 @@ function initTVRemote() {
   makeContentRowsFocusable();
 }
 
+// Screen-aware selectors — each screen knows what its first focusable element is
+const SCREEN_FIRST_FOCUS = {
+  channels: '.pill, .ch-row, #ch-search',
+  movies: '.pill, .media-card, #movies-search',
+  series: '.pill, .media-card, #series-search',
+  search: '#search-input',
+  settings: '#cfg-server, .toggle-sw, .settings-group input, .settings-group button',
+  quality: '#bw-test-btn, .quality-opt, button.btn',
+  recordings: '.rec-tab-btn, .rec-card',
+  favorites: '.fav-tab-btn, .fav-item, .ch-row',
+  epg: '#epg-now, .epg-row',
+  history: '.hist-item, .ch-row',
+  catchup: '.ch-row',
+  devices: '.device-card, button.btn',
+  pricing: '.price-card, button.btn-red',
+  tvhome: '.sb-item-nav, button.btn-red',
+};
+
 function focusFirstContentItem() {
   const screen = document.querySelector('.screen.active');
   if (!screen) return;
-  const first = screen.querySelector('.ch-row, .media-card, .quality-opt, .rec-card, button.btn-red, [tabindex="0"]');
-  if (first) first.focus();
+  const screenId = screen.id.replace('screen-', '');
+  const selector = SCREEN_FIRST_FOCUS[screenId] ||
+    '.pill, .ch-row, .media-card, .quality-opt, .rec-card, input.inp, button.btn-red';
+  // Try each comma-separated selector in order, pick first visible hit
+  for (const sel of selector.split(',').map(s => s.trim())) {
+    const el = screen.querySelector(sel);
+    if (el && el.offsetParent !== null) { el.focus(); return; }
+  }
 }
 
 function makeContentRowsFocusable() {
-  // Any time rows are rendered, give them tabindex so D-pad can reach them
-  const observer = new MutationObserver(() => {
-    document.querySelectorAll('.ch-row:not([tabindex]), .media-card:not([tabindex]), .quality-opt:not([tabindex]), .rec-card:not([tabindex])').forEach(el => {
+  const FOCUSABLE = [
+    '.ch-row', '.media-card', '.quality-opt', '.rec-card',
+    '.hist-item', '.device-card', '.fav-item', '.epg-row',
+    '.pill', '.rec-tab-btn', '.fav-tab-btn', '.sb-item-nav',
+    '.toggle-sw', '.price-card',
+  ].map(s => s + ':not([tabindex])').join(', ');
+
+  const stamp = () => {
+    document.querySelectorAll(FOCUSABLE).forEach(el => el.setAttribute('tabindex', '0'));
+    // Also ensure all inputs in active screen are reachable
+    document.querySelectorAll('.screen.active input.inp:not([tabindex])').forEach(el => {
       el.setAttribute('tabindex', '0');
     });
-  });
+  };
+  const observer = new MutationObserver(stamp);
   observer.observe(document.getElementById('content'), { childList: true, subtree: true });
+  stamp(); // run once immediately
 }
 
 // Focus ring style for TV mode — visible highlight on focused items
