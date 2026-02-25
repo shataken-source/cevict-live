@@ -25,6 +25,7 @@ const SPORT_KEY_MAP: Record<string, string> = {
   NHL: 'icehockey_nhl',
   NCAAF: 'americanfootball_ncaaf',
   NCAAB: 'basketball_ncaab',
+  NCAA: 'basketball_ncaab',   // alias — picks sometimes come through as "NCAA"
   CBB: 'baseball_ncaa',
 }
 
