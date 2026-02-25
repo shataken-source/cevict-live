@@ -12,12 +12,22 @@ const MASCOT_WORDS = [
   'wolverines', 'gophers', 'zips', 'bulls', 'hawks', 'wizards', 'pacers',
   '76ers', 'sixers', 'dukes', 'hokies', 'colonels', 'cardinals', 'lions',
   'bears', 'panthers', 'falcons', 'ravens', 'steelers', 'patriots', 'chiefs',
+  'golden gophers', 'purple aces', 'red hawks', 'blue raiders', 'mean green',
+  'golden eagles', 'golden flashes', 'golden hurricanes', 'fighting illini',
+  'tar heels', 'blue devils', 'orange', 'scarlet knights', 'horned frogs',
+  'wolf pack', 'wolfpack', 'yellow jackets', 'golden bears', 'rainbow warriors',
 ]
 
 export function normalizeForMatch(raw: string): string {
   let name = raw.toLowerCase()
-  name = name.replace(/[.,'()-]/g, '')
-  name = name.replace(/\bst\b|\bst\.\b/g, 'saint')
+  name = name.replace(/[-]/g, ' ')      // hyphen → space (Arkansas-Little Rock → arkansas little rock)
+  name = name.replace(/[.,'()]/g, '')
+  // Expand common abbreviations before mascot stripping
+  name = name.replace(/\bmiss\b/g, 'mississippi')
+  name = name.replace(/\bmt\b/g, 'mount')
+  name = name.replace(/\bft\b/g, 'fort')
+  name = name.replace(/\bapp\b/g, 'appalachian')
+  name = name.replace(/\bst\b|\bst\.\b/g, 'state')
   MASCOT_WORDS.forEach(word => {
     name = name.replace(new RegExp(`\\b${word}\\b`, 'g'), '')
   })
