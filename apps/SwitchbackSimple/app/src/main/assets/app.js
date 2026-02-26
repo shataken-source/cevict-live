@@ -216,7 +216,7 @@ function initTVHome() {
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px">
       <div>
         <div style="font-size:30px;font-weight:900;background:linear-gradient(90deg,#ff3a3a,#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Switchback TV</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px">${esc(S.server.replace('http://', '').replace('https://', ''))} · ${S.user} · ${chCount} channels</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${esc((S.server || '').replace('http://', '').replace('https://', ''))} · ${S.user || '—'} · ${chCount} channels</div>
       </div>
       <div style="background:rgba(255,193,7,0.12);border:1px solid rgba(255,193,7,0.25);border-radius:8px;padding:7px 14px;text-align:right;flex-shrink:0">
         <div style="font-size:10px;color:var(--yellow);font-weight:700;text-transform:uppercase">Subscription</div>
@@ -293,9 +293,9 @@ function applyLangFilter(channels) {
 
 // ── SETTINGS INIT ────────────────────────────────────────────
 function initSettings() {
-  document.getElementById('cfg-server').value = S.server;
-  document.getElementById('cfg-user').value = S.user;
-  document.getElementById('cfg-pass').value = S.pass;
+  document.getElementById('cfg-server').value = S.server || '';
+  document.getElementById('cfg-user').value = S.user || '';
+  document.getElementById('cfg-pass').value = S.pass || '';
   if (S.userInfo) renderAccountInfo(S.userInfo);
   renderLangFilterUI();
 }
@@ -416,9 +416,15 @@ document.getElementById('save-creds-btn').addEventListener('click', async () => 
 });
 
 document.getElementById('reset-creds-btn').addEventListener('click', () => {
-  document.getElementById('cfg-server').value = 'http://blogyfy.xyz';
-  document.getElementById('cfg-user').value = 'jascodezoriptv';
-  document.getElementById('cfg-pass').value = '19e993b7f5';
+  document.getElementById('cfg-server').value = '';
+  document.getElementById('cfg-user').value = '';
+  document.getElementById('cfg-pass').value = '';
+  localStorage.removeItem('iptv_server');
+  localStorage.removeItem('iptv_user');
+  localStorage.removeItem('iptv_pass');
+  S.server = null; S.user = null; S.pass = null;
+  const result = document.getElementById('creds-test-result');
+  if (result) result.textContent = 'Credentials cleared.';
 });
 
 function clearAllData() {
