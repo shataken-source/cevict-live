@@ -38,12 +38,19 @@ async function isAuthed(request: NextRequest): Promise<boolean> {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isAdminPath = pathname.startsWith('/admin');
-  const isAdminApiPath = pathname.startsWith('/api/admin');
-
-  if (!isAdminPath && !isAdminApiPath) {
-    return NextResponse.next();
+  // Allow API routes through (backend-only app)
+  if (pathname.startsWith('/api')) {
+    // Admin API routes still need auth check below
+    if (!pathname.startsWith('/api/admin')) {
+      return NextResponse.next();
+    }
+  } else {
+    // Block ALL frontend page routes — Progno has no public UI
+    return new NextResponse('Not Found', { status: 404 });
   }
+
+  const isAdminApiPath = pathname.startsWith('/api/admin');
+  const isAdminPath = false; // frontend admin pages are blocked above
 
   // Allow login page and auth endpoint
   if (pathname === '/admin/login' || pathname === '/api/admin/auth' || pathname === '/api/admin/login') {
@@ -75,5 +82,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*'],
+  // Match everything except Next.js internals and static files
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
