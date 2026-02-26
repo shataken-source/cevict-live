@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Switchback TV — Pair Your TV</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d0d0d; color: #e8e8e8;
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    .card {
+      background: #1a1a1a; border-radius: 16px; padding: 32px;
+      max-width: 420px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .logo { text-align: center; margin-bottom: 24px; }
+    .logo h1 { font-size: 22px; font-weight: 700; color: #fff; }
+    .logo p { font-size: 13px; color: #888; margin-top: 4px; }
+    .step { display: none; }
+    .step.active { display: block; }
+    .step-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: #fff; }
+    .step-desc { font-size: 13px; color: #999; margin-bottom: 18px; line-height: 1.5; }
+    label { display: block; font-size: 13px; font-weight: 500; color: #bbb; margin-bottom: 6px; }
+    input, textarea {
+      width: 100%; padding: 12px 14px; border-radius: 10px;
+      border: 1px solid #333; background: #111; color: #fff;
+      font-size: 15px; outline: none; transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus { border-color: #e50000; }
+    input.code-input {
+      font-size: 28px; text-align: center; letter-spacing: 12px;
+      font-weight: 700; padding: 16px;
+    }
+    .field { margin-bottom: 14px; }
+    .btn {
+      width: 100%; padding: 14px; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: #e50000; color: #fff; margin-top: 8px; }
+    .btn-primary:hover { background: #cc0000; }
+    .btn-primary:disabled { background: #333; color: #666; cursor: not-allowed; }
+    .msg { margin-top: 14px; font-size: 13px; text-align: center; min-height: 20px; }
+    .msg.error { color: #ff4444; }
+    .msg.success { color: #44cc44; }
+    .msg.waiting { color: #ffaa00; }
+    .divider { height: 1px; background: #2a2a2a; margin: 20px 0; }
+    .hint { font-size: 12px; color: #666; text-align: center; margin-top: 16px; line-height: 1.5; }
+    .success-icon { font-size: 48px; text-align: center; margin-bottom: 16px; }
+    .success-msg { text-align: center; font-size: 15px; color: #ccc; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <h1>📺 Switchback TV</h1>
+      <p>Pair your TV with your IPTV provider</p>
+    </div>
+
+    <!-- STEP 1: Enter the 4-digit code from TV -->
+    <div class="step active" id="step-code">
+      <div class="step-title">Step 1: Enter TV Code</div>
+      <div class="step-desc">Enter the 4-digit code shown on your TV screen.</div>
+      <div class="field">
+        <input type="tel" id="pair-code" class="code-input" maxlength="4"
+               placeholder="0000" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <button class="btn btn-primary" id="btn-verify-code">Continue</button>
+      <div class="msg" id="code-msg"></div>
+    </div>
+
+    <!-- STEP 2: Enter provider credentials -->
+    <div class="step" id="step-creds">
+      <div class="step-title">Step 2: Enter Provider Info</div>
+      <div class="step-desc">
+        Paste the credentials from your IPTV provider email.
+        You need the server URL, username, and password.
+      </div>
+      <div class="field">
+        <label for="cred-server">Server URL</label>
+        <input type="url" id="cred-server" placeholder="http://provider.example.com:8080">
+      </div>
+      <div class="field">
+        <label for="cred-user">Username</label>
+        <input type="text" id="cred-user" placeholder="your_username">
+      </div>
+      <div class="field">
+        <label for="cred-pass">Password</label>
+        <input type="text" id="cred-pass" placeholder="your_password">
+      </div>
+      <div class="field">
+        <label for="cred-epg">EPG URL <span style="color:#666">(optional)</span></label>
+        <input type="url" id="cred-epg" placeholder="http://provider.example.com/xmltv.php">
+      </div>
+      <button class="btn btn-primary" id="btn-send-creds">Send to TV</button>
+      <div class="msg" id="creds-msg"></div>
+    </div>
+
+    <!-- STEP 3: Success -->
+    <div class="step" id="step-done">
+      <div class="success-icon">✅</div>
+      <div class="step-title" style="text-align:center">All Set!</div>
+      <div class="success-msg">
+        Your IPTV credentials have been sent to your TV.<br>
+        Channels should start loading in a few seconds.<br><br>
+        You can close this page now.
+      </div>
+    </div>
+
+    <div class="hint">
+      Your credentials are sent directly to your TV and are not stored on our servers.
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    let verifiedCode = null;
+
+    // Step 1: verify the code exists
+    document.getElementById('btn-verify-code').addEventListener('click', async () => {
+      const code = document.getElementById('pair-code').value.trim();
+      const msg = document.getElementById('code-msg');
+      msg.className = 'msg';
+      msg.textContent = '';
+
+      if (!/^\d{4}$/.test(code)) {
+        msg.className = 'msg error';
+        msg.textContent = 'Please enter a 4-digit code.';
+        return;
+      }
+
+      msg.className = 'msg waiting';
+      msg.textContent = 'Checking code...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/pair-poll?code=${code}`);
+        if (!res.ok) {
+          msg.className = 'msg error';
+          msg.textContent = 'Code not found or expired. Check the code on your TV and try again.';
+          return;
+        }
+        // Code is valid (either waiting or already has config)
+        verifiedCode = code;
+        document.getElementById('step-code').classList.remove('active');
+        document.getElementById('step-creds').classList.add('active');
+      } catch (e) {
+        msg.className = 'msg error';
+        msg.textContent = 'Network error. Please check your connection.';
+      }
+    });
+
+    // Auto-advance on 4 digits
+    document.getElementById('pair-code').addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+    });
+
+    // Step 2: send credentials
+    document.getElementById('btn-send-creds').addEventListener('click', async () => {
+      const server = document.getElementById('cred-server').value.trim();
+      const username = document.getElementById('cred-user').value.trim();
+      const password = document.getElementById('cred-pass').value.trim();
+      const epg = document.getElementById('cred-epg').value.trim();
+      const msg = document.getElementById('creds-msg');
+      msg.className = 'msg';
+      msg.textContent = '';
+
+      if (!server || !username || !password) {
+        msg.className = 'msg error';
+        msg.textContent = 'Server URL, username, and password are required.';
+        return;
+      }
+
+      const btn = document.getElementById('btn-send-creds');
+      btn.disabled = true;
+      btn.textContent = 'Sending...';
+      msg.className = 'msg waiting';
+      msg.textContent = 'Sending credentials to your TV...';
+
+      try {
+        const body = { code: verifiedCode, server, username, password };
+        if (epg) body.epg = epg;
+
+        const res = await fetch(`${API_BASE}/api/pair-submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          msg.className = 'msg error';
+          msg.textContent = data.error || 'Failed to send credentials.';
+          btn.disabled = false;
+          btn.textContent = 'Send to TV';
+          return;
+        }
+
+        // Success!
+        document.getElementById('step-creds').classList.remove('active');
+        document.getElementById('step-done').classList.add('active');
+      } catch (e) {
+        msg.className = 'msg error';
+        msg.textContent = 'Network error. Please try again.';
+        btn.disabled = false;
+        btn.textContent = 'Send to TV';
+      }
+    });
+  </script>
+</body>
+</html>

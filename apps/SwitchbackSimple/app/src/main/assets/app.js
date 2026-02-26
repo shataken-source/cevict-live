@@ -90,6 +90,15 @@ const IS_ANDROID_WEBVIEW = (
   window.location.hostname === 'localhost'
 ) && window.location.port === '8123';
 
+// Pairing API lives on the Vercel deployment.
+// Android WebView can't use relative URLs for pairing, so we need the full origin.
+const PAIR_API_BASE = IS_ANDROID_WEBVIEW
+  ? 'https://switchback-tv-web.vercel.app'
+  : window.location.origin;
+
+// Pairing URL shown on TV for user to open on phone
+const PAIR_URL = 'switchback-tv-web.vercel.app/pair';
+
 function buildApiUrl(action, extra = {}) {
   const xtreamAction = {
     get_user_info: 'get.php',
@@ -1514,13 +1523,111 @@ document.querySelectorAll('.quality-opt').forEach(opt => {
 // ═══════════════════════════════════════════════════════════════
 // BOOT — load all data on startup
 // ═══════════════════════════════════════════════════════════════
+// ── PHONE PAIRING FLOW ──────────────────────────────────────
+let pairPollTimer = null;
+
+async function startPairing() {
+  console.log('[pair] Starting pairing flow');
+  nav('pairing');
+
+  const codeEl = document.getElementById('pair-code-display');
+  const urlEl = document.getElementById('pair-url-display');
+  const statusEl = document.getElementById('pair-status');
+
+  if (urlEl) urlEl.textContent = PAIR_URL;
+  if (codeEl) codeEl.textContent = '----';
+  if (statusEl) statusEl.textContent = 'Requesting pairing code...';
+
+  try {
+    const res = await fetch(`${PAIR_API_BASE}/api/pair-create`, { method: 'POST' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const code = data.code;
+
+    if (codeEl) codeEl.textContent = code;
+    if (statusEl) statusEl.textContent = 'Waiting for your phone...';
+    console.log('[pair] Code:', code);
+
+    // Poll every 3 seconds
+    if (pairPollTimer) clearInterval(pairPollTimer);
+    pairPollTimer = setInterval(() => pollPairCode(code), 3000);
+
+    // Auto-expire after 5 minutes
+    setTimeout(() => {
+      if (pairPollTimer) {
+        clearInterval(pairPollTimer);
+        pairPollTimer = null;
+        if (statusEl) statusEl.textContent = 'Code expired. Press OK to get a new code.';
+      }
+    }, 5 * 60 * 1000);
+
+  } catch (e) {
+    console.error('[pair] Failed to create code:', e.message);
+    if (statusEl) statusEl.textContent = 'Could not connect. Check your internet connection.';
+    // Fall back to manual settings
+    setTimeout(() => {
+      initSettings();
+      nav('settings');
+      showToast('Pairing unavailable. Enter credentials manually.', 5000);
+    }, 3000);
+  }
+}
+
+async function pollPairCode(code) {
+  try {
+    const res = await fetch(`${PAIR_API_BASE}/api/pair-poll?code=${code}`);
+    if (!res.ok) {
+      // Code expired or not found
+      if (pairPollTimer) clearInterval(pairPollTimer);
+      pairPollTimer = null;
+      const statusEl = document.getElementById('pair-status');
+      if (statusEl) statusEl.textContent = 'Code expired. Press OK to get a new code.';
+      return;
+    }
+    const data = await res.json();
+    if (data.status === 'ready' && data.config) {
+      // Credentials received!
+      if (pairPollTimer) clearInterval(pairPollTimer);
+      pairPollTimer = null;
+
+      const { server, username, password, epg } = data.config;
+      localStorage.setItem('iptv_server', server);
+      localStorage.setItem('iptv_user', username);
+      localStorage.setItem('iptv_pass', password);
+      if (epg) localStorage.setItem('epg_url', epg);
+      S.server = server;
+      S.user = username;
+      S.pass = password;
+
+      const statusEl = document.getElementById('pair-status');
+      if (statusEl) statusEl.textContent = '✅ Connected! Loading channels...';
+      showToast('Provider connected! Loading channels...', 4000);
+
+      // Boot with new credentials
+      setTimeout(() => {
+        nav('tvhome');
+        bootData();
+      }, 1500);
+    }
+    // else status === 'waiting', keep polling
+  } catch (e) {
+    console.warn('[pair] Poll error:', e.message);
+  }
+}
+
+// Manual fallback: skip pairing and go to Settings for manual credential entry
+document.getElementById('pair-manual-btn')?.addEventListener('click', () => {
+  if (pairPollTimer) { clearInterval(pairPollTimer); pairPollTimer = null; }
+  initSettings();
+  nav('settings');
+  showToast('Enter your IPTV credentials manually below.', 5000);
+});
+
 async function bootData() {
   // Check if credentials are configured
   if (!S.server || !S.user || !S.pass) {
-    console.warn('[boot] No IPTV credentials configured — showing settings');
-    initSettings();
-    nav('settings');
-    showToast('Welcome! Paste your activation code or tap the link from your provider email.', 8000);
+    console.warn('[boot] No IPTV credentials configured — starting pairing');
+    startPairing();
     return;
   }
 

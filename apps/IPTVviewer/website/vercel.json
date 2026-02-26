@@ -7,6 +7,10 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/pair",
+      "destination": "/public/pair.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/public/index.html"
     }
