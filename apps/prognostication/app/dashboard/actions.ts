@@ -181,30 +181,24 @@ export async function getDashboardStats(): Promise<{
     // Calculate average EV from high confidence signals
     const avgEV = highConfidence && highConfidence.length > 0
       ? highConfidence.reduce((sum, s) => sum + s.edge, 0) / highConfidence.length
-      : 0.082
+      : 0
 
     // For now, use placeholder values for winRate and arbOpportunities
     // These would come from performance tracking and arbitrage detection tables
     return {
       stats: {
-        winRate: 0.638,
-        activeEdges: activeEdges?.length || 14,
+        winRate: 0,
+        activeEdges: activeEdges?.length || 0,
         avgEV,
-        arbOpportunities: 3,
-        signalsToday: signalsToday?.length || 142
+        arbOpportunities: 0,
+        signalsToday: signalsToday?.length || 0
       }
     }
   } catch (err) {
     console.error("Failed to fetch dashboard stats:", err)
     return {
       stats: {
-        winRate: 0.638,
-        activeEdges: 14,
-        avgEV: 0.082,
-        arbOpportunities: 3,
-        signalsToday: 142
-      },
-      error: "Failed to fetch some stats"
+        winRate: 0, activeEdges: 0, avgEV: 0, arbOpportunities: 0, signalsToday: 0 }, error: "Failed to fetch some stats"
     }
   }
 }
@@ -228,3 +222,5 @@ export async function getSignalById(id: string): Promise<{ signal?: Signal; erro
     return { error: "Failed to fetch signal" }
   }
 }
+
+

@@ -51,7 +51,7 @@ const alertTypes = [
 ]
 
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState<Alert[]>(sampleAlerts)
+  const [alerts, setAlerts] = useState<Alert[]>([])
   const [showCreate, setShowCreate] = useState(false)
 
   const toggleAlert = (id: string) => {
@@ -194,3 +194,4 @@ export default function AlertsPage() {
     </div>
   )
 }
+
