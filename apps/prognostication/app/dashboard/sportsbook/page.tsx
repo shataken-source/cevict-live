@@ -90,7 +90,7 @@ export default function SportsbookPage() {
     fetchPicks()
 
     // Auto-refresh every 5 minutes for live Progno picks
-    const interval = setInterval(fetchPicks, 5 * 60 * 1000)
+    const interval = setInterval(fetchPicks, 60 * 1000)
     return () => clearInterval(interval)
   }, [])
 
@@ -373,10 +373,11 @@ export default function SportsbookPage() {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-success" />
             <span className="text-text-secondary">Auto-Refresh:</span>
-            <span className="text-text-primary">Disabled (testing)</span>
+            <span className="text-success">Every 60s</span>
           </div>
         </div>
       </div>
     </div>
   )
 }
+
