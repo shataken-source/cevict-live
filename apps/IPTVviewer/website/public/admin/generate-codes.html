@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Switchback TV — Activation Code Generator</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d0d0d;
+      color: #e8e8e8;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .sub {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: #1a1a1a;
+      border-radius: 14px;
+      padding: 24px;
+      border: 1px solid #2a2a2a;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #bbb;
+      margin-bottom: 5px;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 10px 13px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #111;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #e50000;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .row .field {
+      flex: 1;
+    }
+
+    .btn {
+      padding: 11px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: #e50000;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #cc0000;
+    }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.07);
+      color: #ccc;
+      border: 1px solid #333;
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .output-area {
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 14px;
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 60px;
+      line-height: 1.6;
+      color: #4fc3f7;
+      display: none;
+    }
+
+    .output-area.visible {
+      display: block;
+    }
+
+    .copy-btn {
+      font-size: 12px;
+      padding: 5px 12px;
+      margin-top: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #aaa;
+      border: 1px solid #333;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #666;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .divider {
+      height: 1px;
+      background: #2a2a2a;
+      margin: 20px 0;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 6px;
+    }
+
+    .badge-green {
+      background: rgba(76, 175, 80, 0.15);
+      color: #66bb6a;
+    }
+
+    .badge-red {
+      background: rgba(229, 0, 0, 0.15);
+      color: #e55;
+    }
+
+    .generated-item {
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+
+    .generated-item .label {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 4px;
+    }
+
+    .generated-item .code {
+      font-family: monospace;
+      font-size: 13px;
+      color: #4fc3f7;
+      word-break: break-all;
+    }
+
+    .generated-item .url {
+      font-family: monospace;
+      font-size: 12px;
+      color: #81c784;
+      word-break: break-all;
+      margin-top: 6px;
+    }
+
+    .generated-item .deep {
+      font-family: monospace;
+      font-size: 12px;
+      color: #ffb74d;
+      word-break: break-all;
+      margin-top: 4px;
+    }
+
+    .test-result {
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .test-result.ok {
+      color: #66bb6a;
+    }
+
+    .test-result.fail {
+      color: #e55;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🔑 Activation Code Generator</h1>
+    <p class="sub">Generate activation codes for customers. Each code contains their IPTV credentials.</p>
+
+    <!-- SINGLE CODE GENERATOR -->
+    <div class="card">
+      <div class="section-title">Generate Single Code</div>
+      <div class="row">
+        <div class="field">
+          <label>Server URL</label>
+          <input type="url" id="server" placeholder="http://blogyfy.xyz">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Username</label>
+          <input type="text" id="username" placeholder="customer_username">
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="text" id="password" placeholder="customer_password">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>EPG URL <span style="color:#555">(optional)</span></label>
+          <input type="url" id="epg" placeholder="http://blogyfy.xyz/xmltv.php?username=X&password=Y">
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-title">Provider Branding <span class="badge badge-green">Optional</span></div>
+      <div class="row">
+        <div class="field">
+          <label>Provider Name</label>
+          <input type="text" id="provider-name" placeholder="e.g. SuperTV, MyIPTV">
+        </div>
+        <div class="field">
+          <label>Support URL</label>
+          <input type="url" id="provider-support" placeholder="https://support.example.com">
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="generateSingle()">Generate Code</button>
+        <button class="btn btn-ghost" onclick="testCredentials()">🔍 Test Credentials First</button>
+      </div>
+      <div class="test-result" id="test-result"></div>
+    </div>
+
+    <!-- OUTPUT -->
+    <div class="card" id="output-card" style="display:none">
+      <div class="section-title">Generated Activation Code</div>
+
+      <div class="generated-item">
+        <div class="label">Activation Code (paste in app Settings → Activate)</div>
+        <div class="code" id="out-code"></div>
+        <button class="copy-btn" onclick="copyText('out-code')">📋 Copy Code</button>
+      </div>
+
+      <div class="generated-item">
+        <div class="label">Web Activation Link (click to auto-configure website)</div>
+        <div class="url" id="out-url"></div>
+        <button class="copy-btn" onclick="copyText('out-url')">📋 Copy Link</button>
+      </div>
+
+      <div class="generated-item">
+        <div class="label">Android Deep Link (opens app and auto-configures)</div>
+        <div class="deep" id="out-deep"></div>
+        <button class="copy-btn" onclick="copyText('out-deep')">📋 Copy Deep Link</button>
+      </div>
+
+      <div class="generated-item">
+        <div class="label">Email / SMS Template</div>
+        <div id="out-template" style="font-size:13px;color:#ccc;line-height:1.6;white-space:pre-wrap"></div>
+        <button class="copy-btn" onclick="copyText('out-template')">📋 Copy Template</button>
+      </div>
+    </div>
+
+    <!-- BULK GENERATOR -->
+    <div class="card">
+      <div class="section-title">Bulk Generator</div>
+      <p style="font-size:13px;color:#999;margin-bottom:14px;line-height:1.5">
+        Paste a CSV with one customer per line: <code style="color:#4fc3f7">username,password</code><br>
+        All will use the same server URL.
+      </p>
+      <div class="field">
+        <label>Server URL (same for all)</label>
+        <input type="url" id="bulk-server" placeholder="http://blogyfy.xyz">
+      </div>
+      <div class="field">
+        <label>Customer List (one per line: username,password)</label>
+        <textarea id="bulk-csv" rows="5" placeholder="user1,pass123&#10;user2,pass456&#10;user3,pass789"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="generateBulk()">Generate All Codes</button>
+        <button class="btn btn-ghost" onclick="downloadBulkCSV()">⬇ Download as CSV</button>
+      </div>
+      <div class="output-area" id="bulk-output"></div>
+    </div>
+
+    <!-- QUICK REFERENCE -->
+    <div class="card">
+      <div class="section-title">How Customers Use Activation Codes</div>
+      <div style="font-size:13px;color:#999;line-height:1.8">
+        <b style="color:#ccc">Method 1 — Paste Code:</b> Open app → Settings → Quick Setup → paste activation code → tap
+        Activate<br>
+        <b style="color:#ccc">Method 2 — Click Link:</b> Send the web activation link → opens app → auto-configures<br>
+        <b style="color:#ccc">Method 3 — Android Deep Link:</b> Send the deep link → opens Android app →
+        auto-configures<br>
+        <b style="color:#ccc">Method 4 — TV Pairing:</b> TV shows 4-digit code → customer goes to /pair on phone →
+        enters code + credentials
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SITE_BASE = window.location.origin;
+
+    function buildConfig() {
+      const server = document.getElementById('server').value.trim().replace(/\/+$/, '');
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const epg = document.getElementById('epg').value.trim();
+      const providerName = document.getElementById('provider-name').value.trim();
+      const providerSupport = document.getElementById('provider-support').value.trim();
+
+      if (!server || !username || !password) return null;
+
+      const config = { server, username, password };
+      if (epg) config.epg = epg;
+      if (providerName || providerSupport) {
+        config.provider = {};
+        if (providerName) config.provider.name = providerName;
+        if (providerSupport) config.provider.support = providerSupport;
+      }
+      return config;
+    }
+
+    function encodeConfig(config) {
+      const json = JSON.stringify(config);
+      // base64url encoding
+      return btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function generateSingle() {
+      const config = buildConfig();
+      if (!config) { alert('Fill in Server, Username, and Password'); return; }
+
+      const code = encodeConfig(config);
+      const webUrl = `${SITE_BASE}/?config=${code}`;
+      const deepLink = `switchback://import/${code}`;
+
+      const providerLabel = config.provider?.name || 'Switchback TV';
+
+      document.getElementById('out-code').textContent = code;
+      document.getElementById('out-url').textContent = webUrl;
+      document.getElementById('out-deep').textContent = deepLink;
+      document.getElementById('out-template').textContent =
+        `Welcome to ${providerLabel}!
+
+Your activation code:
+${code}
+
+Quick setup options:
+• Paste the code above in Settings → Activate
+• Or click this link: ${webUrl}
+• Android TV app: ${deepLink}
+
+Enjoy your channels!`;
+
+      document.getElementById('output-card').style.display = 'block';
+      document.getElementById('output-card').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function testCredentials() {
+      const config = buildConfig();
+      if (!config) { alert('Fill in Server, Username, and Password'); return; }
+
+      const el = document.getElementById('test-result');
+      el.className = 'test-result';
+      el.textContent = 'Testing connection...';
+
+      try {
+        const params = new URLSearchParams({ action: 'get_user_info', server: config.server, username: config.username, password: config.password });
+        const res = await fetch(`/api/iptv?${params}`);
+        const data = await res.json();
+
+        if (data?.user_info?.auth === 1) {
+          const exp = data.user_info.exp_date ? new Date(data.user_info.exp_date * 1000).toLocaleDateString() : 'N/A';
+          el.className = 'test-result ok';
+          el.textContent = `✓ Connected — ${data.user_info.username} | Status: ${data.user_info.status} | Expires: ${exp} | Max connections: ${data.user_info.max_connections}`;
+        } else {
+          el.className = 'test-result fail';
+          el.textContent = '✗ Auth failed — credentials are invalid or account is disabled.';
+        }
+      } catch (e) {
+        el.className = 'test-result fail';
+        el.textContent = `✗ Connection error: ${e.message}`;
+      }
+    }
+
+    function generateBulk() {
+      const server = document.getElementById('bulk-server').value.trim().replace(/\/+$/, '');
+      const csv = document.getElementById('bulk-csv').value.trim();
+      if (!server || !csv) { alert('Fill in server and customer list'); return; }
+
+      const lines = csv.split('\n').map(l => l.trim()).filter(Boolean);
+      const results = [];
+
+      for (const line of lines) {
+        const parts = line.split(',').map(p => p.trim());
+        if (parts.length < 2) continue;
+        const [username, password] = parts;
+        const config = { server, username, password };
+        const code = encodeConfig(config);
+        const webUrl = `${SITE_BASE}/?config=${code}`;
+        results.push({ username, code, webUrl });
+      }
+
+      const el = document.getElementById('bulk-output');
+      el.textContent = results.map(r =>
+        `${r.username}\n  Code: ${r.code}\n  Link: ${r.webUrl}`
+      ).join('\n\n');
+      el.classList.add('visible');
+
+      // Store for CSV download
+      window.__bulkResults = results;
+    }
+
+    function downloadBulkCSV() {
+      const results = window.__bulkResults;
+      if (!results || !results.length) { alert('Generate codes first'); return; }
+
+      let csv = 'username,activation_code,web_link\n';
+      for (const r of results) {
+        csv += `"${r.username}","${r.code}","${r.webUrl}"\n`;
+      }
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `switchback-codes-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function copyText(elId) {
+      const text = document.getElementById(elId).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => btn.textContent = orig, 1500);
+      });
+    }
+  </script>
+</body>
+
+</html>

@@ -1,7 +1,7 @@
 // POST /api/pair-submit — Phone submits provider credentials for a pairing code
 import { submitPairConfig } from './_store.js';
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -17,12 +17,17 @@ export default function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields: code, server, username, password' });
   }
 
-  const config = { server, username, password };
-  if (epg) config.epg = epg;
+  try {
+    const config = { server, username, password };
+    if (epg) config.epg = epg;
 
-  const result = submitPairConfig(String(code), config);
-  if (!result.ok) {
-    return res.status(404).json({ error: result.error });
+    const result = await submitPairConfig(String(code), config);
+    if (!result.ok) {
+      return res.status(404).json({ error: result.error });
+    }
+    return res.json({ ok: true, message: 'Config sent to TV. It should appear in a few seconds.' });
+  } catch (e) {
+    console.error('[pair-submit]', e.message);
+    return res.status(500).json({ error: 'Internal error' });
   }
-  return res.json({ ok: true, message: 'Config sent to TV. It should appear in a few seconds.' });
 }
