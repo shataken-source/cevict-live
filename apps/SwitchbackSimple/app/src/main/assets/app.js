@@ -1379,6 +1379,9 @@ function showExitConfirm() {
   document.getElementById('exit-confirm-btn').focus();
 }
 
+// Exit App button in Settings
+document.getElementById('exit-app-btn')?.addEventListener('click', () => showExitConfirm());
+
 // Player keyboard shortcuts (only active when player overlay is visible)
 document.addEventListener('keydown', e => {
   const overlay = document.getElementById('player-overlay');
@@ -1517,7 +1520,7 @@ async function bootData() {
     console.warn('[boot] No IPTV credentials configured — showing settings');
     initSettings();
     nav('settings');
-    showToast('Welcome! Enter your IPTV provider credentials or import a config to get started.');
+    showToast('Welcome! Enter your IPTV provider credentials or import a config to get started.', 8000);
     return;
   }
 
@@ -2769,10 +2772,7 @@ document.getElementById('cfg-import-btn')?.addEventListener('click', () => {
   applyImportedConfig(raw);
 });
 
-// File picker handler
-document.getElementById('cfg-file-btn')?.addEventListener('click', () => {
-  document.getElementById('cfg-file-input')?.click();
-});
+// File picker handler (label wraps the input, so no .click() needed)
 document.getElementById('cfg-file-input')?.addEventListener('change', (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
