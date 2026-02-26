@@ -21,6 +21,7 @@ public class MainActivity extends Activity {
     private WebView webView;
     private LocalServer server;
     private ValueCallback<Uri[]> fileUploadCallback;
+    private String pendingConfigCode = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,7 +86,22 @@ public class MainActivity extends Activity {
                 }
                 return false;
             }
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (pendingConfigCode != null) {
+                    String code = pendingConfigCode.replace("\\", "\\\\")
+                            .replace("'", "\\'");
+                    view.evaluateJavascript(
+                        "if(typeof handleDeepLinkConfig==='function')handleDeepLinkConfig('" + code + "');",
+                        null);
+                    pendingConfigCode = null;
+                }
+            }
         });
+
+        // Check for deep link intent: switchback://import/CODE
+        handleConfigIntent(getIntent());
 
         // Load from local HTTP server — no more file:// CORS issues
         webView.loadUrl("http://localhost:" + PORT + "/index.html");
@@ -133,6 +149,35 @@ public class MainActivity extends Activity {
             }
         }
         fileOrDir.delete();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleConfigIntent(intent);
+        // If WebView is already loaded, inject immediately
+        if (pendingConfigCode != null && webView != null) {
+            String code = pendingConfigCode.replace("\\", "\\\\")
+                    .replace("'", "\\'");
+            webView.evaluateJavascript(
+                "if(typeof handleDeepLinkConfig==='function')handleDeepLinkConfig('" + code + "');",
+                null);
+            pendingConfigCode = null;
+        }
+    }
+
+    private void handleConfigIntent(Intent intent) {
+        if (intent == null || intent.getData() == null) return;
+        Uri uri = intent.getData();
+        if ("switchback".equals(uri.getScheme()) && "import".equals(uri.getHost())) {
+            String path = uri.getPath();
+            if (path != null && path.startsWith("/")) path = path.substring(1);
+            if (path != null && !path.isEmpty()) {
+                pendingConfigCode = path;
+                Log.i(TAG, "Deep link config received");
+            }
+        }
     }
 
     @Override

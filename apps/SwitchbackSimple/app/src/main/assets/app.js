@@ -1520,7 +1520,7 @@ async function bootData() {
     console.warn('[boot] No IPTV credentials configured — showing settings');
     initSettings();
     nav('settings');
-    showToast('Welcome! Enter your IPTV provider credentials or import a config to get started.', 8000);
+    showToast('Welcome! Paste your activation code or tap the link from your provider email.', 8000);
     return;
   }
 
@@ -2766,24 +2766,22 @@ document.getElementById('cfg-import-btn')?.addEventListener('click', () => {
   const raw = (document.getElementById('cfg-import-input')?.value || '').trim();
   if (!raw) {
     const result = document.getElementById('cfg-import-result');
-    if (result) result.innerHTML = '<span style="color:var(--muted)">Paste a URL, config, or activation code above first.</span>';
+    if (result) result.innerHTML = '<span style="color:var(--muted)">Paste your activation code above first.</span>';
     return;
   }
   applyImportedConfig(raw);
 });
 
-// File picker handler (label wraps the input, so no .click() needed)
-document.getElementById('cfg-file-input')?.addEventListener('change', (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const text = reader.result;
-    if (text) applyImportedConfig(text);
-  };
-  reader.readAsText(file);
-  e.target.value = ''; // reset so same file can be re-selected
-});
+// Deep link handler: called from Android when app is opened via switchback://import/CODE
+function handleDeepLinkConfig(code) {
+  if (!code) return;
+  console.log('[deeplink] Received activation code');
+  const input = document.getElementById('cfg-import-input');
+  if (input) input.value = code;
+  initSettings();
+  nav('settings');
+  applyImportedConfig(code);
+}
 
 function adjustAdVol(delta) {
   S.adBlockVolume = Math.max(0, Math.min(100, S.adBlockVolume + delta));
