@@ -10,9 +10,9 @@ export default async function handler(req, res) {
 
   const {
     action,
-    server = process.env.IPTV_SERVER || 'http://blogyfy.xyz',
-    username = process.env.IPTV_USER || 'jascodezoriptv',
-    password = process.env.IPTV_PASS || '19e993b7f5',
+    server = process.env.IPTV_SERVER || '',
+    username = process.env.IPTV_USER || '',
+    password = process.env.IPTV_PASS || '',
     category_id,
     vod_id,
     series_id,
@@ -20,6 +20,10 @@ export default async function handler(req, res) {
     limit = '500',
     offset = '0',
   } = req.query;
+
+  if (!server || !username || !password) {
+    return res.status(400).json({ error: 'Missing credentials. Set server, username, and password in query params or IPTV_SERVER/IPTV_USER/IPTV_PASS env vars.' });
+  }
 
   const base = `${server}/player_api.php?username=${username}&password=${password}`;
 

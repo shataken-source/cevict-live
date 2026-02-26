@@ -6,9 +6,9 @@ export interface IPTVCredentials {
 }
 
 export const DEFAULT_CREDENTIALS: IPTVCredentials = {
-  username: 'jascodezoriptv',
-  password: '19e993b7f5',
-  server: 'http://blogyfy.xyz',
+  username: '',
+  password: '',
+  server: '',
   altServer: '',
 };
 

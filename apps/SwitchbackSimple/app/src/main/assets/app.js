@@ -49,12 +49,10 @@
   });
 })();
 
-// ── DEFAULTS (encoded so they don't trigger secret scanners) ─
-const _d = s => atob(s);
-if (!localStorage.getItem('iptv_server')) localStorage.setItem('iptv_server', _d('aHR0cDovL2Jsb2d5ZnkueHl6'));
-if (!localStorage.getItem('iptv_user')) localStorage.setItem('iptv_user', _d('amFzY29kZXpvcmlwdHY='));
-if (!localStorage.getItem('iptv_pass')) localStorage.setItem('iptv_pass', _d('MTllOTkzYjdmNQ=='));
-if (!localStorage.getItem('epg_url')) localStorage.setItem('epg_url', _d('aHR0cDovL2NmbGlrZS1jZG4uY29tOjgwODAveG1sdHYucGhwP3VzZXJuYW1lPWphc2NvZGV6b3JpcHR2JnBhc3N3b3JkPTE5ZTk5M2I3ZjU='));
+// ── DEFAULTS ─────────────────────────────────────────────────
+// No hardcoded credentials. User must enter their own via Settings
+// or import a provider config / activation code on first run.
+// If no credentials are set, the setup screen will be shown.
 
 // ── STATE ────────────────────────────────────────────────────
 const S = {
@@ -1508,9 +1506,32 @@ document.querySelectorAll('.quality-opt').forEach(opt => {
 // BOOT — load all data on startup
 // ═══════════════════════════════════════════════════════════════
 async function bootData() {
+  // Check if credentials are configured
+  if (!S.server || !S.user || !S.pass) {
+    console.warn('[boot] No IPTV credentials configured — showing settings');
+    initSettings();
+    nav('settings');
+    showToast('Welcome! Enter your IPTV provider credentials or import a config to get started.');
+    return;
+  }
+
   try {
-    // User info first (fast)
+    // User info first (fast) — also validates credentials
     const info = await api('get_user_info');
+
+    // Check if auth succeeded
+    if (info?.user_info?.auth === 0) {
+      console.warn('[boot] IPTV credentials rejected by server');
+      initSettings();
+      nav('settings');
+      const statusEl = document.getElementById('creds-test-result');
+      if (statusEl) {
+        statusEl.innerHTML = '<span style="color:var(--primary)">❌ Authentication failed — check your username and password</span>';
+      }
+      showToast('Authentication failed. Please check your credentials in Settings.');
+      return;
+    }
+
     S.userInfo = info;
     renderAccountInfo(info);
 
@@ -1522,7 +1543,7 @@ async function bootData() {
     if (cats.status === 'fulfilled' && Array.isArray(cats.value)) S.liveCategories = cats.value;
     if (streams.status === 'fulfilled' && Array.isArray(streams.value)) {
       S.allChannels = streams.value;
-      S.channelList = streams.value;
+      S.channelList = applyLangFilter(streams.value);
     }
 
     // Update TV home with real counts
@@ -1540,7 +1561,15 @@ async function bootData() {
 
   } catch (e) {
     console.warn('[boot]', e.message);
-    // Still render home with defaults
+    // Connection failed — likely server is down or wrong URL
+    initSettings();
+    nav('settings');
+    const statusEl = document.getElementById('creds-test-result');
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:var(--primary)">❌ Could not connect to server: ${esc(e.message)}</span>`;
+    }
+    showToast('Could not connect to IPTV server. Check Settings.');
+    return;
   }
   initSettings();
 }

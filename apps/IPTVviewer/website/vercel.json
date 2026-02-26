@@ -2,12 +2,18 @@
   "version": 2,
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/IPTVviewer/website/",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/public/index.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/public/index.html"
+    }
   ],
   "env": {
-    "IPTV_SERVER": "http://blogyfy.xyz",
-    "IPTV_USER": "jascodezoriptv",
-    "IPTV_PASS": "19e993b7f5"
+    "IPTV_SERVER": "",
+    "IPTV_USER": "",
+    "IPTV_PASS": ""
   }
 }
