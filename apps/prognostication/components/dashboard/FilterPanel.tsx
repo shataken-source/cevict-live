@@ -13,58 +13,64 @@ interface FilterPanelProps {
 }
 
 const presets = [
-  { name: "High EV Only", filters: { minEdge: 0.05, confidence: ["HIGH"] } },
-  { name: "Short-Term Only", filters: { timeframe: "7d" } },
-  { name: "Low Correlation", filters: {} },
-  { name: "Fund-Grade Signals", filters: { minEdge: 0.03, confidence: ["HIGH", "MEDIUM"], liquidity: "1M+" } },
+  { name: "High EV Only", filters: { minEdge: 0.05, confidence: ["HIGH"], platform: "all" } },
+  { name: "Short-Term Only", filters: { minEdge: 0, confidence: [], platform: "all" } },
+  { name: "Low Correlation", filters: { minEdge: 0, confidence: [], platform: "all" } },
+  { name: "Fund-Grade Signals", filters: { minEdge: 0.03, confidence: ["HIGH", "MEDIUM"], platform: "all" } },
 ]
 
 export function FilterPanel({ filters, onChange }: FilterPanelProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [activePreset, setActivePreset] = useState<string | null>(null)
 
-  // Default values if filters not provided
   const currentFilters = {
     platform: filters?.platform || "all",
     confidence: filters?.confidence || [],
     minEdge: filters?.minEdge || 0
   }
 
+  const applyPreset = (preset: typeof presets[0]) => {
+    if (!onChange) return
+    const isActive = activePreset === preset.name
+    if (isActive) {
+      setActivePreset(null)
+      onChange({ platform: "all", confidence: [], minEdge: 0 })
+    } else {
+      setActivePreset(preset.name)
+      onChange({
+        platform: preset.filters.platform || "all",
+        confidence: preset.filters.confidence || [],
+        minEdge: preset.filters.minEdge || 0,
+      })
+    }
+  }
+
   const togglePlatform = (platform: string) => {
     if (!onChange) return
+    setActivePreset(null)
     const newPlatform = currentFilters.platform === platform ? "all" : platform
-    onChange({
-      ...currentFilters,
-      platform: newPlatform
-    })
+    onChange({ ...currentFilters, platform: newPlatform })
   }
 
   const toggleConfidence = (level: string) => {
     if (!onChange) return
+    setActivePreset(null)
     const current = currentFilters.confidence
     const updated = current.includes(level)
       ? current.filter(c => c !== level)
       : [...current, level]
-    onChange({
-      ...currentFilters,
-      confidence: updated
-    })
+    onChange({ ...currentFilters, confidence: updated })
   }
 
   const handleMinEdgeChange = (value: number) => {
     if (!onChange) return
-    onChange({
-      ...currentFilters,
-      minEdge: value
-    })
+    setActivePreset(null)
+    onChange({ ...currentFilters, minEdge: value })
   }
 
   const handleReset = () => {
     if (!onChange) return
-    onChange({
-      platform: "all",
-      confidence: [],
-      minEdge: 0
-    })
+    setActivePreset(null)
+    onChange({ platform: "all", confidence: [], minEdge: 0 })
   }
 
   return (
@@ -77,7 +83,7 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
         </div>
         <button
           title="Toggle filters"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={handleReset}
           className="text-text-muted hover:text-text-primary"
         >
           <SlidersHorizontal size={18} />
@@ -90,7 +96,12 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
         {presets.map((preset) => (
           <button
             key={preset.name}
-            className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-secondary hover:bg-surface transition"
+            onClick={() => applyPreset(preset)}
+            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
+              activePreset === preset.name
+                ? "bg-primary/20 text-primary"
+                : "text-text-secondary hover:bg-surface"
+            }`}
           >
             {preset.name}
           </button>
@@ -104,10 +115,11 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
           <button
             key={platform}
             onClick={() => togglePlatform(platform)}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition ${currentFilters.platform === platform
-              ? "bg-primary/20 text-primary"
-              : "text-text-secondary hover:bg-surface"
-              }`}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition ${
+              currentFilters.platform === platform
+                ? "bg-primary/20 text-primary"
+                : "text-text-secondary hover:bg-surface"
+            }`}
           >
             {platform}
             {currentFilters.platform === platform && <Check size={14} />}
@@ -122,10 +134,11 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
           <button
             key={level}
             onClick={() => toggleConfidence(level)}
-            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition ${currentFilters.confidence.includes(level)
-              ? "bg-primary/20 text-primary"
-              : "text-text-secondary hover:bg-surface"
-              }`}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition ${
+              currentFilters.confidence.includes(level)
+                ? "bg-primary/20 text-primary"
+                : "text-text-secondary hover:bg-surface"
+            }`}
           >
             {level}
             {currentFilters.confidence.includes(level) && <Check size={14} />}
