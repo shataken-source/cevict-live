@@ -5,6 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Switchback TV</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Switchback TV">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
     rel="stylesheet">
   <!-- HLS.js bundled locally — no CDN dependency -->
@@ -964,6 +969,8 @@
           <input id="global-search" type="text" placeholder="Search channels, movies, shows..." />
         </div>
         <div class="tb-actions">
+          <button id="pwa-install-btn" class="tb-btn btn-ghost" style="display:none" title="Install App">⬇
+            Install</button>
           <button class="tb-btn btn-ghost" data-screen="settings">⚙️</button>
           <button class="tb-btn btn-red" data-screen="pricing">Upgrade</button>
         </div>
@@ -1262,10 +1269,12 @@
               <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
                 <div
                   style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 13px;font-size:12px">
-                  <span style="color:var(--green);font-weight:700">✓</span> 2 slots free</div>
+                  <span style="color:var(--green);font-weight:700">✓</span> 2 slots free
+                </div>
                 <div
                   style="background:rgba(229,0,0,0.1);border:1px solid rgba(229,0,0,0.2);border-radius:8px;padding:7px 13px;font-size:12px">
-                  <span style="color:var(--primary2);font-weight:700">Pro</span> 4 slots unlocked</div>
+                  <span style="color:var(--primary2);font-weight:700">Pro</span> 4 slots unlocked
+                </div>
                 <div
                   style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 13px;font-size:12px;color:#888">
                   Works across any category</div>
@@ -1313,7 +1322,8 @@
               <div class="price-feature"
                 style="font-weight:600;background:rgba(229,0,0,0.08);margin:0 -4px;padding:5px 4px;border-radius:4px">
                 <span style="color:var(--primary2)">★</span><span>⇄ <b>4 Switchback slots</b> — flip between 4
-                  channels</span></div>
+                  channels</span>
+              </div>
               <button class="btn btn-red btn-full" id="btn-plan-pro" style="margin-top:18px"
                 onclick="activatePlan('pro')">Upgrade to Pro →</button>
             </div>
@@ -1437,10 +1447,10 @@
                   <div class="toggle-sw on" onclick="this.classList.toggle('on')"></div>
                 </div>
                 <div class="row-item"><span style="font-size:13px">Buffer Size</span>
-                  <select class="inp" style="width:auto;padding:3px 7px">
-                    <option>Small</option>
-                    <option selected>Medium</option>
-                    <option>Large</option>
+                  <select id="settings-buffer-select" class="inp" style="width:auto;padding:3px 7px">
+                    <option>Small (3s)</option>
+                    <option selected>Medium (5s)</option>
+                    <option>Large (10s)</option>
                   </select>
                 </div>
               </div>

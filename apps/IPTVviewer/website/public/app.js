@@ -1138,16 +1138,40 @@ function clearPlayerError() {
   if (el) el.style.display = 'none';
 }
 
+// Monotonically-increasing token: stale async continuations check this before
+// touching the DOM or creating an HLS instance.
+S._loadToken = (S._loadToken || 0);
+
 async function loadStream(ch) {
   const video = document.getElementById('player-video');
 
+  // Claim this load slot — any prior in-flight call will see its token is stale.
+  const myToken = ++S._loadToken;
+
   clearPlayerError();
 
-  // Destroy previous HLS instance
-  if (S.hlsInstance) { S.hlsInstance.destroy(); S.hlsInstance = null; }
+  // Destroy previous HLS instance immediately so old network requests stop.
+  if (S.hlsInstance) {
+    try { S.hlsInstance.destroy(); } catch (_) { }
+    S.hlsInstance = null;
+  }
+  // Also hard-stop the video element to silence "interrupted" console warnings.
+  try { video.pause(); video.removeAttribute('src'); video.load(); } catch (_) { }
+
+  // Demo-only channel (no credentials/stream_id) — show friendly message
+  if (ch._demoOnly || !ch.stream_id) {
+    showPlayerError('Connect your IPTV provider in Settings to watch live streams.');
+    return;
+  }
+
+  if (!S.server || !S.user || !S.pass) {
+    showPlayerError('No provider connected. Go to Settings and enter your credentials.');
+    return;
+  }
 
   // If VOD direct URL already provided
   if (ch._vodUrl) {
+    if (myToken !== S._loadToken) return;
     video.src = ch._vodUrl;
     video.play().catch(err => showPlayerError('Playback error: ' + err.message));
     updateEPGBar(ch);
@@ -1168,9 +1192,14 @@ async function loadStream(ch) {
     }
   }
 
-  // Read buffer size preference
+  // Another channel was clicked while we were awaiting the URL — bail out.
+  if (myToken !== S._loadToken) return;
+
+  // Read buffer size preference — check localStorage first, then DOM select as fallback
+  const bufPref = parseInt(localStorage.getItem('sb_buffer_pref') || '', 10);
   const bufSel = document.getElementById('q-buffer-select');
-  const bufSecs = bufSel ? (bufSel.selectedIndex === 0 ? 3 : bufSel.selectedIndex === 2 ? 10 : 5) : 5;
+  const bufIdx = !isNaN(bufPref) ? bufPref : (bufSel ? bufSel.selectedIndex : 1);
+  const bufSecs = bufIdx === 0 ? 3 : bufIdx === 2 ? 10 : 5;
 
   if (typeof Hls !== 'undefined' && Hls.isSupported()) {
     const hls = new Hls({
@@ -1181,12 +1210,18 @@ async function loadStream(ch) {
       maxMaxBufferLength: bufSecs * 12,
       xhrSetup: function (xhr) { xhr.withCredentials = false; },
     });
+    // If superseded before we even attach, discard immediately.
+    if (myToken !== S._loadToken) { hls.destroy(); return; }
     S.hlsInstance = hls;
     hls.loadSource(hlsUrl);
     hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED, function () {
+      if (myToken !== S._loadToken) return;
       clearPlayerError();
-      video.play().catch(function (err) { showPlayerError('Play blocked: ' + err.message); });
+      video.play().catch(function (err) {
+        if (myToken !== S._loadToken) return;
+        showPlayerError('Play blocked: ' + err.message);
+      });
       hls.on(Hls.Events.FRAG_LOADED, function (_, data) {
         const bw = Math.round((data.frag.stats && data.frag.stats.loaded || 0) * 8 /
           ((data.frag.stats && data.frag.stats.loading && (data.frag.stats.loading.end - data.frag.stats.loading.start) || 1)) / 1000);
@@ -1194,9 +1229,11 @@ async function loadStream(ch) {
       });
     });
     hls.on(Hls.Events.ERROR, function (_, d) {
+      if (myToken !== S._loadToken) return;
       if (d.fatal) {
         showPlayerError('Stream error: ' + (d.type || 'unknown') + ' — trying fallback…');
         hls.destroy(); S.hlsInstance = null;
+        if (myToken !== S._loadToken) return;
         // Fallback: try .ts stream through proxy
         const tsRaw = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
         const tsUrl = IS_ANDROID_WEBVIEW
@@ -1204,8 +1241,10 @@ async function loadStream(ch) {
           : tsRaw;
         video.src = tsUrl;
         video.play().then(function () {
+          if (myToken !== S._loadToken) return;
           clearPlayerError();
         }).catch(function (err) {
+          if (myToken !== S._loadToken) return;
           showPlayerError('Cannot play stream. Check your connection. (' + err.message + ')');
         });
       }
@@ -3370,4 +3409,81 @@ setTimeout(() => {
   if (first) first.focus();
 }, 200);
 
-console.log('[Switchback TV] v3.6 — lang filter, pill nav, toggle-sw kb, ch-row focus ✓');
+// ── PWA: Service Worker + Install Button ─────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => { });
+}
+
+(function initPWAInstall() {
+  let _deferredInstallPrompt = null;
+  const btn = document.getElementById('pwa-install-btn');
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _deferredInstallPrompt = e;
+    if (btn) btn.style.display = '';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    _deferredInstallPrompt = null;
+    if (btn) btn.style.display = 'none';
+  });
+
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      if (!_deferredInstallPrompt) return;
+      _deferredInstallPrompt.prompt();
+      const { outcome } = await _deferredInstallPrompt.userChoice;
+      if (outcome === 'accepted') {
+        _deferredInstallPrompt = null;
+        btn.style.display = 'none';
+      }
+    });
+  }
+
+  // If already running as standalone PWA, hide the button
+  if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (btn) btn.style.display = 'none';
+  }
+})();
+
+// ── SETTINGS BUFFER SELECT SYNC ──────────────────────────────
+// Keep Settings buffer select (settings-buffer-select) in sync with
+// Quality screen buffer select (q-buffer-select) — both control the same preference.
+(function syncBufferSelects() {
+  const PREF_KEY = 'sb_buffer_pref';
+
+  function getBufferSelectEls() {
+    return [
+      document.getElementById('q-buffer-select'),
+      document.getElementById('settings-buffer-select'),
+    ].filter(Boolean);
+  }
+
+  // Restore saved preference on load
+  const saved = localStorage.getItem(PREF_KEY);
+  if (saved != null) {
+    getBufferSelectEls().forEach(el => { el.selectedIndex = parseInt(saved, 10) || 1; });
+  }
+
+  // When either select changes, sync all and save
+  document.addEventListener('change', e => {
+    const el = e.target;
+    if (el.id !== 'q-buffer-select' && el.id !== 'settings-buffer-select') return;
+    const idx = el.selectedIndex;
+    localStorage.setItem(PREF_KEY, String(idx));
+    getBufferSelectEls().forEach(other => { if (other !== el) other.selectedIndex = idx; });
+  });
+
+  // Also sync when Settings screen opens (initSettings runs on nav)
+  const _origInitSettings = window.initSettings || initSettings;
+  initSettings = function () {
+    _origInitSettings.call(this);
+    const saved2 = localStorage.getItem(PREF_KEY);
+    if (saved2 != null) {
+      getBufferSelectEls().forEach(el => { el.selectedIndex = parseInt(saved2, 10) || 1; });
+    }
+  };
+})();
+
+console.log('[Switchback TV] v3.7 — PWA install, buffer sync, lang filter ✓');

@@ -8,6 +8,10 @@ import {
   Switch,
   TextInput,
   Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useStore } from '@/store/useStore';
@@ -15,6 +19,9 @@ import { PlaylistManager } from '@/services/PlaylistManager';
 import { IPTVService, IPTVCredentials } from '@/services/IPTVService';
 import { M3UParser } from '@/services/M3UParser';
 import { UpdateService } from '@/services/UpdateService';
+import { ProviderConfigService } from '@/services/ProviderConfigService';
+
+const APP_VERSION: string = require('../../app.json').expo.version;
 
 interface SettingsScreenProps {
   navigation: any;
@@ -36,6 +43,11 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   const [dezorUsername, setDezorUsername] = useState('');
   const [dezorPassword, setDezorPassword] = useState('');
   const [dezorServer, setDezorServer] = useState('');
+
+  // Provider config import modal
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importPasteText, setImportPasteText] = useState('');
+  const [importing, setImporting] = useState(false);
 
   const adBlockEnabled = adConfig.enabled;
   const adVolumeReduction = adConfig.volumeReductionPercent;
@@ -92,29 +104,95 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
   };
 
   const handleImportConfig = async () => {
+    setShowImportModal(true);
+  };
+
+  const handleImportFromFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/json', 'text/plain'],
+        type: ['application/json', 'text/plain', '*/*'],
         copyToCacheDirectory: true,
       });
-
       if (result.canceled) return;
-
       const file = result.assets[0];
       const response = await fetch(file.uri);
       const text = await response.text();
-      const config = JSON.parse(text);
-
-      // Populate fields from config
-      if (config.server) setServer(config.server);
-      if (config.username) setUsername(config.username);
-      if (config.password) setPassword(config.password);
-      if (config.alt) setAltServer(config.alt);
-      if (config.epg) setEpgUrl(config.epg);
-
-      Alert.alert('Success', 'Config imported! Tap "Update Credentials" to load channels.');
+      await applyProviderConfig(text);
     } catch (error) {
-      Alert.alert('Error', 'Failed to import config: ' + (error as Error).message);
+      Alert.alert('Error', 'Failed to read file: ' + (error as Error).message);
+    }
+  };
+
+  const handleImportFromPaste = async () => {
+    if (!importPasteText.trim()) {
+      Alert.alert('Error', 'Paste your provider config text first.');
+      return;
+    }
+    await applyProviderConfig(importPasteText.trim());
+  };
+
+  const applyProviderConfig = async (text: string) => {
+    setImporting(true);
+    try {
+      // Try ProviderConfigService first (structured JSON)
+      const config = ProviderConfigService.parseConfig(text);
+      if (config) {
+        const result = await ProviderConfigService.importConfig(config);
+        if (result.success) {
+          setShowImportModal(false);
+          setImportPasteText('');
+          Alert.alert('✓ Setup Complete', result.message + '\n\nYour channels are ready!');
+          return;
+        }
+      }
+
+      // Fallback: try parsing as legacy JSON {server, username, password, epg}
+      try {
+        const legacy = JSON.parse(text);
+        if (legacy.server) setServer(legacy.server);
+        if (legacy.username) setUsername(legacy.username);
+        if (legacy.password) setPassword(legacy.password);
+        if (legacy.alt) setAltServer(legacy.alt);
+        if (legacy.epg) setEpgUrl(legacy.epg);
+        if (legacy.server && legacy.username && legacy.password) {
+          // Auto-load playlist
+          const creds: IPTVCredentials = {
+            username: legacy.username,
+            password: legacy.password,
+            server: legacy.server,
+            altServer: legacy.alt || '',
+          };
+          const svc = new IPTVService(creds);
+          const playlist = await M3UParser.fetchAndParse(
+            svc.getPlaylistUrl(),
+            'imported-playlist',
+            `${legacy.username}'s Channels`
+          );
+          addPlaylist(playlist);
+          setCurrentPlaylist(playlist);
+          setShowImportModal(false);
+          setImportPasteText('');
+          Alert.alert('✓ Setup Complete', `Loaded ${playlist.channels.length} channels. You\'re all set!`);
+          return;
+        }
+      } catch { /* not JSON, fall through */ }
+
+      // If it's just a plain M3U URL
+      if (text.startsWith('http') && (text.includes('m3u') || text.includes('get.php'))) {
+        const playlist = await M3UParser.fetchAndParse(text, 'url-import', 'Imported Playlist');
+        addPlaylist(playlist);
+        setCurrentPlaylist(playlist);
+        setShowImportModal(false);
+        setImportPasteText('');
+        Alert.alert('✓ Setup Complete', `Loaded ${playlist.channels.length} channels!`);
+        return;
+      }
+
+      Alert.alert('Error', 'Could not recognise this config format. Ask your provider for a Switchback TV config file.');
+    } catch (error) {
+      Alert.alert('Error', 'Import failed: ' + (error as Error).message);
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -226,7 +304,12 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Playlists</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={styles.sectionTitle}>Playlists</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('PlaylistManager')}>
+            <Text style={{ color: '#007AFF', fontSize: 13, fontWeight: '600' }}>Manage Playlists ›</Text>
+          </TouchableOpacity>
+        </View>
         {playlists.map(playlist => (
           <View key={playlist.id} style={styles.playlistItem}>
             <TouchableOpacity
@@ -417,7 +500,15 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             setEpgUrl(text);
             PlaylistManager.saveSettings({ epgUrl: text }).catch(() => { });
           }}
+          returnKeyType="done"
+          blurOnSubmit
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
         />
+        {epgUrl.length > 0 && (
+          <Text style={styles.hint}>TV Guide will use this URL when loaded.</Text>
+        )}
       </View>
 
       <View style={styles.section}>
@@ -450,15 +541,78 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             {checkingUpdate ? 'Checking...' : 'Check for Updates'}
           </Text>
         </TouchableOpacity>
-        <Text style={styles.aboutText}>Current version: {UpdateService.getCurrentVersion()}</Text>
+        <Text style={styles.aboutText}>Current version: {APP_VERSION}</Text>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
-        <Text style={styles.aboutText}>Switchback TV v1.0.0</Text>
+        <Text style={styles.aboutText}>Switchback TV v{APP_VERSION}</Text>
         <Text style={styles.aboutText}>IPTV viewer with previous-channel support</Text>
-        <Text style={styles.aboutText}>Built for Android TV & mobile</Text>
+        <Text style={styles.aboutText}>Built for Android TV &amp; mobile</Text>
       </View>
+
+      {/* ── Provider Config Import Modal ────────────────── */}
+      <Modal
+        visible={showImportModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowImportModal(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>📁 Import Provider Config</Text>
+              <TouchableOpacity onPress={() => { setShowImportModal(false); setImportPasteText(''); }}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              Get a config from your IPTV provider and paste it below, or load a file. Tap Done and you're all set — no typing required.
+            </Text>
+
+            <TextInput
+              style={[styles.input, styles.pasteInput]}
+              placeholder={'Paste config text, JSON, or M3U URL here…'}
+              placeholderTextColor="#555"
+              value={importPasteText}
+              onChangeText={setImportPasteText}
+              multiline
+              numberOfLines={5}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <TouchableOpacity
+              style={[styles.updateButton, importing && styles.btnDisabled]}
+              onPress={handleImportFromPaste}
+              disabled={importing}
+            >
+              {importing
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={styles.buttonText}>✓ Done — Set Up My App</Text>
+              }
+            </TouchableOpacity>
+
+            <View style={styles.modalDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity style={styles.importButton} onPress={handleImportFromFile}>
+              <Text style={styles.buttonText}>📂 Choose File from Device</Text>
+            </TouchableOpacity>
+
+            <Text style={[styles.hint, { textAlign: 'center', marginTop: 14 }]}>
+              Supports: Switchback config JSON · Legacy JSON · Plain M3U URL
+            </Text>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
   );
 }
@@ -467,6 +621,63 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a1a',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#1e1e1e',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 22,
+    paddingBottom: 36,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  modalClose: {
+    fontSize: 20,
+    color: '#999',
+    paddingHorizontal: 6,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#999',
+    marginBottom: 14,
+    lineHeight: 19,
+  },
+  pasteInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: 12,
+  },
+  btnDisabled: {
+    opacity: 0.5,
+  },
+  modalDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 14,
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#333',
+  },
+  dividerText: {
+    color: '#666',
+    fontSize: 13,
   },
   header: {
     padding: 20,

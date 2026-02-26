@@ -20,8 +20,8 @@ export interface UpdateCheckResult {
 
 export class UpdateService {
   private static UPDATE_CHECK_URL = 'https://switchback.tv/api/version.json';
-  private static CURRENT_VERSION = '1.0.0';
-  private static CURRENT_VERSION_CODE = 1;
+  private static CURRENT_VERSION: string = require('../../app.json').expo.version;
+  private static CURRENT_VERSION_CODE: number = require('../../app.json').expo.android?.versionCode ?? 1;
 
   /**
    * Check for available updates
@@ -108,7 +108,7 @@ export class UpdateService {
   static async downloadUpdate(downloadUrl: string): Promise<void> {
     // On React Native, we can use Linking to open the download URL
     const { Linking } = await import('react-native');
-    
+
     const canOpen = await Linking.canOpenURL(downloadUrl);
     if (canOpen) {
       await Linking.openURL(downloadUrl);

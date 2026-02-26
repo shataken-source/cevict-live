@@ -23,7 +23,7 @@ export default function TVHomeScreen({ navigation }: TVHomeScreenProps) {
         const expires = new Date(currentPlaylist.expiresAt!);
         const diff = expires.getTime() - now.getTime();
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        
+
         if (days < 0) {
           setExpiresIn('Expired');
         } else if (days === 0) {
@@ -32,7 +32,7 @@ export default function TVHomeScreen({ navigation }: TVHomeScreenProps) {
           setExpiresIn(`Expires in ${days} days`);
         }
       };
-      
+
       updateExpiration();
       const interval = setInterval(updateExpiration, 60000);
       return () => clearInterval(interval);
@@ -118,11 +118,9 @@ export default function TVHomeScreen({ navigation }: TVHomeScreenProps) {
 
           <TouchableOpacity
             style={styles.sidebarButton}
-            onPress={() => {
-              // Reload playlist logic
-            }}>
-            <Text style={styles.sidebarIcon}>🔄</Text>
-            <Text style={styles.sidebarText}>Reload</Text>
+            onPress={() => navigation.navigate('PlaylistManager')}>
+            <Text style={styles.sidebarIcon}>�</Text>
+            <Text style={styles.sidebarText}>Playlists</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -167,11 +165,11 @@ export default function TVHomeScreen({ navigation }: TVHomeScreenProps) {
 
         <TouchableOpacity
           style={styles.tile}
-          onPress={() => navigation.navigate('Settings')}>
+          onPress={() => navigation.navigate('Search')}>
           <View style={styles.tileIcon}>
-            <Text style={styles.tileIconText}>👤</Text>
+            <Text style={styles.tileIconText}>�</Text>
           </View>
-          <Text style={styles.tileLabel}>Account</Text>
+          <Text style={styles.tileLabel}>Search</Text>
         </TouchableOpacity>
       </View>
     </View>
