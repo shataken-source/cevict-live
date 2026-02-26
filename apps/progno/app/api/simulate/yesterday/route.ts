@@ -35,11 +35,11 @@ export async function GET(request: NextRequest) {
     for (const sport of SPORTS) {
       try {
         const sportKey = sport === 'NFL' ? 'americanfootball_nfl' :
-                        sport === 'NBA' ? 'basketball_nba' :
-                        sport === 'MLB' ? 'baseball_mlb' :
-                        sport === 'NHL' ? 'icehockey_nhl' :
-                        sport === 'NCAAF' ? 'americanfootball_ncaaf' :
-                        'basketball_ncaab';
+          sport === 'NBA' ? 'basketball_nba' :
+            sport === 'MLB' ? 'baseball_mlb' :
+              sport === 'NHL' ? 'icehockey_nhl' :
+                sport === 'NCAAF' ? 'americanfootball_ncaaf' :
+                  'basketball_ncaab';
 
         // Fetch completed games from yesterday
         const scoresUrl = `https://api.the-odds-api.com/v4/sports/${sportKey}/scores/?daysFrom=1&apiKey=${apiKey}`;
@@ -66,24 +66,29 @@ export async function GET(request: NextRequest) {
         }
 
         // Convert to Game format
-        const games = yesterdayGames.map((item: any) => ({
-          id: item.id || `${item.home_team}-${item.away_team}-${item.commence_time}`,
-          homeTeam: item.home_team,
-          awayTeam: item.away_team,
-          sport: sport,
-          date: new Date(item.commence_time),
-          venue: item.venue || 'TBD',
-          odds: {
-            home: -110,
-            away: 110,
-            spread: item.scores?.[0]?.spread || undefined,
-            total: item.scores?.[0]?.total || undefined,
-          },
-          liveScore: item.scores?.[0] ? {
-            home: item.scores[0].scores?.find((s: any) => s.name === item.home_team)?.score || 0,
-            away: item.scores[0].scores?.find((s: any) => s.name === item.away_team)?.score || 0,
-          } : undefined,
-        }));
+        // Odds API v4 scores response: scores is a top-level array of {name, score} per game
+        const games = yesterdayGames.map((item: any) => {
+          const homeScore = item.scores?.find((s: any) => s.name === item.home_team)?.score;
+          const awayScore = item.scores?.find((s: any) => s.name === item.away_team)?.score;
+          return {
+            id: item.id || `${item.home_team}-${item.away_team}-${item.commence_time}`,
+            homeTeam: item.home_team,
+            awayTeam: item.away_team,
+            sport: sport,
+            date: new Date(item.commence_time),
+            venue: 'TBD',
+            odds: {
+              home: -110,
+              away: 110,
+              spread: undefined,
+              total: undefined,
+            },
+            liveScore: item.scores ? {
+              home: Number(homeScore ?? 0),
+              away: Number(awayScore ?? 0),
+            } : undefined,
+          };
+        });
 
         // Run predictions with Claude Effect
         const analysis = await analyzeWeeklyGames(games);
@@ -92,8 +97,8 @@ export async function GET(request: NextRequest) {
           const claudeEffect = (pred as any).claudeEffect || null;
           const actualWinner = pred.game.liveScore
             ? (pred.game.liveScore.home > pred.game.liveScore.away
-                ? pred.game.homeTeam
-                : pred.game.awayTeam)
+              ? pred.game.homeTeam
+              : pred.game.awayTeam)
             : null;
           const correct = pred.game.liveScore
             ? pred.predictedWinner === actualWinner

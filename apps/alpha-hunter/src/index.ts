@@ -71,14 +71,11 @@ class AlphaHunter {
   async initialize(): Promise<void> {
     console.log('\n🔧 Initializing Alpha Hunter...\n');
 
-    // Check account
-    const account = await this.funds.getAccount();
-    console.log(`💰 Account Balance: $${account.balance.toFixed(2)}`);
-    console.log(`📊 Available Funds: $${account.availableFunds.toFixed(2)}`);
-    console.log(`📈 Total Profit: $${account.totalProfit.toFixed(2)}`);
+    // Wait for fund manager hydration before reading balances
+    await this.funds.ready;
 
-    // Check integrations
-    console.log('\n🔌 Checking integrations...');
+    // Check integrations first so we can update fund manager with live balances
+    console.log('🔌 Checking integrations...');
 
     const kalshiBalance = await this.kalshi.getBalance();
     const kalshiLabel = kalshiBalance < 0
@@ -86,11 +83,22 @@ class AlphaHunter {
       : (kalshiBalance > 0 ? '✅ Connected' : '⚠️ Zero balance');
     console.log(`   ├─ Kalshi: ${kalshiLabel}${kalshiBalance >= 0 ? ` ($${kalshiBalance})` : ''}`);
 
+    // Update fund manager with live Kalshi balance
+    if (kalshiBalance > 0) {
+      this.funds.updateKalshiBalance(kalshiBalance);
+    }
+
     const prognoStatus = process.env.PROGNO_BASE_URL ? '✅ Connected' : '⚠️ Using defaults';
     console.log(`   ├─ PROGNO: ${prognoStatus}`);
 
     const smsStatus = this.sms.isConfigured() ? '✅ Configured' : '⚠️ Disabled';
     console.log(`   └─ SMS: ${smsStatus}`);
+
+    // Now show account with hydrated + live data
+    const account = await this.funds.getAccount();
+    console.log(`\n💰 Account Balance: $${account.balance.toFixed(2)}`);
+    console.log(`📊 Available Funds: $${account.availableFunds.toFixed(2)}`);
+    console.log(`📈 Total Profit: $${account.totalProfit.toFixed(2)}`);
 
     // Setup scheduled jobs
     this.setupScheduledJobs();

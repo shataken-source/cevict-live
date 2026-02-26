@@ -74,28 +74,70 @@ export class LiveScoreService {
   }
 
   /**
-   * Fetch live scores from API
+   * Fetch live scores from API — ESPN first, Odds API fallback
    */
   private async fetchLiveScores(): Promise<void> {
+    let gotData = false;
+
+    // 1️⃣ Try ESPN first — free, no quota
     try {
-      // Try ESPN API first
       const response = await fetch(
         'https://site.api.espn.com/apis/v2/scoreboard?dates=' + new Date().toISOString().split('T')[0]
       );
-      
-      if (!response.ok) return;
-      
-      const data = await response.json();
-      
-      for (const event of data.events || []) {
-        const game = this.parseESPNEvent(event);
-        if (game) {
-          this.activeGames.set(game.gameId, game);
-          await this.updateGameInDatabase(game);
+
+      if (response.ok) {
+        const data = await response.json();
+        for (const event of data.events || []) {
+          const game = this.parseESPNEvent(event);
+          if (game) {
+            this.activeGames.set(game.gameId, game);
+            await this.updateGameInDatabase(game);
+            gotData = true;
+          }
         }
       }
     } catch (error) {
-      console.error('[LiveScore] Error fetching scores:', error);
+      console.error('[LiveScore] ESPN fetch failed:', error);
+    }
+
+    // 2️⃣ Fallback to Odds API if ESPN returned nothing
+    if (!gotData) {
+      try {
+        const apiKey = process.env.ODDS_API_KEY || process.env.THE_ODDS_API_KEY;
+        if (!apiKey) return;
+        const sports = ['basketball_nba', 'icehockey_nhl', 'americanfootball_nfl', 'baseball_mlb'];
+        for (const sportKey of sports) {
+          const res = await fetch(
+            `https://api.the-odds-api.com/v4/sports/${sportKey}/scores/?apiKey=${apiKey}`,
+            { cache: 'no-store' }
+          );
+          if (!res.ok) continue;
+          const games = await res.json();
+          for (const g of (Array.isArray(games) ? games : [])) {
+            if (!g.home_team || !g.away_team) continue;
+            const hs = g.scores?.find((s: any) => s.name === g.home_team)?.score;
+            const as = g.scores?.find((s: any) => s.name === g.away_team)?.score;
+            const commenced = g.commence_time ? new Date(g.commence_time).getTime() <= Date.now() : false;
+            const isLive = commenced && !g.completed;
+            const game: LiveGameScore = {
+              gameId: g.id,
+              sport: sportKey.split('_').pop()?.toUpperCase() || 'unknown',
+              homeTeam: g.home_team,
+              awayTeam: g.away_team,
+              homeScore: Number(hs ?? 0),
+              awayScore: Number(as ?? 0),
+              quarter: '',
+              timeRemaining: '',
+              status: g.completed ? 'final' : isLive ? 'live' : 'upcoming',
+              lastUpdate: g.last_update || new Date().toISOString(),
+            };
+            this.activeGames.set(game.gameId, game);
+            await this.updateGameInDatabase(game);
+          }
+        }
+      } catch (error) {
+        console.error('[LiveScore] Odds API fallback failed:', error);
+      }
     }
   }
 
@@ -182,12 +224,12 @@ export class LiveScoreService {
     }
 
     const isHomeTeam = originalPick === score.homeTeam;
-    const isWinning = isHomeTeam 
-      ? score.homeScore > score.awayScore 
+    const isWinning = isHomeTeam
+      ? score.homeScore > score.awayScore
       : score.awayScore > score.homeScore;
-    
-    const isLosing = isHomeTeam 
-      ? score.homeScore < score.awayScore 
+
+    const isLosing = isHomeTeam
+      ? score.homeScore < score.awayScore
       : score.awayScore > score.homeScore;
 
     const margin = Math.abs(score.homeScore - score.awayScore);
@@ -304,7 +346,7 @@ export class LiveScoreService {
    */
   async getUpcomingGames(): Promise<Array<{ gameId: string; startTime: string; teams: string }>> {
     const thirtyMinutesFromNow = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-    
+
     const { data, error } = await this.supabase
       .from('live_games')
       .select('game_id, start_time, home_team, away_team')

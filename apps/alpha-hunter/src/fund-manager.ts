@@ -76,12 +76,15 @@ export class UnifiedFundManager {
   private allocatedFunds: Map<string, number> = new Map();
   private trades: Map<string, Trade> = new Map();
 
+  // Hydration promise — await this before reading balances at startup
+  public ready: Promise<void>;
+
   constructor(config?: Partial<AllocationConfig>) {
     if (config) {
       this.allocation = { ...this.allocation, ...config };
     }
     // Auto-initialize from database if Supabase is available
-    this.initialize().catch(() => {
+    this.ready = this.initialize().catch(() => {
       // Silent fail - will use defaults
     });
   }

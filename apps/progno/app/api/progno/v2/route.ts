@@ -14,6 +14,55 @@ const SPORT_KEY: Record<string, string> = {
   cbb: 'baseball_ncaa',
 }
 
+const ESPN_PATH: Record<string, string> = {
+  nba: 'basketball/nba',
+  nhl: 'hockey/nhl',
+  nfl: 'football/nfl',
+  ncaab: 'basketball/mens-college-basketball',
+  ncaaf: 'football/college-football',
+  mlb: 'baseball/mlb',
+  cbb: 'baseball/college-baseball',
+}
+
+async function fetchEspnScores(sport: string): Promise<any[] | null> {
+  const espnPath = ESPN_PATH[sport]
+  if (!espnPath) return null
+  try {
+    const res = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/${espnPath}/scoreboard`,
+      { next: { revalidate: 30 } }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    const games = (data.events || []).map((event: any) => {
+      const comp = event.competitions?.[0]
+      if (!comp) return null
+      const homeComp = comp.competitors?.find((c: any) => c.homeAway === 'home')
+      const awayComp = comp.competitors?.find((c: any) => c.homeAway === 'away')
+      if (!homeComp || !awayComp) return null
+      const statusType = comp.status?.type
+      const isLive = statusType?.state === 'in'
+      const isFinal = statusType?.state === 'post'
+      return {
+        id: event.id,
+        home: homeComp.team?.displayName || '',
+        away: awayComp.team?.displayName || '',
+        homeScore: parseInt(homeComp.score || '0') || 0,
+        awayScore: parseInt(awayComp.score || '0') || 0,
+        completed: isFinal,
+        live: isLive,
+        commence_time: event.date || comp.date || '',
+        last_update: isFinal || isLive ? new Date().toISOString() : null,
+        status: statusType?.shortDetail || statusType?.description || 'Scheduled',
+        source: 'espn',
+      }
+    }).filter(Boolean)
+    return games.length > 0 ? games : null
+  } catch {
+    return null
+  }
+}
+
 function americanToImplied(odds: number | null | undefined): number | null {
   if (odds == null || Number.isNaN(odds as any)) return null
   const o = Number(odds)
@@ -99,19 +148,26 @@ export async function GET(request: Request) {
     }
 
     if (action === 'live-scores') {
+      // 1️⃣ Try ESPN first — free, no quota, near real-time
+      const espn = await fetchEspnScores(sport)
+      if (espn) {
+        return NextResponse.json({ success: true, data: espn })
+      }
+
+      // 2️⃣ Fallback to Odds API if ESPN returned nothing
       if (!apiKey) {
-        // Graceful fallback: no key available, return empty list but success true
         return NextResponse.json({ success: true, data: [] })
       }
-      const remote = `https://api.the-odds-api.com/v4/sports/${oddsKey}/scores/?daysFrom=2&apiKey=${apiKey}`
+      const remote = `https://api.the-odds-api.com/v4/sports/${oddsKey}/scores/?daysFrom=1&apiKey=${apiKey}`
       const res = await throttledFetch('the-odds-api', remote, { cache: 'no-store' })
       if (!res.ok) {
         return NextResponse.json({ success: false, error: `Scores API ${res.status}` }, { status: 502 })
       }
       const data = await res.json()
       const out = (Array.isArray(data) ? data : []).map((g: any) => {
-        const hs = g.scores?.find((s: any) => s.name === g.home_team)?.score ?? g.scores?.find((s: any) => s.name === g.home_team)?.points
-        const as = g.scores?.find((s: any) => s.name === g.away_team)?.score ?? g.scores?.find((s: any) => s.name === g.away_team)?.points
+        const hs = g.scores?.find((s: any) => s.name === g.home_team)?.score
+        const as = g.scores?.find((s: any) => s.name === g.away_team)?.score
+        const commenced = g.commence_time ? new Date(g.commence_time).getTime() <= Date.now() : false
         return {
           id: g.id || toId(g.home_team, g.away_team, g.commence_time),
           home: g.home_team,
@@ -119,7 +175,10 @@ export async function GET(request: Request) {
           homeScore: Number(hs ?? 0),
           awayScore: Number(as ?? 0),
           completed: !!g.completed,
+          live: commenced && !g.completed,
           commence_time: g.commence_time,
+          last_update: g.last_update || null,
+          source: 'odds-api',
         }
       })
       return NextResponse.json({ success: true, data: out })
