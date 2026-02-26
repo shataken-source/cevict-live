@@ -18,10 +18,24 @@ const MASCOT_WORDS = [
   'wolf pack', 'wolfpack', 'yellow jackets', 'golden bears', 'rainbow warriors',
 ]
 
+// Known ESPN truncations: full name → ESPN short name (applied before normalization)
+const ESPN_ALIASES: [RegExp, string][] = [
+  [/arkansas[\s-]little rock/i, 'little rock'],
+  [/texas a&m[\s-]corpus christi/i, 'tamucc'],
+  [/texas a&m[\s-]pine bluff/i, 'tamupb'],
+  [/abilene christian/i, 'abilene'],
+  [/ut rio grande valley/i, 'utrgv'],
+  [/siu edwardsville/i, 'siue'],
+]
+
 export function normalizeForMatch(raw: string): string {
   let name = raw.toLowerCase()
-  name = name.replace(/[-]/g, ' ')      // hyphen → space (Arkansas-Little Rock → arkansas little rock)
-  name = name.replace(/[.,'()]/g, '')
+  // Apply ESPN alias substitutions first
+  for (const [pattern, replacement] of ESPN_ALIASES) {
+    name = name.replace(pattern, replacement)
+  }
+  name = name.replace(/[-]/g, ' ')      // hyphen → space
+  name = name.replace(/[.,'()&]/g, '')
   // Expand common abbreviations before mascot stripping
   name = name.replace(/\bmiss\b/g, 'mississippi')
   name = name.replace(/\bmt\b/g, 'mount')

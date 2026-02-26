@@ -25,8 +25,12 @@ const SPORT_KEY_MAP: Record<string, string> = {
   NHL: 'icehockey_nhl',
   NCAAF: 'americanfootball_ncaaf',
   NCAAB: 'basketball_ncaab',
-  NCAA: 'basketball_ncaab',   // alias — picks sometimes come through as "NCAA"
   CBB: 'baseball_ncaa',
+}
+
+// Leagues that need to search multiple sport buckets (e.g. NCAA = basketball OR baseball)
+const SPORT_KEY_MULTI: Record<string, string[]> = {
+  NCAA: ['NCAAB', 'CBB'],
 }
 
 /** Thin wrapper so existing call sites keep working */
@@ -123,19 +127,31 @@ export async function GET(request: Request) {
   console.log(`[GRADE] Loaded ${picks.length} picks from ${fileName}:`, picks.map(p => `${p.away_team} @ ${p.home_team} (${p.sport || p.league || 'unknown'})`).join(', '))
 
   // Fetch scores — ESPN free scoreboard is primary (no key, near real-time, full coverage)
+  // Also fetch date+1 since the prediction engine sometimes pulls next-day games late at night
+  const nextDate = new Date(date + 'T12:00:00Z')
+  nextDate.setDate(nextDate.getDate() + 1)
+  const nextDateStr = nextDate.toISOString().split('T')[0]
+
   const scoresByKey: Record<string, { home: string; away: string; homeScore: number; awayScore: number; gameId?: string }[]> = {}
   const fallbackSummary: Record<string, string | number> = {}
 
   for (const league of Object.keys(SPORT_KEY_MAP)) {
     try {
-      const gameResults = await fetchPreviousDayResultsFromProviders(league as 'NFL' | 'NBA' | 'NHL' | 'MLB' | 'NCAAB' | 'NCAAF', date)
-      if (gameResults.length > 0) {
-        scoresByKey[league] = gameResults.map(r => ({ home: r.homeTeam, away: r.awayTeam, homeScore: r.homeScore, awayScore: r.awayScore }))
-        console.log(`[GRADE] ${league}: ${scoresByKey[league].length} completed games from ESPN`)
-      } else {
-        scoresByKey[league] = []
-        console.log(`[GRADE] ${league}: 0 completed games from ESPN`)
-      }
+      const [gameResults, nextDayResults] = await Promise.all([
+        fetchPreviousDayResultsFromProviders(league as 'NFL' | 'NBA' | 'NHL' | 'MLB' | 'NCAAB' | 'NCAAF', date),
+        fetchPreviousDayResultsFromProviders(league as 'NFL' | 'NBA' | 'NHL' | 'MLB' | 'NCAAB' | 'NCAAF', nextDateStr).catch(() => []),
+      ])
+      const combined = [...gameResults, ...nextDayResults]
+      // Deduplicate by home+away
+      const seen = new Set<string>()
+      const deduped = combined.filter(r => {
+        const key = `${r.homeTeam}|${r.awayTeam}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      scoresByKey[league] = deduped.map(r => ({ home: r.homeTeam, away: r.awayTeam, homeScore: r.homeScore, awayScore: r.awayScore }))
+      console.log(`[GRADE] ${league}: ${gameResults.length} games (${date}) + ${nextDayResults.length} games (${nextDateStr}) from ESPN`)
     } catch (e) {
       scoresByKey[league] = []
       const msg = (e as Error)?.message ?? 'error'
@@ -212,8 +228,8 @@ export async function GET(request: Request) {
   for (const p of picks) {
     const sport = (p.sport || p.league || 'NBA').toUpperCase()
     const leagueHint = sport in SPORT_KEY_MAP ? sport : null
+    const multiHints = SPORT_KEY_MULTI[sport] ?? null
     const homeMatch = (s: any) => gameTeamsMatch(p.home_team ?? '', p.away_team ?? '', s.home, s.away)
-    // Try hinted league first; if no match, try all leagues (handles missing sport/league in old predictions)
     let match: { home: string; away: string; homeScore: number; awayScore: number } | undefined
     let matchedLeague: string | undefined
     if (leagueHint) {
@@ -221,8 +237,16 @@ export async function GET(request: Request) {
       match = scores.find(homeMatch)
       if (match) matchedLeague = leagueHint
     }
+    // NCAA = could be basketball OR baseball — search both buckets
+    if (!match && multiHints) {
+      for (const lk of multiHints) {
+        const scores = scoresByKey[lk] ?? []
+        match = scores.find(homeMatch)
+        if (match) { matchedLeague = lk; break }
+      }
+    }
     // Only cross-league search if pick has no known sport — prevents NHL picks matching NBA when NHL=0
-    if (!match && !leagueHint) {
+    if (!match && !leagueHint && !multiHints) {
       for (const lk of Object.keys(SPORT_KEY_MAP)) {
         const scores = scoresByKey[lk] ?? []
         match = scores.find(homeMatch)

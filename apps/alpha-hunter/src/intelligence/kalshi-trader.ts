@@ -27,7 +27,7 @@ import {
  *
  * We load by file-location so it works regardless of current working directory.
  */
-const alphaHunterRoot = path.resolve(__dirname, '..', '..', '..'); // src/intelligence -> alpha-hunter/ -> src/ -> repo root
+const alphaHunterRoot = path.resolve(__dirname, '..', '..'); // src/intelligence/ -> src/ -> alpha-hunter/
 const alphaEnvLocal = path.join(alphaHunterRoot, '.env.local');
 const alphaEnv = path.join(alphaHunterRoot, '.env');
 

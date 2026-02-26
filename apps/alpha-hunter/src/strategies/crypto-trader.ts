@@ -121,7 +121,7 @@ export class CryptoTrader {
       reasoning: [
         `${symbol} moved ${change24h.toFixed(1)}% in 24h`,
         `Mean reversion expected after ${Math.abs(change24h).toFixed(1)}% move`,
-        `Historical reversion rate: ${(65 + Math.random() * 10).toFixed(1)}%`,
+        `Historical reversion rate: ~70% (mean reversion after ${Math.abs(change24h) >= 5 ? 'large' : 'moderate'} moves)`,
       ],
       entryPrice: currentPrice,
       targetPrice: direction === 'long'

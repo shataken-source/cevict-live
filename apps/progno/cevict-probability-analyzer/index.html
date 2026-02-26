@@ -439,8 +439,52 @@
               <div class="data-point">
                 <div class="input-group"><label>Source</label><input type="text" class="dp-source"
                     placeholder="e.g., Cevict Flex" /></div>
-                <div class="input-group"><label>Metric</label><input type="text" class="dp-metric"
-                    placeholder="e.g., Confidence" /></div>
+                <div class="input-group"><label>Metric</label><select class="dp-metric">
+                    <option value="">-- Select Metric --</option>
+                    <optgroup label="Model Output">
+                      <option>Confidence %</option>
+                      <option>Win Probability</option>
+                      <option>Edge %</option>
+                      <option>Expected Value</option>
+                      <option>Kelly Stake</option>
+                    </optgroup>
+                    <optgroup label="Line / Odds">
+                      <option>Opening Line</option>
+                      <option>Current Line</option>
+                      <option>Line Movement</option>
+                      <option>Sharp Action %</option>
+                      <option>Public Betting %</option>
+                      <option>Closing Line Value</option>
+                    </optgroup>
+                    <optgroup label="Team Performance">
+                      <option>ATS Record %</option>
+                      <option>Home/Away Win %</option>
+                      <option>Last 10 Win %</option>
+                      <option>Streak (games)</option>
+                      <option>Point Differential</option>
+                      <option>Offensive Rating</option>
+                      <option>Defensive Rating</option>
+                    </optgroup>
+                    <optgroup label="Injury / Roster">
+                      <option>Injury Impact Score</option>
+                      <option>Starters Out</option>
+                      <option>Rest Days</option>
+                    </optgroup>
+                    <optgroup label="Situational">
+                      <option>Revenge Game</option>
+                      <option>Division Rivalry</option>
+                      <option>Travel Fatigue</option>
+                      <option>Weather Impact</option>
+                      <option>Altitude Factor</option>
+                    </optgroup>
+                    <optgroup label="External">
+                      <option>ESPN Power Index</option>
+                      <option>KenPom Rating</option>
+                      <option>NET Ranking</option>
+                      <option>SRS Rating</option>
+                      <option>Elo Rating</option>
+                    </optgroup>
+                  </select></div>
                 <div class="input-group"><label>Value</label><input type="number" class="dp-value" placeholder="0-100"
                     step="0.1" /></div>
                 <div class="input-group"><label>Weight</label><input type="number" class="dp-weight" value="0.8" min="0"
@@ -462,6 +506,27 @@
     const SPORT_ICONS = { 'NFL': '🏈', 'NBA': '🏀', 'NCAAB': '🏀', 'MLB': '⚾', 'NHL': '🏒' };
     let allPicks = [];
     let selectedPick = null;
+
+    const METRIC_OPTIONS = [
+      { group: 'Model Output', options: ['Confidence %', 'Win Probability', 'Edge %', 'Expected Value', 'Kelly Stake'] },
+      { group: 'Line / Odds', options: ['Opening Line', 'Current Line', 'Line Movement', 'Sharp Action %', 'Public Betting %', 'Closing Line Value'] },
+      { group: 'Team Performance', options: ['ATS Record %', 'Home/Away Win %', 'Last 10 Win %', 'Streak (games)', 'Point Differential', 'Offensive Rating', 'Defensive Rating'] },
+      { group: 'Injury / Roster', options: ['Injury Impact Score', 'Starters Out', 'Rest Days'] },
+      { group: 'Situational', options: ['Revenge Game', 'Division Rivalry', 'Travel Fatigue', 'Weather Impact', 'Altitude Factor'] },
+      { group: 'External', options: ['ESPN Power Index', 'KenPom Rating', 'NET Ranking', 'SRS Rating', 'Elo Rating'] },
+    ];
+
+    function metricOptions(selected = '') {
+      let html = '<option value="">-- Select Metric --</option>';
+      for (const grp of METRIC_OPTIONS) {
+        html += `<optgroup label="${grp.group}">`;
+        for (const opt of grp.options) {
+          html += `<option${opt === selected ? ' selected' : ''}>${opt}</option>`;
+        }
+        html += '</optgroup>';
+      }
+      return html;
+    }
 
     function getSportIcon(sport) { return SPORT_ICONS[sport] || '🎯'; }
     function formatOdds(odds) { return odds > 0 ? `+${odds}` : String(odds); }
@@ -635,7 +700,7 @@
         div.className = 'data-point';
         div.innerHTML = `
           <div class="input-group"><label>Source</label><input type="text" class="dp-source" value="Cevict Flex AI" /></div>
-          <div class="input-group"><label>Metric</label><input type="text" class="dp-metric" value="${pick.reasoning[0].substring(0, 40)}" /></div>
+          <div class="input-group"><label>Metric</label><select class="dp-metric">${metricOptions('Confidence %')}</select></div>
           <div class="input-group"><label>Value</label><input type="number" class="dp-value" value="75" step="0.1" /></div>
           <div class="input-group"><label>Weight</label><input type="number" class="dp-weight" value="0.8" min="0" max="1" step="0.1" /></div>
           <button class="btn btn-danger" onclick="removeDataPoint(this)">×</button>
@@ -650,7 +715,7 @@
       div.className = 'data-point';
       div.innerHTML = `
         <div class="input-group"><label>Source</label><input type="text" class="dp-source" placeholder="e.g., ESPN" /></div>
-        <div class="input-group"><label>Metric</label><input type="text" class="dp-metric" placeholder="e.g., Rating" /></div>
+        <div class="input-group"><label>Metric</label><select class="dp-metric">${metricOptions('')}</select></div>
         <div class="input-group"><label>Value</label><input type="number" class="dp-value" placeholder="0-100" step="0.1" /></div>
         <div class="input-group"><label>Weight</label><input type="number" class="dp-weight" value="0.8" min="0" max="1" step="0.1" /></div>
         <button class="btn btn-danger" onclick="removeDataPoint(this)">×</button>

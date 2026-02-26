@@ -76,7 +76,8 @@ function generateKalshiSignature(
   path: string,
   privateKeyPem: string
 ): string {
-  const message = `${timestamp}${method}${path}`;
+  const pathWithoutQuery = path.split('?')[0];
+  const message = `${timestamp}${method}${pathWithoutQuery}`;
 
   try {
     const sign = crypto.createSign('RSA-SHA256');
@@ -107,7 +108,7 @@ async function kalshiRequest(
 ): Promise<any> {
   const baseUrl = credentials.isDemo ? KALSHI_DEMO_API_BASE : KALSHI_API_BASE;
   const url = `${baseUrl}${path}`;
-  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const timestamp = Date.now().toString();
 
   const signature = generateKalshiSignature(
     timestamp,

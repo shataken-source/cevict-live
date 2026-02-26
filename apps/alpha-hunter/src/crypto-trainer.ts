@@ -18,6 +18,10 @@ import { marketLearner } from './intelligence/market-learner';
 import { localAI } from './lib/local-ai';
 import { tradeLogger } from './lib/logger';
 import { beeper } from './lib/beep';
+import { smsAlerter } from './lib/sms-alerter';
+import { tradeLimiter } from './lib/trade-limiter';
+import { emergencyStop } from './lib/emergency-stop';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // ANSI Color Codes & Beep Utilities
 const colors = {
@@ -269,28 +273,36 @@ class CryptoTrainer {
   private claude: Anthropic | null;
   private trades: TradeRecord[] = [];
   private learning: LearningState;
-  private maxTradeUSD = parseFloat(process.env.CRYPTO_MAX_TRADE_SIZE || '5');
-  private minProfitPercent = parseFloat(process.env.CRYPTO_TAKE_PROFIT || '3');
-  private maxLossPercent = parseFloat(process.env.CRYPTO_STOP_LOSS || '2');
+  private maxTradeUSD = parseFloat(process.env.CRYPTO_MAX_TRADE_SIZE || '50');
+  private minProfitPercent = parseFloat(process.env.CRYPTO_TAKE_PROFIT || '5');
+  private maxLossPercent = parseFloat(process.env.CRYPTO_STOP_LOSS || '3');
   private tradingPairs = process.env.CRYPTO_USE_USDC === 'true'
     ? ['BTC-USDC', 'ETH-USDC', 'SOL-USDC']
     : ['BTC-USD', 'ETH-USD', 'SOL-USD'];
   private useUSDC = process.env.CRYPTO_USE_USDC === 'true';
   private disableAutoConvert = process.env.CRYPTO_DISABLE_AUTO_CONVERT === 'true';
   private isRunning = false;
-  private learnedConcepts: Set<string> = new Set(); // Track learned crypto concepts
+  private learnedConcepts: Set<string> = new Set();
 
   // SAFETY: Prevent runaway conversions
   private conversionAttempted = false;
   private totalConvertedThisSession = 0;
-  private maxConversionPerSession = 500; // Never convert more than this per session
+  private maxConversionPerSession = 500;
   private baseCurrency = process.env.CRYPTO_USE_USDC === 'true' ? 'USDC' : 'USD';
 
   // Track estimated USD (invisible to API but usable)
   private estimatedUSD = 0;
   private tradesThisSession = 0;
   private lastBalanceRefresh: Date = new Date(0);
-  private balanceRefreshInterval = 60000; // Refresh every 60 seconds minimum
+  private balanceRefreshInterval = 60000;
+
+  // Production 24/7 additions
+  private supabase: SupabaseClient | null = null;
+  private cycleCount = 0;
+  private startTime = new Date();
+  private lastDailySummary: string = ''; // Track last daily summary date
+  private consecutiveErrors = 0;
+  private maxConsecutiveErrors = 10; // Pause trading after N consecutive errors
 
   constructor() {
     // Debug: Verify env vars are loaded
@@ -305,6 +317,17 @@ class CryptoTrainer {
     this.claude = process.env.ANTHROPIC_API_KEY
       ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
       : null;
+
+    // Initialize Supabase for trade persistence
+    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (sbUrl && sbKey) {
+      this.supabase = createClient(sbUrl, sbKey);
+      console.log('📦 Supabase connected for trade persistence');
+    } else {
+      console.warn('⚠️ Supabase not configured — trades will be in-memory only');
+    }
+
     this.learning = {
       totalTrades: 0,
       wins: 0,
@@ -317,6 +340,121 @@ class CryptoTrainer {
         losingStrategies: []
       }
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // SUPABASE TRADE PERSISTENCE
+  // ═══════════════════════════════════════════════════════════
+
+  private async persistTrade(trade: TradeRecord): Promise<void> {
+    if (!this.supabase) return;
+    try {
+      await this.supabase.from('alpha_hunter_trades').upsert({
+        id: trade.id,
+        pair: trade.pair,
+        side: trade.side,
+        entry_price: trade.entryPrice,
+        exit_price: trade.exitPrice || null,
+        size: trade.size,
+        usd_value: trade.usdValue,
+        profit: trade.profit || null,
+        profit_percent: trade.profitPercent || null,
+        reason: trade.reason,
+        opened_at: trade.timestamp.toISOString(),
+        closed: trade.closed,
+        take_profit_price: trade.takeProfitPrice,
+        stop_loss_price: trade.stopLossPrice,
+        platform: 'coinbase',
+      }, { onConflict: 'id' });
+    } catch (err: any) {
+      console.warn(`   ⚠️ Failed to persist trade: ${err.message}`);
+    }
+  }
+
+  private async loadOpenTrades(): Promise<void> {
+    if (!this.supabase) return;
+    try {
+      const { data } = await this.supabase
+        .from('alpha_hunter_trades')
+        .select('*')
+        .eq('closed', false)
+        .eq('platform', 'coinbase');
+      if (data && data.length > 0) {
+        for (const row of data) {
+          this.trades.push({
+            id: row.id,
+            pair: row.pair,
+            side: row.side,
+            entryPrice: row.entry_price,
+            exitPrice: row.exit_price,
+            size: row.size,
+            usdValue: row.usd_value,
+            profit: row.profit,
+            profitPercent: row.profit_percent,
+            reason: row.reason,
+            timestamp: new Date(row.opened_at),
+            closed: false,
+            takeProfitPrice: row.take_profit_price,
+            stopLossPrice: row.stop_loss_price,
+          });
+        }
+        console.log(`📦 Restored ${data.length} open positions from Supabase`);
+      }
+    } catch (err: any) {
+      console.warn(`   ⚠️ Failed to load trades: ${err.message}`);
+    }
+  }
+
+  private async persistHeartbeat(): Promise<void> {
+    if (!this.supabase) return;
+    try {
+      const openTrades = this.trades.filter(t => !t.closed);
+      await this.supabase.from('alpha_hunter_accounts').upsert({
+        id: 'crypto-trainer-heartbeat',
+        data: {
+          last_heartbeat: new Date().toISOString(),
+          cycle_count: this.cycleCount,
+          uptime_minutes: Math.round((Date.now() - this.startTime.getTime()) / 60000),
+          open_positions: openTrades.length,
+          session_pnl: this.learning.totalProfit,
+          session_trades: this.learning.totalTrades,
+          estimated_usd: this.estimatedUSD,
+        },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
+    } catch { /* silent */ }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // SMS DAILY SUMMARY
+  // ═══════════════════════════════════════════════════════════
+
+  private async sendDailySummaryIfNeeded(): Promise<void> {
+    const today = new Date().toISOString().split('T')[0];
+    const hour = new Date().getHours();
+    // Send summary at 9 PM CT
+    if (hour !== 21 || this.lastDailySummary === today) return;
+    this.lastDailySummary = today;
+
+    const winRate = this.learning.totalTrades > 0
+      ? (this.learning.wins / this.learning.totalTrades * 100).toFixed(1)
+      : '0';
+    const openCount = this.trades.filter(t => !t.closed).length;
+    const uptimeHrs = ((Date.now() - this.startTime.getTime()) / 3600000).toFixed(1);
+
+    const msg = [
+      `📊 CRYPTO TRADER DAILY SUMMARY`,
+      `Date: ${today}`,
+      `Trades: ${this.learning.totalTrades} (${this.learning.wins}W/${this.learning.losses}L)`,
+      `Win Rate: ${winRate}%`,
+      `P&L: $${this.learning.totalProfit.toFixed(2)}`,
+      `Open: ${openCount} positions`,
+      `USD: $${this.estimatedUSD.toFixed(2)}`,
+      `Uptime: ${uptimeHrs}h | Cycles: ${this.cycleCount}`,
+    ].join('\n');
+
+    await smsAlerter.tradeExecuted('DAILY_SUMMARY', 0, 'BUY', 'Coinbase');
+    console.log('\n📱 Daily summary SMS sent');
   }
 
   async initialize(): Promise<void> {
@@ -336,82 +474,48 @@ class CryptoTrainer {
     // Show AI status
     console.log(`🧠 AI Brain: ${this.claude ? '✅ Claude connected' : '⚠️ No AI (using basic logic)'}`);
 
+    // Load open trades from Supabase (survive restarts)
+    await this.loadOpenTrades();
+
     // Check available funds and sync balance
     await this.showPortfolio();
     await this.refreshBalances(true); // Force initial sync
+
+    // Send startup SMS
+    await smsAlerter.botStarted();
   }
 
   async showPortfolio(): Promise<void> {
     console.log('\n💰 PORTFOLIO STATUS:');
     console.log('━'.repeat(50));
 
-    // Check if Coinbase is configured
     if (!this.coinbase.isConfigured()) {
       console.log('  ⚠️ Coinbase running in SIMULATION mode');
       console.log('  Set COINBASE_API_KEY and COINBASE_API_SECRET for real balances');
     }
 
-    const accounts = await this.coinbase.getAccounts();
-    console.log(`  📋 Found ${accounts.length} accounts from Coinbase`);
+    // Use portfolio breakdown endpoint (includes staked funds)
+    const portfolio = await this.coinbase.getPortfolio();
 
-    // Show accounts with balance OR hold (unstaking)
-    const withAssets = accounts.filter(a => a.available > 0.000001 || a.hold > 0.000001);
-
-    let totalUSD = 0;
-    let totalHeldUSD = 0;
-    let usdCash = 0;
-
-    for (const acc of withAssets) {
-      if (acc.currency === this.baseCurrency) {
-        usdCash = acc.available;
-        totalUSD += acc.available;
-        totalHeldUSD += acc.hold || 0;
-        let line = `  💵 ${this.baseCurrency}: $${acc.available.toFixed(2)}`;
-        if (acc.hold > 0) line += ` (+ $${acc.hold.toFixed(2)} held)`;
-        console.log(line);
-      } else {
-        // Handle stablecoins (USDC, DAI, USDT = $1)
-        const stablecoins = ['USDC', 'DAI', 'USDT', 'GUSD', 'PAX', 'BUSD'];
-        if (stablecoins.includes(acc.currency)) {
-          const availValue = acc.available;
-          const holdValue = acc.hold || 0;
-          totalUSD += availValue;
-          totalHeldUSD += holdValue;
-          console.log(`  💵 ${acc.currency}: $${availValue.toFixed(2)} (stablecoin)`);
-          continue;
-        }
-
-        // Get price for this asset
-        try {
-          const ticker = await this.coinbase.getTicker(`${acc.currency}-USD`);
-          const availValue = acc.available * ticker.price;
-          const holdValue = (acc.hold || 0) * ticker.price;
-          totalUSD += availValue;
-          totalHeldUSD += holdValue;
-
-          let line = `  🪙 ${acc.currency}: ${acc.available.toFixed(8)} @ $${ticker.price.toLocaleString()} = $${availValue.toFixed(2)}`;
-          if (acc.hold > 0.000001) {
-            line += `\n     ⏳ Unstaking: ${acc.hold.toFixed(8)} (~$${holdValue.toFixed(2)})`;
-          }
-          console.log(line);
-        } catch {
-          // Silently skip delisted coins (no price available)
-        }
-      }
+    // Show top positions
+    const sorted = [...portfolio.positions].sort((a, b) => b.value - a.value);
+    for (const p of sorted) {
+      if (p.value < 0.50) continue;
+      const tag = p.staked ? ' [STAKED]' : '';
+      console.log(`  🪙 ${p.symbol}: ${p.amount.toFixed(6)} = $${p.value.toFixed(2)}${tag}`);
     }
 
     console.log('━'.repeat(50));
-    console.log(`  💵 USD Cash: $${usdCash.toFixed(2)}`);
-    console.log(`  📊 Available: ~$${totalUSD.toFixed(2)}`);
-    if (totalHeldUSD > 0.01) {
-      console.log(`  ⏳ Unstaking: ~$${totalHeldUSD.toFixed(2)}`);
-      console.log(`  💰 Total (when unlocked): ~$${(totalUSD + totalHeldUSD).toFixed(2)}`);
+    console.log(`  💵 Cash (USD/USDC): $${portfolio.usdBalance.toFixed(2)}`);
+    if (portfolio.stakedValue > 0.01) {
+      console.log(`  🔒 Staked: $${portfolio.stakedValue.toFixed(2)}`);
     }
+    console.log(`  � Total Portfolio: $${portfolio.totalValue.toFixed(2)}`);
     console.log('');
 
-    // Update unified fund manager with crypto balance
+    // Update unified fund manager with FULL portfolio value
     const openPositionValue = this.trades.filter(t => !t.closed).reduce((sum, t) => sum + t.usdValue, 0);
-    fundManager.updateCryptoBalance(totalUSD - openPositionValue, openPositionValue);
+    fundManager.updateCryptoBalance(portfolio.totalValue - openPositionValue, openPositionValue);
   }
 
   async getUSDBalance(): Promise<number> {
@@ -423,7 +527,7 @@ class CryptoTrainer {
 
   /**
    * Refresh balances from Coinbase and sync estimatedUSD
-   * Call this after trades complete or periodically
+   * Uses portfolio breakdown endpoint to include staked funds
    */
   async refreshBalances(force: boolean = false): Promise<void> {
     const now = new Date();
@@ -437,40 +541,7 @@ class CryptoTrainer {
     console.log('\n💫 Refreshing balances from Coinbase...');
 
     try {
-      const accounts = await this.coinbase.getAccounts();
-      const withAssets = accounts.filter(a => a.available > 0.000001 || a.hold > 0.000001);
-
-      let totalPortfolioUSD = 0;
-      let unstakingUSD = 0;
-      let usdCash = 0;
-      let cryptoValueUSD = 0;
-
-      const stablecoins = ['USDC', 'DAI', 'USDT', 'GUSD', 'PAX', 'BUSD'];
-
-      for (const acc of withAssets) {
-        if (acc.currency === this.baseCurrency) {
-          usdCash = acc.available;
-          totalPortfolioUSD += acc.available;
-          unstakingUSD += acc.hold || 0;
-        } else if (stablecoins.includes(acc.currency)) {
-          // Stablecoins = $1
-          usdCash += acc.available; // Count as spendable USD
-          totalPortfolioUSD += acc.available;
-          unstakingUSD += acc.hold || 0;
-        } else {
-          // Get price for this asset
-          try {
-            const ticker = await this.coinbase.getTicker(`${acc.currency}-USD`);
-            const availValue = acc.available * ticker.price;
-            const holdValue = (acc.hold || 0) * ticker.price;
-            cryptoValueUSD += availValue;
-            totalPortfolioUSD += availValue;
-            unstakingUSD += holdValue;
-          } catch {
-            // Skip delisted coins
-          }
-        }
-      }
+      const portfolio = await this.coinbase.getPortfolio();
 
       // Calculate how much is tied up in open positions
       const openPositionValue = this.trades
@@ -479,19 +550,18 @@ class CryptoTrainer {
 
       // Sync estimatedUSD with actual USD cash (what we can actually trade with)
       const previousEstimate = this.estimatedUSD;
-      this.estimatedUSD = usdCash;
+      this.estimatedUSD = portfolio.usdBalance;
 
-      // Update fund manager with TOTAL portfolio value (USD + crypto)
-      fundManager.updateCryptoBalance(totalPortfolioUSD - openPositionValue, openPositionValue);
+      // Update fund manager with FULL portfolio value (wallet + staked)
+      fundManager.updateCryptoBalance(portfolio.totalValue - openPositionValue, openPositionValue);
 
       this.lastBalanceRefresh = now;
 
-      console.log(`   💵 USD Cash: $${usdCash.toFixed(2)}`);
-      console.log(`   🪙 Crypto (available): $${cryptoValueUSD.toFixed(2)}`);
-      if (unstakingUSD > 0.01) {
-        console.log(`   ⏳ Unstaking: $${unstakingUSD.toFixed(2)}`);
+      console.log(`   💵 USD Cash: $${portfolio.usdBalance.toFixed(2)}`);
+      if (portfolio.stakedValue > 0.01) {
+        console.log(`   🔒 Staked: $${portfolio.stakedValue.toFixed(2)}`);
       }
-      console.log(`   📊 Total Available: $${totalPortfolioUSD.toFixed(2)}`);
+      console.log(`   📊 Total Portfolio: $${portfolio.totalValue.toFixed(2)}`);
 
       if (Math.abs(this.estimatedUSD - previousEstimate) > 0.01) {
         console.log(`   🔄 USD synced: $${previousEstimate.toFixed(2)} → $${this.estimatedUSD.toFixed(2)}`);
@@ -723,12 +793,16 @@ Respond JSON only: {"signal": "buy|sell|hold", "confidence": 0-100, "reason": "y
       };
 
       this.trades.push(trade);
+      await this.persistTrade(trade);
       console.log(`   ✅ Order filled at $${entryPrice.toLocaleString()}`);
       if (entryFee > 0.01) {
         console.log(`   💰 Entry fee: $${entryFee.toFixed(4)} (0.6% taker fee)`);
       }
       console.log(`   🎯 Take Profit: $${takeProfitPrice.toFixed(2)} (+${this.minProfitPercent}%)`);
       console.log(`   🛑 Stop Loss: $${stopLossPrice.toFixed(2)} (-${this.maxLossPercent}%)`);
+
+      // SMS alert for trade
+      await smsAlerter.tradeExecuted(pair, usdAmount, side.toUpperCase() as 'BUY' | 'SELL', 'Coinbase');
 
       // Log trade and beep
       tradeLogger.logTrade({
@@ -815,6 +889,7 @@ Respond JSON only: {"signal": "buy|sell|hold", "confidence": 0-100, "reason": "y
       trade.profit = actualPnL; // Use actual P&L with fees
       trade.profitPercent = pnlPercent;
       trade.closed = true;
+      await this.persistTrade(trade);
 
       // Log fee information
       if (actualTotalFees > 0.01) {
@@ -897,7 +972,15 @@ ${colors.bright}╚════════════════════�
   }
 
   async runTrainingCycle(): Promise<void> {
-    console.log('\n🔄 Starting training cycle...\n');
+    this.cycleCount++;
+    console.log(`\n🔄 Cycle #${this.cycleCount} starting...\n`);
+
+    // Safety checks
+    const eStop = emergencyStop.canTrade();
+    if (!eStop.allowed) {
+      console.log(`🛑 Emergency stop active: ${eStop.reason}`);
+      return;
+    }
 
     // ALWAYS refresh balances at start of cycle (respects interval)
     await this.refreshBalances();
@@ -1036,8 +1119,24 @@ ${colors.bright}╚════════════════════�
         console.log(`   Price: $${analysis.price.toLocaleString()}`);
         console.log(`   Reason: ${analysis.reason}`);
 
-        // Trade if confidence > 55% and we have estimated USD (increased from $2 to $5 minimum)
-        if (analysis.signal === 'buy' && analysis.confidence > 55 && this.estimatedUSD >= 5) {
+        // Trade if confidence > min and we have estimated USD
+        const minConfidence = parseInt(process.env.CRYPTO_MIN_CONFIDENCE || '65');
+        if (analysis.signal === 'buy' && analysis.confidence >= minConfidence && this.estimatedUSD >= 5) {
+          // Safety: check trade limiter
+          const limitCheck = tradeLimiter.canTrade(this.maxTradeUSD, 'crypto');
+          if (!limitCheck.allowed) {
+            console.log(`   ⛔ Trade limiter: ${limitCheck.reason}`);
+            continue;
+          }
+
+          // Safety: check emergency spending limit
+          const stats = tradeLimiter.getStats();
+          const spendOk = await emergencyStop.checkSpendingLimit(stats.totalSpent, this.maxTradeUSD);
+          if (!spendOk) {
+            console.log(`   🛑 Emergency stop triggered — spending limit`);
+            break;
+          }
+
           // Check with fund manager if we should trade on crypto
           if (!fundManager.shouldTradeOnPlatform('crypto', analysis.confidence)) {
             console.log(`   ⚠️ Fund manager: Crypto over-allocated, skipping...`);
@@ -1057,6 +1156,7 @@ ${colors.bright}╚════════════════════�
           if (trade) {
             this.estimatedUSD -= tradeAmount;
             this.tradesThisSession++;
+            tradeLimiter.recordTrade(pair, tradeAmount, 'crypto');
           }
         } else if (analysis.signal === 'sell' && analysis.confidence > 55) {
           // Check if we have open positions to sell
@@ -1077,32 +1177,69 @@ ${colors.bright}╚════════════════════�
 
     // Show stats
     this.showLearningStats();
+
+    // Production: heartbeat + daily summary
+    await this.persistHeartbeat();
+    await this.sendDailySummaryIfNeeded();
+    this.consecutiveErrors = 0; // Reset error counter on successful cycle
   }
 
-  async startTraining(intervalSeconds: number = 30): Promise<void> {
-    console.log(`\n🚀 Starting continuous training (every ${intervalSeconds} sec)...`);
+  async startTraining(intervalSeconds: number = 60): Promise<void> {
+    console.log(`\n🚀 Starting 24/7 production trading (cycle every ${intervalSeconds}s)...`);
     console.log('   Press Ctrl+C to stop\n');
 
     this.isRunning = true;
 
-    // Handle shutdown
-    process.on('SIGINT', () => {
-      console.log('\n\n🛑 Stopping training...');
+    // Handle shutdown gracefully
+    const shutdown = async () => {
+      console.log('\n\n🛑 Shutting down gracefully...');
       this.isRunning = false;
       this.showLearningStats();
-      console.log('\n👋 Training session ended.\n');
+      await smsAlerter.botStopped('Manual shutdown (Ctrl+C)');
+      console.log('\n👋 Crypto trader stopped.\n');
       process.exit(0);
+    };
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
+
+    // Handle uncaught errors — log but keep running
+    process.on('uncaughtException', (err) => {
+      console.error(`\n💥 UNCAUGHT EXCEPTION: ${err.message}`);
+      console.error(err.stack);
+      this.consecutiveErrors++;
+    });
+    process.on('unhandledRejection', (reason: any) => {
+      console.error(`\n💥 UNHANDLED REJECTION: ${reason?.message || reason}`);
+      this.consecutiveErrors++;
     });
 
-    // Continuous loop
+    // Production loop with crash recovery
     while (this.isRunning) {
-      await this.runTrainingCycle();
+      try {
+        // Pause if too many consecutive errors
+        if (this.consecutiveErrors >= this.maxConsecutiveErrors) {
+          console.error(`\n🛑 ${this.consecutiveErrors} consecutive errors — pausing 5 minutes...`);
+          await smsAlerter.emergencyStop(`${this.consecutiveErrors} consecutive errors`, 0);
+          await new Promise(r => setTimeout(r, 300000)); // 5 min cooldown
+          this.consecutiveErrors = 0;
+          console.log('🔄 Resuming after cooldown...');
+        }
 
-      // Countdown to next cycle
-      console.log(`\n⏳ Next cycle in ${intervalSeconds} seconds...`);
-      for (let i = intervalSeconds; i > 0 && this.isRunning; i -= 5) {
-        await new Promise(r => setTimeout(r, 5000));
-        if (i > 5) console.log(`   ${i - 5}s...`);
+        await this.runTrainingCycle();
+      } catch (err: any) {
+        this.consecutiveErrors++;
+        console.error(`\n❌ Cycle error #${this.consecutiveErrors}: ${err.message}`);
+        // Don't crash — wait and retry
+        await new Promise(r => setTimeout(r, 10000));
+      }
+
+      // Wait for next cycle
+      if (this.isRunning) {
+        const openCount = this.trades.filter(t => !t.closed).length;
+        // Shorter interval when positions are open (monitor TP/SL)
+        const waitSec = openCount > 0 ? Math.min(intervalSeconds, 30) : intervalSeconds;
+        console.log(`\n⏳ Next cycle in ${waitSec}s${openCount > 0 ? ' (open positions — faster monitoring)' : ''}...`);
+        await new Promise(r => setTimeout(r, waitSec * 1000));
       }
     }
   }
@@ -1110,6 +1247,16 @@ ${colors.bright}╚════════════════════�
 
 // Main
 async function main() {
+  const maxTrade = process.env.CRYPTO_MAX_TRADE_SIZE || '50';
+  const tp = process.env.CRYPTO_TAKE_PROFIT || '5';
+  const sl = process.env.CRYPTO_STOP_LOSS || '3';
+  const minConf = process.env.CRYPTO_MIN_CONFIDENCE || '65';
+  const maxDaily = process.env.CRYPTO_MAX_DAILY_TRADES || '5';
+  const maxLoss = process.env.MAX_DAILY_LOSS || '150';
+  const useUsdc = process.env.CRYPTO_USE_USDC === 'true';
+  const pairs = useUsdc ? 'BTC-USDC, ETH-USDC, SOL-USDC' : 'BTC-USD, ETH-USD, SOL-USD';
+  const aiMode = process.env.ANTHROPIC_API_KEY ? 'Claude AI' : (process.env.USE_LOCAL_AI === 'true' ? 'Ollama Local AI' : 'Momentum-only');
+
   console.log('\n🤖 AUTONOMOUS CRYPTO TRADER STARTING...\n');
 
   const trainer = new CryptoTrainer();
@@ -1122,39 +1269,41 @@ async function main() {
     console.log(`
 ╔══════════════════════════════════════════════════════════════╗
 ║           🔄 SINGLE CYCLE MODE (Scheduled Task) 🔄           ║
-║                                                              ║
-║  • Running one analysis cycle                                ║
-║  • Checking BTC-USDC, ETH-USDC, SOL-USDC                     ║
-║  • Using local AI (Ollama)                                   ║
-║  • Max $5 per trade, 70% min confidence                      ║
-║  • Will exit after cycle completes                           ║
+║  Pairs: ${pairs.padEnd(48)}║
+║  AI: ${aiMode.padEnd(51)}║
 ╚══════════════════════════════════════════════════════════════╝
     `);
-
-    // Run single cycle and exit
     await trainer.runTrainingCycle();
     console.log('\n✅ Cycle complete. Exiting.\n');
     process.exit(0);
   } else {
     console.log(`
 ╔══════════════════════════════════════════════════════════════╗
-║              🚀 RUNNING FULLY AUTONOMOUS 🚀                  ║
+║            🚀 24/7 PRODUCTION CRYPTO TRADER 🚀               ║
 ║                                                              ║
-║  • Monitoring BTC, ETH, SOL every 20 seconds                 ║
-║  • Auto take-profit at +3%                                   ║
-║  • Auto stop-loss at -2%                                     ║
-║  • Local AI powered (Ollama)                                 ║
-║  • Max $5 per trade                                          ║
+║  Pairs: ${pairs.padEnd(48)}║
+║  AI: ${aiMode.padEnd(51)}║
+║  Max Trade: $${maxTrade.padEnd(44)}║
+║  Take Profit: +${tp}% | Stop Loss: -${sl}%${' '.repeat(Math.max(0, 28 - tp.length - sl.length))}║
+║  Min Confidence: ${minConf}%${' '.repeat(Math.max(0, 38 - minConf.length))}║
+║  Daily Limits: ${maxDaily} trades / $${maxLoss} max loss${' '.repeat(Math.max(0, 26 - maxDaily.length - maxLoss.length))}║
+║  Persistence: Supabase (trades survive restarts)             ║
+║  Safety: Emergency stop + Trade limiter + SMS alerts         ║
 ║                                                              ║
-║  Press Ctrl+C to stop                                        ║
+║  Press Ctrl+C for graceful shutdown                          ║
 ╚══════════════════════════════════════════════════════════════╝
     `);
 
-    await trainer.startTraining(20); // Run every 20 seconds for faster monitoring
+    const interval = parseInt(process.env.CRYPTO_CYCLE_SECONDS || '60');
+    await trainer.startTraining(interval);
   }
 }
 
-main().catch(console.error);
+main().catch(async (err) => {
+  console.error('💥 FATAL ERROR:', err);
+  await smsAlerter.emergencyStop(`Fatal crash: ${err.message}`, 0);
+  process.exit(1);
+});
 
 export { CryptoTrainer };
 

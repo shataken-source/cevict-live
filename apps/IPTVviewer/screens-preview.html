@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Switchback TV — Screen Previews</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #111; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #fff; padding: 30px; }
+h1 { font-size: 28px; margin-bottom: 8px; color: #fff; }
+.subtitle { color: #888; margin-bottom: 40px; font-size: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 30px; }
+.screen-wrap { display: flex; flex-direction: column; gap: 8px; }
+.screen-label { font-size: 13px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+.phone { width: 320px; height: 600px; background: #1a1a1a; border-radius: 36px; border: 2px solid #333; overflow: hidden; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.6); display: flex; flex-direction: column; }
+.notch { width: 120px; height: 24px; background: #000; border-radius: 0 0 14px 14px; margin: 0 auto; position: relative; z-index: 10; }
+.screen { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+/* Shared */
+.hdr { background: #2a2a2a; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.hdr-title { font-size: 18px; font-weight: 700; color: #fff; }
+.hdr-btns { display: flex; gap: 6px; }
+.btn { padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; }
+.btn-blue { background: #007AFF; color: #fff; }
+.btn-purple { background: #5856D6; color: #fff; }
+.btn-green { background: #34C759; color: #fff; }
+.btn-gray { background: #555; color: #fff; }
+.btn-red { background: #FF3B30; color: #fff; }
+.btn-orange { background: #FF9500; color: #fff; }
+.input { background: #2a2a2a; border: 1px solid #444; border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 13px; width: 100%; }
+.scroll { flex: 1; overflow-y: auto; padding: 10px 14px; }
+.scroll::-webkit-scrollbar { width: 3px; } .scroll::-webkit-scrollbar-thumb { background: #444; }
+.channel-row { background: #2a2a2a; border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+.channel-name { font-size: 14px; font-weight: 600; color: #fff; }
+.channel-sub { font-size: 11px; color: #888; margin-top: 2px; }
+.star { font-size: 18px; color: #FFD700; }
+.tag { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.tag-live { background: #FF3B3030; color: #FF3B30; border: 1px solid #FF3B3060; }
+.tag-hd { background: #007AFF30; color: #007AFF; border: 1px solid #007AFF60; }
+.section-hdr { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; padding: 8px 0 4px; }
+.pill-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.pill { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.pill-active { background: #007AFF; color: #fff; }
+.pill-inactive { background: #2a2a2a; color: #aaa; }
+.row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a2a2a; }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 700; }
+.badge-green { background: #34C75930; color: #34C759; }
+.badge-red { background: #FF3B3030; color: #FF3B30; }
+.badge-blue { background: #007AFF30; color: #007AFF; }
+.badge-yellow { background: #FF950030; color: #FF9500; }
+</style>
+</head>
+<body>
+<h1>📺 Switchback TV — Screen Previews</h1>
+<p class="subtitle">15 React Native screens rendered as HTML mockups · Dark theme · iPhone form factor</p>
+<div class="grid">
+
+<!-- 1. HOME SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">1 · Home Screen</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">Switchback TV</span>
+      <div class="hdr-btns">
+        <button class="btn btn-gray">★ Favs</button>
+        <button class="btn btn-gray">↩ Hist</button>
+        <button class="btn btn-purple">Guide</button>
+        <button class="btn btn-green">Sample</button>
+        <span style="font-size:18px;padding:4px">⚙</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;padding:10px 14px;">
+      <input class="input" style="flex:1" placeholder="Enter M3U playlist URL" />
+      <button class="btn btn-blue" style="padding:8px 14px">Add</button>
+    </div>
+    <div class="pill-row" style="padding:0 14px">
+      <span class="pill pill-active">All Channels</span>
+      <span class="pill pill-inactive">Favorites</span>
+    </div>
+    <input class="input" style="margin:0 14px 10px;width:calc(100% - 28px)" placeholder="🔍 Search channels..." />
+    <div class="scroll">
+      <div class="channel-row"><div><div class="channel-name">ESPN</div><div class="channel-sub">Sports</div></div><span class="star">★</span></div>
+      <div class="channel-row"><div><div class="channel-name">CNN</div><div class="channel-sub">News</div></div><span class="star">☆</span></div>
+      <div class="channel-row"><div><div class="channel-name">HBO</div><div class="channel-sub">Premium</div></div><span class="star">★</span></div>
+      <div class="channel-row"><div><div class="channel-name">NFL Network</div><div class="channel-sub">Sports</div></div><span class="star">☆</span></div>
+      <div class="channel-row"><div><div class="channel-name">Discovery</div><div class="channel-sub">Documentary</div></div><span class="star">☆</span></div>
+      <div class="channel-row"><div><div class="channel-name">Fox News</div><div class="channel-sub">News</div></div><span class="star">☆</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 2. CHANNELS SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">2 · Channels Screen</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">Channels</span>
+      <div class="hdr-btns"><button class="btn btn-blue">← Back</button></div>
+    </div>
+    <div class="pill-row" style="padding:8px 14px 0">
+      <span class="pill pill-active">All</span>
+      <span class="pill pill-inactive">Sports</span>
+      <span class="pill pill-inactive">News</span>
+      <span class="pill pill-inactive">Movies</span>
+      <span class="pill pill-inactive">Kids</span>
+    </div>
+    <input class="input" style="margin:8px 14px;width:calc(100% - 28px)" placeholder="🔍 Search..." />
+    <div class="scroll">
+      <div class="section-hdr">Sports</div>
+      <div class="channel-row"><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;background:#FF3B3020;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px">🏈</div><div><div class="channel-name">ESPN</div><div class="channel-sub">SportsCenter Live</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="tag tag-live">LIVE</span><span class="tag tag-hd">HD</span></div></div>
+      <div class="channel-row"><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;background:#007AFF20;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px">🏀</div><div><div class="channel-name">NBA TV</div><div class="channel-sub">Game of the Week</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><span class="tag tag-live">LIVE</span><span class="tag tag-hd">HD</span></div></div>
+      <div class="section-hdr">News</div>
+      <div class="channel-row"><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;background:#34C75920;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px">📺</div><div><div class="channel-name">CNN</div><div class="channel-sub">Breaking News</div></div></div><span class="tag tag-live">LIVE</span></div>
+      <div class="channel-row"><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;background:#FF950020;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px">📰</div><div><div class="channel-name">Fox News</div><div class="channel-sub">America's Newsroom</div></div></div><span class="tag tag-hd">HD</span></div>
+      <div class="section-hdr">Movies</div>
+      <div class="channel-row"><div style="display:flex;align-items:center;gap:8px"><div style="width:32px;height:32px;background:#5856D620;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px">🎬</div><div><div class="channel-name">HBO</div><div class="channel-sub">The White Lotus</div></div></div><span class="tag tag-hd">HD</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 3. PLAYER SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">3 · Player Screen</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen" style="background:#000">
+    <div style="background:#000;flex:1;display:flex;flex-direction:column;position:relative">
+      <div style="flex:1;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);display:flex;align-items:center;justify-content:center;position:relative">
+        <div style="text-align:center">
+          <div style="font-size:48px">▶</div>
+          <div style="font-size:14px;color:#aaa;margin-top:8px">ESPN HD</div>
+        </div>
+        <!-- top controls -->
+        <div style="position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center">
+          <button class="btn btn-gray" style="font-size:11px">← Back</button>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-gray">⏺ REC</button>
+            <button class="btn btn-gray">📺 Cast</button>
+          </div>
+        </div>
+        <!-- program info -->
+        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,0.9));padding:12px">
+          <div style="font-size:13px;font-weight:700;color:#fff">SportsCenter</div>
+          <div style="font-size:11px;color:#aaa">ESPN · 8:00 PM – 9:00 PM</div>
+          <div style="margin-top:6px;background:#333;border-radius:3px;height:3px"><div style="background:#007AFF;width:45%;height:100%;border-radius:3px"></div></div>
+        </div>
+      </div>
+      <!-- bottom controls -->
+      <div style="background:#1a1a1a;padding:10px 14px;display:flex;justify-content:space-around;align-items:center">
+        <button class="btn btn-gray">⏮ Prev</button>
+        <button class="btn btn-blue" style="width:44px;height:44px;border-radius:22px;font-size:18px">⏸</button>
+        <button class="btn btn-gray">Next ⏭</button>
+        <button class="btn btn-gray">🔇</button>
+        <button class="btn btn-gray">⚙ Quality</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 4. EPG SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">4 · EPG / TV Guide</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">TV Guide</span>
+      <div class="hdr-btns">
+        <button class="btn btn-gray">◀ -2h</button>
+        <button class="btn btn-blue">Now</button>
+        <button class="btn btn-gray">+2h ▶</button>
+      </div>
+    </div>
+    <div style="background:#222;padding:6px 14px;display:flex;gap:0;font-size:10px;color:#888;border-bottom:1px solid #333">
+      <div style="width:80px;flex-shrink:0">Channel</div>
+      <div style="flex:1;display:flex;justify-content:space-between"><span>8:00 PM</span><span>8:30</span><span>9:00 PM</span></div>
+    </div>
+    <div class="scroll" style="padding:0">
+      <div style="display:flex;border-bottom:1px solid #222">
+        <div style="width:80px;flex-shrink:0;background:#222;padding:8px 6px;font-size:11px;font-weight:700;border-right:1px solid #333">ESPN</div>
+        <div style="flex:1;display:flex;gap:2px;padding:4px">
+          <div style="flex:2;background:#007AFF20;border:1px solid #007AFF40;border-radius:4px;padding:4px 6px;font-size:10px"><div style="font-weight:700;color:#fff">SportsCenter</div><div style="color:#888">Live</div></div>
+          <div style="flex:1;background:#2a2a2a;border:1px solid #444;border-radius:4px;padding:4px 6px;font-size:10px"><div style="color:#ccc">NFL Live</div></div>
+        </div>
+      </div>
+      <div style="display:flex;border-bottom:1px solid #222">
+        <div style="width:80px;flex-shrink:0;background:#222;padding:8px 6px;font-size:11px;font-weight:700;border-right:1px solid #333">CNN</div>
+        <div style="flex:1;display:flex;gap:2px;padding:4px">
+          <div style="flex:3;background:#FF3B3020;border:1px solid #FF3B3040;border-radius:4px;padding:4px 6px;font-size:10px"><div style="font-weight:700;color:#fff">Breaking News</div><div style="color:#888">Anderson Cooper 360</div></div>
+        </div>
+      </div>
+      <div style="display:flex;border-bottom:1px solid #222">
+        <div style="width:80px;flex-shrink:0;background:#222;padding:8px 6px;font-size:11px;font-weight:700;border-right:1px solid #333">HBO</div>
+        <div style="flex:1;display:flex;gap:2px;padding:4px">
+          <div style="flex:1;background:#2a2a2a;border:1px solid #444;border-radius:4px;padding:4px 6px;font-size:10px"><div style="color:#ccc">White Lotus</div></div>
+          <div style="flex:2;background:#5856D620;border:1px solid #5856D640;border-radius:4px;padding:4px 6px;font-size:10px"><div style="font-weight:700;color:#fff">The Last of Us</div></div>
+        </div>
+      </div>
+      <div style="display:flex;border-bottom:1px solid #222">
+        <div style="width:80px;flex-shrink:0;background:#222;padding:8px 6px;font-size:11px;font-weight:700;border-right:1px solid #333">NFL Net</div>
+        <div style="flex:1;display:flex;gap:2px;padding:4px">
+          <div style="flex:2;background:#34C75920;border:1px solid #34C75940;border-radius:4px;padding:4px 6px;font-size:10px"><div style="font-weight:700;color:#fff">Thursday Night Football</div></div>
+        </div>
+      </div>
+      <div style="display:flex;border-bottom:1px solid #222">
+        <div style="width:80px;flex-shrink:0;background:#222;padding:8px 6px;font-size:11px;font-weight:700;border-right:1px solid #333">Discovery</div>
+        <div style="flex:1;display:flex;gap:2px;padding:4px">
+          <div style="flex:1;background:#2a2a2a;border:1px solid #444;border-radius:4px;padding:4px 6px;font-size:10px"><div style="color:#ccc">Shark Week</div></div>
+          <div style="flex:1;background:#2a2a2a;border:1px solid #444;border-radius:4px;padding:4px 6px;font-size:10px"><div style="color:#ccc">Deadliest Catch</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- 5. FAVORITES SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">5 · Favorites Screen</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">⭐ Favorites</span>
+      <div class="hdr-btns"><button class="btn btn-gray">✕ Close</button></div>
+    </div>
+    <div class="pill-row" style="padding:8px 14px 0">
+      <span class="pill pill-active">All</span>
+      <span class="pill pill-inactive">Sports</span>
+      <span class="pill pill-inactive">News</span>
+      <span class="pill pill-inactive">Smart</span>
+    </div>
+    <div style="background:#1e1e2e;margin:8px 14px;border-radius:10px;padding:10px">
+      <div style="font-size:10px;color:#888;margin-bottom:6px">🤖 SMART SUGGESTIONS</div>
+      <div style="font-size:12px;color:#aaa">Based on your history, you might like:</div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <span class="badge badge-blue">ESPN2</span>
+        <span class="badge badge-blue">FS1</span>
+        <span class="badge badge-blue">TNT</span>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="section-hdr">Sports (3)</div>
+      <div class="channel-row"><div><div class="channel-name">ESPN</div><div class="channel-sub">SportsCenter</div></div><div style="display:flex;gap:6px;align-items:center"><span class="tag tag-live">LIVE</span><span class="star">★</span></div></div>
+      <div class="channel-row"><div><div class="channel-name">NFL Network</div><div class="channel-sub">Thursday Night Football</div></div><span class="star">★</span></div>
+      <div class="channel-row"><div><div class="channel-name">NBA TV</div><div class="channel-sub">Game Recap</div></div><span class="star">★</span></div>
+      <div class="section-hdr">News (2)</div>
+      <div class="channel-row"><div><div class="channel-name">CNN</div><div class="channel-sub">Breaking News</div></div><span class="star">★</span></div>
+      <div class="channel-row"><div><div class="channel-name">MSNBC</div><div class="channel-sub">Live Coverage</div></div><span class="star">★</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 6. SETTINGS SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">6 · Settings Screen</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">⚙ Settings</span>
+      <div class="hdr-btns"><button class="btn btn-gray">← Back</button></div>
+    </div>
+    <div class="scroll">
+      <div class="section-hdr">Playlists</div>
+      <div class="row"><span style="font-size:13px;color:#fff">Active Playlist</span><span style="font-size:12px;color:#007AFF">Sample Channels</span></div>
+      <div class="row"><span style="font-size:13px;color:#fff">Manage Playlists</span><span style="color:#888">›</span></div>
+      <div class="section-hdr">EPG / Guide</div>
+      <input class="input" style="margin-bottom:8px" placeholder="XMLTV EPG URL..." />
+      <div class="section-hdr">IPTV Credentials</div>
+      <div style="background:#1e1e2e;border-radius:8px;padding:10px;margin-bottom:8px">
+        <div style="font-size:11px;color:#888;margin-bottom:6px">BLOGYFY.XYZ</div>
+        <input class="input" style="margin-bottom:4px" placeholder="Username" value="jascodezoriptv" />
+        <input class="input" style="margin-bottom:4px" placeholder="Password" value="••••••••••" />
+        <input class="input" placeholder="Server URL" value="http://blogyfy.xyz" />
+        <button class="btn btn-green" style="margin-top:8px;width:100%">Test Connection</button>
+      </div>
+      <div class="section-hdr">Playback</div>
+      <div class="row"><span style="font-size:13px;color:#fff">Auto-Play</span><div style="width:44px;height:24px;background:#34C759;border-radius:12px;position:relative"><div style="width:20px;height:20px;background:#fff;border-radius:10px;position:absolute;right:2px;top:2px"></div></div></div>
+      <div class="row"><span style="font-size:13px;color:#fff">Ad Block</span><div style="width:44px;height:24px;background:#34C759;border-radius:12px;position:relative"><div style="width:20px;height:20px;background:#fff;border-radius:10px;position:absolute;right:2px;top:2px"></div></div></div>
+      <div class="row"><span style="font-size:13px;color:#fff">Auto Updates</span><div style="width:44px;height:24px;background:#34C759;border-radius:12px;position:relative"><div style="width:20px;height:20px;background:#fff;border-radius:10px;position:absolute;right:2px;top:2px"></div></div></div>
+      <div class="section-hdr">App</div>
+      <button class="btn btn-blue" style="width:100%;padding:10px;margin-bottom:6px">Check for Updates</button>
+      <button class="btn btn-red" style="width:100%;padding:10px">Clear All Data</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 7. RECORDINGS SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">7 · Recordings (DVR)</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">⏺ DVR Recordings</span>
+      <div class="hdr-btns"><button class="btn btn-blue">+ Schedule</button></div>
+    </div>
+    <div style="background:#1e1e2e;margin:8px 14px;border-radius:10px;padding:10px">
+      <div style="font-size:10px;color:#888;margin-bottom:4px">CLOUD STORAGE</div>
+      <div style="background:#333;border-radius:4px;height:8px;overflow:hidden">
+        <div style="background:linear-gradient(90deg,#007AFF,#5856D6);width:34%;height:100%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11px;color:#888">
+        <span>17 GB used</span><span>50 GB total</span>
+      </div>
+    </div>
+    <div class="pill-row" style="padding:0 14px">
+      <span class="pill pill-active">All</span>
+      <span class="pill pill-inactive">Active</span>
+      <span class="pill pill-inactive">Completed</span>
+    </div>
+    <div class="scroll">
+      <div class="channel-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <div style="display:flex;justify-content:space-between;width:100%"><span class="channel-name">SportsCenter</span><span class="badge badge-green">● RECORDING</span></div>
+        <div class="channel-sub">ESPN · Started 8:00 PM · 45 min remaining</div>
+        <div style="background:#333;border-radius:3px;height:3px;width:100%"><div style="background:#34C759;width:60%;height:100%"></div></div>
+      </div>
+      <div class="channel-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <div style="display:flex;justify-content:space-between;width:100%"><span class="channel-name">The Last of Us S2</span><span class="badge badge-blue">✓ DONE</span></div>
+        <div class="channel-sub">HBO · Feb 24 · 1h 12min · 2.4 GB</div>
+        <div style="display:flex;gap:6px;margin-top:2px"><button class="btn btn-blue" style="font-size:10px">▶ Play</button><button class="btn btn-red" style="font-size:10px">🗑 Delete</button></div>
+      </div>
+      <div class="channel-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <div style="display:flex;justify-content:space-between;width:100%"><span class="channel-name">NFL Thursday Night</span><span class="badge badge-blue">✓ DONE</span></div>
+        <div class="channel-sub">NFL Network · Feb 23 · 3h 24min · 6.1 GB</div>
+        <div style="display:flex;gap:6px;margin-top:2px"><button class="btn btn-blue" style="font-size:10px">▶ Play</button><button class="btn btn-red" style="font-size:10px">🗑 Delete</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 8. DEVICES SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">8 · Devices Screen</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">📱 Devices</span>
+      <div class="hdr-btns"><button class="btn btn-blue">+ Add</button></div>
+    </div>
+    <div style="background:#1e1e2e;margin:8px 14px;border-radius:10px;padding:10px">
+      <div style="font-size:10px;color:#888;margin-bottom:4px">CONNECTION USAGE</div>
+      <div style="display:flex;align-items:baseline;gap:4px"><span style="font-size:24px;font-weight:700;color:#fff">2</span><span style="color:#888;font-size:12px">/ 3 streams active</span></div>
+      <div style="background:#333;border-radius:4px;height:6px;margin-top:6px"><div style="background:#FF9500;width:67%;height:100%;border-radius:4px"></div></div>
+    </div>
+    <div class="scroll">
+      <div class="section-hdr">Active Sessions</div>
+      <div class="channel-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <div style="display:flex;justify-content:space-between;width:100%"><span class="channel-name">📺 Living Room TV</span><span class="badge badge-green">● Active</span></div>
+        <div class="channel-sub">Fire TV · ESPN · 1080p · 8 Mbps</div>
+        <button class="btn btn-red" style="font-size:10px;margin-top:2px">Disconnect</button>
+      </div>
+      <div class="channel-row" style="flex-direction:column;align-items:flex-start;gap:4px">
+        <div style="display:flex;justify-content:space-between;width:100%"><span class="channel-name">📱 iPhone 15</span><span class="badge badge-green">● Active</span></div>
+        <div class="channel-sub">Phone · CNN · 720p · 3.2 Mbps</div>
+        <button class="btn btn-red" style="font-size:10px;margin-top:2px">Disconnect</button>
+      </div>
+      <div class="section-hdr">All Devices</div>
+      <div class="channel-row"><div><div class="channel-name">💻 MacBook Pro</div><div class="channel-sub">Web · Last seen: 2h ago</div></div><span class="badge badge-yellow">Idle</span></div>
+      <div class="channel-row"><div><div class="channel-name">📟 iPad Pro</div><div class="channel-sub">Tablet · Last seen: 1d ago</div></div><span class="badge badge-yellow">Idle</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- 9. PRICING SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">9 · Pricing Screen</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">💎 Plans</span>
+      <div class="hdr-btns"><button class="btn btn-gray">← Back</button></div>
+    </div>
+    <div class="scroll">
+      <!-- Free tier -->
+      <div style="background:#2a2a2a;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid #444">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div style="font-size:15px;font-weight:700;color:#fff">Basic</div><div style="font-size:11px;color:#888;margin-top:2px">Get started free</div></div>
+          <div style="text-align:right"><div style="font-size:22px;font-weight:700;color:#fff">$0</div><div style="font-size:10px;color:#888">/month</div></div>
+        </div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:11px;color:#aaa">✓ 1 stream · 10 favorites · SD quality</div>
+          <div style="font-size:11px;color:#aaa">✓ Basic EPG (7 days)</div>
+          <div style="font-size:11px;color:#555">✗ DVR · ✗ Ad Block · ✗ Cloud</div>
+        </div>
+        <button class="btn btn-gray" style="width:100%;padding:10px;margin-top:10px">Current Plan</button>
+      </div>
+      <!-- Pro tier -->
+      <div style="background:#1a2a3a;border-radius:12px;padding:14px;margin-bottom:10px;border:2px solid #007AFF">
+        <div style="font-size:10px;color:#007AFF;font-weight:700;margin-bottom:6px">★ MOST POPULAR</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div style="font-size:15px;font-weight:700;color:#fff">Pro</div><div style="font-size:11px;color:#888;margin-top:2px">For cord-cutters</div></div>
+          <div style="text-align:right"><div style="font-size:22px;font-weight:700;color:#007AFF">$9.99</div><div style="font-size:10px;color:#888">/month</div></div>
+        </div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:11px;color:#aaa">✓ 3 streams · Unlimited favorites</div>
+          <div style="font-size:11px;color:#aaa">✓ Full EPG (14 days) · HD quality</div>
+          <div style="font-size:11px;color:#aaa">✓ Ad Block · DVR 50GB</div>
+        </div>
+        <button class="btn btn-blue" style="width:100%;padding:10px;margin-top:10px">Upgrade to Pro</button>
+      </div>
+      <!-- Elite tier -->
+      <div style="background:#1e1a2e;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid #5856D6">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div><div style="font-size:15px;font-weight:700;color:#fff">Elite</div><div style="font-size:11px;color:#888;margin-top:2px">Power users</div></div>
+          <div style="text-align:right"><div style="font-size:22px;font-weight:700;color:#5856D6">$19.99</div><div style="font-size:10px;color:#888">/month</div></div>
+        </div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:11px;color:#aaa">✓ 5 streams · 4K quality</div>
+          <div style="font-size:11px;color:#aaa">✓ DVR 250GB · Priority support</div>
+          <div style="font-size:11px;color:#aaa">✓ Catch-up TV · Smart AI Favs</div>
+        </div>
+        <button class="btn btn-purple" style="width:100%;padding:10px;margin-top:10px">Go Elite</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 10. SEARCH SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">10 · Search Screen</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">🔍 Search</span>
+      <div class="hdr-btns"><button class="btn btn-gray">Cancel</button></div>
+    </div>
+    <div style="padding:10px 14px">
+      <input class="input" placeholder="Search channels, programs..." style="font-size:14px;padding:10px 14px" />
+    </div>
+    <div class="pill-row" style="padding:0 14px">
+      <span class="pill pill-active">All</span>
+      <span class="pill pill-inactive">Channels</span>
+      <span class="pill pill-inactive">Programs</span>
+      <span class="pill pill-inactive">On Now</span>
+    </div>
+    <div class="scroll">
+      <div class="section-hdr">Recent Searches</div>
+      <div class="row" style="cursor:pointer"><span style="font-size:13px;color:#aaa">🕐 ESPN SportsCenter</span><span style="font-size:16px;color:#555">✕</span></div>
+      <div class="row" style="cursor:pointer"><span style="font-size:13px;color:#aaa">🕐 NFL Network</span><span style="font-size:16px;color:#555">✕</span></div>
+      <div class="row" style="cursor:pointer"><span style="font-size:13px;color:#aaa">🕐 Breaking Bad</span><span style="font-size:16px;color:#555">✕</span></div>
+      <div class="section-hdr">Trending Now</div>
+      <div class="channel-row"><div><div class="channel-name">Super Bowl LVIX</div><div class="channel-sub">CBS · Feb 9 · 6:30 PM</div></div><span class="tag tag-live">TRENDING</span></div>
+      <div class="channel-row"><div><div class="channel-name">The Oscars</div><div class="channel-sub">ABC · Mar 2 · 8:00 PM</div></div><span class="tag tag-hd">HD</span></div>
+      <div class="channel-row"><div><div class="channel-name">NBA All-Star Game</div><div class="channel-sub">TNT · Feb 16 · 8:00 PM</div></div><span class="tag tag-live">LIVE</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 11. HISTORY SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">11 · Watch History</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">↩ History</span>
+      <div class="hdr-btns"><button class="btn btn-red">Clear All</button></div>
+    </div>
+    <div class="scroll">
+      <div class="section-hdr">Today</div>
+      <div class="channel-row"><div><div class="channel-name">ESPN — SportsCenter</div><div class="channel-sub">8:00 PM · Watched 45 min</div></div><button class="btn btn-gray" style="font-size:10px">▶</button></div>
+      <div class="channel-row"><div><div class="channel-name">CNN — Breaking News</div><div class="channel-sub">6:30 PM · Watched 12 min</div></div><button class="btn btn-gray" style="font-size:10px">▶</button></div>
+      <div class="section-hdr">Yesterday</div>
+      <div class="channel-row"><div><div class="channel-name">HBO — The Last of Us</div><div class="channel-sub">9:00 PM · Watched 52 min</div></div><button class="btn btn-gray" style="font-size:10px">▶</button></div>
+      <div class="channel-row"><div><div class="channel-name">NFL Network — TNF</div><div class="channel-sub">8:00 PM · Watched 3h 10min</div></div><button class="btn btn-gray" style="font-size:10px">▶</button></div>
+      <div class="channel-row"><div><div class="channel-name">Discovery — Shark Week</div><div class="channel-sub">7:00 PM · Watched 28 min</div></div><button class="btn btn-gray" style="font-size:10px">▶</button></div>
+      <div class="section-hdr">2 Days Ago</div>
+      <div class="channel-row"><div><div class="channel-name">NBA TV — Game Recap</div><div class="channel-sub">11:00 PM · Watched 18 min</div></div><button class="btn btn-gray" style="font-size:10px">▶</button></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 12. CATCH-UP TV SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">12 · Catch-Up TV</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">⏪ Catch-Up TV</span>
+      <div class="hdr-btns"><button class="btn btn-gray">← Back</button></div>
+    </div>
+    <div style="padding:8px 14px">
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px">
+        <div style="flex-shrink:0;background:#007AFF;color:#fff;border-radius:8px;padding:6px 12px;font-size:11px;text-align:center"><div style="font-weight:700">MON</div><div>Feb 24</div></div>
+        <div style="flex-shrink:0;background:#2a2a2a;color:#aaa;border-radius:8px;padding:6px 12px;font-size:11px;text-align:center"><div style="font-weight:700">SUN</div><div>Feb 23</div></div>
+        <div style="flex-shrink:0;background:#2a2a2a;color:#aaa;border-radius:8px;padding:6px 12px;font-size:11px;text-align:center"><div style="font-weight:700">SAT</div><div>Feb 22</div></div>
+        <div style="flex-shrink:0;background:#2a2a2a;color:#aaa;border-radius:8px;padding:6px 12px;font-size:11px;text-align:center"><div style="font-weight:700">FRI</div><div>Feb 21</div></div>
+        <div style="flex-shrink:0;background:#2a2a2a;color:#aaa;border-radius:8px;padding:6px 12px;font-size:11px;text-align:center"><div style="font-weight:700">THU</div><div>Feb 20</div></div>
+      </div>
+    </div>
+    <div class="scroll">
+      <div class="section-hdr">ESPN — Mon Feb 24</div>
+      <div class="channel-row"><div><div class="channel-name">SportsCenter AM</div><div class="channel-sub">8:00 AM · 1h</div></div><button class="btn btn-blue" style="font-size:10px">▶ Watch</button></div>
+      <div class="channel-row"><div><div class="channel-name">NFL Live</div><div class="channel-sub">2:00 PM · 1h</div></div><button class="btn btn-blue" style="font-size:10px">▶ Watch</button></div>
+      <div class="channel-row"><div><div class="channel-name">SportsCenter</div><div class="channel-sub">8:00 PM · 1h</div></div><button class="btn btn-blue" style="font-size:10px">▶ Watch</button></div>
+      <div class="section-hdr">CNN — Mon Feb 24</div>
+      <div class="channel-row"><div><div class="channel-name">CNN This Morning</div><div class="channel-sub">6:00 AM · 3h</div></div><button class="btn btn-blue" style="font-size:10px">▶ Watch</button></div>
+      <div class="channel-row"><div><div class="channel-name">Anderson Cooper 360</div><div class="channel-sub">8:00 PM · 1h</div></div><button class="btn btn-blue" style="font-size:10px">▶ Watch</button></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 13. STREAM QUALITY SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">13 · Stream Quality</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">📶 Stream Quality</span>
+      <div class="hdr-btns"><button class="btn btn-gray">✕</button></div>
+    </div>
+    <div class="scroll">
+      <div style="background:#1e2e1e;border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;color:#34C759;font-weight:700;margin-bottom:6px">● STREAMING NOW — ESPN</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#fff">8.4</div><div style="font-size:10px;color:#888">Mbps</div></div>
+          <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#fff">42</div><div style="font-size:10px;color:#888">ms ping</div></div>
+          <div style="text-align:center"><div style="font-size:20px;font-weight:700;color:#34C759">99.1%</div><div style="font-size:10px;color:#888">uptime</div></div>
+        </div>
+      </div>
+      <div class="section-hdr">Quality Selection</div>
+      <div class="row"><span style="font-size:13px;color:#fff">Auto (Recommended)</span><span style="color:#007AFF;font-size:13px">✓</span></div>
+      <div class="row"><span style="font-size:13px;color:#aaa">4K UHD · 25 Mbps</span><span class="badge badge-blue">Elite</span></div>
+      <div class="row"><span style="font-size:13px;color:#aaa">1080p FHD · 8 Mbps</span><span class="badge badge-blue">Pro+</span></div>
+      <div class="row"><span style="font-size:13px;color:#aaa">720p HD · 4 Mbps</span><span class="badge badge-green">✓ Available</span></div>
+      <div class="row"><span style="font-size:13px;color:#aaa">480p SD · 1.5 Mbps</span><span class="badge badge-green">✓ Available</span></div>
+      <div class="section-hdr">Buffer Settings</div>
+      <div class="row"><span style="font-size:13px;color:#fff">Buffer Size</span><span style="font-size:13px;color:#007AFF">Medium (5s)</span></div>
+      <div class="row"><span style="font-size:13px;color:#fff">Hardware Decode</span><div style="width:44px;height:24px;background:#34C759;border-radius:12px;position:relative"><div style="width:20px;height:20px;background:#fff;border-radius:10px;position:absolute;right:2px;top:2px"></div></div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 14. PROGRAM DETAIL SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">14 · Program Detail</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div style="background:linear-gradient(135deg,#1a1a2e,#16213e);height:140px;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+      <div style="font-size:48px">🏈</div>
+      <div style="position:absolute;top:10px;left:10px"><button class="btn btn-gray">← Back</button></div>
+      <div style="position:absolute;bottom:10px;left:14px;right:14px">
+        <div style="font-size:16px;font-weight:700;color:#fff">SportsCenter</div>
+        <div style="font-size:11px;color:#aaa">ESPN · Tonight 8:00 PM – 9:00 PM</div>
+      </div>
+    </div>
+    <div class="scroll">
+      <div style="display:flex;gap:8px;padding-bottom:10px">
+        <button class="btn btn-blue" style="flex:1;padding:10px">▶ Watch Live</button>
+        <button class="btn btn-gray" style="padding:10px">⏺ REC</button>
+        <button class="btn btn-gray" style="padding:10px">★</button>
+      </div>
+      <div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:10px">A comprehensive look at today's top sports stories including NFL combine results, NBA trade deadline analysis, and college basketball rankings.</div>
+      <div class="section-hdr">Details</div>
+      <div class="row"><span style="font-size:12px;color:#888">Rating</span><span style="font-size:12px;color:#fff">TV-PG</span></div>
+      <div class="row"><span style="font-size:12px;color:#888">Language</span><span style="font-size:12px;color:#fff">English</span></div>
+      <div class="row"><span style="font-size:12px;color:#888">Quality</span><span class="badge badge-blue">1080p HD</span></div>
+      <div class="section-hdr">Also On ESPN Tonight</div>
+      <div class="channel-row"><div><div class="channel-name">Monday Night Football</div><div class="channel-sub">9:00 PM – Midnight</div></div><button class="btn btn-gray" style="font-size:10px">⏺</button></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 15. PLAYLIST MANAGER SCREEN -->
+<div class="screen-wrap">
+<div class="screen-label">15 · Playlist Manager</div>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="hdr">
+      <span class="hdr-title">📋 Playlists</span>
+      <div class="hdr-btns"><button class="btn btn-blue">+ Add</button></div>
+    </div>
+    <div class="scroll">
+      <div class="section-hdr">Active Playlists</div>
+      <div style="background:#2a2a2a;border-radius:10px;padding:12px;margin-bottom:8px;border-left:3px solid #34C759">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div class="channel-name">Blogyfy Main</div><div style="font-size:11px;color:#888;margin-top:2px">47,393 channels · M3U</div></div>
+          <span class="badge badge-green">● Active</span>
+        </div>
+        <div style="font-size:10px;color:#555;margin-top:6px">Last refreshed: 2h ago · http://blogyfy.xyz</div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-gray" style="font-size:10px">🔄 Refresh</button>
+          <button class="btn btn-gray" style="font-size:10px">✏ Edit</button>
+          <button class="btn btn-red" style="font-size:10px">🗑 Remove</button>
+        </div>
+      </div>
+      <div style="background:#2a2a2a;border-radius:10px;padding:12px;margin-bottom:8px;border-left:3px solid #444">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div class="channel-name">Sample Channels</div><div style="font-size:11px;color:#888;margin-top:2px">24 channels · Built-in</div></div>
+          <span class="badge badge-yellow">Standby</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-blue" style="font-size:10px">▶ Activate</button>
+        </div>
+      </div>
+      <div class="section-hdr">Add Playlist</div>
+      <div style="background:#2a2a2a;border-radius:10px;padding:12px">
+        <input class="input" style="margin-bottom:8px" placeholder="M3U URL or local file path" />
+        <input class="input" style="margin-bottom:8px" placeholder="Playlist Name (optional)" />
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-blue" style="flex:1;padding:10px">Load M3U</button>
+          <button class="btn btn-gray" style="flex:1;padding:10px">Browse File</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+</div><!-- end grid -->
+<div style="margin-top:40px;text-align:center;color:#555;font-size:12px;padding-bottom:40px">
+  Switchback TV · IPTVviewer React Native App · 15 Screens · Dark Theme
+</div>
+</body>
+</html>

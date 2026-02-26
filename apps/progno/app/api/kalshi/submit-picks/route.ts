@@ -26,20 +26,19 @@ function buildAuthHeaders(method: string, path: string): Record<string, string> 
     throw new Error('KALSHI_API_KEY_ID and KALSHI_PRIVATE_KEY must be set')
   }
   const ts = Date.now().toString()
-  const nonce = crypto.randomBytes(16).toString('hex')
-  // Kalshi RSA-PSS signature: timestamp + key_id + method + path
-  const msgToSign = ts + KALSHI_KEY_ID + method.toUpperCase() + path
-  const sign = crypto.createSign('SHA256')
+  // CRITICAL: Kalshi RSA-PSS signature format: timestamp + METHOD + pathWithoutQuery
+  const pathWithoutQuery = path.split('?')[0]
+  const msgToSign = ts + method.toUpperCase() + pathWithoutQuery
+  const sign = crypto.createSign('RSA-SHA256')
   sign.update(msgToSign)
   const sig = sign.sign(
-    { key: KALSHI_PRIVATE_KEY, padding: crypto.constants.RSA_PKCS1_PSS_PADDING, saltLength: 32 },
+    { key: KALSHI_PRIVATE_KEY, padding: crypto.constants.RSA_PKCS1_PSS_PADDING, saltLength: crypto.constants.RSA_PSS_SALTLEN_DIGEST },
     'base64'
   )
   return {
     'Content-Type': 'application/json',
     'KALSHI-ACCESS-KEY': KALSHI_KEY_ID,
     'KALSHI-ACCESS-TIMESTAMP': ts,
-    'KALSHI-ACCESS-NONCE': nonce,
     'KALSHI-ACCESS-SIGNATURE': sig,
   }
 }

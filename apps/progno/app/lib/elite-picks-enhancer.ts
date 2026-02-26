@@ -157,8 +157,8 @@ export class ElitePicksEnhancer {
       this.config.bankrollSize * (this.config.maxStakePercent / 100)
     );
 
-    // Market efficiency (placeholder - would integrate with market data)
-    const marketEfficiency = 0.75 + (Math.random() * 0.15); // 0.75-0.90
+    // Market efficiency (placeholder - derived from confidence as proxy)
+    const marketEfficiency = 0.75 + (pick.confidence / 100) * 0.15; // 0.75-0.90 based on confidence
 
     // Sharp money indicator
     const sharpMoneyIndicator = pick.isArbitrage ? 'heavy' :
@@ -170,8 +170,8 @@ export class ElitePicksEnhancer {
       steamMoves.push(`Strong steam: ${pick.lineMovement} point move`);
     }
 
-    // Public vs sharp betting (placeholder)
-    const publicBettingPercentage = 60 + (Math.random() * 20); // 60-80%
+    // Public vs sharp betting (placeholder - estimate from confidence)
+    const publicBettingPercentage = pick.confidence > 80 ? 62 : pick.confidence > 70 ? 68 : 75;
     const sharpBettingPercentage = 100 - publicBettingPercentage;
 
     // Reverse line movement
@@ -233,7 +233,7 @@ export class ElitePicksEnhancer {
     // This would fetch from database
     return {
       similarSituations: [],
-      trendStrength: 0.7 + (Math.random() * 0.2), // 0.7-0.9
+      trendStrength: 0.7 + (pick.confidence / 500), // ~0.7-0.9 based on confidence
       momentumScore: pick.confidence / 100,
     };
   }

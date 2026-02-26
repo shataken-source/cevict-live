@@ -115,8 +115,8 @@ class TradingBot {
   }
 
   private simpleModel(marketProb: number) {
-    const noise = (Math.random() - 0.5) * 0.05
-    return Math.min(0.99, Math.max(0.01, marketProb + noise))
+    // No random noise — without a real model, just return market price (no edge, no trades)
+    return Math.min(0.99, Math.max(0.01, marketProb))
   }
 
   private filterByEV(signals: any[]) {

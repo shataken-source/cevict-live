@@ -83,7 +83,7 @@ export default function EarlyLinesSection() {
   const [data, setData] = useState<EarlyLinesData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSports, setSelectedSports] = useState('NFL,NBA,NCAAB');
+  const [selectedSports, setSelectedSports] = useState('NFL,NBA,NHL,MLB,NCAAB,CBB');
 
   const fetchEarlyLines = async () => {
     setLoading(true);
@@ -157,7 +157,8 @@ export default function EarlyLinesSection() {
     );
   };
 
-  const formatOdds = (odds: number) => {
+  const formatOdds = (odds: number | undefined | null) => {
+    if (odds == null || isNaN(odds)) return '—';
     return odds > 0 ? `+${odds}` : odds.toString();
   };
 
@@ -186,7 +187,7 @@ export default function EarlyLinesSection() {
             type="text"
             value={selectedSports}
             onChange={(e) => setSelectedSports(e.target.value)}
-            placeholder="NFL,NBA,NCAAB"
+            placeholder="NFL,NBA,NHL,MLB,NCAAB,CBB"
             style={{
               padding: '8px 12px',
               borderRadius: '6px',

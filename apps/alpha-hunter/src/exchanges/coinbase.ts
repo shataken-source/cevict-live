@@ -523,7 +523,8 @@ export class CoinbaseExchange {
   }
 
   /**
-   * Get portfolio summary with all positions
+   * Get portfolio summary with all positions (including staked funds)
+   * Uses /portfolios/{id} endpoint which includes wallet + staked + earn balances
    */
   async getPortfolio(): Promise<{
     usdBalance: number;
@@ -532,57 +533,85 @@ export class CoinbaseExchange {
       amount: number;
       value: number;
       price: number;
+      staked?: boolean;
     }>;
     totalValue: number;
+    stakedValue: number;
   }> {
     try {
-      const accounts = await this.getAccounts();
-      const usdBalance = await this.getUSDBalance();
+      // Get portfolio ID from first account
+      const acctData = await this.request('GET', '/accounts', undefined, { limit: '5' });
+      const portfolioId = acctData.accounts?.[0]?.retail_portfolio_id;
 
-      const positions: Array<{
-        symbol: string;
-        amount: number;
-        value: number;
-        price: number;
-      }> = [];
+      if (!portfolioId) {
+        console.warn('   ⚠️ No portfolio ID found, falling back to accounts-only');
+        return this.getPortfolioFallback();
+      }
 
-      console.log(`   🔍 [PORTFOLIO DEBUG] Found ${accounts.length} accounts, USD: $${usdBalance.toFixed(2)}`);
+      // Use portfolio breakdown — includes staked, earn, and wallet funds
+      const data = await this.request('GET', `/portfolios/${portfolioId}`);
+      const spotPositions = data.breakdown?.spot_positions || [];
 
-      // Get crypto positions with values
-      for (const account of accounts) {
-        const amount = parseFloat(account.available_balance?.value || account.available?.toString() || account.balance?.toString() || '0');
-        if (amount > 0.0001 && account.currency !== 'USD' && account.currency !== 'USDC') {
-          try {
-            const productId = `${account.currency}-USD`;
-            const price = await this.getPrice(productId);
-            if (price > 0) {
-              const value = amount * price;
-              console.log(`   🔍 [PORTFOLIO] ${account.currency}: ${amount.toFixed(6)} x $${price.toFixed(2)} = $${value.toFixed(2)}`);
-              positions.push({
-                symbol: account.currency,
-                amount,
-                price,
-                value,
-              });
-            }
-          } catch (e: any) {
-            console.log(`   ⚠️ [PORTFOLIO] Skipping ${account.currency}: ${e.message}`);
-          }
+      let usdBalance = 0;
+      let totalValue = 0;
+      let stakedValue = 0;
+      const positions: Array<{ symbol: string; amount: number; value: number; price: number; staked?: boolean }> = [];
+
+      for (const p of spotPositions) {
+        const fiat = parseFloat(p.total_balance_fiat || '0');
+        const crypto = parseFloat(p.total_balance_crypto || '0');
+        const isStaked = (p.account_type || '').includes('STAKED');
+        const isCash = p.is_cash === true;
+
+        if (fiat < 0.01) continue;
+
+        totalValue += fiat;
+
+        if (isCash || p.asset === 'USDC' || p.asset === 'USD') {
+          usdBalance += fiat;
+        } else {
+          if (isStaked) stakedValue += fiat;
+          const price = crypto > 0 ? fiat / crypto : 0;
+          positions.push({ symbol: p.asset, amount: crypto, value: fiat, price, staked: isStaked });
         }
       }
 
-      const cryptoValue = positions.reduce((sum, p) => sum + p.value, 0);
-      console.log(`   🔍 [PORTFOLIO TOTAL] USD: $${usdBalance.toFixed(2)}, Crypto: $${cryptoValue.toFixed(2)}, Total: $${(usdBalance + cryptoValue).toFixed(2)}`);
+      console.log(`   🔍 [PORTFOLIO] Wallet: $${(totalValue - stakedValue).toFixed(2)}, Staked: $${stakedValue.toFixed(2)}, Total: $${totalValue.toFixed(2)}`);
 
-      return {
-        usdBalance,
-        positions,
-        totalValue: usdBalance + cryptoValue,
-      };
+      return { usdBalance, positions, totalValue, stakedValue };
     } catch (error) {
       console.error('Error getting portfolio:', error);
-      return { usdBalance: 0, positions: [], totalValue: 0 };
+      return this.getPortfolioFallback();
     }
+  }
+
+  /**
+   * Fallback portfolio using accounts-only (no staking data)
+   */
+  private async getPortfolioFallback(): Promise<{
+    usdBalance: number;
+    positions: Array<{ symbol: string; amount: number; value: number; price: number; staked?: boolean }>;
+    totalValue: number;
+    stakedValue: number;
+  }> {
+    const accounts = await this.getAccounts();
+    const usdBalance = accounts.find(a => a.currency === 'USD')?.available || 0;
+    const usdcBalance = accounts.find(a => a.currency === 'USDC')?.available || 0;
+    const positions: Array<{ symbol: string; amount: number; value: number; price: number; staked?: boolean }> = [];
+
+    for (const account of accounts) {
+      if (account.available > 0.0001 && !['USD', 'USDC'].includes(account.currency)) {
+        try {
+          const price = await this.getPrice(`${account.currency}-USD`);
+          if (price > 0) {
+            positions.push({ symbol: account.currency, amount: account.available, price, value: account.available * price });
+          }
+        } catch { /* skip delisted */ }
+      }
+    }
+
+    const cryptoValue = positions.reduce((sum, p) => sum + p.value, 0);
+    return { usdBalance: usdBalance + usdcBalance, positions, totalValue: usdBalance + usdcBalance + cryptoValue, stakedValue: 0 };
   }
 }
 

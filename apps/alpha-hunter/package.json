@@ -9,6 +9,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "train": "tsx src/crypto-trainer.ts",
+    "train:24-7": "tsx src/crypto-trainer.ts",
     "kalshi": "tsx src/kalshi-trainer.ts",
     "microcap": "tsx src/microcap-crypto-trainer.ts",
     "unified": "tsx src/unified-trader.ts",

@@ -371,10 +371,13 @@ export function estimateRecentForm(odds: { home: number; away: number }): { home
   const homeForm: string[] = [];
   const awayForm: string[] = [];
 
-  // Generate 5-game form based on win probability
+  // Generate 5-game form deterministically from win probability
+  // e.g. 60% → WWWLW, 40% → LWLLW (round expected wins, distribute evenly)
+  const homeWins = Math.round(homeProb * 5);
+  const awayWins = Math.round(awayProb * 5);
   for (let i = 0; i < 5; i++) {
-    homeForm.push(Math.random() < homeProb ? 'W' : 'L');
-    awayForm.push(Math.random() < awayProb ? 'W' : 'L');
+    homeForm.push(i < homeWins ? 'W' : 'L');
+    awayForm.push(i < awayWins ? 'W' : 'L');
   }
 
   return { home: homeForm, away: awayForm };

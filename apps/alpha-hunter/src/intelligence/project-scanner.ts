@@ -93,7 +93,7 @@ export class ProjectScanner {
     // Check news relevance to project
     const relevantNews = news.filter(item => {
       const text = `${item.title} ${item.summary}`.toLowerCase();
-      
+
       switch (project.type) {
         case 'sports':
           return ['sports', 'betting', 'nfl', 'nba', 'gambling', 'odds'].some(k => text.includes(k));
@@ -160,7 +160,7 @@ export class ProjectScanner {
       source: 'Project Scanner',
       title: `${project.name}: Capitalize on "${news.title.substring(0, 40)}..."`,
       description: `Relevant news for ${project.name} - potential monetization opportunity`,
-      confidence: 60 + Math.floor(Math.random() * 20),
+      confidence: 65, // Fixed baseline — no real signal to vary on
       expectedValue: this.estimateValue(project, news),
       riskLevel: 'low',
       timeframe: 'Within 24-48 hours',

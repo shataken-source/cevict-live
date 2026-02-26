@@ -1,0 +1,140 @@
+const fs = require('fs');
+
+const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0a0f">
+  <title>Switchback Remote</title>
+  <link rel="manifest" href="remote-manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="remote.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">&#x21C4; Switchback<em>TV</em><small>Remote</small></div>
+  <div class="conn-row" onclick="showModal()">
+    <span class="conn-dot" id="cdot"></span>
+    <span class="conn-lbl" id="clbl">Tap to connect</span>
+  </div>
+</div>
+<div class="scroll">
+  <div class="sec">
+    <div class="sec-lbl">&#x21C4; Switchback Slots</div>
+    <div class="sb-grid">
+      <div class="sb-slot" id="s0" onclick="jumpSlot(0)"><div class="sb-num">SB 1</div><div id="sv0"><span class="sb-empty">+</span></div></div>
+      <div class="sb-slot" id="s1" onclick="jumpSlot(1)"><div class="sb-num">SB 2</div><div id="sv1"><span class="sb-empty">+</span></div></div>
+      <div class="sb-slot locked" id="s2" onclick="jumpSlot(2)"><div class="sb-num">SB 3</div><div id="sv2"><span class="sb-empty">+</span></div><div class="sb-lock">&#x1F512;</div></div>
+      <div class="sb-slot locked" id="s3" onclick="jumpSlot(3)"><div class="sb-num">SB 4</div><div id="sv3"><span class="sb-empty">+</span></div><div class="sb-lock">&#x1F512;</div></div>
+    </div>
+    <button class="sb-cycle" onclick="send('sb_cycle')">&#x21C4; Cycle All Slots</button>
+  </div>
+  <div class="sec">
+    <div class="sec-lbl">Now Playing</div>
+    <div class="np">
+      <div class="np-icon" id="np-icon">&#x1F4FA;</div>
+      <div class="np-info">
+        <div class="np-name" id="np-name">No channel selected</div>
+        <div class="np-prog" id="np-prog">Open Switchback TV on your device</div>
+      </div>
+      <div class="np-live" id="np-live">LIVE</div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-lbl">Playback</div>
+    <div class="pb-row">
+      <button class="pb" onclick="send('seek_back')">&#x23EA;</button>
+      <button class="pb primary" id="play-btn" onclick="send('play_pause')">&#x23F8;</button>
+      <button class="pb" onclick="send('seek_fwd')">&#x23E9;</button>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-lbl">Navigate</div>
+    <div class="dpad">
+      <div class="dpad-row"><div style="width:62px"></div><button class="dp up" onclick="send('nav_up')">&#9650;</button><div style="width:62px"></div></div>
+      <div class="dpad-row"><button class="dp lt" onclick="send('nav_left')">&#9664;</button><button class="dp ok" onclick="send('nav_ok')">OK</button><button class="dp rt" onclick="send('nav_right')">&#9654;</button></div>
+      <div class="dpad-row"><div style="width:62px"></div><button class="dp dn" onclick="send('nav_down')">&#9660;</button><div style="width:62px"></div></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="cv-grid">
+      <div class="cv-col"><div class="cv-lbl">Channel</div><button class="cv" onclick="send('ch_up')">&#9650;</button><button class="cv" onclick="send('ch_down')">&#9660;</button></div>
+      <div class="cv-col"><div class="cv-lbl">Volume</div><button class="cv" onclick="send('vol_up')">&#x1F50A;</button><button class="cv" id="mute-btn" onclick="toggleMute()">&#x1F507;</button></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-lbl">Quick Nav</div>
+    <div class="nav-grid">
+      <button class="nav-btn" onclick="send('nav_home')"><span class="nav-icon">&#x1F3E0;</span><span class="nav-lbl">Home</span></button>
+      <button class="nav-btn" onclick="send('nav_guide')"><span class="nav-icon">&#x1F4CB;</span><span class="nav-lbl">Guide</span></button>
+      <button class="nav-btn" onclick="send('nav_search')"><span class="nav-icon">&#x1F50D;</span><span class="nav-lbl">Search</span></button>
+      <button class="nav-btn" onclick="send('nav_back')"><span class="nav-icon">&#8592;</span><span class="nav-lbl">Back</span></button>
+      <button class="nav-btn" onclick="send('nav_favorites')"><span class="nav-icon">&#x2B50;</span><span class="nav-lbl">Favs</span></button>
+      <button class="nav-btn" onclick="send('nav_recordings')"><span class="nav-icon">&#x23FA;</span><span class="nav-lbl">DVR</span></button>
+      <button class="nav-btn" onclick="send('nav_channels')"><span class="nav-icon">&#x1F4E1;</span><span class="nav-lbl">Live TV</span></button>
+      <button class="nav-btn" onclick="send('nav_settings')"><span class="nav-icon">&#x2699;&#xFE0F;</span><span class="nav-lbl">Settings</span></button>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-lbl">Channel Number</div>
+    <div class="numpad">
+      <button class="num" onclick="np('1')">1</button>
+      <button class="num" onclick="np('2')">2<span class="num-sub">ABC</span></button>
+      <button class="num" onclick="np('3')">3<span class="num-sub">DEF</span></button>
+      <button class="num" onclick="np('4')">4<span class="num-sub">GHI</span></button>
+      <button class="num" onclick="np('5')">5<span class="num-sub">JKL</span></button>
+      <button class="num" onclick="np('6')">6<span class="num-sub">MNO</span></button>
+      <button class="num" onclick="np('7')">7<span class="num-sub">PQRS</span></button>
+      <button class="num" onclick="np('8')">8<span class="num-sub">TUV</span></button>
+      <button class="num" onclick="np('9')">9<span class="num-sub">WXYZ</span></button>
+      <button class="num" onclick="npClear()">&#9003;</button>
+      <button class="num" onclick="np('0')">0</button>
+      <button class="num go" onclick="npGo()">GO</button>
+    </div>
+    <div id="num-display"></div>
+  </div>
+  <div class="sec">
+    <div class="sec-lbl">Sleep Timer</div>
+    <div class="sleep-grid">
+      <button class="nav-btn" onclick="send('sleep',{mins:15})"><span class="nav-icon" style="font-size:13px;font-weight:700">15m</span><span class="nav-lbl">Sleep</span></button>
+      <button class="nav-btn" onclick="send('sleep',{mins:30})"><span class="nav-icon" style="font-size:13px;font-weight:700">30m</span><span class="nav-lbl">Sleep</span></button>
+      <button class="nav-btn" onclick="send('sleep',{mins:60})"><span class="nav-icon" style="font-size:13px;font-weight:700">60m</span><span class="nav-lbl">Sleep</span></button>
+      <button class="nav-btn" onclick="send('sleep_cancel')"><span class="nav-icon">&#x2715;</span><span class="nav-lbl">Cancel</span></button>
+    </div>
+  </div>
+</div>
+<div class="minibar">
+  <div class="mini-icon" id="mini-icon">&#x1F4FA;</div>
+  <div class="mini-info"><div class="mini-name" id="mini-name">No channel</div><div class="mini-prog" id="mini-prog">&#8212;</div></div>
+  <button class="mini-pp" id="mini-pp" onclick="send('play_pause')">&#x23F8;</button>
+</div>
+<div class="backdrop hide" id="modal">
+  <div class="modal">
+    <h2>Connect to TV</h2>
+    <p>Choose how this remote reaches Switchback TV.</p>
+    <div class="m-tabs">
+      <div class="m-tab on" id="tab-ls" onclick="setMethod('ls')">Same Device</div>
+      <div class="m-tab" id="tab-ws" onclick="setMethod('ws')">LAN / Network</div>
+    </div>
+    <div id="ui-ls"><p style="margin-bottom:0">Phone browser and Switchback TV open <b style="color:#fff">on the same device</b>. Syncs via localStorage &mdash; no server needed.</p></div>
+    <div id="ui-ws" style="display:none">
+      <p>Enter the IP of the device running Switchback TV.</p>
+      <input type="text" id="ws-ip" placeholder="192.168.1.100" inputmode="decimal" autocomplete="off" spellcheck="false">
+      <div style="font-size:11px;color:var(--muted)">Connects to <code style="color:#fff">ws://IP:8765</code></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-g" onclick="hideModal()">Cancel</button>
+      <button class="btn-r" onclick="doConnect()">Connect</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="remote.js"></script>
+</body>
+</html>`;
+
+fs.writeFileSync('C:/cevict-live/apps/IPTVviewer/website/remote.html', html, 'utf8');
+console.log('remote.html written: ' + html.length + ' bytes');

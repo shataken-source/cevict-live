@@ -37,6 +37,7 @@ const LEAGUE_TO_ESPN_PATH: Record<string, string> = {
   MLB: 'baseball/mlb',
   NCAAF: 'football/college-football',
   NCAAB: 'basketball/mens-college-basketball',
+  CBB: 'baseball/college-baseball',
   NASCAR: 'racing/nascar',
 };
 
