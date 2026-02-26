@@ -1262,10 +1262,12 @@
               <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
                 <div
                   style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 13px;font-size:12px">
-                  <span style="color:var(--green);font-weight:700">✓</span> 2 slots free</div>
+                  <span style="color:var(--green);font-weight:700">✓</span> 2 slots free
+                </div>
                 <div
                   style="background:rgba(229,0,0,0.1);border:1px solid rgba(229,0,0,0.2);border-radius:8px;padding:7px 13px;font-size:12px">
-                  <span style="color:var(--primary2);font-weight:700">Pro</span> 4 slots unlocked</div>
+                  <span style="color:var(--primary2);font-weight:700">Pro</span> 4 slots unlocked
+                </div>
                 <div
                   style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 13px;font-size:12px;color:#888">
                   Works across any category</div>
@@ -1313,7 +1315,8 @@
               <div class="price-feature"
                 style="font-weight:600;background:rgba(229,0,0,0.08);margin:0 -4px;padding:5px 4px;border-radius:4px">
                 <span style="color:var(--primary2)">★</span><span>⇄ <b>4 Switchback slots</b> — flip between 4
-                  channels</span></div>
+                  channels</span>
+              </div>
               <button class="btn btn-red btn-full" id="btn-plan-pro" style="margin-top:18px"
                 onclick="activatePlan('pro')">Upgrade to Pro →</button>
             </div>
@@ -1370,9 +1373,15 @@
                   Import Provider Config</div>
                 <textarea class="inp" id="cfg-import-input" rows="3" inputmode="none"
                   style="margin-bottom:8px;font-size:12px;resize:vertical"
-                  placeholder="Paste anything: Xtream URL (http://server/username/password), M3U URL, or JSON {server,username,password,epg}"></textarea>
+                  placeholder="Paste: Xtream URL, M3U URL, JSON config, or activation code"></textarea>
                 <button class="btn btn-red btn-sm btn-full" id="cfg-import-btn" tabindex="0">⚡ Import &amp;
                   Apply</button>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                  <button class="btn btn-ghost btn-sm" id="cfg-file-btn" style="flex:1" tabindex="0">📂 Choose
+                    File</button>
+                  <input type="file" id="cfg-file-input" accept=".switchback,.json,.txt,application/json,text/plain"
+                    style="display:none" />
+                </div>
                 <div id="cfg-import-result" style="margin-top:8px;font-size:12px"></div>
               </div>
               <div class="section-title">IPTV Provider</div>

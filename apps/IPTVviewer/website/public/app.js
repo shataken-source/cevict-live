@@ -2667,10 +2667,11 @@ initSettings = function () {
 }
 
 // ── PROVIDER IMPORT CONFIG ───────────────────────────────────
-// Parses Xtream URL, M3U URL, or JSON and auto-fills all credential fields
+// Parses Xtream URL, M3U URL, JSON, .switchback config, or activation code
 function parseProviderConfig(raw) {
   const s = raw.trim();
   // 1. JSON blob: { server, username/user, password/pass, epg? }
+  //    Also handles .switchback format with _switchback flag
   if (s.startsWith('{')) {
     try {
       const j = JSON.parse(s);
@@ -2679,6 +2680,7 @@ function parseProviderConfig(raw) {
         user: j.username || j.user || null,
         pass: j.password || j.pass || null,
         epg: j.epg || j.epg_url || null,
+        provider: j.provider || null,
       };
     } catch { }
   }
@@ -2708,17 +2710,37 @@ function parseProviderConfig(raw) {
       }
     } catch { }
   }
+  // 4. Activation code: base64url-encoded JSON
+  if (s.length > 20 && !s.includes(' ') && !s.startsWith('http')) {
+    try {
+      const decoded = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+      if (decoded.startsWith('{')) {
+        const j = JSON.parse(decoded);
+        if (j.server && (j.username || j.user) && (j.password || j.pass)) {
+          return {
+            server: j.server || j.url || null,
+            user: j.username || j.user || null,
+            pass: j.password || j.pass || null,
+            epg: j.epg || j.epg_url || null,
+            provider: j.provider || null,
+          };
+        }
+      }
+    } catch { }
+  }
   return null;
 }
 
-document.getElementById('cfg-import-btn')?.addEventListener('click', async () => {
-  const raw = (document.getElementById('cfg-import-input')?.value || '').trim();
+async function applyImportedConfig(raw) {
   const result = document.getElementById('cfg-import-result');
-  if (!raw) { if (result) result.innerHTML = '<span style="color:var(--muted)">Paste a URL or config above first.</span>'; return; }
+  if (!raw || !raw.trim()) {
+    if (result) result.innerHTML = '<span style="color:var(--muted)">No config data to import.</span>';
+    return;
+  }
 
   const cfg = parseProviderConfig(raw);
   if (!cfg || !cfg.server || !cfg.user || !cfg.pass) {
-    if (result) result.innerHTML = '<span style="color:var(--primary)">Could not parse. Try: http://server/user/pass or JSON {server,username,password}</span>';
+    if (result) result.innerHTML = '<span style="color:var(--primary)">Could not parse. Try: JSON, Xtream URL, M3U URL, or activation code.</span>';
     return;
   }
 
@@ -2735,7 +2757,15 @@ document.getElementById('cfg-import-btn')?.addEventListener('click', async () =>
   localStorage.setItem('iptv_pass', S.pass);
   if (cfg.epg) { S.epgUrl = cfg.epg; localStorage.setItem('epg_url', cfg.epg); }
 
-  if (result) result.innerHTML = '<span style="color:var(--muted)">Testing connection…</span>';
+  // Provider branding
+  if (cfg.provider && cfg.provider.name) {
+    localStorage.setItem('provider_name', cfg.provider.name);
+    const logoEl = document.querySelector('.sb-logo-text');
+    if (logoEl) logoEl.textContent = cfg.provider.name;
+  }
+
+  const providerLabel = cfg.provider?.name ? ` (${cfg.provider.name})` : '';
+  if (result) result.innerHTML = `<span style="color:var(--muted)">Testing connection${providerLabel}…</span>`;
 
   // Test connection
   try {
@@ -2746,15 +2776,43 @@ document.getElementById('cfg-import-btn')?.addEventListener('click', async () =>
     if (ok) {
       S.userInfo = data.user_info;
       renderAccountInfo(data.user_info);
-      S.allChannels = []; S.liveCategories = [];
-      if (result) result.innerHTML = `<span style="color:var(--green)">✓ Connected as <b>${data.user_info.username}</b>. Config applied!</span>`;
-      document.getElementById('cfg-import-input').value = '';
+      if (result) result.innerHTML = `<span style="color:var(--green)">✓ Connected as <b>${esc(data.user_info.username)}</b>${providerLabel}. Loading channels…</span>`;
+      const input = document.getElementById('cfg-import-input');
+      if (input) input.value = '';
+      // Auto-reload channels
+      bootData();
     } else {
-      if (result) result.innerHTML = '<span style="color:var(--primary)">⚠ Config saved but connection test failed. Check credentials.</span>';
+      if (result) result.innerHTML = '<span style="color:var(--primary)">⚠ Config saved but auth failed. Check credentials.</span>';
     }
   } catch (e) {
-    if (result) result.innerHTML = `<span style="color:var(--primary)">⚠ Config saved. Network error during test: ${e.message}</span>`;
+    if (result) result.innerHTML = `<span style="color:var(--primary)">⚠ Config saved. Network error: ${esc(e.message)}</span>`;
   }
+}
+
+document.getElementById('cfg-import-btn')?.addEventListener('click', () => {
+  const raw = (document.getElementById('cfg-import-input')?.value || '').trim();
+  if (!raw) {
+    const result = document.getElementById('cfg-import-result');
+    if (result) result.innerHTML = '<span style="color:var(--muted)">Paste a URL, config, or activation code above first.</span>';
+    return;
+  }
+  applyImportedConfig(raw);
+});
+
+// File picker handler
+document.getElementById('cfg-file-btn')?.addEventListener('click', () => {
+  document.getElementById('cfg-file-input')?.click();
+});
+document.getElementById('cfg-file-input')?.addEventListener('change', (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = reader.result;
+    if (text) applyImportedConfig(text);
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // reset so same file can be re-selected
 });
 
 function adjustAdVol(delta) {
