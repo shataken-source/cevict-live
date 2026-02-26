@@ -11,12 +11,22 @@ export default function SignalsPage() {
   const [signals, setSignals] = useState<Signal[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [synced, setSynced] = useState(false)
 
   const [filters, setFilters] = useState({
     platform: "all" as string,
     confidence: [] as string[],
     minEdge: 0,
   })
+
+  const syncSignals = useCallback(async () => {
+    try {
+      await fetch("/api/signals/sync", { cache: "no-store" })
+      setSynced(true)
+    } catch {
+      // Non-critical — signals table may already have data
+    }
+  }, [])
 
   const fetchSignals = useCallback(async () => {
     setLoading(true)
@@ -38,15 +48,19 @@ export default function SignalsPage() {
     setLoading(false)
   }, [filters])
 
+  // Sync live data on mount, then fetch
   useEffect(() => {
-    fetchSignals()
-  }, [fetchSignals])
+    syncSignals().then(() => fetchSignals())
+  }, [syncSignals, fetchSignals])
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
-    const interval = setInterval(fetchSignals, 30000)
+    const interval = setInterval(async () => {
+      await syncSignals()
+      await fetchSignals()
+    }, 30000)
     return () => clearInterval(interval)
-  }, [fetchSignals])
+  }, [syncSignals, fetchSignals])
 
   const activeSignals = signals.filter(s => s.status === "active" && s.edge > 0)
   const highConfidenceSignals = activeSignals.filter(s => s.confidence === "HIGH")
@@ -66,7 +80,7 @@ export default function SignalsPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={fetchSignals}
+            onClick={async () => { await syncSignals(); await fetchSignals() }}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-panel border border-border rounded-lg text-sm text-text-secondary hover:text-text-primary transition disabled:opacity-50"
           >
@@ -122,7 +136,7 @@ export default function SignalsPage() {
             <div className="bg-panel border border-border rounded-xl p-12 text-center">
               <p className="text-danger mb-4">{error}</p>
               <button
-                onClick={fetchSignals}
+                onClick={async () => { await syncSignals(); await fetchSignals() }}
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition"
               >
                 Retry
