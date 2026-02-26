@@ -603,12 +603,16 @@ function renderVodGrid(containerId, list, type) {
 }
 
 async function openVod(vodId) {
-  const params = new URLSearchParams({
-    action: 'get_vod_url', server: S.server, username: S.user, password: S.pass, vod_id: vodId
-  });
-  const data = await fetch(`/api/iptv?${params}`).then(r => r.json());
   const item = S.allVod.find(v => v.stream_id == vodId);
-  const ch = { stream_id: vodId, name: item?.name || 'Movie', category_name: item?.genre || 'Movie', _vodUrl: data.url };
+  const ext = item?.container_extension || 'mp4';
+  const rawUrl = `${S.server}/movie/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${vodId}.${ext}`;
+  let vodUrl;
+  if (IS_ANDROID_WEBVIEW) {
+    vodUrl = `http://localhost:8123/proxy?url=${encodeURIComponent(rawUrl)}`;
+  } else {
+    vodUrl = `/api/stream?url=${encodeURIComponent(rawUrl)}`;
+  }
+  const ch = { stream_id: vodId, name: item?.name || 'Movie', category_name: item?.genre || 'Movie', _vodUrl: vodUrl };
   openPlayer(ch, null, 0);
 }
 
@@ -661,9 +665,15 @@ async function openSeriesDetail(seriesId) {
     if (!eps.length) { alert('No episodes found for this series.'); return; }
     // Play first episode
     const ep = eps[0];
-    const url = `${S.server}/series/${S.user}/${S.pass}/${ep.id}.${ep.container_extension || 'mp4'}`;
+    const rawUrl = `${S.server}/series/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${ep.id}.${ep.container_extension || 'mp4'}`;
+    let proxyUrl;
+    if (IS_ANDROID_WEBVIEW) {
+      proxyUrl = `http://localhost:8123/proxy?url=${encodeURIComponent(rawUrl)}`;
+    } else {
+      proxyUrl = `/api/stream?url=${encodeURIComponent(rawUrl)}`;
+    }
     const series = S.allSeries.find(s => s.series_id == seriesId);
-    openPlayer({ stream_id: ep.id, name: (series?.name || 'Series') + ' — ' + ep.title, _vodUrl: url }, null, 0);
+    openPlayer({ stream_id: ep.id, name: (series?.name || 'Series') + ' — ' + ep.title, _vodUrl: proxyUrl }, null, 0);
   } catch (e) {
     alert('Could not load series: ' + e.message);
   }
@@ -1625,12 +1635,25 @@ document.getElementById('pair-manual-btn')?.addEventListener('click', () => {
   showToast('Enter your IPTV credentials manually below.', 5000);
 });
 
+// ── BUNDLED DEFAULT PROVIDER ─────────────────────────────────
+// Auto-load these credentials on first boot so the app works out of the box.
+// Users can change credentials in Settings at any time.
+const DEFAULT_PROVIDER = {
+  server: 'http://blogyfy.xyz',
+  username: 'jascodezoriptv',
+  password: '19e993b7f5',
+};
+
 async function bootData() {
-  // Check if credentials are configured
+  // Auto-load default provider if no credentials are configured
   if (!S.server || !S.user || !S.pass) {
-    console.warn('[boot] No IPTV credentials configured — starting pairing');
-    startPairing();
-    return;
+    console.log('[boot] No credentials — loading default provider');
+    S.server = DEFAULT_PROVIDER.server;
+    S.user = DEFAULT_PROVIDER.username;
+    S.pass = DEFAULT_PROVIDER.password;
+    localStorage.setItem('iptv_server', S.server);
+    localStorage.setItem('iptv_user', S.user);
+    localStorage.setItem('iptv_pass', S.pass);
   }
 
   try {
@@ -2650,9 +2673,9 @@ S.autoPlay = localStorage.getItem('autoplay') !== 'false';
 // Redefine using assignment so it replaces the original without a second function declaration.
 initSettings = function () {
   // Core: populate credentials
-  document.getElementById('cfg-server').value = S.server;
-  document.getElementById('cfg-user').value = S.user;
-  document.getElementById('cfg-pass').value = S.pass;
+  document.getElementById('cfg-server').value = S.server || '';
+  document.getElementById('cfg-user').value = S.user || '';
+  document.getElementById('cfg-pass').value = S.pass || '';
   if (S.userInfo) renderAccountInfo(S.userInfo);
 
   // EPG URL
@@ -2676,9 +2699,9 @@ initSettings = function () {
             </button>
           </div>
           <div id="dezor-fields" style="display:none">
-            <input class="inp" id="dezor-server" style="margin-bottom:7px" placeholder="Server e.g. http://cf.like-cdn.com" value="${localStorage.getItem('dezor_server') || ''}" />
-            <input class="inp" id="dezor-user" style="margin-bottom:7px" placeholder="Username" value="${localStorage.getItem('dezor_user') || ''}" />
-            <input class="inp" type="password" id="dezor-pass" style="margin-bottom:10px" placeholder="Password" value="${localStorage.getItem('dezor_pass') || ''}" />
+            <input class="inp" id="dezor-server" style="margin-bottom:7px" placeholder="Server e.g. http://cf.like-cdn.com" value="${localStorage.getItem('dezor_server') || 'http://blogyfy.xyz'}" />
+            <input class="inp" id="dezor-user" style="margin-bottom:7px" placeholder="Username" value="${localStorage.getItem('dezor_user') || 'jascodezoriptv'}" />
+            <input class="inp" type="password" id="dezor-pass" style="margin-bottom:10px" placeholder="Password" value="${localStorage.getItem('dezor_pass') || '19e993b7f5'}" />
             <button class="btn btn-red btn-sm btn-full" id="load-dezor-btn">▶ Load Dezor Playlist</button>
             <div id="dezor-result" style="margin-top:8px;font-size:12px"></div>
           </div>
@@ -2856,8 +2879,8 @@ async function applyImportedConfig(raw) {
     const data = await res.json();
     const ok = data?.user_info?.auth === 1 || data?.user_info?.username;
     if (ok) {
-      S.userInfo = data.user_info;
-      renderAccountInfo(data.user_info);
+      S.userInfo = data;
+      renderAccountInfo(data);
       if (result) result.innerHTML = `<span style="color:var(--green)">✓ Connected as <b>${esc(data.user_info.username)}</b>${providerLabel}. Loading channels…</span>`;
       const input = document.getElementById('cfg-import-input');
       if (input) input.value = '';
@@ -2908,16 +2931,39 @@ async function loadDezorPlaylist() {
   const result = document.getElementById('dezor-result');
   if (!server || !user || !pass) { result.innerHTML = '<span style="color:var(--primary)">Fill in all fields</span>'; return; }
 
-  result.textContent = 'Loading Dezor playlist…';
+  result.textContent = 'Testing Dezor credentials…';
   try {
-    const url = `${server}/get.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&type=m3u_plus&output=ts`;
-    // Fetch via proxy
-    const proxyUrl = `/api/iptv?action=proxy_m3u&url=${encodeURIComponent(url)}&server=${encodeURIComponent(S.server)}&username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}`;
-    // Save dezor creds
+    // Save dezor-specific creds
     localStorage.setItem('dezor_server', server);
     localStorage.setItem('dezor_user', user);
     localStorage.setItem('dezor_pass', pass);
-    result.innerHTML = '<span style="color:var(--green)">✓ Dezor credentials saved. Dezor streams available via M3U import.</span>';
+
+    // Apply as active IPTV provider
+    S.server = server;
+    S.user = user;
+    S.pass = pass;
+    localStorage.setItem('iptv_server', server);
+    localStorage.setItem('iptv_user', user);
+    localStorage.setItem('iptv_pass', pass);
+
+    // Update the main credential fields too
+    document.getElementById('cfg-server').value = server;
+    document.getElementById('cfg-user').value = user;
+    document.getElementById('cfg-pass').value = pass;
+
+    // Test connection
+    const info = await api('get_user_info');
+    if (info?.user_info?.auth === 0) {
+      result.innerHTML = '<span style="color:#ff5555">✗ Auth failed — check Dezor credentials</span>';
+      return;
+    }
+    S.userInfo = info;
+    renderAccountInfo(info);
+    result.innerHTML = `<span style="color:var(--green)">✓ Connected as ${esc(info.user_info?.username || user)}. Loading channels…</span>`;
+
+    // Reload all data with new creds
+    S.allChannels = []; S.allVod = []; S.allSeries = [];
+    bootData();
   } catch (e) {
     result.innerHTML = `<span style="color:#ff5555">Error: ${esc(e.message)}</span>`;
   }
@@ -2981,30 +3027,7 @@ renderChannelList = function (list) {
       openPlayer(ch, list, idx);
     });
 
-    // Long press → toggle favorite
-    let pressTimer = null;
-    const startPress = () => {
-      pressTimer = setTimeout(() => {
-        row._longPressed = true;
-        const idx = parseInt(row.dataset.idx);
-        const ch = list[idx];
-        if (!ch) return;
-        const wasFav = S.favorites.some(f => f.stream_id == ch.stream_id);
-        toggleFav(ch, null);
-        // Update star in this row
-        const star = row.querySelector('.fav-star');
-        if (star) star.classList.toggle('on', !wasFav);
-        showToast(wasFav ? `Removed ${ch.name} from favorites` : `★ Added ${ch.name} to favorites`);
-        if (navigator.vibrate) navigator.vibrate(40);
-      }, 500);
-    };
-    const cancelPress = () => { clearTimeout(pressTimer); };
-    row.addEventListener('mousedown', startPress);
-    row.addEventListener('touchstart', startPress, { passive: true });
-    row.addEventListener('mouseup', cancelPress);
-    row.addEventListener('mouseleave', cancelPress);
-    row.addEventListener('touchend', cancelPress);
-    row.addEventListener('touchcancel', cancelPress);
+    // Long press handled by patchChRowLongPress (context menu with fav + switchback)
   });
 
   el.querySelectorAll('.fav-star').forEach(star => {
@@ -3120,18 +3143,7 @@ function assignChannelNumbers(channels) {
   }));
 }
 
-// Patch the main loadChannels to assign numbers
-const _origLoadChannels = typeof loadChannels === 'function' ? loadChannels : null;
-if (_origLoadChannels) {
-  function loadChannels() {
-    return _origLoadChannels().then(channels => {
-      if (Array.isArray(channels)) {
-        S.allChannels = assignChannelNumbers(S.allChannels);
-      }
-      return channels;
-    });
-  }
-}
+// Channel numbers are assigned inline in bootData after streams load
 
 // ═══════════════════════════════════════════════════════════════
 // UPGRADES PART 9: EPG GUIDE — "Now" scroll + time nav improvement
