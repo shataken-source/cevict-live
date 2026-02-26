@@ -2816,6 +2816,109 @@ def send_setup_email(customer):
       result.innerHTML = `<span style="color:var(--green)">✓ Parsed: <b>${cfg.server}</b> · User: <b>${cfg.user}</b>${cfg.epg ? ' · EPG included' : ''} — paste in Settings to connect</span>`;
     }
 
+    // ── REMOTE CONTROL HANDLER ─────────────────────────────
+    window.addEventListener('storage', e => {
+      if (e.key !== 'sb_remote_cmd') return;
+      let cmd; try { cmd = JSON.parse(e.newValue); } catch { return; }
+      if (!cmd || !cmd.action) return;
+      handleRemoteCmd(cmd.action, cmd.extra || {});
+    });
+
+    function handleRemoteCmd(action, extra) {
+      const vid = document.querySelector('#player video') || document.querySelector('video');
+      switch (action) {
+        case 'play_pause':
+          if (vid) { vid.paused ? vid.play() : vid.pause(); }
+          break;
+        case 'seek_back':
+          if (vid) vid.currentTime = Math.max(0, vid.currentTime - 10);
+          break;
+        case 'seek_fwd':
+          if (vid) vid.currentTime = vid.currentTime + 10;
+          break;
+        case 'vol_up':
+          if (vid) vid.volume = Math.min(1, vid.volume + 0.1);
+          break;
+        case 'vol_down':
+          if (vid) vid.volume = Math.max(0, vid.volume - 0.1);
+          break;
+        case 'mute':
+          if (vid) vid.muted = !vid.muted;
+          break;
+        case 'ch_up':
+          (function () {
+            const cards = document.querySelectorAll('.channel-card');
+            let active = [...cards].findIndex(c => c.classList.contains('active'));
+            if (active < cards.length - 1) cards[active + 1].click();
+          })();
+          break;
+        case 'ch_down':
+          (function () {
+            const cards = document.querySelectorAll('.channel-card');
+            let active = [...cards].findIndex(c => c.classList.contains('active'));
+            if (active > 0) cards[active - 1].click();
+          })();
+          break;
+        case 'ch_goto':
+          if (extra.num != null) {
+            const cards = document.querySelectorAll('.channel-card');
+            const target = [...cards].find(c => c.dataset.num == extra.num);
+            if (target) target.click();
+          }
+          break;
+        case 'nav_home': nav('tvhome'); break;
+        case 'nav_guide': nav('epg'); break;
+        case 'nav_search': nav('search'); break;
+        case 'nav_back': history.back(); break;
+        case 'nav_favorites': nav('favorites'); break;
+        case 'nav_recordings': nav('catchup'); break;
+        case 'nav_channels': nav('tvhome'); break;
+        case 'nav_settings': nav('settings'); break;
+        case 'nav_up':
+        case 'nav_down':
+        case 'nav_left':
+        case 'nav_right':
+        case 'nav_ok':
+          (function () {
+            const map = { nav_up: 'ArrowUp', nav_down: 'ArrowDown', nav_left: 'ArrowLeft', nav_right: 'ArrowRight', nav_ok: 'Enter' };
+            document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: map[action], bubbles: true }));
+          })();
+          break;
+        case 'sb_cycle':
+          (function () {
+            const btn = document.querySelector('[onclick*="sbCycle"]') || document.querySelector('.sb-cycle-btn');
+            if (btn) btn.click();
+          })();
+          break;
+        case 'sb_jump':
+          if (extra.slot != null) {
+            const btn = document.querySelector(`[data-sb-slot="${extra.slot}"]`);
+            if (btn) btn.click();
+          }
+          break;
+        case 'sleep':
+          if (extra.mins) {
+            clearTimeout(window._sbSleepTimer);
+            window._sbSleepTimer = setTimeout(() => {
+              if (vid) { vid.pause(); vid.src = ''; }
+              nav('tvhome');
+            }, extra.mins * 60000);
+          }
+          break;
+        case 'sleep_cancel':
+          clearTimeout(window._sbSleepTimer);
+          break;
+      }
+      // Broadcast state back to remote
+      if (vid) {
+        localStorage.setItem('sb_state', JSON.stringify({
+          playing: !vid.paused,
+          muted: vid.muted,
+          volume: Math.round(vid.volume * 100)
+        }));
+      }
+    }
+
     // ── INIT ───────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
       nav('tvhome');
