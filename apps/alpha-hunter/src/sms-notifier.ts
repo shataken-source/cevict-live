@@ -4,9 +4,8 @@
  */
 
 interface SMSConfig {
-  keyId: string;
-  keySecret: string;
-  projectId: string;
+  servicePlanId: string;
+  apiToken: string;
   fromNumber: string;
   toNumber: string;
 }
@@ -23,17 +22,15 @@ export class SMSNotifier {
 
   constructor() {
     this.config = {
-      keyId: process.env.SINCH_KEY_ID || '',
-      keySecret: process.env.SINCH_KEY_SECRET || '',
-      projectId: process.env.SINCH_PROJECT_ID || '',
-      fromNumber: process.env.SINCH_NUMBER || '',
+      servicePlanId: process.env.SINCH_SERVICE_PLAN_ID || '',
+      apiToken: process.env.SINCH_API_TOKEN || '',
+      fromNumber: process.env.SINCH_FROM || '',
       toNumber: process.env.MY_PERSONAL_NUMBER || '',
     };
 
     this.enabled = !!(
-      this.config.keyId &&
-      this.config.keySecret &&
-      this.config.projectId &&
+      this.config.servicePlanId &&
+      this.config.apiToken &&
       this.config.fromNumber &&
       this.config.toNumber
     );
@@ -54,7 +51,7 @@ export class SMSNotifier {
 
   async sendAlert(title: string, message: string): Promise<NotificationResult> {
     const alertText = `🚨 ${title}\n\n${message}`;
-    
+
     if (!this.enabled) {
       console.log('📱 [SMS DISABLED] Alert:\n', alertText);
       return { success: true, messageId: 'disabled' };
@@ -98,7 +95,7 @@ export class SMSNotifier {
     balance: number
   ): Promise<NotificationResult> {
     const winRate = tradesExecuted > 0 ? (wins / tradesExecuted * 100).toFixed(1) : '0';
-    
+
     const message = `📊 DAILY SUMMARY\n\n` +
       `📈 Trades: ${tradesExecuted} (${wins}W/${losses}L)\n` +
       `🎯 Win Rate: ${winRate}%\n` +
@@ -126,16 +123,14 @@ export class SMSNotifier {
 
   private async sendSMS(message: string): Promise<NotificationResult> {
     try {
-      // Sinch REST API
-      const url = `https://sms.api.sinch.com/xms/v1/${this.config.projectId}/batches`;
-      
-      const auth = Buffer.from(`${this.config.keyId}:${this.config.keySecret}`).toString('base64');
+      // Sinch REST SMS API
+      const url = `https://us.sms.api.sinch.com/xms/v1/${this.config.servicePlanId}/batches`;
 
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Basic ${auth}`,
+          'Authorization': `Bearer ${this.config.apiToken}`,
         },
         body: JSON.stringify({
           from: this.config.fromNumber,
