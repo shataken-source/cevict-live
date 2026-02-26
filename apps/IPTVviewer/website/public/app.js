@@ -1069,7 +1069,7 @@ function openPlayer(ch, list, idx) {
 
   S.currentChannel = ch;
   S.channelList = list || S.channelList;
-  S.currentChannelIndex = idx || 0;
+  S.currentChannelIndex = (idx != null && idx !== undefined) ? idx : 0;
 
   const overlay = document.getElementById('player-overlay');
   overlay.style.display = 'flex';
@@ -1114,8 +1114,29 @@ function openPlayer(ch, list, idx) {
   }, 150);
 }
 
+function showPlayerError(msg) {
+  let el = document.getElementById('player-error-msg');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'player-error-msg';
+    el.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);' +
+      'background:rgba(229,0,0,0.85);color:#fff;padding:18px 28px;border-radius:12px;' +
+      'font-size:14px;font-weight:600;z-index:10001;text-align:center;max-width:320px;';
+    document.getElementById('player-overlay').appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function clearPlayerError() {
+  const el = document.getElementById('player-error-msg');
+  if (el) el.style.display = 'none';
+}
+
 async function loadStream(ch) {
   const video = document.getElementById('player-video');
+
+  clearPlayerError();
 
   // Destroy previous HLS instance
   if (S.hlsInstance) { S.hlsInstance.destroy(); S.hlsInstance = null; }
@@ -1123,7 +1144,7 @@ async function loadStream(ch) {
   // If VOD direct URL already provided
   if (ch._vodUrl) {
     video.src = ch._vodUrl;
-    video.play().catch(() => { });
+    video.play().catch(err => showPlayerError('Playback error: ' + err.message));
     updateEPGBar(ch);
     return;
   }
@@ -1153,44 +1174,53 @@ async function loadStream(ch) {
       backBufferLength: 90,
       maxBufferLength: bufSecs * 6,
       maxMaxBufferLength: bufSecs * 12,
-      xhrSetup: (xhr) => { xhr.withCredentials = false; },
+      xhrSetup: function (xhr) { xhr.withCredentials = false; },
     });
     S.hlsInstance = hls;
     hls.loadSource(hlsUrl);
     hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.play().catch(() => { });
-      hls.on(Hls.Events.FRAG_LOADED, (_, data) => {
-        const bw = Math.round((data.frag.stats?.loaded || 0) * 8 / ((data.frag.stats?.loading?.end - data.frag.stats?.loading?.start) || 1) / 1000);
-        if (bw > 0) document.getElementById('q-bitrate').textContent = (bw / 1000).toFixed(1);
+    hls.on(Hls.Events.MANIFEST_PARSED, function () {
+      clearPlayerError();
+      video.play().catch(function (err) { showPlayerError('Play blocked: ' + err.message); });
+      hls.on(Hls.Events.FRAG_LOADED, function (_, data) {
+        const bw = Math.round((data.frag.stats && data.frag.stats.loaded || 0) * 8 /
+          ((data.frag.stats && data.frag.stats.loading && (data.frag.stats.loading.end - data.frag.stats.loading.start) || 1)) / 1000);
+        if (bw > 0) { const el = document.getElementById('q-bitrate'); if (el) el.textContent = (bw / 1000).toFixed(1); }
       });
     });
-    hls.on(Hls.Events.ERROR, (_, d) => {
+    hls.on(Hls.Events.ERROR, function (_, d) {
       if (d.fatal) {
+        showPlayerError('Stream error: ' + (d.type || 'unknown') + ' — trying fallback…');
         hls.destroy(); S.hlsInstance = null;
-        // Fallback: try native video src directly (works on some Android WebView)
-        video.src = hlsUrl;
-        video.play().catch(() => {
-          // Last resort: .ts stream
-          const tsRaw = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
-          const tsUrl = IS_ANDROID_WEBVIEW
-            ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
-            : tsRaw;
-          video.src = tsUrl;
-          video.play().catch(() => { });
+        // Fallback: try .ts stream through proxy
+        const tsRaw = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
+        const tsUrl = IS_ANDROID_WEBVIEW
+          ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
+          : tsRaw;
+        video.src = tsUrl;
+        video.play().then(function () {
+          clearPlayerError();
+        }).catch(function (err) {
+          showPlayerError('Cannot play stream. Check your connection. (' + err.message + ')');
         });
       }
     });
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     // Safari native HLS
     video.src = hlsUrl;
-    video.play().catch(() => { });
+    video.play().catch(function (err) { showPlayerError('Play error: ' + err.message); });
   } else {
+    // No HLS support — try .ts directly
+    showPlayerError('Loading stream…');
     const tsRaw = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
     video.src = IS_ANDROID_WEBVIEW
       ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
       : tsRaw;
-    video.play().catch(() => { });
+    video.play().then(function () {
+      clearPlayerError();
+    }).catch(function (err) {
+      showPlayerError('Stream unavailable. (' + err.message + ')');
+    });
   }
 
   updateEPGBar(ch);
