@@ -2,5 +2,10 @@
   "name": "switchback-tv-web",
   "version": "1.0.0",
   "private": true,
-  "engines": { "node": ">=18" }
+  "scripts": {
+    "build": "echo static"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }
