@@ -24,8 +24,8 @@ export class SMSNotifier {
     this.config = {
       servicePlanId: process.env.SINCH_SERVICE_PLAN_ID || '',
       apiToken: process.env.SINCH_API_TOKEN || '',
-      fromNumber: process.env.SINCH_FROM || '',
-      toNumber: process.env.MY_PERSONAL_NUMBER || '',
+      fromNumber: (process.env.SINCH_FROM || '').replace(/[^\d]/g, ''),
+      toNumber: (process.env.MY_PERSONAL_NUMBER || '').replace(/[^\d]/g, ''),
     };
 
     this.enabled = !!(

@@ -18,8 +18,8 @@ export class SMSAlerter {
     this.config = {
       apiToken: process.env.SINCH_API_TOKEN || '',
       servicePlanId: process.env.SINCH_SERVICE_PLAN_ID || '',
-      from: process.env.SINCH_FROM || '',
-      to: process.env.MY_PERSONAL_NUMBER || '',
+      from: (process.env.SINCH_FROM || '').replace(/[^\d]/g, ''),
+      to: (process.env.MY_PERSONAL_NUMBER || '').replace(/[^\d]/g, ''),
     };
 
     this.enabled = !!(
@@ -45,7 +45,7 @@ export class SMSAlerter {
 
     try {
       const url = `https://us.sms.api.sinch.com/xms/v1/${this.config.servicePlanId}/batches`;
-      
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -83,7 +83,7 @@ export class SMSAlerter {
     platform: 'Coinbase' | 'Kalshi' | 'Polymarket'
   ): Promise<void> {
     const message = `🚨 ALPHA HUNTER TRADE\n${type} ${symbol}\nAmount: $${amount.toFixed(2)}\nPlatform: ${platform}\nTime: ${new Date().toLocaleTimeString()}`;
-    
+
     console.log('[SMS-ALERTER] 📱 Sending trade alert...');
     await this.sendSMS(message);
   }
@@ -93,7 +93,7 @@ export class SMSAlerter {
    */
   async dailyLimitReached(tradeCount: number, totalSpent: number): Promise<void> {
     const message = `⚠️ ALPHA HUNTER LIMIT\nDaily trade limit reached!\nTrades: ${tradeCount}\nSpent: $${totalSpent.toFixed(2)}\nBot stopped trading.`;
-    
+
     console.log('[SMS-ALERTER] 📱 Sending limit alert...');
     await this.sendSMS(message);
   }
@@ -103,7 +103,7 @@ export class SMSAlerter {
    */
   async emergencyStop(reason: string, totalSpent: number): Promise<void> {
     const message = `🛑 ALPHA HUNTER EMERGENCY STOP\nReason: ${reason}\nTotal spent: $${totalSpent.toFixed(2)}\nBot has been stopped!`;
-    
+
     console.log('[SMS-ALERTER] 📱 Sending emergency alert...');
     await this.sendSMS(message);
   }
@@ -113,7 +113,7 @@ export class SMSAlerter {
    */
   async botStarted(): Promise<void> {
     const message = `✅ ALPHA HUNTER STARTED\nBot is now active and monitoring markets.\nTime: ${new Date().toLocaleTimeString()}`;
-    
+
     console.log('[SMS-ALERTER] 📱 Sending startup alert...');
     await this.sendSMS(message);
   }
@@ -123,7 +123,7 @@ export class SMSAlerter {
    */
   async botStopped(reason?: string): Promise<void> {
     const message = `⏹️ ALPHA HUNTER STOPPED\n${reason ? `Reason: ${reason}\n` : ''}Time: ${new Date().toLocaleTimeString()}`;
-    
+
     console.log('[SMS-ALERTER] 📱 Sending shutdown alert...');
     await this.sendSMS(message);
   }
@@ -133,7 +133,7 @@ export class SMSAlerter {
    */
   async test(): Promise<boolean> {
     const message = `🧪 ALPHA HUNTER TEST\nSMS alerts are working correctly!\nTime: ${new Date().toLocaleTimeString()}`;
-    
+
     console.log('[SMS-ALERTER] 📱 Sending test message...');
     return await this.sendSMS(message);
   }

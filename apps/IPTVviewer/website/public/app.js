@@ -91,11 +91,13 @@ const IS_ANDROID_WEBVIEW = (
 ) && window.location.port === '8123';
 
 // Pairing API lives on the Vercel deployment.
+// TODO: Update 'switchback-tv-web.vercel.app' to the actual Vercel deployment domain
+//       once confirmed (check Vercel dashboard for the production URL).
 const PAIR_API_BASE = IS_ANDROID_WEBVIEW
   ? 'https://switchback-tv-web.vercel.app'
   : window.location.origin;
 
-// Pairing URL shown on TV for user to open on phone
+// TODO: Update fallback URL to match the real Vercel production domain
 const PAIR_URL = (window.location.host || 'switchback-tv-web.vercel.app') + '/pair';
 
 function buildApiUrl(action, extra = {}) {

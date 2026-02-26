@@ -62,14 +62,15 @@ export class CryptoComExchange {
     }
   }
 
-  private sign(params: any): string {
+  private sign(method: string, id: number, params: any, nonce: number): string {
+    // paramString must ONLY contain the request params — not method/id/nonce
     const paramString = Object.keys(params)
       .sort()
       .map(key => `${key}${params[key]}`)
       .join('');
 
-    const sigPayload = params.method + params.id + this.apiKey + paramString + params.nonce;
-    
+    const sigPayload = method + id + this.apiKey + paramString + nonce;
+
     return crypto
       .createHmac('sha256', this.apiSecret)
       .update(sigPayload)
@@ -93,7 +94,7 @@ export class CryptoComExchange {
       sig: '',
     };
 
-    body.sig = this.sign({ method, id, ...params, nonce });
+    body.sig = this.sign(method, id, params, nonce);
 
     const response = await fetch(`${this.baseUrl}/${method.replace('private/', '')}`, {
       method: 'POST',
