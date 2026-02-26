@@ -1246,8 +1246,36 @@
         <div class="screen" id="screen-pricing">
           <div class="page-title">💎 Plans &amp; Pricing</div>
           <div class="page-sub">One-time payment · No subscriptions · Lifetime access</div>
-          <div class="price-grid">
-            <div class="price-card">
+
+          <!-- SWITCHBACK FEATURE HERO -->
+          <div
+            style="background:linear-gradient(135deg,rgba(229,0,0,0.12),rgba(229,0,0,0.04));border:1px solid rgba(229,0,0,0.25);border-radius:16px;padding:22px 24px;margin-bottom:24px;max-width:860px;display:flex;align-items:center;gap:20px">
+            <div style="font-size:48px;flex-shrink:0">⇄</div>
+            <div style="flex:1">
+              <div
+                style="font-size:10px;font-weight:700;color:var(--primary2);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px">
+                ★ Signature Feature</div>
+              <div style="font-size:18px;font-weight:800;margin-bottom:6px">The Switchback System</div>
+              <div style="font-size:13px;color:#ccc;line-height:1.6">Instantly flip between your favorite channels — no
+                searching, no scrolling. Set up to 4 channels in your Switchback slots and jump between them with a
+                single button press. Perfect for sports fans, news watchers, or anyone juggling multiple streams.</div>
+              <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+                <div
+                  style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px 13px;font-size:12px">
+                  <span style="color:var(--green);font-weight:700">✓</span> 2 slots free</div>
+                <div
+                  style="background:rgba(229,0,0,0.1);border:1px solid rgba(229,0,0,0.2);border-radius:8px;padding:7px 13px;font-size:12px">
+                  <span style="color:var(--primary2);font-weight:700">Pro</span> 4 slots unlocked</div>
+                <div
+                  style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 13px;font-size:12px;color:#888">
+                  Works across any category</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="price-grid" style="max-width:860px">
+            <!-- STARTER -->
+            <div class="price-card" id="plan-starter">
               <div
                 style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
                 Basic</div>
@@ -1258,11 +1286,16 @@
               <div class="price-feature"><span style="color:var(--green)">✓</span>M3U / Xtream Codes support</div>
               <div class="price-feature"><span style="color:var(--green)">✓</span>10 favorites · Watch history</div>
               <div class="price-feature"><span style="color:var(--green)">✓</span>Basic EPG (7 days)</div>
+              <div class="price-feature" style="font-weight:600"><span style="color:var(--green)">✓</span><span>⇄ <b>2
+                    Switchback slots</b></span></div>
               <div class="price-feature"><span style="color:#555">✗</span>DVR / Recordings</div>
               <div class="price-feature"><span style="color:#555">✗</span>Ad Detection · Catch-Up</div>
-              <button class="btn btn-ghost btn-full" style="margin-top:18px">Current Plan</button>
+              <button class="btn btn-ghost btn-full" id="btn-plan-starter" style="margin-top:18px"
+                onclick="activatePlan('starter')">Current Plan</button>
             </div>
-            <div class="price-card featured">
+
+            <!-- PRO -->
+            <div class="price-card featured" id="plan-pro">
               <div
                 style="display:inline-block;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;margin-bottom:8px">
                 ★ Most Popular</div>
@@ -1277,11 +1310,17 @@
               <div class="price-feature"><span style="color:var(--green)">✓</span>Ad Detection &amp; Block</div>
               <div class="price-feature"><span style="color:var(--green)">✓</span>DVR 50 GB cloud storage</div>
               <div class="price-feature"><span style="color:var(--green)">✓</span>Catch-Up TV (7 days)</div>
-              <div class="price-feature"><span style="color:var(--green)">✓</span>Chromecast support</div>
-              <button class="btn btn-red btn-full" style="margin-top:18px"
-                onclick="alert('Stripe checkout coming soon!\n$9 one-time — Advanced Tier')">Upgrade to Pro →</button>
+              <div class="price-feature"
+                style="font-weight:600;background:rgba(229,0,0,0.08);margin:0 -4px;padding:5px 4px;border-radius:4px">
+                <span style="color:var(--primary2)">★</span><span>⇄ <b>4 Switchback slots</b> — flip between 4
+                  channels</span></div>
+              <button class="btn btn-red btn-full" id="btn-plan-pro" style="margin-top:18px"
+                onclick="activatePlan('pro')">Upgrade to Pro →</button>
             </div>
-            <div class="price-card" style="border-color:rgba(0,194,255,0.3);background:rgba(0,194,255,0.03)">
+
+            <!-- ELITE -->
+            <div class="price-card" style="border-color:rgba(0,194,255,0.3);background:rgba(0,194,255,0.03)"
+              id="plan-elite">
               <div
                 style="font-size:12px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
                 Experimental</div>
@@ -1293,17 +1332,26 @@
               <div class="price-feature"><span style="color:var(--green)">✓</span>AI Smart Recommendations</div>
               <div class="price-feature"><span style="color:var(--green)">✓</span>Voice Control · PiP</div>
               <div class="price-feature"><span style="color:var(--green)">✓</span>Multi-View (4 channels)</div>
-              <div class="price-feature"><span style="color:var(--green)">✓</span>Priority support</div>
-              <button class="btn btn-accent btn-full" style="margin-top:18px"
-                onclick="alert('Stripe checkout coming soon!\n$19 one-time — Elite Tier')">Go Elite →</button>
+              <div class="price-feature" style="font-weight:600"><span style="color:var(--accent)">★</span><span>⇄ <b>4
+                    Switchback slots</b> + Priority support</span></div>
+              <button class="btn btn-accent btn-full" id="btn-plan-elite" style="margin-top:18px"
+                onclick="activatePlan('elite')">Go Elite →</button>
             </div>
           </div>
+
+          <!-- Current plan status -->
+          <div id="plan-status-bar"
+            style="margin-top:16px;padding:11px 16px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;max-width:860px;font-size:12px;display:flex;align-items:center;gap:10px">
+            <span id="plan-status-text" style="flex:1;color:var(--muted)">Loading plan status…</span>
+            <button class="btn btn-ghost btn-sm" onclick="activatePlan('starter')">Reset to Free</button>
+          </div>
+
           <div
-            style="margin-top:24px;padding:14px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);max-width:860px">
+            style="margin-top:18px;padding:14px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);max-width:860px">
             <div style="font-size:13px;font-weight:700;margin-bottom:7px">📦 Download the Android TV App</div>
             <div style="display:flex;gap:11px;align-items:center">
               <a href="http://192.168.8.152:9000/switchback-v2.apk" class="btn btn-ghost btn-sm">⬇ Download APK</a>
-              <span style="font-size:12px;color:var(--muted)">Version 1.0.0 · Android 5.1+ · Feb 2026</span>
+              <span style="font-size:12px;color:var(--muted)">Version 3.9 · Android 5.1+ · Feb 2026</span>
             </div>
           </div>
         </div>
@@ -1457,7 +1505,9 @@
     </div>
     <div id="player-controls"
       style="background:#111;padding:12px 22px;display:flex;align-items:center;gap:14px;flex-shrink:0;position:absolute;bottom:0;left:0;right:0;">
-      <button class="btn btn-ghost btn-sm" id="prev-ch-btn">⏮ Prev</button>
+      <button class="btn btn-ghost btn-sm" id="prev-ch-btn">⇄ SB</button>
+      <button class="btn btn-ghost btn-sm" id="sb-panel-btn" onclick="showSwitchbackPanel()"
+        title="Switchback Slots (S)">⇄ Slots</button>
       <button class="btn btn-ghost btn-sm" onclick="seekRelative(-30)">⏪ -30s</button>
       <button id="play-pause-btn" onclick="togglePlay()"
         style="width:44px;height:44px;background:var(--primary);border-radius:22px;border:none;font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">⏸</button>

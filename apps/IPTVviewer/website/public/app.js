@@ -79,6 +79,8 @@ const S = {
   hlsInstance: null,
   playerMuted: false,
   catchupSelectedStreamId: null,
+  switchbackSlots: JSON.parse(localStorage.getItem('sb_slots') || '[null,null,null,null]'), // up to 4 switchback slots
+  isPro: localStorage.getItem('sb_tier') === 'pro' || localStorage.getItem('sb_tier') === 'elite', // pro/elite unlocks 4 slots
 };
 
 // ── ENVIRONMENT DETECTION ────────────────────────────────────
@@ -1097,7 +1099,10 @@ function openPlayer(ch, list, idx) {
   // Fetch real stream URL then load HLS
   loadStream(ch);
 
-  // Inject player extras + refresh ad badge and prev-ch label
+  // Update SB button label immediately
+  updatePrevChannelBtn();
+
+  // Inject player extras + refresh ad badge
   setTimeout(() => {
     injectPlayerExtras();
     updateAdBlockBadge();
@@ -1564,24 +1569,232 @@ S.sleepTimer = null;
 S.sleepMinutes = 0;
 S.prevChannel = null;  // track explicit previous channel
 
+// ── SWITCHBACK SLOT HELPERS ───────────────────────────────────
+function saveSbSlots() {
+  localStorage.setItem('sb_slots', JSON.stringify(S.switchbackSlots));
+}
+
+function sbSlotLimit() {
+  return S.isPro ? 4 : 2;
+}
+
+// Assign current channel to a switchback slot
+function assignSbSlot(slotIdx) {
+  const ch = S.currentChannel;
+  if (!ch) return;
+  if (slotIdx >= sbSlotLimit()) {
+    showUpgradePrompt('Switchback Pro', 'Upgrade to Pro to unlock 4 Switchback slots — flip between up to 4 channels instantly.');
+    return;
+  }
+  S.switchbackSlots[slotIdx] = { stream_id: ch.stream_id, name: ch.name, category_name: ch.category_name || '', stream_icon: ch.stream_icon || '', _full: ch };
+  saveSbSlots();
+  showToast(`Slot ${slotIdx + 1}: ${ch.name.slice(0, 22)}`);
+  // refresh panel if open
+  if (document.getElementById('sb-panel')) renderSwitchbackPanel();
+}
+
+// Assign a channel (from channel list) to a specific slot via context menu
+function assignChannelToSbSlot(ch) {
+  const limit = sbSlotLimit();
+  // Find first empty slot, or prompt to pick
+  const emptyIdx = S.switchbackSlots.findIndex((s, i) => !s && i < limit);
+  if (emptyIdx >= 0) {
+    S.switchbackSlots[emptyIdx] = { stream_id: ch.stream_id, name: ch.name, category_name: ch.category_name || '', stream_icon: ch.stream_icon || '', _full: ch };
+    saveSbSlots();
+    showToast(`Added to Switchback Slot ${emptyIdx + 1}: ${ch.name.slice(0, 18)}`);
+  } else {
+    showSbAssignModal(ch);
+  }
+}
+
+// Show a small modal to pick which slot to overwrite
+function showSbAssignModal(ch) {
+  const existing = document.getElementById('sb-assign-modal');
+  if (existing) existing.remove();
+  const limit = sbSlotLimit();
+  const modal = document.createElement('div');
+  modal.id = 'sb-assign-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:20000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:#1a1a2e;border:1px solid #444;border-radius:14px;padding:20px 24px;width:300px;">
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px">⇄ Assign to Switchback Slot</div>
+      <div style="font-size:12px;color:#888;margin-bottom:14px">${esc(ch.name)}</div>
+      ${S.switchbackSlots.slice(0, limit).map((s, i) => `
+        <button class="btn btn-ghost btn-sm btn-full" data-slot="${i}" style="margin-bottom:7px;display:flex;justify-content:space-between;">
+          <span>Slot ${i + 1}</span>
+          <span style="color:#888;font-size:11px">${s ? esc(s.name.slice(0, 18)) : 'Empty'}</span>
+        </button>`).join('')}
+      <button class="btn btn-ghost btn-sm btn-full" style="margin-top:5px;color:var(--muted)" id="sb-assign-cancel">Cancel</button>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.querySelectorAll('[data-slot]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.slot);
+      S.switchbackSlots[i] = { stream_id: ch.stream_id, name: ch.name, category_name: ch.category_name || '', stream_icon: ch.stream_icon || '', _full: ch };
+      saveSbSlots();
+      showToast(`Slot ${i + 1}: ${ch.name.slice(0, 18)}`);
+      modal.remove();
+    });
+  });
+  document.getElementById('sb-assign-cancel').onclick = () => modal.remove();
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+// Upgrade prompt for locked features
+function showUpgradePrompt(featureName, description) {
+  const existing = document.getElementById('upgrade-prompt-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'upgrade-prompt-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:20000;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:#1a1a2e;border:2px solid rgba(229,0,0,0.4);border-radius:16px;padding:28px;width:340px;text-align:center">
+      <div style="font-size:32px;margin-bottom:10px">💎</div>
+      <div style="font-size:16px;font-weight:800;margin-bottom:8px">${esc(featureName)}</div>
+      <div style="font-size:13px;color:#aaa;margin-bottom:20px;line-height:1.5">${esc(description)}</div>
+      <button class="btn btn-red btn-full" onclick="nav('pricing');document.getElementById('upgrade-prompt-modal')?.remove();closePlayer()" style="margin-bottom:9px">View Plans →</button>
+      <button class="btn btn-ghost btn-full" id="upgrade-cancel">Not Now</button>
+    </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('upgrade-cancel').onclick = () => modal.remove();
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+// Render the Switchback panel contents (called on open + reassign)
+function renderSwitchbackPanel() {
+  const panel = document.getElementById('sb-panel');
+  if (!panel) return;
+  const limit = sbSlotLimit();
+  const slots = S.switchbackSlots;
+  const curr = S.currentChannel;
+
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px">
+      <div style="font-size:14px;font-weight:800">⇄ Switchback Slots</div>
+      <span onclick="document.getElementById('sb-panel').remove()" style="cursor:pointer;color:#888;font-size:16px">✕</span>
+    </div>
+    <div style="font-size:11px;color:#888;margin-bottom:12px">Tap a slot to jump • Long-press to clear • ${S.isPro ? '4 slots (Pro)' : '2 slots free · <span style="color:var(--primary);cursor:pointer" onclick="nav(\'pricing\');closePlayer()">Upgrade for 4</span>'}</div>
+    ${slots.slice(0, 4).map((s, i) => {
+    const locked = i >= limit;
+    const isActive = s && curr && s.stream_id == curr.stream_id;
+    if (locked) {
+      return `<div style="background:rgba(229,0,0,0.07);border:1px dashed rgba(229,0,0,0.25);border-radius:10px;padding:10px 13px;margin-bottom:7px;display:flex;align-items:center;gap:10px;cursor:pointer" onclick="showUpgradePrompt('Unlock Slot ${i + 1}','Upgrade to Pro to unlock all 4 Switchback slots.')">
+          <div style="width:36px;height:36px;background:rgba(100,100,100,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">🔒</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:600;color:#555">Slot ${i + 1} — Pro</div><div style="font-size:11px;color:#444">Upgrade to unlock</div></div>
+          <span class="btn btn-sm" style="background:rgba(229,0,0,0.15);color:var(--primary);font-size:11px">Upgrade</span>
+        </div>`;
+    }
+    if (!s) {
+      return `<div class="sb-slot-btn" data-slot="${i}" style="background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.12);border-radius:10px;padding:10px 13px;margin-bottom:7px;display:flex;align-items:center;gap:10px;cursor:pointer">
+          <div style="width:36px;height:36px;background:rgba(255,255,255,0.05);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#555">+</div>
+          <div style="flex:1"><div style="font-size:13px;color:#666">Slot ${i + 1} — Empty</div><div style="font-size:11px;color:#444">Tap to assign current channel</div></div>
+        </div>`;
+    }
+    const initials = s.name.replace(/[^A-Za-z0-9]/g, ' ').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+    const bg = isActive ? 'rgba(52,199,89,0.12)' : 'rgba(255,255,255,0.05)';
+    const border = isActive ? '1px solid rgba(52,199,89,0.4)' : '1px solid rgba(255,255,255,0.1)';
+    return `<div class="sb-slot-btn" data-slot="${i}" data-has-ch="1" style="background:${bg};border:${border};border-radius:10px;padding:10px 13px;margin-bottom:7px;display:flex;align-items:center;gap:10px;cursor:pointer">
+        <div style="width:36px;height:36px;background:rgba(229,0,0,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">${esc(initials)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${isActive ? '▶ ' : ''}${esc(s.name)}</div>
+          <div style="font-size:11px;color:#888">${esc(s.category_name || 'Live TV')}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          ${!isActive ? `<button class="btn btn-sm" style="background:var(--primary);color:#fff;font-size:11px" onclick="event.stopPropagation();sbJumpToSlot(${i})">⇄ Go</button>` : '<span style="font-size:11px;color:#34C759;font-weight:700">Watching</span>'}
+          <button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 7px" onclick="event.stopPropagation();sbClearSlot(${i})">✕</button>
+        </div>
+      </div>`;
+  }).join('')}
+    <div style="margin-top:10px;display:flex;gap:7px">
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="assignSbSlot(${slots.slice(0, limit).findIndex(s => !s) >= 0 ? slots.slice(0, limit).findIndex(s => !s) : 0})">📌 Assign Current</button>
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="sbCycleNext()">⇄ Cycle Next</button>
+    </div>`;
+
+  // Wire slot clicks
+  panel.querySelectorAll('.sb-slot-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      if (e.target.tagName === 'BUTTON') return; // handled by button's own onclick
+      const i = parseInt(btn.dataset.slot);
+      if (btn.dataset.hasCh) sbJumpToSlot(i);
+      else assignSbSlot(i);
+    });
+  });
+}
+
+// Jump to a slot's channel
+function sbJumpToSlot(slotIdx) {
+  const slot = S.switchbackSlots[slotIdx];
+  if (!slot) return;
+  const ch = S.allChannels.find(c => c.stream_id == slot.stream_id) || slot._full || slot;
+  const idx = S.channelList.findIndex(c => c.stream_id == slot.stream_id);
+  // Before jumping, save current channel into the slot we're leaving (true swap)
+  if (S.currentChannel) {
+    S.switchbackSlots[slotIdx] = { stream_id: S.currentChannel.stream_id, name: S.currentChannel.name, category_name: S.currentChannel.category_name || '', stream_icon: S.currentChannel.stream_icon || '', _full: S.currentChannel };
+    saveSbSlots();
+  }
+  openPlayer(ch, S.channelList.length ? S.channelList : S.allChannels, idx >= 0 ? idx : S.currentChannelIndex);
+  document.getElementById('sb-panel')?.remove();
+}
+
+// Cycle to next populated slot
+function sbCycleNext() {
+  const limit = sbSlotLimit();
+  const curr = S.currentChannel;
+  const occupied = S.switchbackSlots.slice(0, limit).map((s, i) => ({ s, i })).filter(x => x.s && (!curr || x.s.stream_id != curr.stream_id));
+  if (!occupied.length) { showToast('No other channels in Switchback slots'); return; }
+  // Find the slot just after current in the rotation
+  const currSlot = S.switchbackSlots.findIndex(s => s && curr && s.stream_id == curr.stream_id);
+  const nextInRot = occupied.find(x => x.i > currSlot) || occupied[0];
+  sbJumpToSlot(nextInRot.i);
+}
+
+// Clear a slot
+function sbClearSlot(slotIdx) {
+  S.switchbackSlots[slotIdx] = null;
+  saveSbSlots();
+  renderSwitchbackPanel();
+  showToast(`Slot ${slotIdx + 1} cleared`);
+}
+
+// Open / close Switchback panel in the player
+function showSwitchbackPanel() {
+  const existing = document.getElementById('sb-panel');
+  if (existing) { existing.remove(); return; }
+  const panel = document.createElement('div');
+  panel.id = 'sb-panel';
+  panel.style.cssText = 'position:absolute;left:20px;bottom:80px;width:320px;background:#1a1a2e;border:1px solid #333;border-radius:14px;padding:18px;z-index:10002;max-height:70vh;overflow-y:auto;';
+  document.getElementById('player-overlay').appendChild(panel);
+  renderSwitchbackPanel();
+}
+
 // prev-channel tracking inlined into openPlayer above
 
 function updatePrevChannelBtn() {
   const btn = document.getElementById('prev-ch-btn');
   if (!btn) return;
-  btn.textContent = S.prevChannel ? `⏮ ${S.prevChannel.name.slice(0, 12)}` : '⏮ Prev';
+  // Show slot 0 name if occupied, else fall back to prevChannel
+  const slot0 = S.switchbackSlots[0];
+  const curr = S.currentChannel;
+  const display = slot0 && (!curr || slot0.stream_id != curr.stream_id)
+    ? slot0.name.slice(0, 14)
+    : (S.prevChannel ? S.prevChannel.name.slice(0, 14) : null);
+  btn.textContent = display ? `⇄ ${display}` : '⇄ SB';
 }
 
-// Prev channel button — swap current ↔ previous (the core Switchback feature)
+// Prev channel button — swap with slot 0 if available, else open panel
 document.getElementById('prev-ch-btn').addEventListener('click', () => {
-  if (S.prevChannel) {
+  const slot0 = S.switchbackSlots[0];
+  const curr = S.currentChannel;
+  if (slot0 && (!curr || slot0.stream_id != curr.stream_id)) {
+    sbJumpToSlot(0);
+  } else if (S.prevChannel) {
     const tmp = S.currentChannel;
     const prevIdx = S.channelList.findIndex(c => c.stream_id == S.prevChannel.stream_id);
     openPlayer(S.prevChannel, S.channelList, prevIdx >= 0 ? prevIdx : S.currentChannelIndex);
     S.prevChannel = tmp;
     updatePrevChannelBtn();
   } else {
-    navigateChannel(-1);
+    showSwitchbackPanel();
   }
 });
 
@@ -2753,6 +2966,182 @@ function addEpgSearchBtn() {
 
 // nav() EPG hook consolidated into canonical nav() below
 
+// ═══════════════════════════════════════════════════════════════
+// SWITCHBACK PART 2: Plan activation + pricing screen init
+// ═══════════════════════════════════════════════════════════════
+
+function activatePlan(tier) {
+  // In production this would verify a payment receipt.
+  // For now it persists the tier locally and gates features.
+  const prev = localStorage.getItem('sb_tier') || 'starter';
+  if (tier === prev && tier !== 'starter') {
+    showToast(`Already on ${tier} plan`);
+    return;
+  }
+  localStorage.setItem('sb_tier', tier);
+  S.isPro = tier === 'pro' || tier === 'elite';
+  refreshPricingUI();
+  if (tier === 'starter') {
+    showToast('Reset to Free plan');
+  } else {
+    showToast(`✓ ${tier.charAt(0).toUpperCase() + tier.slice(1)} plan activated — ${S.isPro ? '4 Switchback slots unlocked!' : ''}`);
+    setTimeout(() => showSwitchbackPanel(), 800);
+  }
+}
+
+function refreshPricingUI() {
+  const tier = localStorage.getItem('sb_tier') || 'starter';
+  const labels = { starter: 'Current Plan', pro: 'Upgrade to Pro →', elite: 'Go Elite →' };
+  const active = { starter: 'btn-red', pro: 'btn-ghost', elite: 'btn-ghost' };
+
+  const btnStarter = document.getElementById('btn-plan-starter');
+  const btnPro = document.getElementById('btn-plan-pro');
+  const btnElite = document.getElementById('btn-plan-elite');
+  const statusText = document.getElementById('plan-status-text');
+
+  if (btnStarter) {
+    btnStarter.textContent = tier === 'starter' ? '✓ Active Plan' : 'Downgrade to Free';
+    btnStarter.className = `btn btn-full ${tier === 'starter' ? 'btn-ghost' : 'btn-ghost'}`;
+  }
+  if (btnPro) {
+    btnPro.textContent = tier === 'pro' ? '✓ Active Plan' : 'Upgrade to Pro →';
+    btnPro.className = `btn btn-full ${tier === 'pro' ? 'btn-green' : 'btn-red'}`;
+    btnPro.style.opacity = tier === 'pro' ? '0.7' : '1';
+  }
+  if (btnElite) {
+    btnElite.textContent = tier === 'elite' ? '✓ Active Plan' : 'Go Elite →';
+    btnElite.className = `btn btn-full ${tier === 'elite' ? 'btn-green' : 'btn-accent'}`;
+    btnElite.style.opacity = tier === 'elite' ? '0.7' : '1';
+  }
+
+  // Highlight active card
+  ['starter', 'pro', 'elite'].forEach(t => {
+    const card = document.getElementById('plan-' + t);
+    if (!card) return;
+    card.style.boxShadow = tier === t ? '0 0 0 2px var(--green)' : '';
+  });
+
+  const slotCount = S.isPro ? 4 : 2;
+  const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+  if (statusText) {
+    statusText.innerHTML = `<span style="color:var(--green);font-weight:700">✓ ${tierLabel} Plan</span> &nbsp;·&nbsp; ⇄ <b>${slotCount} Switchback slots</b> active &nbsp;·&nbsp; <span style="color:var(--muted)">Slots persist across sessions</span>`;
+  }
+}
+
+// ── 's' key shortcut — open Switchback panel while in player ──
+document.addEventListener('keydown', e => {
+  if (e.key !== 's' && e.key !== 'S') return;
+  const overlay = document.getElementById('player-overlay');
+  if (!overlay || overlay.style.display === 'none') return;
+  const tag = (document.activeElement || {}).tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  e.preventDefault();
+  showSwitchbackPanel();
+});
+
+// ── Long-press on ch-row shows SB assign context menu ────────
+// (Injected after renderChannelList wires its own long-press)
+// We hook into the existing long-press by patching renderChannelList post-hook.
+const _origRenderCL = typeof renderChannelList === 'function' ? renderChannelList : null;
+if (_origRenderCL) {
+  renderChannelList = function (list) {
+    _origRenderCL(list);
+    // After rows are rendered, patch long-press to show SB context menu
+    patchChRowLongPress(list);
+  };
+}
+
+function patchChRowLongPress(list) {
+  document.querySelectorAll('#channel-list .ch-row').forEach(row => {
+    let pressTimer = null;
+    const sbStart = () => {
+      pressTimer = setTimeout(() => {
+        row._longPressed = true;
+        const idx = parseInt(row.dataset.idx);
+        const ch = list[idx];
+        if (!ch) return;
+        showChRowContextMenu(ch, row);
+        if (navigator.vibrate) navigator.vibrate([20, 10, 20]);
+      }, 700);
+    };
+    const sbCancel = () => clearTimeout(pressTimer);
+    row.addEventListener('mousedown', sbStart);
+    row.addEventListener('touchstart', sbStart, { passive: true });
+    row.addEventListener('mouseup', sbCancel);
+    row.addEventListener('mouseleave', sbCancel);
+    row.addEventListener('touchend', sbCancel);
+    row.addEventListener('touchcancel', sbCancel);
+  });
+}
+
+function showChRowContextMenu(ch, anchorEl) {
+  const existing = document.getElementById('ch-context-menu');
+  if (existing) existing.remove();
+
+  const menu = document.createElement('div');
+  menu.id = 'ch-context-menu';
+  const limit = sbSlotLimit();
+
+  menu.style.cssText = 'position:fixed;background:#1a1a2e;border:1px solid #444;border-radius:12px;padding:8px;z-index:20000;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,0.5)';
+
+  // Position near anchor
+  const rect = anchorEl.getBoundingClientRect();
+  menu.style.top = Math.min(rect.bottom + 6, window.innerHeight - 200) + 'px';
+  menu.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 230)) + 'px';
+
+  const slotItems = S.switchbackSlots.slice(0, 4).map((s, i) => {
+    const locked = i >= limit;
+    const label = s ? `Replace: ${esc(s.name.slice(0, 14))}` : 'Empty';
+    const style = locked
+      ? 'opacity:0.45;cursor:default'
+      : 'cursor:pointer';
+    return `<div class="ctx-item" data-ctx-slot="${i}" style="display:flex;justify-content:space-between;align-items:center;padding:8px 11px;border-radius:8px;${style}">
+      <span style="font-size:13px">⇄ Slot ${i + 1}</span>
+      <span style="font-size:11px;color:#888">${locked ? '🔒 Pro' : label}</span>
+    </div>`;
+  }).join('');
+
+  const isFav = S.favorites.some(f => f.stream_id == ch.stream_id);
+  menu.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:1px;padding:4px 11px 8px">⇄ Switchback — ${esc(ch.name.slice(0, 18))}</div>
+    ${slotItems}
+    <div style="border-top:1px solid #333;margin:6px 0"></div>
+    <div class="ctx-item" id="ctx-fav" style="display:flex;justify-content:space-between;align-items:center;padding:8px 11px;border-radius:8px;cursor:pointer">
+      <span style="font-size:13px">${isFav ? '★ Remove Favorite' : '☆ Add to Favorites'}</span>
+    </div>
+    <div class="ctx-item" id="ctx-cancel" style="padding:8px 11px;border-radius:8px;cursor:pointer;color:#888;font-size:13px">Cancel</div>`;
+
+  document.body.appendChild(menu);
+
+  menu.querySelectorAll('[data-ctx-slot]').forEach(item => {
+    const i = parseInt(item.dataset.ctxSlot);
+    if (i >= limit) return;
+    item.style.cursor = 'pointer';
+    item.addEventListener('mouseenter', () => item.style.background = 'rgba(255,255,255,0.06)');
+    item.addEventListener('mouseleave', () => item.style.background = '');
+    item.addEventListener('click', () => {
+      S.switchbackSlots[i] = { stream_id: ch.stream_id, name: ch.name, category_name: ch.category_name || '', stream_icon: ch.stream_icon || '', _full: ch };
+      saveSbSlots();
+      showToast(`⇄ Slot ${i + 1}: ${ch.name.slice(0, 20)}`);
+      menu.remove();
+    });
+  });
+
+  document.getElementById('ctx-fav').addEventListener('click', () => {
+    toggleFav(ch, null);
+    showToast(isFav ? `Removed from favorites` : `★ Added to favorites`);
+    menu.remove();
+  });
+  document.getElementById('ctx-cancel').addEventListener('click', () => menu.remove());
+
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', function closer(e) {
+      if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', closer); }
+    });
+  }, 50);
+}
+
 console.log('[Switchback TV] All upgrades loaded ✓');
 
 // ═══════════════════════════════════════════════════════════════
@@ -2806,6 +3195,7 @@ function nav(screen) {
   if (screen === 'favorites') setTimeout(renderFavorites, 50);
   if (screen === 'recordings') setTimeout(renderRecordings, 50);
   if (screen === 'epg') setTimeout(addEpgSearchBtn, 500);
+  if (screen === 'pricing') setTimeout(refreshPricingUI, 50);
 }
 
 // Re-wire all nav triggers (sidebar items, topbar cog, home tiles)
