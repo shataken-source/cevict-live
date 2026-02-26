@@ -212,22 +212,11 @@ export class PrognoIntegration {
   }
 
   async getArbitrageOpportunities(): Promise<Opportunity[]> {
-    try {
-      // Fetch odds from multiple books and find arbitrage
-      const leagues = ['NFL', 'NBA', 'NCAAF', 'NCAAB'];
-      const opportunities: Opportunity[] = [];
-
-      for (const league of leagues) {
-        const odds = await this.getLiveOdds(league);
-        const arbOpps = this.findArbitrage(odds, league);
-        opportunities.push(...arbOpps);
-      }
-
-      return opportunities;
-    } catch (error) {
-      console.error('Error finding arbitrage:', error);
-      return [];
-    }
+    // getLiveOdds returns single-source data from the Progno API, which does not
+    // include multi-book odds. Real arbitrage requires comparing odds across
+    // different bookmakers. Return empty until a proper multi-book odds source
+    // is wired up (e.g. The Odds API directly from Alpha Hunter).
+    return [];
   }
 
   private findArbitrage(games: any[], league: string): Opportunity[] {

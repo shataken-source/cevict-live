@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
       'icehockey_nhl',
       'americanfootball_ncaaf',
       'basketball_ncaab',
+      'baseball_ncaa',
     ];
 
     const allSnapshots: any[] = [];
@@ -208,7 +209,71 @@ async function detectLineMovementSignals(snapshot: OddsSnapshot): Promise<string
 }
 
 async function loadPreviousSnapshot(gameId: string): Promise<OddsSnapshot | null> {
-  return null;
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !supabaseKey) return null;
+
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get the most recent snapshot for this game (older than 10 min to avoid self-comparison)
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from('historical_odds')
+      .select('*')
+      .eq('game_id', gameId)
+      .lt('captured_at', tenMinAgo)
+      .order('captured_at', { ascending: false })
+      .limit(20);
+
+    if (error || !data || data.length === 0) return null;
+
+    // Reconstruct the OddsSnapshot from flat rows
+    const first = data[0];
+    const snapshot: OddsSnapshot = {
+      gameId: first.game_id,
+      sport: first.sport,
+      homeTeam: first.home_team,
+      awayTeam: first.away_team,
+      commenceTime: first.commence_time,
+      timestamp: first.captured_at,
+      bookmakers: {},
+    };
+
+    // Group by bookmaker and reconstruct markets
+    for (const row of data) {
+      // Only use rows from the same captured_at timestamp
+      if (row.captured_at !== first.captured_at) continue;
+
+      if (!snapshot.bookmakers[row.bookmaker]) {
+        snapshot.bookmakers[row.bookmaker] = {};
+      }
+      const book = snapshot.bookmakers[row.bookmaker];
+
+      if (row.market_type === 'moneyline' && row.home_odds != null) {
+        book.moneyline = { home: row.home_odds, away: row.away_odds };
+      } else if (row.market_type === 'spreads' && row.home_spread != null) {
+        book.spreads = {
+          home: row.home_spread,
+          away: row.away_spread,
+          homeOdds: row.home_odds,
+          awayOdds: row.away_odds,
+        };
+      } else if (row.market_type === 'totals' && row.total_line != null) {
+        book.totals = {
+          line: row.total_line,
+          overOdds: row.over_odds,
+          underOdds: row.under_odds,
+        };
+      }
+    }
+
+    return snapshot;
+  } catch (e) {
+    console.warn('[Odds Tracker] Failed to load previous snapshot:', e);
+    return null;
+  }
 }
 
 async function storeOddsSnapshots(snapshots: OddsSnapshot[]): Promise<void> {

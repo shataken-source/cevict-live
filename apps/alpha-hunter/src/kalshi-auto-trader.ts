@@ -7,7 +7,6 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
-dotenv.config({ path: path.join(process.cwd(), '.env') }); // load secrets not in .env.local
 
 import { KalshiTrader } from './intelligence/kalshi-trader';
 import Anthropic from '@anthropic-ai/sdk';
@@ -260,9 +259,9 @@ class MarketAnalyzer {
     // Political markets - look for overreactions to news
     const title = market.title.toLowerCase();
 
-    // Be cautious with political predictions
+    // Be cautious with political predictions — no real edge without data
     return {
-      prediction: market.yesPrice + (Math.random() > 0.5 ? 2 : -2),
+      prediction: market.yesPrice,
       confidence: 45,
       reasoning: 'Political markets are efficient - minimal edge available',
     };

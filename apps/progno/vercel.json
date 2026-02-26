@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/daily-results-retry",
-      "schedule": "30 13 * * *"
+      "schedule": "15 13 * * *"
     },
     {
       "path": "/api/cron/daily-predictions?earlyLines=1",

@@ -53,8 +53,8 @@ export class AIBrain {
   }
 
   async analyzeAllSources(): Promise<AnalysisResult> {
-    // Simple mode: only Progno sports picks (set PROGNO_SPORTS_ONLY=0 to enable news/Kalshi/crypto/arb)
-    const sportsOnly = process.env.PROGNO_SPORTS_ONLY !== '0';
+    // Sports-only mode: set PROGNO_SPORTS_ONLY=1 to disable news/Kalshi/crypto/arb sources
+    const sportsOnly = process.env.PROGNO_SPORTS_ONLY === '1';
 
     if (sportsOnly) {
       console.log('🧠 AI Brain (sports only) — fetching Progno picks...\n');

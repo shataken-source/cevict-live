@@ -32,11 +32,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Use CST timezone (UTC-6) for date calculation
-  const now = new Date()
-  const cstOffset = -6 * 60 // CST is UTC-6
-  const cstDate = new Date(now.getTime() + (cstOffset * 60 * 1000))
-  const today = cstDate.toISOString().split('T')[0]
+  // Use America/Chicago timezone for date calculation (handles CST/CDT automatically)
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
   const baseUrl = getBaseUrl()
   const urlObj = request.url ? new URL(request.url) : null

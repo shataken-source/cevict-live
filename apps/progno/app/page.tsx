@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import EnhancedPicksCard from '../components/EnhancedPicksCard';
 import ClaudeEffectCard from '../components/ClaudeEffectCard';
 import SharpMoneyIndicator from '../components/SharpMoneyIndicator';
@@ -22,7 +22,7 @@ export default function PrognoDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [todayBets, setTodayBets] = useState<any[]>([]);
 
-  const predictionCache = new Map<string, any>();
+  const predictionCache = useRef(new Map<string, any>()).current;
 
   useEffect(() => {
     setMounted(true);
@@ -36,7 +36,7 @@ export default function PrognoDashboard() {
     setTodayBets([]);
 
     if (forceSport === 'today') {
-      loadTodayBestBets();
+      loadTodayBestBets(games);
       setLoading(false);
       return;
     }
@@ -68,9 +68,9 @@ export default function PrognoDashboard() {
     }
   };
 
-  const loadTodayBestBets = () => {
-    // Manual only — uses cached predictions
-    const withEdge = games.filter(g => {
+  const loadTodayBestBets = (sourceGames: any[] = games) => {
+    // Uses cached predictions — sourceGames passed in to avoid stale closure
+    const withEdge = sourceGames.filter(g => {
       const pred = predictionCache.get(g.id);
       return pred && pred.edge > 0;
     });
@@ -91,7 +91,7 @@ export default function PrognoDashboard() {
       if (data.success) {
         setPredictions(prev => ({ ...prev, [gameId]: data.data }));
         predictionCache.set(gameId, data.data);
-        if (sport === 'today') loadTodayBestBets();
+        if (sport === 'today') loadTodayBestBets(games);
       }
     } catch (err) {
       alert('Error running prediction');

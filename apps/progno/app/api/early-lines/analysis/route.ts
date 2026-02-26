@@ -25,8 +25,7 @@ import {
   alertCriticalInjuries,
   alertLineMovement,
 } from '@/app/lib/supplemental-data-sources'
-import { readFileSync, existsSync } from 'fs'
-import { join } from 'path'
+import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -35,7 +34,7 @@ export const maxDuration = 60
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url)
-    const sportsParam = url.searchParams.get('sports') || 'NFL,NBA,NCAAB'
+    const sportsParam = url.searchParams.get('sports') || 'NFL,NBA,NHL,MLB,NCAAB,CBB'
     const daysAhead = parseInt(url.searchParams.get('daysAhead') || '3')
     const includeInjuries = url.searchParams.get('includeInjuries') !== 'false'
     const includeNews = url.searchParams.get('includeNews') !== 'false'
@@ -64,10 +63,10 @@ export async function GET(request: Request) {
       console.log(`[Early Lines] Found ${injuries.length} injuries, ${news.length} news items`)
     }
 
-    // 3. Load early and regular picks from files
-    const today = new Date().toISOString().split('T')[0]
-    const earlyPicks = loadPicksFromFile(`predictions-early-${today}.json`)
-    const regularPicks = loadPicksFromFile(`predictions-${today}.json`)
+    // 3. Load early and regular picks from Supabase Storage
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+    const earlyPicks = await loadPicksFromStorage(`predictions-early-${today}.json`)
+    const regularPicks = await loadPicksFromStorage(`predictions-${today}.json`)
 
     console.log(`[Early Lines] Loaded ${earlyPicks.length} early picks, ${regularPicks.length} regular picks`)
 
@@ -247,39 +246,47 @@ export async function GET(request: Request) {
 }
 
 /**
- * Load picks from JSON file
+ * Load picks from Supabase Storage (predictions bucket)
  */
-function loadPicksFromFile(filename: string): Pick[] {
+async function loadPicksFromStorage(filename: string): Promise<Pick[]> {
   try {
-    const filePath = join(process.cwd(), filename)
-    if (!existsSync(filePath)) {
-      console.log(`[Early Lines] File not found: ${filename}`)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!supabaseUrl || !supabaseKey) {
+      console.log(`[Early Lines] Supabase env vars not set — skipping ${filename}`)
       return []
     }
-
-    const content = readFileSync(filePath, 'utf-8')
-    const data = JSON.parse(content)
+    const sb = createClient(supabaseUrl, supabaseKey)
+    const { data, error } = await sb.storage.from('predictions').download(filename)
+    if (error || !data) {
+      console.log(`[Early Lines] File not found in storage: ${filename}`)
+      return []
+    }
+    const raw = await data.text()
+    const clean = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw
+    const parsed = JSON.parse(clean)
 
     // Convert to Pick format
     const picks: Pick[] = []
-    for (const pick of data.picks || []) {
+    for (const pick of parsed.picks || []) {
       picks.push({
-        gameId: pick.gameId || `${pick.homeTeam}-${pick.awayTeam}`,
+        gameId: pick.game_id || pick.gameId || `${pick.home_team || pick.homeTeam}-${pick.away_team || pick.awayTeam}`,
         sport: pick.sport || pick.league,
-        homeTeam: pick.homeTeam,
-        awayTeam: pick.awayTeam,
-        gameDate: pick.gameDate || pick.gameTime,
+        homeTeam: pick.home_team || pick.homeTeam,
+        awayTeam: pick.away_team || pick.awayTeam,
+        gameDate: pick.commence_time || pick.game_time || pick.gameDate || pick.gameTime,
         pick: pick.pick,
         confidence: pick.confidence || pick.winProbability || 0,
-        expectedValue: pick.expectedValue || pick.edge || 0,
+        expectedValue: pick.expected_value || pick.expectedValue || pick.edge || 0,
         odds: pick.odds || pick.bestOdds || 0,
-        reasoning: pick.reasoning
+        reasoning: pick.reasoning,
       })
     }
 
+    console.log(`[Early Lines] Loaded ${picks.length} picks from Storage: ${filename}`)
     return picks
   } catch (error) {
-    console.error(`[Early Lines] Error loading ${filename}:`, error)
+    console.error(`[Early Lines] Error loading ${filename} from Storage:`, error)
     return []
   }
 }

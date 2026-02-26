@@ -49,8 +49,8 @@ export class UnifiedFundManager {
   private cryptoBalance: PlatformBalance = { available: 0, inPositions: 0, pending: 0, total: 0, lastUpdated: new Date() };
 
   private allocation: AllocationConfig = {
-    kalshiPercent: 40,
-    cryptoPercent: 50,
+    kalshiPercent: 60,
+    cryptoPercent: 30,
     reservePercent: 10
   };
 

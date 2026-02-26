@@ -166,9 +166,10 @@ function matchPickToMarket(pick: PrognoPick, markets: KalshiMarket[]): KalshiMar
     if (kws.some(kw => pickLower.includes(kw))) return m;
   }
 
-  // Strategy 2: title word overlap
-  const pickWords = pickLower.split(/\s+/).filter(w => w.length >= 4);
-  const ctxWords = (homeLower + ' ' + awayLower).split(/\s+/).filter(w => w.length >= 4);
+  // Strategy 2: title word overlap (exclude common geographic/sports words that cause false matches)
+  const STOP_WORDS = new Set(['state', 'city', 'york', 'west', 'east', 'north', 'south', 'central', 'western', 'eastern', 'northern', 'southern', 'game', 'team', 'will', 'over', 'under', 'winner', 'spread', 'total', 'point', 'college', 'university']);
+  const pickWords = pickLower.split(/\s+/).filter(w => w.length >= 4 && !STOP_WORDS.has(w));
+  const ctxWords = (homeLower + ' ' + awayLower).split(/\s+/).filter(w => w.length >= 4 && !STOP_WORDS.has(w));
   for (const m of sportMarkets) {
     if (m.title.includes(',')) continue;
     const t = m.title.toLowerCase().replace(/winner\?|at |vs\.? /g, ' ');
@@ -179,8 +180,13 @@ function matchPickToMarket(pick: PrognoPick, markets: KalshiMarket[]): KalshiMar
   return null;
 }
 
-function determineSide(pick: PrognoPick, market: KalshiMarket): 'YES' | 'NO' {
-  const kws = ABBREV_MAP[tickerSuffix(market.ticker)] || [];
+function determineSide(pick: PrognoPick, market: KalshiMarket): 'YES' | 'NO' | null {
+  const suffix = tickerSuffix(market.ticker);
+  const kws = ABBREV_MAP[suffix];
+  if (!kws || kws.length === 0) {
+    log(`   ⚠️  Unknown ticker suffix '${suffix}' for ${market.ticker} — cannot determine side`);
+    return null;
+  }
   return kws.some(kw => pick.pick.toLowerCase().includes(kw)) ? 'YES' : 'NO';
 }
 
@@ -386,6 +392,7 @@ async function executePicks(picks: PrognoPick[], client: KalshiClient, markets: 
     const market = matchPickToMarket(pick, markets);
     if (!market) { log(`   ❌ No match: ${pick.pick} (${pick.sport}: ${pick.away_team} @ ${pick.home_team})`); results.push({ pick: pick.pick, ticker: '', side: 'YES', stake: 0, priceCents: 0, contracts: 0, status: 'skipped', reason: 'no match' }); continue; }
     const side = determineSide(pick, market);
+    if (!side) { results.push({ pick: pick.pick, ticker: market.ticker, side: 'YES', stake: 0, priceCents: 0, contracts: 0, status: 'skipped', reason: 'unknown side' }); continue; }
     const ask = side === 'YES' ? market.yes_ask : market.no_ask;
     if (!ask || ask <= 0 || ask >= 100) { log(`   ⚠️  Bad ask ${ask}¢ for ${market.ticker}`); results.push({ pick: pick.pick, ticker: market.ticker, side, stake: 0, priceCents: ask, contracts: 0, status: 'skipped', reason: `bad price ${ask}¢` }); continue; }
     const ct = Math.floor((STAKE_PER_PICK * 100) / ask);
@@ -465,6 +472,20 @@ async function run(client: KalshiClient, lastFile: string | null): Promise<strin
   const bal = await client.getBalance();
   log(bal >= 0 ? `💰 Balance: $${bal.toFixed(2)}` : '💰 Balance: unknown (401 — proceeding)');
 
+  // Safety: require at least 2× stake before placing any orders
+  const MIN_BALANCE = STAKE_PER_PICK * 2;
+  if (client.isConfigured && bal >= 0 && bal < MIN_BALANCE) {
+    log(`⛔ Balance $${bal.toFixed(2)} is below minimum $${MIN_BALANCE.toFixed(2)} — aborting to protect funds`);
+    return resolvedFile;
+  }
+
+  // Cap picks to what the available balance can actually cover
+  const maxPicksFromBalance = bal >= 0 ? Math.floor(bal / STAKE_PER_PICK) : picks.length;
+  if (maxPicksFromBalance < picks.length) {
+    log(`⚠️  Balance covers ${maxPicksFromBalance} picks max (of ${picks.length}) — truncating`);
+    picks = picks.slice(0, maxPicksFromBalance);
+  }
+
   await sellLongTermPositions(client);
 
   log('\n📡 Fetching Kalshi sports markets...');
@@ -495,7 +516,16 @@ async function main() {
   let lastFile: string | null = null;
   log(`👁️  Watching every ${WATCH_INTERVAL_MS / 1000}s | dir: ${PROGNO_DIR}\n`);
   while (true) {
-    try { lastFile = await run(client, lastFile); } catch (e: any) { log(`❌ Run error: ${e.message}`); }
+    // Snapshot the file that will be attempted so that if run() throws we
+    // still advance lastFile and don't re-execute the same file next tick.
+    const attemptedFile = findLatestPredictionsFile();
+    try {
+      lastFile = await run(client, lastFile);
+    } catch (e: any) {
+      log(`❌ Run error: ${e.message}`);
+      // Mark the file as attempted even on error to prevent double-execution
+      if (attemptedFile && attemptedFile !== lastFile) lastFile = attemptedFile;
+    }
     await sleep(WATCH_INTERVAL_MS);
   }
 }
