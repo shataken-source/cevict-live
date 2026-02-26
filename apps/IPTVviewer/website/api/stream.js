@@ -19,8 +19,10 @@ export default async function handler(req, res) {
 
     // Only allow proxying to known IPTV server patterns
     const parsed = new URL(decoded);
-    const allowedPaths = ['/live/', '/movie/', '/series/', '/xmltv.php', '/get.php', '/player_api.php'];
-    const isAllowed = allowedPaths.some(p => parsed.pathname.includes(p));
+    const allowedPaths = ['/live/', '/movie/', '/series/', '/xmltv.php', '/get.php', '/player_api.php', '/hls/'];
+    const allowedExts = ['.ts', '.m3u8', '.m3u', '.mp4', '.mkv', '.avi'];
+    const isAllowed = allowedPaths.some(p => parsed.pathname.includes(p))
+      || allowedExts.some(ext => parsed.pathname.endsWith(ext));
     if (!isAllowed) {
       return res.status(403).json({ error: 'URL not allowed through proxy' });
     }
@@ -57,16 +59,24 @@ export default async function handler(req, res) {
     if (ct && (ct.includes('mpegurl') || ct.includes('m3u8') || decoded.endsWith('.m3u8'))) {
       let body = await upstream.text();
 
-      // Rewrite relative segment URLs to absolute proxied URLs
-      const baseUrl = decoded.substring(0, decoded.lastIndexOf('/') + 1);
+      // Use the FINAL URL after redirects (not the original) so absolute-path
+      // segments like /hls/xxx.ts resolve against the correct server.
+      const finalUrl = upstream.url || decoded;
+      const baseUrl = finalUrl.substring(0, finalUrl.lastIndexOf('/') + 1);
+      const origin = new URL(finalUrl).origin;
+
+      function resolveSegUrl(seg) {
+        if (seg.startsWith('http')) return seg;
+        if (seg.startsWith('/')) return origin + seg;  // absolute path
+        return baseUrl + seg;                          // relative path
+      }
+
       body = body.replace(/^(?!#)(\S+\.ts.*)$/gm, (match) => {
-        const segUrl = match.startsWith('http') ? match : baseUrl + match;
-        return `/api/stream?url=${encodeURIComponent(segUrl)}`;
+        return `/api/stream?url=${encodeURIComponent(resolveSegUrl(match))}`;
       });
       // Also rewrite any nested m3u8 references (multi-quality streams)
       body = body.replace(/^(?!#)(\S+\.m3u8.*)$/gm, (match) => {
-        const segUrl = match.startsWith('http') ? match : baseUrl + match;
-        return `/api/stream?url=${encodeURIComponent(segUrl)}`;
+        return `/api/stream?url=${encodeURIComponent(resolveSegUrl(match))}`;
       });
 
       res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');

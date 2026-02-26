@@ -132,11 +132,15 @@ public class LocalServer extends NanoHTTPD {
                         int n;
                         while ((n = is.read(buf)) != -1) baos.write(buf, 0, n);
                         is.close();
+
+                        // Use the FINAL URL after redirects (not the original) so
+                        // absolute-path segments resolve against the correct server.
+                        String actualUrl = conn.getURL().toString();
                         conn.disconnect();
                         conn = null;
 
                         String playlist = baos.toString("UTF-8");
-                        String rewritten = rewriteM3u8(playlist, targetUrl);
+                        String rewritten = rewriteM3u8(playlist, actualUrl);
                         byte[] body = rewritten.getBytes("UTF-8");
                         Log.i(TAG, "M3U8 rewritten: " + body.length + " bytes");
                         InputStream bodyStream = new java.io.ByteArrayInputStream(body);
