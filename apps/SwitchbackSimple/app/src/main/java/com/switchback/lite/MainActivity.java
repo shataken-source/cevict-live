@@ -81,7 +81,8 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 if (url != null && url.startsWith("switchback://exit")) {
-                    finish();
+                    finishAffinity();
+                    System.exit(0);
                     return true;
                 }
                 return false;

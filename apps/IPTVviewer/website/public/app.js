@@ -94,11 +94,11 @@ const IS_ANDROID_WEBVIEW = (
 // TODO: Update 'switchback-tv-web.vercel.app' to the actual Vercel deployment domain
 //       once confirmed (check Vercel dashboard for the production URL).
 const PAIR_API_BASE = IS_ANDROID_WEBVIEW
-  ? 'https://switchback-tv-web.vercel.app'
+  ? 'https://switchback-tv-apk.vercel.app'
   : window.location.origin;
 
 // TODO: Update fallback URL to match the real Vercel production domain
-const PAIR_URL = (window.location.host || 'switchback-tv-web.vercel.app') + '/pair';
+const PAIR_URL = (window.location.host || 'switchback-tv-apk.vercel.app') + '/pair';
 
 function buildApiUrl(action, extra = {}) {
   const xtreamAction = {
@@ -779,7 +779,7 @@ async function initEPG(offsetDelta = 0) {
       ? `<img src="${esc(ch.stream_icon)}" style="width:22px;height:22px;object-fit:contain;border-radius:3px" onerror="this.style.display='none'" />`
       : `<div style="width:22px;height:22px;background:${colorFromName(ch.name)};border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700">${esc(channelInitials(ch.name))}</div>`;
 
-    return `<div class="epg-row">
+    return `<div class="epg-row" data-stream-id="${esc(ch.stream_id)}" data-stream-name="${esc(ch.name)}" data-cat="${esc(ch.category_name || '')}">
       <div class="epg-ch-cell" data-stream-id="${esc(ch.stream_id)}" data-stream-name="${esc(ch.name)}" data-cat="${esc(ch.category_name || '')}" style="cursor:pointer">
         ${logo}<div class="epg-ch-nm">${esc(ch.name)}</div>
       </div>
