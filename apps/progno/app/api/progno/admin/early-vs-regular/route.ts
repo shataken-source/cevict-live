@@ -53,17 +53,7 @@ export async function POST(request: NextRequest) {
       regularByGameId[id] = p
     }
 
-    const matches: Array<{
-      game_id: string
-      home_team: string
-      away_team: string
-      sport: string
-      early_pick: string
-      early_odds: number
-      regular_pick: string
-      regular_odds: number
-      side_flipped: boolean
-    }> = []
+    const matches: Array<Record<string, any>> = []
 
     for (const ep of earlyPicks) {
       const gameId = ep.game_id || `${ep.home_team}-${ep.away_team}`
@@ -71,16 +61,37 @@ export async function POST(request: NextRequest) {
       if (!rp) continue
 
       const sideFlipped = ep.pick !== rp.pick
+      const oddsDelta = (rp.odds ?? 0) - (ep.odds ?? 0)
+      const confDelta = (rp.confidence ?? 0) - (ep.confidence ?? 0)
+      const evDelta = (rp.expected_value ?? 0) - (ep.expected_value ?? 0)
+
       matches.push({
         game_id: gameId,
         home_team: ep.home_team,
         away_team: ep.away_team,
         sport: ep.sport || ep.league || '',
+        game_time: ep.game_time || rp.game_time || null,
+
         early_pick: ep.pick,
         early_odds: ep.odds ?? 0,
+        early_confidence: ep.confidence ?? 0,
+        early_ev: ep.expected_value ?? 0,
+        early_mc_win: ep.mc_win_probability ?? null,
+        early_pick_type: ep.pick_type ?? null,
+        early_line: ep.recommended_line ?? null,
+
         regular_pick: rp.pick,
         regular_odds: rp.odds ?? 0,
+        regular_confidence: rp.confidence ?? 0,
+        regular_ev: rp.expected_value ?? 0,
+        regular_mc_win: rp.mc_win_probability ?? null,
+        regular_pick_type: rp.pick_type ?? null,
+        regular_line: rp.recommended_line ?? null,
+
         side_flipped: sideFlipped,
+        odds_delta: oddsDelta,
+        conf_delta: confDelta,
+        ev_delta: evDelta,
       })
     }
 

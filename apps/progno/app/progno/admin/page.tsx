@@ -804,30 +804,84 @@ export default function AdminPage() {
                     <StatusLine ok={false} msg={compareResult.error} />
                   ) : (
                     <>
-                      <div style={{ fontFamily: C.mono, fontSize: 11, color: C.textBright, marginBottom: 10 }}>{compareResult.message}</div>
+                      <div style={{ fontFamily: C.mono, fontSize: 11, color: C.textBright, marginBottom: 6 }}>{compareResult.message}</div>
+                      {compareResult.matches.length > 0 && (() => {
+                        const moves = compareResult.matches.filter((m: any) => Math.abs(m.odds_delta ?? 0) > 0);
+                        const bigMoves = moves.filter((m: any) => Math.abs(m.odds_delta ?? 0) >= 20);
+                        const flips = compareResult.matches.filter((m: any) => m.side_flipped);
+                        const avgDelta = moves.length > 0 ? moves.reduce((s: number, m: any) => s + Math.abs(m.odds_delta ?? 0), 0) / moves.length : 0;
+                        return (
+                          <div style={{ display: 'flex', gap: 14, marginBottom: 12, flexWrap: 'wrap' }}>
+                            <div style={{ padding: '6px 12px', background: '#0a1525', border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                              <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1 }}>MATCHED</div>
+                              <div style={{ fontSize: 18, fontWeight: 700, color: C.blue }}>{compareResult.matches.length}</div>
+                            </div>
+                            <div style={{ padding: '6px 12px', background: '#0a1525', border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                              <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1 }}>LINES MOVED</div>
+                              <div style={{ fontSize: 18, fontWeight: 700, color: C.cyan }}>{moves.length}</div>
+                            </div>
+                            <div style={{ padding: '6px 12px', background: '#0a1525', border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                              <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1 }}>BIG MOVES (20+)</div>
+                              <div style={{ fontSize: 18, fontWeight: 700, color: C.amber }}>{bigMoves.length}</div>
+                            </div>
+                            <div style={{ padding: '6px 12px', background: '#0a1525', border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                              <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1 }}>SIDE FLIPPED</div>
+                              <div style={{ fontSize: 18, fontWeight: 700, color: C.red }}>{flips.length}</div>
+                            </div>
+                            <div style={{ padding: '6px 12px', background: '#0a1525', border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                              <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1 }}>AVG ML MOVE</div>
+                              <div style={{ fontSize: 18, fontWeight: 700, color: C.text }}>{avgDelta.toFixed(0)}pts</div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {compareResult.matches.length === 0 ? (
-                        <div style={{ fontFamily: C.mono, fontSize: 11, color: C.textDim }}>No matching games found.</div>
+                        <div style={{ fontFamily: C.mono, fontSize: 11, color: C.textDim }}>No matching games found.{compareResult.hintNoOverlap && <><br /><span style={{ color: C.amber }}>{compareResult.hintNoOverlap}</span></>}</div>
                       ) : (
                         <div style={{ overflowX: 'auto' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: C.mono, fontSize: 11 }}>
                             <thead>
-                              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                                {['MATCHUP', 'EARLY PICK', 'REGULAR PICK', 'STATUS'].map(h => (
-                                  <th key={h} style={{ padding: '7px 8px', textAlign: 'left', color: C.textDim, fontSize: 9, letterSpacing: 1 }}>{h}</th>
+                              <tr style={{ borderBottom: `1px solid ${C.borderBright || C.border}` }}>
+                                {['#', 'MATCHUP', 'GAME DATE', 'EARLY LINE', 'GAME-TIME LINE', 'ML MOVE', 'CONF', 'STATUS'].map(h => (
+                                  <th key={h} style={{ padding: '7px 8px', textAlign: 'left', color: C.textDim, fontSize: 9, letterSpacing: 1, fontWeight: 700 }}>{h}</th>
                                 ))}
                               </tr>
                             </thead>
                             <tbody>
-                              {compareResult.matches.map((m: any, i: number) => (
-                                <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, background: m.side_flipped ? `${C.amber}10` : 'transparent' }}>
-                                  <td style={{ padding: '7px 8px', color: C.textBright }}>{m.home_team} vs {m.away_team}<br /><span style={{ color: C.textDim, fontSize: 9 }}>{m.sport}</span></td>
-                                  <td style={{ padding: '7px 8px' }}>{m.early_pick} <span style={{ color: C.textDim }}>({fmt(m.early_odds)})</span></td>
-                                  <td style={{ padding: '7px 8px' }}>{m.regular_pick} <span style={{ color: C.textDim }}>({fmt(m.regular_odds)})</span></td>
-                                  <td style={{ padding: '7px 8px' }}>
-                                    {m.side_flipped ? <Badge color={C.amber}>⚡ SIDE FLIPPED — ARB?</Badge> : <span style={{ color: C.textDim }}>same</span>}
-                                  </td>
-                                </tr>
-                              ))}
+                              {[...compareResult.matches].sort((a: any, b: any) => Math.abs(b.odds_delta ?? 0) - Math.abs(a.odds_delta ?? 0)).map((m: any, i: number) => {
+                                const delta = m.odds_delta ?? 0;
+                                const absDelta = Math.abs(delta);
+                                const moveColor = absDelta >= 40 ? C.red : absDelta >= 20 ? C.amber : absDelta > 0 ? C.cyan : C.textDim;
+                                const moveLabel = absDelta >= 40 ? 'STEAM' : absDelta >= 20 ? 'SHARP' : absDelta > 0 ? 'DRIFT' : '—';
+                                const confD = m.conf_delta ?? 0;
+                                return (
+                                  <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, background: m.side_flipped ? `${C.amber}10` : absDelta >= 20 ? `${C.cyan}08` : i % 2 === 0 ? 'transparent' : '#070e18' }}>
+                                    <td style={{ padding: '7px 8px', color: C.textDim }}>{i + 1}</td>
+                                    <td style={{ padding: '7px 8px', color: C.textBright }}>{m.home_team} vs {m.away_team}<br /><span style={{ color: C.textDim, fontSize: 9 }}>{m.sport}</span></td>
+                                    <td style={{ padding: '7px 8px', color: C.textDim, fontSize: 10, whiteSpace: 'nowrap' }}>{m.game_time ? new Date(m.game_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : '—'}</td>
+                                    <td style={{ padding: '7px 8px' }}>
+                                      <span style={{ color: C.amber }}>{m.early_pick?.split(' ').pop()}</span>
+                                      <span style={{ color: C.textDim }}> {fmt(m.early_odds)}</span>
+                                      <br /><span style={{ color: C.textDim, fontSize: 9 }}>{m.early_confidence}% conf | EV {m.early_ev?.toFixed?.(1) ?? '—'}</span>
+                                    </td>
+                                    <td style={{ padding: '7px 8px' }}>
+                                      <span style={{ color: m.side_flipped ? C.amber : C.green }}>{m.regular_pick?.split(' ').pop()}</span>
+                                      <span style={{ color: C.textDim }}> {fmt(m.regular_odds)}</span>
+                                      <br /><span style={{ color: C.textDim, fontSize: 9 }}>{m.regular_confidence}% conf | EV {m.regular_ev?.toFixed?.(1) ?? '—'}</span>
+                                    </td>
+                                    <td style={{ padding: '7px 8px', textAlign: 'center' }}>
+                                      <div style={{ color: moveColor, fontWeight: 700, fontSize: 13 }}>{delta > 0 ? '+' : ''}{delta}</div>
+                                      <Badge color={moveColor}>{moveLabel}</Badge>
+                                    </td>
+                                    <td style={{ padding: '7px 8px', textAlign: 'center', color: confD > 0 ? C.green : confD < 0 ? C.red : C.textDim, fontSize: 10 }}>
+                                      {confD > 0 ? '+' : ''}{confD}%
+                                    </td>
+                                    <td style={{ padding: '7px 8px' }}>
+                                      {m.side_flipped ? <Badge color={C.amber}>FLIPPED</Badge> : absDelta >= 20 ? <Badge color={C.cyan}>MOVED</Badge> : <span style={{ color: C.textDim }}>steady</span>}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
