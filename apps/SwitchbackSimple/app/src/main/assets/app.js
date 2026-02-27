@@ -316,7 +316,7 @@ function renderLangFilterUI() {
   if (!listEl) return;
   const hidden = getLangFilterHidden();
   listEl.innerHTML = LANG_FILTER_GROUPS.map(g => `
-    <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;font-size:13px" tabindex="0" role="checkbox" aria-checked="${hidden.includes(g.id)}">
+    <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;font-size:13px" tabindex="-1" role="checkbox" aria-checked="${hidden.includes(g.id)}">
       <span style="width:18px;height:18px;border:2px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${hidden.includes(g.id) ? 'var(--primary)' : 'transparent'};font-size:11px">
         ${hidden.includes(g.id) ? '✓' : ''}
       </span>
@@ -477,9 +477,9 @@ async function initChannels() {
 
 function renderChannelCats() {
   const pills = document.getElementById('cat-pills');
-  pills.innerHTML = `<button class="pill pill-active" data-cat-id="" tabindex="0">All</button>` +
+  pills.innerHTML = `<button class="pill pill-active" data-cat-id="" tabindex="-1">All</button>` +
     S.liveCategories.slice(0, 18).map(c =>
-      `<button class="pill pill-inactive" data-cat-id="${esc(c.category_id)}" tabindex="0">${esc(c.category_name)}</button>`
+      `<button class="pill pill-inactive" data-cat-id="${esc(c.category_id)}" tabindex="-1">${esc(c.category_name)}</button>`
     ).join('');
   const pillBtns = Array.from(pills.querySelectorAll('.pill'));
   pillBtns.forEach((btn, pi) => {
@@ -3032,7 +3032,7 @@ renderChannelList = function (list) {
       : `<span style="font-size:10px;font-weight:700">${esc(channelInitials(ch.name))}</span>`;
 
     return `
-      <div class="ch-row" data-idx="${idx}" data-id="${ch.stream_id}" tabindex="0" role="button">
+      <div class="ch-row" data-idx="${idx}" data-id="${ch.stream_id}" tabindex="-1" role="button">
         ${numStr ? `<div style="width:34px;height:34px;background:rgba(229,0,0,0.15);border:1px solid rgba(229,0,0,0.3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;color:#fff">${esc(numStr)}</div>` : ''}
         <div class="ch-icon" style="background:${colorFromName(ch.name)}">${logo}</div>
         <div class="ch-info">
@@ -3496,7 +3496,7 @@ function initTVRemote() {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       const focusable = Array.from(
         document.querySelector('.screen.active')?.querySelectorAll(
-          '[tabindex="0"], .ch-row, .media-card, .quality-opt, .rec-card, .fav-item, ' +
+          '[tabindex], .ch-row, .media-card, .quality-opt, .rec-card, .fav-item, ' +
           '.pill, .hist-item, .device-card, .epg-row, .rec-tab-btn, .fav-tab-btn, ' +
           '.toggle-sw, .price-card, .sb-item-nav, input.inp, button.btn'
         ) || []
