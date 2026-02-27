@@ -18,6 +18,7 @@ export class EmergencyStop {
   private stateFile: string;
   private state: EmergencyState;
   private hardSpendingLimit: number;
+  private spendingWarningLogged = false;
 
   constructor() {
     // Use __dirname so path is stable regardless of where process is started
@@ -116,9 +117,10 @@ export class EmergencyStop {
       return false;
     }
 
-    // Warning at 80% of limit
-    if (totalAfterTrade > this.hardSpendingLimit * 0.8 && !this.state.stopped) {
+    // Warning at 80% of limit (log once per session, not every call)
+    if (totalAfterTrade > this.hardSpendingLimit * 0.8 && !this.state.stopped && !this.spendingWarningLogged) {
       console.warn(`⚠️ WARNING: Approaching spending limit (${((totalAfterTrade / this.hardSpendingLimit) * 100).toFixed(1)}%)`);
+      this.spendingWarningLogged = true;
     }
 
     return true;
