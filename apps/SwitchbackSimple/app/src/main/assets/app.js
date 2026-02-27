@@ -809,7 +809,7 @@ document.getElementById('epg-next')?.addEventListener('click', () => initEPG(1))
 // Make EPG nav buttons focusable for D-pad
 ['epg-now', 'epg-prev', 'epg-next'].forEach(id => {
   const el = document.getElementById(id);
-  if (el) el.setAttribute('tabindex', '0');
+  if (el) el.setAttribute('tabindex', '-1');
 });
 
 // ── SEARCH ────────────────────────────────────────────────────
@@ -1137,7 +1137,7 @@ function openPlayer(ch, list, idx) {
   // Make all player buttons focusable and auto-focus play-pause for D-pad
   setTimeout(() => {
     document.querySelectorAll('#player-overlay button, #player-overlay input[type=range]').forEach(el => {
-      el.setAttribute('tabindex', '0');
+      el.setAttribute('tabindex', '-1');
     });
     const pp = document.getElementById('play-pause-btn');
     if (pp) pp.focus();
@@ -3458,7 +3458,7 @@ function initTVRemote() {
   const items = Array.from(document.querySelectorAll('.sb-item[data-screen]'));
 
   items.forEach((item, i) => {
-    item.setAttribute('tabindex', '0');
+    item.setAttribute('tabindex', '-1');
     item.setAttribute('role', 'menuitem');
 
     // Enter / Space → activate
@@ -3552,24 +3552,56 @@ function focusFirstContentItem() {
 }
 
 function makeContentRowsFocusable() {
-  const FOCUSABLE = [
+  const FOCUSABLE_SELECTORS = [
     '.ch-row', '.media-card', '.quality-opt', '.rec-card',
     '.hist-item', '.device-card', '.fav-item', '.epg-row',
     '.pill', '.rec-tab-btn', '.fav-tab-btn', '.sb-item-nav',
     '.toggle-sw', '.price-card',
-  ].map(s => s + ':not([tabindex])').join(', ');
+  ];
 
   const stamp = () => {
-    document.querySelectorAll(FOCUSABLE).forEach(el => el.setAttribute('tabindex', '0'));
-    // Also ensure all inputs in active screen are reachable
-    document.querySelectorAll('.screen.active input.inp:not([tabindex])').forEach(el => {
-      el.setAttribute('tabindex', '0');
+    // Remove tabindex from ALL content items in hidden screens
+    // so Tab key never walks through invisible elements
+    document.querySelectorAll('.screen:not(.active)').forEach(screen => {
+      screen.querySelectorAll('[tabindex]').forEach(el => el.removeAttribute('tabindex'));
+    });
+    // Set tabindex="-1" on active screen items (focusable via JS, not Tab)
+    const active = document.querySelector('.screen.active');
+    if (!active) return;
+    const sel = FOCUSABLE_SELECTORS.map(s => s + ':not([tabindex])').join(', ');
+    active.querySelectorAll(sel).forEach(el => el.setAttribute('tabindex', '-1'));
+    active.querySelectorAll('input.inp:not([tabindex]), button.btn:not([tabindex])').forEach(el => {
+      el.setAttribute('tabindex', '-1');
     });
   };
   const observer = new MutationObserver(stamp);
   observer.observe(document.getElementById('content'), { childList: true, subtree: true });
   stamp(); // run once immediately
 }
+
+// ── INTERCEPT TAB KEY ─────────────────────────────────────────
+// Prevent browser's chaotic Tab cycling through hundreds of elements.
+// Tab = move to next visible content item, Shift+Tab = previous.
+// This gives the same behavior as D-pad ArrowDown/Up.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  e.preventDefault();
+  const screen = document.querySelector('.screen.active');
+  if (!screen) return;
+  const focusable = Array.from(screen.querySelectorAll(
+    '[tabindex], input, button, select, a[href]'
+  )).filter(el => el.offsetParent !== null && !el.disabled);
+  if (!focusable.length) return;
+  const cur = document.activeElement;
+  const idx = focusable.indexOf(cur);
+  let next;
+  if (e.shiftKey) {
+    next = idx > 0 ? focusable[idx - 1] : focusable[focusable.length - 1];
+  } else {
+    next = idx < focusable.length - 1 ? focusable[idx + 1] : focusable[0];
+  }
+  if (next) next.focus();
+});
 
 // Focus ring style for TV mode — visible highlight on focused items
 (function injectFocusStyles() {
@@ -3712,4 +3744,4 @@ function publishTVState() {
 }
 setInterval(publishTVState, 1000);
 
-console.log('[Switchback TV] v3.7 — stream proxy fix, TV remote keys, phone remote bridge ✓');
+console.log('[Switchback TV] v3.8 — stream proxy fix, TV remote keys, phone remote bridge, focus fix ✓');
