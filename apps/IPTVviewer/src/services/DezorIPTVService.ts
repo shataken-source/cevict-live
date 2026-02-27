@@ -15,7 +15,7 @@ export interface DezorCredentials {
 
 export class DezorIPTVService {
   private static readonly STORAGE_KEY = 'dezor_credentials';
-  private static readonly DEFAULT_SERVER = 'http://blogyfy.xyz';
+  private static readonly DEFAULT_SERVER = '';
 
   /**
    * Get M3U playlist URL for DezorIPTV

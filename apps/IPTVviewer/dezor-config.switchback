@@ -4,10 +4,10 @@
     "name": "DezorIPTV",
     "welcome": "Welcome to DezorIPTV via Switchback TV"
   },
-  "server": "http://blogyfy.xyz",
-  "username": "jascodezoriptv",
-  "password": "19e993b7f5",
-  "epg": "http://cflike-cdn.com:8080/xmltv.php?username=jascodezoriptv&password=19e993b7f5",
+  "server": "YOUR_SERVER_URL",
+  "username": "YOUR_USERNAME",
+  "password": "YOUR_PASSWORD",
+  "epg": "YOUR_EPG_URL",
   "prefixes": ["US", "USA", "SPORTS", "ESPN", "NFL", "NBA", "MLB", "NHL", "PPV", "4K", "HD"],
   "autoLoad": true
 }

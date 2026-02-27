@@ -17,10 +17,10 @@ import { localAI } from './lib/local-ai';
 // ============================================================================
 
 const CONFIG = {
-  maxBetSize: 5,           // $5 max per bet
+  maxBetSize: 10,          // $10 max per bet
   minEdge: 3,              // Minimum 3% edge to bet (lowered to find more opportunities)
   minConfidence: 55,       // Minimum 55% confidence
-  maxOpenBets: 5,          // Maximum 5 open positions
+  maxOpenBets: 8,          // Maximum 8 open positions
   categories: ['crypto', 'politics', 'economics', 'weather', 'fed'],
 };
 

@@ -1672,21 +1672,20 @@ document.getElementById('pair-manual-btn')?.addEventListener('click', () => {
 // Auto-load these credentials on first boot so the app works out of the box.
 // Users can change credentials in Settings at any time.
 const DEFAULT_PROVIDER = {
-  server: 'http://blogyfy.xyz',
-  username: 'jascodezoriptv',
-  password: '19e993b7f5',
+  server: '',
+  username: '',
+  password: '',
 };
 
 async function bootData() {
-  // Auto-load default provider if no credentials are configured
+  // If no credentials at all, skip the API call and go straight to Settings
   if (!S.server || !S.user || !S.pass) {
-    console.log('[boot] No credentials — loading default provider');
-    S.server = DEFAULT_PROVIDER.server;
-    S.user = DEFAULT_PROVIDER.username;
-    S.pass = DEFAULT_PROVIDER.password;
-    localStorage.setItem('iptv_server', S.server);
-    localStorage.setItem('iptv_user', S.user);
-    localStorage.setItem('iptv_pass', S.pass);
+    console.log('[boot] No credentials configured — showing setup screen');
+    initSettings();
+    nav('settings');
+    const resultEl = document.getElementById('cfg-import-result');
+    if (resultEl) resultEl.innerHTML = '<span style="color:var(--muted)">👋 Welcome! Paste an activation code, import a config file, or enter your credentials below.</span>';
+    return;
   }
 
   try {
@@ -2732,9 +2731,9 @@ initSettings = function () {
             </button>
           </div>
           <div id="dezor-fields" style="display:none">
-            <input class="inp" id="dezor-server" style="margin-bottom:7px" placeholder="Server e.g. http://cf.like-cdn.com" value="${localStorage.getItem('dezor_server') || 'http://blogyfy.xyz'}" />
-            <input class="inp" id="dezor-user" style="margin-bottom:7px" placeholder="Username" value="${localStorage.getItem('dezor_user') || 'jascodezoriptv'}" />
-            <input class="inp" type="password" id="dezor-pass" style="margin-bottom:10px" placeholder="Password" value="${localStorage.getItem('dezor_pass') || '19e993b7f5'}" />
+            <input class="inp" id="dezor-server" style="margin-bottom:7px" placeholder="Server e.g. http://cf.like-cdn.com" value="${localStorage.getItem('dezor_server') || ''}" />
+            <input class="inp" id="dezor-user" style="margin-bottom:7px" placeholder="Username" value="${localStorage.getItem('dezor_user') || ''}" />
+            <input class="inp" type="password" id="dezor-pass" style="margin-bottom:10px" placeholder="Password" value="${localStorage.getItem('dezor_pass') || ''}" />
             <button class="btn btn-red btn-sm btn-full" id="load-dezor-btn">▶ Load Dezor Playlist</button>
             <div id="dezor-result" style="margin-top:8px;font-size:12px"></div>
           </div>
@@ -2931,10 +2930,42 @@ document.getElementById('cfg-import-btn')?.addEventListener('click', () => {
   const raw = (document.getElementById('cfg-import-input')?.value || '').trim();
   if (!raw) {
     const result = document.getElementById('cfg-import-result');
-    if (result) result.innerHTML = '<span style="color:var(--muted)">Paste your activation code above first.</span>';
+    if (result) result.innerHTML = '<span style="color:var(--muted)">Paste your activation code, Xtream URL, or JSON config above first.</span>';
     return;
   }
   applyImportedConfig(raw);
+});
+
+// ── FILE IMPORT (.switchback / .json / .txt) ─────────────────
+document.getElementById('cfg-import-file-btn')?.addEventListener('click', () => {
+  const fileInput = document.getElementById('cfg-import-file');
+  if (fileInput) fileInput.click();
+});
+
+document.getElementById('cfg-import-file')?.addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const result = document.getElementById('cfg-import-result');
+  if (result) result.innerHTML = '<span style="color:var(--muted)">Reading file…</span>';
+  const reader = new FileReader();
+  reader.onload = function () {
+    const text = reader.result;
+    if (!text || !text.trim()) {
+      if (result) result.innerHTML = '<span style="color:var(--primary)">File is empty.</span>';
+      return;
+    }
+    // Show the content in the input field for transparency
+    const input = document.getElementById('cfg-import-input');
+    if (input) input.value = text.trim();
+    console.log('[file-import] Read ' + file.name + ' (' + text.length + ' chars)');
+    applyImportedConfig(text);
+  };
+  reader.onerror = function () {
+    if (result) result.innerHTML = '<span style="color:var(--primary)">Could not read file.</span>';
+  };
+  reader.readAsText(file);
+  // Reset so the same file can be re-selected
+  e.target.value = '';
 });
 
 // Deep link handler: called from Android when app is opened via switchback://import/CODE

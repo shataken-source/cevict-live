@@ -2,7 +2,7 @@
  * Kalshi execution gate - PRODUCTION MODE ENABLED.
  *
  * WARNING: This codebase is configured to trade against Kalshi PRODUCTION.
- * Max trade size: $2 (enforced elsewhere)
+ * Max trade size: $10 (enforced via MAX_SINGLE_TRADE env var)
  */
 const PROD_BASE_URL = "https://api.elections.kalshi.com/trade-api/v2";
 const DEMO_BASE_URL = "https://demo-api.kalshi.co/trade-api/v2";
@@ -20,7 +20,7 @@ export function getKalshiDemoBaseUrl(): string {
 export function assertKalshiDemoOnly(): void {
   // No longer blocking production - user has explicitly chosen to trade live
   // with $2 max trade limit as safety guardrail
-  console.log("   ℹ️  Kalshi production trading enabled (max $2/trade)");
+  console.log("   ℹ️  Kalshi production trading enabled (max $10/trade)");
 }
 
 export function assertKalshiRequestUrlIsDemo(requestUrl: string): void {
