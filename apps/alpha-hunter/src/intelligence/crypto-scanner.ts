@@ -67,7 +67,7 @@ export class CryptoScanner {
 
       if (!response.ok) return this.getSamplePrices();
 
-      const data = await response.json();
+      const data: any = await response.json();
       return data.map((coin: any) => ({
         symbol: coin.symbol.toUpperCase(),
         price: coin.current_price,
@@ -184,7 +184,7 @@ export class CryptoScanner {
     try {
       // Fear & Greed Index
       const response = await fetch('https://api.alternative.me/fng/?limit=1');
-      const data = await response.json();
+      const data: any = await response.json();
       const fng = data.data[0];
       const value = parseInt(fng.value);
 
@@ -326,9 +326,9 @@ export class CryptoScanner {
 
   async getMarketSummary(): Promise<string> {
     const prices = await this.getPrices();
-    
+
     let summary = '📊 CRYPTO MARKET SUMMARY\n\n';
-    
+
     for (const crypto of prices) {
       const emoji = crypto.change24h > 0 ? '📈' : '📉';
       summary += `${emoji} ${crypto.symbol}: $${crypto.price.toLocaleString()} `;

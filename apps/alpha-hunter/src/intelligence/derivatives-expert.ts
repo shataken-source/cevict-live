@@ -4,7 +4,7 @@
  * Tracks unusual activity, Greeks, volatility, and institutional flow
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from '../lib/local-ai';
 import { historicalKnowledge } from './historical-knowledge';
 
 const c = {
@@ -47,9 +47,7 @@ export class DerivativesExpert {
   private claude: Anthropic | null;
 
   constructor() {
-    this.claude = process.env.ANTHROPIC_API_KEY
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
+    this.claude = new Anthropic();
   }
 
   /**

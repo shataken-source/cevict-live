@@ -4,7 +4,7 @@
  * Each bot learns, trains, and improves predictions over time
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from '../lib/local-ai';
 import { KalshiTrader } from './kalshi-trader';
 import { historicalKnowledge } from './historical-knowledge';
 import { sportsFluxPredictor } from './sports-flux-predictor';
@@ -75,9 +75,7 @@ export class CategoryLearner {
   private bots: Map<KalshiCategory, CategoryBot> = new Map();
 
   constructor() {
-    this.claude = process.env.ANTHROPIC_API_KEY
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
+    this.claude = new Anthropic();
     this.kalshi = new KalshiTrader();
     this.initializeBots();
     this.loadTrainingDataFromDatabase(); // NEW: Load training data on startup
@@ -88,11 +86,11 @@ export class CategoryLearner {
    */
   private async loadTrainingDataFromDatabase(): Promise<void> {
     console.log(`   ${c.dim}📚 Loading bot training data from database...${c.reset}`);
-    
+
     for (const [category, bot] of this.bots.entries()) {
       try {
         const predictions = await getBotPredictions(category, 'kalshi', 200);
-        
+
         if (predictions.length > 0) {
           // Convert to training data format
           const trainingData = predictions.map(p => ({
@@ -107,20 +105,20 @@ export class CategoryLearner {
             edge: p.edge,
             timestamp: p.predicted_at,
           }));
-          
+
           bot.trainingData = trainingData;
-          
+
           // Calculate accuracy from loaded data
           const withOutcomes = trainingData.filter(t => t.actualOutcome !== null);
           if (withOutcomes.length > 0) {
             bot.totalPredictions = withOutcomes.length;
             bot.correctPredictions = withOutcomes.filter(t => t.wasCorrect === true).length;
             bot.accuracy = (bot.correctPredictions / bot.totalPredictions) * 100;
-            
+
             // Update average edge
             const edges = withOutcomes.map(t => t.edge);
             bot.averageEdge = edges.reduce((sum, e) => sum + e, 0) / edges.length;
-            
+
             console.log(`   ${c.brightGreen}✅ Loaded ${category}: ${bot.accuracy.toFixed(1)}% accuracy (${bot.totalPredictions} predictions)${c.reset}`);
           }
         }
@@ -332,7 +330,7 @@ Provide probability (0-100), confidence (0-100), factors, and reasoning in JSON.
           factors.push(...(parsed.factors || []));
           reasoning.push(parsed.reasoning || '');
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const edge = probability - market.yesPrice;
@@ -415,7 +413,7 @@ JSON: {"probability": 65, "confidence": 70, "factors": [], "reasoning": ""}`;
           factors.push(...(parsed.factors || []));
           reasoning.push(parsed.reasoning || '');
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const edge = probability - market.yesPrice;
@@ -528,7 +526,7 @@ JSON: {"probability": 65, "confidence": 70, "factors": [], "reasoning": ""}`;
             learnedFrom.push('AI analysis');
           }
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const edge = probability - market.yesPrice;
@@ -603,7 +601,7 @@ JSON: {"probability": 65, "confidence": 70, "factors": [], "reasoning": ""}`;
           factors.push(...(parsed.factors || []));
           reasoning.push(parsed.reasoning || '');
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const edge = probability - market.yesPrice;
@@ -669,7 +667,7 @@ Provide probability, confidence, factors, reasoning in JSON.`;
           factors.push(...(parsed.factors || []));
           reasoning.push(parsed.reasoning || '');
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     const edge = probability - market.yesPrice;

@@ -58,7 +58,7 @@ export class LocalAI {
 
       if (!response.ok) return null;
 
-      const data: OllamaResponse = await response.json();
+      const data = await response.json() as OllamaResponse;
       return data.response;
     } catch (error) {
       console.warn('[LOCAL AI] Request failed:', error);
@@ -128,3 +128,31 @@ REASON: Strong upward momentum with extreme fear buying opportunity`;
 }
 
 export const localAI = new LocalAI();
+
+/**
+ * Drop-in replacement for Anthropic SDK.
+ * Mimics `anthropic.messages.create(...)` but routes to Ollama.
+ * Usage:
+ *   - Replace `import Anthropic from '@anthropic-ai/sdk'` with
+ *     `import { OllamaAsAnthropic } from './lib/local-ai'`
+ *   - Replace `new Anthropic(...)` with `new OllamaAsAnthropic()`
+ *   - All `.messages.create(...)` calls work as before.
+ */
+export class OllamaAsAnthropic {
+  messages = {
+    create: async (params: {
+      model?: string;
+      max_tokens?: number;
+      messages: { role: string; content: string }[];
+    }): Promise<{ content: { type: 'text'; text: string }[] }> => {
+      const userMsg = params.messages.find(m => m.role === 'user');
+      const prompt = userMsg?.content || '';
+
+      const text = await localAI.analyze(prompt);
+
+      return {
+        content: [{ type: 'text' as const, text: text || '{}' }],
+      };
+    },
+  };
+}

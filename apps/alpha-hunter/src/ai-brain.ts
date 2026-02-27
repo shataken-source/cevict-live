@@ -1,10 +1,8 @@
 /**
  * AI Brain
  * The core intelligence that analyzes all data sources and makes decisions
- * Uses Claude for reasoning, integrates PROGNO Massager for calculations
+ * Uses Ollama local AI for reasoning, integrates PROGNO Massager for calculations
  */
-
-import Anthropic from '@anthropic-ai/sdk';
 import { Opportunity, DataPoint, DailyReport, NewsItem, BotConfig, LearningData } from './types';
 import { localAI } from './lib/local-ai';
 import { NewsScanner } from './intelligence/news-scanner';
@@ -22,7 +20,6 @@ interface AnalysisResult {
 }
 
 export class AIBrain {
-  private anthropic: Anthropic | null;
   private newsScanner: NewsScanner;
   private progno: PrognoIntegration;
   private kalshi: KalshiTrader;
@@ -31,9 +28,6 @@ export class AIBrain {
   private learningHistory: LearningData[] = [];
 
   constructor() {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    this.anthropic = apiKey ? new Anthropic({ apiKey }) : null;
-
     this.newsScanner = new NewsScanner();
     this.progno = new PrognoIntegration();
     this.kalshi = new KalshiTrader();
@@ -100,27 +94,17 @@ export class AIBrain {
       };
     }
 
-    // Try local Ollama AI first (free, no API key needed)
+    // Use local Ollama AI (free, no API key needed)
     if (localAI.isEnabled() && await localAI.isAvailable()) {
       try {
         const analysis = await this.getOllamaAnalysis(opportunities, news);
         if (analysis) return analysis;
       } catch (error) {
-        console.warn('[AI Brain] Ollama analysis failed, trying fallback:', (error as Error).message);
+        console.warn('[AI Brain] Ollama analysis failed, using algorithmic fallback:', (error as Error).message);
       }
     }
 
-    // If Claude is available, use AI reasoning
-    if (this.anthropic) {
-      try {
-        const analysis = await this.getClaudeAnalysis(opportunities, news);
-        return analysis;
-      } catch (error) {
-        console.error('Claude analysis error:', (error as Error).message);
-      }
-    }
-
-    // Fallback to algorithmic ranking
+    // Fallback to algorithmic ranking (no external API needed)
     return this.algorithmicRanking(opportunities, news);
   }
 
@@ -164,69 +148,6 @@ CONFIDENCE: [0-100]`;
       recommendedAction: actionMatch?.[1]?.trim() || 'Proceed with caution.',
       confidenceLevel: parseInt(confMatch?.[1] || '60'),
     };
-  }
-
-  private async getClaudeAnalysis(
-    opportunities: Opportunity[],
-    news: NewsItem[]
-  ): Promise<AnalysisResult> {
-    const prompt = `You are Alpha Hunter, an expert AI trading bot. Analyze these opportunities and recommend the best one for making $${this.config.dailyProfitTarget} today.
-
-OPPORTUNITIES:
-${JSON.stringify(opportunities.slice(0, 10), null, 2)}
-
-RELEVANT NEWS:
-${news.slice(0, 5).map(n => `- ${n.title}: ${n.summary}`).join('\n')}
-
-CONSTRAINTS:
-- Max single trade: $${this.config.maxTradeSize}
-- Min confidence: ${this.config.minConfidence}%
-- Daily profit target: $${this.config.dailyProfitTarget}
-- Risk tolerance: Conservative to Medium
-
-LEARNING HISTORY (recent outcomes):
-${this.learningHistory.slice(-10).map(l =>
-      `- ${l.opportunityType}: ${l.outcome} (expected ${l.expectedReturn}%, got ${l.actualReturn}%)`
-    ).join('\n') || 'No history yet'}
-
-Analyze and provide:
-1. BEST_OPPORTUNITY_INDEX: (number, 0-based index of best opportunity)
-2. MARKET_ANALYSIS: (brief market conditions analysis)
-3. RISK_ASSESSMENT: (risk level and reasoning)
-4. RECOMMENDED_ACTION: (specific action to take)
-5. CONFIDENCE: (0-100, your confidence in this recommendation)
-6. REASONING: (why this is the best choice)
-
-Respond in JSON format.`;
-
-    const response = await this.anthropic!.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1500,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
-
-    try {
-      // Extract JSON from response
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('No JSON found');
-
-      const analysis = JSON.parse(jsonMatch[0]);
-      const bestIndex = analysis.BEST_OPPORTUNITY_INDEX || 0;
-
-      return {
-        topOpportunity: opportunities[bestIndex] || opportunities[0],
-        allOpportunities: opportunities,
-        marketAnalysis: analysis.MARKET_ANALYSIS || 'Market conditions analyzed.',
-        riskAssessment: analysis.RISK_ASSESSMENT || 'Medium risk.',
-        recommendedAction: analysis.RECOMMENDED_ACTION || 'Proceed with caution.',
-        confidenceLevel: analysis.CONFIDENCE || 70,
-      };
-    } catch (error) {
-      console.error('Error parsing Claude response:', error);
-      return this.algorithmicRanking(opportunities, news);
-    }
   }
 
   private algorithmicRanking(

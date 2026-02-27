@@ -180,7 +180,7 @@ export class PrognosticationSync {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       console.log(`   🌐 Posted ${picks.length} Kalshi picks to Prognostication (processed: ${data.processed})`);
     } catch (error: any) {
       console.log(`   ⚠️  Prognostication API unavailable: ${error.message} (file fallback active)`);
@@ -208,7 +208,8 @@ export class PrognosticationSync {
           market_price: pick.yesPrice,
           bot_category: pick.category,
           source: 'alpha-hunter',
-          status: 'pending'
+          status: 'pending',
+          predicted_at: new Date()
         };
         const result = await saveBotPrediction(prediction);
         if (result) saved++;

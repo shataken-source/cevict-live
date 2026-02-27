@@ -1,7 +1,7 @@
 /**
  * Micro-Cap Crypto Trainer Bot
  * Specializes in trading cryptocurrencies under $1.00
- * 
+ *
  * Features:
  * - Discovers top 100 new crypto under $1.00
  * - Runs simulations to select optimal portfolio of 10 coins
@@ -15,7 +15,7 @@ import * as path from 'path';
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 import { CoinbaseExchange } from './exchanges/coinbase';
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from './lib/local-ai';
 import { fundManager } from './fund-manager';
 
 // ANSI Colors
@@ -100,10 +100,8 @@ export class MicroCapCryptoTrainer {
 
   constructor() {
     this.coinbase = new CoinbaseExchange();
-    this.claude = process.env.ANTHROPIC_API_KEY 
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
-    
+    this.claude = new Anthropic();
+
     this.learning = {
       totalTrades: 0,
       wins: 0,
@@ -126,36 +124,36 @@ export class MicroCapCryptoTrainer {
    */
   async discoverMicroCapCoins(): Promise<CryptoCandidate[]> {
     console.log(colorize('\n🔍 PHASE 1: DISCOVERING MICRO-CAP CRYPTO UNDER $1.00', colors.cyan + colors.bright));
-    
+
     try {
       // Get all products from Coinbase
       const response = await fetch('https://api.coinbase.com/api/v3/brokerage/products');
-      const data = await response.json();
+      const data: any = await response.json();
       const products = data.products || [];
-      
+
       console.log(`   Found ${products.length} total products on Coinbase`);
-      
+
       const microCapCandidates: CryptoCandidate[] = [];
-      
+
       for (const product of products) {
         // Only consider USD pairs
         if (!product.product_id.endsWith('-USD')) continue;
-        
+
         const price = parseFloat(product.price || '0');
-        
+
         // Filter: Price must be under $1.00
         if (price >= 1.0 || price <= 0) continue;
-        
+
         // Filter: Must have volume (actively traded)
         const volume = parseFloat(product.volume_24h || '0');
         if (volume < 1000) continue; // At least $1k daily volume
-        
+
         const symbol = product.base_currency_id;
-        
+
         // Skip stablecoins and wrapped tokens
         if (symbol.includes('USD') || symbol.includes('USDT') || symbol.includes('USDC')) continue;
         if (symbol.startsWith('W') && symbol.length <= 5) continue; // Wrapped tokens
-        
+
         microCapCandidates.push({
           symbol,
           name: product.display_name || symbol,
@@ -167,26 +165,26 @@ export class MicroCapCryptoTrainer {
           simulationScore: 0,
         });
       }
-      
+
       // Sort by volume (most liquid first)
       microCapCandidates.sort((a, b) => b.volume24h - a.volume24h);
-      
+
       // Take top 100
       const top100 = microCapCandidates.slice(0, 100);
-      
+
       console.log(colorize(`\n   ✅ Found ${top100.length} micro-cap candidates`, colors.green));
       console.log(colorize(`   Price range: $${Math.min(...top100.map(c => c.price)).toFixed(6)} - $${Math.max(...top100.map(c => c.price)).toFixed(4)}`, colors.yellow));
       console.log(colorize(`   Volume range: $${Math.min(...top100.map(c => c.volume24h)).toLocaleString()} - $${Math.max(...top100.map(c => c.volume24h)).toLocaleString()}`, colors.yellow));
-      
+
       // Show top 10
       console.log(colorize('\n   📊 TOP 10 BY VOLUME:', colors.blue));
       top100.slice(0, 10).forEach((coin, i) => {
         console.log(`      ${i + 1}. ${coin.symbol.padEnd(8)} $${coin.price.toFixed(6).padEnd(10)} Vol: $${coin.volume24h.toLocaleString().padStart(12)} ${coin.priceChange24h >= 0 ? '+' : ''}${coin.priceChange24h.toFixed(1)}%`);
       });
-      
+
       this.discoveredCoins = top100;
       return top100;
-      
+
     } catch (error: any) {
       console.error(colorize(`   ❌ Discovery failed: ${error.message}`, colors.red));
       return [];
@@ -199,37 +197,37 @@ export class MicroCapCryptoTrainer {
   async runSimulations(candidates: CryptoCandidate[]): Promise<SimulationResult[]> {
     console.log(colorize('\n🧪 PHASE 2: RUNNING SIMULATIONS ON CANDIDATES', colors.cyan + colors.bright));
     console.log(`   Testing ${candidates.length} coins with backtesting...`);
-    
+
     const simulationResults: SimulationResult[] = [];
-    
+
     for (let i = 0; i < candidates.length; i++) {
       const coin = candidates[i];
-      
+
       try {
         // Simulate trading this coin over past 30 days
         const result = await this.simulateCoin(coin);
         simulationResults.push(result);
-        
+
         // Progress indicator
         if ((i + 1) % 10 === 0) {
           console.log(`   Progress: ${i + 1}/${candidates.length} simulated`);
         }
-        
+
       } catch (error: any) {
         console.log(`   ⚠️  ${coin.symbol} simulation failed: ${error.message}`);
       }
     }
-    
+
     // Sort by score (best performers first)
     simulationResults.sort((a, b) => b.score - a.score);
-    
+
     console.log(colorize('\n   ✅ Simulations complete!', colors.green));
     console.log(colorize('\n   🏆 TOP 10 SIMULATED PERFORMERS:', colors.blue));
-    
+
     simulationResults.slice(0, 10).forEach((result, i) => {
       console.log(`      ${i + 1}. ${result.symbol.padEnd(8)} Return: ${result.totalReturn >= 0 ? '+' : ''}${result.totalReturn.toFixed(1)}%  Win Rate: ${result.winRate.toFixed(0)}%  Score: ${result.score.toFixed(1)}`);
     });
-    
+
     return simulationResults;
   }
 
@@ -239,47 +237,47 @@ export class MicroCapCryptoTrainer {
   private async simulateCoin(coin: CryptoCandidate): Promise<SimulationResult> {
     // Simple momentum-based simulation
     // In reality, we'd fetch historical data, but for now we use current metrics
-    
+
     const priceChange = coin.priceChange24h;
     const volume = coin.volume24h;
     const price = coin.price;
-    
+
     // Score based on:
     // 1. Positive momentum (but not too high = overbought)
     // 2. High volume (liquidity)
     // 3. Low price (more room to grow)
-    
+
     let score = 50; // Base score
-    
+
     // Momentum score (prefer 5-15% gains, not too high)
     if (priceChange > 5 && priceChange < 15) score += 20;
     else if (priceChange > 0 && priceChange < 5) score += 10;
     else if (priceChange < -10) score -= 20; // Avoid falling knives
-    
+
     // Volume score (higher = better liquidity)
     if (volume > 100000) score += 20;
     else if (volume > 50000) score += 15;
     else if (volume > 10000) score += 10;
     else if (volume < 5000) score -= 10;
-    
+
     // Price score (lower price = more room to grow)
     if (price < 0.01) score += 15;
     else if (price < 0.10) score += 10;
     else if (price < 0.50) score += 5;
-    
+
     // Simulate trades
     const trades = Math.floor(Math.random() * 20) + 10; // 10-30 trades
     const winRate = Math.min(95, Math.max(30, 60 + (score - 50) / 2)); // 30-95% based on score
     const avgWin = 5 + Math.random() * 5; // 5-10% per win
     const avgLoss = -3 - Math.random() * 3; // -3% to -6% per loss
-    
+
     const wins = Math.floor(trades * (winRate / 100));
     const losses = trades - wins;
-    
+
     const totalReturn = (wins * avgWin) + (losses * avgLoss);
     const maxDrawdown = avgLoss * 3; // Worst case
     const sharpeRatio = totalReturn / Math.abs(maxDrawdown);
-    
+
     return {
       symbol: coin.symbol,
       productId: coin.productId,
@@ -297,11 +295,11 @@ export class MicroCapCryptoTrainer {
    */
   async selectPortfolio(simulationResults: SimulationResult[]): Promise<CryptoCandidate[]> {
     console.log(colorize('\n📋 PHASE 3: SELECTING PORTFOLIO', colors.cyan + colors.bright));
-    
+
     // Take top 10 by simulation score
     const top10Symbols = simulationResults.slice(0, 10).map(r => r.symbol);
     const portfolio = this.discoveredCoins.filter(c => top10Symbols.includes(c.symbol));
-    
+
     // Update simulation scores
     portfolio.forEach(coin => {
       const simResult = simulationResults.find(r => r.symbol === coin.symbol);
@@ -309,20 +307,20 @@ export class MicroCapCryptoTrainer {
         coin.simulationScore = simResult.score;
       }
     });
-    
+
     console.log(colorize('\n   ✅ PORTFOLIO SELECTED: 10 MICRO-CAP GEMS', colors.green + colors.bright));
     console.log('\n   Symbol     Price        Volume       24h Change  Sim Score');
     console.log('   ' + '─'.repeat(70));
-    
+
     portfolio.forEach((coin, i) => {
       const changeColor = coin.priceChange24h >= 0 ? colors.green : colors.red;
       console.log(`   ${(i + 1).toString().padStart(2)}. ${coin.symbol.padEnd(8)} $${coin.price.toFixed(6).padEnd(10)} $${coin.volume24h.toLocaleString().padStart(12)} ${colorize((coin.priceChange24h >= 0 ? '+' : '') + coin.priceChange24h.toFixed(1) + '%', changeColor).padEnd(15)} ${coin.simulationScore.toFixed(1)}`);
     });
-    
+
     this.portfolio = portfolio;
     this.learning.portfolioCoins = portfolio;
     this.simulationComplete = true;
-    
+
     return portfolio;
   }
 
@@ -387,7 +385,7 @@ export class MicroCapCryptoTrainer {
    */
   private async checkOpenPositions(): Promise<void> {
     const openTrades = this.trades.filter(t => !t.exitPrice);
-    
+
     if (openTrades.length === 0) {
       console.log('📊 No open positions');
       return;
@@ -450,11 +448,11 @@ export class MicroCapCryptoTrainer {
       // Update learning
       this.learning.totalTrades++;
       this.learning.totalProfit += pnl;
-      
+
       if (pnl > 0) {
         this.learning.wins++;
         console.log(colorize(`   ✅ ${reason}: +$${pnl.toFixed(2)} (+${pnlPercent.toFixed(1)}%)`, colors.green + colors.bright));
-        
+
         // Track best performer
         if (!this.learning.bestPerformers.includes(trade.symbol)) {
           this.learning.bestPerformers.push(trade.symbol);
@@ -462,7 +460,7 @@ export class MicroCapCryptoTrainer {
       } else {
         this.learning.losses++;
         console.log(colorize(`   ❌ ${reason}: -$${Math.abs(pnl).toFixed(2)} (${pnlPercent.toFixed(1)}%)`, colors.red));
-        
+
         // Track worst performer
         if (!this.learning.worstPerformers.includes(trade.symbol)) {
           this.learning.worstPerformers.push(trade.symbol);
@@ -498,7 +496,7 @@ export class MicroCapCryptoTrainer {
 
         // Analyze
         const analysis = await this.analyzeOpportunity(coin);
-        
+
         if (analysis.shouldBuy) {
           console.log(colorize(`\n✨ OPPORTUNITY: ${coin.symbol}`, colors.green + colors.bright));
           console.log(`   ${analysis.reason}`);
@@ -507,7 +505,7 @@ export class MicroCapCryptoTrainer {
           // Execute buy
           const tradeAmount = Math.min(this.maxTradeUSD, usdBalance * 0.2); // Max 20% of balance per trade
           await this.executeBuy(coin, tradeAmount, analysis.reason);
-          
+
           break; // Only one trade per cycle
         }
       } catch (error: any) {
@@ -522,17 +520,17 @@ export class MicroCapCryptoTrainer {
   private async analyzeOpportunity(coin: CryptoCandidate): Promise<{ shouldBuy: boolean; confidence: number; reason: string }> {
     const ticker = await this.coinbase.getTicker(coin.productId);
     const currentPrice = ticker.price;
-    
+
     // Update price
     coin.price = currentPrice;
-    
+
     // Simple momentum strategy for learning
     // Prefer coins that are up slightly (2-8%) but not overbought
     const priceChange = coin.priceChange24h;
-    
+
     let confidence = 50;
     let reasons: string[] = [];
-    
+
     // Momentum check
     if (priceChange > 2 && priceChange < 8) {
       confidence += 25;
@@ -544,27 +542,27 @@ export class MicroCapCryptoTrainer {
       confidence -= 20;
       reasons.push('Negative momentum');
     }
-    
+
     // Volume check
     if (coin.volume24h > 50000) {
       confidence += 15;
       reasons.push('High volume (liquid)');
     }
-    
+
     // Simulation score check
     if (coin.simulationScore > 70) {
       confidence += 15;
       reasons.push('Strong simulation score');
     }
-    
+
     // Best performer boost
     if (this.learning.bestPerformers.includes(coin.symbol)) {
       confidence += 10;
       reasons.push('Past winner');
     }
-    
+
     const shouldBuy = confidence >= 60;
-    
+
     return {
       shouldBuy,
       confidence,
@@ -640,7 +638,7 @@ What's the ONE most important lesson from this trade? (Max 50 words)`
       });
 
       const learning = response.content[0].type === 'text' ? response.content[0].text : '';
-      
+
       if (learning) {
         this.learning.learnings.push(`${trade.symbol}: ${learning.slice(0, 150)}`);
         console.log(colorize(`\n   💡 LEARNING: ${learning.slice(0, 150)}`, colors.magenta));
@@ -656,17 +654,17 @@ What's the ONE most important lesson from this trade? (Max 50 words)`
   private canTrade(usdBalance: number): boolean {
     const openPositions = this.trades.filter(t => !t.exitPrice).length;
     const maxOpenPositions = 3; // Max 3 positions at once while learning
-    
+
     if (openPositions >= maxOpenPositions) {
       console.log(`⏸️  Max positions (${maxOpenPositions}) reached`);
       return false;
     }
-    
+
     if (usdBalance < this.maxTradeUSD) {
       console.log(`⏸️  Insufficient balance ($${usdBalance.toFixed(2)} < $${this.maxTradeUSD})`);
       return false;
     }
-    
+
     return true;
   }
 
@@ -684,7 +682,7 @@ What's the ONE most important lesson from this trade? (Max 50 words)`
     console.log(`   Win Rate: ${winRate.toFixed(1)}%`);
     console.log(`   Total P&L: ${totalProfit >= 0 ? colorize('+$' + totalProfit.toFixed(2), colors.green) : colorize('-$' + Math.abs(totalProfit).toFixed(2), colors.red)}`);
     console.log(`   Open Positions: ${openPositions}`);
-    
+
     if (this.learning.bestPerformers.length > 0) {
       console.log(`   🏆 Best: ${this.learning.bestPerformers.slice(0, 3).join(', ')}`);
     }

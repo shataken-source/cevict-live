@@ -270,7 +270,7 @@ export class KalshiLiquidityProvider {
         throw new Error(`Order book fetch failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       return data.orderbook as OrderBook;
     } catch (error: any) {
       console.error(`❌ Error fetching order book for ${ticker}:`, error.message);
@@ -478,7 +478,7 @@ export class KalshiLiquidityProvider {
         throw new Error(`Order placement failed: ${response.status} - ${errorText}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       // Step 6: Update inventory tracking
       this.updateInventory(ticker, side, action, contracts, limitPrice);
@@ -587,7 +587,7 @@ export class KalshiLiquidityProvider {
         throw new Error(`Batch order failed: ${response.status} - ${errorText}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       const placedOrders: RestingOrder[] = [];
 
       // Track all placed orders
@@ -642,7 +642,7 @@ export class KalshiLiquidityProvider {
         throw new Error(`Status check failed: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       return data.order.status;  // 'resting', 'executed', 'canceled', etc.
 
     } catch (error: any) {

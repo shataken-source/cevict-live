@@ -4,7 +4,7 @@
  * Becomes an expert and provides data to traders
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from '../lib/local-ai';
 
 interface MarketExpertise {
   marketId: string;
@@ -54,9 +54,7 @@ export class MarketLearner {
   private learningQueue: string[] = [];
 
   constructor() {
-    this.claude = process.env.ANTHROPIC_API_KEY
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
+    this.claude = new Anthropic();
   }
 
   /**
@@ -164,7 +162,7 @@ Format as JSON with: insights (array), context (string), factors (array)`
 
       const text = response.content[0].type === 'text' ? response.content[0].text : '';
       const json = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || '{}');
-      
+
       return {
         insights: json.insights || [],
         context: json.context || '',
@@ -324,14 +322,14 @@ JSON: {additionalInsights: [], expertAdvice: string}`
    */
   private async refreshMarketKnowledge(marketId: string): Promise<MarketExpertise> {
     const expertise = this.kalshiExpertise.get(marketId)!;
-    
+
     // Update predictions with latest data
     const updatedPredictions = await this.generatePredictions(
       expertise.marketTitle,
       { insights: expertise.keyInsights },
       expertise.patterns
     );
-    
+
     expertise.predictions = updatedPredictions;
     expertise.lastUpdated = new Date();
     expertise.expertiseLevel = Math.min(100, expertise.expertiseLevel + 5);
@@ -390,7 +388,7 @@ JSON: {tradingPatterns: [], correlations: [{asset, strength}]}`
 
     this.cryptoConcepts.set(symbol, concept);
     console.log(`   ✅ Learned ${concept.tradingPatterns.length} patterns, ${concept.correlations.length} correlations`);
-    
+
     return concept;
   }
 

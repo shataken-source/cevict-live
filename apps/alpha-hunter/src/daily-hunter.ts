@@ -4,7 +4,13 @@
  * Goal: Make $250/day autonomously
  */
 
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load .env.local from the alpha-hunter app directory (stable regardless of cwd)
+const alphaRoot = path.resolve(__dirname, '..');
+dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
+
 import { AIBrain } from './ai-brain';
 import { UnifiedFundManager } from './fund-manager';
 import { KalshiTrader } from './intelligence/kalshi-trader';
@@ -207,17 +213,19 @@ class DailyHunter {
     console.log(`📊 Open trades: ${openTrades.length}`);
 
     for (const trade of openTrades) {
-      // Check if trade has settled
-      // In production, this would query the platform API
-      // For now, we'll simulate settlements
-
       if (trade.platform === 'kalshi') {
-        // Check Kalshi positions
-        const positions = await this.kalshi.getPositions();
-        const position = positions.find(p => p.marketId === trade.target.split(' ')[0]);
+        const ticker = trade.target.split(' ')[0];
 
-        if (position && position.pnl !== 0) {
-          const profit = position.pnl;
+        // Check settlements API (returns data only AFTER Kalshi settles the market)
+        const settlements = await this.kalshi.getSettlementsForTicker(ticker, 5);
+        const settlement = settlements.find((s: any) => s.ticker === ticker);
+
+        if (settlement) {
+          // Settlement found — market has resolved
+          const revenue = typeof settlement.revenue === 'number'
+            ? settlement.revenue / 100  // cents → dollars
+            : 0;
+          const profit = revenue - trade.amount;
           const isWin = profit > 0;
 
           await this.funds.updateTrade(trade.id, {
@@ -229,19 +237,22 @@ class DailyHunter {
           await this.funds.releaseFunds(trade.opportunityId, trade.amount, profit);
           await this.sms.sendTradeResult(trade.target, profit, isWin);
 
-          // Record learning
+          // Record learning with real values from the trade
+          const tradeConfidence = (trade as any).confidence ?? 70;
+          const tradeExpectedReturn = (trade as any).expectedReturn ?? trade.amount * 0.1;
           this.brain.recordOutcome({
             opportunityType: trade.type,
-            confidence: 70, // Would need to store this
+            confidence: tradeConfidence,
             outcome: isWin ? 'success' : 'failure',
             actualReturn: profit,
-            expectedReturn: 10, // Would need to store this
-            factors: [],
+            expectedReturn: tradeExpectedReturn,
+            factors: trade.reasoning ? trade.reasoning.split('; ').slice(0, 3) : [],
             timestamp: new Date().toISOString(),
           });
 
           console.log(`${isWin ? '✅' : '❌'} Settled: ${trade.target} | ${isWin ? '+' : ''}$${profit.toFixed(2)}`);
         }
+        // else: position still open — no settlement yet, skip silently
       }
     }
   }

@@ -142,6 +142,8 @@ export interface BotPrediction {
   expires_at?: Date;
   actual_outcome?: 'win' | 'loss' | null;
   pnl?: number;
+  source?: string; // e.g. 'alpha-hunter'
+  status?: string; // e.g. 'pending', 'settled'
 }
 
 export async function saveBotPrediction(prediction: BotPrediction): Promise<boolean> {

@@ -4,7 +4,7 @@
  * Uses Flux Engine, Claude Effect, sentiment analysis, and more
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from '../lib/local-ai';
 import { historicalKnowledge } from './historical-knowledge';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -49,9 +49,7 @@ export class GMESpecialist {
   private fluxEnginePath: string;
 
   constructor() {
-    this.claude = process.env.ANTHROPIC_API_KEY
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
+    this.claude = new Anthropic();
     this.fluxEnginePath = path.join(process.cwd(), '../../engine/v2/cevict-flux-engine.ts');
   }
 

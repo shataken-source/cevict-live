@@ -367,21 +367,74 @@ export async function fetchScoresAndUpdatePredictions(
   daysFrom: number = 3
 ): Promise<{ completedGames: number; predictionsUpdated: number; cursorLearnGames: number }> {
   const sportKey = SPORT_KEY_MAP[sport];
-  if (!apiKey || !sportKey) return { completedGames: 0, predictionsUpdated: 0, cursorLearnGames: 0 };
+  if (!sportKey) return { completedGames: 0, predictionsUpdated: 0, cursorLearnGames: 0 };
 
-  const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/scores/?daysFrom=${daysFrom}&apiKey=${apiKey}`;
-  let data: any;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.error(`Scores API failed: ${res.status} for ${url}`);
+  let data: any[] | null = null;
+
+  // 1️⃣ Try ESPN first — free, no quota, near real-time
+  const ESPN_PATH: Record<string, string> = {
+    NFL: 'football/nfl', NBA: 'basketball/nba', NHL: 'hockey/nhl',
+    MLB: 'baseball/mlb', NCAAF: 'football/college-football', NCAAB: 'basketball/mens-college-basketball',
+  };
+  const espnPath = ESPN_PATH[sport];
+  if (espnPath) {
+    try {
+      // Fetch scores for recent days to cover the daysFrom window
+      const espnResults: any[] = [];
+      for (let d = 0; d < daysFrom; d++) {
+        const dt = new Date();
+        dt.setDate(dt.getDate() - d);
+        const dateStr = dt.toISOString().split('T')[0].replace(/-/g, '');
+        const espnUrl = `https://site.api.espn.com/apis/site/v2/sports/${espnPath}/scoreboard?dates=${dateStr}&limit=300${sport === 'NCAAB' ? '&groups=50' : sport === 'NCAAF' ? '&groups=80' : ''}`;
+        const res = await fetch(espnUrl, { cache: 'no-store' });
+        if (!res.ok) continue;
+        const espnData = await res.json();
+        for (const ev of (espnData?.events || [])) {
+          const comp = ev?.competitions?.[0];
+          const competitors = Array.isArray(comp?.competitors) ? comp.competitors : [];
+          const home = competitors.find((c: any) => c.homeAway === 'home');
+          const away = competitors.find((c: any) => c.homeAway === 'away');
+          if (!home?.team?.displayName || !away?.team?.displayName) continue;
+          const isFinal = ev?.status?.type?.completed === true || ev?.status?.type?.state === 'post';
+          // Normalize to Odds API format so the rest of the function works unchanged
+          espnResults.push({
+            id: ev.id,
+            home_team: home.team.displayName,
+            away_team: away.team.displayName,
+            completed: isFinal,
+            scores: [
+              { name: home.team.displayName, score: home.score ?? '0' },
+              { name: away.team.displayName, score: away.score ?? '0' },
+            ],
+          });
+        }
+      }
+      if (espnResults.length > 0) {
+        data = espnResults;
+        console.log(`[Scores] ESPN returned ${data.length} events for ${sport} (${daysFrom} days)`);
+      }
+    } catch (err) {
+      console.warn(`[Scores] ESPN failed for ${sport}, falling back to Odds API`);
+    }
+  }
+
+  // 2️⃣ Fallback to The Odds API
+  if (!data && apiKey) {
+    const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/scores/?daysFrom=${daysFrom}&apiKey=${apiKey}`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.error(`Scores API failed: ${res.status} for ${url}`);
+        return { completedGames: 0, predictionsUpdated: 0, cursorLearnGames: 0 };
+      }
+      data = await res.json();
+      console.log(`[Scores] Odds API returned ${Array.isArray(data) ? data.length : 0} events for ${sport}`);
+    } catch (err) {
+      console.error("Scores API request error", err);
       return { completedGames: 0, predictionsUpdated: 0, cursorLearnGames: 0 };
     }
-    data = await res.json();
-  } catch (err) {
-    console.error("Scores API request error", err);
-    return { completedGames: 0, predictionsUpdated: 0, cursorLearnGames: 0 };
   }
+
   if (!Array.isArray(data)) return { completedGames: 0, predictionsUpdated: 0, cursorLearnGames: 0 };
 
   const norm = (name: string) => name?.toLowerCase().replace(/\s+/g, "") || "";

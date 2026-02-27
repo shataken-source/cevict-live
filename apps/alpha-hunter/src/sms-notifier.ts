@@ -145,7 +145,7 @@ export class SMSNotifier {
         return { success: false, error };
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       console.log(`📱 SMS sent: ${data.id}`);
       return { success: true, messageId: data.id };
     } catch (error) {

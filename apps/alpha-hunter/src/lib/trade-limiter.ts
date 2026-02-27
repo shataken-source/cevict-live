@@ -25,7 +25,9 @@ export class TradeLimiter {
   private maxDailySpending: number;
 
   constructor() {
-    this.dataFile = path.join(process.cwd(), 'data', 'daily-trades.json');
+    // Use __dirname so path is stable regardless of where process is started
+    const alphaRoot = path.resolve(__dirname, '..', '..');
+    this.dataFile = path.join(alphaRoot, 'data', 'daily-trades.json');
     this.maxDailyTrades = parseInt(process.env.CRYPTO_MAX_DAILY_TRADES || '2');
     this.maxDailySpending = parseFloat(process.env.MAX_DAILY_LOSS || '50');
     this.data = this.loadData();
@@ -123,7 +125,7 @@ export class TradeLimiter {
    */
   recordTrade(symbol: string, amount: number, type: 'crypto' | 'kalshi' | 'polymarket' = 'crypto'): void {
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Reset if new day
     if (this.data.date !== today) {
       this.data = this.createFreshData();

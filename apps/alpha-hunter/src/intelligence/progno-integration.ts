@@ -114,7 +114,7 @@ export class PrognoIntegration {
           return [];
         }
 
-        const data = await response.json();
+        const data: any = await response.json();
         const raw = data.picks || [];
 
         if (raw.length === 0) {
@@ -180,7 +180,7 @@ export class PrognoIntegration {
         return [];
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       const raw = data.picks || [];
       const picks = raw.map((p: any) => mapPrognoPickToShape(p));
 
@@ -203,7 +203,7 @@ export class PrognoIntegration {
     try {
       const response = await fetch(`${this.baseUrl}/api/odds/live?league=${league}&analysis=true`);
       if (!response.ok) return [];
-      const data = await response.json();
+      const data: any = await response.json();
       return data.games || [];
     } catch (error) {
       console.error('Error fetching live odds:', error);

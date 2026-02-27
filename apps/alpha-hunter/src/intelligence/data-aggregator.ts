@@ -78,7 +78,7 @@ class DataAggregator {
    * Fetch Fear & Greed Index
    */
   async getFearGreed(): Promise<{ value: number; classification: string }> {
-    const data = await this.cached('feargreed', async () => {
+    const data: any = await this.cached('feargreed', async () => {
       const res = await fetch('https://api.alternative.me/fng/?limit=1', {
         signal: AbortSignal.timeout(5000)
       });
@@ -98,7 +98,7 @@ class DataAggregator {
    * Fetch BTC Dominance & Market Cap
    */
   async getGlobalData(): Promise<{ btcDominance: number; totalMarketCap: number; volume24h: number }> {
-    const data = await this.cached('global', async () => {
+    const data: any = await this.cached('global', async () => {
       const res = await fetch('https://api.coingecko.com/api/v3/global', {
         signal: AbortSignal.timeout(5000)
       });
@@ -119,7 +119,7 @@ class DataAggregator {
    * Fetch Trending Coins
    */
   async getTrending(): Promise<string[]> {
-    const data = await this.cached('trending', async () => {
+    const data: any = await this.cached('trending', async () => {
       const res = await fetch('https://api.coingecko.com/api/v3/search/trending', {
         signal: AbortSignal.timeout(5000)
       });
@@ -168,7 +168,7 @@ class DataAggregator {
    */
   async getNews(): Promise<NewsData> {
     // Try CryptoCompare news API
-    const data = await this.cached('news', async () => {
+    const data: any = await this.cached('news', async () => {
       const res = await fetch('https://min-api.cryptocompare.com/data/v2/news/?lang=EN&categories=BTC,ETH,SOL', {
         signal: AbortSignal.timeout(5000)
       });

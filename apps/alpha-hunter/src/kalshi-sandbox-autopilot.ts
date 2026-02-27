@@ -78,7 +78,18 @@ async function seedPredictionsIfEmpty(kalshi: KalshiTrader): Promise<void> {
   for (const m of toAnalyze) {
     const marketPrice = Number(m.yesPrice || 50);
     const category = categorizeMarket(m.title || "");
-    const prognoMatch = matchKalshiMarketToProgno(m.title || "", category, prognoEvents);
+
+    // Try each Progno event to see if it matches this Kalshi market
+    let prognoMatch: ReturnType<typeof matchKalshiMarketToProgno> = null;
+    let matchedEvent: (typeof prognoEvents)[number] | null = null;
+    for (const evt of prognoEvents) {
+      const match = matchKalshiMarketToProgno(evt, [m]);
+      if (match) {
+        prognoMatch = match;
+        matchedEvent = evt;
+        break;
+      }
+    }
 
     let probability: number;
     let confidence: number;
@@ -86,10 +97,10 @@ async function seedPredictionsIfEmpty(kalshi: KalshiTrader): Promise<void> {
     let factors: string[];
     let learned_from: string[];
 
-    if (prognoMatch) {
-      probability = prognoMatch.modelProbability;
+    if (prognoMatch && matchedEvent) {
+      probability = matchedEvent.modelProbability;
       confidence = Math.min(92, Math.max(52, probability));
-      reasoning = [`Progno: ${prognoMatch.label}`];
+      reasoning = [`Progno: ${matchedEvent.label}`];
       factors = ["Progno sports model", "Monte Carlo + Claude Effect"];
       learned_from = ["progno"];
     } else {
@@ -129,7 +140,7 @@ async function seedPredictionsIfEmpty(kalshi: KalshiTrader): Promise<void> {
 async function syncExistingPositions(): Promise<void> {
   const openTrades = await getOpenTradeRecords("kalshi", 500);
   console.log(`📋 Syncing ${openTrades.length} existing open positions from Supabase...`);
-  
+
   // DEBUG: Show what we actually got
   if (openTrades.length > 10) {
     console.log(`   ⚠️  WARNING: Found ${openTrades.length} open positions (expected ~2)`);
@@ -139,18 +150,18 @@ async function syncExistingPositions(): Promise<void> {
       closed_at: t.closed_at
     })));
   }
-  
+
   for (const trade of openTrades) {
     if (!trade.market_id) continue;
-    
+
     // Record position in tracking maps
     recordPosition(trade.market_id, trade.entry_price);
     recordEventPosition(trade.market_id);
-    
+
     // Record cooldown (assume trade was placed recently, so we're on cooldown)
     recordTradeCooldown(trade.market_id);
   }
-  
+
   if (openTrades.length > 0) {
     console.log(`✅ Position sync complete - ${openTrades.length} positions tracked`);
   }
@@ -169,17 +180,17 @@ async function main() {
   const shutdown = async (signal: string) => {
     console.log(`\n\n🛑 Received ${signal} - Initiating graceful shutdown...`);
     shutdownRequested = true;
-    
+
     // Print final stats
     await monitor.getStats();
     monitor.printStats();
-    
+
     const health = monitor.getHealthStatus();
     if (health.warnings.length > 0) {
       console.log("\n⚠️  Warnings:");
       health.warnings.forEach(w => console.log(`   - ${w}`));
     }
-    
+
     console.log("\n✅ Shutdown complete. Goodbye!\n");
     process.exit(0);
   };

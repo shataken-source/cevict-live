@@ -240,7 +240,7 @@ class KalshiClient {
       const r = await fetch(`${BASE_URL}${p}`, { headers: this.hdrs(sig, ts) });
       if (r.status === 401) { log('⚠️  Balance 401 — proceeding anyway'); return -1; }
       if (!r.ok) return -1;
-      return ((await r.json()).balance || 0) / 100;
+      return ((await r.json() as any).balance || 0) / 100;
     } catch { return -1; }
   }
 
@@ -260,7 +260,7 @@ class KalshiClient {
           const { sig, ts } = await this.sign('GET', p);
           const r = await fetch(`${BASE_URL}${p}`, { headers: this.hdrs(sig, ts) });
           if (!r.ok) { if (r.status === 429) await sleep(2000); break; }
-          const d = await r.json();
+          const d: any = await r.json();
           const ms: KalshiMarket[] = (d.markets || []).map((m: KalshiMarket) => ({ ...m, _sport: sport }));
           all.push(...ms); seriesTotal += ms.length; cursor = d.cursor;
           if (ms.length < 200 || !cursor) break;
@@ -284,7 +284,7 @@ class KalshiClient {
           const { sig, ts } = await this.sign('GET', p);
           const r = await fetch(`${BASE_URL}${p}`, { headers: this.hdrs(sig, ts) });
           if (!r.ok) { if (r.status === 429) await sleep(2000); break; }
-          const d = await r.json();
+          const d: any = await r.json();
           const page: KalshiMarket[] = d.markets || [];
           // Keep only game-winner markets matching known sport series prefixes
           const sports = page.filter(m => {
@@ -314,7 +314,7 @@ class KalshiClient {
       const { sig, ts } = await this.sign('GET', p);
       const r = await fetch(`${BASE_URL}${p}`, { headers: this.hdrs(sig, ts) });
       if (!r.ok) return [];
-      return ((await r.json()).market_positions || []).map((p: any) => ({ ticker: p.ticker, position: Number(p.position || 0), close_time: p.market?.close_time }));
+      return ((await r.json() as any).market_positions || []).map((p: any) => ({ ticker: p.ticker, position: Number(p.position || 0), close_time: p.market?.close_time }));
     } catch { return []; }
   }
 
@@ -325,7 +325,7 @@ class KalshiClient {
       const { sig, ts } = await this.sign('GET', p);
       const r = await fetch(`${BASE_URL}${p}`, { headers: this.hdrs(sig, ts) });
       if (!r.ok) return null;
-      return (await r.json()).market?.close_time || null;
+      return (await r.json() as any).market?.close_time || null;
     } catch { return null; }
   }
 
@@ -336,13 +336,13 @@ class KalshiClient {
       const { sig: os, ts: ot } = await this.sign('GET', obPath);
       const obR = await fetch(`${BASE_URL}${obPath}`, { headers: this.hdrs(os, ot) });
       let sp = 50;
-      if (obR.ok) { const ob = await obR.json(); const bids = ob.yes?.bids || []; if (bids.length) sp = Math.max(1, bids[0].price - 1); }
+      if (obR.ok) { const ob: any = await obR.json(); const bids = ob.yes?.bids || []; if (bids.length) sp = Math.max(1, bids[0].price - 1); }
       const p = '/trade-api/v2/portfolio/orders';
       const body = { ticker, side: 'yes', action: 'sell', count: Math.round(contracts), type: 'limit', yes_price: Math.round(sp) };
       const { sig, ts } = await this.sign('POST', p);
       const r = await fetch(`${BASE_URL}${p}`, { method: 'POST', headers: this.hdrs(sig, ts), body: JSON.stringify(body) });
       if (!r.ok) { log(`   ❌ Sell failed ${ticker}: ${r.status}`); return false; }
-      const d = await r.json(); log(`   ✅ Sell: ${ticker} ${contracts}x @ ${sp}¢ | ${d.order?.order_id}`); return true;
+      const d: any = await r.json(); log(`   ✅ Sell: ${ticker} ${contracts}x @ ${sp}¢ | ${d.order?.order_id}`); return true;
     } catch (e: any) { log(`   ❌ Sell error ${ticker}: ${e.message}`); return false; }
   }
 
@@ -357,7 +357,7 @@ class KalshiClient {
       if (side === 'YES') body.yes_price = lp; else body.no_price = lp;
       const { sig, ts } = await this.sign('POST', p);
       const r = await fetch(`${BASE_URL}${p}`, { method: 'POST', headers: this.hdrs(sig, ts), body: JSON.stringify(body) });
-      const d = await r.json();
+      const d: any = await r.json();
       if (!r.ok) return { ok: false, error: JSON.stringify(d).substring(0, 200) };
       return { ok: true, orderId: d.order?.order_id };
     } catch (e: any) { return { ok: false, error: e.message }; }
@@ -429,7 +429,7 @@ async function fetchPicksFromSupabaseStorage(date: string): Promise<PrognoPick[]
     try {
       const r = await fetch(`${base}/${fileName}`, { headers: hdrs });
       if (!r.ok) continue;
-      const parsed = await r.json();
+      const parsed: any = await r.json();
       const picks: PrognoPick[] = parsed.picks || parsed;
       if (Array.isArray(picks) && picks.length > 0) {
         log(`📦 Loaded ${picks.length} picks from Supabase Storage (${fileName})`);

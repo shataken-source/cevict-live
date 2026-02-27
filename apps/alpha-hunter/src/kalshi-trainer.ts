@@ -7,7 +7,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from './lib/local-ai';
 import { KalshiTrader } from './intelligence/kalshi-trader';
 import { PrognoIntegration } from './intelligence/progno-integration';
 import { fundManager } from './fund-manager';
@@ -47,7 +47,7 @@ class KalshiAutonomousTrader {
   private bets: KalshiBet[] = [];
   private learning: KalshiLearning;
   private isRunning = false;
-  
+
   // Trading parameters - OPTIMIZED FOR PROFIT
   private maxBetSize = 25; // $25 max per bet (increased for higher returns)
   private minConfidence = 65; // Lowered to 65% to catch more opportunities
@@ -58,10 +58,8 @@ class KalshiAutonomousTrader {
   constructor() {
     this.kalshi = new KalshiTrader();
     this.progno = new PrognoIntegration();
-    this.claude = process.env.ANTHROPIC_API_KEY 
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
-    
+    this.claude = new Anthropic();
+
     this.learning = {
       totalBets: 0,
       wins: 0,
@@ -85,7 +83,7 @@ class KalshiAutonomousTrader {
     // Check configuration
     const balance = await this.kalshi.getBalance();
     const isDemo = !process.env.KALSHI_API_KEY_ID;
-    
+
     console.log(`💰 Kalshi Balance: $${balance.toFixed(2)} ${isDemo ? '(DEMO MODE)' : ''}`);
     console.log(`🧠 AI Brain: ${this.claude ? '✅ Claude connected' : '⚠️ No AI'}`);
     console.log(`📊 PROGNO: ✅ Connected`);
@@ -100,18 +98,18 @@ class KalshiAutonomousTrader {
       ]);
 
       let intel = '📊 PROGNO INTELLIGENCE:\n';
-      
+
       if (picks.length > 0) {
         intel += `Sports Picks: ${picks.length} available\n`;
         picks.slice(0, 3).forEach(p => {
           intel += `  - ${p.league}: ${p.pick} (${p.confidence}% conf)\n`;
         });
       }
-      
+
       if (arbitrage.length > 0) {
         intel += `Arbitrage Opps: ${arbitrage.length} found\n`;
       }
-      
+
       return intel;
     } catch {
       return 'PROGNO: Offline';
@@ -123,21 +121,21 @@ class KalshiAutonomousTrader {
     const now = new Date();
     const hour = now.getHours();
     const dayOfWeek = now.getDay();
-    
+
     let intel = '📈 MARKET CONDITIONS:\n';
-    
+
     // Time-based context
     if (hour >= 9 && hour <= 16 && dayOfWeek >= 1 && dayOfWeek <= 5) {
       intel += '  - US Markets: OPEN (higher liquidity)\n';
     } else {
       intel += '  - US Markets: CLOSED\n';
     }
-    
+
     // Day context
     if (dayOfWeek === 0 || dayOfWeek === 6) {
       intel += '  - Weekend: Sports markets active\n';
     }
-    
+
     // Get enhanced data from aggregator
     try {
       const fullData = await dataAggregator.getFullBriefing();
@@ -149,7 +147,7 @@ class KalshiAutonomousTrader {
     } catch {
       intel += '  - Enhanced data: unavailable\n';
     }
-    
+
     return intel;
   }
 
@@ -174,7 +172,7 @@ class KalshiAutonomousTrader {
 
     const prognoIntel = await this.getPrognoIntelligence();
     const marketIntel = await this.getMarketIntelligence();
-    
+
     // Get win rate for this category
     const categoryStats = this.learning.categoryPerformance[market.category] || { wins: 0, losses: 0 };
     const categoryWinRate = categoryStats.wins + categoryStats.losses > 0
@@ -226,7 +224,7 @@ Should I bet? Respond with JSON only:
 
       const text = response.content[0].type === 'text' ? response.content[0].text : '';
       const json = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || '{}');
-      
+
       return {
         shouldBet: json.shouldBet || false,
         side: json.side || 'yes',
@@ -249,14 +247,14 @@ Should I bet? Respond with JSON only:
   async placeBet(market: any, side: 'yes' | 'no', amount: number, confidence: number, reasoning: string): Promise<KalshiBet | null> {
     const price = side === 'yes' ? market.yesPrice : market.noPrice;
     const contracts = Math.floor(amount / price * 100);
-    
+
     console.log(`\n🎯 Placing ${side.toUpperCase()} bet on: ${market.title}`);
     console.log(`   Amount: $${amount} (${contracts} contracts @ ${price}¢)`);
     console.log(`   Confidence: ${confidence}%`);
     console.log(`   Reasoning: ${reasoning}`);
-    
+
     const trade = await this.kalshi.placeLimitOrderUsd(market.id, side, amount, price);
-    
+
     if (trade) {
       const bet: KalshiBet = {
         id: trade.id,
@@ -271,12 +269,12 @@ Should I bet? Respond with JSON only:
         timestamp: new Date(),
         status: 'open'
       };
-      
+
       this.bets.push(bet);
       console.log(`   ✅ Bet placed! ID: ${trade.id}`);
       return bet;
     }
-    
+
     console.log(`   ❌ Bet failed`);
     return null;
   }
@@ -284,9 +282,9 @@ Should I bet? Respond with JSON only:
   async checkOpenBets(): Promise<void> {
     const openBets = this.bets.filter(b => b.status === 'open');
     if (openBets.length === 0) return;
-    
+
     console.log(`\n📋 OPEN BETS (${openBets.length}):`);
-    
+
     // In production, we'd check Kalshi API for position updates
     // For now, just display them
     for (const bet of openBets) {
@@ -299,7 +297,7 @@ Should I bet? Respond with JSON only:
     console.log('\n🔍 Searching Kalshi for markets matching PROGNO picks...');
     const allMarkets = await this.kalshi.getMarkets();
     const matchedMarkets: any[] = [];
-    
+
     for (const pick of picks) {
       // Search for markets related to this game
       const searchTerms = [
@@ -308,12 +306,12 @@ Should I bet? Respond with JSON only:
         pick.league.toLowerCase(),
         pick.pick.toLowerCase(),
       ];
-      
+
       const relevantMarkets = allMarkets.filter(m => {
         const titleLower = m.title.toLowerCase();
         return searchTerms.some(term => titleLower.includes(term));
       });
-      
+
       if (relevantMarkets.length > 0) {
         console.log(`   ✅ Found ${relevantMarkets.length} Kalshi markets for: ${pick.homeTeam} vs ${pick.awayTeam}`);
         matchedMarkets.push(...relevantMarkets.map(m => ({
@@ -324,70 +322,70 @@ Should I bet? Respond with JSON only:
         })));
       }
     }
-    
+
     return matchedMarkets;
   }
 
   async runCycle(): Promise<void> {
     console.log('\n🔄 Starting Kalshi scan...\n');
-    
+
     // Get current balance and update fund manager
     const balance = await this.kalshi.getBalance();
     const inPositions = this.bets.filter(b => b.status === 'open').reduce((sum, b) => sum + b.amount, 0);
     fundManager.updateKalshiBalance(balance - inPositions, inPositions);
-    
+
     // Show unified fund status
     console.log(fundManager.getStatus());
     console.log(`\n💰 Kalshi Available: $${(balance - inPositions).toFixed(2)}`);
-    
+
     // Check open bets
     await this.checkOpenBets();
-    
+
     const openBets = this.bets.filter(b => b.status === 'open').length;
     if (openBets >= this.maxOpenBets) {
       console.log(`\n⚠️ Max open bets reached (${openBets}/${this.maxOpenBets}). Waiting...`);
       return;
     }
-    
+
     // PRIORITY: Get PROGNO picks for tonight's games
     console.log('\n📊 Fetching PROGNO picks for tonight\'s games...');
     const prognoPicks = await this.progno.getTodaysPicks();
     console.log(`   Found ${prognoPicks.length} PROGNO picks`);
-    
+
     if (prognoPicks.length > 0) {
       // Filter for high-confidence picks (65%+ for more opportunities)
       const highConfidencePicks = prognoPicks.filter(p => p.confidence >= 65);
       console.log(`   ${highConfidencePicks.length} high-confidence picks (65%+)`);
-      
+
       if (highConfidencePicks.length > 0) {
         // Find matching Kalshi markets
         const matchedMarkets = await this.findKalshiMarketsForPrognoPicks(highConfidencePicks);
-        
+
         if (matchedMarkets.length > 0) {
           // LEARN NEW MARKETS: Pick one market to become expert in
           if (!this.currentLearningMarket && matchedMarkets.length > 0) {
             const marketToLearn = matchedMarkets[0];
             console.log(`\n🧠 LEARNING NEW MARKET: ${marketToLearn.title}`);
             this.currentLearningMarket = marketToLearn.id;
-            
+
             // Learn this market deeply
             const expertise = await marketLearner.learnKalshiMarket(
               marketToLearn.id,
               marketToLearn.title,
               marketToLearn.category || 'General'
             );
-            
+
             console.log(`   ✅ Now expert on: ${marketToLearn.title} (${expertise.expertiseLevel}% expertise)`);
           }
-          
+
           console.log(`\n🎯 Found ${matchedMarkets.length} Kalshi markets matching PROGNO picks!`);
-          
+
           // Analyze and bet on PROGNO-backed markets (more aggressive)
           for (const market of matchedMarkets.slice(0, 5)) { // Max 5 bets per cycle
             const pick = market.prognoPick;
             console.log(`\n📊 PROGNO Pick: ${pick.pick} (${pick.confidence}% confidence)`);
             console.log(`   Kalshi Market: ${market.title}`);
-            
+
             // Use expert knowledge if we've learned this market
             const expertData = marketLearner.getExpertData(market.id);
             if (expertData) {
@@ -398,23 +396,23 @@ Should I bet? Respond with JSON only:
                 console.log(`   🎯 Expert Prediction: ${topPrediction.outcome} (${topPrediction.probability}%)`);
               }
             }
-            
+
             // Determine which side to bet based on PROGNO pick + expert data
             let side: 'yes' | 'no' = 'yes';
             let confidence = pick.confidence;
-            
+
             // Boost confidence if we have expert data
             if (expertData && expertData.expertiseLevel >= 75) {
               confidence = Math.min(95, confidence + 10);
               console.log(`   ⚡ Confidence boosted by expert knowledge: ${confidence}%`);
             }
-            
+
             // Map PROGNO pick to Kalshi side
             // If PROGNO says "Team wins" and market is "Will Team win?", bet YES
             // If PROGNO says "Over X" and market is "Will total be over X?", bet YES
             const pickLower = pick.pick.toLowerCase();
             const marketLower = market.title.toLowerCase();
-            
+
             // Simple heuristic: if pick mentions team name and market asks about that team, bet YES
             if (pickLower.includes(pick.homeTeam.toLowerCase()) || pickLower.includes(pick.awayTeam.toLowerCase())) {
               // Check if market is asking about that team winning
@@ -423,28 +421,28 @@ Should I bet? Respond with JSON only:
                 confidence = pick.confidence;
               }
             }
-            
+
             // Check with fund manager
             if (!fundManager.shouldTradeOnPlatform('kalshi', confidence)) {
               console.log(`   ⚠️ Fund manager: Kalshi over-allocated, skipping...`);
               continue;
             }
-            
+
             // Calculate bet amount based on PROGNO confidence (more aggressive)
             const maxFromFunds = fundManager.getMaxTradeAmount('kalshi', this.maxBetSize);
             const betAmount = Math.min(
               Math.max(pick.confidence / 4, 10), // Scale with confidence, min $10 (increased)
               maxFromFunds
             );
-            
+
             if (betAmount < 5) {
               console.log(`   ⚠️ Insufficient funds ($${betAmount.toFixed(2)})`);
               continue;
             }
-            
+
             console.log(`   💰 Betting $${betAmount.toFixed(2)} on ${side.toUpperCase()} (PROGNO: ${pick.confidence}% confidence)`);
             await this.placeBet(market, side, betAmount, confidence, `PROGNO pick: ${pick.pick} - ${pick.reasoning?.join(', ') || 'AI analysis'}`);
-            
+
             if (openBets + 1 >= this.maxOpenBets) break; // Stop if we hit max
           }
         } else {
@@ -452,17 +450,17 @@ Should I bet? Respond with JSON only:
         }
       }
     }
-    
+
     // Also check regular Kalshi opportunities (fallback)
     console.log('\n🔍 Scanning general Kalshi markets for opportunities...');
     const opportunities = await this.kalshi.findOpportunities(this.minEdge);
     console.log(`   Found ${opportunities.length} potential opportunities`);
-    
+
     // Analyze top opportunities with AI (only if we haven't used all bet slots)
     const remainingSlots = this.maxOpenBets - this.bets.filter(b => b.status === 'open').length;
     if (remainingSlots > 0) {
       const marketsToAnalyze = opportunities.slice(0, Math.min(3, remainingSlots));
-      
+
       for (const opp of marketsToAnalyze) {
         // Extract market info from opportunity
         const market = {
@@ -475,37 +473,37 @@ Should I bet? Respond with JSON only:
           expiresAt: opp.expiresAt,
           edge: opp.expectedValue
         };
-        
+
         console.log(`\n📊 Analyzing: ${market.title.substring(0, 60)}...`);
-        
+
         const analysis = await this.analyzeMarket(market);
-        
+
         console.log(`   AI Decision: ${analysis.shouldBet ? '✅ BET' : '❌ PASS'}`);
         console.log(`   Side: ${analysis.side.toUpperCase()} | Confidence: ${analysis.confidence}%`);
         console.log(`   Reasoning: ${analysis.reasoning}`);
-        
+
         if (analysis.shouldBet && analysis.confidence >= this.minConfidence) {
           // Check with fund manager if we should trade on Kalshi
           if (!fundManager.shouldTradeOnPlatform('kalshi', analysis.confidence)) {
             console.log(`   ⚠️ Fund manager: Kalshi over-allocated, skipping...`);
             continue;
           }
-          
+
           // Get max allowed from fund manager
           const maxFromFunds = fundManager.getMaxTradeAmount('kalshi', this.maxBetSize);
           const betAmount = Math.min(analysis.suggestedAmount, maxFromFunds);
-          
+
           if (betAmount < 5) {
             console.log(`   ⚠️ Insufficient funds allocated to Kalshi ($${betAmount})`);
             continue;
           }
-          
+
           await this.placeBet(market, analysis.side, betAmount, analysis.confidence, analysis.reasoning);
           break; // One bet per cycle
         }
       }
     }
-    
+
     // Show learning stats
     await this.showStats();
   }
@@ -524,7 +522,7 @@ Should I bet? Respond with JSON only:
     if (Math.abs(pnlDelta) > 0.01) {
       fundManager.updateKalshiStats(pnlDelta, pnlDelta > 0);
     }
-    // Update fund manager with cumulative stats 
+    // Update fund manager with cumulative stats
     const balance = await this.kalshi.getBalance();
     const inPositions = this.bets.filter(b => b.status === 'open').reduce((sum, b) => sum + b.amount, 0);
     fundManager.updateKalshiBalance(balance - inPositions, inPositions, 0);
@@ -546,9 +544,9 @@ Should I bet? Respond with JSON only:
     console.log('   ⚡ AGGRESSIVE MODE: Higher bet sizes, more opportunities, faster scans');
     console.log('   💰 Target: Cover coding time + Claude API costs');
     console.log('   Press Ctrl+C to stop\n');
-    
+
     this.isRunning = true;
-    
+
     // Handle shutdown
     process.on('SIGINT', async () => {
       console.log('\n\n🛑 Stopping Kalshi trader...');
@@ -557,17 +555,17 @@ Should I bet? Respond with JSON only:
       console.log('\n👋 Kalshi trading session ended.\n');
       process.exit(0);
     });
-    
+
     // Run loop
     while (this.isRunning) {
       await this.runCycle();
-      
+
       console.log(`\n⏳ Next scan in ${intervalMinutes} minutes...`);
-      
+
       // Wait with countdown
       for (let i = intervalMinutes * 60; i > 0 && this.isRunning; i -= 30) {
         await new Promise(r => setTimeout(r, 30000));
-        if (i > 30) console.log(`   ${Math.floor(i/60)}m ${i%60}s...`);
+        if (i > 30) console.log(`   ${Math.floor(i / 60)}m ${i % 60}s...`);
       }
     }
   }
@@ -577,7 +575,7 @@ Should I bet? Respond with JSON only:
 async function main() {
   console.log('\n🎯 KALSHI AUTONOMOUS TRADER STARTING...\n');
   console.log('⚡ FULL SPEED AHEAD - AGGRESSIVE PROFIT MODE ⚡\n');
-  
+
   const trader = new KalshiAutonomousTrader();
   await trader.initialize();
   await trader.startTrading(2); // Scan every 2 minutes for maximum opportunity capture

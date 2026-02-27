@@ -38,38 +38,36 @@ async function isAuthed(request: NextRequest): Promise<boolean> {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow API routes through (backend-only app)
+  // Allow API routes through
   if (pathname.startsWith('/api')) {
     // Admin API routes still need auth check below
     if (!pathname.startsWith('/api/admin')) {
       return NextResponse.next();
     }
-  } else {
-    // Block ALL frontend page routes — Progno has no public UI
-    return new NextResponse('Not Found', { status: 404 });
   }
 
   const isAdminApiPath = pathname.startsWith('/api/admin');
-  const isAdminPath = false; // frontend admin pages are blocked above
 
-  // Allow login page and auth endpoint
+  // Always allow login page, auth endpoints, and /progno pages
   if (pathname === '/admin/login' || pathname === '/api/admin/auth' || pathname === '/api/admin/login') {
     return NextResponse.next();
   }
 
+  // Allow /progno pages without auth
+  if (pathname === '/progno' || pathname.startsWith('/progno/')) {
+    return NextResponse.next();
+  }
+
+  // Check auth for admin routes
   const authed = await isAuthed(request);
   if (authed) {
     return NextResponse.next();
   }
 
-  // For API routes, return 401
+  // Not authed - handle accordingly
   if (isAdminApiPath) {
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Unauthorized',
-        message: 'Admin authentication required'
-      },
+      { success: false, error: 'Unauthorized', message: 'Admin authentication required' },
       { status: 401 }
     );
   }

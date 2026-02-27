@@ -1,8 +1,10 @@
 /**
  * News Scanner
- * Scans breaking news and events for profit opportunities
+ * Scans breaking news via RSS feeds for profit opportunities.
+ * Uses `rss-parser` (already in package.json) for real feed parsing.
  */
 
+import RSSParser from 'rss-parser';
 import { NewsItem, DataPoint } from '../types';
 
 interface RSSFeed {
@@ -16,7 +18,6 @@ const NEWS_FEEDS: RSSFeed[] = [
   { name: 'ESPN', url: 'https://www.espn.com/espn/rss/news', category: 'sports' },
   { name: 'CoinDesk', url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', category: 'crypto' },
   { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', category: 'tech' },
-  { name: 'Polymarket News', url: 'https://polymarket.com/rss', category: 'predictions' },
 ];
 
 // Keywords that indicate profit opportunities
@@ -27,33 +28,31 @@ const PROFIT_KEYWORDS = {
   events: ['election', 'vote', 'poll', 'announcement', 'decision', 'ruling'],
 };
 
+const RSS_TIMEOUT_MS = 10_000; // 10 seconds per feed
+
 export class NewsScanner {
-  private apiKey?: string;
+  private parser: RSSParser;
 
   constructor() {
-    this.apiKey = process.env.NEWS_API_KEY;
+    this.parser = new RSSParser({
+      timeout: RSS_TIMEOUT_MS,
+      headers: { 'User-Agent': 'AlphaHunter/1.0 (+https://github.com)' },
+    });
   }
 
   async scanAllSources(): Promise<NewsItem[]> {
     const allNews: NewsItem[] = [];
 
-    // Scan RSS feeds
-    for (const feed of NEWS_FEEDS) {
-      try {
-        const news = await this.scanRSSFeed(feed);
-        allNews.push(...news);
-      } catch (error) {
-        console.error(`Error scanning ${feed.name}:`, error);
+    // Scan all RSS feeds concurrently
+    const feedResults = await Promise.allSettled(
+      NEWS_FEEDS.map(feed => this.scanRSSFeed(feed))
+    );
+
+    for (const result of feedResults) {
+      if (result.status === 'fulfilled') {
+        allNews.push(...result.value);
       }
     }
-
-    // Scan Twitter/X for breaking news
-    const twitterNews = await this.scanTwitter();
-    allNews.push(...twitterNews);
-
-    // Scan Reddit for sentiment
-    const redditNews = await this.scanReddit();
-    allNews.push(...redditNews);
 
     // Filter for profit-relevant news
     return this.filterProfitOpportunities(allNews);
@@ -61,36 +60,31 @@ export class NewsScanner {
 
   private async scanRSSFeed(feed: RSSFeed): Promise<NewsItem[]> {
     try {
-      // In production, use rss-parser
-      // For now, return sample data based on feed type
-      return this.getSampleNews(feed.category);
-    } catch (error) {
-      console.error(`RSS scan error for ${feed.name}:`, error);
-      return [];
-    }
-  }
+      const parsed = await this.parser.parseURL(feed.url);
+      const items: NewsItem[] = [];
 
-  private async scanTwitter(): Promise<NewsItem[]> {
-    const bearerToken = process.env.TWITTER_BEARER_TOKEN;
-    if (!bearerToken) return [];
+      for (const entry of (parsed.items || []).slice(0, 15)) {
+        const title = (entry.title || '').trim();
+        if (!title) continue;
 
-    try {
-      // Scan for breaking sports news, crypto alerts, market moves
-      // In production, use Twitter API v2
-      return [];
-    } catch (error) {
-      console.error('Twitter scan error:', error);
-      return [];
-    }
-  }
+        items.push({
+          title,
+          source: feed.name,
+          url: entry.link || '',
+          summary: (entry.contentSnippet || entry.content || '').substring(0, 500),
+          sentiment: 'neutral',
+          relevantTo: [feed.category],
+          publishedAt: entry.isoDate || entry.pubDate || new Date().toISOString(),
+        });
+      }
 
-  private async scanReddit(): Promise<NewsItem[]> {
-    try {
-      // Scan r/wallstreetbets, r/sportsbook, r/cryptocurrency
-      // In production, use Reddit API
-      return [];
+      if (items.length > 0) {
+        console.log(`   📰 ${feed.name}: ${items.length} articles`);
+      }
+      return items;
     } catch (error) {
-      console.error('Reddit scan error:', error);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.warn(`   ⚠️ RSS error (${feed.name}): ${msg}`);
       return [];
     }
   }
@@ -98,8 +92,7 @@ export class NewsScanner {
   private filterProfitOpportunities(news: NewsItem[]): NewsItem[] {
     return news.filter(item => {
       const text = `${item.title} ${item.summary}`.toLowerCase();
-      
-      // Check for profit-related keywords
+
       for (const category of Object.values(PROFIT_KEYWORDS)) {
         for (const keyword of category) {
           if (text.includes(keyword.toLowerCase())) {
@@ -107,7 +100,7 @@ export class NewsScanner {
           }
         }
       }
-      
+
       return false;
     });
   }
@@ -116,7 +109,6 @@ export class NewsScanner {
     const dataPoints: DataPoint[] = [];
 
     for (const item of news) {
-      // Analyze sentiment and relevance
       const sentiment = this.analyzeSentiment(item);
       const relevance = this.calculateRelevance(item);
 
@@ -134,10 +126,10 @@ export class NewsScanner {
 
   private analyzeSentiment(news: NewsItem): string {
     const text = `${news.title} ${news.summary}`.toLowerCase();
-    
+
     const bullishWords = ['surge', 'rally', 'beat', 'win', 'breakthrough', 'success', 'record'];
     const bearishWords = ['crash', 'fall', 'miss', 'lose', 'fail', 'decline', 'drop'];
-    
+
     let score = 0;
     bullishWords.forEach(word => { if (text.includes(word)) score++; });
     bearishWords.forEach(word => { if (text.includes(word)) score--; });
@@ -146,12 +138,6 @@ export class NewsScanner {
   }
 
   private calculateRelevance(news: NewsItem): number {
-    // Higher relevance for:
-    // - Breaking news (recent)
-    // - Sports injuries/trades (affects lines)
-    // - Market-moving events
-    // - Prediction market catalysts
-    
     let relevance = 50;
 
     const ageHours = (Date.now() - new Date(news.publishedAt).getTime()) / 3600000;
@@ -167,67 +153,4 @@ export class NewsScanner {
 
     return Math.min(relevance, 100);
   }
-
-  private getSampleNews(category: string): NewsItem[] {
-    const now = new Date().toISOString();
-    
-    const sampleNews: Record<string, NewsItem[]> = {
-      sports: [
-        {
-          title: 'BREAKING: Star QB ruled out for Sunday game',
-          source: 'ESPN',
-          url: 'https://espn.com/breaking',
-          summary: 'The starting quarterback has been ruled out with an ankle injury, backup to start.',
-          sentiment: 'bearish',
-          relevantTo: ['NFL', 'sports_betting'],
-          publishedAt: now,
-        },
-        {
-          title: 'Line Movement Alert: Heavy action on underdog',
-          source: 'Action Network',
-          url: 'https://actionnetwork.com',
-          summary: 'Sharp money coming in on +7.5 underdog, line moving from +10 to +7.5',
-          sentiment: 'neutral',
-          relevantTo: ['NFL', 'sharp_action'],
-          publishedAt: now,
-        },
-      ],
-      crypto: [
-        {
-          title: 'Bitcoin ETF sees record inflows',
-          source: 'CoinDesk',
-          url: 'https://coindesk.com',
-          summary: 'Institutional investors pour $500M into spot Bitcoin ETFs in single day',
-          sentiment: 'bullish',
-          relevantTo: ['BTC', 'crypto'],
-          publishedAt: now,
-        },
-      ],
-      business: [
-        {
-          title: 'Tech giant beats earnings estimates',
-          source: 'Reuters',
-          url: 'https://reuters.com',
-          summary: 'Company reports 20% revenue growth, raises guidance',
-          sentiment: 'bullish',
-          relevantTo: ['stocks', 'tech'],
-          publishedAt: now,
-        },
-      ],
-      predictions: [
-        {
-          title: 'New prediction market opens on Fed rate decision',
-          source: 'Kalshi',
-          url: 'https://kalshi.com',
-          summary: 'Markets pricing in 75% chance of rate cut, economists at 60%',
-          sentiment: 'neutral',
-          relevantTo: ['fed', 'rates', 'prediction_market'],
-          publishedAt: now,
-        },
-      ],
-    };
-
-    return sampleNews[category] || [];
-  }
 }
-

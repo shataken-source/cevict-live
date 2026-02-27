@@ -6,7 +6,7 @@
  */
 
 import 'dotenv/config';
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from '../lib/local-ai';
 
 // ANSI Colors
 const c = {
@@ -203,9 +203,7 @@ export class EntertainmentExpert {
   private knowledgeBase = ENTERTAINMENT_KNOWLEDGE;
 
   constructor() {
-    this.claude = process.env.ANTHROPIC_API_KEY
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
+    this.claude = new Anthropic();
   }
 
   /**
@@ -467,7 +465,7 @@ Respond in JSON format:
     const predColor = pred.prediction === 'yes' ? c.brightGreen : c.brightRed;
     const edgeColor = pred.edge > 0 ? c.brightGreen : c.brightRed;
     const riskColor = pred.riskLevel === 'low' ? c.brightGreen :
-                      pred.riskLevel === 'medium' ? c.yellow : c.brightRed;
+      pred.riskLevel === 'medium' ? c.yellow : c.brightRed;
 
     console.log(`\n${c.brightCyan}┌─────────────────────────────────────────────────────────┐${c.reset}`);
     console.log(`${c.brightCyan}│${c.reset} ${c.brightWhite}🎬 ENTERTAINMENT PREDICTION${c.reset}                            ${c.brightCyan}│${c.reset}`);

@@ -7,11 +7,11 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// Load .env.local from the app directory (avoid import.meta for CJS builds)
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+// Load .env.local from the alpha-hunter app directory (stable regardless of cwd)
+const alphaRoot = path.resolve(__dirname, '..');
+dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
 
 import { CoinbaseExchange } from './exchanges/coinbase';
-import Anthropic from '@anthropic-ai/sdk';
 import { fundManager } from './fund-manager';
 import { dataAggregator } from './intelligence/data-aggregator';
 import { marketLearner } from './intelligence/market-learner';
@@ -143,7 +143,7 @@ News: ${news}
   }
 
   private async getFearGreedIndex(): Promise<string> {
-    const data = await this.cached('feargreed', async () => {
+    const data: any = await this.cached('feargreed', async () => {
       const res = await fetch('https://api.alternative.me/fng/?limit=1');
       return res.ok ? res.json() : null;
     }, 300000); // 5 min cache
@@ -156,7 +156,7 @@ News: ${news}
   }
 
   private async getBTCDominance(): Promise<string> {
-    const data = await this.cached('btcdom', async () => {
+    const data: any = await this.cached('btcdom', async () => {
       const res = await fetch('https://api.coingecko.com/api/v3/global');
       return res.ok ? res.json() : null;
     }, 300000);
@@ -168,7 +168,7 @@ News: ${news}
   }
 
   private async getTrendingCoins(): Promise<string> {
-    const data = await this.cached('trending', async () => {
+    const data: any = await this.cached('trending', async () => {
       const res = await fetch('https://api.coingecko.com/api/v3/search/trending');
       return res.ok ? res.json() : null;
     }, 600000); // 10 min cache
@@ -193,7 +193,7 @@ News: ${news}
   async getPrognoMassager(): Promise<string> {
     const baseUrl = process.env.PROGNO_MASSAGER_URL || 'https://progno-massager.vercel.app';
 
-    const data = await this.cached('progno', async () => {
+    const data: any = await this.cached('progno', async () => {
       const [sentiment, signals] = await Promise.all([
         fetch(`${baseUrl}/api/market/sentiment`).then(r => r.ok ? r.json() : null).catch(() => null),
         fetch(`${baseUrl}/api/signals/crypto`).then(r => r.ok ? r.json() : null).catch(() => null),
@@ -270,7 +270,6 @@ interface LearningState {
 
 class CryptoTrainer {
   private coinbase: CoinbaseExchange;
-  private claude: Anthropic | null;
   private trades: TradeRecord[] = [];
   private learning: LearningState;
   private maxTradeUSD = parseFloat(process.env.CRYPTO_MAX_TRADE_SIZE || '50');
@@ -314,9 +313,6 @@ class CryptoTrainer {
     }
 
     this.coinbase = new CoinbaseExchange();
-    this.claude = process.env.ANTHROPIC_API_KEY
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
 
     // Initialize Supabase for trade persistence
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -472,7 +468,8 @@ class CryptoTrainer {
     }
 
     // Show AI status
-    console.log(`🧠 AI Brain: ${this.claude ? '✅ Claude connected' : '⚠️ No AI (using basic logic)'}`);
+    const ollamaReady = localAI.isEnabled() && await localAI.isAvailable();
+    console.log(`🧠 AI Brain: ${ollamaReady ? `✅ Ollama (${localAI.getModel()})` : '⚠️ No AI (using momentum logic)'}`);
 
     // Load open trades from Supabase (survive restarts)
     await this.loadOpenTrades();
@@ -481,8 +478,8 @@ class CryptoTrainer {
     await this.showPortfolio();
     await this.refreshBalances(true); // Force initial sync
 
-    // Send startup SMS
-    await smsAlerter.botStarted();
+    // Startup SMS removed — too noisy on every restart
+    // await smsAlerter.botStarted();
   }
 
   async showPortfolio(): Promise<void> {
@@ -611,24 +608,7 @@ class CryptoTrainer {
     // ALWAYS track price for momentum (even if AI fails)
     knowledge.trackPrice(pair, ticker.price);
 
-    // If Claude is available, use AI analysis
-    if (this.claude) {
-      try {
-        const aiAnalysis = await this.getClaudeAnalysis(pair, ticker, spread);
-        return aiAnalysis;
-      } catch (err: any) {
-        const errMsg = err.message || String(err);
-        if (errMsg.includes('credit') || errMsg.includes('balance')) {
-          console.log(`   ⚠️ Claude: Need API credits`);
-        } else if (errMsg.includes('rate')) {
-          console.log(`   ⚠️ Claude: Rate limited, waiting...`);
-        } else {
-          console.log(`   ⚠️ Claude offline: ${errMsg.substring(0, 60)}`);
-        }
-      }
-    }
-
-    // Try local AI if available
+    // Use local Ollama AI for analysis
     if (localAI.isEnabled() && await localAI.isAvailable()) {
       try {
         const momentum = knowledge.getMomentum(pair);
@@ -679,79 +659,6 @@ class CryptoTrainer {
     return { signal, confidence, reason, price: ticker.price };
   }
 
-  private async getClaudeAnalysis(pair: string, ticker: any, spread: number): Promise<{
-    signal: 'buy' | 'sell' | 'hold';
-    confidence: number;
-    reason: string;
-    price: number;
-  }> {
-    const winRate = this.learning.totalTrades > 0
-      ? (this.learning.wins / this.learning.totalTrades * 100).toFixed(1)
-      : 'N/A';
-
-    const recentTrades = this.trades.slice(-5).map(t =>
-      `${t.side} ${t.pair} @ $${t.entryPrice} - ${t.closed ? (t.profit! >= 0 ? 'WIN' : 'LOSS') : 'OPEN'}`
-    ).join(', ') || 'None yet';
-
-    // Track price for momentum
-    knowledge.trackPrice(pair, ticker.price);
-
-    // Get full market intelligence briefing
-    const briefing = await knowledge.getFullBriefing(this.tradingPairs);
-    const momentum = knowledge.getMomentum(pair);
-
-    const response = await this.claude!.messages.create({
-      model: 'claude-3-haiku-20240307',
-      max_tokens: 400,
-      messages: [{
-        role: 'user',
-        content: `You are ALPHA, an AI crypto trader learning to profit. You have $5 max per trade.
-
-═══════════════════════════════════════
-CURRENT TRADE ANALYSIS: ${pair}
-═══════════════════════════════════════
-Price: $${ticker.price.toLocaleString()}
-Bid: $${ticker.bid} | Ask: $${ticker.ask}
-Spread: ${spread.toFixed(3)}%
-Momentum: ${momentum.trend} (${momentum.strength.toFixed(2)}%)
-
-${briefing}
-
-═══════════════════════════════════════
-YOUR LEARNING HISTORY
-═══════════════════════════════════════
-Total trades: ${this.learning.totalTrades}
-Win rate: ${winRate}%
-Total P&L: $${this.learning.totalProfit.toFixed(2)}
-Best trade: ${this.learning.bestTrade ? '$' + this.learning.bestTrade.profit?.toFixed(2) : 'None'}
-Worst trade: ${this.learning.worstTrade ? '$' + this.learning.worstTrade.profit?.toFixed(2) : 'None'}
-Recent: ${recentTrades}
-
-═══════════════════════════════════════
-TRADING RULES
-═══════════════════════════════════════
-- Max $5 per trade
-- Take profit: +1.5%
-- Stop loss: -2%
-- Learn from EVERY trade
-- Use momentum + market intel
-- Be patient - only trade high confidence
-
-DECISION TIME: Should you BUY, SELL, or HOLD ${pair}?
-Respond JSON only: {"signal": "buy|sell|hold", "confidence": 0-100, "reason": "your reasoning"}`
-      }]
-    });
-
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
-    const json = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || '{}');
-
-    return {
-      signal: json.signal || 'hold',
-      confidence: json.confidence || 50,
-      reason: json.reason || 'AI analysis',
-      price: ticker.price
-    };
-  }
 
   async executeTrade(pair: string, side: 'buy' | 'sell', usdAmount: number, reason: string): Promise<TradeRecord | null> {
     console.log(`\n🎯 Executing ${side.toUpperCase()} on ${pair}`);

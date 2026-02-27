@@ -1,362 +1,217 @@
 /**
- * Alpha Hunter - Main Entry Point
- * Autonomous profit-hunting bot with fund management
+ * Alpha Hunter — Main Entry Point
  *
- * Commands:
- *   npm run dev        - Start with file watching
- *   npm run daily      - Run daily hunter
- *   npm run scan       - Just scan for opportunities
- *   npm run test       - Test run with simulated data
+ * Orchestrates all trading subsystems:
+ *   - Kalshi prediction market trading (via AIBrain + KalshiTrader)
+ *   - Crypto trading (via CryptoTrader)
+ *   - Progno sports pick execution (via PrognoIntegration)
+ *   - News scanning, fund management, SMS alerts
+ *
+ * Scripts:
+ *   npm run dev   → tsx watch src/index.ts   (hot-reload dev loop)
+ *   npm run start → tsx src/index.ts         (production single run)
  */
 
-import 'dotenv/config';
-import './lib/load-env';
-import './lib/console-timestamps';
-import { CronJob } from 'cron';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Load env from the alpha-hunter app directory (not repo root)
+const alphaRoot = path.resolve(__dirname, '..');
+dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
+
 import { AIBrain } from './ai-brain';
 import { UnifiedFundManager } from './fund-manager';
-import { SMSNotifier } from './sms-notifier';
 import { KalshiTrader } from './intelligence/kalshi-trader';
-import { PrognoIntegration } from './intelligence/progno-integration';
-import { checkSetup } from './setup-check';
+import { CryptoTrader } from './strategies/crypto-trader';
+import { SMSNotifier } from './sms-notifier';
+import { checkSetup, printSetupStatus } from './setup-check';
+import { tradeLimiter } from './lib/trade-limiter';
+import { emergencyStop } from './lib/emergency-stop';
 
-// Validate setup before starting
-const setup = checkSetup();
-if (!setup.ok) {
-  console.log('\n🔧 Alpha Hunter Setup Required:\n');
-  setup.issues.forEach(issue => console.log(`  ${issue}`));
-  console.log('\n📖 See README.md for setup instructions\n');
-  process.exit(1);
-}
-
-class AlphaHunter {
+export class TradingBot {
   private brain: AIBrain;
   private funds: UnifiedFundManager;
-  private sms: SMSNotifier;
   private kalshi: KalshiTrader;
-  private progno: PrognoIntegration;
-  private jobs: CronJob[] = [];
+  private crypto: CryptoTrader;
+  private sms: SMSNotifier;
+
+  private running = false;
+  private executionLock = false;
+  private cycleCount = 0;
+
+  private readonly INTERVAL = parseInt(process.env.ALPHA_CYCLE_SECONDS || '60', 10) * 1000;
+  private readonly MAX_SINGLE_TRADE = parseFloat(process.env.MAX_SINGLE_TRADE || '5');
 
   constructor() {
-    console.log(`
-╔══════════════════════════════════════════════════════════════╗
-║                                                              ║
-║     █████╗ ██╗     ██████╗ ██╗  ██╗ █████╗                   ║
-║    ██╔══██╗██║     ██╔══██╗██║  ██║██╔══██╗                  ║
-║    ███████║██║     ██████╔╝███████║███████║                  ║
-║    ██╔══██║██║     ██╔═══╝ ██╔══██║██╔══██║                  ║
-║    ██║  ██║███████╗██║     ██║  ██║██║  ██║                  ║
-║    ╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝                  ║
-║                                                              ║
-║    ██╗  ██╗██╗   ██╗███╗   ██╗████████╗███████╗██████╗       ║
-║    ██║  ██║██║   ██║████╗  ██║╚══██╔══╝██╔════╝██╔══██╗      ║
-║    ███████║██║   ██║██╔██╗ ██║   ██║   █████╗  ██████╔╝      ║
-║    ██╔══██║██║   ██║██║╚██╗██║   ██║   ██╔══╝  ██╔══██╗      ║
-║    ██║  ██║╚██████╔╝██║ ╚████║   ██║   ███████╗██║  ██║      ║
-║    ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═╝      ║
-║                                                              ║
-║              🦅 Autonomous Profit Hunter v1.0 🦅              ║
-║              Target: $250/day | AI-Powered Trading           ║
-║                                                              ║
-╚══════════════════════════════════════════════════════════════╝
-    `);
-
     this.brain = new AIBrain();
     this.funds = new UnifiedFundManager();
-    this.sms = new SMSNotifier();
     this.kalshi = new KalshiTrader();
-    this.progno = new PrognoIntegration();
+    this.crypto = new CryptoTrader();
+    this.sms = new SMSNotifier();
   }
 
-  async initialize(): Promise<void> {
-    console.log('\n🔧 Initializing Alpha Hunter...\n');
+  async start(): Promise<void> {
+    if (this.running) return;
+    this.running = true;
 
-    // Wait for fund manager hydration before reading balances
+    console.log(`
+╔══════════════════════════════════════════════════════════╗
+║          🦅 ALPHA HUNTER — UNIFIED TRADING BOT           ║
+║  Kalshi • Crypto • Progno Sports • AI Analysis           ║
+║  Cycle: ${(this.INTERVAL / 1000).toFixed(0)}s | Max Trade: $${this.MAX_SINGLE_TRADE}                        ║
+╚══════════════════════════════════════════════════════════╝
+`);
+
+    // Validate environment
+    const setup = checkSetup();
+    if (!setup.ok) {
+      printSetupStatus();
+      return;
+    }
+    console.log('✅ Environment validated\n');
+
+    // Auth probe for Kalshi
+    const auth = await this.kalshi.probeAuth();
+    if (auth.ok) {
+      console.log(`✅ Kalshi authenticated (balance: $${(auth as any).balanceUsd?.toFixed(2) ?? '?'})`);
+    } else {
+      console.warn(`⚠️  Kalshi auth failed: ${(auth as any).message || 'unknown'} — Kalshi trading disabled`);
+    }
+
+    // Hydrate fund manager
     await this.funds.ready;
+    console.log('✅ Fund manager ready\n');
 
-    // Check integrations first so we can update fund manager with live balances
-    console.log('🔌 Checking integrations...');
+    // Graceful shutdown
+    const shutdown = () => {
+      console.log('\n🛑 Graceful shutdown...');
+      this.running = false;
+    };
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
 
-    const kalshiBalance = await this.kalshi.getBalance();
-    const kalshiLabel = kalshiBalance < 0
-      ? '❌ Auth error'
-      : (kalshiBalance > 0 ? '✅ Connected' : '⚠️ Zero balance');
-    console.log(`   ├─ Kalshi: ${kalshiLabel}${kalshiBalance >= 0 ? ` ($${kalshiBalance})` : ''}`);
-
-    // Update fund manager with live Kalshi balance
-    if (kalshiBalance > 0) {
-      this.funds.updateKalshiBalance(kalshiBalance);
+    // Main loop
+    while (this.running) {
+      if (!this.executionLock) {
+        this.executionLock = true;
+        try {
+          await this.cycle();
+        } catch (err) {
+          console.error('❌ Cycle error:', (err as Error).message);
+        }
+        this.executionLock = false;
+      }
+      await this.sleep(this.INTERVAL);
     }
 
-    const prognoStatus = process.env.PROGNO_BASE_URL ? '✅ Connected' : '⚠️ Using defaults';
-    console.log(`   ├─ PROGNO: ${prognoStatus}`);
-
-    const smsStatus = this.sms.isConfigured() ? '✅ Configured' : '⚠️ Disabled';
-    console.log(`   └─ SMS: ${smsStatus}`);
-
-    // Now show account with hydrated + live data
-    const account = await this.funds.getAccount();
-    console.log(`\n💰 Account Balance: $${account.balance.toFixed(2)}`);
-    console.log(`📊 Available Funds: $${account.availableFunds.toFixed(2)}`);
-    console.log(`📈 Total Profit: $${account.totalProfit.toFixed(2)}`);
-
-    // Setup scheduled jobs
-    this.setupScheduledJobs();
-
-    console.log('\n✅ Alpha Hunter initialized!\n');
+    console.log('👋 Alpha Hunter stopped.');
   }
 
-  private setupScheduledJobs(): void {
-    console.log('\n📅 Setting up scheduled jobs...');
-    const tz = (process.env.ALPHA_TIMEZONE || 'America/New_York').trim();
+  private async cycle(): Promise<void> {
+    this.cycleCount++;
+    console.log(`\n─── Cycle ${this.cycleCount} @ ${new Date().toLocaleTimeString()} ───`);
 
-    const morningScan = new CronJob('0 6 * * *', async () => {
-      console.log('\n🌅 Morning scan starting...');
-      await this.runDailyScan();
-    }, null, false, tz);
-    this.jobs.push(morningScan);
-    console.log(`   ├─ Morning scan: 6:00 AM (${tz})`);
+    // Check emergency stop
+    const stopCheck = emergencyStop.canTrade();
+    if (!stopCheck.allowed) {
+      console.log(`🛑 Emergency stop active: ${stopCheck.reason}`);
+      return;
+    }
 
-    const mainHunt = new CronJob('0 9 * * *', async () => {
-      console.log('\n🦅 Main hunt starting...');
-      await this.runDailyHunt();
-    }, null, false, tz);
-    this.jobs.push(mainHunt);
-    console.log(`   ├─ Main hunt: 9:00 AM (${tz})`);
-
-    const middayCheck = new CronJob('0 12 * * *', async () => {
-      console.log('\n☀️ Midday check...');
-      await this.checkProgress();
-    }, null, false, tz);
-    this.jobs.push(middayCheck);
-    console.log(`   ├─ Midday check: 12:00 PM (${tz})`);
-
-    const sportsScan = new CronJob('0 17 * * *', async () => {
-      console.log('\n🏈 Evening sports scan...');
-      await this.runSportsScan();
-    }, null, false, tz);
-    this.jobs.push(sportsScan);
-    console.log(`   ├─ Sports scan: 5:00 PM (${tz})`);
-
-    const nightlySummary = new CronJob('0 22 * * *', async () => {
-      console.log('\n🌙 Nightly summary...');
-      await this.sendDailySummary();
-    }, null, false, tz);
-    this.jobs.push(nightlySummary);
-    console.log(`   ├─ Nightly summary: 10:00 PM (${tz})`);
-
-    const dailyReset = new CronJob('0 0 * * *', async () => {
-      console.log('\n🔄 Resetting daily counters...');
-      await this.funds.resetDailyCounters();
-    }, null, false, tz);
-    this.jobs.push(dailyReset);
-    console.log(`   └─ Daily reset: 12:00 AM (${tz})`);
-  }
-
-  startScheduler(): void {
-    console.log('\n🚀 Starting scheduler...');
-    this.jobs.forEach(job => job.start());
-    console.log('✅ Scheduler running. Press Ctrl+C to stop.\n');
-  }
-
-  stopScheduler(): void {
-    console.log('\n⏹️ Stopping scheduler...');
-    this.jobs.forEach(job => job.stop());
-  }
-
-  async runDailyScan(): Promise<void> {
+    // Analyze all sources via AI Brain
     const analysis = await this.brain.analyzeAllSources();
+    console.log(`📊 Found ${analysis.allOpportunities.length} opportunities (confidence ≥ min)`);
 
-    if (analysis.topOpportunity) {
-      const account = await this.funds.getAccount();
-      const suggestion = await this.brain.generateDailySuggestion(account.balance);
-      await this.sms.sendDailySuggestion(suggestion);
-    }
-  }
-
-  async runDailyHunt(): Promise<void> {
-    const { runDailyHunt: run } = await import('./daily-hunter.js');
-    await run();
-  }
-
-  async runSportsScan(): Promise<void> {
-    console.log('🏈 Scanning sports opportunities...');
-
-    const picks = await this.progno.getTodaysPicks();
-    const opportunities = await this.progno.convertToOpportunities(picks);
-    const arbitrage = await this.progno.getArbitrageOpportunities();
-
-    const totalOpps = opportunities.length + arbitrage.length;
-    console.log(`   Found ${totalOpps} opportunities`);
-
-    if (arbitrage.length > 0) {
-      // Alert about arbitrage immediately
-      const best = arbitrage[0];
-      await this.sms.sendOpportunityAlert(
-        best.title,
-        best.confidence,
-        best.expectedValue,
-        best.action.instructions.join(' | ')
-      );
+    if (!analysis.topOpportunity) {
+      console.log('⏳ No actionable opportunities this cycle.');
+      return;
     }
 
-    if (opportunities.length > 0) {
-      const best = opportunities.sort((a, b) => b.confidence - a.confidence)[0];
-      if (best.confidence >= 70) {
-        await this.sms.sendOpportunityAlert(
-          best.title,
-          best.confidence,
-          best.expectedValue,
-          `PROGNO Pick: ${best.action.target}`
-        );
+    const opp = analysis.topOpportunity;
+    console.log(`🎯 Top: ${opp.title} (${opp.confidence}% conf, EV +${opp.expectedValue.toFixed(1)}%)`);
+
+    // Check trade limiter
+    const stake = Math.min(opp.requiredCapital, this.MAX_SINGLE_TRADE);
+    const canTrade = tradeLimiter.canTrade(stake, opp.action.platform === 'kalshi' ? 'kalshi' : 'crypto');
+    if (!canTrade.allowed) {
+      console.log(`⏸️  Trade limiter: ${canTrade.reason}`);
+      return;
+    }
+
+    // Check spending limit
+    const stats = tradeLimiter.getStats();
+    const spendOk = await emergencyStop.checkSpendingLimit(stats.totalSpent, stake);
+    if (!spendOk) return;
+
+    // Execute
+    if (opp.action.autoExecute && process.env.AUTO_EXECUTE === 'true') {
+      try {
+        if (opp.action.platform === 'kalshi') {
+          // Kalshi opportunities from findOpportunities() have target = "KXTICKER YES/NO"
+          // Progno sports picks have target = "Boston Bruins" (human-readable, no ticker)
+          const parts = opp.action.target.split(' ');
+          const ticker = parts[0];
+          const sideRaw = parts[parts.length - 1]?.toUpperCase();
+          const isKalshiTicker = ticker.startsWith('KX') || ticker.includes('-');
+          const isValidSide = sideRaw === 'YES' || sideRaw === 'NO';
+
+          if (isKalshiTicker && isValidSide) {
+            const side = sideRaw.toLowerCase() as 'yes' | 'no';
+            const priceMatch = (opp.action.instructions[0] || '').match(/(\d+)¢/);
+            const price = priceMatch ? parseInt(priceMatch[1], 10) : 50;
+            const result = await this.kalshi.placeLimitOrderUsd(ticker, side, stake, price);
+            if (result) {
+              tradeLimiter.recordTrade(ticker, stake, 'kalshi');
+              console.log(`✅ Kalshi order placed: ${ticker} ${side} $${stake.toFixed(2)}`);
+              await this.sms.sendTradeExecuted(opp.title, stake, 'Kalshi');
+            }
+          } else {
+            // Progno sports pick — needs market matching via progno-kalshi-executor
+            console.log(`📋 Progno pick (needs Kalshi match): ${opp.title}`);
+            console.log(`   Run: npx tsx src/progno-kalshi-executor.ts`);
+          }
+        } else if (opp.action.platform === 'crypto_exchange') {
+          const trade = await this.crypto.executeBestSignal();
+          if (trade) {
+            tradeLimiter.recordTrade(trade.target, stake, 'crypto');
+            console.log(`✅ Crypto trade executed: ${trade.target} $${stake.toFixed(2)}`);
+            await this.sms.sendTradeExecuted(opp.title, stake, 'Coinbase');
+          } else {
+            console.log(`⏸️  Crypto signal found but execution skipped (safety checks)`);
+          }
+        } else {
+          console.log(`📋 Manual action required: ${opp.action.instructions.join(' | ')}`);
+        }
+      } catch (err) {
+        console.error(`❌ Execution failed: ${(err as Error).message}`);
       }
+    } else {
+      console.log('⏸️  Auto-execute disabled. Review manually.');
     }
+
+    // Record learning
+    this.brain.recordOutcome({
+      opportunityType: opp.type,
+      confidence: opp.confidence,
+      outcome: 'success', // Will be corrected on settlement
+      actualReturn: 0,
+      expectedReturn: opp.expectedValue,
+      factors: opp.reasoning.slice(0, 3),
+      timestamp: new Date().toISOString(),
+    });
   }
 
-  async checkProgress(): Promise<void> {
-    const account = await this.funds.getAccount();
-    const target = parseFloat(process.env.DAILY_PROFIT_TARGET || '250');
-    const progress = (account.todayProfit / target) * 100;
-
-    console.log(`\n📊 Progress Check:`);
-    console.log(`   Today's P&L: ${account.todayProfit >= 0 ? '+' : ''}$${account.todayProfit.toFixed(2)}`);
-    console.log(`   Target: $${target}`);
-    console.log(`   Progress: ${progress.toFixed(1)}%`);
-
-    if (progress >= 100) {
-      await this.sms.sendAlert(
-        'Target Reached! 🎉',
-        `Daily target of $${target} hit!\nTotal: $${account.todayProfit.toFixed(2)}\n\nResting for the day.`
-      );
-    } else if (progress >= 50) {
-      await this.sms.sendAlert(
-        'Halfway There! 📈',
-        `50% of daily target reached.\nCurrent: $${account.todayProfit.toFixed(2)} / $${target}`
-      );
-    }
-  }
-
-  async sendDailySummary(): Promise<void> {
-    const account = await this.funds.getAccount();
-    const trades = await this.funds.getOpenTrades();
-    const stats = await this.funds.getPerformanceStats();
-
-    await this.sms.sendDailySummary(
-      trades.length,
-      stats.wins,
-      stats.losses,
-      account.todayProfit,
-      account.balance
-    );
-  }
-
-  async deposit(amount: number): Promise<void> {
-    await this.funds.deposit(amount, 'manual');
-  }
-
-  async withdraw(amount: number): Promise<void> {
-    await this.funds.withdraw(amount, 'manual');
-  }
-
-  async status(): Promise<void> {
-    const account = await this.funds.getAccount();
-    const stats = await this.funds.getPerformanceStats();
-    const openTrades = await this.funds.getOpenTrades();
-
-    console.log('\n╔═══════════════════════════════════════════╗');
-    console.log('║          🦅 ALPHA HUNTER STATUS           ║');
-    console.log('╠═══════════════════════════════════════════╣');
-    console.log(`║  💰 Balance:      $${account.balance.toFixed(2).padEnd(18)}║`);
-    console.log(`║  📊 Available:    $${account.availableFunds.toFixed(2).padEnd(18)}║`);
-    console.log(`║  🔒 Allocated:    $${account.allocatedFunds.toFixed(2).padEnd(18)}║`);
-    console.log('╠═══════════════════════════════════════════╣');
-    console.log(`║  📈 Today P&L:    ${account.todayProfit >= 0 ? '+' : ''}$${account.todayProfit.toFixed(2).padEnd(17)}║`);
-    console.log(`║  🎯 Target:       $${parseFloat(process.env.DAILY_PROFIT_TARGET || '250').toFixed(2).padEnd(18)}║`);
-    console.log(`║  📊 Total P&L:    ${account.totalProfit >= 0 ? '+' : ''}$${account.totalProfit.toFixed(2).padEnd(17)}║`);
-    console.log('╠═══════════════════════════════════════════╣');
-    console.log(`║  📈 Trades:       ${stats.totalTrades}`.padEnd(41) + '║');
-    console.log(`║  🎯 Win Rate:     ${stats.winRate.toFixed(1)}%`.padEnd(41) + '║');
-    console.log(`║  📂 Open:         ${openTrades.length}`.padEnd(41) + '║');
-    console.log('╚═══════════════════════════════════════════╝\n');
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
-// Main
-async function main() {
-  const hunter = new AlphaHunter();
-  await hunter.initialize();
-
-  const command = process.argv[2];
-
-  switch (command) {
-    case 'start':
-    case 'run':
-      hunter.startScheduler();
-      // Keep alive
-      process.on('SIGINT', () => {
-        hunter.stopScheduler();
-        process.exit(0);
-      });
-      break;
-
-    case 'hunt':
-      await hunter.runDailyHunt();
-      break;
-
-    case 'scan':
-      await hunter.runDailyScan();
-      break;
-
-    case 'sports':
-      await hunter.runSportsScan();
-      break;
-
-    case 'status':
-      await hunter.status();
-      break;
-
-    case 'deposit':
-      const depositAmount = parseFloat(process.argv[3] || '0');
-      if (depositAmount > 0) {
-        await hunter.deposit(depositAmount);
-      } else {
-        console.log('Usage: npm start deposit <amount>');
-      }
-      break;
-
-    case 'withdraw':
-      const withdrawAmount = parseFloat(process.argv[3] || '0');
-      if (withdrawAmount > 0) {
-        await hunter.withdraw(withdrawAmount);
-      } else {
-        console.log('Usage: npm start withdraw <amount>');
-      }
-      break;
-
-    default:
-      if ((process.env.ALPHA_AUTO_START || '').trim() === '1') {
-        hunter.startScheduler();
-        // Keep alive so cron jobs can run
-        process.on('SIGINT', () => {
-          hunter.stopScheduler();
-          process.exit(0);
-        });
-      } else {
-        console.log('Usage:');
-        console.log('  npm start run      - Start scheduler');
-        console.log('  npm start hunt     - Run main hunt now');
-        console.log('  npm start scan     - Run single scan');
-        console.log('  npm start sports   - Scan sports only');
-        console.log('  npm start status   - Show status');
-        console.log('  npm start deposit <amount>');
-        console.log('  npm start withdraw <amount>');
-      }
-      break;
-  }
+// Run if invoked directly (not imported)
+const isDirectRun = process.argv[1]?.includes('index');
+if (isDirectRun) {
+  const bot = new TradingBot();
+  bot.start().catch(err => {
+    console.error('FATAL:', err);
+    process.exit(1);
+  });
 }
-
-main().catch(console.error);
-
-
-export { AlphaHunter };
-

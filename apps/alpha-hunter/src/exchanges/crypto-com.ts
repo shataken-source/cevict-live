@@ -109,7 +109,7 @@ export class CryptoComExchange {
       throw new Error(`Crypto.com API error: ${response.status} - ${error}`);
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     if (data.code !== 0) {
       throw new Error(`Crypto.com error: ${data.code} - ${data.message}`);
     }

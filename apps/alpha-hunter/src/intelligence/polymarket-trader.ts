@@ -125,7 +125,7 @@ export class PolymarketTrader {
         return [];
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       // Flatten events into markets
       const markets: any[] = [];
       for (const event of (data || [])) {
@@ -159,7 +159,7 @@ export class PolymarketTrader {
         return null;
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       // Get best bid/ask
       const bestBid = data.bids?.[0];
@@ -190,7 +190,7 @@ export class PolymarketTrader {
 
       if (!response.ok) return null;
 
-      const data = await response.json();
+      const data: any = await response.json();
       return parseFloat(data.price) * 100; // Convert to cents
     } catch (error) {
       return null;
@@ -669,7 +669,7 @@ export class PolymarketTrader {
         return 0;
       }
 
-      const data = await response.json();
+      const data: any = await response.json();
       const nonce = data.nonce || 0;
       this.nonceCounter.set(maker, nonce);
       return nonce;
@@ -702,7 +702,7 @@ export class PolymarketTrader {
         };
       }
 
-      const result = await response.json();
+      const result: any = await response.json();
 
       return {
         success: true,

@@ -20,7 +20,9 @@ export class EmergencyStop {
   private hardSpendingLimit: number;
 
   constructor() {
-    this.stateFile = path.join(process.cwd(), 'data', 'emergency-stop.json');
+    // Use __dirname so path is stable regardless of where process is started
+    const alphaRoot = path.resolve(__dirname, '..', '..');
+    this.stateFile = path.join(alphaRoot, 'data', 'emergency-stop.json');
     this.hardSpendingLimit = parseFloat(process.env.MAX_DAILY_LOSS || '50');
     this.state = this.loadState();
   }
@@ -95,7 +97,7 @@ export class EmergencyStop {
     await smsAlerter.emergencyStop(reason, totalSpent || 0);
 
     // Log to file
-    const logFile = path.join(process.cwd(), 'data', 'emergency-stops.log');
+    const logFile = path.join(path.resolve(__dirname, '..', '..'), 'data', 'emergency-stops.log');
     const logEntry = `${new Date().toISOString()} - ${reason} - $${(totalSpent || 0).toFixed(2)}\n`;
     fs.appendFileSync(logFile, logEntry, 'utf-8');
   }

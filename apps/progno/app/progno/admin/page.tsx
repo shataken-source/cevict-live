@@ -7,6 +7,8 @@ import EnhancedEarlyLinesSection from '../../../components/admin/EnhancedEarlyLi
 import PrintBetsSection from '../../../components/admin/PrintBetsSection';
 import ReportsSection from '../../../components/admin/ReportsSection';
 import EarlyLinesSection from '../../../components/admin/EarlyLinesSection';
+import BetSelectionModal, { type PreviewPick, type SelectedBet } from '../../../components/admin/BetSelectionModal';
+import PerformanceSection from '../../../components/admin/PerformanceSection';
 
 // -- Constants ----------------------------------------------------------------
 const SPORTS_LIST = [
@@ -206,6 +208,12 @@ export default function AdminPage() {
   // trading settings
   const [tradeSettings, setTradeSettings] = useState<{ enabled: boolean; stakeCents: number; minConfidence: number; maxPicksPerDay: number; dryRun: boolean } | null>(null);
   const [tradeMsg, setTradeMsg] = useState<string | null>(null);
+
+  // bet selection modal
+  const [betModalOpen, setBetModalOpen] = useState(false);
+  const [betPreviewPicks, setBetPreviewPicks] = useState<PreviewPick[]>([]);
+  const [betPreviewDate, setBetPreviewDate] = useState('');
+  const [betPreviewLoading, setBetPreviewLoading] = useState(false);
   const loadTrading = async () => {
     if (!secret.trim()) { setTradeMsg('Enter admin secret first.'); return; }
     setTradeMsg(null);
@@ -365,10 +373,60 @@ export default function AdminPage() {
       if (!res2.ok || !data2.success) { setCronLog({ job: 'daily-predictions', ok: false, msg: (data2.error || 'Early run failed') + '. Regular already saved.' }); return; }
       const msg2 = data2.data?.message ?? '';
       setCronLog({ job: 'daily-predictions', ok: true, msg: `${msg1} ${msg2}` });
+      // Auto-open bet selection modal after predictions complete
+      await loadBetPreview();
     } catch (e: any) {
       setCronLog({ job: 'daily-predictions', ok: false, msg: e?.message || 'Request failed' });
     } finally {
       setCronLoading(null);
+    }
+  };
+
+  const loadBetPreview = async () => {
+    if (!secret.trim()) { setTradeMsg('Enter admin secret first.'); return; }
+    setBetPreviewLoading(true);
+    try {
+      const res = await fetch('/api/progno/admin/trading/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` },
+        body: JSON.stringify({ secret: secret.trim() }),
+      });
+      const j = await res.json();
+      if (res.ok && j.success) {
+        setBetPreviewPicks(j.picks || []);
+        setBetPreviewDate(j.date || '');
+        setBetModalOpen(true);
+      } else {
+        setTradeMsg(j.error || 'Failed to load preview');
+      }
+    } catch (e: any) {
+      setTradeMsg(e?.message || 'Preview failed');
+    } finally {
+      setBetPreviewLoading(false);
+    }
+  };
+
+  const handlePlaceBets = async (bets: SelectedBet[]) => {
+    try {
+      const res = await fetch('/api/progno/admin/trading/place-bets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` },
+        body: JSON.stringify({ secret: secret.trim(), bets }),
+      });
+      const j = await res.json();
+      if (res.ok && j.success) {
+        const errResults = (j.results || []).filter((r: any) => r.status === 'error');
+        let msg = `✅ ${j.submitted} bets placed, ${j.errors} errors (${j.total} total)`;
+        if (errResults.length > 0) {
+          msg += '\n\nErrors:\n' + errResults.slice(0, 5).map((r: any) => `• ${r.pick}: ${r.error || 'unknown'}`).join('\n');
+        }
+        setTradeMsg(msg);
+        setBetModalOpen(false);
+      } else {
+        setTradeMsg(j.error || 'Bet placement failed');
+      }
+    } catch (e: any) {
+      setTradeMsg(e?.message || 'Bet placement failed');
     }
   };
 
@@ -619,6 +677,9 @@ export default function AdminPage() {
                 <Btn onClick={runBothPredictions} disabled={!!cronLoading} color={C.green}>
                   {cronLoading === 'daily-predictions' ? '⟳ RUNNING BOTH...' : '▶ RUN PREDICTIONS (BOTH)'}
                 </Btn>
+                <Btn onClick={loadBetPreview} disabled={!secret.trim() || betPreviewLoading} color={C.amber}>
+                  {betPreviewLoading ? '⟳ LOADING PICKS...' : '🎯 SELECT BETS'}
+                </Btn>
                 <Btn onClick={runKalshiNow} disabled={!secret.trim()} color={C.blue}>
                   💰 SUBMIT TO KALSHI ($5 each)
                 </Btn>
@@ -655,6 +716,11 @@ export default function AdminPage() {
                   </div>
                 ))}
               </div>
+            </Card>
+
+            <Card style={{ marginTop: 16 }}>
+              <SectionLabel>BET PERFORMANCE — ACTUAL BETS PLACED</SectionLabel>
+              <PerformanceSection secret={secret} />
             </Card>
           </div>
         )}
@@ -952,6 +1018,16 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* ═══ BET SELECTION MODAL ═══ */}
+      {betModalOpen && betPreviewPicks.length > 0 && (
+        <BetSelectionModal
+          picks={betPreviewPicks}
+          date={betPreviewDate}
+          onClose={() => setBetModalOpen(false)}
+          onSubmit={handlePlaceBets}
+        />
+      )}
     </div>
   );
 }

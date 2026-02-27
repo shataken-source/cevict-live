@@ -1,9 +1,9 @@
 /**
  * CEVICT FLEX KALSHI BOT
- * 
+ *
  * Uses PROGNO's 7-Dimensional Claude Effect to find the most probable
  * Kalshi markets and trade them for $250/day target.
- * 
+ *
  * The 7 Dimensions:
  * 1. SF (Sentiment Field) - Team emotional state
  * 2. NM (Narrative Momentum) - Story power detection
@@ -22,7 +22,7 @@ dotenv.config({ path: path.join(process.cwd(), 'apps', 'alpha-hunter', '.env.loc
 import { KalshiTrader } from './intelligence/kalshi-trader';
 import { PrognoIntegration } from './intelligence/progno-integration';
 import { fundManager } from './fund-manager';
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from './lib/local-ai';
 
 const DAILY_TARGET = 250;
 const MIN_CONFIDENCE = 70; // Only trade on 70%+ confidence picks
@@ -59,9 +59,7 @@ class CevictFlexKalshiBot {
   constructor() {
     this.kalshi = new KalshiTrader();
     this.progno = new PrognoIntegration();
-    this.claude = process.env.ANTHROPIC_API_KEY
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
+    this.claude = new Anthropic();
   }
 
   async initialize() {
@@ -87,10 +85,10 @@ class CevictFlexKalshiBot {
     await this.initialize();
 
     console.log('📊 Step 1: Fetching PROGNO picks with Claude Effect...\n');
-    
+
     // Get today's picks from PROGNO (includes 7D Claude Effect)
     const prognoPicks = await this.progno.getTodaysPicks();
-    
+
     if (prognoPicks.length === 0) {
       console.log('❌ No PROGNO picks available today');
       return;
@@ -152,7 +150,7 @@ class CevictFlexKalshiBot {
 
     // Execute trades (if auto-execute enabled)
     const autoExecute = process.env.AUTO_EXECUTE === 'true';
-    
+
     if (autoExecute) {
       console.log('🤖 AUTO-EXECUTE ENABLED - Executing trades...\n');
       await this.executeTrades(opportunities);
@@ -276,11 +274,11 @@ class CevictFlexKalshiBot {
 
     for (let i = 0; i < maxTrades && this.dailyPnL < DAILY_TARGET; i++) {
       const opp = opportunities[i];
-      
+
       if (opp.action.autoExecute && opp.confidence >= 75) {
         try {
           console.log(`💰 Executing: ${opp.title}`);
-          
+
           const trade = await this.kalshi.placeLimitOrderUsd(
             opp.market.id,
             opp.action.target.includes('YES') ? 'yes' : 'no',

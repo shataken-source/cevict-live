@@ -1,8 +1,8 @@
+// FILE: apps/alpha-hunter/next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  reactStrictMode: true,
+  output: "standalone",
 }
 
 module.exports = nextConfig

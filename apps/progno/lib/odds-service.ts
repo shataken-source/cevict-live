@@ -284,6 +284,55 @@ export class OddsService {
 
     console.log(`[OddsService] Loading live scores for sport: ${lowerSport} (key: ${sportKey})`);
 
+    // 1️⃣ Try ESPN first — free, no quota, near real-time
+    const ESPN_SCORE_PATH: Record<string, string> = {
+      nfl: 'football/nfl', nba: 'basketball/nba', nhl: 'hockey/nhl',
+      mlb: 'baseball/mlb', ncaaf: 'football/college-football', cfb: 'football/college-football',
+      ncaab: 'basketball/mens-college-basketball', cbb: 'basketball/mens-college-basketball',
+    };
+    const espnPath = ESPN_SCORE_PATH[lowerSport];
+    if (espnPath) {
+      try {
+        const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        const espnUrl = `https://site.api.espn.com/apis/site/v2/sports/${espnPath}/scoreboard?dates=${today}`;
+        const espnRes = await fetch(espnUrl, { cache: 'no-store' });
+        if (espnRes.ok) {
+          const espnData = await espnRes.json();
+          const events = Array.isArray(espnData?.events) ? espnData.events : [];
+          if (events.length > 0) {
+            const scores = events.map((ev: any) => {
+              const comp = ev?.competitions?.[0];
+              const competitors = Array.isArray(comp?.competitors) ? comp.competitors : [];
+              const home = competitors.find((c: any) => c.homeAway === 'home');
+              const away = competitors.find((c: any) => c.homeAway === 'away');
+              if (!home?.team?.displayName || !away?.team?.displayName) return null;
+              const statusType = ev?.status?.type;
+              const isLive = statusType?.state === 'in';
+              const isFinal = statusType?.state === 'post';
+              return {
+                id: ev.id,
+                sport: lowerSport,
+                homeTeam: normalizeTeamName(lowerSport, home.team.displayName),
+                awayTeam: normalizeTeamName(lowerSport, away.team.displayName),
+                completed: isFinal,
+                lastUpdate: isFinal || isLive ? new Date().toISOString() : null,
+                scores: null,
+                homeScore: home.score ?? null,
+                awayScore: away.score ?? null,
+              };
+            }).filter(Boolean);
+            if (scores.length > 0) {
+              console.log(`[OddsService] ESPN live scores: ${scores.length} events for ${lowerSport}`);
+              return scores;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn(`[OddsService] ESPN live scores failed for ${lowerSport}, falling back to Odds API`);
+      }
+    }
+
+    // 2️⃣ Fallback to The Odds API
     const data = await fetchFromOddsApi(`/sports/${sportKey}/scores`, {
       daysFrom: '1'
     });
@@ -293,7 +342,7 @@ export class OddsService {
       return [];
     }
 
-    console.log(`[OddsService] Live scores loaded: ${data.length} events for ${lowerSport}`);
+    console.log(`[OddsService] Odds API live scores: ${data.length} events for ${lowerSport}`);
 
     return data.map((event: any) => {
       const homeDisplay = normalizeTeamName(lowerSport, event.home_team);

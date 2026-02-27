@@ -1,9 +1,9 @@
 /**
  * BOT ACADEMY - Expert Bot Training System
- * 
+ *
  * Creates and trains specialized expert bots for each major prediction category:
  * - Sports Expert
- * - Economics Expert  
+ * - Economics Expert
  * - Politics Expert
  * - Crypto Expert
  * - Entertainment Expert
@@ -11,7 +11,7 @@
  * - Technology Expert
  * - Health Expert
  * - World Events Expert
- * 
+ *
  * Training Process:
  * 1. Load historical predictions from database
  * 2. Analyze outcomes and accuracy
@@ -21,7 +21,7 @@
  * 6. Use trained bot for all future predictions
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from '../lib/local-ai';
 import { getBotPredictions, saveBotPrediction, type BotPrediction } from '../lib/supabase-memory.js';
 import { KalshiTrader } from './kalshi-trader';
 import { historicalKnowledge } from './historical-knowledge';
@@ -69,9 +69,7 @@ export class BotAcademy {
   private trainingSessions: TrainingSession[] = [];
 
   constructor() {
-    this.claude = process.env.ANTHROPIC_API_KEY
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
+    this.claude = new Anthropic();
     this.kalshi = new KalshiTrader();
     this.initializeExperts();
   }

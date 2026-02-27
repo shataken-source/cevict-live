@@ -104,6 +104,7 @@ export interface MarketData {
 
 export interface PredictionMarket {
   id: string;
+  ticker?: string; // Kalshi market ticker (e.g. KXNBAGAME-26FEB21HOUNYK-NYK)
   platform: string;
   title: string;
   category: string;

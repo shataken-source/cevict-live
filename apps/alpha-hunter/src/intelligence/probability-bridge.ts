@@ -143,7 +143,7 @@ export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]
       headers: BOT_API_KEY ? { 'x-api-key': BOT_API_KEY } : {},
     });
     if (!res.ok) return [];
-    const data = await res.json();
+    const data: any = await res.json();
     if (!data || typeof data !== 'object') return [];
     const picks = data.picks || [];
     const out: PrognoEventProbability[] = [];

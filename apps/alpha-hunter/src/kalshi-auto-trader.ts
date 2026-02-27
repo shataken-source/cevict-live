@@ -6,10 +6,11 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+const alphaRoot = path.resolve(__dirname, '..');
+dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
 
 import { KalshiTrader } from './intelligence/kalshi-trader';
-import Anthropic from '@anthropic-ai/sdk';
+import { localAI } from './lib/local-ai';
 
 // ============================================================================
 // CONFIGURATION
@@ -53,13 +54,6 @@ interface MarketAnalysis {
 // ============================================================================
 
 class MarketAnalyzer {
-  private anthropic: Anthropic | null = null;
-
-  constructor() {
-    if (process.env.ANTHROPIC_API_KEY) {
-      this.anthropic = new Anthropic();
-    }
-  }
 
   async analyzeMarket(market: KalshiMarket): Promise<MarketAnalysis> {
     const title = market.title.toLowerCase();
@@ -93,18 +87,11 @@ class MarketAnalyzer {
       reasoning = analysis.reasoning;
     }
     else {
-      // Use Claude for unknown market types
-      if (this.anthropic) {
-        const analysis = await this.analyzeWithClaude(market);
-        aiPrediction = analysis.prediction;
-        confidence = analysis.confidence;
-        reasoning = analysis.reasoning;
-      } else {
-        // Slight contrarian edge
-        aiPrediction = market.yesPrice > 50 ? market.yesPrice - 3 : market.yesPrice + 3;
-        confidence = 45;
-        reasoning = 'No specific analysis available';
-      }
+      // Use local Ollama AI for unknown market types
+      const analysis = await this.analyzeWithLocalAI(market);
+      aiPrediction = analysis.prediction;
+      confidence = analysis.confidence;
+      reasoning = analysis.reasoning;
     }
 
     // Calculate edge
@@ -144,7 +131,7 @@ class MarketAnalyzer {
     let btcPrice = 87000; // Default
     try {
       const response = await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot');
-      const data = await response.json();
+      const data: any = await response.json();
       btcPrice = parseFloat(data.data.amount);
     } catch (e) { }
 
@@ -276,39 +263,45 @@ class MarketAnalyzer {
     };
   }
 
-  private async analyzeWithClaude(market: KalshiMarket): Promise<{ prediction: number; confidence: number; reasoning: string }> {
-    if (!this.anthropic) {
-      return { prediction: market.yesPrice, confidence: 45, reasoning: 'No AI available' };
+  private async analyzeWithLocalAI(market: KalshiMarket): Promise<{ prediction: number; confidence: number; reasoning: string }> {
+    if (!localAI.isEnabled() || !(await localAI.isAvailable())) {
+      // Slight contrarian edge fallback
+      return {
+        prediction: market.yesPrice > 50 ? market.yesPrice - 3 : market.yesPrice + 3,
+        confidence: 45,
+        reasoning: 'No AI available — contrarian heuristic',
+      };
     }
 
     try {
-      const response = await this.anthropic.messages.create({
-        model: 'claude-3-5-haiku-20241022',
-        max_tokens: 300,
-        messages: [{
-          role: 'user',
-          content: `Analyze this prediction market and give your probability estimate.
+      const prompt = `Analyze this prediction market and give your probability estimate.
 
 Market: "${market.title}"
 Current YES price: ${market.yesPrice}¢
 Current NO price: ${market.noPrice}¢
 Expires: ${market.expiresAt}
 
-Respond in JSON format only:
-{"prediction": <number 0-100>, "confidence": <number 0-100>, "reasoning": "<brief explanation>"}`,
-        }],
-      });
+Respond ONLY in this exact format:
+PREDICTION: [number 0-100]
+CONFIDENCE: [number 0-100]
+REASONING: [brief explanation]`;
 
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
-      const json = JSON.parse(text);
+      const response = await localAI.analyze(prompt);
+      if (!response) {
+        return { prediction: market.yesPrice, confidence: 45, reasoning: 'AI returned empty response' };
+      }
+
+      const predMatch = response.match(/PREDICTION:\s*(\d+)/i);
+      const confMatch = response.match(/CONFIDENCE:\s*(\d+)/i);
+      const reasonMatch = response.match(/REASONING:\s*(.+)/i);
 
       return {
-        prediction: json.prediction,
-        confidence: json.confidence,
-        reasoning: json.reasoning,
+        prediction: parseInt(predMatch?.[1] || String(market.yesPrice)),
+        confidence: parseInt(confMatch?.[1] || '45'),
+        reasoning: reasonMatch?.[1]?.trim() || 'Local AI analysis',
       };
     } catch (e: any) {
-      console.error(`   ⚠️ Claude error: ${e?.message || e}`);
+      console.error(`   ⚠️ Local AI error: ${e?.message || e}`);
       return { prediction: market.yesPrice, confidence: 45, reasoning: 'AI analysis failed' };
     }
   }

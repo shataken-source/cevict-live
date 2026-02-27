@@ -3,7 +3,7 @@
  * ═══════════════════════════════════════════════════════════════
  * An AI that masters the PROGNO Massager tools and discovers
  * new correlations and predictions we haven't thought of yet.
- * 
+ *
  * Features:
  * - Self-trains daily on random data patterns
  * - Creates abstract data combinations
@@ -16,7 +16,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from './lib/local-ai';
 import { MassagerClient } from './intelligence/massager-client';
 import { dataAggregator } from './intelligence/data-aggregator';
 
@@ -48,16 +48,14 @@ class MassagerExpertBot {
   private discoveries: Discovery[] = [];
   private trainingSessions: TrainingSession[] = [];
   private knowledgeBase: Map<string, any> = new Map();
-  
+
   // Bot's evolving understanding
   private learnedPatterns: string[] = [];
   private failedHypotheses: string[] = [];
   private successfulPredictions: string[] = [];
 
   constructor() {
-    this.claude = process.env.ANTHROPIC_API_KEY 
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
+    this.claude = new Anthropic();
     this.massager = new MassagerClient();
   }
 
@@ -125,7 +123,7 @@ class MassagerExpertBot {
 
     // Get real market data
     const realData = await dataAggregator.getFullBriefing();
-    
+
     // Generate abstract patterns
     const abstractData = this.generateAbstractData();
 
@@ -343,7 +341,7 @@ Return ONLY valid JSON array of discoveries:
     // Add meta-hypotheses based on combinations
     if (discoveries.length >= 2) {
       const combo = `COMBO: When ${discoveries[0].title} AND ${discoveries[1].title} occur together, ` +
-                    `there may be amplified effect (confidence: ${Math.min(discoveries[0].confidence, discoveries[1].confidence)}%)`;
+        `there may be amplified effect (confidence: ${Math.min(discoveries[0].confidence, discoveries[1].confidence)}%)`;
       hypotheses.push(combo);
     }
 
@@ -353,7 +351,7 @@ Return ONLY valid JSON array of discoveries:
   /**
    * Run a full training session
    */
-  
+
   /**
    * Run training session with 3-minute timeout and visible timer
    */
@@ -361,7 +359,7 @@ Return ONLY valid JSON array of discoveries:
     const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
     let timerInterval: NodeJS.Timeout | null = null;
     let elapsed = 0;
-    
+
     // Start visible timer
     timerInterval = setInterval(() => {
       elapsed += 1000;
@@ -370,23 +368,23 @@ Return ONLY valid JSON array of discoveries:
       const secs = Math.floor((remaining % 60000) / 1000);
       process.stdout.write(`\r⏱️  Time remaining: ${mins}m ${secs}s`);
     }, 1000);
-    
+
     try {
       const sessionPromise = this.runTrainingSession();
       const timeoutPromise = new Promise<null>((_, reject) => {
         setTimeout(() => reject(new Error('Training session timeout (3 minutes)')), TIMEOUT_MS);
       });
-      
+
       const result = await Promise.race([sessionPromise, timeoutPromise]);
-      
+
       if (timerInterval) clearInterval(timerInterval);
       process.stdout.write('\r' + ' '.repeat(50) + '\r'); // Clear timer line
-      
+
       return result as TrainingSession;
     } catch (error: any) {
       if (timerInterval) clearInterval(timerInterval);
       process.stdout.write('\r' + ' '.repeat(50) + '\r'); // Clear timer line
-      
+
       if (error.message.includes('timeout')) {
         console.log(`\n⚠️  Training session timed out after 3 minutes. Continuing...`);
         return null;
@@ -492,8 +490,8 @@ Return ONLY valid JSON array of discoveries:
     for (const discovery of this.getHighValueDiscoveries()) {
       if (discovery.type === 'prediction') {
         signals.push({
-          action: discovery.hypothesis.includes('buy') || discovery.hypothesis.includes('rebound') ? 'BUY' : 
-                  discovery.hypothesis.includes('sell') || discovery.hypothesis.includes('drop') ? 'SELL' : 'WATCH',
+          action: discovery.hypothesis.includes('buy') || discovery.hypothesis.includes('rebound') ? 'BUY' :
+            discovery.hypothesis.includes('sell') || discovery.hypothesis.includes('drop') ? 'SELL' : 'WATCH',
           reason: discovery.title,
           confidence: discovery.confidence
         });
@@ -529,29 +527,29 @@ Return ONLY valid JSON array of discoveries:
     });
 
     // Continuous learning loop
-      while (true) {
-        console.log(`\n⏳ Next training in ${intervalMinutes} minutes...`);
-        
-        // Show countdown timer every 10 seconds
-        for (let i = intervalMinutes * 60; i > 0; i -= 10) {
-          const mins = Math.floor(i / 60);
-          const secs = i % 60;
-          process.stdout.write(`\r⏱️  Next session in: ${mins}m ${secs}s`);
-          await new Promise(r => setTimeout(r, 10000)); // 10 second updates
-        }
-        process.stdout.write("\r" + " ".repeat(50) + "\r");
-        
-        await this.runTrainingSessionWithTimeout();
+    while (true) {
+      console.log(`\n⏳ Next training in ${intervalMinutes} minutes...`);
+
+      // Show countdown timer every 10 seconds
+      for (let i = intervalMinutes * 60; i > 0; i -= 10) {
+        const mins = Math.floor(i / 60);
+        const secs = i % 60;
+        process.stdout.write(`\r⏱️  Next session in: ${mins}m ${secs}s`);
+        await new Promise(r => setTimeout(r, 10000)); // 10 second updates
       }
+      process.stdout.write("\r" + " ".repeat(50) + "\r");
+
+      await this.runTrainingSessionWithTimeout();
     }
   }
+}
 
-  // Main
-  async function main() {
-    console.log('\n🧠 MASSAGER EXPERT BOT STARTING...\n');
+// Main
+async function main() {
+  console.log('\n🧠 MASSAGER EXPERT BOT STARTING...\n');
 
-    const expert = new MassagerExpertBot();
-    await expert.initialize();
+  const expert = new MassagerExpertBot();
+  await expert.initialize();
   await expert.startLearning(30); // Train every 30 minutes
 }
 

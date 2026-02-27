@@ -273,7 +273,7 @@ export class KalshiTrader {
         console.log(`   ⚠️ Markets API error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText.slice(0, 100) : ''}`);
         return null;
       }
-      const data = await response.json();
+      const data: any = await response.json();
       console.log(`   🔍 DEBUG: Response keys: ${Object.keys(data).join(', ')}`);
       console.log(`   🔍 DEBUG: markets array: ${data.markets ? 'present' : 'MISSING'} (${data.markets?.length || 0} items)`);
       console.log(`   📡 Markets API response: ${data.markets?.length || 0} markets`);
@@ -326,7 +326,7 @@ export class KalshiTrader {
         console.log(`[kalshi][balance] error=${response.status} ${response.statusText} ${body ? body.slice(0, 160) : ''}`);
         return -1;
       }
-      const data = await response.json();
+      const data: any = await response.json();
       return (data.balance || 0) / 100;
     } catch (e) { return -1; }
   }
@@ -378,7 +378,7 @@ export class KalshiTrader {
           'KALSHI-ACCESS-TIMESTAMP': timestamp,
         },
       });
-      const data = await response.json();
+      const data: any = await response.json();
       if (!response.ok) {
         // Make NOT_FOUND clearer: demo/prod mismatch OR wrong key id/private key pair.
         const code = data?.error?.code;
@@ -427,7 +427,7 @@ export class KalshiTrader {
         },
       });
       if (!response.ok) return [];
-      const data = await response.json();
+      const data: any = await response.json();
       const positions = Array.isArray(data.market_positions) ? data.market_positions : [];
       return positions.map((p: any) => ({
         marketId: p.ticker,
@@ -461,7 +461,7 @@ export class KalshiTrader {
         },
       });
       if (!response.ok) return [];
-      const data = await response.json();
+      const data: any = await response.json();
       return Array.isArray(data.settlements) ? data.settlements : [];
     } catch {
       return [];
@@ -543,7 +543,7 @@ export class KalshiTrader {
 
       if (!response || !response.ok) return null;
 
-      const data = await response.json();
+      const data: any = await response.json();
 
       // Extract best bid/ask from orderbook
       const yesBids = data.yes?.bids || [];
@@ -927,7 +927,7 @@ export class KalshiTrader {
       body: payloadJson // Use the pre-validated JSON string
     });
 
-    const data = await response.json();
+    const data: any = await response.json();
     if (!response.ok) throw new Error(JSON.stringify(data));
     return data;
   }

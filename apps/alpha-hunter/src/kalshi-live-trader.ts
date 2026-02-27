@@ -321,7 +321,7 @@ class KalshiTestTrader {
             break
           }
 
-          const marketsData = await marketsResponse.json()
+          const marketsData: any = await marketsResponse.json()
           const pageMarkets: any[] = marketsData.markets || []
           allMarkets.push(...pageMarkets)
           seriesCount += pageMarkets.length

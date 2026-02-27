@@ -4,7 +4,7 @@
  * Tracks contango, backwardation, COT data, and seasonal patterns
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from '../lib/local-ai';
 import { historicalKnowledge } from './historical-knowledge';
 
 const c = {
@@ -42,9 +42,7 @@ export class FuturesExpert {
   private claude: Anthropic | null;
 
   constructor() {
-    this.claude = process.env.ANTHROPIC_API_KEY
-      ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-      : null;
+    this.claude = new Anthropic();
   }
 
   /**

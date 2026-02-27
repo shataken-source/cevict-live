@@ -315,7 +315,7 @@ export class CryptoTrader {
         timestamp: new Date().toISOString(),
       }],
       action: {
-        platform: 'kalshi' as const, // Will route to best exchange
+        platform: 'crypto_exchange' as const,
         actionType: signal.direction === 'long' ? 'buy' : 'sell' as const,
         amount: this.config.maxTradeSize,
         target: signal.symbol,

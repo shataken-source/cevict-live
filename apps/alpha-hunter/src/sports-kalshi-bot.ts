@@ -6,10 +6,11 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+const alphaRoot = path.resolve(__dirname, '..');
+dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
 
 import { KalshiTrader } from './intelligence/kalshi-trader';
-import Anthropic from '@anthropic-ai/sdk';
+import { OllamaAsAnthropic as Anthropic } from './lib/local-ai';
 
 // ============================================================================
 // CONFIGURATION
@@ -83,7 +84,7 @@ async function fetchLiveGames(sport: string): Promise<LiveGame[]> {
       return [];
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     const remaining = response.headers.get('x-requests-remaining');
     console.log(`📊 API: ${remaining} requests remaining\n`);
 
