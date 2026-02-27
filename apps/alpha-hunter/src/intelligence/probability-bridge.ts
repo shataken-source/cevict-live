@@ -288,10 +288,8 @@ export function matchKalshiMarketToProgno(
     'KXNBASPREAD', 'KXNBAWINNER',
     'KXNFLSPREAD', 'KXNFLWINNER',
     'KXNHLSPREAD', 'KXNHLWINNER',
-    // Broader prefixes observed in wild
-    'KXMVSPORTS', 'KXMVESPORTS', 'KXNBA', 'KXNCAAB', 'KXNHL', 'KXNFL', 'KXMLB', 'KXNCAAF', 'KXNASCAR',
-    // Player props and rebounds (to recognize and skip later if needed)
-    'KXNBAPTS', 'KXNBAREB', 'KXNBAAST'
+    // NOTE: Do NOT add broad prefixes like KXNBA, KXNHL — they match props, mentions, halves, etc.
+    // Only add specific GAME/MONEY/WINNER prefixes that correspond to full-game outcomes.
   ];
   const homeTokens = teamSearchTokens(prognoEvent.homeTeam);
   const awayTokens = teamSearchTokens(prognoEvent.awayTeam);
@@ -342,8 +340,13 @@ export function matchKalshiMarketToProgno(
     // Skip TOTAL markets when matching win probability (Progno win prob doesn't apply to totals)
     if (/\bTOTAL\b|Total Points/i.test(marketTitle)) continue;
 
-    // Skip prop markets (First Half, Quarter, Period, etc.) - Progno win prob is for full game
-    if (/First Half|1st Half|Quarter|Period|Inning/i.test(marketTitle)) continue;
+    // Skip non-game-winner markets - Progno ONLY predicts full-game winners
+    // Block: halves, quarters, periods, innings, player props, mentions, spreads, totals
+    if (/First Half|1st Half|2nd Half|Second Half|Half.?time|Quarter|Period|Inning/i.test(marketTitle)) continue;
+    if (/announcers|mentioned|rebounds|assists|points scored|three.?pointers|steals|blocks|turnovers/i.test(marketTitle)) continue;
+
+    // Skip TIE/draw markets by title - Progno predicts which team wins, not ties
+    if (/\btie\b|\bdraw\b|\btied\b/i.test(marketTitleLower)) continue;
 
     // Prefer to skip multi-leg markets (commas), but allow when clearly a game-winner style with pick team
     const isMulti = marketTitleLower.includes(',');
@@ -358,6 +361,12 @@ export function matchKalshiMarketToProgno(
     const eventTicker = (market.event_ticker || '').toUpperCase();
     const tickerStr = (market.ticker || '').toUpperCase();
     const hasSportsPrefix = sportsPrefixes.some(p => eventTicker.startsWith(p) || tickerStr.startsWith(p));
+
+    // Skip non-game-winner ticker patterns (must be after tickerStr/eventTicker are declared)
+    // 2HWINNER=halftime, SPREAD/TOTAL=lines, MENTION=announcer props, PTS/REB/AST=player props
+    if (/-TIE$/i.test(tickerStr)) continue;
+    if (/2HWINNER|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(tickerStr)) continue;
+    if (/2HWINNER|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(eventTicker)) continue;
 
     // Check if both teams are in title (strong match)
     const hasHome = homeTokens.some(t => t.length >= 3 && sanitizedTitle.includes(t));
@@ -413,12 +422,23 @@ export function matchKalshiMarketToProgno(
     // Skip known multi-leg groupings to avoid player-prop conglomerates
     if (/MULTIGAME|EXTENDED|PARLAY/i.test(tickerStr) || /MULTIGAME|EXTENDED|PARLAY/i.test(eventTicker)) continue;
 
+    // Skip non-game-winner ticker patterns (same filters as primary pass)
+    if (/-TIE$/i.test(tickerStr)) continue;
+    if (/2HWINNER|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(tickerStr)) continue;
+    if (/2HWINNER|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(eventTicker)) continue;
+
     let marketTitle = market.title;
     if (typeof marketTitle !== 'string') marketTitle = String(marketTitle || '');
     if (!marketTitle) continue;
 
     // Skip non-sports markets (soccer, weather, music, economics, etc.)
     if (NON_SPORTS_TITLE.test(marketTitle)) continue;
+
+    // Skip non-game-winner title patterns (same filters as primary pass)
+    if (/\bTOTAL\b|Total Points/i.test(marketTitle)) continue;
+    if (/First Half|1st Half|2nd Half|Second Half|Half.?time|Quarter|Period|Inning/i.test(marketTitle)) continue;
+    if (/announcers|mentioned|rebounds|assists|points scored|three.?pointers|steals|blocks|turnovers/i.test(marketTitle)) continue;
+    if (/\btie\b|\bdraw\b|\btied\b/i.test(marketTitle.toLowerCase())) continue;
 
     const titleSan = sanitizeToken(marketTitle);
 
