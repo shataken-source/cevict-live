@@ -65,7 +65,7 @@ export class AIBrain {
     const [news, prognoPicks, kalshiOpps, arbitrageOpps, cryptoOpps] = await Promise.all([
       this.newsScanner.scanAllSources(),
       this.progno.getTodaysPicks().then(p => this.progno.convertToOpportunities(p)),
-      this.kalshi.findOpportunities(5),
+      this.kalshi.findOpportunitiesWithExternalProbs(5),
       this.progno.getArbitrageOpportunities(),
       this.cryptoTrader.getOpportunities(),
     ]);

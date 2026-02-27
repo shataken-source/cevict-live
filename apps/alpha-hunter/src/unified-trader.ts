@@ -22,7 +22,7 @@ console.log(`
 console.log('📋 CONFIGURATION:');
 console.log('   Kalshi API:', process.env.KALSHI_API_KEY_ID ? '✅ Configured' : '⚠️ Not set');
 console.log('   Coinbase API:', process.env.COINBASE_API_KEY ? '✅ Configured' : '⚠️ Not set');
-console.log('   Claude AI:', process.env.ANTHROPIC_API_KEY ? '✅ Configured' : '⚠️ Not set');
+console.log('   Local AI:', process.env.USE_LOCAL_AI === 'true' ? '✅ Ollama' : '⚠️ Not set (set USE_LOCAL_AI=true)');
 console.log('');
 
 // Set initial allocation (can be customized)

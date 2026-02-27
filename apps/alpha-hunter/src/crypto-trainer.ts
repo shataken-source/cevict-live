@@ -1162,7 +1162,7 @@ async function main() {
   const maxLoss = process.env.MAX_DAILY_LOSS || '150';
   const useUsdc = process.env.CRYPTO_USE_USDC === 'true';
   const pairs = useUsdc ? 'BTC-USDC, ETH-USDC, SOL-USDC' : 'BTC-USD, ETH-USD, SOL-USD';
-  const aiMode = process.env.ANTHROPIC_API_KEY ? 'Claude AI' : (process.env.USE_LOCAL_AI === 'true' ? 'Ollama Local AI' : 'Momentum-only');
+  const aiMode = process.env.USE_LOCAL_AI === 'true' ? 'Ollama Local AI' : 'Momentum-only';
 
   console.log('\n🤖 AUTONOMOUS CRYPTO TRADER STARTING...\n');
 

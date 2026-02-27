@@ -79,7 +79,7 @@ export class CryptoComExchange {
 
   private async request(method: string, params: any = {}): Promise<any> {
     if (!this.configured) {
-      return this.simulatedResponse(method, params);
+      throw new Error('Crypto.com not configured — missing CRYPTO_COM_API_KEY / CRYPTO_COM_API_SECRET');
     }
 
     const id = Date.now();
@@ -106,6 +106,10 @@ export class CryptoComExchange {
 
     if (!response.ok) {
       const error = await response.text();
+      if (response.status === 401 || response.status === 403) {
+        console.warn(`⚠️ Crypto.com auth failed (${response.status}) — disabling exchange`);
+        this.configured = false;
+      }
       throw new Error(`Crypto.com API error: ${response.status} - ${error}`);
     }
 
@@ -335,35 +339,6 @@ export class CryptoComExchange {
     };
   }
 
-  private simulatedResponse(method: string, params: any): any {
-    if (method === 'private/user-balance') {
-      return {
-        data: [
-          { currency: 'USDT', balance: '150.00', available: '150.00' },
-          { currency: 'BTC', balance: '0.003', available: '0.003' },
-          { currency: 'ETH', balance: '0.08', available: '0.08' },
-          { currency: 'CRO', balance: '500', available: '500' },
-        ],
-      };
-    }
-    if (method === 'public/get-ticker') {
-      return {
-        data: [{ a: '95000', b: '94990', k: '95010', h: '96000', l: '94000', v: '10000', c: '2.5' }],
-      };
-    }
-    if (method.includes('create-order')) {
-      return {
-        order_id: `sim_cdc_${Date.now()}`,
-        instrument_name: params.instrument_name || 'BTC_USDT',
-        side: params.side || 'BUY',
-        type: params.type || 'MARKET',
-        status: 'FILLED',
-        cumulative_quantity: '0.001',
-        avg_price: '95000',
-      };
-    }
-    return {};
-  }
 
   isConfigured(): boolean {
     return this.configured;
