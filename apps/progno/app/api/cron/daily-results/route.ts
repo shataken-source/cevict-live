@@ -50,6 +50,8 @@ type GradedPick = {
   sport?: string
   league?: string
   game_id?: string
+  odds?: number
+  is_home_pick?: boolean
   status: 'win' | 'lose' | 'pending'
   actualWinner?: string
   actualScore?: { home: number; away: number }
@@ -127,22 +129,46 @@ export async function GET(request: Request) {
   console.log(`[GRADE] Loaded ${picks.length} picks from ${fileName}:`, picks.map(p => `${p.away_team} @ ${p.home_team} (${p.sport || p.league || 'unknown'})`).join(', '))
 
   // Fetch scores — ESPN free scoreboard is primary (no key, near real-time, full coverage)
-  // Also fetch date+1 since the prediction engine sometimes pulls next-day games late at night
+  // Collect ALL dates we need to check: the file date, date+1, and every unique game_time date
+  // from the picks (the prediction engine often files next-day games under today's date)
+  const datesToFetch = new Set<string>([date])
   const nextDate = new Date(date + 'T12:00:00Z')
   nextDate.setDate(nextDate.getDate() + 1)
-  const nextDateStr = nextDate.toISOString().split('T')[0]
+  datesToFetch.add(nextDate.toISOString().split('T')[0])
+  // Also add the previous day in case games are filed late
+  const prevDate = new Date(date + 'T12:00:00Z')
+  prevDate.setDate(prevDate.getDate() - 1)
+  datesToFetch.add(prevDate.toISOString().split('T')[0])
+  // Extract actual game dates from picks' game_time field
+  for (const p of picks) {
+    if (p.game_time) {
+      try {
+        const gt = new Date(p.game_time)
+        if (!isNaN(gt.getTime())) {
+          // ESPN uses US Eastern dates — a game at 2026-02-28T02:00Z is Feb 27 evening ET
+          // Add both the UTC date and the US-shifted date (UTC-5 for ET)
+          datesToFetch.add(gt.toISOString().split('T')[0])
+          const etShifted = new Date(gt.getTime() - 5 * 60 * 60 * 1000)
+          datesToFetch.add(etShifted.toISOString().split('T')[0])
+        }
+      } catch { }
+    }
+  }
+  const allDates = [...datesToFetch].sort()
+  console.log(`[GRADE] Fetching scores for dates: ${allDates.join(', ')}`)
 
   const scoresByKey: Record<string, { home: string; away: string; homeScore: number; awayScore: number; gameId?: string }[]> = {}
   const fallbackSummary: Record<string, string | number> = {}
 
   for (const league of Object.keys(SPORT_KEY_MAP)) {
     try {
-      const [gameResults, nextDayResults] = await Promise.all([
-        fetchPreviousDayResultsFromProviders(league as 'NFL' | 'NBA' | 'NHL' | 'MLB' | 'NCAAB' | 'NCAAF', date),
-        fetchPreviousDayResultsFromProviders(league as 'NFL' | 'NBA' | 'NHL' | 'MLB' | 'NCAAB' | 'NCAAF', nextDateStr).catch(() => []),
-      ])
-      const combined = [...gameResults, ...nextDayResults]
-      // Deduplicate by home+away
+      const allResults = await Promise.all(
+        allDates.map(d =>
+          fetchPreviousDayResultsFromProviders(league as 'NFL' | 'NBA' | 'NHL' | 'MLB' | 'NCAAB' | 'NCAAF', d).catch(() => [])
+        )
+      )
+      const combined = allResults.flat()
+      // Deduplicate by home+away (same matchup across multiple date fetches)
       const seen = new Set<string>()
       const deduped = combined.filter(r => {
         const key = `${r.homeTeam}|${r.awayTeam}`
@@ -151,7 +177,8 @@ export async function GET(request: Request) {
         return true
       })
       scoresByKey[league] = deduped.map(r => ({ home: r.homeTeam, away: r.awayTeam, homeScore: r.homeScore, awayScore: r.awayScore }))
-      console.log(`[GRADE] ${league}: ${gameResults.length} games (${date}) + ${nextDayResults.length} games (${nextDateStr}) from ESPN`)
+      const counts = allDates.map((d, i) => `${allResults[i].length} (${d})`).join(' + ')
+      console.log(`[GRADE] ${league}: ${counts} from ESPN`)
     } catch (e) {
       scoresByKey[league] = []
       const msg = (e as Error)?.message ?? 'error'
@@ -268,6 +295,8 @@ export async function GET(request: Request) {
         sport: p.sport,
         league: p.league,
         game_id: p.game_id,
+        odds: p.odds ?? undefined,
+        is_home_pick: p.is_home_pick ?? (p.pick === p.home_team),
         status: 'pending',
       })
       pending++
@@ -287,6 +316,8 @@ export async function GET(request: Request) {
       sport: p.sport ?? matchedLeague,
       league: p.league ?? matchedLeague,
       game_id: p.game_id,
+      odds: p.odds ?? undefined,
+      is_home_pick: p.is_home_pick ?? (p.pick === p.home_team),
       status: winnerCorrect ? 'win' : 'lose',
       actualWinner: actualWinner,
       actualScore: { home: match.homeScore, away: match.awayScore },
