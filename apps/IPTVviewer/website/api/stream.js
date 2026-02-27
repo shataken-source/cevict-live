@@ -19,10 +19,11 @@ export default async function handler(req, res) {
 
     // Only allow proxying to known IPTV server patterns
     const parsed = new URL(decoded);
-    const allowedPaths = ['/live/', '/movie/', '/series/', '/xmltv.php', '/get.php', '/player_api.php', '/hls/'];
-    const allowedExts = ['.ts', '.m3u8', '.m3u', '.mp4', '.mkv', '.avi'];
+    const allowedPaths = ['/live/', '/movie/', '/series/', '/xmltv.php', '/get.php', '/player_api.php', '/hls/', '/play/', '/streaming/', '/timeshift/', '/catchup/'];
+    const allowedExts = ['.ts', '.m3u8', '.m3u', '.mp4', '.mkv', '.avi', '.key', '.aac', '.vtt', '.srt'];
     const isAllowed = allowedPaths.some(p => parsed.pathname.includes(p))
-      || allowedExts.some(ext => parsed.pathname.endsWith(ext));
+      || allowedExts.some(ext => parsed.pathname.endsWith(ext))
+      || /\.\w{2,4}(\?|$)/.test(parsed.pathname); // allow any extension with query string
     if (!isAllowed) {
       return res.status(403).json({ error: 'URL not allowed through proxy' });
     }
@@ -55,8 +56,10 @@ export default async function handler(req, res) {
     const ar = upstream.headers.get('accept-ranges');
     if (ar) res.setHeader('Accept-Ranges', ar);
 
-    // For m3u8 manifests, rewrite segment URLs to go through this proxy
-    if (ct && (ct.includes('mpegurl') || ct.includes('m3u8') || decoded.endsWith('.m3u8'))) {
+    // Detect m3u8 manifests by content-type OR URL extension
+    const isM3u8 = (ct && (ct.includes('mpegurl') || ct.includes('m3u'))) || decoded.endsWith('.m3u8') || decoded.includes('.m3u8?');
+
+    if (isM3u8) {
       let body = await upstream.text();
 
       // Use the FINAL URL after redirects (not the original) so absolute-path
@@ -66,18 +69,31 @@ export default async function handler(req, res) {
       const origin = new URL(finalUrl).origin;
 
       function resolveSegUrl(seg) {
+        seg = seg.trim();
         if (seg.startsWith('http')) return seg;
         if (seg.startsWith('/')) return origin + seg;  // absolute path
         return baseUrl + seg;                          // relative path
       }
 
-      body = body.replace(/^(?!#)(\S+\.ts.*)$/gm, (match) => {
-        return `/api/stream?url=${encodeURIComponent(resolveSegUrl(match))}`;
-      });
-      // Also rewrite any nested m3u8 references (multi-quality streams)
-      body = body.replace(/^(?!#)(\S+\.m3u8.*)$/gm, (match) => {
-        return `/api/stream?url=${encodeURIComponent(resolveSegUrl(match))}`;
-      });
+      function proxyUrl(raw) {
+        return `/api/stream?url=${encodeURIComponent(resolveSegUrl(raw))}`;
+      }
+
+      // Rewrite ALL non-comment, non-empty lines (segments, sub-playlists, keys, etc.)
+      body = body.split('\n').map(line => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) {
+          // Rewrite URI="..." inside EXT-X-KEY and EXT-X-MAP tags
+          if (trimmed.includes('URI="')) {
+            return trimmed.replace(/URI="([^"]+)"/g, (_, uri) => {
+              return `URI="${proxyUrl(uri)}"`;
+            });
+          }
+          return line;
+        }
+        // Non-comment line = segment or sub-playlist URL
+        return proxyUrl(trimmed);
+      }).join('\n');
 
       res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
       return res.send(body);

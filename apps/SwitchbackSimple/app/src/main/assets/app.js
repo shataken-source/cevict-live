@@ -148,11 +148,11 @@ async function api(action, extra = {}) {
 // ── HELPERS ──────────────────────────────────────────────────
 function esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function streamUrl(id) {
+  const target = `${S.server}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${id}.ts`;
   if (IS_ANDROID_WEBVIEW) {
-    const target = `${S.server}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${id}.ts`;
     return `http://localhost:8123/proxy?url=${encodeURIComponent(target)}`;
   }
-  return `/api/iptv?action=get_stream_url&stream_id=${id}&server=${encodeURIComponent(S.server)}&username=${encodeURIComponent(S.user)}&password=${encodeURIComponent(S.pass)}`;
+  return `/api/stream?url=${encodeURIComponent(target)}`;
 }
 function channelInitials(name) { return (name || '?').split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 3); }
 function colorFromName(name) {
@@ -1179,18 +1179,14 @@ async function loadStream(ch) {
     return;
   }
 
-  // Build HLS URL — Android goes through proxy, Vercel builds direct m3u8
+  // Build HLS URL — Android goes through local proxy, web goes through /api/stream proxy
   let hlsUrl;
+  const rawM3u8 = `${S.server}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${ch.stream_id}.m3u8`;
   if (IS_ANDROID_WEBVIEW) {
-    const target = `${S.server}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${ch.stream_id}.m3u8`;
-    hlsUrl = `http://localhost:8123/proxy?url=${encodeURIComponent(target)}`;
+    hlsUrl = `http://localhost:8123/proxy?url=${encodeURIComponent(rawM3u8)}`;
   } else {
-    try {
-      const data = await fetch(buildApiUrl('get_stream_url', { stream_id: ch.stream_id })).then(r => r.json());
-      hlsUrl = data.url;
-    } catch (e) {
-      hlsUrl = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.m3u8`;
-    }
+    // Route through Vercel stream proxy to avoid CORS blocking
+    hlsUrl = `/api/stream?url=${encodeURIComponent(rawM3u8)}`;
   }
 
   // Read buffer size preference
@@ -1223,10 +1219,10 @@ async function loadStream(ch) {
         showPlayerError('Stream error: ' + (d.type || 'unknown') + ' — trying fallback…');
         hls.destroy(); S.hlsInstance = null;
         // Fallback: try .ts stream through proxy
-        const tsRaw = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
+        const tsRaw = `${S.server}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${ch.stream_id}.ts`;
         const tsUrl = IS_ANDROID_WEBVIEW
           ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
-          : tsRaw;
+          : `/api/stream?url=${encodeURIComponent(tsRaw)}`;
         video.src = tsUrl;
         video.play().then(function () {
           clearPlayerError();
@@ -1240,12 +1236,12 @@ async function loadStream(ch) {
     video.src = hlsUrl;
     video.play().catch(function (err) { showPlayerError('Play error: ' + err.message); });
   } else {
-    // No HLS support — try .ts directly
+    // No HLS support — try .ts directly through proxy
     showPlayerError('Loading stream…');
-    const tsRaw = `${S.server}/live/${S.user}/${S.pass}/${ch.stream_id}.ts`;
+    const tsRaw = `${S.server}/live/${encodeURIComponent(S.user)}/${encodeURIComponent(S.pass)}/${ch.stream_id}.ts`;
     video.src = IS_ANDROID_WEBVIEW
       ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
-      : tsRaw;
+      : `/api/stream?url=${encodeURIComponent(tsRaw)}`;
     video.play().then(function () {
       clearPlayerError();
     }).catch(function (err) {
@@ -1404,6 +1400,8 @@ function showExitConfirm() {
 document.getElementById('exit-app-btn')?.addEventListener('click', () => showExitConfirm());
 
 // Player keyboard shortcuts (only active when player overlay is visible)
+// Covers: D-pad, media keys, volume keys, channel keys, numeric entry
+let _numBuf = ''; let _numTimer = null;
 document.addEventListener('keydown', e => {
   const overlay = document.getElementById('player-overlay');
   if (!overlay || overlay.style.display === 'none') return;
@@ -1417,10 +1415,45 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); togglePlay(); return;
   }
   if (e.key === 'm' || e.key === 'AudioVolumeMute') { toggleMute(); return; }
+  // Volume up/down — hardware remote volume keys
+  if (e.key === 'AudioVolumeUp') {
+    e.preventDefault();
+    const v = document.getElementById('player-video');
+    if (v) { v.volume = Math.min(1, v.volume + 0.1); v.muted = false; }
+    return;
+  }
+  if (e.key === 'AudioVolumeDown') {
+    e.preventDefault();
+    const v = document.getElementById('player-video');
+    if (v) v.volume = Math.max(0, v.volume - 0.1);
+    return;
+  }
+  // Channel up/down — dedicated remote buttons
+  if (e.key === 'ChannelUp' || e.key === 'PageUp') { e.preventDefault(); navigateChannel(-1); return; }
+  if (e.key === 'ChannelDown' || e.key === 'PageDown') { e.preventDefault(); navigateChannel(1); return; }
+  // D-pad navigation
   if (e.key === 'ArrowLeft') { e.preventDefault(); seekRelative(-10); }
   if (e.key === 'ArrowRight') { e.preventDefault(); seekRelative(10); }
   if (e.key === 'ArrowUp') { e.preventDefault(); navigateChannel(-1); }
   if (e.key === 'ArrowDown') { e.preventDefault(); navigateChannel(1); }
+  // Numeric channel entry — type digits then auto-jump after 1.5s pause
+  if (/^[0-9]$/.test(e.key)) {
+    e.preventDefault();
+    _numBuf += e.key;
+    clearTimeout(_numTimer);
+    showPlayerError('Channel: ' + _numBuf);
+    _numTimer = setTimeout(() => {
+      const num = parseInt(_numBuf, 10);
+      _numBuf = '';
+      clearPlayerError();
+      if (S.channelList?.length) {
+        // Try matching by channel number first, then by index
+        const byNum = S.channelList.findIndex(c => parseInt(c.num, 10) === num || parseInt(c.stream_id, 10) === num);
+        const idx = byNum >= 0 ? byNum : Math.min(num - 1, S.channelList.length - 1);
+        if (idx >= 0 && idx < S.channelList.length) openPlayer(S.channelList[idx], S.channelList, idx);
+      }
+    }, 1500);
+  }
 });
 
 function togglePlayerFav() {
@@ -3545,9 +3578,11 @@ function makeContentRowsFocusable() {
     .sb-item:focus { outline: 2px solid var(--primary); background: rgba(229,0,0,0.12) !important; color: #fff !important; }
     .ch-row:focus, .media-card:focus, .quality-opt:focus, .rec-card:focus { outline: 2px solid var(--primary); }
     .btn:focus, button:focus { outline: 2px solid var(--accent); }
-    :focus { outline: 2px solid var(--primary); outline-offset: 1px; }
-    :focus:not(:focus-visible) { outline: none; }
-    :focus-visible { outline: 2px solid var(--primary) !important; outline-offset: 2px; }
+    :focus { outline: 2px solid var(--primary); outline-offset: 2px; }
+    @supports selector(:focus-visible) {
+      :focus:not(:focus-visible) { outline: none; }
+      :focus-visible { outline: 2px solid var(--primary) !important; outline-offset: 2px; }
+    }
   `;
   document.head.appendChild(style);
 })();
@@ -3582,4 +3617,99 @@ setTimeout(() => {
   if (first) first.focus();
 }, 200);
 
-console.log('[Switchback TV] v3.6 — lang filter, pill nav, toggle-sw kb, ch-row focus ✓');
+// ── REMOTE CONTROL COMMAND LISTENER ──────────────────────────
+// The phone remote (remote.html) sends commands via localStorage 'sb_remote_cmd'.
+// We listen for storage events (cross-tab) and also poll (same-tab fallback).
+function handleRemoteCommand(cmd) {
+  if (!cmd || !cmd.action) return;
+  const a = cmd.action;
+  switch (a) {
+    case 'play_pause': togglePlay(); break;
+    case 'mute': toggleMute(); break;
+    case 'vol_up': {
+      const v = document.getElementById('player-video');
+      if (v) { v.volume = Math.min(1, v.volume + 0.1); v.muted = false; }
+      break;
+    }
+    case 'vol_down': {
+      const v = document.getElementById('player-video');
+      if (v) v.volume = Math.max(0, v.volume - 0.1);
+      break;
+    }
+    case 'ch_up': navigateChannel(-1); break;
+    case 'ch_down': navigateChannel(1); break;
+    case 'ch_goto': {
+      const num = cmd.num;
+      if (num != null && S.channelList?.length) {
+        const byNum = S.channelList.findIndex(c => parseInt(c.num, 10) === num || parseInt(c.stream_id, 10) === num);
+        const idx = byNum >= 0 ? byNum : Math.min(num - 1, S.channelList.length - 1);
+        if (idx >= 0 && idx < S.channelList.length) openPlayer(S.channelList[idx], S.channelList, idx);
+      }
+      break;
+    }
+    case 'seek_back': seekRelative(-30); break;
+    case 'seek_fwd': seekRelative(30); break;
+    case 'sb_jump': {
+      if (cmd.slot != null) cycleSbSlot(cmd.slot);
+      break;
+    }
+    case 'sb_cycle': cycleSbSlots(); break;
+    case 'nav_home': closePlayer(); nav('tvhome'); break;
+    case 'nav_guide': closePlayer(); nav('epg'); break;
+    case 'nav_search': closePlayer(); nav('search'); break;
+    case 'nav_channels': closePlayer(); nav('channels'); break;
+    case 'nav_favorites': closePlayer(); nav('favorites'); break;
+    case 'nav_recordings': closePlayer(); nav('recordings'); break;
+    case 'nav_settings': closePlayer(); nav('settings'); break;
+    case 'nav_back': {
+      const overlay = document.getElementById('player-overlay');
+      if (overlay && overlay.style.display !== 'none') closePlayer();
+      else if (S._screenHistory?.length) nav(S._screenHistory.pop());
+      break;
+    }
+    case 'nav_ok': document.activeElement?.click(); break;
+    case 'nav_up': document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true })); break;
+    case 'nav_down': document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })); break;
+    case 'nav_left': document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })); break;
+    case 'nav_right': document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); break;
+    case 'sleep': {
+      if (cmd.mins > 0) {
+        clearTimeout(S.sleepTimer);
+        S.sleepMinutes = cmd.mins;
+        S.sleepTimer = setTimeout(() => { closePlayer(); }, cmd.mins * 60000);
+      }
+      break;
+    }
+    case 'sleep_cancel': clearTimeout(S.sleepTimer); S.sleepMinutes = 0; break;
+  }
+}
+
+// Listen for cross-tab localStorage commands from the phone remote
+window.addEventListener('storage', e => {
+  if (e.key === 'sb_remote_cmd' && e.newValue) {
+    try { handleRemoteCommand(JSON.parse(e.newValue)); } catch (_) { }
+  }
+});
+
+// Publish TV state to localStorage so the phone remote can read it
+function publishTVState() {
+  const ch = S.currentChannel;
+  const video = document.getElementById('player-video');
+  const overlay = document.getElementById('player-overlay');
+  const isPlaying = overlay && overlay.style.display !== 'none';
+  const state = {
+    channel: ch?.name || '',
+    program: document.getElementById('player-program')?.textContent || '',
+    icon: ch ? channelInitials(ch.name) : '',
+    playing: isPlaying && video && !video.paused,
+    muted: video?.muted || false,
+    live: true,
+    slots: S.switchbackSlots,
+    isPro: S.isPro,
+    currentSlot: S.switchbackSlots?.indexOf(ch) ?? -1,
+  };
+  try { localStorage.setItem('sb_state', JSON.stringify(state)); } catch (_) { }
+}
+setInterval(publishTVState, 1000);
+
+console.log('[Switchback TV] v3.7 — stream proxy fix, TV remote keys, phone remote bridge ✓');
