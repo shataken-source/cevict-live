@@ -116,9 +116,24 @@ export async function GET(request: Request) {
       try {
         const { createClient } = await import('@supabase/supabase-js')
         const _sb = createClient(_supUrl, _supKey)
+        // Derive game_date from each pick's commence_time using CT timezone
+        // This prevents tomorrow's games from being filed under today's date
+        const gameDate = (p: any): string => {
+          const ct = p.commence_time || p.game_time
+          if (ct) {
+            try {
+              const d = new Date(ct)
+              if (!isNaN(d.getTime())) {
+                // Use CT timezone (America/Chicago) — a game at 2026-02-28T02:00Z = Feb 27 evening CT
+                return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+              }
+            } catch { }
+          }
+          return runDate
+        }
         const pickRows = picks.map((p: any) => ({
           game_id: p.game_id || p.id || null,
-          game_date: runDate,
+          game_date: gameDate(p),
           game_time: p.commence_time || null,   // verify-results cron reads this
           game_matchup: p.game_matchup || `${p.away_team} @ ${p.home_team}`,
           home_team: p.home_team,
@@ -145,29 +160,53 @@ export async function GET(request: Request) {
           console.log(`[CRON daily-predictions] Persisted ${pickRows.length} picks to Supabase`)
         }
 
-        // Store predictions JSON in Supabase Storage
-        const jsonContent = JSON.stringify(payload, null, 2)
-        const { error: _storErr } = await _sb.storage
-          .from('predictions')
-          .upload(fileName, Buffer.from(jsonContent, 'utf8'), {
-            contentType: 'application/json',
-            upsert: true,
-          })
-        if (_storErr) {
-          console.warn(`[CRON daily-predictions] Supabase Storage upload:`, _storErr.message)
-        } else {
-          console.log(`[CRON daily-predictions] Uploaded ${fileName} to Supabase Storage`)
+        // Group picks by actual game date (CT) and write per-date prediction files
+        // This prevents tomorrow's games from being filed under today's date
+        const picksByDate = new Map<string, any[]>()
+        for (const p of picks) {
+          const gd = gameDate(p)
+          if (!picksByDate.has(gd)) picksByDate.set(gd, [])
+          picksByDate.get(gd)!.push(p)
         }
 
-        // Also write to local filesystem for other tooling
-        try {
-          const { writeFileSync } = await import('fs')
-          const { join } = await import('path')
-          const localPath = join(process.cwd(), fileName)
-          writeFileSync(localPath, jsonContent, 'utf8')
-          console.log(`[CRON daily-predictions] Wrote local file: ${localPath}`)
-        } catch (_fsErr: any) {
-          console.warn(`[CRON daily-predictions] Local file write failed:`, _fsErr?.message)
+        const { writeFileSync } = await import('fs').catch(() => ({ writeFileSync: null as any }))
+        const { join } = await import('path').catch(() => ({ join: (...args: string[]) => args.join('/') }))
+
+        for (const [gd, datePicks] of picksByDate) {
+          const datePayload = {
+            date: gd,
+            generatedAt: new Date().toISOString(),
+            count: datePicks.length,
+            message: `${payload.message} — ${gd === runDate ? 'Regular' : 'Next-day'} (${datePicks.length} picks)`,
+            earlyLines: earlyLines ?? false,
+            picks: datePicks,
+          }
+          const dateFileName = earlyLines ? `predictions-early-${gd}.json` : `predictions-${gd}.json`
+          const dateJsonContent = JSON.stringify(datePayload, null, 2)
+
+          // Upload to Supabase Storage
+          const { error: _storErr } = await _sb.storage
+            .from('predictions')
+            .upload(dateFileName, Buffer.from(dateJsonContent, 'utf8'), {
+              contentType: 'application/json',
+              upsert: true,
+            })
+          if (_storErr) {
+            console.warn(`[CRON daily-predictions] Storage upload ${dateFileName}:`, _storErr.message)
+          } else {
+            console.log(`[CRON daily-predictions] Uploaded ${dateFileName} (${datePicks.length} picks)`)
+          }
+
+          // Write to local filesystem
+          if (writeFileSync) {
+            try {
+              const localPath = join(process.cwd(), dateFileName)
+              writeFileSync(localPath, dateJsonContent, 'utf8')
+              console.log(`[CRON daily-predictions] Wrote local: ${localPath}`)
+            } catch (_fsErr: any) {
+              console.warn(`[CRON daily-predictions] Local write failed:`, _fsErr?.message)
+            }
+          }
         }
       } catch (_e: any) {
         console.warn(`[CRON daily-predictions] Supabase picks write skipped:`, _e?.message)
