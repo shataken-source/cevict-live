@@ -35,10 +35,13 @@ interface Row {
   sport: string;
   league: string;
   pick: string;
+  home_team: string;
+  away_team: string;
   confidence: number;
   status: 'win' | 'lose' | 'pending';
   odds?: number;
   value_bet_edge?: number;
+  expected_value?: number;
 }
 
 /** Load graded results from Supabase, joined with picks for odds/edge data */
@@ -75,32 +78,55 @@ async function loadResults(dateFilter?: string): Promise<{ rows: Row[]; error?: 
       sport: (r.sport || r.league || 'unknown').toUpperCase(),
       league: (r.league || r.sport || 'unknown').toUpperCase(),
       pick: r.pick,
+      home_team: r.home_team || '',
+      away_team: r.away_team || '',
       confidence: Number(r.confidence) || 0,
       status: r.status as 'win' | 'lose',
       odds: pick?.odds ? Number(pick.odds) : undefined,
       value_bet_edge: pick?.value_bet_edge ? Number(pick.value_bet_edge) : undefined,
+      expected_value: pick?.expected_value ? Number(pick.expected_value) : undefined,
     };
   });
 
   return { rows };
 }
 
+function fmtOdds(odds: number | undefined): string {
+  if (odds == null) return '—';
+  return odds > 0 ? `+${odds}` : String(odds);
+}
+
 function performanceBySport(rows: Row[]) {
-  const bySport: Record<string, { wins: number; losses: number; total: number; profit: number }> = {};
+  const bySport: Record<string, { wins: number; losses: number; total: number; profit: number; oddsSum: number; oddsCount: number; avgConf: number }> = {};
   for (const r of rows) {
     const sport = r.sport || 'UNKNOWN';
-    if (!bySport[sport]) bySport[sport] = { wins: 0, losses: 0, total: 0, profit: 0 };
+    if (!bySport[sport]) bySport[sport] = { wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0, avgConf: 0 };
     const won = r.status === 'win';
     if (won) bySport[sport].wins++;
     else bySport[sport].losses++;
     bySport[sport].total++;
     bySport[sport].profit += profitFromOdds(r.odds || -110, won);
+    if (r.odds != null) { bySport[sport].oddsSum += r.odds; bySport[sport].oddsCount++; }
+    bySport[sport].avgConf += r.confidence;
   }
   return {
     sports: Object.entries(bySport)
-      .map(([sport, s]) => ({ sport, ...s, winRate: winRate(s.wins, s.total), profit: Math.round(s.profit * 100) / 100 }))
+      .map(([sport, s]) => ({
+        sport, wins: s.wins, losses: s.losses, total: s.total,
+        winRate: winRate(s.wins, s.total),
+        profit: Math.round(s.profit * 100) / 100,
+        avgOdds: s.oddsCount > 0 ? fmtOdds(Math.round(s.oddsSum / s.oddsCount)) : '—',
+        avgConf: s.total > 0 ? (s.avgConf / s.total).toFixed(1) : '—',
+      }))
       .sort((a, b) => b.total - a.total),
-    summary: { totalSports: Object.keys(bySport).length, totalBets: rows.length, totalProfit: Math.round(rows.reduce((a, r) => a + profitFromOdds(r.odds || -110, r.status === 'win'), 0) * 100) / 100 }
+    summary: {
+      totalSports: Object.keys(bySport).length,
+      totalBets: rows.length,
+      totalProfit: Math.round(rows.reduce((a, r) => a + profitFromOdds(r.odds || -110, r.status === 'win'), 0) * 100) / 100,
+      totalWins: rows.filter(r => r.status === 'win').length,
+      totalLosses: rows.filter(r => r.status === 'lose').length,
+      overallWinRate: winRate(rows.filter(r => r.status === 'win').length, rows.length),
+    }
   };
 }
 
@@ -129,43 +155,87 @@ function valueBetsAnalysis(rows: Row[]) {
 
 function confidenceVsResults(rows: Row[]) {
   const ranges = [
-    { min: 0, max: 70, range: '<70%', wins: 0, losses: 0, total: 0 },
-    { min: 70, max: 80, range: '70-80%', wins: 0, losses: 0, total: 0 },
-    { min: 80, max: 85, range: '80-85%', wins: 0, losses: 0, total: 0 },
-    { min: 85, max: 90, range: '85-90%', wins: 0, losses: 0, total: 0 },
-    { min: 90, max: 95, range: '90-95%', wins: 0, losses: 0, total: 0 },
-    { min: 95, max: 101, range: '95-100%', wins: 0, losses: 0, total: 0 },
+    { min: 0, max: 70, range: '<70%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
+    { min: 70, max: 80, range: '70-80%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
+    { min: 80, max: 85, range: '80-85%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
+    { min: 85, max: 90, range: '85-90%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
+    { min: 90, max: 95, range: '90-95%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
+    { min: 95, max: 101, range: '95-100%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
   ];
   for (const r of rows) {
     const rng = ranges.find(x => r.confidence >= x.min && r.confidence < x.max);
     if (!rng) continue;
     if (r.status === 'win') rng.wins++; else rng.losses++;
     rng.total++;
+    rng.profit += profitFromOdds(r.odds || -110, r.status === 'win');
+    if (r.odds != null) { rng.oddsSum += r.odds; rng.oddsCount++; }
   }
   return {
-    ranges: ranges.map(r => ({ ...r, winRate: winRate(r.wins, r.total) })),
+    ranges: ranges.map(r => ({
+      range: r.range, wins: r.wins, losses: r.losses, total: r.total,
+      winRate: winRate(r.wins, r.total),
+      profit: Math.round(r.profit * 100) / 100,
+      avgOdds: r.oddsCount > 0 ? fmtOdds(Math.round(r.oddsSum / r.oddsCount)) : '—',
+    })),
     insight: ranges.reduce((h, r) => (parseFloat(winRate(r.wins, r.total)) > parseFloat(winRate(h.wins, h.total)) && r.total >= 5 ? r : h), ranges[0])
   };
 }
 
 function monthlySummary(rows: Row[]) {
-  const byMonth: Record<string, { wins: number; losses: number; profit: number; bets: number }> = {};
+  const byMonth: Record<string, { wins: number; losses: number; profit: number; bets: number; oddsSum: number; oddsCount: number }> = {};
   for (const r of rows) {
     const month = (r.game_date || '').substring(0, 7);
     if (!month) continue;
-    if (!byMonth[month]) byMonth[month] = { wins: 0, losses: 0, profit: 0, bets: 0 };
+    if (!byMonth[month]) byMonth[month] = { wins: 0, losses: 0, profit: 0, bets: 0, oddsSum: 0, oddsCount: 0 };
     const won = r.status === 'win';
     if (won) byMonth[month].wins++; else byMonth[month].losses++;
     byMonth[month].bets++;
     byMonth[month].profit += profitFromOdds(r.odds || -110, won);
+    if (r.odds != null) { byMonth[month].oddsSum += r.odds; byMonth[month].oddsCount++; }
   }
   return {
     months: Object.entries(byMonth).map(([month, s]) => ({
-      month, ...s, profit: Math.round(s.profit * 100) / 100,
+      month, wins: s.wins, losses: s.losses, bets: s.bets,
+      profit: Math.round(s.profit * 100) / 100,
       winRate: winRate(s.wins, s.bets),
-      avgProfitPerBet: s.bets > 0 ? (s.profit / s.bets).toFixed(2) : '0.00'
+      avgProfitPerBet: s.bets > 0 ? (s.profit / s.bets).toFixed(2) : '0.00',
+      avgOdds: s.oddsCount > 0 ? fmtOdds(Math.round(s.oddsSum / s.oddsCount)) : '—',
+      roi: s.bets > 0 ? ((s.profit / (s.bets * 100)) * 100).toFixed(1) : '0.0',
     })).sort((a, b) => b.month.localeCompare(a.month)),
     summary: { totalMonths: Object.keys(byMonth).length }
+  };
+}
+
+/** Individual pick details — most recent first, with full odds/confidence/result */
+function pickDetails(rows: Row[]) {
+  const sorted = [...rows].sort((a, b) => (b.game_date || '').localeCompare(a.game_date || ''));
+  const picks = sorted.slice(0, 200).map(r => ({
+    date: r.game_date,
+    matchup: `${r.away_team} @ ${r.home_team}`,
+    pick: r.pick,
+    sport: r.sport,
+    confidence: r.confidence,
+    odds: r.odds != null ? fmtOdds(r.odds) : '—',
+    oddsRaw: r.odds,
+    result: r.status,
+    profit: Math.round(profitFromOdds(r.odds || -110, r.status === 'win') * 100) / 100,
+    edge: r.value_bet_edge != null ? `${r.value_bet_edge.toFixed(1)}%` : '—',
+    ev: r.expected_value != null ? r.expected_value.toFixed(2) : '—',
+  }));
+  const withOdds = rows.filter(r => r.odds != null);
+  const favPicks = withOdds.filter(r => (r.odds || 0) < 0);
+  const dogPicks = withOdds.filter(r => (r.odds || 0) > 0);
+  return {
+    picks,
+    summary: {
+      total: rows.length,
+      withOdds: withOdds.length,
+      withoutOdds: rows.length - withOdds.length,
+      favorites: favPicks.length,
+      favWinRate: winRate(favPicks.filter(r => r.status === 'win').length, favPicks.length),
+      underdogs: dogPicks.length,
+      dogWinRate: winRate(dogPicks.filter(r => r.status === 'win').length, dogPicks.length),
+    }
   };
 }
 
@@ -252,6 +322,9 @@ export async function POST(request: NextRequest) {
         break;
       case 'roi-by-odds-range':
         reportData = roiByOddsRange(rows);
+        break;
+      case 'pick-details':
+        reportData = pickDetails(rows);
         break;
       default:
         return NextResponse.json({ error: 'Unknown report type' }, { status: 400 });

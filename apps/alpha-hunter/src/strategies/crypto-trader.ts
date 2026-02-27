@@ -109,7 +109,7 @@ export class CryptoTrader {
     }
 
     // Strong move = potential reversion opportunity
-    if (Math.abs(change24h) < 3) return null;
+    if (Math.abs(change24h) < 2) return null;
 
     const direction = change24h > 0 ? 'short' : 'long';
     const confidence = Math.min(50 + Math.abs(change24h) * 3, 80);
@@ -135,28 +135,51 @@ export class CryptoTrader {
 
   /**
    * Momentum Strategy
-   * Ride strong trends
+   * Ride strong trends using real candle data
    */
   private async momentumStrategy(
     symbol: 'BTC' | 'ETH' | 'SOL',
     currentPrice: number
   ): Promise<CryptoSignal | null> {
-    // Check for consistent direction (simulated for now)
-    const trend = this.detectTrend(symbol);
+    // Use real 1h candles to detect trend
+    let candles: { close: number }[];
+    try {
+      candles = await this.exchanges.getCoinbase().getCandles(`${symbol}-USD`, 3600);
+      if (candles.length < 12) return null;
+    } catch {
+      return null;
+    }
 
-    if (Math.abs(trend.strength) < 60) return null;
+    // Check last 12 hours: count consecutive up/down closes
+    const recent = candles.slice(-12);
+    let upCount = 0, downCount = 0;
+    for (let i = 1; i < recent.length; i++) {
+      if (recent[i].close > recent[i - 1].close) upCount++;
+      else downCount++;
+    }
 
-    const direction = trend.direction;
-    const confidence = Math.min(50 + trend.strength * 0.4, 75);
+    const totalMoves = upCount + downCount;
+    if (totalMoves === 0) return null;
+    const trendRatio = Math.max(upCount, downCount) / totalMoves;
+    if (trendRatio < 0.7) return null; // Need 70%+ directional consistency
+
+    const direction: 'long' | 'short' = upCount > downCount ? 'long' : 'short';
+    const strength = trendRatio * 100;
+    const pctMove = ((recent[recent.length - 1].close - recent[0].close) / recent[0].close) * 100;
+
+    // Only signal if move is meaningful (>1%)
+    if (Math.abs(pctMove) < 1) return null;
+
+    const confidence = Math.min(50 + strength * 0.3, 78);
 
     return {
       symbol,
       direction,
       confidence,
       reasoning: [
-        `${symbol} showing ${trend.strength.toFixed(0)}% trend strength`,
-        `Direction: ${direction.toUpperCase()} for ${trend.duration} hours`,
-        `Volume confirmation: ${trend.volumeConfirm ? 'Yes' : 'No'}`,
+        `${symbol} trending ${direction.toUpperCase()} — ${Math.abs(pctMove).toFixed(1)}% over 12h`,
+        `Directional consistency: ${(trendRatio * 100).toFixed(0)}% (${upCount}up/${downCount}down)`,
+        `Momentum play at $${currentPrice.toFixed(2)}`,
       ],
       entryPrice: currentPrice,
       targetPrice: direction === 'long'
@@ -170,33 +193,65 @@ export class CryptoTrader {
 
   /**
    * Breakout Strategy
-   * Trade breakouts from consolidation
+   * Trade breakouts from consolidation using real candle data
    */
   private async breakoutStrategy(
     symbol: 'BTC' | 'ETH' | 'SOL',
     currentPrice: number
   ): Promise<CryptoSignal | null> {
-    // Detect breakout (simulated)
-    const breakout = this.detectBreakout(symbol, currentPrice);
+    // Use real 1h candles to detect breakout from recent range
+    let candles: { close: number; high: number; low: number }[];
+    try {
+      candles = await this.exchanges.getCoinbase().getCandles(`${symbol}-USD`, 3600);
+      if (candles.length < 24) return null;
+    } catch {
+      return null;
+    }
 
-    if (!breakout.isBreakout) return null;
+    // Calculate 24h range (exclude last 2 candles = "breakout" period)
+    const rangeCandles = candles.slice(-26, -2);
+    if (rangeCandles.length < 20) return null;
+    const rangeHigh = Math.max(...rangeCandles.map(c => c.high));
+    const rangeLow = Math.min(...rangeCandles.map(c => c.low));
+    const rangeWidth = ((rangeHigh - rangeLow) / rangeLow) * 100;
+
+    // Only look for breakouts from tight ranges (< 3% consolidation)
+    if (rangeWidth > 3 || rangeWidth < 0.5) return null;
+
+    let direction: 'long' | 'short';
+    let level: number;
+    if (currentPrice > rangeHigh * 1.002) {
+      direction = 'long';
+      level = rangeHigh;
+    } else if (currentPrice < rangeLow * 0.998) {
+      direction = 'short';
+      level = rangeLow;
+    } else {
+      return null; // No breakout
+    }
+
+    const breakoutPct = direction === 'long'
+      ? ((currentPrice - rangeHigh) / rangeHigh) * 100
+      : ((rangeLow - currentPrice) / rangeLow) * 100;
+
+    const confidence = Math.min(55 + breakoutPct * 10, 75);
 
     return {
       symbol,
-      direction: breakout.direction,
-      confidence: breakout.confidence,
+      direction,
+      confidence,
       reasoning: [
-        `${symbol} breaking ${breakout.direction === 'long' ? 'above' : 'below'} key level`,
-        `Breakout level: $${breakout.level.toFixed(2)}`,
-        `Volume surge: ${breakout.volumeSurge.toFixed(1)}x average`,
+        `${symbol} broke ${direction === 'long' ? 'above' : 'below'} $${level.toFixed(2)} (${rangeWidth.toFixed(1)}% range)`,
+        `Breakout magnitude: ${breakoutPct.toFixed(2)}%`,
+        `24h consolidation range: $${rangeLow.toFixed(2)} - $${rangeHigh.toFixed(2)}`,
       ],
       entryPrice: currentPrice,
-      targetPrice: breakout.direction === 'long'
-        ? currentPrice * 1.08
-        : currentPrice * 0.92,
-      stopLoss: breakout.direction === 'long'
-        ? breakout.level * 0.99
-        : breakout.level * 1.01,
+      targetPrice: direction === 'long'
+        ? currentPrice * 1.04
+        : currentPrice * 0.96,
+      stopLoss: direction === 'long'
+        ? level * 0.995
+        : level * 1.005,
     };
   }
 
@@ -215,10 +270,6 @@ export class CryptoTrader {
     const limitCheck = tradeLimiter.canTrade(this.config.maxTradeSize, 'crypto');
     if (!limitCheck.allowed) {
       console.log(`⏸️ ${limitCheck.reason}`);
-      await smsAlerter.dailyLimitReached(
-        tradeLimiter.getStats().tradeCount,
-        tradeLimiter.getStats().totalSpent
-      );
       return null;
     }
 
@@ -369,32 +420,6 @@ export class CryptoTrader {
       'SOL': 12,
     };
     return volatilities[symbol] || 8;
-  }
-
-  private detectTrend(symbol: string): { direction: 'long' | 'short'; strength: number; duration: number; volumeConfirm: boolean } {
-    // Use real price history from candles (cached by BotKnowledge-style tracking)
-    // Fallback: use the exchange manager's price comparison as a proxy
-    // This is called synchronously so we use a simple heuristic based on recent prices
-    // The real AI analysis in crypto-trainer.ts handles the heavy lifting
-    return {
-      direction: 'long', // Neutral default — will be filtered by strength threshold
-      strength: 0,       // Below threshold = no signal generated
-      duration: 0,
-      volumeConfirm: false,
-    };
-  }
-
-  private detectBreakout(symbol: string, price: number): { isBreakout: boolean; direction: 'long' | 'short'; level: number; confidence: number; volumeSurge: number } {
-    // Without real candle data in a sync context, don't generate false breakout signals
-    // The async strategies (meanReversion with candles, and crypto-trainer's Claude/local AI)
-    // handle real signal generation. This prevents random trades.
-    return {
-      isBreakout: false,
-      direction: 'long',
-      level: price,
-      confidence: 0,
-      volumeSurge: 1,
-    };
   }
 
   resetDailyCounters(): void {

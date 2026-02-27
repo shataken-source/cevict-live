@@ -21,7 +21,7 @@ dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
 
 import { AIBrain } from './ai-brain';
 import { UnifiedFundManager } from './fund-manager';
-import { KalshiTrader } from './intelligence/kalshi-trader';
+import { KalshiTrader, calcNetProfit, MIN_NET_PROFIT } from './intelligence/kalshi-trader';
 import { CryptoTrader } from './strategies/crypto-trader';
 import { SMSNotifier } from './sms-notifier';
 import { checkSetup, printSetupStatus } from './setup-check';
@@ -122,33 +122,53 @@ export class TradingBot {
     const analysis = await this.brain.analyzeAllSources();
     console.log(`📊 Found ${analysis.allOpportunities.length} opportunities (confidence ≥ min)`);
 
-    if (!analysis.topOpportunity) {
+    if (analysis.allOpportunities.length === 0) {
       console.log('⏳ No actionable opportunities this cycle.');
       return;
     }
 
-    const opp = analysis.topOpportunity;
-    console.log(`🎯 Top: ${opp.title} (${opp.confidence}% conf, EV +${opp.expectedValue.toFixed(1)}%)`);
-
-    // Check trade limiter
-    const stake = Math.min(opp.requiredCapital, this.MAX_SINGLE_TRADE);
-    const canTrade = tradeLimiter.canTrade(stake, opp.action.platform === 'kalshi' ? 'kalshi' : 'crypto');
-    if (!canTrade.allowed) {
-      console.log(`⏸️  Trade limiter: ${canTrade.reason}`);
+    if (process.env.AUTO_EXECUTE !== 'true') {
+      console.log('⏸️  Auto-execute disabled. Review manually.');
+      if (analysis.topOpportunity) {
+        console.log(`🎯 Top: ${analysis.topOpportunity.title} (${analysis.topOpportunity.confidence}% conf)`);
+      }
       return;
     }
 
-    // Check spending limit
-    const stats = tradeLimiter.getStats();
-    const spendOk = await emergencyStop.checkSpendingLimit(stats.totalSpent, stake);
-    if (!spendOk) return;
+    // Execute ALL qualifying opportunities (up to daily limits), not just the top one
+    let kalshiExecuted = 0;
+    let cryptoExecuted = 0;
+    let kalshiLimitLogged = false;
+    let cryptoLimitLogged = false;
+    let kalshiDupeSkipped = 0;
 
-    // Execute
-    if (opp.action.autoExecute && process.env.AUTO_EXECUTE === 'true') {
+    for (const opp of analysis.allOpportunities) {
+      if (!opp.action.autoExecute) continue;
+
+      const stake = Math.min(opp.requiredCapital, this.MAX_SINGLE_TRADE);
+      const platform = opp.action.platform === 'kalshi' ? 'kalshi' : 'crypto';
+
+      // Check trade limiter
+      const canTrade = tradeLimiter.canTrade(stake, platform);
+      if (!canTrade.allowed) {
+        // Only log the limiter message ONCE per platform per cycle
+        if (platform === 'kalshi' && !kalshiLimitLogged) {
+          console.log(`⏸️  ${platform} limiter: ${canTrade.reason}`);
+          kalshiLimitLogged = true;
+        } else if (platform === 'crypto' && !cryptoLimitLogged) {
+          console.log(`⏸️  ${platform} limiter: ${canTrade.reason}`);
+          cryptoLimitLogged = true;
+        }
+        continue;
+      }
+
+      // Check spending limit
+      const stats = tradeLimiter.getStats();
+      const spendOk = await emergencyStop.checkSpendingLimit(stats.totalSpent, stake);
+      if (!spendOk) break; // Hard stop — no more trades this cycle
+
       try {
         if (opp.action.platform === 'kalshi') {
-          // Kalshi opportunities from findOpportunities() have target = "KXTICKER YES/NO"
-          // Progno sports picks have target = "Boston Bruins" (human-readable, no ticker)
           const parts = opp.action.target.split(' ');
           const ticker = parts[0];
           const sideRaw = parts[parts.length - 1]?.toUpperCase();
@@ -156,49 +176,55 @@ export class TradingBot {
           const isValidSide = sideRaw === 'YES' || sideRaw === 'NO';
 
           if (isKalshiTicker && isValidSide) {
+            // Duplicate bet prevention — skip if already bet on this ticker today
+            if (tradeLimiter.hasAlreadyBet(ticker)) {
+              kalshiDupeSkipped++;
+              continue;
+            }
+
             const side = sideRaw.toLowerCase() as 'yes' | 'no';
             const priceMatch = (opp.action.instructions[0] || '').match(/(\d+)¢/);
             const price = priceMatch ? parseInt(priceMatch[1], 10) : 50;
+
+            // Fee-aware profit gate
+            const profitCheck = calcNetProfit(stake, price);
+            if (profitCheck.netProfit < MIN_NET_PROFIT) {
+              continue;
+            }
+
             const result = await this.kalshi.placeLimitOrderUsd(ticker, side, stake, price);
             if (result) {
               tradeLimiter.recordTrade(ticker, stake, 'kalshi');
-              console.log(`✅ Kalshi order placed: ${ticker} ${side} $${stake.toFixed(2)}`);
+              kalshiExecuted++;
+              console.log(`✅ Kalshi order placed: ${ticker} ${side} $${stake.toFixed(2)} (net $${profitCheck.netProfit.toFixed(2)})`);
               await this.sms.sendTradeExecuted(opp.title, stake, 'Kalshi');
             }
           } else {
-            // Progno sports pick — needs market matching via progno-kalshi-executor
             console.log(`📋 Progno pick (needs Kalshi match): ${opp.title}`);
-            console.log(`   Run: npx tsx src/progno-kalshi-executor.ts`);
           }
         } else if (opp.action.platform === 'crypto_exchange') {
+          // Duplicate prevention for crypto too
+          if (tradeLimiter.hasAlreadyBet(opp.action.target)) {
+            continue;
+          }
+
           const trade = await this.crypto.executeBestSignal();
           if (trade) {
             tradeLimiter.recordTrade(trade.target, stake, 'crypto');
+            cryptoExecuted++;
             console.log(`✅ Crypto trade executed: ${trade.target} $${stake.toFixed(2)}`);
             await this.sms.sendTradeExecuted(opp.title, stake, 'Coinbase');
-          } else {
-            console.log(`⏸️  Crypto signal found but execution skipped (safety checks)`);
           }
         } else {
           console.log(`📋 Manual action required: ${opp.action.instructions.join(' | ')}`);
         }
       } catch (err) {
-        console.error(`❌ Execution failed: ${(err as Error).message}`);
+        console.error(`❌ Execution failed for ${opp.title}: ${(err as Error).message}`);
       }
-    } else {
-      console.log('⏸️  Auto-execute disabled. Review manually.');
     }
 
-    // Record learning
-    this.brain.recordOutcome({
-      opportunityType: opp.type,
-      confidence: opp.confidence,
-      outcome: 'success', // Will be corrected on settlement
-      actualReturn: 0,
-      expectedReturn: opp.expectedValue,
-      factors: opp.reasoning.slice(0, 3),
-      timestamp: new Date().toISOString(),
-    });
+    if (kalshiDupeSkipped > 0) console.log(`⏭️  Skipped ${kalshiDupeSkipped} duplicate Kalshi bets (already placed today)`);
+    console.log(`📈 Cycle summary: ${kalshiExecuted} Kalshi + ${cryptoExecuted} crypto trades executed`);
   }
 
   private sleep(ms: number): Promise<void> {

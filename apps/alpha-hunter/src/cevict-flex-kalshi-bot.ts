@@ -19,7 +19,7 @@ import * as path from 'path';
 
 dotenv.config({ path: path.join(process.cwd(), 'apps', 'alpha-hunter', '.env.local') });
 
-import { KalshiTrader } from './intelligence/kalshi-trader';
+import { KalshiTrader, KALSHI_FEE_RATE } from './intelligence/kalshi-trader';
 import { PrognoIntegration } from './intelligence/progno-integration';
 import { fundManager } from './fund-manager';
 import { OllamaAsAnthropic as Anthropic } from './lib/local-ai';
@@ -264,7 +264,7 @@ class CevictFlexKalshiBot {
     const stake = this.calculateStake(edge, price);
     const grossReturn = stake * (100 / price);
     const winnings = grossReturn - stake;
-    const kalshiFee = winnings * 0.10; // 10% of winnings
+    const kalshiFee = winnings * KALSHI_FEE_RATE;
     return grossReturn - kalshiFee;
   }
 

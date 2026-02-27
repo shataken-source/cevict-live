@@ -10,6 +10,11 @@ interface DailyTradeData {
   date: string;
   tradeCount: number;
   totalSpent: number;
+  /** Per-platform counters (added Feb 2026) */
+  platformCounts?: Record<string, number>;
+  platformSpent?: Record<string, number>;
+  /** Set of tickers/symbols already bet on today (prevents duplicate bets) */
+  bettedTickers?: string[];
   trades: {
     timestamp: string;
     symbol: string;
@@ -23,6 +28,8 @@ export class TradeLimiter {
   private data: DailyTradeData;
   private maxDailyTrades: number;
   private maxDailySpending: number;
+  /** Per-platform daily trade caps */
+  private platformLimits: Record<string, number>;
 
   constructor() {
     // Use __dirname so path is stable regardless of where process is started
@@ -30,6 +37,11 @@ export class TradeLimiter {
     this.dataFile = path.join(alphaRoot, 'data', 'daily-trades.json');
     this.maxDailyTrades = parseInt(process.env.CRYPTO_MAX_DAILY_TRADES || '2');
     this.maxDailySpending = parseFloat(process.env.MAX_DAILY_LOSS || '50');
+    this.platformLimits = {
+      crypto: parseInt(process.env.CRYPTO_MAX_DAILY_TRADES || '10'),
+      kalshi: parseInt(process.env.KALSHI_MAX_DAILY_TRADES || '10'),
+      polymarket: parseInt(process.env.POLYMARKET_MAX_DAILY_TRADES || '5'),
+    };
     this.data = this.loadData();
   }
 
@@ -101,11 +113,24 @@ export class TradeLimiter {
       this.saveData();
     }
 
-    // Check daily trade limit
-    if (this.data.tradeCount >= this.maxDailyTrades) {
+    // Check per-platform trade limit first (so crypto doesn't starve kalshi)
+    const platformCount = (this.data.platformCounts || {})[type] || 0;
+    const platformMax = this.platformLimits[type] || this.maxDailyTrades;
+    if (platformCount >= platformMax) {
       return {
         allowed: false,
-        reason: `Daily trade limit reached (${this.data.tradeCount}/${this.maxDailyTrades})`,
+        reason: `Daily ${type} trade limit reached (${platformCount}/${platformMax})`,
+      };
+    }
+
+    // Check for duplicate bet on same ticker (prevent re-betting same market)
+    // Caller should use hasAlreadyBet() before canTrade() for specific ticker check
+
+    // Check global daily trade limit as a safety net
+    if (this.data.tradeCount >= this.maxDailyTrades + (this.platformLimits.kalshi || 10)) {
+      return {
+        allowed: false,
+        reason: `Daily trade limit reached (${this.data.tradeCount} total)`,
       };
     }
 
@@ -131,9 +156,19 @@ export class TradeLimiter {
       this.data = this.createFreshData();
     }
 
-    // Record trade
+    // Record trade (global + per-platform)
     this.data.tradeCount++;
     this.data.totalSpent += amount;
+    if (!this.data.platformCounts) this.data.platformCounts = {};
+    if (!this.data.platformSpent) this.data.platformSpent = {};
+    this.data.platformCounts[type] = (this.data.platformCounts[type] || 0) + 1;
+    this.data.platformSpent[type] = (this.data.platformSpent[type] || 0) + amount;
+    // Track ticker for duplicate prevention
+    if (!this.data.bettedTickers) this.data.bettedTickers = [];
+    const normalizedSymbol = symbol.toUpperCase().trim();
+    if (!this.data.bettedTickers.includes(normalizedSymbol)) {
+      this.data.bettedTickers.push(normalizedSymbol);
+    }
     this.data.trades.push({
       timestamp: new Date().toISOString(),
       symbol,
@@ -177,6 +212,16 @@ export class TradeLimiter {
     this.data = this.createFreshData();
     this.saveData();
     console.log('[TRADE-LIMITER] Daily counter reset');
+  }
+
+  /**
+   * Check if we've already bet on this ticker/symbol today
+   */
+  hasAlreadyBet(symbol: string): boolean {
+    const today = new Date().toISOString().split('T')[0];
+    if (this.data.date !== today) return false;
+    const normalizedSymbol = symbol.toUpperCase().trim();
+    return (this.data.bettedTickers || []).includes(normalizedSymbol);
   }
 
   /**

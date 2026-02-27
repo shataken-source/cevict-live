@@ -222,14 +222,25 @@ function teamSearchTokens(team: string): string[] {
   return [...new Set(tokens)].filter(Boolean);
 }
 
-/** Titles that are not team-sports outcomes (music, weather, economics, meta) — skip Progno match */
+/** Titles that are not team-sports outcomes (music, weather, economics, meta, soccer) — skip Progno match */
 const NON_SPORTS_TITLE =
-  /announcers say|featured on|high temp|temp in|temperature|°f|°c|real gdp|gdp increase|music|album|song|by don toliver|by \w+ toliver/i;
+  /announcers say|featured on|high temp|temp in|temperature|°f|°c|real gdp|gdp increase|music|album|song|by don toliver|by \w+ toliver|soccer|futbol|fútbol|liga mx|copa |la liga|premier league|bundesliga|serie a|ligue 1|mls cup|eredivisie|champions league|europa league|world cup|concacaf|conmebol|libertadores|sudamericana|colombian|brazilian|mexican league/i;
 
-/** Require league consistency: title says "basketball" → NBA/NCAAB only; "hockey" → NHL only. No sport keyword → no single-team match (avoids Drake/Denver false matches). */
+/** Progno only predicts these leagues — reject everything else */
+const ALLOWED_PROGNO_LEAGUES = new Set(['NBA', 'NHL', 'NCAAB', 'NCAAF', 'NFL', 'MLB', 'CBB']);
+
+/** Require league consistency: title says "basketball" → NBA/NCAAB only; "hockey" → NHL only.
+ *  Soccer / unsupported sports → always false.
+ *  Generic sport words (game/win/match) → only true if Progno league is in our allowed set
+ *  AND the title or known tickers confirm the right sport context. */
 function titleLeagueMatchesEvent(title: string, league: string): boolean {
   const t = title.toLowerCase();
   const L = (league || '').toUpperCase();
+
+  // Gate: Progno league must be in allowed set
+  if (!ALLOWED_PROGNO_LEAGUES.has(L)) return false;
+
+  // Explicit sport keywords in title → must match Progno league
   if (/basketball/i.test(t)) return L === 'NBA' || L === 'NCAAB';
   if (/hockey/i.test(t)) return L === 'NHL';
   if (/football/i.test(t) && !/soccer/i.test(t)) return L === 'NFL' || L === 'NCAAF';
@@ -238,9 +249,23 @@ function titleLeagueMatchesEvent(title: string, league: string): boolean {
     if (isCollege) return L === 'CBB';
     return L === 'MLB' || L === 'CBB';
   }
-  if (/soccer/i.test(t)) return true;
-  if (/\b(game|match|win|winner|beat|vs\.?|at\s)\b|nfl|nba|mlb|nhl|ncaa/i.test(t)) return true; // explicit sport/game context
-  return false; // no sport keyword — don't allow single-team match (avoids "Drake" → Drake Bulldogs, "Denver" → Denver Pioneers)
+
+  // Soccer / unsupported sports → ALWAYS reject (Progno has no model for these)
+  if (/soccer|futbol|fútbol|liga|copa|premier league|bundesliga|serie a|ligue 1|mls |eredivisie|champions league|europa league|concacaf|conmebol|libertadores|sudamericana/i.test(t)) return false;
+
+  // Explicit US league abbreviation in title → verify it matches Progno league
+  if (/\bnfl\b/i.test(t)) return L === 'NFL' || L === 'NCAAF';
+  if (/\bnba\b/i.test(t)) return L === 'NBA';
+  if (/\bmlb\b/i.test(t)) return L === 'MLB';
+  if (/\bnhl\b/i.test(t)) return L === 'NHL';
+  if (/\bncaa\b/i.test(t)) return L === 'NCAAB' || L === 'NCAAF' || L === 'CBB';
+
+  // Generic sport words (game/win/match/vs) — allow only if Progno league is supported
+  // These are ambiguous — could be soccer, esports, etc. — but we already blocked
+  // soccer above and NON_SPORTS_TITLE catches other non-sports.
+  if (/\b(game|win|winner|beat|vs\.?)\b/i.test(t)) return true;
+
+  return false; // no sport keyword — don't allow (avoids "Drake" → Drake Bulldogs, etc.)
 }
 
 /**
@@ -391,6 +416,10 @@ export function matchKalshiMarketToProgno(
     let marketTitle = market.title;
     if (typeof marketTitle !== 'string') marketTitle = String(marketTitle || '');
     if (!marketTitle) continue;
+
+    // Skip non-sports markets (soccer, weather, music, economics, etc.)
+    if (NON_SPORTS_TITLE.test(marketTitle)) continue;
+
     const titleSan = sanitizeToken(marketTitle);
 
     const homeTokens = teamSearchTokens(prognoEvent.homeTeam);

@@ -3,8 +3,10 @@
  *
  * CRITICAL SAFETY: This class is designed for production trading with:
  * - 14-day maximum expiration filter (no long-term bets)
- * - $2 max trade size (configurable via MAX_SINGLE_TRADE)
- * - Maker-only orders (limit orders 1¢ inside spread for $0 fees)
+ * - $10 max trade size (configurable via MAX_SINGLE_TRADE)
+ * - Maker-only orders (limit orders 1¢ inside spread for $0 entry fees)
+ * - Settlement fee on winnings (default 7%, configurable via KALSHI_FEE_RATE)
+ * - Minimum net profit gate (configurable via MIN_NET_PROFIT, default $0.50)
  * - Demo/sandbox enforcement (can be bypassed via execution-gate.ts if needed)
  */
 import { PredictionMarket, Opportunity, Trade } from '../types';
@@ -34,6 +36,42 @@ const alphaEnv = path.join(alphaHunterRoot, '.env');
 // Load without override — caller (kalshi-auto-trader.ts) already loaded app-level .env.local first.
 if (fs.existsSync(alphaEnvLocal)) dotenv.config({ path: alphaEnvLocal, override: false });
 if (fs.existsSync(alphaEnv)) dotenv.config({ path: alphaEnv, override: false });
+
+// ── KALSHI FEE + PROFIT CALCULATION ──────────────────────────────────────────
+// Kalshi charges a settlement fee on NET WINNINGS (profit only, not stake).
+// Maker orders (limit orders that rest on the book) have $0 entry fee.
+// These values are configurable via env vars.
+const KALSHI_FEE_RATE = parseFloat(process.env.KALSHI_FEE_RATE || '0.07');   // 7% of profit
+const MIN_NET_PROFIT = parseFloat(process.env.MIN_NET_PROFIT || '0.50');     // $0.50 minimum
+
+/**
+ * Calculate net profit after Kalshi settlement fees.
+ * @param stakeUsd      Dollar amount wagered (e.g. $10)
+ * @param priceCents    Entry price in cents (0-100, e.g. 65 means 65¢)
+ * @param feeRate       Settlement fee rate on winnings (default KALSHI_FEE_RATE)
+ * @returns { grossProfit, fee, netProfit, roi } — all in USD
+ */
+export function calcNetProfit(
+  stakeUsd: number,
+  priceCents: number,
+  feeRate: number = KALSHI_FEE_RATE
+): { grossProfit: number; fee: number; netProfit: number; roi: number } {
+  // Contracts = stake / (price / 100)
+  // Each contract pays $1 on win, so gross payout = contracts * $1
+  // Gross profit = payout - stake
+  const costPerContract = priceCents / 100;           // e.g. 65¢ = $0.65
+  if (costPerContract <= 0 || costPerContract >= 1) return { grossProfit: 0, fee: 0, netProfit: 0, roi: 0 };
+  const contracts = stakeUsd / costPerContract;        // e.g. $10 / $0.65 = 15.38 contracts
+  const grossPayout = contracts * 1.0;                 // e.g. 15.38 * $1 = $15.38
+  const grossProfit = grossPayout - stakeUsd;          // e.g. $15.38 - $10 = $5.38
+  const fee = grossProfit > 0 ? grossProfit * feeRate : 0;  // e.g. $5.38 * 0.07 = $0.38
+  const netProfit = grossProfit - fee;                 // e.g. $5.38 - $0.38 = $5.00
+  const roi = stakeUsd > 0 ? (netProfit / stakeUsd) * 100 : 0;
+  return { grossProfit, fee, netProfit, roi };
+}
+
+/** Exported for use in index.ts and other modules */
+export { KALSHI_FEE_RATE, MIN_NET_PROFIT };
 
 export class KalshiTrader {
   private apiKeyId: string;
@@ -605,20 +643,25 @@ export class KalshiTrader {
       }
       if (!side) continue;
 
+      // Fee-aware profit check: skip if net profit after settlement fee < MIN_NET_PROFIT
+      const entryPrice = side === 'yes' ? yesPrice : noPrice;
+      const profitCalc = calcNetProfit(10, entryPrice);
+      if (profitCalc.netProfit < MIN_NET_PROFIT) continue;
+
       const confidence = Math.min(90, Math.max(50, 50 + Math.abs(edge) * 3));
       opps.push({
         id: `kalshi_${m.id}_${side}_${Date.now()}`,
         type: 'prediction_market',
         source: 'Kalshi',
         title: `${side.toUpperCase()}: ${m.title}`,
-        description: `Heuristic edge ${edge.toFixed(1)}% at ${side === 'yes' ? yesPrice : noPrice}¢`,
+        description: `Heuristic edge ${edge.toFixed(1)}% at ${entryPrice}¢ (net $${profitCalc.netProfit.toFixed(2)} after ${(KALSHI_FEE_RATE * 100).toFixed(0)}% fee)`,
         confidence,
         expectedValue: edge,
         riskLevel: 'medium',
         timeframe: '48h',
         requiredCapital: 10,
-        potentialReturn: 10 * (edge / 100),
-        reasoning: ['Heuristic contrarian edge (training mode)'],
+        potentialReturn: profitCalc.netProfit,
+        reasoning: [`Heuristic contrarian edge (training mode) — net $${profitCalc.netProfit.toFixed(2)} after fees`],
         dataPoints: [],
         action: {
           platform: 'kalshi',
@@ -673,20 +716,24 @@ export class KalshiTrader {
       const edge = modelProb - yesAsk; // pct points edge vs entry price (ask)
       if (edge < minEdge) continue;
 
+      // Fee-aware profit check
+      const profitCalc = calcNetProfit(10, yesAsk);
+      if (profitCalc.netProfit < MIN_NET_PROFIT) continue;
+
       const confidence = Math.min(92, Math.max(52, modelProb));
       opps.push({
         id: `kalshi_${matched.ticker}_YES_${Date.now()}`,
         type: 'prediction_market',
         source: 'PROGNO',
         title: `YES: ${matched.title}`,
-        description: `Progno edge ${edge.toFixed(1)}% at ${yesAsk}¢`,
+        description: `Progno edge ${edge.toFixed(1)}% at ${yesAsk}¢ (net $${profitCalc.netProfit.toFixed(2)} after ${(KALSHI_FEE_RATE * 100).toFixed(0)}% fee)`,
         confidence,
         expectedValue: edge,
         riskLevel: 'low',
         timeframe: '48h',
         requiredCapital: 10,
-        potentialReturn: 10 * (edge / 100),
-        reasoning: [`Progno model${ev.league ? ` (${ev.league})` : ''}: ${ev.label} → ${modelProb}%`],
+        potentialReturn: profitCalc.netProfit,
+        reasoning: [`Progno model${ev.league ? ` (${ev.league})` : ''}: ${ev.label} → ${modelProb}% — net $${profitCalc.netProfit.toFixed(2)} after fees`],
         dataPoints: [
           ...(typeof matched.volume === 'number' ? [{ source: 'Kalshi', metric: 'Volume', value: matched.volume, relevance: 80, timestamp: nowIso }] : []),
         ],
@@ -716,6 +763,10 @@ export class KalshiTrader {
         const edge = modelProb - yesAsk;
         if (edge < minEdge) continue;
 
+        // Fee-aware profit check
+        const profitCalc = calcNetProfit(10, yesAsk);
+        if (profitCalc.netProfit < MIN_NET_PROFIT) continue;
+
         const confidence = Math.min(90, Math.max(52, modelProb));
         const ticker = m?.ticker || String(m?.id || 'unknown');
         opps.push({
@@ -723,14 +774,14 @@ export class KalshiTrader {
           type: 'prediction_market',
           source: 'Coinbase',
           title: `YES: ${title}`,
-          description: `Crypto rule edge ${edge.toFixed(1)}% at ${yesAsk}¢`,
+          description: `Crypto rule edge ${edge.toFixed(1)}% at ${yesAsk}¢ (net $${profitCalc.netProfit.toFixed(2)} after ${(KALSHI_FEE_RATE * 100).toFixed(0)}% fee)`,
           confidence,
           expectedValue: edge,
           riskLevel: 'medium',
           timeframe: '48h',
           requiredCapital: 10,
-          potentialReturn: 10 * (edge / 100),
-          reasoning: [`Crypto rule: ${cryptoProb.label} → ${modelProb}%`],
+          potentialReturn: profitCalc.netProfit,
+          reasoning: [`Crypto rule: ${cryptoProb.label} → ${modelProb}% — net $${profitCalc.netProfit.toFixed(2)} after fees`],
           dataPoints: [
             ...(typeof m?.volume === 'number' ? [{ source: 'Kalshi', metric: 'Volume', value: m.volume, relevance: 80, timestamp: nowIso }] : []),
           ],
