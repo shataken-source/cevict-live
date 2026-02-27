@@ -18,7 +18,9 @@ Central store for env/secrets (e.g. `C:\Cevict_Vault\env-store.json` or repo `va
 | **extract-env-keys.ps1** | List env key names parsed from given `.env.example` (or default) files. No secrets; key names only. `-Paths "path1","path2"`. |
 | **find-placeholders.ps1** | Find store keys whose values look like placeholders (e.g. `your-*`, `*_here`). `-ListAll` lists every key and placeholder status. |
 | **scan-env-files.ps1** | Scan repo for `.env*` files and list which keys they reference; does not print secret values. `-RepoRoot`, `-IncludeBackups`, `-ReportPlaceholdersInStore`. |
-| **push-vercel.ps1** | Push store secrets to Vercel env for an app. `-App` (required), `-Env development|preview|production`, `-TargetsPath`, `-DryRun`. Uses `config/keyvault.targets.json` (or example) for app→project mapping. |
+| **push-vercel.ps1** | Push store secrets to Vercel env for an app. `-App` (required), `-Env development|preview|production`, **`-AllEnvs`** pushes to all three at once, `-TargetsPath`, `-DryRun`. Uses `config/keyvault.targets.json` (or example) for app→project mapping. |
+| **verify-vercel.ps1** | Compare keyvault store against what's actually set in Vercel for an app. `-App` (required), `-Env production|preview|development`. Shows matched, mismatched, and missing vars. |
+| **status.ps1** | Dashboard view of keyvault health: total secrets, placeholders, empty values, configured apps, manifest status. `-Verbose` shows per-app env var coverage, `-ShowValues` prints truncated secret values. |
 
 ---
 

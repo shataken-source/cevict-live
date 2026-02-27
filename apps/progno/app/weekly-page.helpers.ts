@@ -37,6 +37,10 @@ function normalizeName(name: string) {
   return name.toLowerCase().replace(/\s+/g, "");
 }
 
+// In-memory cache for raw Odds API responses (10-min TTL)
+const _helpersOddsCache: Map<string, { data: any; ts: number }> = new Map();
+const _HELPERS_CACHE_TTL = 10 * 60 * 1000;
+
 export async function fetchLiveOddsTheOddsApi(apiKey: string, sport: SupportedSport): Promise<SimplifiedOdds[]> {
   if (!apiKey) {
     throw new Error('ODDS_API_KEY not configured');
@@ -44,6 +48,14 @@ export async function fetchLiveOddsTheOddsApi(apiKey: string, sport: SupportedSp
   const sportKey = SPORT_KEY_MAP[sport];
   if (!sportKey) {
     throw new Error(`Unsupported sport: ${sport}`);
+  }
+
+  // Check cache first (10-min TTL)
+  const ck = `liveOdds_${sportKey}`;
+  const hit = _helpersOddsCache.get(ck);
+  if (hit && (Date.now() - hit.ts) < _HELPERS_CACHE_TTL) {
+    console.log(`[Odds Helpers] Cache hit for liveOdds/${sport} (${Math.round((Date.now() - hit.ts) / 1000)}s old)`);
+    return hit.data;
   }
 
   const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`;
@@ -116,6 +128,8 @@ export async function fetchLiveOddsTheOddsApi(apiKey: string, sport: SupportedSp
     });
   }
 
+  // Store in cache
+  _helpersOddsCache.set(ck, { data: simplified, ts: Date.now() });
   return simplified;
 }
 
@@ -194,6 +208,14 @@ export async function fetchScheduleFromOddsApi(apiKey: string, sport: SupportedS
   const sportKey = SPORT_KEY_MAP[sport];
   if (!sportKey) {
     throw new Error(`Unsupported sport: ${sport}`);
+  }
+
+  // Check cache first (10-min TTL)
+  const ck = `schedule_${sportKey}`;
+  const hit = _helpersOddsCache.get(ck);
+  if (hit && (Date.now() - hit.ts) < _HELPERS_CACHE_TTL) {
+    console.log(`[Odds Helpers] Cache hit for schedule/${sport} (${Math.round((Date.now() - hit.ts) / 1000)}s old)`);
+    return hit.data;
   }
 
   const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`;
@@ -336,6 +358,8 @@ export async function fetchScheduleFromOddsApi(apiKey: string, sport: SupportedS
     });
   }
 
+  // Store in cache
+  _helpersOddsCache.set(ck, { data: games, ts: Date.now() });
   return games;
 }
 

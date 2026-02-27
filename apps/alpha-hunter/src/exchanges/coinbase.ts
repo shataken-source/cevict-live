@@ -101,7 +101,11 @@ export class CoinbaseExchange {
     this.configured = !!(this.apiKey && this.apiSecret);
 
     if (!this.configured) {
-      console.log('⚠️ Coinbase not configured - running in simulation mode');
+      console.log('⚠️ Coinbase not configured - running in SIMULATION mode (no real orders)');
+      console.log('   Set COINBASE_API_KEY and COINBASE_API_SECRET for live trading');
+    } else {
+      console.log('✅ Coinbase configured - LIVE trading mode');
+      console.log(`   API Key: ${this.apiKey.substring(0, 20)}...`);
     }
   }
 
@@ -232,9 +236,9 @@ export class CoinbaseExchange {
    * Place a market buy order
    */
   async marketBuy(productId: string, usdAmount: number): Promise<CoinbaseOrder> {
-    console.log(`📈 [COINBASE] Market BUY ${productId} for $${usdAmount}`);
+    console.log(`📈 [COINBASE${this.configured ? '' : ' SIMULATION'}] Market BUY ${productId} for $${usdAmount}`);
 
-    const order = await this.request('POST', '/orders', {
+    const response = await this.request('POST', '/orders', {
       client_order_id: `alpha_${Date.now()}`,
       product_id: productId,
       side: 'BUY',
@@ -245,14 +249,23 @@ export class CoinbaseExchange {
       },
     });
 
-    return this.transformOrder(order);
+    // Coinbase returns HTTP 200 with success:false for rejected orders
+    if (response.success === false) {
+      const errMsg = response.error_response?.error || response.error_response?.message || JSON.stringify(response.error_response || response);
+      console.error(`   ❌ [COINBASE] Order REJECTED: ${errMsg}`);
+      throw new Error(`Coinbase order rejected: ${errMsg}`);
+    }
+
+    const order = this.transformOrder(response);
+    console.log(`   ✅ [COINBASE] Order ${order.id} status=${order.status}`);
+    return order;
   }
 
   /**
    * Place a market sell order
    */
   async marketSell(productId: string, cryptoAmount: number): Promise<CoinbaseOrder> {
-    console.log(`📉 [COINBASE] Market SELL ${cryptoAmount} ${productId}`);
+    console.log(`📉 [COINBASE${this.configured ? '' : ' SIMULATION'}] Market SELL ${cryptoAmount} ${productId}`);
 
     const response = await this.request('POST', '/orders', {
       client_order_id: `alpha_${Date.now()}`,
@@ -265,7 +278,16 @@ export class CoinbaseExchange {
       },
     });
 
-    return this.transformOrder(response);
+    // Coinbase returns HTTP 200 with success:false for rejected orders
+    if (response.success === false) {
+      const errMsg = response.error_response?.error || response.error_response?.message || JSON.stringify(response.error_response || response);
+      console.error(`   ❌ [COINBASE] Sell REJECTED: ${errMsg}`);
+      throw new Error(`Coinbase sell rejected: ${errMsg}`);
+    }
+
+    const order = this.transformOrder(response);
+    console.log(`   ✅ [COINBASE] Sell ${order.id} status=${order.status}`);
+    return order;
   }
 
   /**

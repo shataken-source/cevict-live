@@ -14,6 +14,10 @@ const SPORT_KEY_MAP: Record<string, string> = {
   'NCAAB': 'basketball_ncaab'
 };
 
+// In-memory cache: 10-minute TTL to avoid burning API quota
+const CACHE_TTL = 10 * 60 * 1000;
+const oddsCache: Map<string, { data: any; ts: number }> = new Map();
+
 export async function GET(request: NextRequest) {
   try {
     // Get API key from keys store (which checks env vars first, then stored keys)
@@ -40,6 +44,16 @@ export async function GET(request: NextRequest) {
         { error: 'Sport parameter is required (e.g., ?sport=americanfootball_nfl)' },
         { status: 400 }
       );
+    }
+
+    // Check in-memory cache first
+    const cacheKey = `${sport}_${dateFrom || ''}_${dateTo || ''}`;
+    const cached = oddsCache.get(cacheKey);
+    if (cached && (Date.now() - cached.ts) < CACHE_TTL) {
+      console.log(`[Odds API] Cache hit for ${sport} (${Math.round((Date.now() - cached.ts) / 1000)}s old)`);
+      return NextResponse.json(cached.data, {
+        headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120', 'X-Cache': 'HIT' }
+      });
     }
 
     // Build URL
@@ -86,10 +100,16 @@ export async function GET(request: NextRequest) {
     }
 
     const games = await response.json();
+    const remaining = response.headers.get('x-requests-remaining');
+    console.log(`[Odds API] Fresh fetch for ${sport}: ${Array.isArray(games) ? games.length : '?'} games (remaining: ${remaining || '?'})`);
+
+    // Store in cache
+    oddsCache.set(cacheKey, { data: games, ts: Date.now() });
 
     return NextResponse.json(games, {
       headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120'
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120',
+        'X-Cache': 'MISS'
       }
     });
 

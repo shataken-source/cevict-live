@@ -26,6 +26,23 @@ const ESPN_ALIASES: [RegExp, string][] = [
   [/abilene christian/i, 'abilene'],
   [/ut rio grande valley/i, 'utrgv'],
   [/siu edwardsville/i, 'siue'],
+  // NHL relocations / rebrand aliases
+  [/utah mammoth/i, 'utah hockey club'],
+  [/utah yeti/i, 'utah hockey club'],
+  [/utah\s+(ice|hc|nhl)/i, 'utah hockey club'],
+  // Common abbreviations the prediction engine may generate
+  [/\bla\s+kings\b/i, 'los angeles kings'],
+  [/\bla\s+lakers\b/i, 'los angeles lakers'],
+  [/\bla\s+clippers\b/i, 'los angeles clippers'],
+  [/\bla\s+rams\b/i, 'los angeles rams'],
+  [/\bla\s+chargers\b/i, 'los angeles chargers'],
+  [/\bny\s+rangers\b/i, 'new york rangers'],
+  [/\bny\s+islanders\b/i, 'new york islanders'],
+  [/\bny\s+knicks\b/i, 'new york knicks'],
+  [/\bny\s+mets\b/i, 'new york mets'],
+  [/\bny\s+yankees\b/i, 'new york yankees'],
+  [/\bny\s+jets\b/i, 'new york jets'],
+  [/\bny\s+giants\b/i, 'new york giants'],
 ]
 
 export function normalizeForMatch(raw: string): string {

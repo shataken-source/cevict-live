@@ -282,9 +282,10 @@ async function fetchESPN(sportKey: SportKey, date: string): Promise<GameResult[]
     const data = (await res.json()) as any;
     const events = Array.isArray(data?.events) ? data.events : [];
     const results: GameResult[] = [];
+    let skippedInProgress = 0;
     for (const ev of events) {
       const completed = ev?.status?.type?.completed === true || ev?.status?.state === 'post';
-      if (!completed) continue;
+      if (!completed) { skippedInProgress++; continue; }
       const comp = ev?.competitions?.[0];
       const competitors = Array.isArray(comp?.competitors) ? comp.competitors : [];
       const home = competitors.find((c: any) => c.homeAway === 'home');
@@ -308,8 +309,12 @@ async function fetchESPN(sportKey: SportKey, date: string): Promise<GameResult[]
         )
       );
     }
+    if (skippedInProgress > 0 || results.length > 0) {
+      console.log(`[ESPN] ${sportKey} ${date}: ${results.length} completed, ${skippedInProgress} in-progress/upcoming skipped (${events.length} total events)`)
+    }
     return results;
-  } catch {
+  } catch (e) {
+    console.warn(`[ESPN] ${sportKey} ${date} fetch error:`, (e as Error)?.message)
     return [];
   }
 }

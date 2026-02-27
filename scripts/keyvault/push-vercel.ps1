@@ -4,6 +4,7 @@ param(
   [ValidateSet('development', 'preview', 'production')]
   [string] $Env = 'development',
   [string] $TargetsPath,
+  [switch] $AllEnvs,
   [switch] $DryRun
 )
 
@@ -122,29 +123,37 @@ Write-Host "Env: $Env"
 if ($teamId) { Write-Host "TeamId: $teamId" }
 if ($DryRun) { Write-Host "Mode: DRY RUN (no API calls)" }
 
-$existingEnvs = Get-VercelEnvVars
+$envTargets = if ($AllEnvs) { @('development', 'preview', 'production') } else { @($Env) }
 
-foreach ($out in @($manifest.outputs)) {
-  if ([string]$out.file -ne '.env.local') { continue } # for now, only map .env.local output
-  $vars = $out.vars
-  $keys = @($vars.PSObject.Properties.Name) | Sort-Object
-  foreach ($k in $keys) {
-    $spec = $vars.$k
-    $resolved = Resolve-KeyVaultVarValue -Spec $spec -StoreSecrets $secrets
-    $val = $resolved.value
+foreach ($currentEnv in $envTargets) {
+  $script:Env = $currentEnv
+  Write-Host "`n--- Pushing to: $currentEnv ---"
 
-    if ($null -eq $val -or [string]::IsNullOrWhiteSpace([string]$val)) {
-      if ($resolved.required) {
-        Write-Host "SKIP (missing required): $k ($($resolved.source))"
-      } else {
-        # optional missing -> skip silently
+  $existingEnvs = Get-VercelEnvVars
+
+  foreach ($out in @($manifest.outputs)) {
+    if ([string]$out.file -ne '.env.local') { continue } # for now, only map .env.local output
+    $vars = $out.vars
+    $keys = @($vars.PSObject.Properties.Name) | Sort-Object
+    foreach ($k in $keys) {
+      $spec = $vars.$k
+      $resolved = Resolve-KeyVaultVarValue -Spec $spec -StoreSecrets $secrets
+      $val = $resolved.value
+
+      if ($null -eq $val -or [string]::IsNullOrWhiteSpace([string]$val)) {
+        if ($resolved.required) {
+          Write-Host "SKIP (missing required): $k ($($resolved.source))"
+        }
+        else {
+          # optional missing -> skip silently
+        }
+        continue
       }
-      continue
-    }
 
-    Upsert-VercelEnvVar -Key $k -Value ([string]$val)
+      Upsert-VercelEnvVar -Key $k -Value ([string]$val)
+    }
   }
 }
 
-Write-Host "Done."
+Write-Host "`nDone. Pushed to: $($envTargets -join ', ')"
 

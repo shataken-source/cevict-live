@@ -2823,12 +2823,44 @@ def send_setup_email(customer):
       if (e.key !== 'sb_remote_cmd') return;
       let cmd; try { cmd = JSON.parse(e.newValue); } catch { return; }
       if (!cmd || !cmd.action) return;
-      handleRemoteCmd(cmd.action, cmd.extra || {});
+      // Pass full cmd as extra (stream_id, name etc. are top-level)
+      handleRemoteCmd(cmd.action, cmd);
     });
 
     function handleRemoteCmd(action, extra) {
       const vid = document.querySelector('#player video') || document.querySelector('video');
       switch (action) {
+        case 'play_channel':
+          (function () {
+            // Try to find channel by stream_id first, then by name
+            var channels = (window.S && window.S.allChannels) || [];
+            var ch = null;
+            if (extra.stream_id) {
+              ch = channels.find(function (c) { return String(c.stream_id) === String(extra.stream_id); });
+            }
+            if (!ch && extra.name) {
+              ch = channels.find(function (c) { return c.name && c.name.toLowerCase() === extra.name.toLowerCase(); });
+            }
+            if (ch) {
+              // Use the real openPlayer (patched shim handles both string and object)
+              if (window.openPlayer) window.openPlayer(ch, channels, null);
+            } else if (extra.stream_id) {
+              // Channel not in local list — build stream URL directly
+              var streamUrl = '/api/stream?id=' + extra.stream_id;
+              var overlay = document.getElementById('player-overlay');
+              if (overlay) { overlay.style.display = 'flex'; overlay.style.flexDirection = 'column'; }
+              var nameEl = document.getElementById('player-ch-name');
+              if (nameEl) nameEl.textContent = extra.name || 'Channel ' + extra.stream_id;
+              var topEl = document.getElementById('player-ch-top');
+              if (topEl) topEl.textContent = extra.name || 'Live';
+              // Try to load HLS stream into existing video element
+              if (vid) { vid.src = streamUrl; vid.play().catch(function () { }); }
+            } else if (extra.name) {
+              // Fallback: open by name string
+              if (window.openPlayer) window.openPlayer(extra.name, 'Live');
+            }
+          })();
+          break;
         case 'play_pause':
           if (vid) { vid.paused ? vid.play() : vid.pause(); }
           break;
@@ -2912,13 +2944,18 @@ def send_setup_email(customer):
           break;
       }
       // Broadcast state back to remote
-      if (vid) {
-        localStorage.setItem('sb_state', JSON.stringify({
-          playing: !vid.paused,
-          muted: vid.muted,
-          volume: Math.round(vid.volume * 100)
-        }));
-      }
+      var stateObj = {
+        playing: vid ? !vid.paused : false,
+        muted: vid ? vid.muted : false,
+        volume: vid ? Math.round(vid.volume * 100) : 100,
+        live: true
+      };
+      // Include current channel info if available
+      var chNameEl = document.getElementById('player-ch-name');
+      var progEl = document.getElementById('player-program');
+      if (chNameEl && chNameEl.textContent) stateObj.channel = chNameEl.textContent;
+      if (progEl && progEl.textContent) stateObj.program = progEl.textContent;
+      localStorage.setItem('sb_state', JSON.stringify(stateObj));
     }
 
     // ── INIT ───────────────────────────────────────────────

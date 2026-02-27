@@ -120,7 +120,7 @@ function DarkResultsTable({ rows }: { rows: any[] }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: C.mono, fontSize: 11 }}>
         <thead>
           <tr style={{ borderBottom: `1px solid ${C.borderBright}` }}>
-            {['#', 'MATCH', 'PICK', 'H/A', 'CONF%', 'ODDS', 'STATUS', 'SCORE'].map(h => (
+            {['#', 'MATCH', 'GAME DATE', 'PICK', 'H/A', 'CONF%', 'ODDS', 'STATUS', 'SCORE'].map(h => (
               <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: C.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 9 }}>{h}</th>
             ))}
           </tr>
@@ -133,6 +133,7 @@ function DarkResultsTable({ rows }: { rows: any[] }) {
               <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? 'transparent' : '#070e18' }}>
                 <td style={{ padding: '7px 10px', color: C.textDim }}>{i + 1}</td>
                 <td style={{ padding: '7px 10px', color: C.textBright }}>{r.home_team} vs {r.away_team}<br /><span style={{ color: C.textDim, fontSize: 10 }}>{r.sport}</span></td>
+                <td style={{ padding: '7px 10px', color: C.textDim, fontSize: 10, whiteSpace: 'nowrap' }}>{r.game_time ? new Date(r.game_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }) : '—'}</td>
                 <td style={{ padding: '7px 10px', color: C.blue }}>{r.pick}</td>
                 <td style={{ padding: '7px 10px' }}>{(() => { const isH = r.is_home_pick ?? r.is_home ?? (r.pick === r.home_team); return <Badge color={isH ? C.green : C.amber}>{isH ? 'H' : 'A'}</Badge>; })()}</td>
                 <td style={{ padding: '7px 10px', color: C.textBright }}>{r.confidence ?? '—'}%</td>

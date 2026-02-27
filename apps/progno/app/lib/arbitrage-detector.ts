@@ -5,6 +5,10 @@
 
 import { getPrimaryKey } from '../keys-store';
 
+// In-memory cache: 10-minute TTL to avoid burning API quota
+const _arbCache: Map<string, { data: any; ts: number }> = new Map();
+const _ARB_CACHE_TTL = 10 * 60 * 1000;
+
 export interface ArbitrageOpportunity {
   id: string;
   gameId: string;
@@ -73,13 +77,20 @@ export class ArbitrageDetector {
 
     for (const sportKey of sports) {
       try {
-        const response = await fetch(
-          `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
-        );
-
-        if (!response.ok) continue;
-
-        const games = await response.json();
+        // Check cache first
+        const ck = `arb_${sportKey}`;
+        const hit = _arbCache.get(ck);
+        let games: any[];
+        if (hit && (Date.now() - hit.ts) < _ARB_CACHE_TTL) {
+          games = hit.data;
+        } else {
+          const response = await fetch(
+            `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
+          );
+          if (!response.ok) continue;
+          games = await response.json();
+          _arbCache.set(ck, { data: games, ts: Date.now() });
+        }
 
         for (const game of games) {
           // Check moneyline arbitrage

@@ -4,6 +4,10 @@ import { throttledFetch } from '@/app/lib/external-api-throttle'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// In-memory cache: 10-minute TTL to avoid burning API quota
+const V2_CACHE_TTL = 10 * 60 * 1000
+const v2Cache: Map<string, { data: any; ts: number }> = new Map()
+
 const SPORT_KEY: Record<string, string> = {
   nhl: 'icehockey_nhl',
   nba: 'basketball_nba',
@@ -112,12 +116,22 @@ export async function GET(request: Request) {
   try {
     if (action === 'games') {
       if (!apiKey) {
-        // Graceful fallback: no key available, return empty list but success true
         return NextResponse.json({ success: true, data: [] })
       }
+
+      // Check cache first
+      const ck = `games_${sport}`
+      const hit = v2Cache.get(ck)
+      if (hit && (Date.now() - hit.ts) < V2_CACHE_TTL) {
+        console.log(`[v2] Cache hit for games/${sport}`)
+        return NextResponse.json({ success: true, data: hit.data })
+      }
+
       const remote = `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
       const res = await throttledFetch('the-odds-api', remote, { cache: 'no-store' })
       if (!res.ok) {
+        // Return stale cache if available rather than error
+        if (hit) return NextResponse.json({ success: true, data: hit.data })
         return NextResponse.json({ success: false, error: `Odds API ${res.status}` }, { status: 502 })
       }
       const data = await res.json()
@@ -144,6 +158,8 @@ export async function GET(request: Request) {
           },
         }
       })
+      // Store in cache
+      v2Cache.set(ck, { data: out, ts: Date.now() })
       return NextResponse.json({ success: true, data: out })
     }
 
@@ -188,12 +204,23 @@ export async function GET(request: Request) {
       if (!apiKey) {
         return NextResponse.json({ success: false, error: 'Odds API key not set' }, { status: 400 })
       }
-      const remote = `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
-      const res = await throttledFetch('the-odds-api', remote, { cache: 'no-store' })
-      if (!res.ok) {
-        return NextResponse.json({ success: false, error: `Odds API ${res.status}` }, { status: 502 })
+
+      // Reuse cached raw data if available
+      const rawCk = `raw_${sport}`
+      const rawHit = v2Cache.get(rawCk)
+      let data: any
+      if (rawHit && (Date.now() - rawHit.ts) < V2_CACHE_TTL) {
+        console.log(`[v2] Cache hit for prediction/${sport}`)
+        data = rawHit.data
+      } else {
+        const remote = `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
+        const res = await throttledFetch('the-odds-api', remote, { cache: 'no-store' })
+        if (!res.ok) {
+          return NextResponse.json({ success: false, error: `Odds API ${res.status}` }, { status: 502 })
+        }
+        data = await res.json()
+        v2Cache.set(rawCk, { data, ts: Date.now() })
       }
-      const data = await res.json()
       const games = (Array.isArray(data) ? data : []).map((g: any) => ({
         id: g.id || toId(g.home_team, g.away_team, g.commence_time),
         homeTeam: g.home_team,

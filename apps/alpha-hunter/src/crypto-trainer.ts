@@ -635,7 +635,27 @@ class CryptoTrainer {
     }
 
     // Fallback to momentum-based analysis
-    const momentum = knowledge.getMomentum(pair);
+    let momentum = knowledge.getMomentum(pair);
+
+    // If insufficient in-memory history (e.g. first cycle / CRON_MODE),
+    // fetch recent candles from Coinbase to bootstrap momentum
+    if (momentum.trend === 'unknown') {
+      try {
+        const candles = await this.coinbase.getCandles(pair, 300); // 5-min candles
+        if (candles.length >= 6) {
+          // Seed price history from candle closes so getMomentum works
+          for (const c of candles.slice(-12)) {
+            knowledge.trackPrice(pair, c.close);
+          }
+          momentum = knowledge.getMomentum(pair);
+          if (momentum.trend !== 'unknown') {
+            console.log(`   📊 Bootstrapped momentum from candles: ${momentum.trend} (${momentum.strength.toFixed(2)}%)`);
+          }
+        }
+      } catch (err: any) {
+        console.log(`   ⚠️ Candle fetch failed: ${err.message}`);
+      }
+    }
 
     let signal: 'buy' | 'sell' | 'hold' = 'hold';
     let confidence = 50;

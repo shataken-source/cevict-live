@@ -1,5 +1,5 @@
 /* Switchback Remote – Service Worker */
-var CACHE = 'sb-remote-v1';
+var CACHE = 'sb-remote-v3';
 var FILES = [
   '/remote.html',
   '/remote.css',

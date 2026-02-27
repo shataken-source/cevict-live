@@ -38,6 +38,11 @@ const bankrollManager = new BankrollManagementService(10000)
 const elitePicksEnhancer = new ElitePicksEnhancer()
 const parlayBuilder = new ParlayBuilder()
 
+// ── In-memory odds cache (survives across requests in same serverless instance) ──
+const ODDS_CACHE_TTL_MS = 30 * 60 * 1000  // 30 minutes
+const SUPABASE_ODDS_MAX_AGE_MS = 2 * 60 * 60 * 1000  // 2 hours — only hit real API if Supabase data older than this
+const oddsMemCache: Map<string, { data: any[]; ts: number }> = new Map()
+
 const API_SPORTS_KEY = process.env.API_SPORTS_KEY
 
 const SPORT_TO_API_SPORTS: Record<string, string> = {
@@ -469,7 +474,7 @@ const LEAGUE_CONFIDENCE_FLOOR: Record<string, number> = {
 
 const SPORT_SEASONS: Record<string, { start: number; end: number }> = {
   'basketball_nba': { start: 10, end: 6 },   // Oct–Jun
-  'americanfootball_nfl': { start: 9, end: 2 },   // Sep–Feb
+  'americanfootball_nfl': { start: 9, end: 1 },   // Sep–Jan (Super Bowl early Feb, but no regular odds after Jan)
   'icehockey_nhl': { start: 10, end: 6 },   // Oct–Jun
   'baseball_mlb': { start: 3, end: 10 },  // Mar–Oct
   'americanfootball_ncaaf': { start: 8, end: 1 },   // Aug–Jan
@@ -694,35 +699,56 @@ export async function GET(request: Request) {
       try {
         let games: any[] = []
 
-        // Primary: The-Odds API
-        // Note: The-Odds API doesn't support commenceTimeFrom/To params (returns 422)
-        // It returns all upcoming games in the next ~7 days by default
-        // We'll filter by date after fetching
-        let oddsApiUrl = `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${oddsApiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
-        if (earlyLines) {
-          console.log(`[EarlyLines] Fetching ${sport} (will filter for ${EARLY_LINES_MIN_DAYS}-${EARLY_LINES_MAX_DAYS} days out)`)
+        // ── LAYER 1: In-memory cache (same serverless instance, 30-min TTL) ──
+        const memKey = `${sport}_${earlyLines ? 'early' : 'regular'}`
+        const cached = oddsMemCache.get(memKey)
+        if (cached && (Date.now() - cached.ts) < ODDS_CACHE_TTL_MS) {
+          games = cached.data
+          console.log(`[Picks API] Memory cache hit for ${sport}: ${games.length} games`)
         }
-        const response = await fetch(oddsApiUrl)
-        if (response.ok) {
-          const data = await response.json()
-          if (Array.isArray(data)) {
-            // Filter by date range if early lines requested
-            if (earlyLines) {
-              const now = new Date()
-              const minDate = new Date(now); minDate.setDate(minDate.getDate() + EARLY_LINES_MIN_DAYS); minDate.setHours(0, 0, 0, 0)
-              const maxDate = new Date(now); maxDate.setDate(maxDate.getDate() + EARLY_LINES_MAX_DAYS); maxDate.setHours(23, 59, 59, 999)
-              games = data.filter((g: any) => {
-                const gameDate = new Date(g.commence_time)
-                return gameDate >= minDate && gameDate <= maxDate
-              })
-              console.log(`[Picks API] The-Odds ${sport}: ${games.length} games in early window (${data.length} total)`)
-            } else {
-              games = data
-              console.log(`[Picks API] The-Odds ${sport}: ${games.length} games`)
-            }
+
+        // ── LAYER 2: Supabase historical_odds (2-hour TTL) ──
+        if (games.length === 0 && supabase) {
+          const supaGames = await fetchGamesFromSupabaseCache(sport)
+          if (supaGames.length > 0) {
+            games = supaGames
+            oddsMemCache.set(memKey, { data: games, ts: Date.now() })
+            console.log(`[Picks API] Supabase cache hit for ${sport}: ${games.length} games`)
           }
-        } else {
-          console.warn(`[Picks API] The-Odds ${sport} HTTP ${response.status}`)
+        }
+
+        // ── LAYER 3: The-Odds API (only if cache is empty/stale) ──
+        if (games.length === 0) {
+          let oddsApiUrl = `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${oddsApiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
+          if (earlyLines) {
+            console.log(`[EarlyLines] Fetching ${sport} from API (cache miss)`)
+          }
+          const response = await fetch(oddsApiUrl)
+          if (response.ok) {
+            const data = await response.json()
+            if (Array.isArray(data)) {
+              games = data
+              // Store in memory cache
+              oddsMemCache.set(memKey, { data: games, ts: Date.now() })
+              const remaining = response.headers.get('x-requests-remaining')
+              console.log(`[Picks API] The-Odds API ${sport}: ${games.length} games (remaining: ${remaining || '?'})`)
+            }
+          } else {
+            console.warn(`[Picks API] The-Odds ${sport} HTTP ${response.status}`)
+          }
+        }
+
+        // Apply early lines date filter if needed
+        if (earlyLines && games.length > 0) {
+          const now = new Date()
+          const minDate = new Date(now); minDate.setDate(minDate.getDate() + EARLY_LINES_MIN_DAYS); minDate.setHours(0, 0, 0, 0)
+          const maxDate = new Date(now); maxDate.setDate(maxDate.getDate() + EARLY_LINES_MAX_DAYS); maxDate.setHours(23, 59, 59, 999)
+          const before = games.length
+          games = games.filter((g: any) => {
+            const gameDate = new Date(g.commence_time)
+            return gameDate >= minDate && gameDate <= maxDate
+          })
+          if (before !== games.length) console.log(`[EarlyLines] Filtered ${sport}: ${games.length} of ${before} in window`)
         }
 
         // Fallback: free public odds sources for early lines when Odds API returns nothing
@@ -2005,6 +2031,97 @@ function selectTop10(picks: any[]): any[] {
   })
   // Return top 25 - no per-sport limit
   return sorted.slice(0, TOP_N)
+}
+
+/**
+ * Fetch games from Supabase historical_odds cache.
+ * Reconstructs The-Odds API response format from stored records.
+ * Returns empty array if data is older than SUPABASE_ODDS_MAX_AGE_MS (2 hours).
+ */
+async function fetchGamesFromSupabaseCache(sport: string): Promise<any[]> {
+  try {
+    if (!supabase) return []
+
+    const cutoff = new Date(Date.now() - SUPABASE_ODDS_MAX_AGE_MS).toISOString()
+
+    // Fetch recent odds records for this sport
+    const { data: rows, error } = await supabase
+      .from('historical_odds')
+      .select('*')
+      .eq('sport', sport)
+      .gte('captured_at', cutoff)
+      .order('captured_at', { ascending: false })
+
+    if (error || !rows || rows.length === 0) return []
+
+    // Group by game_id and reconstruct The-Odds API format
+    const gameMap = new Map<string, any>()
+
+    for (const row of rows) {
+      if (!gameMap.has(row.game_id)) {
+        gameMap.set(row.game_id, {
+          id: row.game_id,
+          sport_key: sport,
+          home_team: row.home_team,
+          away_team: row.away_team,
+          commence_time: row.commence_time,
+          bookmakers: []
+        })
+      }
+
+      const game = gameMap.get(row.game_id)!
+
+      // Find or create bookmaker entry
+      let bm = game.bookmakers.find((b: any) => b.key === row.bookmaker)
+      if (!bm) {
+        bm = { key: row.bookmaker, title: row.bookmaker, markets: [] }
+        game.bookmakers.push(bm)
+      }
+
+      // Add market data
+      if (row.market_type === 'moneyline' && row.home_odds != null && row.away_odds != null) {
+        let market = bm.markets.find((m: any) => m.key === 'h2h')
+        if (!market) {
+          market = { key: 'h2h', outcomes: [] }
+          bm.markets.push(market)
+        }
+        // Avoid duplicates
+        if (!market.outcomes.find((o: any) => o.name === row.home_team)) {
+          market.outcomes.push({ name: row.home_team, price: row.home_odds })
+          market.outcomes.push({ name: row.away_team, price: row.away_odds })
+        }
+      } else if (row.market_type === 'spreads' && row.home_odds != null) {
+        let market = bm.markets.find((m: any) => m.key === 'spreads')
+        if (!market) {
+          market = { key: 'spreads', outcomes: [] }
+          bm.markets.push(market)
+        }
+        if (!market.outcomes.find((o: any) => o.name === row.home_team)) {
+          market.outcomes.push({ name: row.home_team, price: row.home_odds, point: row.home_spread })
+          market.outcomes.push({ name: row.away_team, price: row.away_odds, point: row.away_spread })
+        }
+      } else if (row.market_type === 'totals' && row.total_line != null) {
+        let market = bm.markets.find((m: any) => m.key === 'totals')
+        if (!market) {
+          market = { key: 'totals', outcomes: [] }
+          bm.markets.push(market)
+        }
+        if (!market.outcomes.find((o: any) => o.name === 'Over')) {
+          market.outcomes.push({ name: 'Over', price: row.over_odds, point: row.total_line })
+          market.outcomes.push({ name: 'Under', price: row.under_odds, point: row.total_line })
+        }
+      }
+    }
+
+    const games = Array.from(gameMap.values())
+    // Only return if games have upcoming commence times
+    const now = new Date()
+    const upcoming = games.filter((g: any) => !g.commence_time || new Date(g.commence_time) > now)
+    return upcoming.length > 0 ? upcoming : games  // Return all if none are upcoming (safety)
+  } catch (err: any) {
+    console.warn('[Picks API] Supabase cache read error:', err?.message)
+    return []
+  }
 }
 
 /**

@@ -50,6 +50,7 @@ type GradedPick = {
   sport?: string
   league?: string
   game_id?: string
+  game_time?: string
   odds?: number
   is_home_pick?: boolean
   status: 'win' | 'lose' | 'pending'
@@ -285,8 +286,11 @@ export async function GET(request: Request) {
     }
 
     if (!match) {
-      console.log(`[GRADE] No match for ${p.home_team} vs ${p.away_team} (${sport}). Available games in ${sport}:`,
-        scoresByKey[leagueHint || '']?.map(g => `${g.away} @ ${g.home}`).join(', ') || 'none')
+      const normHome = normalizeForMatch(p.home_team ?? '')
+      const normAway = normalizeForMatch(p.away_team ?? '')
+      const available = scoresByKey[leagueHint || ''] ?? []
+      console.log(`[GRADE] No match for "${p.home_team}" (norm: "${normHome}") vs "${p.away_team}" (norm: "${normAway}") [${sport}]. ${available.length} completed games in ${sport}:`,
+        available.map(g => `${g.away} @ ${g.home} (${g.awayScore}-${g.homeScore})`).join(', ') || 'none')
       results.push({
         home_team: p.home_team,
         away_team: p.away_team,
@@ -295,6 +299,7 @@ export async function GET(request: Request) {
         sport: p.sport,
         league: p.league,
         game_id: p.game_id,
+        game_time: p.game_time ?? p.commence_time ?? undefined,
         odds: p.odds ?? undefined,
         is_home_pick: p.is_home_pick ?? (p.pick === p.home_team),
         status: 'pending',
@@ -316,6 +321,7 @@ export async function GET(request: Request) {
       sport: p.sport ?? matchedLeague,
       league: p.league ?? matchedLeague,
       game_id: p.game_id,
+      game_time: p.game_time ?? p.commence_time ?? undefined,
       odds: p.odds ?? undefined,
       is_home_pick: p.is_home_pick ?? (p.pick === p.home_team),
       status: winnerCorrect ? 'win' : 'lose',
@@ -403,11 +409,11 @@ export async function GET(request: Request) {
     }
   }
 
-  // Per-league score counts and source (Odds API vs API-Sports fallback) for admin UI
-  const scoresByLeague: Record<string, { count: number; source: 'odds' | 'fallback' }> = {}
+  // Per-league score counts and source for admin UI
+  const scoresByLeague: Record<string, { count: number; source: string }> = {}
   for (const league of Object.keys(SPORT_KEY_MAP)) {
     const count = (scoresByKey[league] ?? []).length
-    const source = league in fallbackSummary ? 'fallback' : 'odds'
+    const source = league in fallbackSummary ? 'fallback' : 'ESPN'
     scoresByLeague[league] = { count, source }
   }
 
