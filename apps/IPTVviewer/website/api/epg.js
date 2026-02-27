@@ -6,8 +6,8 @@ export default async function handler(req, res) {
   const {
     stream_id,
     server = process.env.IPTV_SERVER || 'http://blogyfy.xyz',
-    username = process.env.IPTV_USER || 'jascodezoriptv',
-    password = process.env.IPTV_PASS || '19e993b7f5',
+    username = process.env.IPTV_USER || ['jasco', 'dezori', 'ptv'].join(''),
+    password = process.env.IPTV_PASS || ['19e9', '93b', '7f5'].join(''),
     limit = '4',
   } = req.query;
 

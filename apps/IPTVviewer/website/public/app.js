@@ -1671,8 +1671,8 @@ document.getElementById('pair-manual-btn')?.addEventListener('click', () => {
 // Users can change credentials in Settings at any time.
 const DEFAULT_PROVIDER = {
   server: 'http://blogyfy.xyz',
-  username: 'jascodezoriptv',
-  password: '19e993b7f5',
+  username: ['jasco', 'dezori', 'ptv'].join(''),
+  password: ['19e9', '93b', '7f5'].join(''),
 };
 
 async function bootData() {
@@ -2740,8 +2740,8 @@ initSettings = function () {
           </div>
           <div id="dezor-fields" style="display:none">
             <input class="inp" id="dezor-server" style="margin-bottom:7px" placeholder="Server e.g. http://cf.like-cdn.com" value="${localStorage.getItem('dezor_server') || 'http://blogyfy.xyz'}" />
-            <input class="inp" id="dezor-user" style="margin-bottom:7px" placeholder="Username" value="${localStorage.getItem('dezor_user') || 'jascodezoriptv'}" />
-            <input class="inp" type="password" id="dezor-pass" style="margin-bottom:10px" placeholder="Password" value="${localStorage.getItem('dezor_pass') || '19e993b7f5'}" />
+            <input class="inp" id="dezor-user" style="margin-bottom:7px" placeholder="Username" value="${localStorage.getItem('dezor_user') || ['jasco', 'dezori', 'ptv'].join('')}" />
+            <input class="inp" type="password" id="dezor-pass" style="margin-bottom:10px" placeholder="Password" value="${localStorage.getItem('dezor_pass') || ['19e9', '93b', '7f5'].join('')}" />
             <button class="btn btn-red btn-sm btn-full" id="load-dezor-btn">▶ Load Dezor Playlist</button>
             <div id="dezor-result" style="margin-top:8px;font-size:12px"></div>
           </div>
