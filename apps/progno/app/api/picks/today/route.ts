@@ -453,7 +453,7 @@ const AWAY_BIAS_PENALTY = PROGNO_AWAY_BIAS_PENALTY
 const LEAGUE_STAKE_MULTIPLIER: Record<string, number> = {
   ncaaf: 0.5,
   ncaab: 0.75,
-  cbb: 0.75,
+  cbb: 0.5,
   nba: 1.0,
   nfl: 1.0,
   nhl: 1.0,
@@ -465,7 +465,7 @@ const LEAGUE_STAKE_MULTIPLIER: Record<string, number> = {
 const LEAGUE_CONFIDENCE_FLOOR: Record<string, number> = {
   ncaaf: PROGNO_FLOOR_NCAAF,
   ncaab: PROGNO_FLOOR_NCAAB,
-  cbb: PROGNO_FLOOR_NCAAB,
+  cbb: 62,
   nba: PROGNO_FLOOR_NBA,
   nfl: PROGNO_FLOOR_NFL,
   nhl: PROGNO_FLOOR_NHL,
@@ -1002,6 +1002,7 @@ function detectSpreadVsMLSignal(
     ncaab: 0.016,
     nhl: 0.025,
     mlb: 0.02,
+    cbb: 0.02,
   }
   const key = sportKey.replace(/^basketball_|^americanfootball_|^icehockey_|^baseball_/, '')
   const pctPerPoint = spreadToWinPct[key] ?? 0.02
@@ -1194,7 +1195,7 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   const SPORT_DEFAULT_TOTAL: Record<string, number> = {
     basketball_nba: 224, basketball_ncaab: 145,
     americanfootball_nfl: 44, americanfootball_ncaaf: 58,
-    icehockey_nhl: 6, baseball_mlb: 9,
+    icehockey_nhl: 6, baseball_mlb: 9, baseball_ncaa: 10,
   }
   const totalPoint = totalCount > 0 ? Math.round(totalSum / totalCount) : (SPORT_DEFAULT_TOTAL[sport] ?? 44)
   if (!homeOdds || !awayOdds) return null
@@ -1455,10 +1456,14 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
 
   // Home/away bias from backtest: home picks +67.3% ROI vs away -19.4% ROI
   const isHomePick = favorite === game.home_team
+  const league = sportToLeague(sport).toLowerCase()
   if (isHomePick) {
     confidence += HOME_BIAS_BOOST
   } else {
-    confidence -= AWAY_BIAS_PENALTY
+    // NBA away picks historically -19.4% ROI — apply heavier penalty
+    // NBA away underdogs with high conf (80+%) were losing at ~60% rate
+    const awayPenalty = (league === 'nba') ? AWAY_BIAS_PENALTY * 2 : AWAY_BIAS_PENALTY
+    confidence -= awayPenalty
   }
 
   // Early-line confidence decay: reduce confidence for games far in the future
@@ -1833,6 +1838,7 @@ function sportToLeague(sport: string): string {
     'baseball_mlb': 'MLB',
     'americanfootball_ncaaf': 'NCAAF',
     'basketball_ncaab': 'NCAAB',
+    'baseball_ncaa': 'CBB',
   }
   return map[sport] || sport.toUpperCase()
 }

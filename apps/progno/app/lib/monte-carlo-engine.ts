@@ -166,6 +166,14 @@ const SPORT_PARAMS: Record<string, {
     homeAdvantage: 0.2,
     usePoissonDistribution: true  // Discrete runs
   },
+  CBB: {
+    avgScore: 5.0,
+    stdDev: 3.0,
+    minScore: 0,
+    maxScore: 20,
+    homeAdvantage: 0.3,
+    usePoissonDistribution: true  // Discrete runs (college baseball)
+  },
 };
 
 export class MonteCarloEngine {
@@ -745,8 +753,13 @@ export class MonteCarloEngine {
       return 'NFL';
     }
 
+    // College Baseball (must check BEFORE basketball to avoid CBB matching NCAAB)
+    if (upper === 'CBB' || upper.includes('BASEBALL_NCAA') || upper.includes('COLLEGE BASEBALL')) {
+      return 'CBB';
+    }
+
     // Basketball
-    if (upper.includes('NCAAB') || upper.includes('CBB') || upper.includes('COLLEGE BASKETBALL')) {
+    if (upper.includes('NCAAB') || upper.includes('COLLEGE BASKETBALL')) {
       return 'NCAAB';
     }
     if (upper.includes('NBA') || upper.includes('BASKETBALL_NBA')) {
