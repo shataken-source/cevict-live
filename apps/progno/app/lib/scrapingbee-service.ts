@@ -32,7 +32,7 @@ export class ScrapingBeeService {
   async scrapeUrl(url: string, options: {
     waitFor?: number;
     waitForSelector?: string;
-    extractRules?: Record<string, string>;
+    extractRules?: Record<string, any>;
     jsScenario?: any[];
     premiumProxy?: boolean;
     stealthProxy?: boolean;

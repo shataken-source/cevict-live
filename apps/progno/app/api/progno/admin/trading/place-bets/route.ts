@@ -85,7 +85,7 @@ function getSupabase() {
 // ── Handler ───────────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   let body: any = {}
-  try { body = await request.json() } catch {}
+  try { body = await request.json() } catch { }
   if (!isAuthorized(request, body?.secret)) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
   }
@@ -125,6 +125,15 @@ export async function POST(request: NextRequest) {
       continue
     }
 
+    // Kalshi requires integer prices 1-99
+    const price = Math.round(Number(bet.price) || 0)
+    if (price < 1 || price > 99) {
+      result.status = 'error'
+      result.error = `Invalid price ${bet.price}¢ (must be integer 1-99). Market may have no liquidity.`
+      results.push(result)
+      continue
+    }
+
     try {
       const order: Record<string, any> = {
         ticker: bet.ticker,
@@ -135,8 +144,8 @@ export async function POST(request: NextRequest) {
         type: 'limit',
         time_in_force: 'good_till_canceled',
       }
-      if (bet.side === 'yes') order.yes_price = bet.price
-      else order.no_price = bet.price
+      if (bet.side === 'yes') order.yes_price = price
+      else order.no_price = price
 
       console.log(`[place-bets] Placing: ${JSON.stringify(order)}`)
       const placed = await placeOrder(apiKeyId, privateKey, order)

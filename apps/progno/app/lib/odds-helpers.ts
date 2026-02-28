@@ -357,8 +357,8 @@ export async function estimateTeamStatsEnhanced(
     }
   }
 
-  // Fallback: market-derived
-  const base = estimateTeamStatsFromOdds(odds, sport);
+  // Fallback: market-derived (pass team names so cache lookup uses correct context)
+  const base = estimateTeamStatsFromOdds(odds, sport, homeTeam, awayTeam);
   return { ...base, dataSource: 'market_derived' };
 }
 

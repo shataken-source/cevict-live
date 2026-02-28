@@ -83,8 +83,8 @@ function getActualOdds(
   for (const book of books) {
     const marketKey =
       type === 'moneyline' ? 'h2h' :
-      type === 'spread' ? 'spreads' :
-      'totals'
+        type === 'spread' ? 'spreads' :
+          'totals'
 
     const market = book.markets?.find((m: any) => m.key === marketKey)
     if (!market) continue
@@ -177,7 +177,13 @@ export async function runPickEngine(game: any, sport: string): Promise<any | nul
   const homeOdds = Math.round(homeSum / homeN)
   const awayOdds = Math.round(awaySum / awayN)
   const spreadPoint = spreadN > 0 ? spreadSum / spreadN : 0
-  const totalPoint = totalN > 0 ? Math.round(totalSum / totalN) : 44
+  // Sport-appropriate default totals (44 was NFL-only, caused NCAAB to simulate 22-pt games)
+  const SPORT_DEFAULT_TOTAL: Record<string, number> = {
+    basketball_nba: 224, basketball_ncaab: 145,
+    americanfootball_nfl: 44, americanfootball_ncaaf: 58,
+    icehockey_nhl: 6, baseball_mlb: 9,
+  }
+  const totalPoint = totalN > 0 ? Math.round(totalSum / totalN) : (SPORT_DEFAULT_TOTAL[sport] ?? 44)
 
   // ── 2. Shin-devig no-vig probabilities ───────────────────────────────────
   const { home: homeNoVigProb, away: awayNoVigProb } = shinDevig(

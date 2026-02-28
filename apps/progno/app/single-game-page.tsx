@@ -2,7 +2,9 @@
 
 import { useState, useCallback, useEffect } from "react";
 import ConfidenceGauge from "./components/ConfidenceGauge";
-import { Game, predictGame, GamePrediction } from "./weekly-analyzer";
+import { predictGame } from "./weekly-analyzer";
+type Game = any;
+type GamePrediction = any;
 import { getTeamsForSport, normalizeTeamName } from "./team-names";
 
 const defaultGame: Game = {
@@ -10,7 +12,7 @@ const defaultGame: Game = {
   homeTeam: "Home",
   awayTeam: "Away",
   sport: "NFL",
-  date: new Date(),
+  date: new Date().toISOString(),
   venue: "TBD",
   odds: { home: -110, away: -110, spread: -1.5, total: 44 },
   homeFieldAdvantage: 0.05

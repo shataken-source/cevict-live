@@ -84,8 +84,8 @@ export class LiveBettingMonitor {
     pregame: { pick: string; odds: number }
   ): LiveValueOpportunity | null {
     // Determine if pregame pick is winning
-    const pickedHome = pregame.pick === state.homeTeam || pregame.pick.includes(state.homeTeam);
-    const isWinning = pickedHome 
+    const pickedHome = pregame.pick === (state as any).homeTeam || pregame.pick.includes((state as any).homeTeam);
+    const isWinning = pickedHome
       ? state.homeScore > state.awayScore
       : state.awayScore > state.homeScore;
 
@@ -94,8 +94,8 @@ export class LiveBettingMonitor {
 
     // Hedge if winning significantly with little time left
     if (isWinning && lead >= 10 && timeRemaining <= 600) { // 10+ lead, under 10 min
-      const hedgeOdds = pickedHome 
-        ? state.liveOdds.moneyline.away 
+      const hedgeOdds = pickedHome
+        ? state.liveOdds.moneyline.away
         : state.liveOdds.moneyline.home;
 
       return {
@@ -119,7 +119,7 @@ export class LiveBettingMonitor {
     pregame: { pick: string; odds: number }
   ): LiveValueOpportunity | null {
     // Look for favorable live odds
-    const currentOdds = pregame.pick === state.homeTeam || pregame.pick.includes(state.homeTeam)
+    const currentOdds = pregame.pick === (state as any).homeTeam || pregame.pick.includes((state as any).homeTeam)
       ? state.liveOdds.moneyline.home
       : state.liveOdds.moneyline.away;
 

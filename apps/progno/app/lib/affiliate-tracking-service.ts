@@ -62,9 +62,9 @@ export class AffiliateTrackingService {
     userRegion: string = 'US'
   ): Promise<string | null> {
     const sportsbook = this.sportsbooks.find(
-      sb => sb.name.toLowerCase() === sportsbookName.toLowerCase() && 
-            sb.regions.includes(userRegion) && 
-            sb.active
+      sb => sb.name.toLowerCase() === sportsbookName.toLowerCase() &&
+        sb.regions.includes(userRegion) &&
+        sb.active
     );
 
     if (!sportsbook) {
@@ -106,8 +106,8 @@ export class AffiliateTrackingService {
     const timestamp = metadata.timestamp || new Date().toISOString();
 
     // Insert click record
-    const { error } = await this.supabase
-      .from('affiliate_clicks')
+    const { error } = await (this.supabase
+      .from('affiliate_clicks') as any)
       .insert({
         pick_id: pickId,
         sportsbook: sportsbookName,
@@ -123,7 +123,7 @@ export class AffiliateTrackingService {
     }
 
     // Increment click count on tracked link
-    await this.supabase.rpc('increment_clicks', {
+    await (this.supabase as any).rpc('increment_clicks', {
       p_pick_id: pickId,
       p_sportsbook: sportsbookName,
     });
@@ -146,14 +146,14 @@ export class AffiliateTrackingService {
 
     // Calculate commission
     const commission = this.calculateCommission(
-      conversionValue, 
-      sportsbook.commissionType, 
+      conversionValue,
+      sportsbook.commissionType,
       sportsbook.commissionRate
     );
 
     // Insert conversion record
-    const { error } = await this.supabase
-      .from('affiliate_conversions')
+    const { error } = await (this.supabase
+      .from('affiliate_conversions') as any)
       .insert({
         pick_id: pickId,
         sportsbook: sportsbookName,
@@ -169,7 +169,7 @@ export class AffiliateTrackingService {
     }
 
     // Update tracked link revenue
-    await this.supabase.rpc('update_revenue', {
+    await (this.supabase as any).rpc('update_revenue', {
       p_pick_id: pickId,
       p_sportsbook: sportsbookName,
       p_revenue: commission,
@@ -210,17 +210,17 @@ export class AffiliateTrackingService {
 
     // Calculate metrics
     const totalClicks = clicks.length;
-    const uniqueIps = new Set(clicks.map(c => c.ip_hash).filter(Boolean));
-    const totalRevenue = conversions?.reduce((sum, c) => sum + (c.commission || 0), 0) || 0;
+    const uniqueIps = new Set((clicks as any[]).map((c: any) => c.ip_hash).filter(Boolean));
+    const totalRevenue = (conversions as any[])?.reduce((sum: number, c: any) => sum + (c.commission || 0), 0) || 0;
 
     // Sportsbook breakdown
     const sportsbookStats: Record<string, { clicks: number; revenue: number }> = {};
-    for (const click of clicks) {
+    for (const click of clicks as any[]) {
       const sb = click.sportsbook;
       if (!sportsbookStats[sb]) sportsbookStats[sb] = { clicks: 0, revenue: 0 };
       sportsbookStats[sb].clicks++;
     }
-    for (const conv of conversions || []) {
+    for (const conv of (conversions || []) as any[]) {
       const sb = conv.sportsbook;
       if (sportsbookStats[sb]) {
         sportsbookStats[sb].revenue += conv.commission || 0;
@@ -229,12 +229,12 @@ export class AffiliateTrackingService {
 
     // Pick breakdown
     const pickStats: Record<string, { clicks: number; revenue: number }> = {};
-    for (const click of clicks) {
+    for (const click of clicks as any[]) {
       const pid = click.pick_id;
       if (!pickStats[pid]) pickStats[pid] = { clicks: 0, revenue: 0 };
       pickStats[pid].clicks++;
     }
-    for (const conv of conversions || []) {
+    for (const conv of (conversions || []) as any[]) {
       const pid = conv.pick_id;
       if (pickStats[pid]) {
         pickStats[pid].revenue += conv.commission || 0;
@@ -272,8 +272,8 @@ export class AffiliateTrackingService {
 
     // If user has preferences, check those first
     if (preferredBooks && preferredBooks.length > 0) {
-      const preferred = available.find(sb => 
-        preferredBooks.some(pb => 
+      const preferred = available.find(sb =>
+        preferredBooks.some(pb =>
           sb.name.toLowerCase().includes(pb.toLowerCase())
         )
       );
@@ -299,7 +299,7 @@ export class AffiliateTrackingService {
 
     for (const pick of picks) {
       links[pick.id] = [];
-      
+
       for (const bookName of pick.recommendedBooks) {
         const url = await this.generateTrackedLink(
           pick.id,
@@ -307,7 +307,7 @@ export class AffiliateTrackingService {
           bookName,
           userRegion
         );
-        
+
         if (url) {
           links[pick.id].push(url);
         }
@@ -370,7 +370,7 @@ export class AffiliateTrackingService {
   private buildAffiliateUrl(sportsbook: SportsbookAffiliate, pickId: string, gameId: string): string {
     const baseUrl = sportsbook.baseUrl;
     const trackingParams = `?aff=${sportsbook.affiliateId}&sub1=${pickId}&sub2=${gameId}&utm_source=progno`;
-    
+
     // Some sportsbooks have different URL structures
     if (sportsbook.name === 'DraftKings') {
       return `${baseUrl}/league/football${trackingParams}`;
@@ -378,7 +378,7 @@ export class AffiliateTrackingService {
     if (sportsbook.name === 'FanDuel') {
       return `${baseUrl}/sportsbook${trackingParams}`;
     }
-    
+
     return `${baseUrl}${trackingParams}`;
   }
 

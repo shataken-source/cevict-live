@@ -54,7 +54,7 @@ export class MarketEfficiencyScorer {
       .order('sharpness_score', { ascending: false });
 
     if (data && data.length > 0) {
-      return data.map(r => ({
+      return data.map((r: any) => ({
         name: r.name,
         sharpnessScore: r.sharpness_score,
         category: r.category,
@@ -95,15 +95,15 @@ export class MarketEfficiencyScorer {
     let clvTotal = 0;
     let clvCount = 0;
 
-    for (const record of data) {
+    for (const record of data as any[]) {
       if (record.closing_line) {
         const deviation = Math.abs(record.line - record.closing_line);
         totalDeviation += deviation;
-        
+
         // Closing Line Value: did line move toward or away from this book's opening?
         const lineMovement = record.closing_line - record.line;
         const resultDiff = record.result - record.line; // Simplified
-        
+
         if (Math.sign(lineMovement) === Math.sign(resultDiff)) {
           clvTotal += 1; // Line moved toward result = good for bettors
         }
@@ -158,11 +158,11 @@ export class MarketEfficiencyScorer {
     }
 
     // Calculate consensus
-    const lines = data.map(d => d.line);
-    const consensus = lines.reduce((a, b) => a + b, 0) / lines.length;
+    const lines = (data as any[]).map((d: any) => d.line);
+    const consensus = lines.reduce((a: number, b: number) => a + b, 0) / lines.length;
 
     // Calculate deviations
-    const books = data.map(d => ({
+    const books = (data as any[]).map((d: any) => ({
       name: d.book_name,
       line: d.line,
       deviation: Math.abs(d.line - consensus),
@@ -200,19 +200,19 @@ export class MarketEfficiencyScorer {
     let totalWeight = 0;
 
     for (const book of comparison.books) {
-      const rating = ratings.find(r => 
+      const rating = ratings.find(r =>
         r.name.toLowerCase() === book.name.toLowerCase()
       );
       const weight = rating ? rating.sharpnessScore / 100 : 0.5;
-      
+
       weightedSum += book.line * weight;
       totalWeight += weight;
     }
 
     const sharpLine = weightedSum / totalWeight;
-    
+
     // Find closest book to weighted average
-    const closest = comparison.books.reduce((prev, curr) => 
+    const closest = comparison.books.reduce((prev, curr) =>
       Math.abs(curr.line - sharpLine) < Math.abs(prev.line - sharpLine) ? curr : prev
     );
 
@@ -239,7 +239,7 @@ export class MarketEfficiencyScorer {
   }>> {
     // Get today's games
     const today = new Date().toISOString().split('T')[0];
-    
+
     const { data, error } = await this.supabase
       .from('games')
       .select('id')
@@ -252,7 +252,7 @@ export class MarketEfficiencyScorer {
     const ratings = await this.getBookRatings();
     const squareBooks = ratings.filter(r => r.category === 'square' || r.category === 'recreational');
 
-    for (const game of data.slice(0, 20)) { // Check first 20 games
+    for (const game of (data as any[]).slice(0, 20)) { // Check first 20 games
       for (const market of ['spread', 'total', 'moneyline']) {
         const comparison = await this.compareLines(game.id, market);
         const sharpLine = await this.getSharpestLine(game.id, market);
@@ -260,7 +260,7 @@ export class MarketEfficiencyScorer {
         if (!sharpLine) continue;
 
         for (const book of comparison.books) {
-          const bookRating = ratings.find(r => 
+          const bookRating = ratings.find(r =>
             r.name.toLowerCase() === book.name.toLowerCase()
           );
 
@@ -268,7 +268,7 @@ export class MarketEfficiencyScorer {
           if (!bookRating || !squareBooks.some(sb => sb.name === bookRating.name)) continue;
 
           const edge = Math.abs(book.line - sharpLine.line);
-          
+
           if (edge >= minEdge) {
             softLines.push({
               gameId: game.id,
@@ -292,12 +292,12 @@ export class MarketEfficiencyScorer {
    */
   async updateRatingsFromGrading(): Promise<void> {
     const books = Array.from(this.bookRatings.keys());
-    
+
     for (const book of books) {
       const rating = await this.rateSportsbook(book, 30);
-      
-      await this.supabase
-        .from('sportsbook_ratings')
+
+      await (this.supabase
+        .from('sportsbook_ratings') as any)
         .upsert({
           name: book,
           sharpness_score: rating.sharpnessScore,

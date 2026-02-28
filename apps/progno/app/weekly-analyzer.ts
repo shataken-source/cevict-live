@@ -1,5 +1,5 @@
 // app/weekly-analyzer.ts
-import { predictGameWithEnrichment, predictGamesWithEnrichment } from '@/lib/data-sources/predict-with-enrichment';
+import { predictGameWithEnrichment } from '@/lib/data-sources/predict-with-enrichment';
 import { getClaudeEffectEngine } from '@/lib/data-sources/claude-effect-complete';
 import { Game, GamePrediction, ModelCalibration, WeeklyAnalysis, TrendAnalysis } from '@/lib/data-sources/weekly-analyzer-types'; // adjust if types are elsewhere
 
@@ -56,7 +56,7 @@ export async function analyzeWeeklyGames(games: Game[], calibration?: ModelCalib
   const enrichedGames = await Promise.all(
     games.map(async (game) => {
       try {
-        return await predictGameWithEnrichment(game, calibration);
+        return await predictGameWithEnrichment(game);
       } catch (error: any) {
         console.warn(`Enrichment failed for ${game.homeTeam} vs ${game.awayTeam}:`, error.message);
         return {
@@ -76,13 +76,13 @@ export async function analyzeWeeklyGames(games: Game[], calibration?: ModelCalib
     })
   );
 
-  const predictions = enrichedGames.filter((p): p is GamePrediction => !!p);
+  const predictions: any[] = enrichedGames.filter(p => !!p);
 
   const bestBets = predictions.filter(p => p.confidence >= 0.60 && p.edge >= 0.03);
   const upsetAlerts = predictions.filter(p => p.riskLevel === 'high');
 
   const trendAnalysis: TrendAnalysis = {
-    homeWinRate: predictions.length > 0 ? predictions.filter(p => p.predictedWinner === p.game.homeTeam).length / predictions.length : 0.5,
+    homeWinRate: predictions.length > 0 ? predictions.filter(p => p.predictedWinner === (p.game?.homeTeam || p.winner)).length / predictions.length : 0.5,
     favoriteWinRate: 0.55,
     overUnderRate: 0.5,
     averageScore: 45,
@@ -90,16 +90,16 @@ export async function analyzeWeeklyGames(games: Game[], calibration?: ModelCalib
   };
 
   return {
-    games: predictions.map(p => p.game),
-    predictions,
+    games: predictions.map(p => p.game).filter(Boolean),
+    predictions: predictions as GamePrediction[],
     summary: {
       totalGames: predictions.length,
-      bestBets,
-      upsetAlerts,
+      bestBets: bestBets as GamePrediction[],
+      upsetAlerts: upsetAlerts as GamePrediction[],
       trendAnalysis,
     },
   };
 }
 
 export { predictGameWithEnrichment as predictGame };
-export type { ModelCalibration } from '@/lib/data-sources/weekly-analyzer-types';
+export type { Game, GamePrediction, WeeklyAnalysis, ModelCalibration, H2HMeeting } from '@/lib/data-sources/weekly-analyzer-types';

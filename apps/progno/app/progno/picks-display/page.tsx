@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { NextResponse } from 'next/server';
 
 interface PrognoPick {
   id: string;
@@ -354,7 +353,7 @@ export default function PicksDisplayPage() {
                     <div className="flex items-center justify-between">
                       <span className="font-semibold">Confidence:</span>
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${getConfidenceColor(pick.prediction.confidence)}`}>
-                        {Math.round(pick.prediction.confidence * 100)}%
+                        {Math.round(pick.prediction.confidence)}%
                       </span>
                     </div>
 

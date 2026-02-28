@@ -59,6 +59,7 @@ const C = {
   amberDim: '#cc9900',
   red: '#ef5350',
   purple: '#ab47bc',
+  cyan: '#00e5ff',
   text: '#9ab8d4',
   textBright: '#ddeeff',
   textDim: '#3a5570',

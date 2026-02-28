@@ -48,7 +48,7 @@ export class LineMovementPredictionService {
     factors: MovementFactors
   ): Promise<LineMovementPrediction> {
     const reasoning: string[] = [];
-    
+
     // Calculate movement score (-100 to +100)
     let movementScore = 0;
 
@@ -130,7 +130,7 @@ export class LineMovementPredictionService {
     predictedLine: number;
   }>> {
     const targetDate = new Date(Date.now() + daysAhead * 24 * 60 * 60 * 1000).toISOString();
-    
+
     // Get games with early lines
     const { data: games, error } = await this.supabase
       .from('games')
@@ -142,7 +142,7 @@ export class LineMovementPredictionService {
 
     const opportunities = [];
 
-    for (const game of games) {
+    for (const game of games as any[]) {
       // Get current odds
       const { data: odds } = await this.supabase
         .from('odds')
@@ -153,8 +153,8 @@ export class LineMovementPredictionService {
 
       if (!odds || odds.length === 0) continue;
 
-      const currentOdds = odds[0];
-      
+      const currentOdds = (odds as any[])[0];
+
       // Predict movement
       const factors = await this.gatherMovementFactors(game.id);
       const prediction = await this.predictMovement(
@@ -166,7 +166,7 @@ export class LineMovementPredictionService {
 
       // Determine recommendation
       let recommendation: 'bet_now' | 'wait' | 'avoid' = 'wait';
-      
+
       if (prediction.urgency === 'immediate' && prediction.confidence > 70) {
         recommendation = 'bet_now';
       } else if (prediction.confidence < 50) {
@@ -210,7 +210,7 @@ export class LineMovementPredictionService {
     let totalError = 0;
     const byMarket: Record<string, { correct: number; total: number }> = {};
 
-    for (const pred of data) {
+    for (const pred of data as any[]) {
       const market = pred.market;
       if (!byMarket[market]) byMarket[market] = { correct: 0, total: 0 };
       byMarket[market].total++;
@@ -218,7 +218,7 @@ export class LineMovementPredictionService {
       // Check if direction was correct
       const predicted = pred.predicted_direction;
       const actual = pred.actual_result;
-      
+
       if (predicted === actual) {
         correct++;
         byMarket[market].correct++;

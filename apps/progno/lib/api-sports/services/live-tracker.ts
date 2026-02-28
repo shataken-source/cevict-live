@@ -39,7 +39,7 @@ export interface LiveAlert {
   timestamp: Date;
 }
 
-class LiveGameTracker {
+export class LiveGameTracker {
   private activeGames: Map<string, LiveGameState> = new Map();
   private alerts: LiveAlert[] = [];
   private readonly MAX_GAMES = 50; // Prevent memory bloat
@@ -97,8 +97,8 @@ class LiveGameTracker {
     if (!client) return null;
 
     try {
-      const gameData = await this.fetchWithRetry(
-        () => client.getLiveGame(gameId),
+      const gameData: any = await this.fetchWithRetry(
+        () => client.getLiveGames({ date: new Date().toISOString().split('T')[0] }).then((games: any[]) => games?.find((g: any) => String(g.id) === String(gameId))),
         10000,
         2
       );
@@ -203,7 +203,7 @@ class LiveGameTracker {
       this.alerts.push({
         type: 'lead_change',
         gameId: state.gameId,
-        message: `${state.homeTeam} has taken a large lead`,
+        message: `Home team (${state.gameId}) has taken a large lead`,
         severity: 'high',
         timestamp: new Date()
       });

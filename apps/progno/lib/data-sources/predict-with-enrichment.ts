@@ -1,5 +1,5 @@
 // lib/data-sources/predict-with-enrichment.ts
-import { Game } from '@/types';
+import { Game } from './weekly-analyzer-types';
 
 export async function predictGameWithEnrichment(game: Game) {
   // League average totals

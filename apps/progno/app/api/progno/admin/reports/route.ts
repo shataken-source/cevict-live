@@ -23,11 +23,12 @@ function winRate(wins: number, total: number): string {
   return ((wins / total) * 100).toFixed(1);
 }
 
-/** Calculate profit from American odds for a $100 flat bet */
+/** Calculate profit from American odds for a $1 unit bet.
+ *  Loss = -1.00, Win at -110 = +0.91, Win at +150 = +1.50 */
 function profitFromOdds(odds: number, won: boolean): number {
-  if (!won) return -100;
-  if (odds > 0) return odds;       // +200 wins $200
-  return (100 / Math.abs(odds)) * 100; // -150 wins $66.67
+  if (!won) return -1;
+  if (odds > 0) return odds / 100;           // +200 wins $2.00 per $1
+  return 100 / Math.abs(odds);               // -150 wins $0.6667 per $1
 }
 
 interface Row {
@@ -56,23 +57,56 @@ async function loadResults(dateFilter?: string): Promise<{ rows: Row[]; error?: 
   if (resErr) return { rows: [], error: resErr.message };
   if (!results || results.length === 0) return { rows: [] };
 
-  // Load picks to get odds + edge (join by game_date + home_team + away_team)
-  const dates = [...new Set(results.map((r: any) => r.game_date))];
+  // Load picks to get odds + edge.
+  // The picks table has game_time (ISO timestamp) but NOT game_date.
+  // prediction_results has game_date (YYYY-MM-DD). Derive date from game_time for join.
+  // Also try joining by home_team + away_team without date as fallback.
   let picksMap = new Map<string, any>();
-  for (let i = 0; i < dates.length; i += 50) {
-    const batch = dates.slice(i, i + 50);
-    const { data: picks } = await sb.from('picks').select('game_date,home_team,away_team,odds,value_bet_edge,expected_value').in('game_date', batch);
+
+  // Fetch picks matching result teams. Use original-case team names from prediction_results
+  // (Supabase .in() is case-sensitive, and picks table stores proper case like "Dallas Mavericks").
+  const uniqueHomes = [...new Set(results.map((r: any) => r.home_team).filter(Boolean))];
+
+  for (let i = 0; i < uniqueHomes.length; i += 30) {
+    const batch = uniqueHomes.slice(i, i + 30);
+    const { data: picks } = await sb.from('picks')
+      .select('home_team,away_team,game_time,odds,value_bet_edge,expected_value,pick')
+      .in('home_team', batch)
+      .order('created_at', { ascending: false })
+      .limit(2000);
     if (picks) {
       for (const p of picks) {
-        const key = `${p.game_date}|${(p.home_team || '').toLowerCase()}|${(p.away_team || '').toLowerCase()}`;
-        picksMap.set(key, p);
+        // Derive game_date from game_time
+        let gameDate = '';
+        if (p.game_time) {
+          try { gameDate = new Date(p.game_time).toISOString().split('T')[0]; } catch { }
+        }
+        // Extract numeric odds: handle both number and {home, away} object formats
+        let oddsNum: number | undefined;
+        if (p.odds != null) {
+          if (typeof p.odds === 'number') {
+            oddsNum = p.odds;
+          } else if (typeof p.odds === 'object' && p.odds !== null) {
+            // odds is {home: -150, away: +130} — pick the side that matches the pick
+            const isHomePick = p.pick && p.home_team && p.pick.toLowerCase().includes(p.home_team.toLowerCase().split(' ').pop() || '');
+            oddsNum = isHomePick ? Number((p.odds as any).home) : Number((p.odds as any).away);
+            if (isNaN(oddsNum as number)) oddsNum = undefined;
+          }
+        }
+
+        const key = `${gameDate}|${(p.home_team || '').toLowerCase()}|${(p.away_team || '').toLowerCase()}`;
+        picksMap.set(key, { ...p, odds: oddsNum });
+        // Also store without date as fallback key
+        const keyNoDate = `|${(p.home_team || '').toLowerCase()}|${(p.away_team || '').toLowerCase()}`;
+        if (!picksMap.has(keyNoDate)) picksMap.set(keyNoDate, { ...p, odds: oddsNum });
       }
     }
   }
 
   const rows: Row[] = results.map((r: any) => {
     const key = `${r.game_date}|${(r.home_team || '').toLowerCase()}|${(r.away_team || '').toLowerCase()}`;
-    const pick = picksMap.get(key);
+    const keyNoDate = `|${(r.home_team || '').toLowerCase()}|${(r.away_team || '').toLowerCase()}`;
+    const pick = picksMap.get(key) || picksMap.get(keyNoDate);
     return {
       game_date: r.game_date,
       sport: (r.sport || r.league || 'unknown').toUpperCase(),
@@ -200,7 +234,7 @@ function monthlySummary(rows: Row[]) {
       winRate: winRate(s.wins, s.bets),
       avgProfitPerBet: s.bets > 0 ? (s.profit / s.bets).toFixed(2) : '0.00',
       avgOdds: s.oddsCount > 0 ? fmtOdds(Math.round(s.oddsSum / s.oddsCount)) : '—',
-      roi: s.bets > 0 ? ((s.profit / (s.bets * 100)) * 100).toFixed(1) : '0.0',
+      roi: s.bets > 0 ? ((s.profit / s.bets) * 100).toFixed(1) : '0.0',
     })).sort((a, b) => b.month.localeCompare(a.month)),
     summary: { totalMonths: Object.keys(byMonth).length }
   };
@@ -283,7 +317,7 @@ function roiByOddsRange(rows: Row[]) {
     ranges: ranges.map(r => ({
       ...r, profit: Math.round(r.profit * 100) / 100,
       winRate: winRate(r.wins, r.total),
-      roi: r.total > 0 ? ((r.profit / (r.total * 100)) * 100).toFixed(1) : '0.0'
+      roi: r.total > 0 ? ((r.profit / r.total) * 100).toFixed(1) : '0.0'
     })),
     bestRange: ranges.reduce((b, r) => r.profit > b.profit ? r : b, ranges[0]).range
   };

@@ -6,7 +6,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import { H2HMeeting } from '../../app/weekly-analyzer';
+import { H2HMeeting } from './weekly-analyzer-types';
 
 interface H2HDatabase {
   [key: string]: H2HMeeting[];
@@ -77,8 +77,8 @@ export class H2HHistory {
     const meetings = this.database[key] || [];
 
     return meetings
-      .filter(m => m.date instanceof Date && m.date <= new Date())
-      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .filter(m => m.date && new Date(m.date) <= new Date())
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, limit);
   }
 
@@ -86,7 +86,7 @@ export class H2HHistory {
     homeTeam: string,
     awayTeam: string,
     sport: string,
-    date: Date,
+    date: Date | string,
     homeScore: number,
     awayScore: number,
     spread?: number,
@@ -105,7 +105,7 @@ export class H2HHistory {
     const overHit = total !== undefined ? (homeScore + awayScore) > total : false;
 
     const meeting: H2HMeeting = {
-      date,
+      date: date instanceof Date ? date.toISOString() : date,
       homeTeam,
       awayTeam,
       homeScore,
@@ -119,7 +119,7 @@ export class H2HHistory {
 
     // Avoid duplicates
     const exists = this.database[key].some(m =>
-      m.date.getTime() === date.getTime() &&
+      new Date(m.date).getTime() === new Date(date).getTime() &&
       m.homeTeam === homeTeam &&
       m.awayTeam === awayTeam
     );

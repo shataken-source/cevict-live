@@ -37,8 +37,8 @@ export interface ClaudeEffectResult {
 
 export interface NarrativeContext {
   type: 'revenge' | 'proving_doubters' | 'contract_year' | 'return_to_team' |
-        'injured_teammate' | 'losing_streak' | 'underdog' | 'complacency' |
-        'looking_ahead' | 'post_championship' | 'none';
+  'injured_teammate' | 'losing_streak' | 'underdog' | 'complacency' |
+  'looking_ahead' | 'post_championship' | 'none';
   strength: number;  // 0 to 1
   team: 'home' | 'away' | 'both';
   description: string;
@@ -77,6 +77,9 @@ export interface ChaosFactors {
  * Implements the 7-dimensional probability modifier
  */
 export class ClaudeEffectEngine {
+  // Weight overrides from backtesting / fine-tuning
+  private weightOverrides: Partial<{ sentiment: number; narrative: number; information: number; network: number; emergent: number }> = {};
+
   // Base weights (fallback when getWeightsForLeague returns default)
   // NOTE: CSI and TRD are NOT in the main formula - they're applied separately
   private weights = {
@@ -514,7 +517,7 @@ export class ClaudeEffectEngine {
     if (!factors) {
       // Estimate from available data
       if (gameData.weather?.conditions &&
-          ['rain', 'snow', 'wind'].some(w => gameData.weather.conditions?.toLowerCase().includes(w))) {
+        ['rain', 'snow', 'wind'].some(w => gameData.weather.conditions?.toLowerCase().includes(w))) {
         baseVolatility += 0.20;
       }
       if (gameData.league?.toLowerCase().includes('division')) {
@@ -660,7 +663,7 @@ export class ClaudeEffectEngine {
     sport: string
   ): number {
     const lambda = this.decayConstants[sport as keyof typeof this.decayConstants] ||
-                   this.decayConstants.default;
+      this.decayConstants.default;
 
     let totalDecayedImpact = 0;
     let totalOriginalImpact = 0;

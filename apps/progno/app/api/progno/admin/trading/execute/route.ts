@@ -90,7 +90,7 @@ const ABBREV_MAP: Record<string, string[]> = {
   NYK: ['knicks', 'new york k'], HOU: ['houston', 'rockets', 'astros'],
   DET: ['detroit', 'pistons', 'tigers', 'red wings'], CHI: ['chicago', 'bulls', 'cubs', 'blackhawks'],
   SAS: ['san antonio', 'spurs'], SAC: ['sacramento', 'kings'],
-  MEM: ['memphis', 'grizzlies'], UTA: ['utah', 'jazz'],
+  MEM: ['memphis', 'grizzlies'], UTA: ['utah', 'jazz', 'mammoth', 'hockey club'],
   MIL: ['milwaukee', 'bucks', 'brewers'], ATL: ['atlanta', 'hawks', 'braves'],
   PHI: ['philadelphia', '76ers', 'sixers', 'phillies', 'flyers'],
   NOP: ['new orleans', 'pelicans'], MIA: ['miami', 'heat', 'marlins'],
@@ -488,8 +488,16 @@ export async function POST(request: NextRequest) {
       }
 
       const side = determineSide(pick, market)
-      const price = side === 'yes' ? (market.yes_ask || 50) : (market.no_ask || 50)
-      const count = Math.max(1, Math.floor(stakeCents / Math.max(1, price)))
+      const rawPrice = side === 'yes' ? market.yes_ask : market.no_ask
+      // Kalshi requires integer prices 1-99. 0 or null = no liquidity.
+      const price = Math.round(Number(rawPrice) || 0)
+      if (price < 1 || price > 99) {
+        result.status = 'error'
+        result.error = `Invalid price ${rawPrice}¢ for ${side} side (must be 1-99). Market may have no liquidity.`
+        results.push(result)
+        continue
+      }
+      const count = Math.max(1, Math.floor(stakeCents / price))
 
       result.ticker = market.ticker
       result.marketTitle = market.title

@@ -27,31 +27,13 @@ export default function AIAdvisorPage() {
       }
     } catch (error) {
       console.error('Failed to load current picks:', error);
-      // Use mock data for demo
-      setCurrentPicks([
-        {
-          homeTeam: 'Lakers',
-          awayTeam: 'Celtics',
-          sport: 'NBA',
-          confidence: 0.75,
-          edge: 3.2,
-          pick: 'Lakers -2.5'
-        },
-        {
-          homeTeam: 'Rangers',
-          awayTeam: 'Islanders',
-          sport: 'NHL',
-          confidence: 0.68,
-          edge: 2.1,
-          pick: 'Over 5.5'
-        }
-      ]);
+      setCurrentPicks([]);
     }
   };
 
   const getAdvice = async () => {
     if (!userQuestion.trim()) return;
-    
+
     setLoading(true);
     try {
       const request: SportsAdviceRequest = {
@@ -59,7 +41,7 @@ export default function AIAdvisorPage() {
         userQuestion,
         context: 'Progno AI Advisor - Sports Betting Analysis'
       };
-      
+
       const response = await aiBot.analyzePicks(request);
       setAdvice(response);
     } catch (error) {
@@ -179,7 +161,7 @@ export default function AIAdvisorPage() {
           {/* Input Section */}
           <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
             <h3 style={{ marginTop: 0, marginBottom: '16px' }}>💬 Ask AI Advisor</h3>
-            
+
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
                 Your Question:
@@ -222,7 +204,7 @@ export default function AIAdvisorPage() {
           {/* Current Picks */}
           <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
             <h3 style={{ marginTop: 0, marginBottom: '16px' }}>📋 Current Picks</h3>
-            
+
             <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
               {currentPicks.length > 0 ? (
                 currentPicks.map((pick, index) => (
@@ -265,7 +247,7 @@ export default function AIAdvisorPage() {
           <h3 style={{ marginTop: 0, marginBottom: '16px', color: '#1e40af' }}>
             🤖 AI Analysis
           </h3>
-          
+
           <div style={{ marginBottom: '16px' }}>
             <div style={{ fontWeight: '600', marginBottom: '8px' }}>Advice:</div>
             <div style={{ lineHeight: '1.6' }}>{advice.advice}</div>
@@ -353,7 +335,7 @@ export default function AIAdvisorPage() {
               {loading ? 'Loading...' : '🔄 Refresh Kalshi Markets'}
             </button>
           </div>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
             {currentPicks.map((market, index) => (
               <div key={index} style={{
@@ -418,7 +400,7 @@ export default function AIAdvisorPage() {
               {loading ? 'Loading...' : '🔄 Refresh Polymarket'}
             </button>
           </div>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
             {currentPicks.map((market, index) => (
               <div key={index} style={{

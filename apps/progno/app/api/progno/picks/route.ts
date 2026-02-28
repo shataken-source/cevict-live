@@ -21,41 +21,67 @@ const getSupabase = () => {
   return createClient(url, key);
 };
 
+const ESPN_SPORT_PATH: Record<string, string> = {
+  nba: 'basketball/nba', nfl: 'football/nfl', nhl: 'hockey/nhl',
+  mlb: 'baseball/mlb', ncaab: 'basketball/mens-college-basketball',
+};
+
 const fetchEspnPicks = async (date: string, sports: string[] = ['nba', 'nfl', 'nhl']) => {
   const picks: any[] = [];
   const dateObj = new Date(date);
+  const dateStr = date.replace(/-/g, '');
 
   for (const sport of sports) {
     try {
-      const oddsMap = await EspnOddsService.fetchOdds(sport, dateObj);
+      const espnPath = ESPN_SPORT_PATH[sport];
+      if (!espnPath) continue;
 
-      for (const [gameId, odds] of oddsMap.entries()) {
-        if (!odds.moneyline) continue;
+      // Fetch scoreboard with odds directly from ESPN
+      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${espnPath}/scoreboard?dates=${dateStr}`);
+      if (!res.ok) continue;
+      const data = await res.json();
 
-        // Calculate implied probabilities
-        const probHome = odds.moneyline.home > 0
-          ? 100 / (odds.moneyline.home + 100)
-          : Math.abs(odds.moneyline.home) / (Math.abs(odds.moneyline.home) + 100);
-        const probAway = odds.moneyline.away > 0
-          ? 100 / (odds.moneyline.away + 100)
-          : Math.abs(odds.moneyline.away) / (Math.abs(odds.moneyline.away) + 100);
+      for (const event of (data.events || [])) {
+        const comp = event.competitions?.[0];
+        if (!comp) continue;
+        const homeComp = comp.competitors?.find((c: any) => c.homeAway === 'home');
+        const awayComp = comp.competitors?.find((c: any) => c.homeAway === 'away');
+        if (!homeComp || !awayComp) continue;
 
+        const homeName = homeComp.team?.displayName || homeComp.team?.name || 'Home';
+        const awayName = awayComp.team?.displayName || awayComp.team?.name || 'Away';
+
+        // Get odds from competition
+        const odds = comp.odds?.[0];
+        if (!odds?.homeTeamOdds?.moneyLine || !odds?.awayTeamOdds?.moneyLine) continue;
+
+        const homeML = odds.homeTeamOdds.moneyLine;
+        const awayML = odds.awayTeamOdds.moneyLine;
+
+        const rawHome = homeML > 0 ? 100 / (homeML + 100) : Math.abs(homeML) / (Math.abs(homeML) + 100);
+        const rawAway = awayML > 0 ? 100 / (awayML + 100) : Math.abs(awayML) / (Math.abs(awayML) + 100);
+        // Remove vig: normalize so fair probabilities sum to 100%
+        const vigTotal = rawHome + rawAway;
+        const probHome = vigTotal > 0 ? rawHome / vigTotal : 0.5;
+        const probAway = vigTotal > 0 ? rawAway / vigTotal : 0.5;
         const confidence = Math.max(probHome, probAway) * 100;
 
         if (confidence < 60) continue;
 
+        const pickTeam = probHome > probAway ? homeName : awayName;
+
         picks.push({
-          id: `espn-${gameId}`,
+          id: `espn-${event.id}`,
           sport: sport.toUpperCase(),
-          home_team: 'Home',
-          away_team: 'Away',
-          pick: probHome > probAway ? 'Home' : 'Away',
+          home_team: homeName,
+          away_team: awayName,
+          pick: pickTeam,
           confidence,
           pick_type: 'moneyline',
-          game_time: dateObj.toISOString(),
+          game_time: event.date || dateObj.toISOString(),
           created_at: new Date().toISOString(),
           source: 'espn',
-          odds: odds.moneyline,
+          odds: { home: homeML, away: awayML },
         });
       }
     } catch (e) {

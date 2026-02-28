@@ -1190,7 +1190,13 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   const homeOdds = homeCount > 0 ? { price: Math.round(homeOddsSum / homeCount) } : null
   const awayOdds = awayCount > 0 ? { price: Math.round(awayOddsSum / awayCount) } : null
   const spreadPoint = spreadCount > 0 ? spreadSum / spreadCount : 0
-  const totalPoint = totalCount > 0 ? Math.round(totalSum / totalCount) : 44
+  // Sport-appropriate default totals (44 was NFL-only, caused NCAAB to simulate 22-pt games)
+  const SPORT_DEFAULT_TOTAL: Record<string, number> = {
+    basketball_nba: 224, basketball_ncaab: 145,
+    americanfootball_nfl: 44, americanfootball_ncaaf: 58,
+    icehockey_nhl: 6, baseball_mlb: 9,
+  }
+  const totalPoint = totalCount > 0 ? Math.round(totalSum / totalCount) : (SPORT_DEFAULT_TOTAL[sport] ?? 44)
   if (!homeOdds || !awayOdds) return null
 
   const activeFilter = ODDS_FILTER[FILTER_STRATEGY] || ODDS_FILTER.balanced
@@ -1282,13 +1288,14 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
         game.id || `${game.home_team}-${game.away_team}`,
         sport,
         game.home_team,
-        game.away_team
+        game.away_team,
+        'moneyline'
       )
       if (splits) {
         bettingSplitsData = {
           publicPercentage: splits.publicPercentage,
-          sharpPercentage: splits.sharpPercentage,
-          lineMovement: splits.lineMovement
+          sharpIndicator: splits.sharpIndicator,
+          recommendation: splits.recommendation
         }
       }
     } catch {
@@ -1421,19 +1428,21 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     sport
   )
 
-  // CONFIDENCE FORMULA v3: MC-anchored with True Edge and home bias
-  // The MC win probability is the strongest signal — use it as the anchor
-  const probDiff = Math.abs(favoriteProb - 0.5)
-  const marketBaseConf = 50 + (probDiff * 80)
+  // CONFIDENCE FORMULA v4: Market-anchored with MC blend
+  // The market (Shin-devig) is the anchor; MC can nudge but NOT dominate.
+  // Old v3 let MC override market (54% market → 91% MC → 93% conf). Fixed.
+  const favoriteMarketPct = Math.max(favoriteProb, 1 - favoriteProb) * 100  // e.g. 54%
+  const marketBaseConf = favoriteMarketPct
 
-  let mcAnchoredConf = marketBaseConf
+  let mcBlendedConf = marketBaseConf
   if (monteCarloResult) {
     const isFavoriteHome = favorite === game.home_team
     const mcWinProb = isFavoriteHome
       ? monteCarloResult.homeWinProbability
       : monteCarloResult.awayWinProbability
-    // Anchor confidence to MC probability (stronger signal than market-only base)
-    mcAnchoredConf = Math.max(marketBaseConf, mcWinProb * 100 - 5)
+    const mcPct = mcWinProb * 100
+    // Blend: 60% market, 40% MC — market stays dominant, MC provides signal
+    mcBlendedConf = marketBaseConf * 0.6 + mcPct * 0.4
   }
 
   // True Edge contribution (max ±12% swing)
@@ -1442,7 +1451,7 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   // Chaos penalty from True Edge
   const chaosPenalty = (1 - trueEdgeResult.confidence) * 10
 
-  let confidence = Math.round(mcAnchoredConf + trueEdgeBoost - chaosPenalty)
+  let confidence = Math.round(mcBlendedConf + trueEdgeBoost - chaosPenalty)
 
   // Home/away bias from backtest: home picks +67.3% ROI vs away -19.4% ROI
   const isHomePick = favorite === game.home_team
@@ -1460,14 +1469,10 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     console.log(`[Early Decay] ${game.home_team} vs ${game.away_team}: ${before}% → ${confidence}% (decay ${earlyDecay})`)
   }
 
-  // Hard ceiling: MC probability + 15% (backtest shows Shin-devig rarely exceeds 65%;
-  // the old +8 ceiling blocked all picks — widened to allow real signal through)
-  const mcCeiling = monteCarloResult
-    ? Math.round((favorite === game.home_team
-      ? monteCarloResult.homeWinProbability
-      : monteCarloResult.awayWinProbability) * 100 + 15)
-    : 95
-  confidence = Math.min(confidence, mcCeiling)
+  // Market-anchored ceiling: confidence cannot exceed market implied + 20%
+  // This prevents a 54% market game from ever reaching 93% confidence
+  const marketCeiling = Math.round(favoriteMarketPct + 20)
+  confidence = Math.min(confidence, marketCeiling)
   confidence = Math.max(30, Math.min(95, confidence))
 
   // Filter strategy confidence floor
@@ -1562,9 +1567,9 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
     const impliedProb = 0.524  // -110 odds
     totalEdge = (totalProb - impliedProb) * 100
 
-    // Calculate EV for totals
+    // Calculate EV for totals: at -110 odds, $100 bet wins $90.91 profit
     const totalStake = 100
-    const totalProfit = 100  // -110 pays $100 profit on $110 stake, but we simplify to $100 on $100
+    const totalProfit = 90.91  // -110 pays $90.91 profit on $100 stake
     const totalEV = (totalProb * totalProfit) - ((1 - totalProb) * totalStake)
 
     totalPick = {
@@ -1605,7 +1610,7 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   // Build parlay suggestions
   if (bestValueBet && confidence >= 60) {
     try {
-      const parlayLegs = parlayBuilder.findCorrelatedLegs(
+      const parlayLegs = (parlayBuilder as any).findCorrelatedLegs?.(
         [{ gameId, pick: recommendedPick, confidence, edge: bestValueBet.edge }],
         []
       )
@@ -1620,7 +1625,7 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   // Elite picks enhancement
   if (confidence >= 75) {
     try {
-      eliteEnhancement = elitePicksEnhancer.enhance({
+      eliteEnhancement = (elitePicksEnhancer as any).enhance({
         pick: recommendedPick,
         confidence,
         trueEdge: trueEdgeResult
@@ -1631,13 +1636,13 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
   }
 
   // Calculate bankroll-adjusted stake
-  const bankrollStake = bankrollManager.calculateStake(
+  const bankrollStake = (bankrollManager as any).calculateStake(
     confidence,
     bestValueBet?.edge || 0,
     bestValueBet?.kellyFraction || 0.25,
     sport
   )
-  optimalStake = Math.max(optimalStake, bankrollStake)
+  optimalStake = Math.max(optimalStake, bankrollStake as number || 0)
 
   return {
     sport: sportToLeague(sport),

@@ -250,4 +250,4 @@ export async function fetchAllRealOdds(): Promise<Record<string, RealOddsGame[]>
   return results;
 }
 
-export { RealOddsGame };
+export type { RealOddsGame };

@@ -64,7 +64,7 @@ function TradingDashboardContent() {
 
         const [tradesRes, statsRes] = await Promise.all([
           fetch(`/api/progno/predictions?sport=${selectedSport}&limit=20`, { cache: 'no-store' }),
-          fetch('/api/stats/live', { cache: 'no-store' }),
+          fetch('/api/progno/predictions/stats', { cache: 'no-store' }),
         ]);
 
         if (tradesRes.ok) {
@@ -76,8 +76,18 @@ function TradingDashboardContent() {
 
         if (statsRes.ok) {
           const statsData = await statsRes.json();
-          if (statsData.success) {
-            setStats(statsData.stats);
+          if (statsData.success && statsData.stats) {
+            const s = statsData.trading || statsData.stats;
+            setStats({
+              totalTrades: s.total || 0,
+              openTrades: s.pending || 0,
+              winTrades: s.wins ?? s.correct ?? 0,
+              lossTrades: s.losses ?? s.incorrect ?? 0,
+              totalPnl: s.totalProfitCents != null ? s.totalProfitCents / 100 : (s.total_profit || 0),
+              winRate: s.winRate ?? s.win_percentage ?? 0,
+              avgConfidence: s.average_confidence || 0,
+              avgEdge: 0,
+            });
           }
         }
 
@@ -227,7 +237,7 @@ function TradingDashboardContent() {
                       setSyndicationStatus('❌ Syndication failed');
                     }
                   } catch (error) {
-                    setSyndicationStatus(`❌ Error: ${error.message}`);
+                    setSyndicationStatus(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
                   }
                 }}
                 className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"

@@ -1,20 +1,20 @@
 /**
  * AUTONOMOUS CURSOR EFFECT BOT
- * 
+ *
  * A fully autonomous, self-learning background bot that:
  * - Fetches odds/lines automatically
  * - Generates and executes its own prediction code
  * - Learns from results continuously
  * - Makes read-only predictions (training only)
  * - Tracks progress and performance
- * 
+ *
  * This bot works silently in the background and is completely autonomous.
  * Its predictions are READ-ONLY and used only for training.
  */
 
 /**
  * AUTONOMOUS CURSOR EFFECT BOT
- * 
+ *
  * Fully autonomous, self-learning background bot implementing all 7 Claude Effect dimensions:
  * 1. Sentiment Field (SF) - Emotional state analysis
  * 2. Narrative Momentum (NM) - Story power detection
@@ -23,7 +23,7 @@
  * 5. Network Influence Graph (NIG) - Team chemistry analysis
  * 6. Temporal Relevance Decay (TRD) - Recency weighting
  * 7. Emergent Pattern Detection (EPD) - ML-discovered patterns
- * 
+ *
  * The bot:
  * - Fetches odds/lines automatically
  * - Generates and evolves its own prediction code
@@ -33,10 +33,12 @@
  * - Works silently in the background
  */
 
+// @ts-ignore - module may not exist yet
 import { OddsService } from './odds-service';
 import { cursorPredict, cursorLearn, getCursorStats } from '../cursor-effect';
 import { ClaudeEffectEngine } from './claude-effect';
 import { gatherClaudeEffectData } from './claude-effect-integration';
+// @ts-ignore - module may not exist yet
 import { FISHY_TRAINING_CURRICULUM, type LearningTask } from '../bot-academy-fishy-curriculum';
 import { AVAILABLE_COMPETITIONS, SimpleTitanicClassifier, loadTrainingData, generateSubmission } from '../kaggle-integration';
 import type { Game } from '../weekly-analyzer';
@@ -234,12 +236,12 @@ export class AutonomousCursorBot {
       // 3. Make predictions for each game with FULL Claude Effect (all 7 dimensions)
       const predictions: BotPrediction[] = [];
       const claudeEngine = new ClaudeEffectEngine();
-      
+
       for (const game of allGames) {
         try {
           // Get base prediction from cursor effect
           const basePrediction = await cursorPredict(game);
-          
+
           // Gather ALL Claude Effect data (all 7 phases)
           const gameData: GameData = {
             homeTeam: game.homeTeam,
@@ -255,7 +257,7 @@ export class AutonomousCursorBot {
             date: game.date instanceof Date ? game.date.toISOString() : game.date,
             venue: game.venue,
           };
-          
+
           const claudeData = await gatherClaudeEffectData(gameData, {
             includePhase1: true,  // Sentiment Field
             includePhase2: true,  // Narrative Momentum
@@ -265,7 +267,7 @@ export class AutonomousCursorBot {
             includePhase6: true,  // Temporal Decay
             includePhase7: true,  // Emergent Patterns
           });
-          
+
           // Calculate full Claude Effect
           const claudeResult = await claudeEngine.calculateClaudeEffect(
             basePrediction.confidence,
@@ -281,7 +283,7 @@ export class AutonomousCursorBot {
               emergentPatterns: claudeData.emergent?.patterns,
             }
           );
-          
+
           const botPrediction: BotPrediction = {
             id: `pred_${Date.now()}_${game.id}`,
             gameId: game.id,
@@ -331,16 +333,16 @@ export class AutonomousCursorBot {
         for (const completed of completedGames) {
           const game = allGames.find(g => g.id === completed.gameId);
           const prediction = predictions.find(p => p.gameId === completed.gameId);
-          
+
           if (game && completed.actualWinner) {
             // Standard learning from cursor effect
             await cursorLearn(game, completed.actualWinner);
-            
+
             // Enhanced learning from Claude Effect dimensions
             if (prediction?.claudeEffect) {
               await this.learnFromClaudeEffect(prediction, completed.actualWinner);
             }
-            
+
             this.state.totalGamesLearned++;
           }
         }
@@ -435,11 +437,11 @@ export class AutonomousCursorBot {
   private async runBotAcademyTraining(): Promise<void> {
     try {
       console.log('[Bot Academy] Starting weekly training curriculum...');
-      
+
       // Get curriculum tasks
       const curriculum = FISHY_TRAINING_CURRICULUM;
       const pendingTasks = curriculum.filter(t => t.status === 'pending' || t.status === 'in_progress');
-      
+
       if (pendingTasks.length === 0) {
         // Reset all tasks to pending for next cycle
         curriculum.forEach(task => {
@@ -531,7 +533,7 @@ export class AutonomousCursorBot {
       // Generate predictions for test set (simulated)
       // In production, would load actual test data
       const testPredictions: Array<{ id: string | number; prediction: number | string; confidence?: number }> = [];
-      
+
       // Simulate predictions (in real implementation, would use actual test data)
       for (let i = 1; i <= 100; i++) {
         const testRow = {
@@ -603,52 +605,52 @@ export class AutonomousCursorBot {
   ): Promise<void> {
     const wasCorrect = prediction.predictedWinner === actualWinner;
     const learningRate = 0.02; // Smaller learning rate for Claude Effect dimensions
-    
+
     // Get current state
     const stats = getCursorStats();
-    
+
     // Learn from each Claude Effect dimension
     if (prediction.claudeEffect?.scores) {
       const scores = prediction.claudeEffect.scores;
-      
+
       // Track which dimensions helped/hurt
       const dimensionPerformance: Record<string, number> = {};
-      
+
       // Sentiment Field (SF) - if it helped, increase its weight
       if (Math.abs(scores.SF || scores.sentimentField || 0) > 0.05) {
         const sfImpact = scores.SF || scores.sentimentField || 0;
         dimensionPerformance.SF = wasCorrect ? sfImpact : -sfImpact;
       }
-      
+
       // Narrative Momentum (NM)
       if (Math.abs(scores.NM || scores.narrativeMomentum || 0) > 0.05) {
         const nmImpact = scores.NM || scores.narrativeMomentum || 0;
         dimensionPerformance.NM = wasCorrect ? nmImpact : -nmImpact;
       }
-      
+
       // Information Asymmetry (IAI) - most important!
       if (Math.abs(scores.IAI || scores.informationAsymmetry || 0) > 0.03) {
         const iaiImpact = scores.IAI || scores.informationAsymmetry || 0;
         dimensionPerformance.IAI = wasCorrect ? iaiImpact * 1.5 : -iaiImpact * 1.5; // 1.5x weight
       }
-      
+
       // Chaos Sensitivity (CSI) - reduces confidence when high
       if ((scores.CSI || scores.chaosSensitivity || 0) > 0.3) {
         dimensionPerformance.CSI = wasCorrect ? -0.1 : 0.1; // High chaos = less confident
       }
-      
+
       // Network Influence (NIG)
       if (Math.abs(scores.NIG || scores.networkInfluence || 0) > 0.05) {
         const nigImpact = scores.NIG || scores.networkInfluence || 0;
         dimensionPerformance.NIG = wasCorrect ? nigImpact : -nigImpact;
       }
-      
+
       // Emergent Patterns (EPD) - ML patterns
       if (Math.abs(scores.EPD || scores.emergentPattern || 0) > 0.05) {
         const epdImpact = scores.EPD || scores.emergentPattern || 0;
         dimensionPerformance.EPD = wasCorrect ? epdImpact * 1.3 : -epdImpact * 1.3; // 1.3x weight
       }
-      
+
       // Store dimension performance for code generation
       // This will influence future code versions
       if (typeof window === 'undefined' && typeof process !== 'undefined') {
@@ -736,7 +738,7 @@ export class AutonomousCursorBot {
 
 /**
  * Code Generator - Creates and evolves prediction code
- * 
+ *
  * Generates code that implements all 7 Claude Effect dimensions
  * Code evolves based on learned performance and Claude Effect insights
  */
@@ -746,7 +748,7 @@ class CodeGenerator {
     // - Every 10 cycles (regular evolution)
     // - If accuracy drops significantly (need to adapt)
     // - If new Claude Effect patterns discovered
-    const shouldGenerate = 
+    const shouldGenerate =
       botState.totalCycles % 10 === 0 ||
       (botState.currentAccuracy < botState.bestAccuracy * 0.9 && botState.totalCycles > 5) ||
       (botState.totalCycles > 0 && botState.totalCycles % 5 === 0); // More frequent evolution
@@ -757,7 +759,7 @@ class CodeGenerator {
 
     // Generate new code version
     const version = `v1.${botState.totalCycles}.${Date.now() % 1000}`;
-    
+
     // Code template that evolves based on learned weights and Claude Effect
     const stats = getCursorStats();
     const code = `
@@ -772,9 +774,9 @@ import { gatherClaudeEffectData } from './claude-effect-integration';
 export async function autonomousPredict(game, weights, claudeEngine) {
   // 1. Extract base features
   const features = extractFeatures(game);
-  
+
   // 2. Calculate base score
-  const baseScore = 
+  const baseScore =
     features.moneylineEdge * weights.moneylineEdge +
     features.spreadTilt * weights.spreadTilt +
     features.weather * weights.weather +
@@ -782,10 +784,10 @@ export async function autonomousPredict(game, weights, claudeEngine) {
     features.turnovers * weights.turnovers +
     features.pace * weights.pace +
     features.homeField * weights.homeField;
-  
+
   const baseProb = Math.max(0.05, Math.min(0.95, 0.5 + baseScore));
   const baseConf = baseProb;
-  
+
   // 3. Gather Claude Effect data (all 7 phases)
   const claudeData = await gatherClaudeEffectData(game, {
     includePhase1: true,  // Sentiment Field (SF)
@@ -796,7 +798,7 @@ export async function autonomousPredict(game, weights, claudeEngine) {
     includePhase6: true,  // Temporal Decay (TRD)
     includePhase7: true,  // Emergent Patterns (EPD)
   });
-  
+
   // 4. Calculate Claude Effect
   const claudeResult = await claudeEngine.calculateClaudeEffect(
     baseProb,
@@ -812,7 +814,7 @@ export async function autonomousPredict(game, weights, claudeEngine) {
       emergentPatterns: claudeData.emergent?.patterns,
     }
   );
-  
+
   // 5. Return final prediction with Claude Effect applied
   return {
     probability: claudeResult.adjustedProbability,
@@ -901,7 +903,7 @@ class PredictionStore {
 
   async getRecentPredictions(limit: number): Promise<BotPrediction[]> {
     const all = Array.from(this.predictions.values());
-      return all
+    return all
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, limit);
   }

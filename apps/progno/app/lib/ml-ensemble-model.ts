@@ -3,8 +3,9 @@
  * Weighted ensemble combining all prediction factors
  */
 
-import { MonteCarloEngine } from '../monte-carlo-engine';
-import { PredictionEngine } from '../prediction-engine';
+// Type stubs — modules don't exist yet
+type MonteCarloEngine = any;
+type PredictionEngine = any;
 
 export interface ModelPrediction {
   factorName: string;
@@ -70,7 +71,7 @@ export class MLEnsembleModel {
       const weatherWeight = this.getFactorWeight('weather');
       const baseProb = factors.monteCarlo?.homeWinProb || 0.5;
       const adjustment = factors.weather.homeAdvantageAdjustment / 100;
-      
+
       predictions.push({
         factorName: 'Weather',
         homeWinProb: Math.max(0.1, Math.min(0.9, baseProb + adjustment)),
@@ -86,7 +87,7 @@ export class MLEnsembleModel {
       const altitudeWeight = this.getFactorWeight('altitude');
       const baseProb = factors.monteCarlo?.homeWinProb || 0.5;
       const boost = factors.altitude.homeAdvantageBoost / 100;
-      
+
       predictions.push({
         factorName: 'Altitude',
         homeWinProb: Math.max(0.1, Math.min(0.9, baseProb + boost)),
@@ -102,7 +103,7 @@ export class MLEnsembleModel {
       const injuryWeight = this.getFactorWeight('injury');
       const baseProb = factors.monteCarlo?.homeWinProb || 0.5;
       const netImpact = (factors.injury.awayTeamAdjustment - factors.injury.homeTeamAdjustment) / 100;
-      
+
       predictions.push({
         factorName: 'Injuries',
         homeWinProb: Math.max(0.1, Math.min(0.9, baseProb + netImpact)),
@@ -118,7 +119,7 @@ export class MLEnsembleModel {
       const splitsWeight = this.getFactorWeight('splits');
       const isFadingHome = factors.splits.recommendation.includes('fade');
       const fadeAdjustment = factors.splits.fadeConfidence > 70 ? 0.05 : 0.03;
-      
+
       predictions.push({
         factorName: 'Betting Splits',
         homeWinProb: isFadingHome ? 0.5 - fadeAdjustment : 0.5 + fadeAdjustment,
@@ -133,7 +134,7 @@ export class MLEnsembleModel {
     if (factors.sentiment && Math.abs(factors.sentiment.sentimentScore) > 0.3) {
       const sentimentWeight = this.getFactorWeight('sentiment');
       const sentimentAdjustment = factors.sentiment.sentimentScore * 0.05;
-      
+
       predictions.push({
         factorName: 'Sentiment',
         homeWinProb: Math.max(0.1, Math.min(0.9, 0.5 + sentimentAdjustment)),
@@ -148,7 +149,7 @@ export class MLEnsembleModel {
     if (factors.claude) {
       const claudeWeight = this.getFactorWeight('claude');
       const claudeProb = (factors.claude.score + 1) / 2; // Convert -1 to 1 range to 0 to 1
-      
+
       predictions.push({
         factorName: 'Claude AI',
         homeWinProb: claudeProb,
@@ -212,7 +213,7 @@ export class MLEnsembleModel {
       (sum, p) => sum + p.confidence * p.normalizedWeight,
       0
     );
-    
+
     // Reduce confidence if models disagree significantly
     if (disagreement > 0.15) {
       confidence *= 0.8;
@@ -249,17 +250,17 @@ export class MLEnsembleModel {
   updateWeights(performance: Record<string, { wins: number; total: number }>): void {
     for (const [factor, stats] of Object.entries(performance)) {
       const winRate = stats.total > 0 ? stats.wins / stats.total : 0.5;
-      
+
       // Boost weight for winning factors, reduce for losing
       const currentWeight = this.factorWeights.get(factor) || 1.0;
       let newWeight = currentWeight;
-      
+
       if (winRate > 0.55) {
         newWeight = Math.min(2.0, currentWeight * 1.1);
       } else if (winRate < 0.48) {
         newWeight = Math.max(0.5, currentWeight * 0.9);
       }
-      
+
       this.factorWeights.set(factor, newWeight);
       this.historicalPerformance.set(factor, stats);
     }

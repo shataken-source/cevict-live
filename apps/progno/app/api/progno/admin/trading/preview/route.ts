@@ -97,7 +97,7 @@ const ABBREV_MAP: Record<string, string[]> = {
   NYK: ['knicks', 'new york k'], HOU: ['houston', 'rockets', 'astros'],
   DET: ['detroit', 'pistons', 'tigers', 'red wings'], CHI: ['chicago', 'bulls', 'cubs', 'blackhawks'],
   SAS: ['san antonio', 'spurs'], SAC: ['sacramento', 'kings'],
-  MEM: ['memphis', 'grizzlies'], UTA: ['utah', 'jazz'],
+  MEM: ['memphis', 'grizzlies'], UTA: ['utah', 'jazz', 'mammoth', 'hockey club'],
   MIL: ['milwaukee', 'bucks', 'brewers'], ATL: ['atlanta', 'hawks', 'braves'],
   PHI: ['philadelphia', '76ers', 'sixers', 'phillies', 'flyers'],
   NOP: ['new orleans', 'pelicans'], MIA: ['miami', 'heat', 'marlins'],
@@ -304,7 +304,7 @@ async function fetchSportsMarkets(apiKeyId: string, privateKey: string): Promise
 // ── Handler ───────────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   let body: any = {}
-  try { body = await request.json() } catch {}
+  try { body = await request.json() } catch { }
   if (!isAuthorized(request, body?.secret)) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
   }
@@ -339,7 +339,9 @@ export async function POST(request: NextRequest) {
     const previewPicks = picks.map(pick => {
       const market = matchPickToMarket(pick, openMarkets)
       const side = market ? determineSide(pick, market) : null
-      const price = market ? (side === 'yes' ? (market.yes_ask || 50) : (market.no_ask || 50)) : null
+      const rawPrice = market ? (side === 'yes' ? market.yes_ask : market.no_ask) : null
+      const price = rawPrice != null ? Math.round(Number(rawPrice) || 0) : null
+      const priceValid = price != null && price >= 1 && price <= 99
       const contracts = price ? Math.max(1, Math.floor(defaultStake / Math.max(1, price))) : null
 
       return {
@@ -360,8 +362,9 @@ export async function POST(request: NextRequest) {
         market_title: market?.title || null,
         side,
         price,
-        contracts,
-        estimated_cost_cents: price && contracts ? price * contracts : null,
+        price_valid: priceValid,
+        contracts: priceValid ? contracts : null,
+        estimated_cost_cents: priceValid && price && contracts ? price * contracts : null,
         // Default stake for UI
         default_stake_cents: defaultStake,
       }

@@ -109,7 +109,7 @@ export class ModelPerformanceDashboard {
    */
   async optimizeFactorWeights(): Promise<Record<string, number>> {
     const performance = await this.getFactorPerformance(90);
-    
+
     // Calculate weights based on win rates
     const weights: Record<string, number> = {};
     let totalWinRate = 0;
@@ -143,13 +143,13 @@ export class ModelPerformanceDashboard {
       return { totalPicks: 0, winRate: 0, roi: 0, profit: 0 };
     }
 
-    const wins = data.filter(d => d.result === 'win').length;
-    const losses = data.filter(d => d.result === 'loss').length;
+    const wins = (data as any[]).filter((d: any) => d.result === 'win').length;
+    const losses = (data as any[]).filter((d: any) => d.result === 'loss').length;
     const total = wins + losses;
 
     // Calculate profit/ROI
     let profit = 0;
-    for (const pick of data) {
+    for (const pick of data as any[]) {
       if (pick.result === 'win') {
         const odds = pick.odds || -110;
         profit += odds > 0 ? odds / 100 : 100 / Math.abs(odds);
@@ -187,7 +187,7 @@ export class ModelPerformanceDashboard {
       recent30Days: { total: number; wins: number };
     }> = {};
 
-    for (const row of data) {
+    for (const row of data as any[]) {
       const factors = row.factors || [];
       const isWin = row.result === 'win';
       const isRecent = new Date(row.created_at) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -211,8 +211,8 @@ export class ModelPerformanceDashboard {
     // Calculate performance metrics
     return Object.entries(factorStats).map(([name, stats]) => {
       const winRate = stats.total > 0 ? (stats.wins / stats.total) * 100 : 0;
-      const recentWinRate = stats.recent30Days.total > 0 
-        ? (stats.recent30Days.wins / stats.recent30Days.total) * 100 
+      const recentWinRate = stats.recent30Days.total > 0
+        ? (stats.recent30Days.wins / stats.recent30Days.total) * 100
         : winRate;
 
       let impact: FactorPerformance['impact'] = 'low';
@@ -256,7 +256,7 @@ export class ModelPerformanceDashboard {
       factorCounts: Record<string, number>;
     }> = {};
 
-    for (const row of data) {
+    for (const row of data as any[]) {
       const sport = row.sport?.toLowerCase() || 'unknown';
       if (!sportStats[sport]) {
         sportStats[sport] = { total: 0, wins: 0, factorCounts: {} };
@@ -274,7 +274,7 @@ export class ModelPerformanceDashboard {
 
     return Object.entries(sportStats).map(([sport, stats]) => {
       const winRate = stats.total > 0 ? (stats.wins / stats.total) * 100 : 0;
-      
+
       // Find best/worst factors for this sport
       const sortedFactors = Object.entries(stats.factorCounts)
         .sort((a, b) => b[1] - a[1]);
@@ -312,8 +312,8 @@ export class ModelPerformanceDashboard {
         .not('result', 'is', null);
 
       if (data) {
-        const wins = data.filter(d => d.result === 'win').length;
-        const total = data.filter(d => d.result !== 'push').length;
+        const wins = (data as any[]).filter((d: any) => d.result === 'win').length;
+        const total = (data as any[]).filter((d: any) => d.result !== 'push').length;
         results[period as keyof typeof results] = {
           winRate: total > 0 ? Math.round((wins / total) * 1000) / 10 : 0,
           picks: total,
@@ -388,7 +388,7 @@ export class ModelPerformanceDashboard {
     significance: 'high' | 'medium' | 'low';
   } | null> {
     const allFactors = await this.getFactorPerformance(days);
-    
+
     const perfA = allFactors.find(f => f.factorName === factorA);
     const perfB = allFactors.find(f => f.factorName === factorB);
 
@@ -396,7 +396,7 @@ export class ModelPerformanceDashboard {
 
     const winner = perfA.winRate > perfB.winRate ? factorA : factorB;
     const minSample = Math.min(perfA.totalPredictions, perfB.totalPredictions);
-    
+
     let significance: 'high' | 'medium' | 'low' = 'low';
     if (minSample >= 50) significance = 'high';
     else if (minSample >= 20) significance = 'medium';

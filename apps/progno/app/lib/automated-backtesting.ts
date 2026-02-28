@@ -4,7 +4,8 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { PredictionEngine } from '../prediction-engine';
+// PredictionEngine type stub — module doesn't exist yet
+type PredictionEngine = any;
 
 export interface BacktestConfig {
   featureName: string;
@@ -56,17 +57,17 @@ export class AutomatedBacktestingService {
 
     // Fetch historical predictions with this feature
     const historicalData = await this.fetchHistoricalData(config);
-    
+
     if (historicalData.length === 0) {
       throw new Error('No historical data found for backtest criteria');
     }
 
     // Run simulation
     const results = await this.simulatePredictions(historicalData, config);
-    
+
     // Get baseline for comparison
     const baseline = await this.getBaselineResults(config);
-    
+
     // Calculate statistical significance
     const significance = this.calculateSignificance(results, baseline);
 
@@ -103,7 +104,7 @@ export class AutomatedBacktestingService {
 
     const winner = resultA.winRate > resultB.winRate ? featureA : featureB;
     const winMargin = Math.abs(resultA.winRate - resultB.winRate);
-    
+
     return {
       featureA: resultA,
       featureB: resultB,
@@ -134,15 +135,15 @@ export class AutomatedBacktestingService {
     };
 
     const results = await this.runBacktest(config);
-    
-    const approved = 
+
+    const approved =
       results.vsBaseline.improvement >= requiredImprovement &&
       results.vsBaseline.statisticallySignificant &&
       results.totalGames >= 50 &&
       results.winRate >= 53;
 
     const reasons: string[] = [];
-    
+
     if (results.vsBaseline.improvement < requiredImprovement) {
       reasons.push(`Improvement (${results.vsBaseline.improvement.toFixed(1)}%) below threshold (${requiredImprovement}%)`);
     }
@@ -198,7 +199,7 @@ export class AutomatedBacktestingService {
         };
 
         const results = await this.runBacktest(config);
-        
+
         let status: 'improving' | 'stable' | 'declining' = 'stable';
         if (results.vsBaseline.improvement > 3) status = 'improving';
         else if (results.vsBaseline.improvement < -2) status = 'declining';
@@ -233,9 +234,9 @@ export class AutomatedBacktestingService {
       .not('result', 'is', null);
 
     if (error) throw error;
-    
+
     // Filter for predictions that used this feature
-    return (data || []).filter(pred => 
+    return ((data || []) as any[]).filter((pred: any) =>
       pred.factors?.includes(config.featureName)
     );
   }
@@ -291,11 +292,11 @@ export class AutomatedBacktestingService {
       return { winRate: 52.4, roi: 0 }; // Break-even baseline
     }
 
-    const wins = data.filter(d => d.result === 'win').length;
-    const total = data.filter(d => d.result !== 'push').length;
+    const wins = (data as any[]).filter((d: any) => d.result === 'win').length;
+    const total = (data as any[]).filter((d: any) => d.result !== 'push').length;
 
     let profit = 0;
-    for (const pred of data) {
+    for (const pred of data as any[]) {
       if (pred.result === 'win') {
         const odds = pred.odds || -110;
         profit += odds > 0 ? odds / 100 : 100 / Math.abs(odds);
@@ -314,7 +315,7 @@ export class AutomatedBacktestingService {
     // Simplified statistical significance check
     const sampleSize = results.totalGames;
     const improvement = results.vsBaseline?.improvement || (results.winRate - baseline.winRate);
-    
+
     // Need at least 30 samples and 2% improvement for significance
     return sampleSize >= 30 && improvement >= 2;
   }
@@ -326,11 +327,11 @@ export class AutomatedBacktestingService {
     const highConf = data.filter(d => d.confidence >= 75);
     const lowConf = data.filter(d => d.confidence < 75);
 
-    const highWinRate = highConf.length > 0 
-      ? (highConf.filter(d => d.result === 'win').length / highConf.filter(d => d.result !== 'push').length) * 100 
+    const highWinRate = highConf.length > 0
+      ? (highConf.filter(d => d.result === 'win').length / highConf.filter(d => d.result !== 'push').length) * 100
       : 0;
-    const lowWinRate = lowConf.length > 0 
-      ? (lowConf.filter(d => d.result === 'win').length / lowConf.filter(d => d.result !== 'push').length) * 100 
+    const lowWinRate = lowConf.length > 0
+      ? (lowConf.filter(d => d.result === 'win').length / lowConf.filter(d => d.result !== 'push').length) * 100
       : 0;
 
     return Math.round((highWinRate - lowWinRate) * 10) / 10;

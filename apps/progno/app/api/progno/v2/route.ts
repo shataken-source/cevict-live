@@ -115,10 +115,6 @@ export async function GET(request: Request) {
 
   try {
     if (action === 'games') {
-      if (!apiKey) {
-        return NextResponse.json({ success: true, data: [] })
-      }
-
       // Check cache first
       const ck = `games_${sport}`
       const hit = v2Cache.get(ck)
@@ -127,40 +123,61 @@ export async function GET(request: Request) {
         return NextResponse.json({ success: true, data: hit.data })
       }
 
-      const remote = `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
-      const res = await throttledFetch('the-odds-api', remote, { cache: 'no-store' })
-      if (!res.ok) {
-        // Return stale cache if available rather than error
+      // Try Odds API first (has full odds data)
+      if (apiKey) {
+        const remote = `https://api.the-odds-api.com/v4/sports/${oddsKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
+        const res = await throttledFetch('the-odds-api', remote, { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          const out = (Array.isArray(data) ? data : []).map((g: any) => {
+            const h2h = g.bookmakers?.flatMap((b: any) => (b.markets || [])).find((m: any) => m?.key === 'h2h')
+            const spreads = g.bookmakers?.flatMap((b: any) => (b.markets || [])).find((m: any) => m?.key === 'spreads')
+            const totals = g.bookmakers?.flatMap((b: any) => (b.markets || [])).find((m: any) => m?.key === 'totals')
+            const ml: Record<string, number | undefined> = {}
+            if (h2h?.outcomes) {
+              for (const o of h2h.outcomes) ml[o.name] = o.price
+            }
+            const spreadHome = spreads?.outcomes?.find((o: any) => o.name === g.home_team)?.point
+            const totalLine = totals?.outcomes?.[0]?.point
+            return {
+              id: g.id || toId(g.home_team, g.away_team, g.commence_time),
+              homeTeam: g.home_team,
+              awayTeam: g.away_team,
+              startTime: g.commence_time,
+              venue: g.venue || '',
+              odds: {
+                moneyline: { home: ml[g.home_team] ?? null, away: ml[g.away_team] ?? null },
+                spread: { home: spreadHome ?? null },
+                total: { line: totalLine ?? null },
+              },
+            }
+          })
+          v2Cache.set(ck, { data: out, ts: Date.now() })
+          return NextResponse.json({ success: true, data: out })
+        }
+        console.warn(`[v2] Odds API failed (${res.status}) for ${sport}, falling back to ESPN`)
+        // Return stale cache if available
         if (hit) return NextResponse.json({ success: true, data: hit.data })
-        return NextResponse.json({ success: false, error: `Odds API ${res.status}` }, { status: 502 })
       }
-      const data = await res.json()
-      const out = (Array.isArray(data) ? data : []).map((g: any) => {
-        const h2h = g.bookmakers?.flatMap((b: any) => (b.markets || [])).find((m: any) => m?.key === 'h2h')
-        const spreads = g.bookmakers?.flatMap((b: any) => (b.markets || [])).find((m: any) => m?.key === 'spreads')
-        const totals = g.bookmakers?.flatMap((b: any) => (b.markets || [])).find((m: any) => m?.key === 'totals')
-        const ml: Record<string, number | undefined> = {}
-        if (h2h?.outcomes) {
-          for (const o of h2h.outcomes) ml[o.name] = o.price
-        }
-        const spreadHome = spreads?.outcomes?.find((o: any) => o.name === g.home_team)?.point
-        const totalLine = totals?.outcomes?.[0]?.point
-        return {
-          id: g.id || toId(g.home_team, g.away_team, g.commence_time),
-          homeTeam: g.home_team,
-          awayTeam: g.away_team,
+
+      // Fallback: ESPN scoreboard (free, no key needed — games without odds)
+      const espnGames = await fetchEspnScores(sport)
+      if (espnGames && espnGames.length > 0) {
+        const out = espnGames.map((g: any) => ({
+          id: g.id,
+          homeTeam: g.home,
+          awayTeam: g.away,
           startTime: g.commence_time,
-          venue: g.venue || '',
-          odds: {
-            moneyline: { home: ml[g.home_team] ?? null, away: ml[g.away_team] ?? null },
-            spread: { home: spreadHome ?? null },
-            total: { line: totalLine ?? null },
-          },
-        }
-      })
-      // Store in cache
-      v2Cache.set(ck, { data: out, ts: Date.now() })
-      return NextResponse.json({ success: true, data: out })
+          venue: '',
+          odds: { moneyline: { home: null, away: null }, spread: { home: null }, total: { line: null } },
+          source: 'espn',
+        }))
+        // Cache ESPN fallback with shorter TTL (2 min)
+        v2Cache.set(ck, { data: out, ts: Date.now() - (V2_CACHE_TTL - 2 * 60 * 1000) })
+        return NextResponse.json({ success: true, data: out, source: 'espn' })
+      }
+
+      return NextResponse.json({ success: true, data: [] })
     }
 
     if (action === 'live-scores') {
@@ -239,18 +256,23 @@ export async function GET(request: Request) {
           if (o.name === game.awayTeam) awayOdds = Number(o.price)
         }
       }
-      const homeProb = americanToImplied(homeOdds)
-      const awayProb = americanToImplied(awayOdds)
-      const winner = (homeProb ?? 0) >= (awayProb ?? 0) ? game.homeTeam : game.awayTeam
-      const confidence = Math.max(homeProb ?? 0, awayProb ?? 0)
+      const rawHome = americanToImplied(homeOdds)
+      const rawAway = americanToImplied(awayOdds)
+      // Remove vig: normalize so probabilities sum to 100%
+      const vigTotal = (rawHome ?? 0) + (rawAway ?? 0)
+      const homeProb = vigTotal > 0 ? (rawHome ?? 0) / vigTotal : 0.5
+      const awayProb = vigTotal > 0 ? (rawAway ?? 0) / vigTotal : 0.5
+      const winner = homeProb >= awayProb ? game.homeTeam : game.awayTeam
+      const confidence = Math.max(homeProb, awayProb)
 
       const result = {
         winner,
         confidence,
         score: { home: null, away: null },
         keyFactors: [
-          `Moneyline edge: ${winner === game.homeTeam ? (homeOdds ?? 'n/a') : (awayOdds ?? 'n/a')}`,
-          `Implied probability ${(confidence * 100).toFixed(1)}%`,
+          `Moneyline: ${game.homeTeam} ${homeOdds ?? 'n/a'} / ${game.awayTeam} ${awayOdds ?? 'n/a'}`,
+          `Fair probability: ${(confidence * 100).toFixed(1)}% (vig removed)`,
+          `Home: ${(homeProb * 100).toFixed(1)}% · Away: ${(awayProb * 100).toFixed(1)}%`,
         ],
       }
       return NextResponse.json({ success: true, data: result })

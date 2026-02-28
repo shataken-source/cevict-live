@@ -62,7 +62,7 @@ export default function LiveDashboard() {
     for (let i = 0; i < total; i++) {
       const game = games[i];
       try {
-        const res = await fetch(`/api/progno/v2?action=prediction&gameId=${game.id}`);
+        const res = await fetch(`/api/progno/v2?action=prediction&gameId=${game.id}&sport=${sport}`);
         const data = await res.json();
         if (data.success) {
           setPredictions(prev => ({ ...prev, [game.id]: data.data }));
@@ -73,6 +73,7 @@ export default function LiveDashboard() {
       } catch {
         failed++;
       }
+      setPredictingProgress(done + failed);
       // Allow UI to update progress (batch state updates)
       if (i < total - 1) await new Promise(r => setTimeout(r, 0));
     }
@@ -171,7 +172,7 @@ export default function LiveDashboard() {
               {game.prediction ? (
                 <div style={{ marginTop: '12px', padding: '10px', background: '#e6f3ff', borderRadius: '6px' }}>
                   <strong>Prediction:</strong> {game.prediction.winner} wins<br />
-                  Confidence: {((game.prediction.confidence ?? 0) * 100).toFixed(1)}%<br />
+                  Confidence: {(game.prediction.confidence ?? 0).toFixed(1)}%<br />
                   Projected: {game.prediction.score?.home ?? '?'} - {game.prediction.score?.away ?? '?'}
                   {game.prediction.keyFactors && (
                     <div style={{ marginTop: '8px' }}>

@@ -109,7 +109,7 @@ export class OddsCacheService {
       return true; // No odds exist, consider stale
     }
 
-    const lastFetch = new Date(data[0].fetched_at);
+    const lastFetch = new Date((data as any[])[0].fetched_at);
     const now = new Date();
     const hoursDiff = (now.getTime() - lastFetch.getTime()) / (1000 * 60 * 60);
 
@@ -151,7 +151,7 @@ export class OddsCacheService {
 
       if (isStale) {
         console.log(`[OddsCache] ${sport.alias} is stale, syncing...`);
-        await this.syncOddsForSport(sport.alias);
+        await this.syncOddsForSport(sport.alias, new Date().toISOString().split('T')[0]);
         synced.push(sport.alias);
       } else {
         skipped.push(sport.alias);
@@ -195,15 +195,15 @@ export class OddsCacheService {
           const record = this.convertGameToRecord(game, sport, date);
 
           // Try to insert, if duplicate then update
-          const { error: insertError } = await getSupabase()
-            .from('odds_cache')
+          const { error: insertError } = await (getSupabase()
+            .from('odds_cache') as any)
             .insert(record);
 
           if (insertError) {
             if (insertError.code === '23505') { // Duplicate key
               // Update existing
-              const { error: updateError } = await getSupabase()
-                .from('odds_cache')
+              const { error: updateError } = await (getSupabase()
+                .from('odds_cache') as any)
                 .update({
                   ...record,
                   updated_at: new Date().toISOString(),
@@ -313,15 +313,15 @@ export class OddsCacheService {
         const record = this.convertGameToRecord(game, sport, date);
 
         // Try to insert, if duplicate then update
-        const { error: insertError } = await getSupabase()
-          .from('odds_cache')
+        const { error: insertError } = await (getSupabase()
+          .from('odds_cache') as any)
           .insert(record);
 
         if (insertError) {
           if (insertError.code === '23505') { // Duplicate key
             // Update existing
-            const { error: updateError } = await getSupabase()
-              .from('odds_cache')
+            const { error: updateError } = await (getSupabase()
+              .from('odds_cache') as any)
               .update({
                 ...record,
                 updated_at: new Date().toISOString(),
@@ -435,8 +435,8 @@ export class OddsCacheService {
 
     return {
       totalGames: count?.length || 0,
-      oldestOdds: dates?.[0]?.game_date || null,
-      newestOdds: newest?.[0]?.game_date || null,
+      oldestOdds: (dates as any)?.[0]?.game_date || null,
+      newestOdds: (newest as any)?.[0]?.game_date || null,
       sports: bySport || [],
     };
   }

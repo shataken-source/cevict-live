@@ -79,7 +79,33 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Calculate overall stats
+    // Also fetch actual_bets for real trading ROI
+    let tradingStats: any = null;
+    try {
+      const { data: bets, error: betsErr } = await client
+        .from('actual_bets')
+        .select('result, profit_cents, stake_cents, status');
+      if (!betsErr && bets && bets.length > 0) {
+        const settled = bets.filter(b => b.result === 'win' || b.result === 'loss');
+        const bWins = settled.filter(b => b.result === 'win').length;
+        const bLosses = settled.filter(b => b.result === 'loss').length;
+        const bPending = bets.filter(b => !b.result && b.status !== 'cancelled' && b.status !== 'error').length;
+        const bTotalStake = bets.reduce((s, b) => s + (b.stake_cents || 0), 0);
+        const bTotalProfit = settled.reduce((s, b) => s + (b.profit_cents || 0), 0);
+        tradingStats = {
+          total: bets.length,
+          wins: bWins,
+          losses: bLosses,
+          pending: bPending,
+          totalStakeCents: bTotalStake,
+          totalProfitCents: bTotalProfit,
+          winRate: (bWins + bLosses) > 0 ? Math.round((bWins / (bWins + bLosses)) * 1000) / 10 : 0,
+          roi: bTotalStake > 0 ? Math.round((bTotalProfit / bTotalStake) * 10000) / 100 : 0,
+        };
+      }
+    } catch { /* actual_bets table may not exist yet */ }
+
+    // Calculate overall stats from progno_predictions (model performance)
     const total = predictions.length;
     const completed = predictions.filter(p => p.status !== 'pending' && p.status !== 'cancelled').length;
     const correct = predictions.filter(p => p.is_correct === true).length;
@@ -98,7 +124,8 @@ export async function GET(request: NextRequest) {
     const completedWithProfit = predictions.filter(p => p.profit !== null);
     const totalProfit = completedWithProfit.reduce((sum, p) => sum + (p.profit || 0), 0);
     const totalStaked = completedWithProfit.reduce((sum, p) => sum + (p.stake || 0), 0);
-    const roi = totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0;
+    // Use actual_bets ROI if available, otherwise fall back to progno_predictions
+    const roi = tradingStats ? tradingStats.roi : (totalStaked > 0 ? (totalProfit / totalStaked) * 100 : 0);
 
     // Stats by type
     const byType: Record<string, any> = {};
@@ -150,6 +177,7 @@ export async function GET(request: NextRequest) {
       },
       by_type: byType,
       by_category: byCategory,
+      trading: tradingStats,
     });
   } catch (error: any) {
     console.error('[PROGNO DB] Stats error:', error);

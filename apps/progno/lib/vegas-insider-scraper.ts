@@ -3,6 +3,7 @@
  * Scrapes real odds from vegasinsider.com for all sports
  */
 
+// @ts-ignore - cheerio may not have type declarations installed
 import * as cheerio from 'cheerio';
 
 interface ScrapedOdds {
@@ -41,7 +42,7 @@ export async function scrapeVegasInsiderOdds(sport: string): Promise<ScrapedOdds
 
   try {
     console.log(`[VegasInsider] Scraping ${sport} odds from ${url}`);
-    
+
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -58,10 +59,10 @@ export async function scrapeVegasInsiderOdds(sport: string): Promise<ScrapedOdds
 
     const html = await response.text();
     const games = parseVegasInsiderHtml(html, sport);
-    
+
     console.log(`[VegasInsider] Scraped ${games.length} ${sport} games`);
     return games;
-    
+
   } catch (error) {
     console.error(`[VegasInsider] Failed to scrape ${sport}:`, error);
     return [];
@@ -85,7 +86,7 @@ export async function getDaytona500Odds(): Promise<ScrapedOdds[]> {
   try {
     const url = 'https://www.vegasinsider.com/auto-racing/odds/futures/';
     console.log(`[VegasInsider] Fetching Daytona 500 odds from ${url}`);
-    
+
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -98,15 +99,15 @@ export async function getDaytona500Odds(): Promise<ScrapedOdds[]> {
     }
 
     const html = await response.text();
-    
+
     // Parse the Daytona 500 odds from the HTML
     // Looking for patterns like "[+25000]" with driver names
     const driverOdds: ScrapedOdds[] = [];
-    
+
     // Extract driver names and odds from the page
     const oddsRegex = /\+?(\d{3,5})/g;
     const lines = html.split('\n');
-    
+
     // Daytona 500 is typically the first odds table
     // Drivers like: Christopher Bell, Kyle Larson, etc.
     const daytonaDrivers = [
@@ -114,7 +115,7 @@ export async function getDaytona500Odds(): Promise<ScrapedOdds[]> {
       'Denny Hamlin', 'Joey Logano', 'Tyler Reddick', 'Chase Elliott',
       'Chase Briscoe', 'Kyle Busch', 'Ty Gibbs', 'Ross Chastain'
     ];
-    
+
     // For Daytona 500, create a single "game" with all drivers as participants
     const daytonaGame: ScrapedOdds = {
       id: `daytona-500-${new Date().getFullYear()}`,
@@ -129,11 +130,11 @@ export async function getDaytona500Odds(): Promise<ScrapedOdds[]> {
         total: { line: null }
       }
     };
-    
+
     // Since NASCAR is futures/outrights, not traditional matchups
     // We'll return the championship odds we already have
     return [daytonaGame];
-    
+
   } catch (error) {
     console.error('[VegasInsider] Failed to fetch Daytona 500 odds:', error);
     return [];
@@ -149,19 +150,19 @@ export async function getDaytona500Odds(): Promise<ScrapedOdds[]> {
 export async function getAggregatedOdds(sport: string): Promise<ScrapedOdds[]> {
   // First try the main API (already attempted in OddsService)
   // If that failed, try Vegas Insider
-  
+
   if (sport.toLowerCase() === 'nascar') {
     // For NASCAR, use our championship odds scraper
     const nascarOdds = await scrapeNASCARChampionshipOdds();
     return nascarOdds;
   }
-  
+
   // Try Vegas Insider for other sports
   const vegasOdds = await scrapeVegasInsiderOdds(sport);
   if (vegasOdds.length > 0) {
     return vegasOdds;
   }
-  
+
   // Last resort: return empty (caller should handle)
   return [];
 }
@@ -174,10 +175,10 @@ async function scrapeNASCARChampionshipOdds(): Promise<ScrapedOdds[]> {
     // Import and use the existing scraper
     const { scrapeNASCAROdds } = await import('../scripts/scrape-nascar-odds');
     const markets = await scrapeNASCAROdds();
-    
+
     // Convert to ScrapedOdds format
     const games: ScrapedOdds[] = [];
-    
+
     for (const market of markets) {
       // Create a "game" for each driver (futures format)
       for (const driver of market.drivers.slice(0, 10)) { // Top 10 only
@@ -196,7 +197,7 @@ async function scrapeNASCARChampionshipOdds(): Promise<ScrapedOdds[]> {
         });
       }
     }
-    
+
     return games;
   } catch (error) {
     console.error('[VegasInsider] Failed to scrape NASCAR odds:', error);
@@ -204,4 +205,4 @@ async function scrapeNASCARChampionshipOdds(): Promise<ScrapedOdds[]> {
   }
 }
 
-export { ScrapedOdds };
+export type { ScrapedOdds };

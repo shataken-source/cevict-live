@@ -47,10 +47,10 @@ export async function validateBacktestApiKey(
   try {
     const supabase = getSupabase();
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .rpc('validate_backtest_api_key', {
         p_api_key: apiKey
-      });
+      }) as { data: any; error: any };
 
     if (error) {
       console.error('[BacktestAPIKey] Validation error:', error);
@@ -133,7 +133,7 @@ export async function getBacktestKeyDetails(
       .from('backtest_api_keys')
       .select('*')
       .eq('api_key', apiKey)
-      .single();
+      .single() as { data: any; error: any };
 
     if (error || !data) {
       return null;
@@ -230,14 +230,14 @@ export async function createBacktestApiKey(
   try {
     const supabase = getSupabase();
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .rpc('create_backtest_api_key', {
         p_user_email: userEmail,
         p_user_name: userName,
         p_tier: tier,
         p_historical_years: historicalYears,
         p_purchase_reference: purchaseReference
-      });
+      }) as { data: any; error: any };
 
     if (error) {
       console.error('[BacktestAPIKey] Error creating key:', error);
@@ -262,8 +262,8 @@ export async function revokeBacktestApiKey(
   try {
     const supabase = getSupabase();
 
-    const { error } = await supabase
-      .from('backtest_api_keys')
+    const { error } = await (supabase
+      .from('backtest_api_keys') as any)
       .update({
         status: 'revoked',
         notes: reason || 'Revoked by admin'
@@ -294,13 +294,13 @@ export async function listActiveBacktestKeys(): Promise<BacktestApiKeyRecord[]> 
       .from('backtest_api_keys')
       .select('*')
       .eq('status', 'active')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }) as { data: any[]; error: any };
 
     if (error || !data) {
       return [];
     }
 
-    return data.map(record => ({
+    return data.map((record: any) => ({
       id: record.id,
       apiKey: record.api_key,
       userEmail: record.user_email,

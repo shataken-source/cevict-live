@@ -42,11 +42,18 @@ export async function GET(request: NextRequest) {
     // Load picks directly from Supabase (avoids localhost self-fetch / ECONNREFUSED)
     let realPicks = [];
     try {
+      // Use created_at with a 36-hour window (date 00:00 UTC to date+1 12:00 UTC)
+      // to capture all picks generated on `date` regardless of timezone.
+      // game_time in UTC can spill into the next day for evening US games.
+      const windowEnd = new Date(date);
+      windowEnd.setDate(windowEnd.getDate() + 1);
+      const windowEndStr = windowEnd.toISOString().split('T')[0] + 'T12:00:00';
+
       const { data: dbPicks, error: dbErr } = await client
         .from('picks')
         .select('*')
-        .gte('game_time', `${date}T00:00:00`)
-        .lt('game_time', `${date}T23:59:59`)
+        .gte('created_at', `${date}T00:00:00`)
+        .lt('created_at', windowEndStr)
         .order('confidence', { ascending: false })
         .limit(limit);
 
@@ -64,15 +71,17 @@ export async function GET(request: NextRequest) {
           venue: pick.venue,
           prediction: {
             winner: pick.pick || 'Unknown',
-            confidence: (pick.confidence || 0) / 100,
+            confidence: pick.confidence || 0,
             score: pick.mc_predicted_score || { home: 0, away: 0 },
             edge: pick.value_bet_edge || 0,
             keyFactors: pick.analysis ? pick.analysis.split('\n').filter((f: string) => f.trim()) : []
           },
           odds: {
-            moneyline: pick.odds ? { home: pick.odds, away: 0 } : undefined,
-            spread: pick.odds ? { home: pick.odds, away: 0 } : undefined,
-            total: pick.odds ? pick.odds : undefined
+            moneyline: pick.odds
+              ? (typeof pick.odds === 'object' ? pick.odds : { home: pick.odds, away: null })
+              : undefined,
+            spread: pick.home_spread != null ? { home: pick.home_spread, away: pick.away_spread ?? null } : undefined,
+            total: pick.total_line != null ? pick.total_line : undefined,
           },
           isLive: false,
           isCompleted: false

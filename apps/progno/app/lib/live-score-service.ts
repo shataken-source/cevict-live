@@ -180,8 +180,8 @@ export class LiveScoreService {
    * Update game score in Supabase
    */
   private async updateGameInDatabase(game: LiveGameScore): Promise<void> {
-    const { error } = await this.supabase
-      .from('live_games')
+    const { error } = await (this.supabase
+      .from('live_games') as any)
       .upsert({
         game_id: game.gameId,
         sport: game.sport,
@@ -356,7 +356,7 @@ export class LiveScoreService {
 
     if (error || !data) return [];
 
-    return data.map(g => ({
+    return (data as any[]).map((g: any) => ({
       gameId: g.game_id,
       startTime: g.start_time,
       teams: `${g.away_team} @ ${g.home_team}`,

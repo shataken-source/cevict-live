@@ -3,14 +3,16 @@
 import { useCallback, useState, useEffect } from "react";
 import ConfidenceGauge from "../components/ConfidenceGauge";
 import { getTeamsForSport, normalizeTeamName } from "../team-names";
-import { Game, predictGame, GamePrediction } from "../weekly-analyzer";
+import { predictGame } from "../weekly-analyzer";
+type Game = any;
+type GamePrediction = any;
 
 const defaultGame: Game = {
   id: "single",
   homeTeam: "Home",
   awayTeam: "Away",
   sport: "NFL",
-  date: new Date(),
+  date: new Date().toISOString(),
   venue: "TBD",
   odds: { home: -110, away: -110, spread: -1.5, total: 44 },
   homeFieldAdvantage: 0.05
@@ -372,19 +374,19 @@ export default function SingleGamePage() {
               <label className="block text-sm font-medium mb-1">Total (O/U)</label>
               <input className="border rounded px-2 py-1 w-full" type="number" value={game.odds.total ?? 44} onChange={e => updateOdds("total", Number(e.target.value))} placeholder="42.5" />
             </div>
-          <div className="col-span-2 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={fillLinesFromOdds}
-              disabled={fillingLines}
-              className="px-3 py-2 rounded bg-indigo-600 text-white disabled:opacity-60"
-            >
-              {fillingLines ? 'Filling…' : 'Fill lines from odds'}
-            </button>
-            {fillMessage && (
-              <span className="text-sm text-gray-700">{fillMessage}</span>
-            )}
-          </div>
+            <div className="col-span-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={fillLinesFromOdds}
+                disabled={fillingLines}
+                className="px-3 py-2 rounded bg-indigo-600 text-white disabled:opacity-60"
+              >
+                {fillingLines ? 'Filling…' : 'Fill lines from odds'}
+              </button>
+              {fillMessage && (
+                <span className="text-sm text-gray-700">{fillMessage}</span>
+              )}
+            </div>
           </div>
 
           <h3 className="font-semibold text-lg mt-4 mb-2">Simulation</h3>

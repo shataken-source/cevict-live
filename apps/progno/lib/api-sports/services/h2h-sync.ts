@@ -55,7 +55,7 @@ export async function syncH2H(
   try {
     // Fetch head-to-head data with timeout & retry
     const h2hData = await fetchWithRetry(
-      () => client.getHeadToHead(homeTeamApiId, awayTeamApiId),
+      () => (client as any).getHeadToHead(homeTeamApiId, awayTeamApiId),
       10000,
       2
     );
@@ -103,7 +103,7 @@ export async function syncH2H(
     result.success = true;
     result.count = insertions.length;
 
-    console.log(`[H2H-Sync] Synced ${result.count} games for ${sport.toUpperCase()} ${homeTeam} vs ${awayTeam}`);
+    console.log(`[H2H-Sync] Synced ${result.count} games for ${sport.toUpperCase()} ${result.homeTeam} vs ${result.awayTeam}`);
     return result;
 
   } catch (error: any) {
@@ -181,7 +181,7 @@ export async function calculateNarrativeMomentum(
     // Average margin
     const avgPointDiff = recentGames.reduce((sum, g) => {
       const homeWon = (g.home_team_name === homeTeam && g.home_score > g.away_score) ||
-                      (g.away_team_name === homeTeam && g.away_score > g.home_score);
+        (g.away_team_name === homeTeam && g.away_score > g.home_score);
       return sum + (homeWon ? Math.abs(g.home_score - g.away_score) : -Math.abs(g.home_score - g.away_score));
     }, 0) / recentGames.length;
 
@@ -191,7 +191,7 @@ export async function calculateNarrativeMomentum(
       narratives.push(`📊 Average margin: ${Math.abs(avgPointDiff).toFixed(1)} points for ${direction}`);
     }
 
-    return { 
+    return {
       momentum: Math.max(-0.15, Math.min(0.15, momentum)),
       narratives
     };

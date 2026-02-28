@@ -1,6 +1,6 @@
 /**
  * SPORTS AI BOT
- * 
+ *
  * Local AI assistant that provides sports betting advice based on:
  * - All Progno documentation and codebase
  * - Sports gambling knowledge and best practices
@@ -114,7 +114,7 @@ export class SportsAIBot {
 
     // Analyze current picks
     const pickAnalysis = this.analyzeCurrentPicks(currentPicks, marketConditions);
-    
+
     // Generate advice based on user question
     let advice = '';
     let confidence = 0.5;
@@ -167,7 +167,7 @@ export class SportsAIBot {
    * Analyze current picks for patterns and issues
    */
   private analyzeCurrentPicks(picks: any[], marketConditions: any): any {
-    const analysis = {
+    const analysis: any = {
       totalPicks: picks.length,
       highConfidencePicks: picks.filter(p => p.confidence > 0.8).length,
       lowConfidencePicks: picks.filter(p => p.confidence < 0.6).length,
@@ -226,7 +226,7 @@ export class SportsAIBot {
     };
 
     const valueBets = picks.filter(p => p.edge && p.edge > 2);
-    
+
     advice.reasoning.push('Value betting requires positive expected value (EV)');
     advice.reasoning.push(`Found ${valueBets.length} potential value bets with average edge of ${valueBets.reduce((sum, p) => sum + (p.edge || 0), 0) / valueBets.length}%`);
 
@@ -291,7 +291,7 @@ export class SportsAIBot {
    */
   private analyzeSportsDistribution(picks: any[]): any {
     const sportCounts: Record<string, number> = {};
-    
+
     picks.forEach(pick => {
       const sport = pick.sport || 'Unknown';
       sportCounts[sport] = (sportCounts[sport] || 0) + 1;

@@ -108,20 +108,20 @@ async function checkAndIncrementUsage(
       .eq('date', today)
       .single()
 
-    const currentCount = existing?.request_count || 0
+    const currentCount = (existing as any)?.request_count || 0
 
     if (currentCount >= maxPerDay) {
       return { allowed: false, used: currentCount, remaining: 0 }
     }
 
     // Atomic upsert via DB-side function — uses CURRENT_DATE (DB UTC), eliminates race condition
-    const { error: rpcError } = await supabase.rpc('increment_api_quota_today', {
+    const { error: rpcError } = await (supabase as any).rpc('increment_api_quota_today', {
       p_api_key: apiKeyHash,
       p_tier: tier,
     })
     if (rpcError) {
       // Fallback: direct upsert if RPC unavailable
-      await supabase.from('api_usage_quota').upsert(
+      await (supabase.from('api_usage_quota') as any).upsert(
         { api_key: apiKeyHash, date: today, request_count: currentCount + 1, tier },
         { onConflict: 'api_key,date' }
       )
@@ -150,7 +150,7 @@ function extractApiKey(req: NextRequest): string | null {
 }
 
 async function validateApiKey(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   key: string
 ): Promise<{ valid: boolean; tier: string; userId?: string }> {
   if (!supabase) {
@@ -166,31 +166,33 @@ async function validateApiKey(
     .eq('key', key)
     .single()
 
-  if (error || !data || !data.active) {
+  if (error || !data || !(data as any).active) {
     return { valid: false, tier: 'free' }
   }
 
-  return { valid: true, tier: data.tier || 'free', userId: data.user_id }
+  return { valid: true, tier: (data as any).tier || 'free', userId: (data as any).user_id }
 }
 
 async function logApiUsage(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   apiKeyHash: string,
   tier: string,
   endpoint: string,
   userId?: string
 ) {
-  await supabase.from('api_usage_log').insert({
-    api_key_hash: apiKeyHash,
-    tier,
-    endpoint,
-    user_id: userId || null,
-    created_at: new Date().toISOString(),
-  }).catch(() => {})
+  try {
+    await (supabase.from('api_usage_log') as any).insert({
+      api_key_hash: apiKeyHash,
+      tier,
+      endpoint,
+      user_id: userId || null,
+      created_at: new Date().toISOString(),
+    })
+  } catch { }
 }
 
 // ── Data readiness check ──
-async function getDataReadiness(supabase: ReturnType<typeof createClient>) {
+async function getDataReadiness(supabase: any) {
   const { count } = await supabase
     .from('prediction_results')
     .select('*', { count: 'exact', head: true })
@@ -242,8 +244,10 @@ export async function GET(req: NextRequest) {
   // All other endpoints require auth
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'API key required. Pass via Authorization: Bearer <key> or ?api_key=<key>',
-        pricing: '/api/progno/backtest?action=pricing' },
+      {
+        error: 'API key required. Pass via Authorization: Bearer <key> or ?api_key=<key>',
+        pricing: '/api/progno/backtest?action=pricing'
+      },
       { status: 401 }
     )
   }
@@ -263,8 +267,10 @@ export async function GET(req: NextRequest) {
   // Fast soft guard (in-memory)
   if (!softGuardCheck(apiKey, tierConfig.maxRequestsPerDay)) {
     return NextResponse.json(
-      { error: 'Daily request limit reached', tier: auth.tier, limit: tierConfig.maxRequestsPerDay,
-        upgrade: '/api/progno/backtest?action=pricing' },
+      {
+        error: 'Daily request limit reached', tier: auth.tier, limit: tierConfig.maxRequestsPerDay,
+        upgrade: '/api/progno/backtest?action=pricing'
+      },
       { status: 429, headers: { 'X-RateLimit-Remaining': '0', 'X-RateLimit-Limit': String(tierConfig.maxRequestsPerDay) } }
     )
   }
@@ -273,8 +279,10 @@ export async function GET(req: NextRequest) {
   const usage = await checkAndIncrementUsage(supabase, keyHash, auth.tier, tierConfig.maxRequestsPerDay)
   if (!usage.allowed) {
     return NextResponse.json(
-      { error: 'Daily request limit reached', tier: auth.tier, limit: tierConfig.maxRequestsPerDay,
-        used: usage.used, upgrade: '/api/progno/backtest?action=pricing' },
+      {
+        error: 'Daily request limit reached', tier: auth.tier, limit: tierConfig.maxRequestsPerDay,
+        used: usage.used, upgrade: '/api/progno/backtest?action=pricing'
+      },
       { status: 429, headers: { 'X-RateLimit-Remaining': '0', 'X-RateLimit-Limit': String(tierConfig.maxRequestsPerDay) } }
     )
   }
