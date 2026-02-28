@@ -1,0 +1,391 @@
+{
+  "date": "2026-02-28",
+  "generatedAt": "2026-02-28T10:34:51.530Z",
+  "count": 3,
+  "message": "Top 10 picks (of 15 games) — Cevict Flex + Triple Alignment — Regular (0–1 days) — Regular (3 picks)",
+  "earlyLines": false,
+  "picks": [
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Arizona Wildcats",
+      "away_team": "Kansas Jayhawks",
+      "game_matchup": "Kansas Jayhawks @ Arizona Wildcats",
+      "pick": "Arizona Wildcats",
+      "pick_type": "SPREAD",
+      "recommended_line": -8.5,
+      "odds": -110,
+      "confidence": 80,
+      "game_time": "2026-02-28T21:00:00+00:00",
+      "game_id": "a8499c50d316f43a0f15483036657075",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 93.2,
+      "expected_value": 74.3,
+      "value_bet_edge": 38.92,
+      "value_bet_ev": 74.3,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.7798,
+      "mc_predicted_score": {
+        "home": 81,
+        "away": 69,
+        "homeRange": [
+          67,
+          94
+        ],
+        "awayRange": [
+          50,
+          89
+        ]
+      },
+      "mc_spread_probability": 0.913,
+      "mc_total_probability": 0.5692,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (78% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sentiment favors home (8%)",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "[probability-analyzer] [analyzer] NCAAB multiplier=0, skipped",
+        "MC: 78.0% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -1.3990243899441954,
+          "favors": "away",
+          "scores": {
+            "SF": 0.08341463417131709,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.013990243899441954
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        },
+        "probability-analyzer": {
+          "delta": 0,
+          "favors": "neutral",
+          "scores": {
+            "homeEnsemble": 0,
+            "awayEnsemble": 0,
+            "blend": 0,
+            "shouldFlip": 0
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Arizona Wildcats",
+          "line": -8.5,
+          "edge": 38.92,
+          "probability": 0.913,
+          "expected_value": 74.3,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 147,
+          "edge": 4.54,
+          "probability": 0.569,
+          "expected_value": 8.67,
+          "kelly_fraction": 0.024
+        }
+      ],
+      "analysis": "🎯 Arizona Wildcats (80%). [true-edge] Heavy favorite (78% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias",
+        "probability-analyzer"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Florida Gators",
+      "away_team": "Arkansas Razorbacks",
+      "game_matchup": "Arkansas Razorbacks @ Florida Gators",
+      "pick": "Florida Gators",
+      "pick_type": "SPREAD",
+      "recommended_line": -9,
+      "odds": -113,
+      "confidence": 80,
+      "game_time": "2026-03-01T01:30:20+00:00",
+      "game_id": "e4375023aa11a7871718e8190d573c4c",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 92,
+      "expected_value": 71.93,
+      "value_bet_edge": 37.68,
+      "value_bet_ev": 71.93,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.7532,
+      "mc_predicted_score": {
+        "home": 90,
+        "away": 79,
+        "homeRange": [
+          74,
+          106
+        ],
+        "awayRange": [
+          60,
+          98
+        ]
+      },
+      "mc_spread_probability": 0.9006,
+      "mc_total_probability": 0.5314,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (79% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sentiment favors home (9%)",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "[probability-analyzer] [analyzer] NCAAB multiplier=0, skipped",
+        "MC: 75.3% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -1.3267051208468277,
+          "favors": "away",
+          "scores": {
+            "SF": 0.08602189683446501,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 0.97,
+            "EPD": 0,
+            "totalEffect": -0.013267051208468276
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        },
+        "probability-analyzer": {
+          "delta": 0,
+          "favors": "neutral",
+          "scores": {
+            "homeEnsemble": 0,
+            "awayEnsemble": 0,
+            "blend": 0,
+            "shouldFlip": 0
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Florida Gators",
+          "line": -9,
+          "edge": 37.68,
+          "probability": 0.901,
+          "expected_value": 71.93,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Arkansas Razorbacks",
+          "edge": 3.35,
+          "probability": 0.247,
+          "expected_value": 4.4,
+          "kelly_fraction": 0.003
+        }
+      ],
+      "analysis": "🎯 Florida Gators (80%). [true-edge] Heavy favorite (79% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias",
+        "probability-analyzer"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NCAAB",
+      "league": "NCAAB",
+      "home_team": "Duke Blue Devils",
+      "away_team": "Virginia Cavaliers",
+      "game_matchup": "Virginia Cavaliers @ Duke Blue Devils",
+      "pick": "Duke Blue Devils",
+      "pick_type": "SPREAD",
+      "recommended_line": -9.5,
+      "odds": -110,
+      "confidence": 82,
+      "game_time": "2026-02-28T17:00:00+00:00",
+      "game_id": "dc4a6e31728fec783a144751c0157571",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 91.9,
+      "expected_value": 71.02,
+      "value_bet_edge": 37.2,
+      "value_bet_ev": 71.02,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.7366,
+      "mc_predicted_score": {
+        "home": 77,
+        "away": 67,
+        "homeRange": [
+          58,
+          96
+        ],
+        "awayRange": [
+          49,
+          84
+        ]
+      },
+      "mc_spread_probability": 0.8958,
+      "mc_total_probability": 0.6252,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (81% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sentiment favors home (9%)",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "[probability-analyzer] [analyzer] NCAAB multiplier=0, skipped",
+        "MC: 73.7% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -1.2789473682055943,
+          "favors": "away",
+          "scores": {
+            "SF": 0.09342105264953383,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.012789473682055944
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        },
+        "probability-analyzer": {
+          "delta": 0,
+          "favors": "neutral",
+          "scores": {
+            "homeEnsemble": 0,
+            "awayEnsemble": 0,
+            "blend": 0,
+            "shouldFlip": 0
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Duke Blue Devils",
+          "line": -9.5,
+          "edge": 37.2,
+          "probability": 0.896,
+          "expected_value": 71.02,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 138,
+          "edge": 10.14,
+          "probability": 0.625,
+          "expected_value": 19.36,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Virginia Cavaliers",
+          "edge": 7.48,
+          "probability": 0.263,
+          "expected_value": 25.11,
+          "kelly_fraction": 0.017
+        }
+      ],
+      "analysis": "🎯 Duke Blue Devils (82%). [true-edge] Heavy favorite (81% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias",
+        "probability-analyzer"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    }
+  ]
+}

@@ -3,12 +3,12 @@
  *
  * WARNING: This codebase is configured to trade against Kalshi PRODUCTION.
  * Max trade size: $10 (enforced via MAX_SINGLE_TRADE env var)
+ * Hard cap: $50 per trade (throws if exceeded in production)
  */
 const PROD_BASE_URL = "https://api.elections.kalshi.com/trade-api/v2";
 const DEMO_BASE_URL = "https://demo-api.kalshi.co/trade-api/v2";
 
 export function getKalshiBaseUrl(): string {
-  // Use production by default, demo only if explicitly set
   const env = (process.env.KALSHI_ENV || "").toLowerCase();
   return env === "demo" ? DEMO_BASE_URL : PROD_BASE_URL;
 }
@@ -18,13 +18,26 @@ export function getKalshiDemoBaseUrl(): string {
 }
 
 export function assertKalshiDemoOnly(): void {
-  // No longer blocking production - user has explicitly chosen to trade live
-  // with $2 max trade limit as safety guardrail
-  console.log("   ℹ️  Kalshi production trading enabled (max $10/trade)");
+  const env = (process.env.KALSHI_ENV || '').toLowerCase();
+  const maxTrade = parseFloat(process.env.MAX_SINGLE_TRADE || '10');
+  if (env === 'demo') {
+    console.log(`   [GATE] Kalshi DEMO mode (max $${maxTrade}/trade)`);
+  } else {
+    console.log(`   [GATE] Kalshi PRODUCTION trading enabled (max $${maxTrade}/trade)`);
+    if (maxTrade > 50) {
+      throw new Error(`SAFETY: MAX_SINGLE_TRADE=$${maxTrade} exceeds $50 hard cap. Set KALSHI_ENV=demo or lower the limit.`);
+    }
+  }
+}
+
+export function assertMaxTradeSize(amountUsd: number): void {
+  const maxTrade = parseFloat(process.env.MAX_SINGLE_TRADE || '10');
+  if (amountUsd > maxTrade) {
+    throw new Error(`BLOCKED: Trade $${amountUsd.toFixed(2)} exceeds MAX_SINGLE_TRADE=$${maxTrade}`);
+  }
 }
 
 export function assertKalshiRequestUrlIsDemo(requestUrl: string): void {
-  // Allow both demo and production URLs
   const allowedOrigins = [
     new URL(DEMO_BASE_URL).origin,
     new URL(PROD_BASE_URL).origin
@@ -36,4 +49,3 @@ export function assertKalshiRequestUrlIsDemo(requestUrl: string): void {
     );
   }
 }
-

@@ -51,28 +51,32 @@ export class AIBrain {
     const sportsOnly = process.env.PROGNO_SPORTS_ONLY === '1';
 
     if (sportsOnly) {
-      console.log('🧠 AI Brain (sports only) — fetching Progno picks...\n');
-      const picks = await this.progno.getTodaysPicks();
-      const prognoOpps = await this.progno.convertToOpportunities(picks);
-      console.log(`🎯 Found ${prognoOpps.length} PROGNO sports picks`);
-      const allOpportunities = prognoOpps.filter(
+      console.log('🧠 AI Brain (sports only) — fetching Progno→Kalshi matches...\n');
+      // Use KalshiTrader which resolves Progno picks to actual Kalshi tickers
+      const kalshiOpps = await this.kalshi.findOpportunitiesWithExternalProbs(5);
+      const prognoResolved = kalshiOpps.filter(o => o.source === 'PROGNO').length;
+      console.log(`🎯 Progno: ${prognoResolved} matched to Kalshi tickers (${kalshiOpps.length} total)`);
+      const allOpportunities = kalshiOpps.filter(
         (opp: Opportunity) => opp.confidence >= this.config.minConfidence && opp.expectedValue >= this.config.minExpectedValue
       );
       return this.rankOpportunities(allOpportunities, []);
     }
 
     console.log('🧠 AI Brain analyzing all sources...\n');
-    const [news, prognoPicks, kalshiOpps, arbitrageOpps, cryptoOpps] = await Promise.all([
+    // NOTE: KalshiTrader.findOpportunitiesWithExternalProbs() already fetches Progno picks
+    // internally via getPrognoProbabilities() and resolves them to Kalshi tickers.
+    // We no longer run convertToOpportunities() separately — it produced unresolvable
+    // opportunities (team names instead of tickers) that could never execute.
+    const [news, kalshiOpps, arbitrageOpps, cryptoOpps] = await Promise.all([
       this.newsScanner.scanAllSources(),
-      this.progno.getTodaysPicks().then(p => this.progno.convertToOpportunities(p)),
       this.kalshi.findOpportunitiesWithExternalProbs(5),
       this.progno.getArbitrageOpportunities(),
       this.cryptoTrader.getOpportunities(),
     ]);
-    console.log(`📰 News: ${news.length} | 🎯 Progno: ${prognoPicks.length} | 📊 Kalshi: ${kalshiOpps.length} | 💰 Arb: ${arbitrageOpps.length} | 🪙 Crypto: ${cryptoOpps.length}`);
+    const prognoResolved = kalshiOpps.filter(o => o.source === 'PROGNO').length;
+    console.log(`📰 News: ${news.length} | 🎯 Progno: ${prognoResolved} (via Kalshi) | 📊 Kalshi: ${kalshiOpps.length} | 💰 Arb: ${arbitrageOpps.length} | 🪙 Crypto: ${cryptoOpps.length}`);
     const allOpportunities = [
       ...arbitrageOpps,
-      ...prognoPicks,
       ...kalshiOpps,
       ...cryptoOpps,
     ].filter(opp => opp.confidence >= this.config.minConfidence && opp.expectedValue >= this.config.minExpectedValue);

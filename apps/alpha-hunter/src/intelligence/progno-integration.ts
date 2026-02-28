@@ -98,7 +98,8 @@ export class PrognoIntegration {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const response = await fetch(`${this.baseUrl}/api/picks/today`, {
+        const today = new Date().toISOString().split('T')[0];
+        const response = await fetch(`${this.baseUrl}/api/progno/picks?date=${today}`, {
           headers: this.apiKey ? { 'x-api-key': this.apiKey } : {},
         });
 
@@ -171,7 +172,8 @@ export class PrognoIntegration {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/api/picks/tomorrow`, {
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+      const response = await fetch(`${this.baseUrl}/api/progno/picks?date=${tomorrow}`, {
         headers: this.apiKey ? { 'x-api-key': this.apiKey } : {},
       });
 
@@ -321,7 +323,7 @@ export class PrognoIntegration {
 
   async convertToOpportunities(picks: PrognoPick[]): Promise<Opportunity[]> {
     return picks
-      .filter(pick => pick.confidence >= 65 && pick.expectedValue > 0)
+      .filter(pick => pick.confidence >= 65 && pick.expectedValue > 0 && this.calculateStake(pick) > 0)
       .map(pick => ({
         id: `progno_${pick.gameId}_${Date.now()}`,
         type: 'sports_bet' as const,

@@ -13,7 +13,9 @@ export class OddsRangeFilter implements FilterModule {
   readonly id = 'odds-range'
   readonly description = `Odds must be between ${MIN_ODDS} and ${MAX_ODDS}`
 
-  passes({ odds }: FilterContext): boolean {
+  passes({ odds, signals }: FilterContext): boolean {
+    // Exempt analyzer-flipped picks — the 16-model ensemble already validated value
+    if (signals?.['probability-analyzer']?.scores?.shouldFlip) return true
     return odds >= MIN_ODDS && odds <= MAX_ODDS
   }
 }

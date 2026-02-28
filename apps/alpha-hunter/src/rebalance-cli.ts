@@ -13,7 +13,8 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+const alphaRoot = path.resolve(__dirname, '..');
+dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
 
 import { fundManager } from './fund-manager';
 import { CoinbaseExchange } from './exchanges/coinbase';

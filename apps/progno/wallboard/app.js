@@ -14,7 +14,7 @@ const ESPN_SPORTS = {
   MLB: 'baseball/mlb',
   NCAAB: 'basketball/mens-college-basketball',
   NCAA: 'basketball/mens-college-basketball',
-  CBB: 'basketball/mens-college-basketball',
+  CBB: 'baseball/college-baseball',
   NCAAF: 'football/college-football',
 };
 
@@ -25,7 +25,8 @@ const state = {
   alertCount: 0, intelIndex: 0, intelTimer: null,
   ws: null, picksTimer: null, scoresTimer: null,
   kalshiPrices: {}, // ticker -> last known price
-  kalshiTimer: null
+  kalshiTimer: null,
+  myBets: [], myBetsSummary: null, myBetsTimer: null
 };
 
 // ============================================
@@ -38,6 +39,7 @@ async function init() {
   connectWebSocket();
   await loadPicks();
   await loadStats();
+  await loadMyBets();
   startPolling();
   startIntelRotator();
   startKalshiPriceWatch();
@@ -221,11 +223,18 @@ function transformPicks(picks) {
 
     let marketProb = 50;
     const ml = p.odds;
-    if (ml && typeof ml === 'number') {
-      marketProb = ml > 0 ? (100 / (ml + 100)) * 100 : (Math.abs(ml) / (Math.abs(ml) + 100)) * 100;
-    } else if (ml && typeof ml === 'object' && ml.home) {
+    const toImpl = (o) => o > 0 ? 100 / (o + 100) : Math.abs(o) / (Math.abs(o) + 100);
+    if (ml && typeof ml === 'object' && ml.home != null && ml.away != null) {
+      // Both sides available — remove vig by normalizing
+      const rH = toImpl(ml.home), rA = toImpl(ml.away);
+      const total = rH + rA;
+      const pickIsH = (p.pick || home) === home;
+      marketProb = total > 0 ? ((pickIsH ? rH : rA) / total) * 100 : 50;
+    } else if (ml && typeof ml === 'object' && ml.home != null) {
       const h = ml.home;
-      marketProb = h > 0 ? (100 / (h + 100)) * 100 : (Math.abs(h) / (Math.abs(h) + 100)) * 100;
+      marketProb = toImpl(h) * 100;
+    } else if (ml && typeof ml === 'number') {
+      marketProb = toImpl(ml) * 100;
     }
 
     const edge = p.value_bet_edge != null
@@ -250,6 +259,7 @@ function transformPicks(picks) {
       edge,
       confidence: Math.round(conf),
       pick: p.pick || home,
+      pickIsHome: (p.pick || home) === home,
       stake: p.recommended_wager || p.stake || 0, // 0 = no real bet placed
       _dryRun: !(p.recommended_wager || p.stake), // true unless a real wager was explicitly set
       winPct: Math.round(conf),
@@ -315,8 +325,10 @@ async function loadLiveScores() {
         if (isLive) {
           const wp = comp.situation?.lastPlay?.probability;
           if (wp) {
-            game.winPct = Math.round(wp.homeWinPercentage * 100);
-            game.modelProb = game.winPct.toFixed(1);
+            const homeWp = Math.round(wp.homeWinPercentage * 100);
+            // winPct = our pick's live win chance (flip if we picked away)
+            game.winPct = game.pickIsHome ? homeWp : (100 - homeWp);
+            // Do NOT overwrite modelProb — that stays as original model confidence for edge calc
           }
           if (game.awayScore !== oldAway || game.homeScore !== oldHome) {
             handleScoreChange(game, oldAway, oldHome);
@@ -324,21 +336,47 @@ async function loadLiveScores() {
         }
 
         if (isFinal && !game.result) {
-          const weWon = game.pick === game.home
-            ? game.homeScore > game.awayScore
-            : game.awayScore > game.homeScore;
+          const pickType = (game.pickType || game.pick_type || 'moneyline').toLowerCase();
+          let weWon = false;
+          if (pickType === 'spread' && game.spreadLine != null) {
+            // Spread pick: home team covers if homeScore + spreadLine > awayScore
+            const pickIsHome = game.pick === game.home;
+            const line = Number(game.spreadLine);
+            if (pickIsHome) {
+              weWon = (game.homeScore + line) > game.awayScore;
+            } else {
+              weWon = (game.awayScore - line) > game.homeScore;
+            }
+          } else if (pickType === 'total' && game.totalLine != null) {
+            // Total pick: over/under
+            const total = game.homeScore + game.awayScore;
+            const line = Number(game.totalLine);
+            const side = (game.pick || '').toLowerCase();
+            weWon = side.includes('over') ? total > line : total < line;
+          } else {
+            // Moneyline: simple score comparison
+            weWon = game.pick === game.home
+              ? game.homeScore > game.awayScore
+              : game.awayScore > game.homeScore;
+          }
           game.result = weWon ? 'WIN' : 'LOSS';
         }
       }
     } catch (e) { console.warn('[ESPN]', sport, e.message); }
   }
 
-  state.wins = state.games.filter(g => g.result === 'WIN').length;
-  state.losses = state.games.filter(g => g.result === 'LOSS').length;
-  state.todayPnl = state.games.reduce((sum, g) => {
-    if (!g.result) return sum;
-    return sum + (g.result === 'WIN' ? (g.stake || 100) * 0.91 : -(g.stake || 100));
-  }, 0);
+  // ESPN-derived win/loss only used if no actual bets data is available
+  const espnWins = state.games.filter(g => g.result === 'WIN').length;
+  const espnLosses = state.games.filter(g => g.result === 'LOSS').length;
+  if (!state.myBetsSummary) {
+    state.wins = espnWins;
+    state.losses = espnLosses;
+    // Only compute P&L from picks that had real stakes (not dry runs)
+    state.todayPnl = state.games.reduce((sum, g) => {
+      if (!g.result || !g.stake || g._dryRun) return sum;
+      return sum + (g.result === 'WIN' ? g.stake * (100 / 110) : -g.stake);
+    }, 0);
+  }
 }
 
 function fuzzyMatch(a, b) {
@@ -392,10 +430,10 @@ async function loadStats() {
     if (!res.ok) return;
     const data = await res.json();
     if (data.stats) {
-      state.wins = data.stats.correct || state.wins;
-      state.losses = data.stats.incorrect || state.losses;
+      // Only pull ROI from historical stats — wins/losses come from today's
+      // live ESPN score matching (loadLiveScores), not the historical
+      // progno_predictions table which was producing the wrong 7-7 record.
       state.roi = data.stats.roi || 0;
-      state.todayPnl = data.stats.total_profit || state.todayPnl;
       renderStats();
     }
   } catch (e) { console.warn('[Stats]', e.message); }
@@ -421,6 +459,11 @@ function startPolling() {
   state.picksTimer = setInterval(async () => {
     await loadStats();
   }, REFRESH_MS);
+
+  // Poll actual bets every 60s
+  state.myBetsTimer = setInterval(async () => {
+    await loadMyBets();
+  }, 60000);
 }
 
 // ============================================
@@ -509,32 +552,60 @@ function renderPicks() {
 // ============================================
 
 function renderStats() {
-  const totalStake = state.games.reduce((s, g) => s + (g.stake || 0), 0);
+  const sum = state.myBetsSummary;
   const avgEdge = state.games.length > 0
     ? (state.games.reduce((s, g) => s + parseFloat(g.edge || 0), 0) / state.games.length).toFixed(1)
     : '0.0';
+
+  // Use actual bets data for financial stats when available
+  if (sum) {
+    const pnl = sum.totalProfitCents / 100;
+    const staked = sum.totalStakeCents / 100;
+    state.wins = sum.wins;
+    state.losses = sum.losses;
+    state.todayPnl = pnl;
+
+    setText('statRecord', sum.wins + '-' + sum.losses + (sum.pending > 0 ? ' (' + sum.pending + 'P)' : ''));
+    setText('todayPnl', (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2));
+    setText('exposure', '$' + staked.toFixed(2) + ' (' + sum.total + ' bets)');
+    setText('winRate', sum.winRate > 0 ? sum.winRate + '%' : '--%');
+
+    const pnlEl = document.getElementById('todayPnl');
+    if (pnlEl) pnlEl.style.color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+
+    const riskPct = staked > 0 ? Math.min((staked / 500) * 100, 100) : 5;
+    const fill = document.getElementById('riskFill');
+    if (fill) fill.style.width = riskPct + '%';
+  } else {
+    // Fallback to ESPN-derived stats (no actual bets loaded yet)
+    setText('statRecord', state.wins + '-' + state.losses);
+    setText('todayPnl', (state.todayPnl >= 0 ? '+$' : '-$') + Math.abs(Math.round(state.todayPnl)).toLocaleString());
+    const totalStake = state.games.reduce((s, g) => s + (g.stake || 0), 0);
+    setText('exposure', totalStake > 0 ? '$' + totalStake.toLocaleString() + ' (' + state.games.length + ' picks)' : state.games.length + ' picks (model only)');
+    setText('winRate', (state.wins + state.losses) > 0
+      ? Math.round(state.wins / (state.wins + state.losses) * 100) + '%' : '--%');
+
+    const pnlEl = document.getElementById('todayPnl');
+    if (pnlEl) pnlEl.style.color = state.todayPnl >= 0 ? 'var(--green)' : 'var(--red)';
+
+    const totalStakeRisk = state.games.reduce((s, g) => s + (g.stake || 0), 0);
+    const riskPct = totalStakeRisk > 0 ? Math.min((totalStakeRisk / 5000) * 100, 100) : 5;
+    const fill = document.getElementById('riskFill');
+    if (fill) fill.style.width = riskPct + '%';
+  }
 
   setText('statROI', (state.roi >= 0 ? '+' : '') + state.roi.toFixed(1) + '%');
   setText('statAvgEdge', (parseFloat(avgEdge) > 0 ? '+' : '') + avgEdge + '%');
   const liveCount = state.games.filter(g => g.status === 'LIVE').length;
   setText('statOpenBets', liveCount > 0 ? liveCount + ' LIVE' : state.games.filter(g => g.status === 'UPCOMING').length + ' upcoming');
-  setText('statRecord', state.wins + '-' + state.losses);
   setText('bankrollValue', 'CEVICT');
-  setText('todayPnl', (state.todayPnl >= 0 ? '+$' : '-$') + Math.abs(Math.round(state.todayPnl)).toLocaleString());
-  setText('exposure', '$' + totalStake.toLocaleString() + ' (' + state.games.length + ' picks)');
-  setText('winRate', (state.wins + state.losses) > 0
-    ? Math.round(state.wins / (state.wins + state.losses) * 100) + '%' : '--%');
 
-  const pnlEl = document.getElementById('todayPnl');
-  if (pnlEl) pnlEl.style.color = state.todayPnl >= 0 ? 'var(--green)' : 'var(--red)';
-
-  const riskPct = totalStake > 0 ? Math.min((totalStake / 5000) * 100, 100) : 20;
-  const fill = document.getElementById('riskFill');
-  if (fill) fill.style.width = riskPct + '%';
   const riskLabel = document.getElementById('riskLabel');
+  const riskFill = document.getElementById('riskFill');
+  const riskPctVal = riskFill ? parseFloat(riskFill.style.width) || 0 : 0;
   if (riskLabel) {
-    if (riskPct > 50) { riskLabel.textContent = 'RISK: HIGH'; riskLabel.style.color = 'var(--red)'; }
-    else if (riskPct > 25) { riskLabel.textContent = 'RISK: MEDIUM'; riskLabel.style.color = 'var(--yellow)'; }
+    if (riskPctVal > 50) { riskLabel.textContent = 'RISK: HIGH'; riskLabel.style.color = 'var(--red)'; }
+    else if (riskPctVal > 25) { riskLabel.textContent = 'RISK: MEDIUM'; riskLabel.style.color = 'var(--yellow)'; }
     else { riskLabel.textContent = 'RISK: LOW'; riskLabel.style.color = 'var(--green)'; }
   }
 }
@@ -573,15 +644,20 @@ function renderGameHero(g) {
   setText('momentumAway', g.away);
   setText('momentumHome', g.home);
 
+  // winPct is always OUR PICK's win chance (already flipped for away picks)
   const wp = g.winPct || 50;
-  setText('awayWinPct', (100 - wp) + '%');
-  setText('homeWinPct', wp + '%');
+  // Display: left = away %, right = home %
+  // If we picked home, wp = home win chance directly
+  // If we picked away, wp = away win chance, so home = 100 - wp
+  const homeWp = g.pickIsHome ? wp : (100 - wp);
+  setText('awayWinPct', (100 - homeWp) + '%');
+  setText('homeWinPct', homeWp + '%');
 
   const probFill = document.getElementById('probFill');
-  if (probFill) probFill.style.width = wp + '%';
+  if (probFill) probFill.style.width = homeWp + '%';
 
   const marker = document.getElementById('momentumMarker');
-  if (marker) marker.style.left = wp + '%';
+  if (marker) marker.style.left = homeWp + '%';
 
   const mFill = document.getElementById('momentumFill');
   if (mFill) {
@@ -713,7 +789,7 @@ function renderPositionPanel(g) {
       if (evEl) evEl.style.color = edgeNum > 0 ? 'var(--green)' : 'var(--red)';
     } else {
       const stake = g.stake;
-      const profit = stake * 0.909;
+      const profit = stake * (100 / 110);
       const mp = parseFloat(g.modelProb) / 100;
       const liveEv = ((mp * profit) - ((1 - mp) * stake)).toFixed(0);
       setText('posStake', '$' + stake);
@@ -963,6 +1039,86 @@ function setupKeyboard() {
       }
     }
   });
+}
+
+// ============================================
+// MY BETS (actual_bets table)
+// ============================================
+
+async function loadMyBets() {
+  try {
+    const res = await fetch(API + '/progno/wallboard/bets');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.success) return;
+    state.myBets = data.bets || [];
+    state.myBetsSummary = data.summary || null;
+    renderMyBets();
+  } catch (e) { console.warn('[MyBets]', e.message); }
+}
+
+function renderMyBets() {
+  const list = document.getElementById('myBetsList');
+  const sum = state.myBetsSummary;
+  if (!sum) return;
+
+  // Summary stats
+  setText('myBetsCount', sum.total);
+  setText('myBetsStaked', '$' + (sum.totalStakeCents / 100).toFixed(2));
+  const pnl = sum.totalProfitCents / 100;
+  const pnlEl = document.getElementById('myBetsPnl');
+  if (pnlEl) {
+    pnlEl.textContent = (pnl >= 0 ? '+$' : '-$') + Math.abs(pnl).toFixed(2);
+    pnlEl.style.color = pnl >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+
+  // Record badge (W-L-P)
+  const recEl = document.getElementById('myBetsRecord');
+  if (recEl) {
+    recEl.textContent = sum.wins + 'W-' + sum.losses + 'L-' + sum.pending + 'P';
+    recEl.style.color = sum.wins > sum.losses ? 'var(--green)' : sum.losses > sum.wins ? 'var(--red)' : 'var(--cyan)';
+  }
+
+  // PERFORMANCE panel RECORD is now updated by renderStats() using myBetsSummary
+
+  if (!list) return;
+
+  if (state.myBets.length === 0) {
+    list.innerHTML = '<div class="no-bets">No bets placed today</div>';
+    return;
+  }
+
+  list.innerHTML = state.myBets.map(b => {
+    const matchup = (b.away_team || '?') + ' @ ' + (b.home_team || '?');
+    const sport = (b.sport || b.league || '').toUpperCase();
+    const stake = b.stake_cents ? '$' + (b.stake_cents / 100).toFixed(2) : '--';
+    const price = b.price_cents ? b.price_cents + '¢' : '';
+    const sideLabel = b.side ? b.side.toUpperCase() : '';
+    const conf = b.confidence ? b.confidence + '%' : '';
+
+    let resultClass = '';
+    let resultLabel = '';
+    if (b.result === 'win') { resultClass = 'bet-won'; resultLabel = ' WIN'; }
+    else if (b.result === 'loss') { resultClass = 'bet-lost'; resultLabel = ' LOSS'; }
+    else if (b.status === 'cancelled' || b.status === 'error') { resultClass = 'bet-cancelled'; resultLabel = ' ' + b.status.toUpperCase(); }
+    else { resultClass = 'bet-pending'; resultLabel = ' PENDING'; }
+
+    const profitStr = b.profit_cents != null && b.result
+      ? ' · ' + (b.profit_cents >= 0 ? '+' : '') + '$' + (b.profit_cents / 100).toFixed(2)
+      : '';
+
+    return '<div class="my-bet-row ' + resultClass + '">'
+      + '<div class="my-bet-pick">' + b.pick + ' <span class="my-bet-result">' + resultLabel + '</span></div>'
+      + '<div class="my-bet-details">'
+      + '<span>' + matchup + '</span>'
+      + '<span>' + sport + (conf ? ' · ' + conf : '') + '</span>'
+      + '</div>'
+      + '<div class="my-bet-money">'
+      + (b.ticker ? '<span class="my-bet-ticker">' + sideLabel + ' @ ' + price + '</span>' : '')
+      + '<span>' + stake + profitStr + '</span>'
+      + '</div>'
+      + '</div>';
+  }).join('');
 }
 
 // ============================================

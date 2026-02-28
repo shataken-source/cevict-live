@@ -1,0 +1,219 @@
+.next/dev/types/validator.ts(5,79): error TS2307: Cannot find module './routes.js' or its corresponding type declarations.
+__tests__/engine.test.ts(6,38): error TS2307: Cannot find module '@jest/globals' or its corresponding type declarations.
+app/api/picks/today/route.ts(1287,42): error TS2554: Expected 5 arguments, but got 4.
+app/api/picks/today/route.ts(1296,35): error TS2339: Property 'sharpPercentage' does not exist on type 'BettingSplit'.
+app/api/picks/today/route.ts(1297,32): error TS2339: Property 'lineMovement' does not exist on type 'BettingSplit'.
+app/api/picks/today/route.ts(1612,40): error TS2339: Property 'findCorrelatedLegs' does not exist on type 'ParlayBuilder'.
+app/api/picks/today/route.ts(1628,9): error TS2353: Object literal may only specify known properties, and 'pick' does not exist in type 'Pick[]'.
+app/api/picks/today/route.ts(1639,5): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+app/api/picks/today/route.ts(1644,41): error TS2345: Argument of type '{ stake: number; bankrollPercent: number; kellyPercent: number; }' is not assignable to parameter of type 'number'.
+app/api/progno/backtest/route.ts(111,26): error TS18047: 'existing' is possibly 'null'.
+app/api/progno/backtest/route.ts(118,81): error TS2345: Argument of type '{ p_api_key: string; p_tier: string; }' is not assignable to parameter of type 'never'.
+app/api/progno/backtest/route.ts(124,46): error TS2769: No overload matches this call.
+app/api/progno/backtest/route.ts(169,31): error TS2339: Property 'active' does not exist on type 'never'.
+app/api/progno/backtest/route.ts(173,36): error TS2339: Property 'tier' does not exist on type 'never'.
+app/api/progno/backtest/route.ts(173,65): error TS2339: Property 'user_id' does not exist on type 'never'.
+app/api/progno/backtest/route.ts(183,40): error TS2769: No overload matches this call.
+app/api/progno/backtest/route.ts(189,6): error TS2551: Property 'catch' does not exist on type 'PostgrestFilterBuilder<{ PostgrestVersion: string; }, never, never, null, "api_usage_log", never, "POST">'. Did you mean 'match'?
+app/api/progno/backtest/route.ts(232,46): error TS2345: Argument of type 'SupabaseClient<any, "public", "public", any, any>' is not assignable to parameter of type 'SupabaseClient<unknown, { PostgrestVersion: string; }, never, never, { PostgrestVersion: string; }>'.
+app/api/progno/backtest/route.ts(255,37): error TS2345: Argument of type 'SupabaseClient<any, "public", "public", any, any>' is not assignable to parameter of type 'SupabaseClient<unknown, { PostgrestVersion: string; }, never, never, { PostgrestVersion: string; }>'.
+app/api/progno/backtest/route.ts(273,46): error TS2345: Argument of type 'SupabaseClient<any, "public", "public", any, any>' is not assignable to parameter of type 'SupabaseClient<unknown, { PostgrestVersion: string; }, never, never, { PostgrestVersion: string; }>'.
+app/api/progno/backtest/route.ts(282,21): error TS2345: Argument of type 'SupabaseClient<any, "public", "public", any, any>' is not assignable to parameter of type 'SupabaseClient<unknown, { PostgrestVersion: string; }, never, never, { PostgrestVersion: string; }>'.
+app/api/train/2024/route.ts(9,10): error TS2460: Module '"../../../weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+app/components/ClaudeEffectCard.tsx(91,52): error TS2554: Expected 1 arguments, but got 2.
+app/cursor-effect.ts(1,10): error TS2460: Module '"./weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+app/lib/affiliate-tracking-service.ts(111,8): error TS2769: No overload matches this call.
+app/lib/affiliate-tracking-service.ts(126,49): error TS2345: Argument of type '{ p_pick_id: string; p_sportsbook: string; }' is not assignable to parameter of type 'never'.
+app/lib/affiliate-tracking-service.ts(157,8): error TS2769: No overload matches this call.
+app/lib/affiliate-tracking-service.ts(172,47): error TS2345: Argument of type '{ p_pick_id: string; p_sportsbook: string; p_revenue: number; }' is not assignable to parameter of type 'never'.
+app/lib/affiliate-tracking-service.ts(213,49): error TS2339: Property 'ip_hash' does not exist on type 'never'.
+app/lib/affiliate-tracking-service.ts(214,67): error TS2339: Property 'commission' does not exist on type 'never'.
+app/lib/affiliate-tracking-service.ts(219,24): error TS2339: Property 'sportsbook' does not exist on type 'never'.
+app/lib/affiliate-tracking-service.ts(224,23): error TS2339: Property 'sportsbook' does not exist on type 'never'.
+app/lib/affiliate-tracking-service.ts(226,45): error TS2339: Property 'commission' does not exist on type 'never'.
+app/lib/affiliate-tracking-service.ts(233,25): error TS2339: Property 'pick_id' does not exist on type 'never'.
+app/lib/affiliate-tracking-service.ts(238,24): error TS2339: Property 'pick_id' does not exist on type 'never'.
+app/lib/affiliate-tracking-service.ts(240,40): error TS2339: Property 'commission' does not exist on type 'never'.
+app/lib/affiliate-tracking-service.ts(388,8): error TS2769: No overload matches this call.
+app/lib/arbitrage-detector.ts(206,5): error TS2739: Type '{ id: string; gameId: string; type: "moneyline"; side1: { sportsbook: string; side: any; odds: number; stake: number; }; side2: { sportsbook: string; side: any; odds: number; stake: number; }; totalStake: number; ... 5 more ...; ageSeconds: number; }' is missing the following properties from type 'ArbitrageOpportunity': stakeHome, stakeAway
+app/lib/arbitrage-detector.ts(286,5): error TS2739: Type '{ id: string; gameId: string; type: "spread"; side1: { sportsbook: string; side: string; odds: number; stake: number; }; side2: { sportsbook: string; side: string; odds: number; stake: number; }; totalStake: number; ... 5 more ...; ageSeconds: number; }' is missing the following properties from type 'ArbitrageOpportunity': stakeHome, stakeAway
+app/lib/arbitrage-detector.ts(366,5): error TS2739: Type '{ id: string; gameId: string; type: "total"; side1: { sportsbook: string; side: string; odds: number; stake: number; }; side2: { sportsbook: string; side: string; odds: number; stake: number; }; totalStake: number; ... 5 more ...; ageSeconds: number; }' is missing the following properties from type 'ArbitrageOpportunity': stakeHome, stakeAway
+app/lib/automated-backtesting.ts(7,34): error TS2307: Cannot find module '../prediction-engine' or its corresponding type declarations.
+app/lib/automated-backtesting.ts(239,12): error TS2339: Property 'factors' does not exist on type 'never'.
+app/lib/automated-backtesting.ts(294,37): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/automated-backtesting.ts(295,38): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/automated-backtesting.ts(299,16): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/automated-backtesting.ts(300,27): error TS2339: Property 'odds' does not exist on type 'never'.
+app/lib/automated-backtesting.ts(302,23): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/autonomous-cursor-bot.ts(36,29): error TS2307: Cannot find module './odds-service' or its corresponding type declarations.
+app/lib/autonomous-cursor-bot.ts(40,62): error TS2307: Cannot find module '../bot-academy-fishy-curriculum' or its corresponding type declarations.
+app/lib/autonomous-cursor-bot.ts(42,15): error TS2460: Module '"../weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+app/lib/betting-splits-monitor.ts(56,68): error TS2554: Expected 1 arguments, but got 3.
+app/lib/calendar-sync-service.ts(306,8): error TS2769: No overload matches this call.
+app/lib/claude-effect.ts(110,31): error TS2339: Property 'weightOverrides' does not exist on type 'ClaudeEffectEngine'.
+app/lib/claude-effect.ts(849,10): error TS2339: Property 'weightOverrides' does not exist on type 'ClaudeEffectEngine'.
+app/lib/claude-effect.ts(849,38): error TS2339: Property 'weightOverrides' does not exist on type 'ClaudeEffectEngine'.
+app/lib/export-service.ts(6,19): error TS2307: Cannot find module 'jspdf' or its corresponding type declarations.
+app/lib/line-movement-prediction.ts(150,29): error TS2339: Property 'id' does not exist on type 'never'.
+app/lib/line-movement-prediction.ts(159,61): error TS2339: Property 'id' does not exist on type 'never'.
+app/lib/line-movement-prediction.ts(161,14): error TS2339: Property 'id' does not exist on type 'never'.
+app/lib/line-movement-prediction.ts(163,21): error TS2339: Property 'spread' does not exist on type 'never'.
+app/lib/line-movement-prediction.ts(214,27): error TS2339: Property 'market' does not exist on type 'never'.
+app/lib/line-movement-prediction.ts(219,30): error TS2339: Property 'predicted_direction' does not exist on type 'never'.
+app/lib/line-movement-prediction.ts(220,27): error TS2339: Property 'actual_result' does not exist on type 'never'.
+app/lib/line-movement-prediction.ts(227,35): error TS2339: Property 'target_line' does not exist on type 'never'.
+app/lib/line-movement-prediction.ts(227,54): error TS2339: Property 'actual_line' does not exist on type 'never'.
+app/lib/live-betting-monitor.ts(87,47): error TS2339: Property 'homeTeam' does not exist on type 'LiveGameState'.
+app/lib/live-betting-monitor.ts(87,87): error TS2339: Property 'homeTeam' does not exist on type 'LiveGameState'.
+app/lib/live-betting-monitor.ts(122,48): error TS2339: Property 'homeTeam' does not exist on type 'LiveGameState'.
+app/lib/live-betting-monitor.ts(122,88): error TS2339: Property 'homeTeam' does not exist on type 'LiveGameState'.
+app/lib/live-score-service.ts(185,8): error TS2769: No overload matches this call.
+app/lib/live-score-service.ts(360,17): error TS2339: Property 'game_id' does not exist on type 'never'.
+app/lib/live-score-service.ts(361,20): error TS2339: Property 'start_time' does not exist on type 'never'.
+app/lib/live-score-service.ts(362,19): error TS2339: Property 'away_team' does not exist on type 'never'.
+app/lib/live-score-service.ts(362,36): error TS2339: Property 'home_team' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(58,17): error TS2339: Property 'name' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(59,27): error TS2339: Property 'sharpness_score' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(60,21): error TS2339: Property 'category' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(61,25): error TS2339: Property 'line_accuracy' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(62,29): error TS2339: Property 'closing_line_value' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(63,24): error TS2339: Property 'beatability' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(64,24): error TS2339: Property 'best_markets' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(65,25): error TS2339: Property 'worst_markets' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(99,18): error TS2339: Property 'closing_line' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(100,43): error TS2339: Property 'line' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(100,57): error TS2339: Property 'closing_line' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(104,37): error TS2339: Property 'closing_line' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(104,59): error TS2339: Property 'line' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(105,35): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(105,51): error TS2339: Property 'line' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(161,35): error TS2339: Property 'line' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(166,15): error TS2339: Property 'book_name' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(167,15): error TS2339: Property 'line' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(168,29): error TS2339: Property 'line' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(169,16): error TS2339: Property 'juice' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(257,57): error TS2339: Property 'id' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(258,59): error TS2339: Property 'id' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(274,28): error TS2339: Property 'id' does not exist on type 'never'.
+app/lib/market-efficiency-scorer.ts(301,10): error TS2769: No overload matches this call.
+app/lib/master-integration-service.ts(115,7): error TS2322: Type 'Record<Tier, { count: number; avgConfidence: number; avgEdge: number; }>' is not assignable to type 'Record<string, number>'.
+app/lib/ml-ensemble-model.ts(6,34): error TS2307: Cannot find module '../monte-carlo-engine' or its corresponding type declarations.
+app/lib/ml-ensemble-model.ts(7,34): error TS2307: Cannot find module '../prediction-engine' or its corresponding type declarations.
+app/lib/model-performance-dashboard.ts(92,8): error TS2769: No overload matches this call.
+app/lib/model-performance-dashboard.ts(146,37): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(147,39): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(153,16): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(154,27): error TS2339: Property 'odds' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(156,23): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(191,27): error TS2339: Property 'factors' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(192,25): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(193,37): error TS2339: Property 'created_at' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(201,50): error TS2339: Property 'confidence' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(260,25): error TS2339: Property 'sport' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(266,15): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(269,27): error TS2339: Property 'factors' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(315,41): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/model-performance-dashboard.ts(316,42): error TS2339: Property 'result' does not exist on type 'never'.
+app/lib/performance-tracker.ts(40,9): error TS1248: A class member cannot have the 'const' keyword.
+app/lib/performance-tracker.ts(41,9): error TS1248: A class member cannot have the 'const' keyword.
+app/lib/performance-tracker.ts(49,34): error TS2339: Property 'HMAC_SECRET' does not exist on type 'typeof PerformanceTracker'.
+app/lib/performance-tracker.ts(59,23): error TS2304: Cannot find name 'tier'.
+app/lib/performance-tracker.ts(59,83): error TS2304: Cannot find name 'tier'.
+app/lib/performance-tracker.ts(71,50): error TS2339: Property 'ANONYMIZATION_SALT' does not exist on type 'typeof PerformanceTracker'.
+app/lib/performance-tracker.ts(85,33): error TS2339: Property 'ANONYMIZATION_SALT' does not exist on type 'typeof PerformanceTracker'.
+app/lib/prediction-engine-patch.ts(33,55): error TS2345: Argument of type 'GameData' is not assignable to parameter of type '{ homeTeam: string; awayTeam: string; sport: string; league?: string; teamStats?: { home: { recentAvgPoints?: number; recentAvgAllowed?: number; }; away: { recentAvgPoints?: number; recentAvgAllowed?: number; }; }; }'.
+app/lib/prediction-tracker.ts(282,7): error TS2561: Object literal may only specify known properties, but 'averageConfidence' does not exist in type 'AccuracyMetrics'. Did you mean to write 'avgConfidence'?
+app/lib/redis-cache-service.ts(6,23): error TS2307: Cannot find module '@upstash/redis' or its corresponding type declarations.
+app/lib/scrapingbee-service.ts(104,11): error TS2322: Type '{ selector: string; type: string; output: { player: string; team: string; status: string; injury: string; returnDate: string; }; }' is not assignable to type 'string'.
+app/lib/scrapingbee-service.ts(140,11): error TS2322: Type '{ selector: string; type: string; output: { day: string; high: string; low: string; condition: string; }; }' is not assignable to type 'string'.
+app/lib/scrapingbee-service.ts(171,11): error TS2322: Type '{ selector: string; type: string; output: { name: string; position: string; status: string; }; }' is not assignable to type 'string'.
+app/lib/scrapingbee-service.ts(180,11): error TS2322: Type '{ selector: string; type: string; output: { name: string; position: string; status: string; }; }' is not assignable to type 'string'.
+app/lib/sports-ai-bot.ts(181,16): error TS2339: Property 'warning' does not exist on type '{ totalPicks: number; highConfidencePicks: number; lowConfidencePicks: number; averageConfidence: number; sportsDistribution: any; recentPerformance: any; }'.
+app/lib/sports-ai-bot.ts(185,16): error TS2339: Property 'warning' does not exist on type '{ totalPicks: number; highConfidencePicks: number; lowConfidencePicks: number; averageConfidence: number; sportsDistribution: any; recentPerformance: any; }'.
+app/pending-bets-page.tsx(6,10): error TS2460: Module '"./weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+app/progno/before claudepage - Copy.tsx(238,27): error TS2353: Object literal may only specify known properties, and 'sport' does not exist in type 'EnhancedPick'.
+app/scripts/sim-all-2024-sportsblaze.ts(13,30): error TS2460: Module '"../weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+app/single-game-page.tsx(5,10): error TS2460: Module '"./weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+app/single-game-page.tsx(5,29): error TS2460: Module '"./weekly-analyzer"' declares 'GamePrediction' locally, but it is exported as 'ModelCalibration'.
+app/single-game-page.tsx(182,27): error TS2339: Property 'predictedWinner' does not exist on type '{ predictionId: string; gameId: any; winner: any; confidence: number; score: { home: any; away: any; }; edge: number; keyFactors: string[]; methodsUsed: string[]; engine: string; modelVersion: string; dataSources: string[]; timestamp: string; calibrationBin: string; claudeEffect: { ...; }; }'.
+app/single-game/page.tsx(6,10): error TS2460: Module '"../weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+app/single-game/page.tsx(6,29): error TS2460: Module '"../weekly-analyzer"' declares 'GamePrediction' locally, but it is exported as 'ModelCalibration'.
+app/single-game/page.tsx(233,27): error TS2339: Property 'predictedWinner' does not exist on type '{ predictionId: string; gameId: any; winner: any; confidence: number; score: { home: any; away: any; }; edge: number; keyFactors: string[]; methodsUsed: string[]; engine: string; modelVersion: string; dataSources: string[]; timestamp: string; calibrationBin: string; claudeEffect: { ...; }; }'.
+app/sportsblaze-fetcher.ts(5,10): error TS2460: Module '"./weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+app/tv-dashboard.tsx(6,37): error TS2307: Cannot find module './fish-activity-predictor' or its corresponding type declarations.
+app/weekly-analyzer.ts(2,37): error TS2724: '"@/lib/data-sources/predict-with-enrichment"' has no exported member named 'predictGamesWithEnrichment'. Did you mean 'predictGameWithEnrichment'?
+app/weekly-analyzer.ts(4,87): error TS2307: Cannot find module '@/lib/data-sources/weekly-analyzer-types' or its corresponding type declarations.
+app/weekly-analyzer.ts(59,54): error TS2554: Expected 1 arguments, but got 2.
+app/weekly-analyzer.ts(105,39): error TS2307: Cannot find module '@/lib/data-sources/weekly-analyzer-types' or its corresponding type declarations.
+app/weekly-page.helpers.ts(4,10): error TS2460: Module '"./weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+app/weekly-page.tsx(7,30): error TS2460: Module '"./weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+app/weekly-page.tsx(7,36): error TS2460: Module '"./weekly-analyzer"' declares 'WeeklyAnalysis' locally, but it is exported as 'ModelCalibration'.
+lib/api-sports/index.ts(20,10): error TS2724: '"./services/live-tracker"' has no exported member named 'LiveGameTracker'. Did you mean 'LiveGameState'?
+lib/api-sports/index.ts(21,10): error TS2724: '"./services/accuracy-tracker"' has no exported member named 'AccuracyTracker'. Did you mean 'getAccuracyTracker'?
+lib/api-sports/services/h2h-sync.ts(58,20): error TS2339: Property 'getHeadToHead' does not exist on type 'ApiSportsClient'.
+lib/api-sports/services/h2h-sync.ts(106,87): error TS2304: Cannot find name 'homeTeam'.
+lib/api-sports/services/h2h-sync.ts(106,102): error TS2304: Cannot find name 'awayTeam'.
+lib/api-sports/services/injury-sync.ts(42,18): error TS2304: Cannot find name 'getClientForSport'.
+lib/api-sports/services/live-tracker.ts(101,22): error TS2551: Property 'getLiveGame' does not exist on type 'ApiSportsClient'. Did you mean 'getLiveGames'?
+lib/api-sports/services/live-tracker.ts(110,35): error TS2339: Property 'id' does not exist on type 'unknown'.
+lib/api-sports/services/live-tracker.ts(112,30): error TS2339: Property 'home_team' does not exist on type 'unknown'.
+lib/api-sports/services/live-tracker.ts(113,30): error TS2339: Property 'away_team' does not exist on type 'unknown'.
+lib/api-sports/services/live-tracker.ts(114,45): error TS2339: Property 'status' does not exist on type 'unknown'.
+lib/api-sports/services/live-tracker.ts(115,26): error TS2339: Property 'period' does not exist on type 'unknown'.
+lib/api-sports/services/live-tracker.ts(116,25): error TS2339: Property 'clock' does not exist on type 'unknown'.
+lib/api-sports/services/live-tracker.ts(117,29): error TS2339: Property 'home_score' does not exist on type 'unknown'.
+lib/api-sports/services/live-tracker.ts(118,29): error TS2339: Property 'away_score' does not exist on type 'unknown'.
+lib/api-sports/services/live-tracker.ts(121,28): error TS2339: Property 'last_play' does not exist on type 'unknown'.
+lib/api-sports/services/live-tracker.ts(206,27): error TS2551: Property 'homeTeam' does not exist on type 'LiveGameState'. Did you mean 'homeTeamId'?
+lib/backtest-api-keys.ts(51,41): error TS2345: Argument of type '{ p_api_key: string; }' is not assignable to parameter of type 'never'.
+lib/backtest-api-keys.ts(234,39): error TS2345: Argument of type '{ p_user_email: string; p_user_name: string; p_tier: "basic" | "pro" | "enterprise"; p_historical_years: number; p_purchase_reference: string; }' is not assignable to parameter of type 'never'.
+lib/backtest-api-keys.ts(267,15): error TS2345: Argument of type '{ status: string; notes: string; }' is not assignable to parameter of type 'never'.
+lib/data-collection/collectors.ts(256,43): error TS2339: Property 'trackMovement' does not exist on type 'LineMovementTracker'.
+lib/data-sources/h2h-history.ts(9,10): error TS2305: Module '"../../app/weekly-analyzer"' has no exported member 'H2HMeeting'.
+lib/data-sources/predict-with-enrichment.ts(2,22): error TS2307: Cannot find module '@/types' or its corresponding type declarations.
+lib/odds-cache.ts(112,40): error TS2339: Property 'fetched_at' does not exist on type 'never'.
+lib/odds-cache.ts(154,20): error TS2554: Expected 2 arguments, but got 1.
+lib/odds-cache.ts(200,21): error TS2769: No overload matches this call.
+lib/odds-cache.ts(207,25): error TS2345: Argument of type '{ updated_at: string; id?: string; external_id?: string; sport?: string; sport_key?: string; home_team?: string; away_team?: string; home_team_normalized?: string; away_team_normalized?: string; ... 14 more ...; fetched_at?: string; }' is not assignable to parameter of type 'never'.
+lib/odds-cache.ts(318,19): error TS2769: No overload matches this call.
+lib/odds-cache.ts(325,23): error TS2345: Argument of type '{ updated_at: string; id?: string; external_id?: string; sport?: string; sport_key?: string; home_team?: string; away_team?: string; home_team_normalized?: string; away_team_normalized?: string; ... 14 more ...; fetched_at?: string; }' is not assignable to parameter of type 'never'.
+lib/odds-cache.ts(438,31): error TS2339: Property 'game_date' does not exist on type 'never'.
+lib/odds-cache.ts(439,32): error TS2339: Property 'game_date' does not exist on type 'never'.
+lib/real-odds-api.ts(253,10): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+lib/vegas-insider-scraper.ts(6,26): error TS2307: Cannot find module 'cheerio' or its corresponding type declarations.
+lib/vegas-insider-scraper.ts(207,10): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+scripts/archive/fetch-2024-results-alternative.ts(8,31): error TS2307: Cannot find module '../app/keys-store' or its corresponding type declarations.
+scripts/archive/fetch-2024-results.ts(8,31): error TS2307: Cannot find module '../app/keys-store' or its corresponding type declarations.
+scripts/archive/test-kaggle-titanic.ts(12,8): error TS2307: Cannot find module '../app/kaggle-integration' or its corresponding type declarations.
+scripts/archive/test-learning-system.ts(4,48): error TS2307: Cannot find module '../app/anything-predictor' or its corresponding type declarations.
+scripts/archive/test-learning-system.ts(9,8): error TS2307: Cannot find module '../app/anything-learner' or its corresponding type declarations.
+scripts/check-api-status.ts(2,7): error TS2451: Cannot redeclare block-scoped variable 'API_KEY'.
+scripts/fine-tune-engine.ts(8,10): error TS2460: Module '"../app/weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+scripts/fine-tune-engine.ts(106,20): error TS2339: Property 'predictedWinner' does not exist on type '{ predictionId: string; gameId: any; winner: any; confidence: number; score: { home: any; away: any; }; edge: number; keyFactors: string[]; methodsUsed: string[]; engine: string; modelVersion: string; dataSources: string[]; timestamp: string; calibrationBin: string; claudeEffect: { ...; }; }'.
+scripts/fine-tune-engine.ts(113,41): error TS2339: Property 'predictedScore' does not exist on type '{ predictionId: string; gameId: any; winner: any; confidence: number; score: { home: any; away: any; }; edge: number; keyFactors: string[]; methodsUsed: string[]; engine: string; modelVersion: string; dataSources: string[]; timestamp: string; calibrationBin: string; claudeEffect: { ...; }; }'.
+scripts/fine-tune-engine.ts(113,97): error TS2339: Property 'predictedScore' does not exist on type '{ predictionId: string; gameId: any; winner: any; confidence: number; score: { home: any; away: any; }; edge: number; keyFactors: string[]; methodsUsed: string[]; engine: string; modelVersion: string; dataSources: string[]; timestamp: string; calibrationBin: string; claudeEffect: { ...; }; }'.
+scripts/fine-tune-engine.ts(118,42): error TS2339: Property 'predictedScore' does not exist on type '{ predictionId: string; gameId: any; winner: any; confidence: number; score: { home: any; away: any; }; edge: number; keyFactors: string[]; methodsUsed: string[]; engine: string; modelVersion: string; dataSources: string[]; timestamp: string; calibrationBin: string; claudeEffect: { ...; }; }'.
+scripts/fine-tune-engine.ts(118,75): error TS2339: Property 'predictedScore' does not exist on type '{ predictionId: string; gameId: any; winner: any; confidence: number; score: { home: any; away: any; }; edge: number; keyFactors: string[]; methodsUsed: string[]; engine: string; modelVersion: string; dataSources: string[]; timestamp: string; calibrationBin: string; claudeEffect: { ...; }; }'.
+scripts/fine-tune-engine.ts(126,41): error TS2339: Property 'predictedScore' does not exist on type '{ predictionId: string; gameId: any; winner: any; confidence: number; score: { home: any; away: any; }; edge: number; keyFactors: string[]; methodsUsed: string[]; engine: string; modelVersion: string; dataSources: string[]; timestamp: string; calibrationBin: string; claudeEffect: { ...; }; }'.
+scripts/fine-tune-engine.ts(126,74): error TS2339: Property 'predictedScore' does not exist on type '{ predictionId: string; gameId: any; winner: any; confidence: number; score: { home: any; away: any; }; edge: number; keyFactors: string[]; methodsUsed: string[]; engine: string; modelVersion: string; dataSources: string[]; timestamp: string; calibrationBin: string; claudeEffect: { ...; }; }'.
+scripts/fine-tune-engine.ts(152,22): error TS2339: Property 'predictedWinner' does not exist on type '{ predictionId: string; gameId: any; winner: any; confidence: number; score: { home: any; away: any; }; edge: number; keyFactors: string[]; methodsUsed: string[]; engine: string; modelVersion: string; dataSources: string[]; timestamp: string; calibrationBin: string; claudeEffect: { ...; }; }'.
+scripts/run-progno-for-dates.ts(12,30): error TS2460: Module '"../app/weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+scripts/scrape-all-leagues.ts(292,66): error TS1501: This regular expression flag is only available when targeting 'es2018' or later.
+scripts/scrape-nfl-full.ts(27,23): error TS2323: Cannot redeclare exported variable 'scrapeNFLFullSeason'.
+scripts/scrape-nfl-full.ts(214,10): error TS2323: Cannot redeclare exported variable 'scrapeNFLFullSeason'.
+scripts/scrape-nfl-full.ts(214,10): error TS2484: Export declaration conflicts with exported declaration of 'scrapeNFLFullSeason'.
+scripts/scrape-nfl-full.ts(214,31): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+scripts/send-sms.ts(39,16): error TS2393: Duplicate function implementation.
+scripts/simple-backtest-test.ts(16,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+scripts/test-api-status.ts(8,10): error TS2724: '"../lib/odds-sources/api-sports-plugin"' has no exported member named 'APISportsPlugin'. Did you mean 'ApiSportsPlugin'?
+scripts/test-backtest-db.ts(76,26): error TS2345: Argument of type '{ snapshot_type: string; home_moneyline: number; external_id: string; sport: string; game_date: string; away_moneyline?: number; home_spread?: number; away_spread?: number; spread_line?: number; ... 6 more ...; market_count?: number; }' is not assignable to parameter of type 'OddsLineSnapshot'.
+scripts/test-backtest-with-sample-data.ts(17,8): error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled.
+scripts/test-backtest-with-sample-data.ts(73,20): error TS2304: Cannot find name 'GameOutcome'.
+scripts/test-backtest-with-sample-data.ts(99,21): error TS2304: Cannot find name 'OddsLineSnapshot'.
+scripts/test-backtest-with-sample-data.ts(124,20): error TS2304: Cannot find name 'PredictionFactors'.
+scripts/test-backtest-with-sample-data.ts(163,18): error TS2304: Cannot find name 'GradePredictionInput'.
+scripts/test-sportsblaze-nascar.ts(2,7): error TS2451: Cannot redeclare block-scoped variable 'API_KEY'.
+scripts/test-sportsblaze.ts(2,7): error TS2451: Cannot redeclare block-scoped variable 'API_KEY'.
+scripts/test-theodds-nascar.ts(2,7): error TS2451: Cannot redeclare block-scoped variable 'API_KEY'.
+scripts/train-bot-2024.ts(9,10): error TS2460: Module '"../app/weekly-analyzer"' declares 'Game' locally, but it is exported as 'ModelCalibration'.
+scripts/trigger-pick-generation.ts(5,16): error TS2393: Duplicate function implementation.

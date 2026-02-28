@@ -33,11 +33,10 @@ function ensureDefaults() {
       }
       fs.writeFileSync(SETTINGS_FILE, JSON.stringify(def, null, 2))
     }
-  } catch {}
+  } catch { }
 }
 
 function readSettings(): any {
-  ensureDefaults()
   try {
     const raw = fs.readFileSync(SETTINGS_FILE, 'utf8')
     return JSON.parse(raw)

@@ -36,8 +36,9 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-// Load .env.local from project root
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+// Load .env.local from alpha-hunter app root (stable regardless of cwd)
+const alphaRoot = path.resolve(__dirname, '..', '..');
+dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
 
 let supabaseClient: SupabaseClient | null = null;
 let isInitialized = false;
@@ -823,6 +824,8 @@ export async function getBotHistoricalPerformance(
     // Build OR condition for keyword matching at database level
     const keywordConditions = marketKeywords
       .filter(kw => kw.length >= 3) // Only use meaningful keywords
+      .map(kw => kw.replace(/[%.(),]/g, '')) // Sanitize PostgREST filter chars
+      .filter(kw => kw.length >= 3) // Re-check after sanitization
       .map(kw => `market_title.ilike.%${kw}%`)
       .join(',');
 
@@ -861,6 +864,67 @@ export async function getBotHistoricalPerformance(
   }
 }
 
+/**
+ * Record a bet to the actual_bets table (read by progno wallboard).
+ * This bridges alpha-hunter trades to the wallboard display.
+ */
+export async function recordActualBet(bet: {
+  ticker: string;
+  side: string;
+  stake_cents: number;
+  price_cents: number;
+  pick?: string;
+  home_team?: string;
+  away_team?: string;
+  sport?: string;
+  league?: string;
+  confidence?: number;
+  market_title?: string;
+  dry_run?: boolean;
+}): Promise<void> {
+  const client = getClient();
+  if (!client) return;
+
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+
+  try {
+    const { error } = await client.from('actual_bets').insert({
+      ticker: bet.ticker,
+      side: bet.side,
+      stake_cents: bet.stake_cents,
+      price_cents: bet.price_cents,
+      contracts: Math.floor(bet.stake_cents / bet.price_cents) || 1,
+      pick: bet.pick || bet.ticker,
+      home_team: bet.home_team || null,
+      away_team: bet.away_team || null,
+      sport: bet.sport || null,
+      league: bet.league || null,
+      confidence: bet.confidence || null,
+      market_title: bet.market_title || bet.ticker,
+      game_date: today,
+      status: 'open',
+      result: null,
+      profit_cents: null,
+      payout_cents: null,
+      dry_run: bet.dry_run || false,
+      created_at: new Date().toISOString(),
+    });
+    if (error) {
+      // 23505 = duplicate, that's fine
+      if (error.code !== '23505') {
+        console.warn('[actual_bets] Insert error:', error.message);
+      }
+    } else {
+      console.log(`💾 Recorded bet to actual_bets: ${bet.ticker} ${bet.side} $${(bet.stake_cents / 100).toFixed(2)}`);
+    }
+  } catch (e: any) {
+    handleSupabaseError(e, 'recordActualBet');
+  }
+}
+
 export const supabaseMemory = {
   saveBotPrediction,
   getBotPredictions,
@@ -877,6 +941,7 @@ export const supabaseMemory = {
   updateBotMetrics,
   getBotMetrics,
   getBotHistoricalPerformance,
+  recordActualBet,
   getSupabaseClient: getClient, // Alias for compatibility
 };
 

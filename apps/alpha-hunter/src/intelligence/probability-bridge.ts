@@ -26,6 +26,9 @@ export interface KalshiMarketMatch {
   open_interest: number;
   status: string;
   category?: string;
+  /** True if the Progno pick team is the YES side of the Kalshi market.
+   *  Kalshi ticker suffix (e.g. -NSH in KXNHLGAME-26FEB28NSHDAL-NSH) is the YES team. */
+  pickIsYesSide: boolean;
 }
 
 export interface CryptoModelProbability {
@@ -54,6 +57,8 @@ function normalizeLeague(raw: string): string {
   if (!U) return 'NBA';
   // Direct keeps
   if (['NBA', 'NFL', 'NHL', 'MLB', 'NCAAB', 'NCAAF', 'CBB'].includes(U)) return U;
+  // Bare NCAA ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ NCAAB (Progno default for college basketball)
+  if (U === 'NCAA') return 'NCAAB';
   // Synonyms
   if (/^COLLEGE\s+BASKETBALL$/i.test(s) || /^NCAA\s*BASKETBALL$/i.test(s)) return 'NCAAB';
   if (/^COLLEGE\s+FOOTBALL$/i.test(s) || /^NCAA\s*FOOTBALL$/i.test(s)) return 'NCAAF';
@@ -98,13 +103,15 @@ export function getPrognoProbabilitiesFromFile(filePath: string): PrognoEventPro
       const awayTeam = (p.away_team || '').trim();
       if (!pick) continue;
 
-      // Model probability: prefer Monte Carlo win prob for picked side, else confidence
-      // ALWAYS returns 0-100 scale
+      // Model probability: prefer MC win prob (raw simulation, no bias/decay) over confidence
+      // mc_win_probability is for the HOME team; flip if pick is away
       let modelProbability = typeof p.confidence === 'number' ? p.confidence : 50;
       if (typeof p.mc_win_probability === 'number') {
-        modelProbability = Math.round(p.mc_win_probability * 100); // Convert 0-1 to 0-100
-      }
+        const isPickHome = pick === homeTeam;
+        const mcProb = isPickHome ? p.mc_win_probability : 1 - p.mc_win_probability;
+        modelProbability = Math.round(mcProb * 100);
 
+      }
       // Clamp to valid range
       modelProbability = Math.max(1, Math.min(99, modelProbability));
 
@@ -152,7 +159,7 @@ export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]
       const homeTeam = (p.home_team || '').trim();
       const awayTeam = (p.away_team || '').trim();
       if (!pick) continue;
-      // Model probability: prefer Monte Carlo win prob for picked side, else confidence
+      // Model probability: prefer MC win prob (raw simulation, no bias/decay adjustments) over confidence
       let modelProbability = typeof p.confidence === 'number' ? p.confidence : 50;
       if (typeof p.mc_win_probability === 'number') {
         // Use normalized team tokens to properly identify which side is picked
@@ -172,6 +179,9 @@ export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]
         }
       }
       modelProbability = Math.max(1, Math.min(99, modelProbability));
+      if (typeof p.mc_win_probability === 'number' && modelProbability === (typeof p.confidence === 'number' ? p.confidence : 50)) {
+        console.warn(`[ProbBridge] ${pick}: MC side detection failed, using confidence (${modelProbability}%) Ã¢â‚¬â€ ${homeTeam} vs ${awayTeam}`);
+      }
       const teamNames = [homeTeam, awayTeam].filter(Boolean);
       const label = pick === homeTeam ? `${homeTeam} win` : pick === awayTeam ? `${awayTeam} win` : pick;
       out.push({
@@ -192,7 +202,7 @@ export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]
   }
 }
 
-/** Normalize team name for matching: "Kansas City Chiefs" → ["chiefs", "kansas city"], "Lakers" → ["lakers"] */
+/** Normalize team name for matching: "Kansas City Chiefs" ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ["chiefs", "kansas city"], "Lakers" ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ["lakers"] */
 function sanitizeToken(s: string): string {
   return (s || '')
     .toLowerCase()
@@ -222,16 +232,16 @@ function teamSearchTokens(team: string): string[] {
   return [...new Set(tokens)].filter(Boolean);
 }
 
-/** Titles that are not team-sports outcomes (music, weather, economics, meta, soccer) — skip Progno match */
+/** Titles that are not team-sports outcomes (music, weather, economics, meta, soccer, esports, MMA) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â skip Progno match */
 const NON_SPORTS_TITLE =
-  /announcers say|featured on|high temp|temp in|temperature|°f|°c|real gdp|gdp increase|music|album|song|by don toliver|by \w+ toliver|soccer|futbol|fútbol|liga mx|copa |la liga|premier league|bundesliga|serie a|ligue 1|mls cup|eredivisie|champions league|europa league|world cup|concacaf|conmebol|libertadores|sudamericana|colombian|brazilian|mexican league/i;
+  /announcers say|featured on|high temp|temp in|temperature|Ãƒâ€šÃ‚Â°f|Ãƒâ€šÃ‚Â°c|real gdp|gdp increase|music|album|song|by don toliver|by \w+ toliver|soccer|futbol|fÃƒÆ’Ã‚Âºtbol|liga mx|copa |la liga|premier league|bundesliga|serie a|ligue 1|mls cup|eredivisie|champions league|europa league|world cup|concacaf|conmebol|libertadores|sudamericana|colombian|brazilian|mexican league|\bCS2\b|counter.?strike|valorant|league of legends|\bLoL\b|dota|overwatch|call of duty|\bCOD\b|rocket league|esports|e-sports|\bUFC\b|\bMMA\b|boxing|\bPFL\b|bellator|cricket|\bIPL\b|rugby|\bF1\b|formula.?1|nascar|indycar|tennis|\bATP\b|\bWTA\b|golf|\bPGA\b|wrestling|\bWWE\b/i;
 
-/** Progno only predicts these leagues — reject everything else */
-const ALLOWED_PROGNO_LEAGUES = new Set(['NBA', 'NHL', 'NCAAB', 'NCAAF', 'NFL', 'MLB', 'CBB']);
+/** Progno only predicts these leagues ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â reject everything else */
+const ALLOWED_PROGNO_LEAGUES = new Set(['NBA', 'NHL', 'NCAAB', 'NCAA', 'NCAAF', 'NFL', 'MLB', 'CBB']);
 
-/** Require league consistency: title says "basketball" → NBA/NCAAB only; "hockey" → NHL only.
- *  Soccer / unsupported sports → always false.
- *  Generic sport words (game/win/match) → only true if Progno league is in our allowed set
+/** Require league consistency: title says "basketball" ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ NBA/NCAAB only; "hockey" ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ NHL only.
+ *  Soccer / unsupported sports ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ always false.
+ *  Generic sport words (game/win/match) ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ only true if Progno league is in our allowed set
  *  AND the title or known tickers confirm the right sport context. */
 function titleLeagueMatchesEvent(title: string, league: string): boolean {
   const t = title.toLowerCase();
@@ -240,7 +250,7 @@ function titleLeagueMatchesEvent(title: string, league: string): boolean {
   // Gate: Progno league must be in allowed set
   if (!ALLOWED_PROGNO_LEAGUES.has(L)) return false;
 
-  // Explicit sport keywords in title → must match Progno league
+  // Explicit sport keywords in title ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ must match Progno league
   if (/basketball/i.test(t)) return L === 'NBA' || L === 'NCAAB';
   if (/hockey/i.test(t)) return L === 'NHL';
   if (/football/i.test(t) && !/soccer/i.test(t)) return L === 'NFL' || L === 'NCAAF';
@@ -250,22 +260,51 @@ function titleLeagueMatchesEvent(title: string, league: string): boolean {
     return L === 'MLB' || L === 'CBB';
   }
 
-  // Soccer / unsupported sports → ALWAYS reject (Progno has no model for these)
-  if (/soccer|futbol|fútbol|liga|copa|premier league|bundesliga|serie a|ligue 1|mls |eredivisie|champions league|europa league|concacaf|conmebol|libertadores|sudamericana/i.test(t)) return false;
+  // Soccer / unsupported sports ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ALWAYS reject (Progno has no model for these)
+  if (/soccer|futbol|fÃƒÆ’Ã‚Âºtbol|liga|copa|premier league|bundesliga|serie a|ligue 1|mls |eredivisie|champions league|europa league|concacaf|conmebol|libertadores|sudamericana/i.test(t)) return false;
 
-  // Explicit US league abbreviation in title → verify it matches Progno league
+  // Explicit US league abbreviation in title ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ verify it matches Progno league
   if (/\bnfl\b/i.test(t)) return L === 'NFL' || L === 'NCAAF';
   if (/\bnba\b/i.test(t)) return L === 'NBA';
   if (/\bmlb\b/i.test(t)) return L === 'MLB';
   if (/\bnhl\b/i.test(t)) return L === 'NHL';
   if (/\bncaa\b/i.test(t)) return L === 'NCAAB' || L === 'NCAAF' || L === 'CBB';
 
-  // Generic sport words (game/win/match/vs) — allow only if Progno league is supported
-  // These are ambiguous — could be soccer, esports, etc. — but we already blocked
+  // Generic sport words (game/win/match/vs) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â allow only if Progno league is supported
+  // These are ambiguous ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â could be soccer, esports, etc. ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â but we already blocked
   // soccer above and NON_SPORTS_TITLE catches other non-sports.
   if (/\b(game|win|winner|beat|vs\.?)\b/i.test(t)) return true;
 
-  return false; // no sport keyword — don't allow (avoids "Drake" → Drake Bulldogs, etc.)
+  return false; // no sport keyword ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â don't allow (avoids "Drake" ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Drake Bulldogs, etc.)
+}
+
+/** Validate that a Kalshi ticker prefix is consistent with the Progno league.
+ *  Prevents cross-sport false matches like NCAABB (college baseball) ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Â NCAAB (basketball). */
+function tickerMatchesLeague(ticker: string, eventTicker: string, league: string): boolean {
+  const t = ticker + '|' + eventTicker;
+  const L = (league || '').toUpperCase();
+
+  // NCAABB = college baseball ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ only CBB
+  if (/NCAABB/i.test(t)) return L === 'CBB';
+  // NCAAMB = men's basketball ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ NCAAB or NCAA (Progno sometimes reports bare 'NCAA')
+  if (/NCAAMB/i.test(t)) return L === 'NCAAB' || L === 'NCAA';
+  // NCAAWB = women's basketball ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ never (Progno doesn't predict women's)
+  if (/NCAAWB/i.test(t)) return false;
+  // NCAAF = college football
+  if (/NCAAF/i.test(t)) return L === 'NCAAF';
+  // NBA
+  if (/\bKXNBA/i.test(t)) return L === 'NBA';
+  // NHL
+  if (/\bKXNHL/i.test(t)) return L === 'NHL';
+  // MLB
+  if (/\bKXMLB/i.test(t)) return L === 'MLB';
+  // NFL
+  if (/\bKXNFL/i.test(t)) return L === 'NFL';
+  // Argentine soccer, Ligue 1, etc. ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â not Progno sports
+  if (/ARGPREM|LIGUE1|EPL|BUND|SERIEA|LIGA|WBC/i.test(t)) return false;
+
+  // Unknown prefix ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â allow (don't block novel tickers)
+  return true;
 }
 
 /**
@@ -279,17 +318,21 @@ export function matchKalshiMarketToProgno(
 ): KalshiMarketMatch | null {
   const sportsPrefixes = [
     // Winner/Game/Money markets (highest priority - these are moneyline)
-    'KXNBAGAME', 'KXNCAAMBGAME', 'KXNFLGAME', 'KXNHLGAME', 'KXMLBGAME', 'KXNCAAFGAME', 'KXNASCARGAME',
-    'KXNCAABBGAME', // College baseball
+    'KXNBAGAME', 'KXNCAAMBGAME', 'KXNFLGAME', 'KXNHLGAME', 'KXMLBGAME', 'KXNCAAFGAME',
+    'KXNCAABBGAME', // College baseball (CBB) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Progno predicts this
+    // EXCLUDED: 'KXNCAAWBGAME' (women's basketball) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Progno only predicts men's basketball
+    // EXCLUDED: 'KXNASCARGAME' ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Progno doesn't predict NASCAR
     'KXNCAAMBMONEY', 'KXNBAMONEY', 'KXNFLMONEY', 'KXNHLMONEY', // Moneyline markets
-    'KXMVNBA', 'KXMVNCAAB', 'KXMVNFL', 'KXMVNHL', 'KXMVMLB', 'KXMVNCAAF', 'KXMVNASCAR',
+    'KXMVNBA', 'KXMVNCAAB', 'KXMVNFL', 'KXMVNHL', 'KXMVMLB', 'KXMVNCAAF',
     // Spread/Total/Winner variants (lower priority)
     'KXNCAAMBSPREAD', 'KXNCAAMBWINNER',
     'KXNBASPREAD', 'KXNBAWINNER',
     'KXNFLSPREAD', 'KXNFLWINNER',
     'KXNHLSPREAD', 'KXNHLWINNER',
-    // NOTE: Do NOT add broad prefixes like KXNBA, KXNHL — they match props, mentions, halves, etc.
+    // NOTE: Do NOT add broad prefixes like KXNBA, KXNHL ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â they match props, mentions, halves, etc.
     // Only add specific GAME/MONEY/WINNER prefixes that correspond to full-game outcomes.
+    // NEVER add: KXNCAABB (college baseball), KXNCAAWB (women's basketball),
+    //            KXCS2 (esports), KXEPL/KXBUNDES/KXSERIEA (soccer), KXNASCAR
   ];
   const homeTokens = teamSearchTokens(prognoEvent.homeTeam);
   const awayTokens = teamSearchTokens(prognoEvent.awayTeam);
@@ -334,8 +377,16 @@ export function matchKalshiMarketToProgno(
     const marketTitleLower = marketTitle.toLowerCase();
     const sanitizedTitle = sanitizeToken(marketTitleLower);
 
-    // Skip non-sports markets
+    // Skip non-sports markets (soccer, weather, music, economics, esports, MMA, etc.)
     if (NON_SPORTS_TITLE.test(marketTitle)) { if (DEBUG) debugCounts.nonsports++; continue; }
+
+    // Declare ticker variables early so all filters can use them
+    const tickerStr = (market.ticker || '').toUpperCase();
+    const eventTicker = (market.event_ticker || '').toUpperCase();
+
+    // Skip non-Progno sports by ticker: college baseball, women's basketball, esports, soccer, NASCAR
+    if (/NCAAWB|CS2|VAL(?:ORANT)?GAME|LOLGAME|CODGAME|EPL|BUND|SERIEA|LIGA|MLS|NASCAR/i.test(tickerStr)) { if (DEBUG) debugCounts.nonsports++; continue; }
+    if (/NCAAWB|CS2|VAL(?:ORANT)?GAME|LOLGAME|CODGAME|EPL|BUND|SERIEA|LIGA|MLS|NASCAR/i.test(eventTicker)) { if (DEBUG) debugCounts.nonsports++; continue; }
 
     // Skip TOTAL markets when matching win probability (Progno win prob doesn't apply to totals)
     if (/\bTOTAL\b|Total Points/i.test(marketTitle)) continue;
@@ -357,9 +408,7 @@ export function matchKalshiMarketToProgno(
     const hasPick = pickTokens.some(t => t.length >= 3 && sanitizedTitle.includes(t));
     if (isMulti && !(winnerLike && hasPick)) { if (DEBUG) debugCounts.comma++; continue; }
 
-    // Check event_ticker OR ticker for sports prefix
-    const eventTicker = (market.event_ticker || '').toUpperCase();
-    const tickerStr = (market.ticker || '').toUpperCase();
+    // Check event_ticker OR ticker for sports prefix (tickerStr/eventTicker declared above)
     const hasSportsPrefix = sportsPrefixes.some(p => eventTicker.startsWith(p) || tickerStr.startsWith(p));
 
     // Skip non-game-winner ticker patterns (must be after tickerStr/eventTicker are declared)
@@ -383,12 +432,25 @@ export function matchKalshiMarketToProgno(
         continue;
       }
     } else {
-      // Both teams present — verify the pick team is in the title
+      // Both teams present ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â verify the pick team is in the title
       if (!hasPick) { if (DEBUG) debugCounts.noPick++; continue; }
     }
 
-    // Verify league consistency
+    // Verify league consistency (title-based)
     if (!titleLeagueMatchesEvent(marketTitle, prognoEvent.league)) { if (DEBUG) debugCounts.league++; continue; }
+
+    // Verify league consistency (ticker-based) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â prevents NCAABB (baseball) matching NCAAB (basketball)
+    if (!tickerMatchesLeague(tickerStr, eventTicker, prognoEvent.league)) { if (DEBUG) debugCounts.league++; continue; }
+
+    // Determine if pick team is the YES side.
+    // Kalshi titles follow: "Will [YES_TEAM] win the [YES_TEAM] vs. [NO_TEAM] ... game?"
+    // Extract text between "Will" and "win" to identify the YES-side team.
+    const willWinMatch = marketTitleLower.match(/will\s+(.+?)\s+win/i);
+    const yesTeamText = willWinMatch ? sanitizeToken(willWinMatch[1]) : '';
+    // Pick is YES side if pick team tokens appear in the "Will X win" subject
+    const pickIsYesSide = yesTeamText
+      ? pickTokens.some(t => t.length >= 3 && yesTeamText.includes(t))
+      : true; // Default to YES if title doesn't match pattern (conservative);
 
     // Found a valid match - return complete market data
     return {
@@ -398,17 +460,17 @@ export function matchKalshiMarketToProgno(
       yes_ask: yesAsk,
       yes_bid: typeof market.yes_bid === 'number' ? market.yes_bid : yesAsk - 1,
       no_ask: typeof market.no_ask === 'number' ? market.no_ask : 100 - yesAsk,
-      no_bid: typeof market.no_bid === 'number' ? market.no_bid : 100 - yesAsk - 1,
+      no_bid: typeof market.no_bid === 'number' ? market.no_bid : 100 - (typeof market.yes_bid === 'number' ? market.yes_bid : yesAsk),
       volume: typeof market.volume === 'number' ? market.volume : 0,
       open_interest: typeof market.open_interest === 'number' ? market.open_interest : 0,
       status: market.status || 'unknown',
-      category: market.category || ''
+      category: market.category || '',
+      pickIsYesSide,
     };
   }
 
   // Fallback pass: looser match for team-winner style markets when primary pass found none
   // - Skip obvious multi-leg/player-prop conglomerates (e.g., MULTIGAMEEXTENDED)
-  // - Accept if BOTH teams appear in title, OR if pick team appears with winner-like phrasing
   for (const market of kalshiMarkets) {
     if (!market || typeof market !== 'object') continue;
     const status = (market.status || '').toLowerCase();
@@ -422,6 +484,12 @@ export function matchKalshiMarketToProgno(
     // Skip known multi-leg groupings to avoid player-prop conglomerates
     if (/MULTIGAME|EXTENDED|PARLAY/i.test(tickerStr) || /MULTIGAME|EXTENDED|PARLAY/i.test(eventTicker)) continue;
 
+    // Skip non-Progno sports: women's basketball (NCAAWB),
+    // esports (CS2, VAL, LOL, COD), soccer (EPL, BUND, SERIEA, LIGA, MLS), NASCAR
+    // NOTE: NCAABB (college baseball) IS allowed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Progno predicts CBB
+    if (/NCAAWB|CS2|VAL(?:ORANT)?GAME|LOLGAME|CODGAME|EPL|BUND|SERIEA|LIGA|MLS|NASCAR/i.test(tickerStr)) continue;
+    if (/NCAAWB|CS2|VAL(?:ORANT)?GAME|LOLGAME|CODGAME|EPL|BUND|SERIEA|LIGA|MLS|NASCAR/i.test(eventTicker)) continue;
+
     // Skip non-game-winner ticker patterns (same filters as primary pass)
     if (/-TIE$/i.test(tickerStr)) continue;
     if (/2HWINNER|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(tickerStr)) continue;
@@ -431,7 +499,7 @@ export function matchKalshiMarketToProgno(
     if (typeof marketTitle !== 'string') marketTitle = String(marketTitle || '');
     if (!marketTitle) continue;
 
-    // Skip non-sports markets (soccer, weather, music, economics, etc.)
+    // Skip non-sports markets (soccer, weather, music, economics, esports, MMA, etc.)
     if (NON_SPORTS_TITLE.test(marketTitle)) continue;
 
     // Skip non-game-winner title patterns (same filters as primary pass)
@@ -454,6 +522,14 @@ export function matchKalshiMarketToProgno(
 
     if (bothTeamsPresent || (winnerLike && hasPick)) {
       if (!titleLeagueMatchesEvent(marketTitle, prognoEvent.league)) { if (DEBUG) debugCounts.league++; continue; }
+      if (!tickerMatchesLeague(market.ticker || '', market.event_ticker || '', prognoEvent.league)) { if (DEBUG) debugCounts.league++; continue; }
+      // Determine if pick team is the YES side (same logic as primary pass)
+      const fbTitleLower = marketTitle.toLowerCase();
+      const fbWillWinMatch = fbTitleLower.match(/will\s+(.+?)\s+win/i);
+      const fbYesTeamText = fbWillWinMatch ? sanitizeToken(fbWillWinMatch[1]) : '';
+      const fbPickIsYesSide = fbYesTeamText
+        ? pickTokens.some(t => t.length >= 3 && fbYesTeamText.includes(t))
+        : true;
       return {
         ticker: market.ticker || '',
         eventTicker: market.event_ticker || '',
@@ -465,7 +541,8 @@ export function matchKalshiMarketToProgno(
         volume: typeof market.volume === 'number' ? market.volume : 0,
         open_interest: typeof market.open_interest === 'number' ? market.open_interest : 0,
         status: market.status || 'unknown',
-        category: market.category || ''
+        category: market.category || '',
+        pickIsYesSide: fbPickIsYesSide,
       };
     }
   }

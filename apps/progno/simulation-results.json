@@ -1,0 +1,53 @@
+{
+  "timestamp": "2026-02-28T13:04:13.324Z",
+  "gamesAnalyzed": 249,
+  "leagueBreakdown": {
+    "NBA": 18,
+    "NCAAB": 150,
+    "NCAA": 81
+  },
+  "baseline": {
+    "avgBR": 12401,
+    "medBR": 12420,
+    "stdDev": 1490,
+    "winRate": 57.66,
+    "roi": 9.81,
+    "profPct": 94.5,
+    "p5": 9966,
+    "p95": 14867,
+    "maxDD": 9.59
+  },
+  "withAnalyzer": {
+    "avgBR": 12837,
+    "medBR": 12867,
+    "stdDev": 1420,
+    "winRate": 58.87,
+    "roi": 11.53,
+    "profPct": 98.1,
+    "p5": 10508,
+    "p95": 15145,
+    "maxDD": 8.74
+  },
+  "optimalParams": {
+    "blendWeight": 0.1,
+    "confidenceWeight": 0.5,
+    "edgeWeight": 0.3,
+    "spreadWeight": 0.3,
+    "minEdgeActivation": 2,
+    "flipThreshold": 45,
+    "valueBetMinEdge": 3,
+    "underdogBonus": 0,
+    "sportMultipliers": {
+      "NBA": 0,
+      "NHL": 1,
+      "MLB": 1,
+      "NCAAB": 0,
+      "NCAAF": 1,
+      "NFL": 1,
+      "CBB": 1,
+      "NCAA": 0.3
+    }
+  },
+  "verdict": "HELPS",
+  "roiDifference": 1.7199999999999989
+}

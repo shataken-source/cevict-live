@@ -7,14 +7,43 @@ const app = express();
 const PORT = 3434;
 const API_PORT = 3008;
 
-// Proxy /api/* → localhost:3008/api/* (avoids CORS from port 3434 → 3008)
+// SAFE proxy allowlist — only read-only public endpoints.
+// Admin/trading/cron routes are NEVER proxied.
+const ALLOWED_PROXY_PREFIXES = [
+  '/api/picks/',
+  '/api/espn-scores',
+  '/api/health/',
+  '/api/performance',
+  '/api/accuracy',
+  '/api/progno/daily-card',
+  '/api/progno/predictions',
+];
+
+function isProxyAllowed(url) {
+  // Only allow GET requests through the proxy
+  return ALLOWED_PROXY_PREFIXES.some(p => url.startsWith(p));
+}
+
 app.use('/api', (req, res) => {
+  const apiPath = '/api' + req.url;
+
+  // Block non-GET and any route not in the allowlist
+  if (req.method !== 'GET' || !isProxyAllowed(apiPath)) {
+    return res.status(403).json({ error: 'Forbidden: this route is not available through the wallboard proxy' });
+  }
+
+  // Strip sensitive headers before forwarding
+  const safeHeaders = { ...req.headers, host: `localhost:${API_PORT}` };
+  delete safeHeaders['authorization'];
+  delete safeHeaders['x-admin-secret'];
+  delete safeHeaders['cookie'];
+
   const options = {
     hostname: 'localhost',
     port: API_PORT,
-    path: '/api' + req.url,
-    method: req.method,
-    headers: { ...req.headers, host: `localhost:${API_PORT}` },
+    path: apiPath,
+    method: 'GET',
+    headers: safeHeaders,
   };
   const proxy = http.request(options, (apiRes) => {
     res.writeHead(apiRes.statusCode, apiRes.headers);
@@ -27,8 +56,17 @@ app.use('/api', (req, res) => {
   req.pipe(proxy, { end: true });
 });
 
-// Serve static files from wallboard directory
-app.use(express.static(__dirname));
+// Serve static files — only known safe extensions (not package.json, node_modules, etc.)
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html', 'js', 'css', 'mp3', 'png', 'jpg', 'svg'] }));
+app.use(express.static(__dirname, {
+  index: false,
+  setHeaders: (res, filePath) => {
+    const ext = path.extname(filePath).toLowerCase();
+    if (!['.html', '.js', '.css', '.mp3', '.png', '.jpg', '.svg', '.ico'].includes(ext)) {
+      res.status(403).end('Forbidden');
+    }
+  }
+}));
 
 // Main wallboard route
 app.get('/', (req, res) => {
@@ -40,7 +78,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
   const url = `http://localhost:${PORT}`;
 
   console.log('\n' + '='.repeat(60));

@@ -6,7 +6,8 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+const alphaRoot = path.resolve(__dirname, '..');
+dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
 
 import { createClient } from '@supabase/supabase-js';
 import { FundAccount, Trade, Opportunity } from './types';
@@ -76,7 +77,7 @@ export class UnifiedFundManager {
   private allocatedFunds: Map<string, number> = new Map();
   private trades: Map<string, Trade> = new Map();
 
-  // Hydration promise — await this before reading balances at startup
+  // Hydration promise â€” await this before reading balances at startup
   public ready: Promise<void>;
 
   constructor(config?: Partial<AllocationConfig>) {
@@ -95,12 +96,12 @@ export class UnifiedFundManager {
    */
   async initialize(): Promise<void> {
     if (!this.supabase) {
-      console.log('   ℹ️ Supabase not available - using in-memory-only mode');
+      console.log('   â„¹ï¸ Supabase not available - using in-memory-only mode');
       return;
     }
 
     try {
-      console.log('   🔄 Hydrating fund manager from Supabase...');
+      console.log('   ðŸ”„ Hydrating fund manager from Supabase...');
 
       const acctEnv = (process.env.ALPHA_HUNTER_ACCOUNT_ID || '').trim();
       const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(acctEnv);
@@ -127,7 +128,7 @@ export class UnifiedFundManager {
       }
 
       if (accountError && accountError.code !== 'PGRST116') {
-        console.warn('   ⚠️ Could not load account:', accountError.message);
+        console.warn('   âš ï¸ Could not load account:', accountError.message);
       }
 
       if (!accountData) {
@@ -144,7 +145,7 @@ export class UnifiedFundManager {
         const totalProfit = parseFloat(accountData.total_profit || '0');
         this.kalshiCumulativePnL = totalProfit * 0.5; // Estimate split
         this.cryptoCumulativePnL = totalProfit * 0.5;
-        console.log(`   ✅ Restored total P&L: $${totalProfit.toFixed(2)}`);
+        console.log(`   âœ… Restored total P&L: $${totalProfit.toFixed(2)}`);
       }
 
       // Load open trades into memory
@@ -154,7 +155,7 @@ export class UnifiedFundManager {
         .in('status', ['pending', 'active']);
 
       if (tradesError) {
-        console.warn('   ⚠️ Could not load trades:', tradesError.message);
+        console.warn('   âš ï¸ Could not load trades:', tradesError.message);
       }
 
       if (tradesData && tradesData.length > 0) {
@@ -177,7 +178,7 @@ export class UnifiedFundManager {
           this.trades.set(trade.id, trade);
           this.allocatedFunds.set(trade.opportunityId, trade.amount);
         }
-        console.log(`   ✅ Loaded ${tradesData.length} open trades`);
+        console.log(`   âœ… Loaded ${tradesData.length} open trades`);
       }
 
       // Load historical stats from trade_history (bot_* schema)
@@ -199,12 +200,12 @@ export class UnifiedFundManager {
         this.kalshiLosses = losses;
         this.kalshiCumulativePnL = pnl;
 
-        console.log(`   ✅ Loaded ${historyData.length} historical trades (${wins}W/${losses}L, $${pnl.toFixed(2)} P&L)`);
+        console.log(`   âœ… Loaded ${historyData.length} historical trades (${wins}W/${losses}L, $${pnl.toFixed(2)} P&L)`);
       }
 
-      console.log('   ✅ Fund manager hydrated successfully');
+      console.log('   âœ… Fund manager hydrated successfully');
     } catch (e) {
-      console.warn('   ⚠️ Fund manager hydration failed:', (e as Error).message);
+      console.warn('   âš ï¸ Fund manager hydration failed:', (e as Error).message);
     }
   }
 
@@ -420,27 +421,27 @@ export class UnifiedFundManager {
     const cryptoPnlColor = cryptoStats.pnl >= 0 ? c.brightGreen : c.brightRed;
 
     const lines = [
-      `${c.brightCyan}╔══════════════════════════════════════════════════════════════╗${c.reset}`,
-      `${c.brightCyan}║${c.reset}            ${c.brightYellow}💰 UNIFIED FUND MANAGER 💰${c.reset}                        ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}╠══════════════════════════════════════════════════════════════╣${c.reset}`,
-      `${c.brightCyan}║${c.reset}  ${c.brightWhite}TOTAL FUNDS:${c.reset}     ${c.brightGreen}$${total.toFixed(2).padStart(10)}${c.reset}                          ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}║${c.reset}  ${c.dim}AVAILABLE:${c.reset}       ${c.white}${available.toFixed(2).padStart(10)}${c.reset}                          ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}║${c.reset}  ${c.brightWhite}CUMULATIVE P&L:${c.reset} ${pnlColor}${(totalPnL >= 0 ? '+' : '')}${totalPnL.toFixed(2).padStart(9)}${c.reset}                          ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}╠══════════════════════════════════════════════════════════════╣${c.reset}`,
-      `${c.brightCyan}║${c.reset}  ${c.dim}PLATFORM BREAKDOWN:${c.reset}                                         ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}║${c.reset}  ${c.brightMagenta}🎯 Kalshi:${c.reset}     ${c.brightWhite}$${this.kalshiBalance.total.toFixed(2).padStart(8)}${c.reset} ${c.dim}(target: $${kalshiTarget.toFixed(0).padStart(6)})${c.reset}       ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}║${c.reset}     ${c.dim}Available:${c.reset} $${this.kalshiBalance.available.toFixed(2).padStart(8)}                              ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}║${c.reset}     ${c.dim}P&L:${c.reset}       ${kalshiPnlColor}${(kalshiStats.pnl >= 0 ? '+' : '')}$${kalshiStats.pnl.toFixed(2).padStart(8)}${c.reset} ${c.dim}(${kalshiStats.trades} trades, ${kalshiStats.winRate.toFixed(1)}% win)${c.reset} ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}║${c.reset}  ${c.brightYellow}🪙 Crypto:${c.reset}     ${c.brightWhite}$${this.cryptoBalance.total.toFixed(2).padStart(8)}${c.reset} ${c.dim}(target: $${cryptoTarget.toFixed(0).padStart(6)})${c.reset}       ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}║${c.reset}     ${c.dim}Available:${c.reset} $${this.cryptoBalance.available.toFixed(2).padStart(8)}                              ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}║${c.reset}     ${c.dim}P&L:${c.reset}       ${cryptoPnlColor}${(cryptoStats.pnl >= 0 ? '+' : '')}$${cryptoStats.pnl.toFixed(2).padStart(8)}${c.reset} ${c.dim}(${cryptoStats.trades} trades, ${cryptoStats.winRate.toFixed(1)}% win)${c.reset} ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}║${c.reset}  ${c.cyan}🛡️  Reserve:${c.reset}    $${reserve.toFixed(2).padStart(8)} ${c.dim}(${this.allocation.reservePercent}%)${c.reset}                         ${c.brightCyan}║${c.reset}`,
-      `${c.brightCyan}╚══════════════════════════════════════════════════════════════╝${c.reset}`,
+      `${c.brightCyan}â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}            ${c.brightYellow}ðŸ’° UNIFIED FUND MANAGER ðŸ’°${c.reset}                        ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}  ${c.brightWhite}TOTAL FUNDS:${c.reset}     ${c.brightGreen}$${total.toFixed(2).padStart(10)}${c.reset}                          ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}  ${c.dim}AVAILABLE:${c.reset}       ${c.white}${available.toFixed(2).padStart(10)}${c.reset}                          ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}  ${c.brightWhite}CUMULATIVE P&L:${c.reset} ${pnlColor}${(totalPnL >= 0 ? '+' : '')}${totalPnL.toFixed(2).padStart(9)}${c.reset}                          ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}  ${c.dim}PLATFORM BREAKDOWN:${c.reset}                                         ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}  ${c.brightMagenta}ðŸŽ¯ Kalshi:${c.reset}     ${c.brightWhite}$${this.kalshiBalance.total.toFixed(2).padStart(8)}${c.reset} ${c.dim}(target: $${kalshiTarget.toFixed(0).padStart(6)})${c.reset}       ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}     ${c.dim}Available:${c.reset} $${this.kalshiBalance.available.toFixed(2).padStart(8)}                              ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}     ${c.dim}P&L:${c.reset}       ${kalshiPnlColor}${(kalshiStats.pnl >= 0 ? '+' : '')}$${kalshiStats.pnl.toFixed(2).padStart(8)}${c.reset} ${c.dim}(${kalshiStats.trades} trades, ${kalshiStats.winRate.toFixed(1)}% win)${c.reset} ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}  ${c.brightYellow}ðŸª™ Crypto:${c.reset}     ${c.brightWhite}$${this.cryptoBalance.total.toFixed(2).padStart(8)}${c.reset} ${c.dim}(target: $${cryptoTarget.toFixed(0).padStart(6)})${c.reset}       ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}     ${c.dim}Available:${c.reset} $${this.cryptoBalance.available.toFixed(2).padStart(8)}                              ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}     ${c.dim}P&L:${c.reset}       ${cryptoPnlColor}${(cryptoStats.pnl >= 0 ? '+' : '')}$${cryptoStats.pnl.toFixed(2).padStart(8)}${c.reset} ${c.dim}(${cryptoStats.trades} trades, ${cryptoStats.winRate.toFixed(1)}% win)${c.reset} ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â•‘${c.reset}  ${c.cyan}ðŸ›¡ï¸  Reserve:${c.reset}    $${reserve.toFixed(2).padStart(8)} ${c.dim}(${this.allocation.reservePercent}%)${c.reset}                         ${c.brightCyan}â•‘${c.reset}`,
+      `${c.brightCyan}â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${c.reset}`,
     ];
 
     const rebalance = this.getRebalanceSuggestion();
     if (rebalance) {
-      lines.push(`${c.brightYellow}⚠️  REBALANCE:${c.reset} Move ${c.brightGreen}$${rebalance.amount}${c.reset} from ${c.brightRed}${rebalance.from}${c.reset} to ${c.brightGreen}${rebalance.to}${c.reset}`);
+      lines.push(`${c.brightYellow}âš ï¸  REBALANCE:${c.reset} Move ${c.brightGreen}$${rebalance.amount}${c.reset} from ${c.brightRed}${rebalance.from}${c.reset} to ${c.brightGreen}${rebalance.to}${c.reset}`);
     }
 
     return lines.join('\n');
@@ -451,7 +452,7 @@ export class UnifiedFundManager {
    */
   setAllocation(kalshi: number, crypto: number, reserve: number): void {
     if (kalshi + crypto + reserve !== 100) {
-      console.warn('⚠️ Allocation percentages should sum to 100');
+      console.warn('âš ï¸ Allocation percentages should sum to 100');
     }
     this.allocation = {
       kalshiPercent: kalshi,
@@ -577,7 +578,7 @@ export class UnifiedFundManager {
     const account = await this.getAccount();
     const maxTrade = parseFloat(process.env.MAX_SINGLE_TRADE || '50');
     const maxPositions = parseInt(process.env.MAX_OPEN_POSITIONS || '5');
-    const dailyLossLimit = parseFloat(process.env.MAX_DAILY_LOSS || '100');
+    const dailyLossLimit = parseFloat(process.env.MAX_DAILY_LOSS || '50');
     const dailyTarget = parseFloat(process.env.DAILY_PROFIT_TARGET || '250');
 
     // Check available funds
@@ -861,7 +862,7 @@ class ExtendedFundManager extends UnifiedFundManager {
       notes
     };
     this.rebalanceRequests.push(request);
-    console.log(`\n📋 REBALANCE REQUEST CREATED:`);
+    console.log(`\nðŸ“‹ REBALANCE REQUEST CREATED:`);
     console.log(`   ID: ${request.id}`);
     console.log(`   Move $${amount.toFixed(2)} from ${from === 'kalshi' ? 'Kalshi' : 'Coinbase'} to ${to === 'kalshi' ? 'Kalshi' : 'Coinbase'}`);
     console.log(`   Status: PENDING`);
@@ -875,12 +876,12 @@ class ExtendedFundManager extends UnifiedFundManager {
   initiateRebalance(requestId: string): boolean {
     const request = this.rebalanceRequests.find(r => r.id === requestId);
     if (!request) {
-      console.log(`❌ Rebalance request ${requestId} not found`);
+      console.log(`âŒ Rebalance request ${requestId} not found`);
       return false;
     }
     request.status = 'initiated';
     request.initiatedAt = new Date();
-    console.log(`\n✅ REBALANCE INITIATED: ${requestId}`);
+    console.log(`\nâœ… REBALANCE INITIATED: ${requestId}`);
     console.log(`   Started at: ${request.initiatedAt.toLocaleString()}`);
     console.log(`   Expected completion: 3-5 business days`);
     return true;
@@ -892,12 +893,12 @@ class ExtendedFundManager extends UnifiedFundManager {
   completeRebalance(requestId: string): boolean {
     const request = this.rebalanceRequests.find(r => r.id === requestId);
     if (!request) {
-      console.log(`❌ Rebalance request ${requestId} not found`);
+      console.log(`âŒ Rebalance request ${requestId} not found`);
       return false;
     }
     request.status = 'completed';
     request.completedAt = new Date();
-    console.log(`\n🎉 REBALANCE COMPLETED: ${requestId}`);
+    console.log(`\nðŸŽ‰ REBALANCE COMPLETED: ${requestId}`);
     console.log(`   Amount: $${request.amount.toFixed(2)}`);
     console.log(`   Duration: ${this.getDuration(request.createdAt, request.completedAt)}`);
     return true;
@@ -909,12 +910,12 @@ class ExtendedFundManager extends UnifiedFundManager {
   cancelRebalance(requestId: string, reason?: string): boolean {
     const request = this.rebalanceRequests.find(r => r.id === requestId);
     if (!request) {
-      console.log(`❌ Rebalance request ${requestId} not found`);
+      console.log(`âŒ Rebalance request ${requestId} not found`);
       return false;
     }
     request.status = 'cancelled';
     request.notes = reason || request.notes;
-    console.log(`\n⛔ REBALANCE CANCELLED: ${requestId}`);
+    console.log(`\nâ›” REBALANCE CANCELLED: ${requestId}`);
     if (reason) console.log(`   Reason: ${reason}`);
     return true;
   }
@@ -948,7 +949,7 @@ class ExtendedFundManager extends UnifiedFundManager {
     );
 
     if (existingPending) {
-      console.log(`\n⏳ Existing rebalance already pending: ${existingPending.id}`);
+      console.log(`\nâ³ Existing rebalance already pending: ${existingPending.id}`);
       return existingPending;
     }
 
@@ -965,23 +966,23 @@ class ExtendedFundManager extends UnifiedFundManager {
     const pending = this.getPendingRebalances();
     const lines: string[] = [
       '',
-      '╔══════════════════════════════════════════════════════════════╗',
-      '║            🔄 REBALANCE TRACKER 🔄                           ║',
-      '╠══════════════════════════════════════════════════════════════╣',
+      'â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—',
+      'â•‘            ðŸ”„ REBALANCE TRACKER ðŸ”„                           â•‘',
+      'â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£',
     ];
 
     if (pending.length === 0) {
-      lines.push('║  ✅ No pending rebalances                                    ║');
+      lines.push('â•‘  âœ… No pending rebalances                                    â•‘');
     } else {
       for (const req of pending) {
         const fromName = req.from === 'kalshi' ? 'Kalshi' : 'Coinbase';
         const toName = req.to === 'kalshi' ? 'Kalshi' : 'Coinbase';
-        const statusIcon = req.status === 'pending' ? '⏳' : '🔄';
-        lines.push(`║  ${statusIcon} ${req.id.substring(0, 15).padEnd(15)}                              ║`);
-        lines.push(`║     $${req.amount.toFixed(2).padStart(8)} : ${fromName.padEnd(10)} → ${toName.padEnd(10)}     ║`);
-        lines.push(`║     Status: ${req.status.toUpperCase().padEnd(12)} Created: ${req.createdAt.toLocaleDateString()}    ║`);
+        const statusIcon = req.status === 'pending' ? 'â³' : 'ðŸ”„';
+        lines.push(`â•‘  ${statusIcon} ${req.id.substring(0, 15).padEnd(15)}                              â•‘`);
+        lines.push(`â•‘     $${req.amount.toFixed(2).padStart(8)} : ${fromName.padEnd(10)} â†’ ${toName.padEnd(10)}     â•‘`);
+        lines.push(`â•‘     Status: ${req.status.toUpperCase().padEnd(12)} Created: ${req.createdAt.toLocaleDateString()}    â•‘`);
         if (req.status === 'initiated' && req.initiatedAt) {
-          lines.push(`║     ⏱️  In transit since ${req.initiatedAt.toLocaleDateString()}                     ║`);
+          lines.push(`â•‘     â±ï¸  In transit since ${req.initiatedAt.toLocaleDateString()}                     â•‘`);
         }
       }
     }
@@ -989,13 +990,13 @@ class ExtendedFundManager extends UnifiedFundManager {
     // Show suggestion if no pending
     const suggestion = this.getRebalanceSuggestion();
     if (suggestion && pending.length === 0) {
-      lines.push('╠══════════════════════════════════════════════════════════════╣');
-      lines.push(`║  💡 SUGGESTION: Move $${suggestion.amount} from ${suggestion.from}       ║`);
-      lines.push(`║     to ${suggestion.to}                                       ║`);
-      lines.push(`║     Run: fundManager.checkAndCreateRebalance()              ║`);
+      lines.push('â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•£');
+      lines.push(`â•‘  ðŸ’¡ SUGGESTION: Move $${suggestion.amount} from ${suggestion.from}       â•‘`);
+      lines.push(`â•‘     to ${suggestion.to}                                       â•‘`);
+      lines.push(`â•‘     Run: fundManager.checkAndCreateRebalance()              â•‘`);
     }
 
-    lines.push('╚══════════════════════════════════════════════════════════════╝');
+    lines.push('â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
     return lines.join('\n');
   }
 

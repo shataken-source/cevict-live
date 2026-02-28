@@ -23,30 +23,42 @@ import { AIBrain } from './ai-brain';
 import { UnifiedFundManager } from './fund-manager';
 import { KalshiTrader, calcNetProfit, MIN_NET_PROFIT } from './intelligence/kalshi-trader';
 import { CryptoTrader } from './strategies/crypto-trader';
+import { ExchangeManager } from './exchanges/exchange-manager';
 import { SMSNotifier } from './sms-notifier';
 import { checkSetup, printSetupStatus } from './setup-check';
 import { tradeLimiter } from './lib/trade-limiter';
+import { recordActualBet } from './lib/supabase-memory';
 import { emergencyStop } from './lib/emergency-stop';
+import { smsAlerter } from './lib/sms-alerter';
+import { beeper } from './lib/beep';
 
 export class TradingBot {
   private brain: AIBrain;
   private funds: UnifiedFundManager;
   private kalshi: KalshiTrader;
   private crypto: CryptoTrader;
+  private exchanges: ExchangeManager;
   private sms: SMSNotifier;
 
   private running = false;
   private executionLock = false;
   private cycleCount = 0;
 
+  // Live balance tracking (refreshed each cycle)
+  private kalshiBalance = 0;
+  private coinbaseUsd = 0;
+
   private readonly INTERVAL = parseInt(process.env.ALPHA_CYCLE_SECONDS || '60', 10) * 1000;
   private readonly MAX_SINGLE_TRADE = parseFloat(process.env.MAX_SINGLE_TRADE || '5');
+  private readonly PROFIT_TAKE_PCT = parseFloat(process.env.PROFIT_TAKE_PCT || '4');
+  private readonly USD_RESERVE = parseFloat(process.env.USD_RESERVE_FLOOR || '50');
 
   constructor() {
     this.brain = new AIBrain();
     this.funds = new UnifiedFundManager();
     this.kalshi = new KalshiTrader();
     this.crypto = new CryptoTrader();
+    this.exchanges = new ExchangeManager();
     this.sms = new SMSNotifier();
   }
 
@@ -58,7 +70,7 @@ export class TradingBot {
 ╔══════════════════════════════════════════════════════════╗
 ║          🦅 ALPHA HUNTER — UNIFIED TRADING BOT           ║
 ║  Kalshi • Crypto • Progno Sports • AI Analysis           ║
-║  Cycle: ${(this.INTERVAL / 1000).toFixed(0)}s | Max Trade: $${this.MAX_SINGLE_TRADE}                        ║
+║  Cycle: ${(this.INTERVAL / 1000).toFixed(0)}s | Max Trade: $${this.MAX_SINGLE_TRADE} | Reserve: $${this.USD_RESERVE}          ║
 ╚══════════════════════════════════════════════════════════╝
 `);
 
@@ -107,6 +119,57 @@ export class TradingBot {
     console.log('👋 Alpha Hunter stopped.');
   }
 
+  /**
+   * Profit-taking: check held crypto positions and sell any that are profitable.
+   * This replenishes USD for new buys and Kalshi bets.
+   */
+  private async profitTake(): Promise<number> {
+    let totalSold = 0;
+    try {
+      const cb = this.exchanges.getCoinbase();
+      if (!cb.isConfigured()) return 0;
+
+      const portfolio = await cb.getPortfolio();
+      const tradeableAssets = ['BTC', 'ETH', 'SOL'];
+
+      for (const pos of portfolio.positions) {
+        if (pos.staked || !tradeableAssets.includes(pos.symbol) || pos.value < 10) continue;
+
+        // Get current price and compare to 24h candle data for profit estimate
+        const pair = `${pos.symbol}-USD`;
+        try {
+          const candles = await cb.getCandles(pair, 3600); // 1h candles
+          if (candles.length < 24) continue;
+
+          const price24hAgo = candles[candles.length - 24].close;
+          const currentPrice = pos.price;
+          const pctChange = ((currentPrice - price24hAgo) / price24hAgo) * 100;
+
+          // Only sell if up more than PROFIT_TAKE_PCT in 24h
+          if (pctChange >= this.PROFIT_TAKE_PCT && pos.value >= 15) {
+            // Sell half the profitable position to lock in gains
+            const sellValue = Math.floor(pos.value * 0.5);
+
+            console.log(`   💰 PROFIT-TAKE: ${pos.symbol} up ${pctChange.toFixed(1)}% — selling $${sellValue} to lock gains`);
+
+            const result = await this.exchanges.smartTrade(pos.symbol as 'BTC' | 'ETH' | 'SOL', 'sell', sellValue);
+            if (result.success) {
+              totalSold += sellValue;
+              console.log(`   ✅ Sold $${sellValue} of ${pos.symbol} (profit-take)`);
+              await smsAlerter.tradeExecuted(pos.symbol, sellValue, 'SELL', 'Coinbase');
+            }
+          }
+        } catch (err: any) {
+          // Skip this asset if candle fetch fails
+          continue;
+        }
+      }
+    } catch (err: any) {
+      console.warn(`   ⚠️ Profit-take check failed: ${err.message}`);
+    }
+    return totalSold;
+  }
+
   private async cycle(): Promise<void> {
     this.cycleCount++;
     console.log(`\n─── Cycle ${this.cycleCount} @ ${new Date().toLocaleTimeString()} ───`);
@@ -116,6 +179,32 @@ export class TradingBot {
     if (!stopCheck.allowed) {
       console.log(`🛑 Emergency stop active: ${stopCheck.reason}`);
       return;
+    }
+
+    // ── BALANCE CHECK ──────────────────────────────────────────────
+    try {
+      this.kalshiBalance = await this.kalshi.getBalance();
+      const balances = await this.exchanges.getTotalBalance();
+      const cbBal = balances.byExchange.find(b => b.exchange === 'Coinbase');
+      this.coinbaseUsd = cbBal?.usd || 0;
+      const cbUsdc = cbBal?.usdc || 0;
+      const spendable = Math.max(0, this.coinbaseUsd - Math.min(cbUsdc, this.USD_RESERVE));
+      console.log(`💰 Balances — Kalshi: $${this.kalshiBalance.toFixed(2)} | Coinbase: $${this.coinbaseUsd.toFixed(2)} (USDC: $${cbUsdc.toFixed(2)}, spendable: $${spendable.toFixed(2)}, reserve: $${this.USD_RESERVE} USDC)`);
+
+      // Update fund manager with real balances
+      this.funds.updateKalshiBalance(this.kalshiBalance);
+      this.funds.updateCryptoBalance(this.coinbaseUsd);
+    } catch (err: any) {
+      console.warn(`   ⚠️ Balance check failed: ${err.message}`);
+    }
+
+    // ── PROFIT-TAKING (every 5th cycle) ───────────────────────────
+    if (this.cycleCount % 5 === 0) {
+      const profitTaken = await this.profitTake();
+      if (profitTaken > 0) {
+        this.coinbaseUsd += profitTaken;
+        console.log(`💰 Profit-take freed $${profitTaken.toFixed(2)} USD`);
+      }
     }
 
     // Analyze all sources via AI Brain
@@ -176,6 +265,15 @@ export class TradingBot {
           const isValidSide = sideRaw === 'YES' || sideRaw === 'NO';
 
           if (isKalshiTicker && isValidSide) {
+            // Skip if Kalshi balance is too low
+            if (this.kalshiBalance < stake) {
+              if (!kalshiLimitLogged) {
+                console.log(`⛔ Kalshi balance too low ($${this.kalshiBalance.toFixed(2)} < $${stake.toFixed(2)}) — skipping bets`);
+                kalshiLimitLogged = true;
+              }
+              continue;
+            }
+
             // Duplicate bet prevention — skip if already bet on this ticker today
             if (tradeLimiter.hasAlreadyBet(ticker)) {
               kalshiDupeSkipped++;
@@ -184,7 +282,10 @@ export class TradingBot {
 
             const side = sideRaw.toLowerCase() as 'yes' | 'no';
             const priceMatch = (opp.action.instructions[0] || '').match(/(\d+)¢/);
-            const price = priceMatch ? parseInt(priceMatch[1], 10) : 50;
+            if (!priceMatch) {
+              continue; // Skip bet if no price found — defaulting to 50¢ is a coin flip with no edge
+            }
+            const price = parseInt(priceMatch[1], 10);
 
             // Fee-aware profit gate
             const profitCheck = calcNetProfit(stake, price);
@@ -194,10 +295,23 @@ export class TradingBot {
 
             const result = await this.kalshi.placeLimitOrderUsd(ticker, side, stake, price);
             if (result) {
+              this.kalshiBalance -= stake; // Track spend locally
               tradeLimiter.recordTrade(ticker, stake, 'kalshi');
               kalshiExecuted++;
               console.log(`✅ Kalshi order placed: ${ticker} ${side} $${stake.toFixed(2)} (net $${profitCheck.netProfit.toFixed(2)})`);
               await this.sms.sendTradeExecuted(opp.title, stake, 'Kalshi');
+              // Record to actual_bets so progno wallboard can display it
+              await recordActualBet({
+                ticker,
+                side,
+                stake_cents: Math.round(stake * 100),
+                price_cents: price,
+                pick: opp.title,
+                market_title: opp.description || opp.title,
+                confidence: opp.confidence,
+                sport: opp.source?.includes('PROGNO') ? (opp.description?.match(/NBA|NHL|NFL|MLB|NCAAB|NCAAF|CBB/i)?.[0] || undefined) : undefined,
+                dry_run: false,
+              });
             }
           } else {
             console.log(`📋 Progno pick (needs Kalshi match): ${opp.title}`);
@@ -208,12 +322,13 @@ export class TradingBot {
             continue;
           }
 
+          // NOTE: executeBestSignal() generates its own signals, manages its own
+          // limiter checks, and records the trade internally. We only track the
+          // execution count here — do NOT double-record in tradeLimiter.
           const trade = await this.crypto.executeBestSignal();
           if (trade) {
-            tradeLimiter.recordTrade(trade.target, stake, 'crypto');
             cryptoExecuted++;
-            console.log(`✅ Crypto trade executed: ${trade.target} $${stake.toFixed(2)}`);
-            await this.sms.sendTradeExecuted(opp.title, stake, 'Coinbase');
+            // SMS already sent inside executeBestSignal after successful trade
           }
         } else {
           console.log(`📋 Manual action required: ${opp.action.instructions.join(' | ')}`);

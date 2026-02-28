@@ -17,28 +17,35 @@ import type {
   RankingModule,
 } from './types'
 
-import { TrueEdgeSignal }        from './signals/true-edge-signal'
-import { ClaudeEffectSignal }    from './signals/claude-effect-signal'
-import { HomeAwayBiasSignal }    from './signals/home-away-bias-signal'
-import { MCConfidenceModule }    from './confidence/mc-confidence'
-import { OddsRangeFilter }       from './filters/odds-range-filter'
-import { LeagueFloorFilter }     from './filters/league-floor-filter'
-import { HomeOnlyFilter }        from './filters/home-only-filter'
+import { TrueEdgeSignal } from './signals/true-edge-signal'
+import { ClaudeEffectSignal } from './signals/claude-effect-signal'
+import { HomeAwayBiasSignal } from './signals/home-away-bias-signal'
+import { ProbabilityAnalyzerSignal } from './signals/probability-analyzer-signal'
+import { MCConfidenceModule } from './confidence/mc-confidence'
+import { OddsRangeFilter } from './filters/odds-range-filter'
+import { LeagueFloorFilter } from './filters/league-floor-filter'
+import { HomeOnlyFilter } from './filters/home-only-filter'
 import { CompositeRankingModule } from './ranking/composite-ranking'
-import { TheOddsDataSource }     from './data-sources/the-odds-data-source'
-import { ApiSportsDataSource }   from './data-sources/api-sports-data-source'
+import { TheOddsDataSource } from './data-sources/the-odds-data-source'
+import { ApiSportsDataSource } from './data-sources/api-sports-data-source'
 
 // ── Signal modules (run in order; all outputs merged) ─────────────────────────
+const _probabilityAnalyzer = new ProbabilityAnalyzerSignal()
+
 export const SIGNAL_MODULES: SignalModule[] = [
   new TrueEdgeSignal(),
   new ClaudeEffectSignal(),
   new HomeAwayBiasSignal(),
+  _probabilityAnalyzer,
   // Drop new signals here — no other file needs to change:
   // new InjuryReportSignal(),
   // new WeatherSignal(),
   // new RestAdvantageSignal(),
   // new SharpMoneySignal(),
 ]
+
+// Exported for pick-engine to call evaluateFlip() after value bet override
+export const PROBABILITY_ANALYZER = _probabilityAnalyzer
 
 // ── Confidence formula (swap to change how signals combine) ───────────────────
 export const CONFIDENCE_MODULE: ConfidenceModule = new MCConfidenceModule()

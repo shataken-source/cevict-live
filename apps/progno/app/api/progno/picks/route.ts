@@ -110,20 +110,13 @@ export async function GET(request: NextRequest) {
 
     if (supabase) {
       try {
-        // Filter by created_at (when the pick was generated for that day's card),
-        // NOT game_time — because evening games in US timezones have UTC game_times
-        // that spill into the next calendar day, causing a mismatch.
-        // Use a 36-hour window (date 00:00 UTC through date+1 12:00 UTC) to
-        // capture all picks generated on `date` regardless of server timezone.
-        const windowEnd = new Date(date)
-        windowEnd.setDate(windowEnd.getDate() + 1)
-        const windowEndStr = windowEnd.toISOString().split('T')[0] + 'T12:00:00'
-
+        // Use game_date (the date the pick is FOR) rather than created_at
+        // (when the row was written). This ensures re-runs and retries
+        // always return the full set of picks for the requested date.
         const { data, error } = await supabase
           .from('picks')
           .select('*')
-          .gte('created_at', `${date}T00:00:00`)
-          .lt('created_at', windowEndStr)
+          .eq('game_date', date)
           .order('confidence', { ascending: false });
 
         if (!error && data && data.length > 0) {

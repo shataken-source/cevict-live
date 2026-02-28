@@ -19,8 +19,9 @@ function isAuthorized(request: NextRequest): boolean {
   const SECRET = process.env.PROGNO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || process.env.CRON_SECRET || ''
   if (!SECRET) return false
   const auth = request.headers.get('authorization') || ''
-  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
-  return token === SECRET
+  const headerSecret = request.headers.get('x-admin-secret') || ''
+  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : headerSecret
+  return !!token && token === SECRET
 }
 
 function getSupabase() {

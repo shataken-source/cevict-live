@@ -8,7 +8,8 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-dotenv.config({ path: path.join(process.cwd(), '.env.local') });
+const alphaRoot = path.resolve(__dirname, '..', '..', '..');
+dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
 
 let supabase: SupabaseClient | null = null;
 

@@ -13,8 +13,14 @@ const SPORTS = [
   { key: 'baseball_ncaa', label: 'NCAAB Baseball' },
 ]
 
-function getPrimaryKey(): string | undefined {
-  return process.env.ODDS_API_KEY || process.env.NEXT_PUBLIC_ODDS_API_KEY
+function getAllKeys(): string[] {
+  // Collect all configured keys, deduplicated, for automatic fallback
+  const keys = [
+    process.env.ODDS_API_KEY_2,
+    process.env.ODDS_API_KEY,
+    process.env.NEXT_PUBLIC_ODDS_API_KEY,
+  ].filter((k): k is string => !!k)
+  return [...new Set(keys)]
 }
 
 function americanToDecimal(odds: number): number {
@@ -56,8 +62,8 @@ export async function GET(request: NextRequest) {
   const sportParam = searchParams.get('sports') || 'basketball_nba,basketball_ncaab,icehockey_nhl'
   const requestedSports = sportParam.split(',').map(s => s.trim()).filter(Boolean)
 
-  const apiKey = getPrimaryKey()
-  if (!apiKey) {
+  const apiKeys = getAllKeys()
+  if (!apiKeys.length) {
     return NextResponse.json({ error: 'No odds API key configured' }, { status: 500 })
   }
 
@@ -66,10 +72,25 @@ export async function GET(request: NextRequest) {
 
   await Promise.allSettled(requestedSports.map(async (sportKey) => {
     try {
-      const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${apiKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=draftkings,fanduel,betmgm,caesars,pointsbet,betonlineag,williamhill_us,mybookieag`
-      const res = await fetch(url, { cache: 'no-store' })
-      if (!res.ok) {
-        errors[sportKey] = `HTTP ${res.status}`
+      let res: Response | null = null
+      let usedKey = ''
+
+      // Try each key until one works (skip 401/403 = exhausted/invalid)
+      for (const key of apiKeys) {
+        const url = `https://api.the-odds-api.com/v4/sports/${sportKey}/odds/?apiKey=${key}&regions=us&markets=h2h,spreads,totals&oddsFormat=american&bookmakers=draftkings,fanduel,betmgm,caesars,pointsbet,betonlineag,williamhill_us,mybookieag`
+        const attempt = await fetch(url, { cache: 'no-store' })
+        if (attempt.ok) { res = attempt; usedKey = key; break }
+        if (attempt.status !== 401 && attempt.status !== 403) {
+          // Non-auth error — don't try other keys
+          errors[sportKey] = `HTTP ${attempt.status}`
+          return
+        }
+        // 401/403 — key exhausted, try next
+        console.log(`[live-odds] Key ${key.slice(0, 8)}… returned ${attempt.status} for ${sportKey}, trying next…`)
+      }
+
+      if (!res) {
+        errors[sportKey] = `HTTP 401 (all ${apiKeys.length} keys exhausted)`
         return
       }
       const games: any[] = await res.json()

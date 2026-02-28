@@ -17,7 +17,8 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-dotenv.config({ path: path.join(process.cwd(), 'apps', 'alpha-hunter', '.env.local') });
+const alphaRoot = path.resolve(__dirname, '..');
+dotenv.config({ path: path.join(alphaRoot, '.env.local'), override: true });
 
 import { KalshiTrader, KALSHI_FEE_RATE } from './intelligence/kalshi-trader';
 import { PrognoIntegration } from './intelligence/progno-integration';

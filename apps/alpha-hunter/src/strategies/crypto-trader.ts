@@ -296,15 +296,6 @@ export class CryptoTrader {
       return null;
     }
 
-    // BEEP AND ALERT BEFORE EXECUTING TRADE
-    await beeper.tradeExecuted();
-    await smsAlerter.tradeExecuted(
-      best.symbol,
-      this.config.maxTradeSize,
-      best.direction === 'long' ? 'BUY' : 'SELL',
-      'Coinbase'
-    );
-
     // Execute trade
     const result = await this.exchanges.smartTrade(
       best.symbol,
@@ -316,6 +307,15 @@ export class CryptoTrader {
       console.log(`❌ Trade failed: ${result.error}`);
       return null;
     }
+
+    // BEEP AND ALERT AFTER successful trade (not before — avoids false alerts on INSUFFICIENT_FUND etc.)
+    await beeper.tradeExecuted();
+    await smsAlerter.tradeExecuted(
+      best.symbol,
+      this.config.maxTradeSize,
+      best.direction === 'long' ? 'BUY' : 'SELL',
+      'Coinbase'
+    );
 
     // Record trade in persistent counter
     tradeLimiter.recordTrade(best.symbol, result.amount, 'crypto');

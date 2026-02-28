@@ -497,9 +497,10 @@
       pushTicker(`${title}: ${desc}`, sev);
     }
 
-    function statusBadge(completed) {
-      if (completed) return '<span class="badge green">Final</span>';
-      return '<span class="badge yellow">Live</span>';
+    function statusBadge(g) {
+      if (g.completed) return '<span class="badge green">Final</span>';
+      if (g.live) return '<span class="badge yellow">Live</span>';
+      return '<span class="badge" style="color:var(--blue)">Upcoming</span>';
     }
 
     function renderScores(list, sport) {
@@ -519,7 +520,7 @@
           </div>
           <div style="text-align:right">
             <div class="score">${escapeHtml(score)}</div>
-            ${statusBadge(g.completed)}
+            ${statusBadge(g)}
           </div>
         </div>`;
       }).join('');
@@ -559,7 +560,8 @@
           }
           const prevLead = Number(prev.homeScore || 0) - Number(prev.awayScore || 0);
           const lead = hs - as;
-          if (Math.sign(prevLead) !== Math.sign(lead)) {
+          // Only alert lead change if there was a real previous lead (not 0-0 first score)
+          if (Math.sign(prevLead) !== Math.sign(lead) && prevLead !== 0) {
             alertPush('red', 'Lead change', `${g.away} @ ${g.home} — ${hs}–${as}`);
             triggerScoringSwing(g.id, lead > 0); // simple: home lead good visual when positive
           }
@@ -709,31 +711,16 @@
       const dd = String(d.getDate()).padStart(2, '0');
       return `${yyyy}-${mm}-${dd}`;
     }
-    function todayPredsPaths() {
-      const fname = `predictions-${ymd()}.json`;
-      // try root, then /progno
-      return [`/${fname}`, `/progno/${fname}`, `/predictions-history/${fname}`];
-    }
-    function todayEarlyPaths() {
-      const fname = `early-lines-${ymd()}.json`;
-      return [`/${fname}`, `/progno/${fname}`];
-    }
-    async function tryFetchJsonFrom(paths) {
-      for (const p of paths) {
-        try {
-          const res = await fetch(p, { cache: 'no-store' });
-          if (res.ok) { return await res.json(); }
-        } catch { /* continue */ }
-      }
-      throw new Error('All candidate paths failed');
-    }
     async function loadTodayPredictions() {
       try {
-        const data = await tryFetchJsonFrom(todayPredsPaths());
+        const today = ymd();
+        const res = await fetch(`${baseUrl()}/api/progno/picks?date=${today}`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
         ingestPicks(data);
-        alertPush('green', "Predictions loaded", `predictions-${ymd()}.json`);
+        alertPush('green', 'Predictions loaded', `${(data.picks || []).length} picks for ${today} (source: ${data.source || 'api'})`);
       } catch (e) {
-        alertPush('yellow', 'No predictions file found today', String(e).slice(0, 80));
+        alertPush('yellow', 'No predictions loaded', String(e).slice(0, 80));
       }
     }
 
@@ -890,7 +877,10 @@
     function computePnl(bet) {
       const stake = bet.stake || 0;
       const price = bet.price;
-      if (bet.result === 'win' && price != null) {
+      if (bet.result === 'win') {
+        // If bet came from Kalshi (actual_bets), use ~91% payout (7% fee + ~2% spread)
+        if (bet.book === 'Kalshi' || !price) return stake * 0.91;
+        // Traditional American odds P&L for sportsbook bets
         if (price > 0) return stake * (price / 100);
         if (price < 0) return stake * (100 / Math.abs(price));
         return stake;
@@ -970,19 +960,24 @@
 
     async function tryLoadKalshi() {
       try {
-        const res = await fetch(`${baseUrl()}/api/markets/kalshi/positions`, { cache: 'no-store' });
-        if (!res.ok) { alertPush('yellow', 'Kalshi positions', `HTTP ${res.status}`); return; }
+        const res = await fetch(`${baseUrl()}/api/progno/wallboard/bets`, { cache: 'no-store' });
+        if (!res.ok) { alertPush('yellow', 'Bets load failed', `HTTP ${res.status}`); return; }
         const j = await res.json();
-        // Extract portfolio value if available
-        if (j.portfolio_value != null) kalshiValue = Number(j.portfolio_value) || 0;
-        else if (j.totalValue != null) kalshiValue = Number(j.totalValue) || 0;
-        else if (j.balance != null) kalshiValue = Number(j.balance) || 0;
-        // Ingest positions as bets
-        const positions = j.positions || j.data || (Array.isArray(j) ? j : []);
-        if (positions.length) ingestBets({ bets: positions });
+        if (!j.success) { alertPush('yellow', 'Bets', j.error || 'No data'); return; }
+        const sum = j.summary || {};
+        kalshiValue = (sum.totalStakeCents || 0) / 100;
+        // Ingest bets from actual_bets table
+        const bets = (j.bets || []).map(b => ({
+          home_team: b.home_team || '', away_team: b.away_team || '',
+          side: b.side || b.pick || '', team: b.pick || '',
+          stake: (b.stake_cents || 0) / 100, book: 'Kalshi',
+          price: b.price_cents ? (b.price_cents > 50 ? -(b.price_cents / (100 - b.price_cents) * 100) : ((100 - b.price_cents) / b.price_cents * 100)) : null,
+          result: b.result === 'win' ? 'win' : b.result === 'loss' ? 'loss' : 'pending',
+        }));
+        if (bets.length) { myBets = bets; saveBets(); renderMyBets(); }
         updateStats();
-        alertPush('green', 'Kalshi loaded', `Value: $${kalshiValue.toFixed(2)}, ${positions.length} positions`);
-      } catch (e) { alertPush('yellow', 'Kalshi positions', String(e).slice(0, 80)); }
+        alertPush('green', 'Bets loaded', `${sum.total || 0} bets, $${kalshiValue.toFixed(2)} staked (${sum.wins || 0}W-${sum.losses || 0}L)`);
+      } catch (e) { alertPush('yellow', 'Bets load error', String(e).slice(0, 80)); }
     }
     async function tryLoadPolymarket() {
       try {

@@ -35,7 +35,7 @@ export class TradeLimiter {
     // Use __dirname so path is stable regardless of where process is started
     const alphaRoot = path.resolve(__dirname, '..', '..');
     this.dataFile = path.join(alphaRoot, 'data', 'daily-trades.json');
-    this.maxDailyTrades = parseInt(process.env.CRYPTO_MAX_DAILY_TRADES || '2');
+    this.maxDailyTrades = parseInt(process.env.MAX_DAILY_TRADES || '20');
     this.maxDailySpending = parseFloat(process.env.MAX_DAILY_LOSS || '50');
     this.platformLimits = {
       crypto: parseInt(process.env.CRYPTO_MAX_DAILY_TRADES || '10'),
@@ -127,7 +127,7 @@ export class TradeLimiter {
     // Caller should use hasAlreadyBet() before canTrade() for specific ticker check
 
     // Check global daily trade limit as a safety net
-    if (this.data.tradeCount >= this.maxDailyTrades + (this.platformLimits.kalshi || 10)) {
+    if (this.data.tradeCount >= this.maxDailyTrades) {
       return {
         allowed: false,
         reason: `Daily trade limit reached (${this.data.tradeCount} total)`,
@@ -215,13 +215,44 @@ export class TradeLimiter {
   }
 
   /**
-   * Check if we've already bet on this ticker/symbol today
+   * Extract the game identifier from a Kalshi ticker.
+   * e.g. KXNBAGAME-26FEB27ARISLE-ARI => '26FEB27ARISLE'
+   *      KXNBA1HSPREAD-26FEB27ARISLE-ARI5 => '26FEB27ARISLE'
+   *      KXNBATOTAL-26FEB27ARISLE-130 => '26FEB27ARISLE'
+   * The game ID is the date+teams segment (2nd dash-delimited part).
+   */
+  private extractGameId(ticker: string): string {
+    const parts = ticker.toUpperCase().split('-');
+    // Kalshi tickers: PREFIX-DATEANDTEAMS-SELECTION
+    // The game ID is the middle segment containing the date + team codes
+    if (parts.length >= 2) {
+      return parts[1]; // e.g. '26FEB27ARISLE'
+    }
+    return ticker.toUpperCase();
+  }
+
+  /**
+   * Check if we've already bet on this ticker/symbol today.
+   * Also checks if we've bet on the same GAME (different market type).
    */
   hasAlreadyBet(symbol: string): boolean {
     const today = new Date().toISOString().split('T')[0];
     if (this.data.date !== today) return false;
     const normalizedSymbol = symbol.toUpperCase().trim();
-    return (this.data.bettedTickers || []).includes(normalizedSymbol);
+    const tickers = this.data.bettedTickers || [];
+
+    // Exact ticker match
+    if (tickers.includes(normalizedSymbol)) return true;
+
+    // Same-game match: if any previous ticker shares the same game ID, skip
+    const gameId = this.extractGameId(normalizedSymbol);
+    if (gameId.length >= 8) { // Only match if game ID looks real (date+teams)
+      for (const prev of tickers) {
+        if (this.extractGameId(prev) === gameId) return true;
+      }
+    }
+
+    return false;
   }
 
   /**

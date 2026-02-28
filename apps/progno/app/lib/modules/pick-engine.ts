@@ -41,6 +41,7 @@ import {
   CONFIDENCE_MODULE,
   FILTER_MODULES,
   RANKING_MODULE,
+  PROBABILITY_ANALYZER,
 } from './module-registry'
 
 const MC_ENGINE = new MonteCarloEngine({ iterations: 5000 })
@@ -300,7 +301,25 @@ export async function runPickEngine(game: any, sport: string): Promise<any | nul
     if (bestValueBet.line != null) pickLine = bestValueBet.line
   }
 
-  // Re-anchor pick direction to FINAL pick (after value bet override)
+  // ── 7b. Probability Analyzer flip check ─────────────────────────────────
+  // 16-model ensemble can flip the pick if it strongly disagrees (NCAA only)
+  const analyzerFlip = PROBABILITY_ANALYZER.evaluateFlip(ctx, pick, pick === game.home_team)
+  if (analyzerFlip) {
+    console.log(`[probability-analyzer] FLIP: ${pick} → ${analyzerFlip.pick} (${analyzerFlip.reason})`)
+    pick = analyzerFlip.pick
+    pickType = 'MONEYLINE'
+    pickOdds = analyzerFlip.isHomePick
+      ? sanitizeOdds(homeOdds)
+      : sanitizeOdds(awayOdds)
+    pickLine = undefined
+    // Mark the flip in signals so downstream filters (odds-range) can exempt it
+    if (signals['probability-analyzer']) {
+      signals['probability-analyzer'].scores = { ...signals['probability-analyzer'].scores, shouldFlip: 1, flipped: 1 }
+      signals['probability-analyzer'].reasoning.push(`FLIPPED: ${analyzerFlip.reason}`)
+    }
+  }
+
+  // Re-anchor pick direction to FINAL pick (after value bet + analyzer overrides)
   const isHomePick = pick === game.home_team
 
   // ── 8. Calculate confidence (ONCE, with correct pick direction) ───────────

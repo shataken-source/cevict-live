@@ -99,3 +99,26 @@ config/keyvault.targets.json
 # Local Netlify folder
 .netlify
 apps/alpha-hunter-backup-20260226-192134/
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+
+# Android / Gradle build artifacts
+.gradle/
+*.apk
+*.aab
+**/app/build/
+**/app/release/
+local.properties
+
+# Rust
+target/
+
+# Windsurf
+.windsurf/rules/

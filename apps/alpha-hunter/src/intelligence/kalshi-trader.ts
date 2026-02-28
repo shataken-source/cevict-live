@@ -293,8 +293,6 @@ export class KalshiTrader {
       const fullUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
       assertKalshiRequestUrlIsDemo(fullUrl);
 
-      console.log(`   🔍 DEBUG: Fetching from ${fullUrl}`);
-
       const response = await fetch(fullUrl, {
         method: 'GET',
         headers: {
@@ -304,23 +302,12 @@ export class KalshiTrader {
         },
       });
 
-      console.log(`   🔍 DEBUG: Response status: ${response.status} ${response.statusText}`);
-
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
         console.log(`   ⚠️ Markets API error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText.slice(0, 100) : ''}`);
         return null;
       }
       const data: any = await response.json();
-      console.log(`   🔍 DEBUG: Response keys: ${Object.keys(data).join(', ')}`);
-      console.log(`   🔍 DEBUG: markets array: ${data.markets ? 'present' : 'MISSING'} (${data.markets?.length || 0} items)`);
-      console.log(`   📡 Markets API response: ${data.markets?.length || 0} markets`);
-
-      // Show first market if available
-      if (data.markets && data.markets.length > 0) {
-        console.log(`   🔍 DEBUG: First market ticker: ${data.markets[0].ticker}, title: ${data.markets[0].title?.substring(0, 40)}...`);
-      }
-
       return { markets: data.markets || [], cursor: data.cursor };
     } catch (error) {
       console.log(`   ⚠️ Markets fetch error: ${error}`);
@@ -332,8 +319,8 @@ export class KalshiTrader {
    * Get markets (now uses parallel fetching by default)
    */
   async getMarkets(): Promise<PredictionMarket[]> {
-    const envPages = parseInt(process.env.KALSHI_MAX_PAGES || '5', 10);
-    const maxPages = Number.isFinite(envPages) && envPages > 0 ? envPages : 3;
+    const envPages = parseInt(process.env.KALSHI_MAX_PAGES || '10', 10);
+    const maxPages = Number.isFinite(envPages) && envPages > 0 ? envPages : 10;
     const apiMarkets = await this.getMarketsParallel(1000, maxPages);
     return this.transformMarkets(apiMarkets);
   }
@@ -693,47 +680,70 @@ export class KalshiTrader {
     const minEdge = Number(minEdgePct) || 0;
     const nowIso = new Date().toISOString();
 
-    // Fetch raw Kalshi markets (with ticker, event_ticker, yes_ask, etc.)
-    const envPages = parseInt(process.env.KALSHI_MAX_PAGES || '5', 10);
-    const maxPages = Number.isFinite(envPages) && envPages > 0 ? envPages : 3;
-
-    // Fetch all markets - series_ticker filtering returned 0 results
-    // TODO: Investigate correct series_ticker format for filtering
-    const apiMarkets = await this.getMarketsParallel(1000, maxPages);
+    // Fetch all open markets (Kalshi API doesn't support ticker prefix filtering).
+    // Use enough pages to capture GAME markets for all sports.
+    const envPages = parseInt(process.env.KALSHI_MAX_PAGES || '15', 10);
+    const maxPages = Number.isFinite(envPages) && envPages > 0 ? envPages : 15;
+    const allMarkets = await this.getMarketsParallel(1000, maxPages);
+    // For Progno matching, only use GAME/WINNER/MONEY markets (skip TOTAL, SPREAD, PROP, etc.)
+    const GAME_TICKER_RE = /GAME|WINNER|MONEY/i;
+    const dedupedMarkets = allMarkets.filter(m => {
+      const t = (m?.ticker || '').toUpperCase();
+      const et = (m?.event_ticker || '').toUpperCase();
+      return GAME_TICKER_RE.test(t) || GAME_TICKER_RE.test(et);
+    });
+    console.log(`   📊 ${dedupedMarkets.length} GAME/WINNER markets of ${allMarkets.length} total`);
 
     const prognoEvents = await getPrognoProbabilities();
     const getCbPrice = options?.getCoinbasePrice;
 
     const opps: Opportunity[] = [];
 
-    // 1) Sports: use Probability Bridge matching → net edge vs YES ask
+    // 1) Sports: use Probability Bridge matching → edge vs entry price
+    // pickIsYesSide tells us if Progno's pick is the YES team on Kalshi.
+    // If pick IS the YES team → buy YES at yes_ask.
+    // If pick is the OTHER team → buy NO at no_ask (betting against the YES team).
     for (const ev of prognoEvents) {
-      const matched = matchKalshiMarketToProgno(ev, apiMarkets);
-      if (!matched) continue;
+      const matched = matchKalshiMarketToProgno(ev, dedupedMarkets);
+      if (!matched) {
+        console.log(`[MATCH MISS] ${ev.league}: ${ev.pick} (${ev.homeTeam} vs ${ev.awayTeam}) — no Kalshi market found`);
+        continue;
+      }
 
       const modelProb = Math.max(1, Math.min(99, ev.modelProbability)); // 0-100
-      const yesAsk = typeof matched.yes_ask === 'number' ? matched.yes_ask : 50; // 0-100 cents
-      const edge = modelProb - yesAsk; // pct points edge vs entry price (ask)
-      if (edge < minEdge) continue;
+      const pickIsYes = matched.pickIsYesSide;
+      const entryPrice = pickIsYes
+        ? (typeof matched.yes_ask === 'number' ? matched.yes_ask : 50)
+        : (typeof matched.no_ask === 'number' ? matched.no_ask : 50);
+      const side: 'YES' | 'NO' = pickIsYes ? 'YES' : 'NO';
+      // Edge: our model prob vs the entry price we'd pay
+      const edge = modelProb - entryPrice;
+      if (edge < minEdge) {
+        console.log(`[EDGE SKIP] ${ev.league}: ${ev.pick} → ${matched.ticker} ${side} — model=${modelProb}% entry=${entryPrice}¢ edge=${edge.toFixed(1)}% (min ${minEdge}%)`);
+        continue;
+      }
 
       // Fee-aware profit check
-      const profitCalc = calcNetProfit(10, yesAsk);
-      if (profitCalc.netProfit < MIN_NET_PROFIT) continue;
+      const profitCalc = calcNetProfit(10, entryPrice);
+      if (profitCalc.netProfit < MIN_NET_PROFIT) {
+        console.log(`[PROFIT SKIP] ${ev.league}: ${ev.pick} → ${matched.ticker} ${side} — net=$${profitCalc.netProfit.toFixed(2)} (min $${MIN_NET_PROFIT})`);
+        continue;
+      }
 
       const confidence = Math.min(92, Math.max(52, modelProb));
       opps.push({
-        id: `kalshi_${matched.ticker}_YES_${Date.now()}`,
+        id: `kalshi_${matched.ticker}_${side}_${Date.now()}`,
         type: 'prediction_market',
         source: 'PROGNO',
-        title: `YES: ${matched.title}`,
-        description: `Progno edge ${edge.toFixed(1)}% at ${yesAsk}¢ (net $${profitCalc.netProfit.toFixed(2)} after ${(KALSHI_FEE_RATE * 100).toFixed(0)}% fee)`,
+        title: `${side}: ${matched.title}`,
+        description: `Progno edge ${edge.toFixed(1)}% at ${entryPrice}¢ (net $${profitCalc.netProfit.toFixed(2)} after ${(KALSHI_FEE_RATE * 100).toFixed(0)}% fee)`,
         confidence,
         expectedValue: edge,
         riskLevel: 'low',
         timeframe: '48h',
         requiredCapital: 10,
         potentialReturn: profitCalc.netProfit,
-        reasoning: [`Progno model${ev.league ? ` (${ev.league})` : ''}: ${ev.label} → ${modelProb}% — net $${profitCalc.netProfit.toFixed(2)} after fees`],
+        reasoning: [`Progno model${ev.league ? ` (${ev.league})` : ''}: ${ev.label} → ${modelProb}% ${side} — net $${profitCalc.netProfit.toFixed(2)} after fees`],
         dataPoints: [
           ...(typeof matched.volume === 'number' ? [{ source: 'Kalshi', metric: 'Volume', value: matched.volume, relevance: 80, timestamp: nowIso }] : []),
         ],
@@ -741,8 +751,8 @@ export class KalshiTrader {
           platform: 'kalshi',
           actionType: 'bet',
           amount: 10,
-          target: `${matched.ticker} YES`,
-          instructions: [`Place YES on ${matched.ticker} at ≤${yesAsk}¢`],
+          target: `${matched.ticker} ${side}`,
+          instructions: [`Place ${side} on ${matched.ticker} at ≤${entryPrice}¢`],
           autoExecute: true,
         },
         expiresAt: nowIso,
@@ -752,7 +762,7 @@ export class KalshiTrader {
 
     // 2) Crypto fallback: use Coinbase-based probability model
     if (getCbPrice) {
-      for (const m of apiMarkets) {
+      for (const m of allMarkets) {
         const title = m?.title || '';
         if (!title) continue;
         const cryptoProb = await getCryptoModelProbability(title, getCbPrice);

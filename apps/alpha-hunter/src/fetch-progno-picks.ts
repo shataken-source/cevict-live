@@ -12,11 +12,12 @@ const PROGNO_BASE = process.env.PROGNO_BASE_URL || 'http://localhost:3008';
 const BOT_API_KEY = process.env.BOT_API_KEY;
 
 async function main() {
+  const today = new Date().toISOString().split('T')[0];
   console.log('\n📡 Fetching Progno picks from:', PROGNO_BASE);
-  console.log('   Endpoint: /api/picks/today\n');
+  console.log(`   Endpoint: /api/progno/picks?date=${today}\n`);
 
   try {
-    const res = await fetch(`${PROGNO_BASE}/api/picks/today`, {
+    const res = await fetch(`${PROGNO_BASE}/api/progno/picks?date=${today}`, {
       headers: BOT_API_KEY ? { 'x-api-key': BOT_API_KEY } : {},
     });
     const text = await res.text();

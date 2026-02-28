@@ -20,14 +20,13 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 120
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-function isAuthorized(request: NextRequest, bodySecret?: string): boolean {
+function isAuthorized(request: NextRequest): boolean {
   const SECRET = process.env.PROGNO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || process.env.CRON_SECRET || ''
   if (!SECRET) return false
   const auth = request.headers.get('authorization') || ''
   const headerSecret = request.headers.get('x-admin-secret') || ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : headerSecret
-  const candidates = [token, bodySecret].filter(Boolean)
-  return candidates.some(t => t === SECRET)
+  return !!token && token === SECRET
 }
 
 // ── Kalshi signing ────────────────────────────────────────────────────────────
@@ -86,7 +85,7 @@ function getSupabase() {
 export async function POST(request: NextRequest) {
   let body: any = {}
   try { body = await request.json() } catch { }
-  if (!isAuthorized(request, body?.secret)) {
+  if (!isAuthorized(request)) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
   }
 

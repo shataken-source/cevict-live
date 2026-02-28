@@ -2017,7 +2017,7 @@ function updateAdBlockBadge() {
 
 function toggleAdBlock() {
   S.adBlockEnabled = !S.adBlockEnabled;
-  localStorage.setItem('adblock', S.adBlockEnabled);
+  localStorage.setItem('adblock', String(S.adBlockEnabled));
   updateAdBlockBadge();
 }
 
@@ -3161,20 +3161,20 @@ function patchSettingsToggles() {
       const isOn = toggle.classList.contains('on');
       if (label.includes('Ad Detection')) {
         S.adBlockEnabled = isOn;
-        localStorage.setItem('adblock', isOn);
+        localStorage.setItem('adblock', String(isOn));
         updateAdBlockBadge();
       } else if (label.includes('Auto-Play')) {
         S.autoPlay = isOn;
-        localStorage.setItem('autoplay', isOn);
+        localStorage.setItem('autoplay', String(isOn));
       } else if (label.includes('Smart Favorites')) {
-        localStorage.setItem('smart_favorites', isOn);
+        localStorage.setItem('smart_favorites', String(isOn));
       } else if (label.includes('Auto-Updates')) {
-        localStorage.setItem('auto_updates', isOn);
+        localStorage.setItem('auto_updates', String(isOn));
       } else if (label.includes('Hardware Decode')) {
-        localStorage.setItem('hw_decode', isOn);
+        localStorage.setItem('hw_decode', String(isOn));
       } else if (label.includes('Auto Quality')) {
         if (isOn) S.currentQuality = 'auto';
-        localStorage.setItem('auto_quality', isOn);
+        localStorage.setItem('auto_quality', String(isOn));
       }
     });
 
@@ -3319,13 +3319,11 @@ document.addEventListener('keydown', e => {
 // (Injected after renderChannelList wires its own long-press)
 // We hook into the existing long-press by patching renderChannelList post-hook.
 const _origRenderCL = typeof renderChannelList === 'function' ? renderChannelList : null;
-if (_origRenderCL) {
-  renderChannelList = function (list) {
-    _origRenderCL(list);
-    // After rows are rendered, patch long-press to show SB context menu
-    patchChRowLongPress(list);
-  };
-}
+renderChannelList = function (list) {
+  if (_origRenderCL) _origRenderCL(list);
+  // After rows are rendered, patch long-press to show SB context menu
+  patchChRowLongPress(list);
+};
 
 function patchChRowLongPress(list) {
   document.querySelectorAll('#channel-list .ch-row').forEach(row => {
@@ -3461,15 +3459,13 @@ function nav(screen) {
     tvhome: initTVHome, channels: initChannels, movies: initMovies,
     series: initSeries, epg: initEPG, favorites: renderFavorites,
     history: renderHistory, devices: initDevices, catchup: initCatchUp,
-    search: initSearch, recordings: renderRecordings,
+    search: initSearch, recordings: renderRecordings, settings: initSettings,
   };
   if (lazy[screen]) lazy[screen]();
 
-  // ── Upgrade hooks ─────────────────────────────────────────────
+  // ── Upgrade hooks (only for screens NOT already in lazy, or post-init patches) ──
   if (screen === 'quality') setTimeout(initQualityScreen, 50);
-  if (screen === 'settings') setTimeout(() => { initSettings(); patchSettingsToggles(); }, 50);
-  if (screen === 'favorites') setTimeout(renderFavorites, 50);
-  if (screen === 'recordings') setTimeout(renderRecordings, 50);
+  if (screen === 'settings') setTimeout(patchSettingsToggles, 50);
   if (screen === 'epg') setTimeout(addEpgSearchBtn, 500);
   if (screen === 'pricing') setTimeout(refreshPricingUI, 50);
 }
@@ -3736,14 +3732,10 @@ function handleRemoteCommand(cmd) {
     case 'nav_left': document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true })); break;
     case 'nav_right': document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); break;
     case 'sleep': {
-      if (cmd.mins > 0) {
-        clearTimeout(S.sleepTimer);
-        S.sleepMinutes = cmd.mins;
-        S.sleepTimer = setTimeout(() => { closePlayer(); }, cmd.mins * 60000);
-      }
+      if (cmd.mins > 0) setSleepTimer(cmd.mins);
       break;
     }
-    case 'sleep_cancel': clearTimeout(S.sleepTimer); S.sleepMinutes = 0; break;
+    case 'sleep_cancel': cancelSleepTimer(); break;
   }
 }
 
