@@ -465,7 +465,7 @@ const LEAGUE_STAKE_MULTIPLIER: Record<string, number> = {
 const LEAGUE_CONFIDENCE_FLOOR: Record<string, number> = {
   ncaaf: PROGNO_FLOOR_NCAAF,
   ncaab: PROGNO_FLOOR_NCAAB,
-  cbb: 62,
+  cbb: 57,
   nba: PROGNO_FLOOR_NBA,
   nfl: PROGNO_FLOOR_NFL,
   nhl: PROGNO_FLOOR_NHL,
@@ -1476,7 +1476,11 @@ async function buildPickFromRawGame(game: any, sport: string): Promise<any> {
 
   // Market-anchored ceiling: confidence cannot exceed market implied + 20%
   // This prevents a 54% market game from ever reaching 93% confidence
-  const marketCeiling = Math.round(favoriteMarketPct + 20)
+  // Baseball-specific: tighter cap (+10%) because heavy favorites are traps in baseball
+  // (one bad inning flips the game; -300 favorites lost 2/3 in Feb backtest)
+  const baseballSport = league === 'cbb' || league === 'mlb'
+  const ceilingBonus = baseballSport ? 10 : 20
+  const marketCeiling = Math.round(favoriteMarketPct + ceilingBonus)
   confidence = Math.min(confidence, marketCeiling)
   confidence = Math.max(30, Math.min(95, confidence))
 

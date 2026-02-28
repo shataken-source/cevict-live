@@ -171,7 +171,7 @@ const SPORT_PARAMS: Record<string, {
     stdDev: 3.0,
     minScore: 0,
     maxScore: 20,
-    homeAdvantage: 0.3,
+    homeAdvantage: 1.0,
     usePoissonDistribution: true  // Discrete runs (college baseball)
   },
 };
