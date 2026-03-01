@@ -14,16 +14,13 @@ console.log('[SCHEDULER] Starting up...');
 import { createClient } from '@supabase/supabase-js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
 import * as dotenv from 'dotenv';
 
 console.log('[SCHEDULER] Imports loaded');
 
-// Load environment variables from .env.local
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-console.log('[SCHEDULER] __dirname:', __dirname);
+// Load environment variables from .env.local (CommonJS __dirname)
 dotenv.config({ path: path.join(__dirname, '../.env.local') });
+console.log('[SCHEDULER] __dirname:', __dirname);
 console.log('[SCHEDULER] dotenv loaded');
 
 // Configuration
@@ -96,6 +93,34 @@ class Logger {
 }
 
 const logger = new Logger();
+
+// Strip UTF-8 BOM and parse JSON (fixes "Unexpected token '﻿'" from editors that save with BOM)
+function stripBom(content: string): string {
+  return content.replace(/^\uFEFF/, '');
+}
+
+function parseJsonFile<T>(content: string, filePath: string): T | null {
+  const trimmed = stripBom(content).trim();
+  if (!trimmed) {
+    logger.error(`Empty file: ${filePath}`);
+    return null;
+  }
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch (err: unknown) {
+    logger.error(`Invalid JSON in ${filePath}: ${(err as Error).message}`);
+    return null;
+  }
+}
+
+// Clamp numerics to avoid Postgres "numeric field overflow" (schema: DECIMAL(5,4), INTEGER, etc.)
+function clampNum(value: unknown, min: number, max: number, decimals?: number): number {
+  const n = Number(value);
+  if (Number.isNaN(n)) return min;
+  let v = Math.max(min, Math.min(max, n));
+  if (decimals != null) v = Number(v.toFixed(decimals));
+  return v;
+}
 
 // Types
 interface Prediction {
@@ -175,12 +200,13 @@ async function findPredictionFiles(): Promise<string[]> {
   }
 }
 
-// Find results files
+// Find results files (exclude grading-results.json / simulation-results.json — different format)
 async function findResultsFiles(): Promise<string[]> {
   try {
+    const skipNames = ['grading-results.json', 'simulation-results.json'];
     const files = await fs.readdir(CONFIG.resultsDir);
     return files
-      .filter(f => f.match(/results.*\.json$/i))
+      .filter(f => f.match(/^results-\d{4}-\d{2}-\d{2}/i) && f.endsWith('.json') && !skipNames.includes(f))
       .map(f => path.join(CONFIG.resultsDir, f));
   } catch (err) {
     // Directory might not exist yet
@@ -214,7 +240,7 @@ async function savePredictionsToSupabase(data: PredictionFile, sourceFile: strin
           away_team: pick.away_team,
           market_description: `${pick.pick} (${pick.pick_type})`,
           contract_type: pick.pick_type,
-          american_odds: pick.odds,
+          american_odds: Number.isFinite(pick.odds) ? Math.round(clampNum(pick.odds, -100000, 100000)) : null,
           status: 'open',
           source_data: {
             pick: pick.pick,
@@ -245,23 +271,23 @@ async function savePredictionsToSupabase(data: PredictionFile, sourceFile: strin
               const marketId = existing.id;
               logger.info(`Found existing market: ${marketId}`);
 
-              // Step 2: Create prediction
-              const winProb = pick.mc_win_probability || (pick.confidence / 100);
-              const ev = pick.expected_value;
+              // Step 2: Create prediction (clamp to schema DECIMAL(5,4), DECIMAL(5,2), etc.)
+              const winProb = clampNum(pick.mc_win_probability ?? (pick.confidence / 100), 0, 1, 4);
+              const ev = clampNum(pick.expected_value, -9999, 9999, 4);
               const impliedProb = pick.odds ? (pick.odds > 0 ? 100 / (pick.odds + 100) : -pick.odds / (-pick.odds + 100)) : 0.5;
-              const edge = winProb - impliedProb;
+              const edge = clampNum(winProb - impliedProb, -1, 1, 4);
 
               const predictionData = {
                 market_id: marketId,
                 model_version: 'scheduler-v1',
                 model_probability: winProb,
-                confidence: pick.confidence,
+                confidence: clampNum(pick.confidence, 0, 100, 2),
                 variance: 0.05,
-                market_probability: impliedProb,
-                edge: edge,
+                market_probability: clampNum(impliedProb, 0, 1, 4),
+                edge,
                 expected_value: ev,
-                value_bet_edge: ev > 0 ? ev : 0,
-                is_premium: pick.confidence >= 70,
+                value_bet_edge: clampNum(ev > 0 ? ev : 0, 0, 99.9999, 4),
+                is_premium: (pick.confidence ?? 0) >= 70,
                 correlation_group: pick.league,
                 simulation_count: 10000,
                 valid_until: pick.game_time || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
@@ -287,23 +313,23 @@ async function savePredictionsToSupabase(data: PredictionFile, sourceFile: strin
           marketsCreated++;
           logger.info(`Created new market: ${marketId}`);
 
-          // Step 2: Create prediction
-          const winProb = pick.mc_win_probability || (pick.confidence / 100);
-          const ev = pick.expected_value;
+          // Step 2: Create prediction (clamp to schema)
+          const winProb = clampNum(pick.mc_win_probability ?? (pick.confidence / 100), 0, 1, 4);
+          const ev = clampNum(pick.expected_value, -9999, 9999, 4);
           const impliedProb = pick.odds ? (pick.odds > 0 ? 100 / (pick.odds + 100) : -pick.odds / (-pick.odds + 100)) : 0.5;
-          const edge = winProb - impliedProb;
+          const edge = clampNum(winProb - impliedProb, -1, 1, 4);
 
           const predictionData = {
             market_id: marketId,
             model_version: 'scheduler-v1',
             model_probability: winProb,
-            confidence: pick.confidence,
+            confidence: clampNum(pick.confidence, 0, 100, 2),
             variance: 0.05,
-            market_probability: impliedProb,
-            edge: edge,
+            market_probability: clampNum(impliedProb, 0, 1, 4),
+            edge,
             expected_value: ev,
-            value_bet_edge: ev > 0 ? ev : 0,
-            is_premium: pick.confidence >= 70,
+            value_bet_edge: clampNum(ev > 0 ? ev : 0, 0, 99.9999, 4),
+            is_premium: (pick.confidence ?? 0) >= 70,
             correlation_group: pick.league,
             simulation_count: 10000,
             valid_until: pick.game_time || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
@@ -329,7 +355,7 @@ async function savePredictionsToSupabase(data: PredictionFile, sourceFile: strin
     }
 
     logger.success(`Created ${marketsCreated} markets and ${predictionsCreated} predictions`);
-    return predictionsCreated > 0;
+    return true; // success even when 0 picks (so file gets archived and not reprocessed)
   } catch (err: any) {
     logger.error(`Failed to save predictions: ${err.message}`);
     return false;
@@ -365,7 +391,12 @@ async function importKalshiSportsPicks(): Promise<number> {
       return 0;
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      success?: boolean;
+      elite?: Array<Record<string, unknown>>;
+      pro?: Array<Record<string, unknown>>;
+      free?: Array<Record<string, unknown>>;
+    };
 
     if (!data.success || !data.elite || !data.pro || !data.free) {
       logger.error('Invalid response from prognostication API');
@@ -470,7 +501,8 @@ async function processPredictions(): Promise<number> {
       logger.info(`Processing: ${path.basename(filePath)}`);
 
       const content = await fs.readFile(filePath, 'utf-8');
-      const data: PredictionFile = JSON.parse(content);
+      const data = parseJsonFile<PredictionFile>(content, filePath);
+      if (data == null) continue;
 
       // Validate structure
       if (!data.picks || !Array.isArray(data.picks)) {
@@ -517,9 +549,14 @@ async function processResults(): Promise<number> {
       logger.info(`Processing: ${path.basename(filePath)}`);
 
       const content = await fs.readFile(filePath, 'utf-8');
-      const data: ResultsFile = JSON.parse(content);
+      const raw = parseJsonFile<ResultsFile | unknown[]>(content, filePath);
+      if (raw == null) continue;
 
-      // Validate structure
+      // Normalize: accept { date, results } or bare array (progno format)
+      const data: ResultsFile = Array.isArray(raw)
+        ? { date: path.basename(filePath).replace(/^results-|\.json$/gi, '') || new Date().toISOString().split('T')[0], results: raw as GradedResult[] }
+        : raw;
+
       if (!data.results || !Array.isArray(data.results)) {
         logger.error(`Invalid results format in ${filePath}`);
         continue;
@@ -585,6 +622,7 @@ async function main() {
     console.log(`Results processed: ${resultsProcessed}`);
     console.log(`Kalshi picks imported: ${kalshiImported}`);
     console.log(`Duration: ${duration}s`);
+    console.log(`Archive location: ${CONFIG.archiveDir.replace(/\\/g, '/')}`);
     console.log('');
 
     await logger.save();
@@ -598,18 +636,11 @@ async function main() {
   }
 }
 
-// Run if called directly
-console.log('[SCHEDULER] Checking if should run main...');
-console.log('[SCHEDULER] import.meta.url:', import.meta.url);
-console.log('[SCHEDULER] process.argv[1]:', process.argv[1]);
+// Run if called directly (CommonJS: require.main === module)
+const isRunDirectly = typeof require !== 'undefined' && require.main === module;
+console.log('[SCHEDULER] Checking if should run main...', { isRunDirectly });
 
-// Normalize paths for comparison (handle Windows backslashes and file:// prefix)
-const currentFile = import.meta.url.replace('file:///', '').replace(/\//g, '\\');
-const entryFile = process.argv[1];
-console.log('[SCHEDULER] Normalized current file:', currentFile);
-console.log('[SCHEDULER] Entry file:', entryFile);
-
-if (currentFile.toLowerCase() === entryFile.toLowerCase()) {
+if (isRunDirectly) {
   console.log('[SCHEDULER] Running main()...');
   main();
 } else {

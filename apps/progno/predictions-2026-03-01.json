@@ -1,10 +1,142 @@
 {
   "date": "2026-03-01",
-  "generatedAt": "2026-02-28T20:17:20.417Z",
-  "count": 1,
-  "message": "Top 11 picks (of 55 games) — Cevict Flex + Triple Alignment — Regular (0–1 days) — Next-day (1 picks)",
+  "generatedAt": "2026-03-01T22:52:25.942Z",
+  "count": 2,
+  "message": "Top 5 picks (of 5 games) — Cevict Flex + Triple Alignment — Regular (0–1 days) — Regular (2 picks)",
   "earlyLines": false,
   "picks": [
+    {
+      "sport": "NHL",
+      "league": "NHL",
+      "home_team": "Anaheim Ducks",
+      "away_team": "Calgary Flames",
+      "game_matchup": "Calgary Flames @ Anaheim Ducks",
+      "pick": "Anaheim Ducks",
+      "pick_type": "SPREAD",
+      "recommended_line": -1.5,
+      "odds": 144,
+      "confidence": 90,
+      "game_time": "2026-03-02T01:10:00+00:00",
+      "game_id": "9a8dc4a6be1bafc3a9d2fb190e62a27a",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 98,
+      "expected_value": 87.32,
+      "value_bet_edge": 45.74,
+      "value_bet_ev": 87.32,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.9218,
+      "mc_predicted_score": {
+        "home": 6,
+        "away": 2,
+        "homeRange": [
+          3,
+          8
+        ],
+        "awayRange": [
+          0,
+          5
+        ]
+      },
+      "mc_spread_probability": 0.9812,
+      "mc_total_probability": 0.7866,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Clear favorite (60% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "[probability-analyzer] [analyzer] NHL ensemble: H=57.2 A=38.7 blend=0.10",
+        "MC: 92.2% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -2.3304598245422783,
+          "favors": "away",
+          "scores": {
+            "SF": 0.030795014621476834,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.07,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.023304598245422782
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        },
+        "probability-analyzer": {
+          "delta": 0.36114175692218886,
+          "favors": "home",
+          "scores": {
+            "homeEnsemble": 57.22283513844378,
+            "awayEnsemble": 38.70531614102146,
+            "blend": 0.1,
+            "shouldFlip": 0
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Anaheim Ducks",
+          "line": -1.5,
+          "edge": 45.74,
+          "probability": 0.981,
+          "expected_value": 87.32,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Anaheim Ducks",
+          "edge": 31.91,
+          "probability": 0.922,
+          "expected_value": 47.38,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 6,
+          "edge": 26.28,
+          "probability": 0.787,
+          "expected_value": 50.17,
+          "kelly_fraction": 0.05
+        }
+      ],
+      "analysis": "🎯 Anaheim Ducks (90%). [true-edge] Clear favorite (60% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias",
+        "probability-analyzer"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
     {
       "sport": "NBA",
       "league": "NBA",
@@ -15,34 +147,34 @@
       "pick_type": "SPREAD",
       "recommended_line": -2,
       "odds": -110,
-      "confidence": 60,
+      "confidence": 62,
       "game_time": "2026-03-01T20:40:00+00:00",
       "game_id": "25a45928a3d4b8a0d492283f6f434421",
       "is_premium": true,
       "is_home_pick": true,
       "is_favorite_pick": true,
       "triple_align": true,
-      "composite_score": 30.2,
-      "expected_value": 15.19,
-      "value_bet_edge": 7.96,
-      "value_bet_ev": 15.19,
-      "value_bet_kelly": 0.042,
+      "composite_score": 29.7,
+      "expected_value": 14.43,
+      "value_bet_edge": 7.56,
+      "value_bet_ev": 14.43,
+      "value_bet_kelly": 0.04,
       "has_value": true,
-      "mc_win_probability": 0.563,
+      "mc_win_probability": 0.5576,
       "mc_predicted_score": {
         "home": 120,
         "away": 117,
         "homeRange": [
-          97,
-          143
+          98,
+          142
         ],
         "awayRange": [
-          90,
-          143
+          91,
+          142
         ]
       },
-      "mc_spread_probability": 0.6034,
-      "mc_total_probability": 0.417,
+      "mc_spread_probability": 0.5994,
+      "mc_total_probability": 0.4174,
       "mc_iterations": 5000,
       "reasoning": [
         "[true-edge] Slight favorite (54% implied probability)",
@@ -51,7 +183,7 @@
         "[claude-effect] ⚠️ Upset risk: 18%",
         "[home-away-bias] Home-team pick (+67% ROI backtest)",
         "[probability-analyzer] [analyzer] NBA multiplier=0, skipped",
-        "MC: 56.3% win (5,000 sims)"
+        "MC: 55.8% win (5,000 sims)"
       ],
       "signal_trace": {
         "true-edge": {
@@ -63,7 +195,7 @@
           }
         },
         "claude-effect": {
-          "delta": -2.0648695661802847,
+          "delta": -2.220289856107833,
           "favors": "away",
           "scores": {
             "SF": 0.013354037275614017,
@@ -71,9 +203,9 @@
             "IAI": -0.02902691517076006,
             "CSI": 0.18,
             "NIG": 0,
-            "TRD": 0.93,
+            "TRD": 1,
             "EPD": 0,
-            "totalEffect": -0.020648695661802847
+            "totalEffect": -0.02220289856107833
           }
         },
         "home-away-bias": {
@@ -99,22 +231,22 @@
           "type": "spread",
           "side": "Denver Nuggets",
           "line": -2,
-          "edge": 7.96,
-          "probability": 0.603,
-          "expected_value": 15.19,
-          "kelly_fraction": 0.042
+          "edge": 7.56,
+          "probability": 0.599,
+          "expected_value": 14.43,
+          "kelly_fraction": 0.04
         },
         {
           "type": "total",
           "side": "Under",
           "line": 241,
-          "edge": 4.04,
+          "edge": 3.98,
           "probability": 0.564,
-          "expected_value": 7.71,
+          "expected_value": 7.6,
           "kelly_fraction": 0.021
         }
       ],
-      "analysis": "🎯 Denver Nuggets (60%). [true-edge] Slight favorite (54% implied probability) [true-edge] Altitude factor: home team has elevation edge [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "analysis": "🎯 Denver Nuggets (62%). [true-edge] Slight favorite (54% implied probability) [true-edge] Altitude factor: home team has elevation edge [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
       "powered_by": "Cevict Flex Modular Engine",
       "active_signals": [
         "true-edge",

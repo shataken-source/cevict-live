@@ -85,7 +85,8 @@ if ($AppPath) {
     (Join-Path $repoRoot 'apps\monitor'),
     (Join-Path $repoRoot 'apps\launchpad'),
     (Join-Path $repoRoot 'apps\moltbook-viewer'),
-    (Join-Path $repoRoot 'apps\petreunion')
+    (Join-Path $repoRoot 'apps\petreunion'),
+    (Join-Path $repoRoot 'apps\progno')
   )
 }
 

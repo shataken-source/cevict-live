@@ -1,7 +1,6 @@
 {
   "version": 2,
-  "github": {
-    "silent": true
-  },
-  "ignoreCommand": "bash scripts/vercel-ignore.sh"
+  "github": { "silent": true },
+  "ignoreCommand": "bash scripts/vercel-ignore.sh",
+  "installCommand": "npm install"
 }

@@ -51,18 +51,21 @@ export class AIBrain {
     const sportsOnly = process.env.PROGNO_SPORTS_ONLY === '1';
 
     if (sportsOnly) {
-      console.log('🧠 AI Brain (sports only) — fetching Progno→Kalshi matches...\n');
-      // Use KalshiTrader which resolves Progno picks to actual Kalshi tickers
-      const kalshiOpps = await this.kalshi.findOpportunitiesWithExternalProbs(5);
+      console.log('AI Brain (sports only) — fetching Progno→Kalshi + Coinbase crypto...\n');
+      // Kalshi/Progno + crypto (Coinbase production): both run in sports-only mode
+      const [kalshiOpps, cryptoOpps] = await Promise.all([
+        this.kalshi.findOpportunitiesWithExternalProbs(5),
+        this.cryptoTrader.getOpportunities(),
+      ]);
       const prognoResolved = kalshiOpps.filter(o => o.source === 'PROGNO').length;
-      console.log(`🎯 Progno: ${prognoResolved} matched to Kalshi tickers (${kalshiOpps.length} total)`);
-      const allOpportunities = kalshiOpps.filter(
+      console.log(`Progno: ${prognoResolved} matched to Kalshi tickers (${kalshiOpps.length} total) | Crypto: ${cryptoOpps.length}`);
+      const allOpportunities = [...kalshiOpps, ...cryptoOpps].filter(
         (opp: Opportunity) => opp.confidence >= this.config.minConfidence && opp.expectedValue >= this.config.minExpectedValue
       );
       return this.rankOpportunities(allOpportunities, []);
     }
 
-    console.log('🧠 AI Brain analyzing all sources...\n');
+    console.log('AI Brain analyzing all sources...\n');
     // NOTE: KalshiTrader.findOpportunitiesWithExternalProbs() already fetches Progno picks
     // internally via getPrognoProbabilities() and resolves them to Kalshi tickers.
     // We no longer run convertToOpportunities() separately — it produced unresolvable
@@ -74,7 +77,7 @@ export class AIBrain {
       this.cryptoTrader.getOpportunities(),
     ]);
     const prognoResolved = kalshiOpps.filter(o => o.source === 'PROGNO').length;
-    console.log(`📰 News: ${news.length} | 🎯 Progno: ${prognoResolved} (via Kalshi) | 📊 Kalshi: ${kalshiOpps.length} | 💰 Arb: ${arbitrageOpps.length} | 🪙 Crypto: ${cryptoOpps.length}`);
+    console.log(`News: ${news.length} | Progno: ${prognoResolved} (via Kalshi) | Kalshi: ${kalshiOpps.length} | Arb: ${arbitrageOpps.length} | Crypto: ${cryptoOpps.length}`);
     const allOpportunities = [
       ...arbitrageOpps,
       ...kalshiOpps,
@@ -131,7 +134,7 @@ RISK: [low/medium/high]
 ACTION: [one sentence recommendation]
 CONFIDENCE: [0-100]`;
 
-    console.log(`   🤖 Using local AI (${localAI.getModel()}) for opportunity analysis...`);
+    console.log(`   Using local AI (${localAI.getModel()}) for opportunity analysis...`);
     const response = await localAI.analyze(prompt);
     if (!response) return null;
 
@@ -142,7 +145,7 @@ CONFIDENCE: [0-100]`;
     const confMatch = response.match(/CONFIDENCE:\s*(\d+)/i);
 
     const bestIndex = parseInt(indexMatch?.[1] || '0');
-    console.log(`   ✅ Local AI recommends opportunity #${bestIndex} (confidence: ${confMatch?.[1] || '?'}%)`);
+    console.log(`   [OK] Local AI recommends opportunity #${bestIndex} (confidence: ${confMatch?.[1] || '?'}%)`);
 
     return {
       topOpportunity: opportunities[bestIndex] || opportunities[0],
@@ -300,39 +303,39 @@ CONFIDENCE: [0-100]`;
     const analysis = await this.analyzeAllSources();
     const stats = await this.getHistoricalPerformance();
 
-    let suggestion = `🤖 ALPHA HUNTER DAILY BRIEF\n`;
-    suggestion += `📅 ${new Date().toLocaleDateString()}\n`;
-    suggestion += `💰 Balance: $${balance.toFixed(2)}\n\n`;
+    let suggestion = `ALPHA HUNTER DAILY BRIEF\n`;
+    suggestion += `${new Date().toLocaleDateString()}\n`;
+    suggestion += `Balance: $${balance.toFixed(2)}\n\n`;
 
     if (!analysis.topOpportunity) {
-      suggestion += `⏳ No high-confidence opportunities today.\n`;
-      suggestion += `💡 Recommendation: Hold and wait for better setups.\n`;
+      suggestion += `No high-confidence opportunities today.\n`;
+      suggestion += `Recommendation: Hold and wait for better setups.\n`;
       return suggestion;
     }
 
     const opp = analysis.topOpportunity;
-    suggestion += `🎯 TOP OPPORTUNITY:\n`;
+    suggestion += `TOP OPPORTUNITY:\n`;
     suggestion += `${opp.title}\n`;
-    suggestion += `📊 Confidence: ${opp.confidence}%\n`;
-    suggestion += `📈 Expected Value: +${opp.expectedValue.toFixed(1)}%\n`;
-    suggestion += `⚠️ Risk Level: ${opp.riskLevel}\n`;
-    suggestion += `💵 Suggested Stake: $${opp.requiredCapital}\n`;
-    suggestion += `🎲 Potential Return: $${opp.potentialReturn.toFixed(2)}\n\n`;
+    suggestion += `Confidence: ${opp.confidence}%\n`;
+    suggestion += `Expected Value: +${opp.expectedValue.toFixed(1)}%\n`;
+    suggestion += `Risk Level: ${opp.riskLevel}\n`;
+    suggestion += `Suggested Stake: $${opp.requiredCapital}\n`;
+    suggestion += `Potential Return: $${opp.potentialReturn.toFixed(2)}\n\n`;
 
-    suggestion += `📋 ACTION:\n`;
+    suggestion += `ACTION:\n`;
     suggestion += opp.action.instructions.join('\n') + '\n\n';
 
-    suggestion += `📊 REASONING:\n`;
+    suggestion += `REASONING:\n`;
     suggestion += opp.reasoning.slice(0, 3).map(r => `• ${r}`).join('\n') + '\n\n';
 
     if (stats.totalTrades > 0) {
-      suggestion += `📈 BOT PERFORMANCE:\n`;
+      suggestion += `BOT PERFORMANCE:\n`;
       suggestion += `• Win Rate: ${stats.winRate.toFixed(1)}%\n`;
       suggestion += `• Total Profit: $${stats.totalProfit.toFixed(2)}\n`;
       suggestion += `• Best Trade: +$${stats.bestTrade.toFixed(2)}\n`;
     }
 
-    suggestion += `\n🔥 LET'S GET THAT $250!`;
+    suggestion += `\nLET'S GET THAT $250!`;
 
     return suggestion;
   }

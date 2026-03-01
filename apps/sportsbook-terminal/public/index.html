@@ -241,6 +241,18 @@
       color: white;
     }
 
+    /* Kalshi tab: rounder edges */
+    #kalshiSection .filter-tabs .filter-btn {
+      border-radius: 10px;
+    }
+    #kalshiSection #kalshiList .parlay-item {
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    #kalshiSection .strategy-title .btn-primary {
+      border-radius: 10px;
+    }
+
     /* Stats Bar */
     .stats-bar {
       display: flex;
@@ -1447,52 +1459,59 @@
 
         const label = data.source || 'server';
         loadPicksData(picks, data.generatedAt);
-        showError(`✅ Loaded ${picks.length} picks from ${label}`, 'success');
+        const msg = data.message ? `✅ ${data.message}` : `✅ Loaded ${picks.length} picks from ${label}`;
+        showError(msg, 'success');
       } catch (err) {
         showError('❌ Server load failed: ' + err.message + ' — try loading file manually');
       }
     }
 
-    // Shared pick loader — normalizes both progno and alpha-hunter formats for the UI
+    // Shared pick loader — normalizes progno, alpha-hunter, and API (nested markets) formats
     function loadPicksData(picks, sourceLabel) {
       allPicks = picks.map((pick, idx) => {
-        const id = pick.id || pick.game_id || `pick-${idx}`;
+        const id = pick.id || pick.game_id || pick.market_id || `pick-${idx}`;
+
+        // Flatten nested API shape: predictions have .markets or .market with home_team, away_team
+        const market = pick.markets || pick.market;
+        const homeFromMarket = market && (market.home_team || market.homeTeam);
+        const awayFromMarket = market && (market.away_team || market.awayTeam);
+        const eventFromMarket = market && (market.event_name || market.eventName);
 
         // Detect alpha-hunter tradingBot format: has no home_team/away_team, pick is YES/NO or market title
-        const isAlphaHunterFormat = !pick.home_team && !pick.away_team && pick.market;
+        const isAlphaHunterFormat = !pick.home_team && !pick.away_team && !homeFromMarket && pick.market && typeof pick.market === 'string';
 
         // Normalize odds: progno uses American odds number, alpha-hunter may not have odds
-        const odds = pick.odds || pick.american_odds || -110;
+        const odds = pick.odds != null ? pick.odds : (pick.american_odds != null ? pick.american_odds : -110);
 
-        // Normalize confidence: always 0-100
-        const confidence = typeof pick.confidence === 'number'
-          ? (pick.confidence > 1 ? pick.confidence : pick.confidence * 100)
+        // Normalize confidence: always 0-100 (incoming may be 0-1 or 0-100)
+        const rawConf = pick.confidence != null ? pick.confidence : 55;
+        const confidence = typeof rawConf === 'number'
+          ? (rawConf > 1 ? Math.min(100, rawConf) : rawConf * 100)
           : 55;
 
-        // Normalize mc_win_probability: always 0-1
+        // mc_win_probability: prefer when available (0-1); else derive from confidence
         const mcProb = typeof pick.mc_win_probability === 'number'
-          ? (pick.mc_win_probability > 1 ? pick.mc_win_probability / 100 : pick.mc_win_probability)
-          : confidence / 100;
+          ? (pick.mc_win_probability > 1 ? pick.mc_win_probability / 100 : Math.min(1, pick.mc_win_probability))
+          : (confidence / 100);
 
-        // Build display strings
-        let homeTeam = pick.home_team || '';
-        let awayTeam = pick.away_team || '';
+        // Build display strings — support winner-only (progno bare array), nested market, standard
+        let homeTeam = pick.home_team || homeFromMarket || '';
+        let awayTeam = pick.away_team || awayFromMarket || '';
         let pickDisplay, league, sport;
 
         if (isAlphaHunterFormat) {
-          // Alpha-hunter: market = "Will X cover Y?" or team name
           const mkt = pick.market || pick.id || 'Unknown';
           pickDisplay = pick.pick || 'YES';
           league = (pick.sport || pick.category || 'Sports').toUpperCase();
           sport = league;
-          // Try to extract teams from market title
           const vsMatch = mkt.match(/(.+?)\s+(?:vs\.?|@)\s+(.+?)(?:\s+cover|\?|$)/i);
           if (vsMatch) { awayTeam = vsMatch[1].trim(); homeTeam = vsMatch[2].trim(); }
           else { homeTeam = mkt.replace(/Will |\?|cover.*/gi, '').trim(); }
         } else {
-          // Progno format
-          pickDisplay = pick.pick || pick._displayPick || homeTeam || 'Unknown';
-          league = (pick.league || pick.sport || 'Sports').toUpperCase();
+          // Progno: pick or winner (bare-array format has "winner" not "pick"), or event/market name
+          pickDisplay = (pick.pick || pick.winner || pick._displayPick || eventFromMarket || homeTeam || awayTeam || '').trim() || 'Unknown';
+          if (pickDisplay === 'Unknown' && (homeTeam || awayTeam)) pickDisplay = awayTeam ? `${awayTeam} @ ${homeTeam}` : (homeTeam || awayTeam);
+          league = (pick.league || pick.sport || (market && market.league) || 'Sports').toUpperCase();
           sport = league;
         }
 
@@ -1936,6 +1955,12 @@
       }
     }
 
+    // One-line display name for a pick (used in parlays, teasers)
+    function getPickDisplayName(p, fallback) {
+      const name = (p && (p.pick || p._displayPick || p.team || p.home_team || p.away_team || p.market || p.event_name || (p.home_team && p.away_team ? p.away_team + ' @ ' + p.home_team : '')));
+      return (typeof name === 'string' && name.trim()) ? name.trim() : (fallback || 'Unknown');
+    }
+
     // Generate Parlays - Generate all possible combinations with 58%+ confidence picks
     function generateParlays() {
       // Get picks with 58%+ confidence for good quality parlays with more combinations
@@ -1974,9 +1999,9 @@
           // Expected value
           const ev = (combinedProb * payout) - (1 - combinedProb);
 
-          // Format team names
-          const team1 = p1.team || p1.home_team || 'Team 1';
-          const team2 = p2.team || p2.home_team || 'Team 2';
+          // Format team names from real pick data
+          const team1 = getPickDisplayName(p1, 'Leg 1');
+          const team2 = getPickDisplayName(p2, 'Leg 2');
 
           parlays.push({
             legs: [p1, p2],
@@ -2017,9 +2042,9 @@
 
               const ev = (combinedProb * payout) - (1 - combinedProb);
 
-              const team1 = p1.team || p1.home_team || 'Team 1';
-              const team2 = p2.team || p2.home_team || 'Team 2';
-              const team3 = p3.team || p3.home_team || 'Team 3';
+              const team1 = getPickDisplayName(p1, 'Leg 1');
+              const team2 = getPickDisplayName(p2, 'Leg 2');
+              const team3 = getPickDisplayName(p3, 'Leg 3');
 
               parlays.push({
                 legs: [p1, p2, p3],
@@ -2038,10 +2063,18 @@
         }
       }
 
-      console.log('Generated', parlays.length, 'parlays');
+      // Prefer parlays with real team names (hide "Unknown + Unknown + Unknown")
+      const withNames = parlays.filter(p => {
+        const names = p.teamNames || [];
+        const known = names.filter(n => n && n !== 'Unknown' && !/^Leg \d+$/.test(n));
+        return known.length >= 2 || (p.type === '3-leg' ? known.length >= 2 : known.length >= 1);
+      });
+      const toShow = withNames.length > 0 ? withNames : parlays;
+
+      console.log('Generated', parlays.length, 'parlays' + (toShow.length < parlays.length ? ` (showing ${toShow.length} with team names)` : ''));
 
       // Sort by EV descending and return top 20
-      return parlays
+      return toShow
         .sort((a, b) => b.ev - a.ev)
         .slice(0, 20);
     }
@@ -2062,8 +2095,14 @@
         // Separate 2-leg and 3-leg parlays
         const twoLegParlays = parlays.filter(p => p.type === '2-leg');
         const threeLegParlays = parlays.filter(p => p.type === '3-leg');
+        const hasUnknowns = parlays.some(p => (p.teamNames || []).some(n => !n || n === 'Unknown'));
 
         let html = '';
+        if (hasUnknowns) {
+          html += `<div style="margin-bottom: 12px; padding: 8px 12px; background: rgba(255,193,7,0.15); border-radius: 8px; font-size: 0.8em; color: var(--text-secondary);">
+            💡 Load a predictions file with <strong>home_team</strong> / <strong>away_team</strong> or <strong>pick</strong> / <strong>winner</strong> so parlay legs show real team names and odds match your data.
+          </div>`;
+        }
 
         // 2-Leg Parlays Section
         if (twoLegParlays.length > 0) {
@@ -2418,48 +2457,41 @@
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const data = JSON.parse(e.target.result);
+          let raw = JSON.parse(e.target.result);
 
-          // Detailed validation
-          if (!data) {
-            throw new Error('File is empty or not valid JSON');
+          if (!raw) throw new Error('File is empty or not valid JSON');
+
+          // Accept { date, results: [...] } OR bare array (e.g. archive format)
+          let resultsArray = Array.isArray(raw) ? raw : (raw.results && Array.isArray(raw.results) ? raw.results : null);
+          if (!resultsArray || resultsArray.length === 0) {
+            throw new Error('No results array found or array is empty. Use { "results": [ ... ] } or a bare array.');
           }
 
-          if (!data.results) {
-            throw new Error(`Missing 'results' array. Found keys: ${Object.keys(data).join(', ')}`);
+          // Normalize each item to standard shape (game_id, home_team, away_team, status, sport, confidence)
+          const data = {
+            date: raw.date || file.name.replace(/^results-|\.json$/gi, '') || new Date().toISOString().split('T')[0],
+            results: resultsArray.map(r => normalizeResultRow(r)),
+            summary: raw.summary || null
+          };
+
+          // Compute summary if missing
+          const wins = data.results.filter(r => r.status === 'win').length;
+          const losses = data.results.filter(r => r.status === 'loss').length;
+          const pending = data.results.filter(r => r.status === 'pending').length;
+          const graded = wins + losses;
+          if (!data.summary) {
+            data.summary = {
+              total: data.results.length,
+              winRate: graded > 0 ? Math.round((wins / graded) * 100) : 0,
+              pending,
+              graded
+            };
           }
-
-          if (!Array.isArray(data.results)) {
-            throw new Error(`'results' is not an array. Type: ${typeof data.results}`);
-          }
-
-          if (data.results.length === 0) {
-            throw new Error('Results array is empty');
-          }
-
-          // Check first result for required fields
-          const firstResult = data.results[0];
-          const requiredFields = ['game_id', 'home_team', 'away_team', 'status'];
-          const missingFields = requiredFields.filter(f => !(f in firstResult));
-
-          if (missingFields.length > 0) {
-            throw new Error(`Missing required fields in results: ${missingFields.join(', ')}. Found keys: ${Object.keys(firstResult).join(', ')}`);
-          }
-
-          // Normalize status values (handle different cases)
-          data.results = data.results.map(r => ({
-            ...r,
-            status: normalizeStatus(r.status)
-          }));
 
           resultsData = data;
           renderResultsAnalysis();
 
-          const winCount = data.results.filter(r => r.status === 'win').length;
-          const lossCount = data.results.filter(r => r.status === 'loss').length;
-          const pendingCount = data.results.filter(r => r.status === 'pending').length;
-
-          showError(`✅ Results loaded: ${data.results.length} total (${winCount} wins, ${lossCount} losses, ${pendingCount} pending)`, 'success');
+          showError(`✅ Results loaded: ${data.results.length} total (${wins} wins, ${losses} losses, ${pending} pending)`, 'success');
         } catch (err) {
           console.error('Results file error:', err);
           showError(`❌ Error loading results: ${err.message}`);
@@ -2513,6 +2545,35 @@
       if (['win', 'w', 'won', 'winner', '1', 'true'].includes(s)) return 'win';
       if (['loss', 'l', 'lose', 'lost', 'loser', '0', 'false'].includes(s)) return 'loss';
       return 'pending';
+    }
+
+    // Normalize one result row from archive or alternate format to standard shape
+    function normalizeResultRow(r) {
+      const game_id = r.game_id || r.GameId || r.gameId || r.id || '';
+      const home_team = r.home_team || r.HomeTeam || r.homeTeam || 'Home';
+      const away_team = r.away_team || r.AwayTeam || r.awayTeam || 'Away';
+      const sport = r.sport || r.League || r.league || 'Unknown';
+      const confidence = r.confidence != null ? r.confidence : (r.Confidence != null ? r.Confidence : 0);
+
+      let status = r.status != null ? normalizeStatus(r.status) : null;
+      if (status == null && r.Completed !== undefined) {
+        const completed = r.Completed === true || r.Completed === 'true';
+        const winner = r.Winner != null ? String(r.Winner).trim() : (r.winner != null ? String(r.winner).trim() : '');
+        if (!completed) status = 'pending';
+        else if (winner && winner.toLowerCase() !== 'unknown') status = 'win';
+        else status = 'loss';
+      }
+      if (status == null) status = 'pending';
+
+      return {
+        ...r,
+        game_id,
+        home_team,
+        away_team,
+        sport,
+        confidence: Number(confidence) || 0,
+        status
+      };
     }
 
     function renderResultsAnalysis() {
@@ -3050,7 +3111,7 @@
           <div class="parlay-item" style="flex-direction: column; align-items: flex-start; margin-bottom: 12px; border-left: 3px solid ${tierColor};">
             <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-bottom: 8px;">
               <div style="font-weight: 600; font-size: 1em;">${pick.market}</div>
-              <div style="font-size: 0.75em; padding: 3px 10px; border-radius: 12px; background: ${tierColor}20; color: ${tierColor}; border: 1px solid ${tierColor}40;">
+              <div style="font-size: 0.75em; padding: 3px 10px; border-radius: 10px; background: ${tierColor}20; color: ${tierColor}; border: 1px solid ${tierColor}40;">
                 ${tierBadge}
               </div>
             </div>
@@ -3070,7 +3131,7 @@
             </div>
 
             ${pick.reasoning ? `
-              <div style="font-size: 0.75em; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 8px; border-radius: 4px; margin-bottom: 8px; width: 100%;">
+              <div style="font-size: 0.75em; color: var(--text-secondary); background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; margin-bottom: 8px; width: 100%;">
                 ${pick.reasoning}
               </div>
             ` : ''}
@@ -3083,7 +3144,7 @@
                 background: rgba(59, 130, 246, 0.2);
                 color: #60a5fa;
                 border: 1px solid rgba(59, 130, 246, 0.4);
-                border-radius: 4px;
+                border-radius: 8px;
                 cursor: pointer;
               ">
                 📈 View on Kalshi
@@ -3094,7 +3155,7 @@
                 background: rgba(255, 255, 255, 0.1);
                 color: var(--text-secondary);
                 border: 1px solid var(--border-color);
-                border-radius: 4px;
+                border-radius: 8px;
                 cursor: pointer;
               ">
                 📋 Copy

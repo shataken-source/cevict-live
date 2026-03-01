@@ -27,7 +27,9 @@ export class TradeLimiter {
   private dataFile: string;
   private data: DailyTradeData;
   private maxDailyTrades: number;
-  private maxDailySpending: number;
+  /** Per-platform daily spend caps. Kalshi does NOT use MAX_DAILY_SPEND; it uses KALSHI_MAX_DAILY_SPEND only. */
+  private platformSpendLimits: Record<string, number>;
+
   /** Per-platform daily trade caps */
   private platformLimits: Record<string, number>;
 
@@ -36,7 +38,11 @@ export class TradeLimiter {
     const alphaRoot = path.resolve(__dirname, '..', '..');
     this.dataFile = path.join(alphaRoot, 'data', 'daily-trades.json');
     this.maxDailyTrades = parseInt(process.env.MAX_DAILY_TRADES || '20');
-    this.maxDailySpending = parseFloat(process.env.MAX_DAILY_LOSS || '50');
+    this.platformSpendLimits = {
+      crypto: parseFloat(process.env.MAX_DAILY_SPEND || process.env.MAX_DAILY_LOSS || '50'),
+      kalshi: parseFloat(process.env.KALSHI_MAX_DAILY_SPEND || '500'),
+      polymarket: parseFloat(process.env.POLYMARKET_MAX_DAILY_SPEND || process.env.MAX_DAILY_SPEND || '50'),
+    };
     this.platformLimits = {
       crypto: parseInt(process.env.CRYPTO_MAX_DAILY_TRADES || '10'),
       kalshi: parseInt(process.env.KALSHI_MAX_DAILY_TRADES || '20'),
@@ -113,32 +119,31 @@ export class TradeLimiter {
       this.saveData();
     }
 
-    // Check per-platform trade limit first (so crypto doesn't starve kalshi)
-    const platformCount = (this.data.platformCounts || {})[type] || 0;
-    const platformMax = this.platformLimits[type] || this.maxDailyTrades;
-    if (platformCount >= platformMax) {
-      return {
-        allowed: false,
-        reason: `Daily ${type} trade limit reached (${platformCount}/${platformMax})`,
-      };
+    // Crypto: no trade-count limit — only limited by daily spending (max loss). Other platforms keep count limits.
+    if (type !== 'crypto') {
+      const platformCount = (this.data.platformCounts || {})[type] || 0;
+      const platformMax = this.platformLimits[type] || this.maxDailyTrades;
+      if (platformCount >= platformMax) {
+        return {
+          allowed: false,
+          reason: `Daily ${type} trade limit reached (${platformCount}/${platformMax})`,
+        };
+      }
+      if (this.data.tradeCount >= this.maxDailyTrades) {
+        return {
+          allowed: false,
+          reason: `Daily trade limit reached (${this.data.tradeCount} total)`,
+        };
+      }
     }
 
-    // Check for duplicate bet on same ticker (prevent re-betting same market)
-    // Caller should use hasAlreadyBet() before canTrade() for specific ticker check
-
-    // Check global daily trade limit as a safety net
-    if (this.data.tradeCount >= this.maxDailyTrades) {
+    // Check daily spending limit (per-platform: Kalshi uses KALSHI_MAX_DAILY_SPEND only, not MAX_DAILY_SPEND)
+    const platformSpent = (this.data.platformSpent || {})[type] || 0;
+    const spendLimit = this.platformSpendLimits[type] ?? this.platformSpendLimits.crypto;
+    if (platformSpent + amount > spendLimit) {
       return {
         allowed: false,
-        reason: `Daily trade limit reached (${this.data.tradeCount} total)`,
-      };
-    }
-
-    // Check daily spending limit
-    if (this.data.totalSpent + amount > this.maxDailySpending) {
-      return {
-        allowed: false,
-        reason: `Daily spending limit would be exceeded ($${(this.data.totalSpent + amount).toFixed(2)}/$${this.maxDailySpending})`,
+        reason: `Daily ${type} spending limit would be exceeded ($${(platformSpent + amount).toFixed(2)}/$${spendLimit})`,
       };
     }
 
@@ -179,7 +184,9 @@ export class TradeLimiter {
     // Save to file
     this.saveData();
 
-    console.log(`[TRADE-LIMITER] Trade recorded: ${symbol} $${amount.toFixed(2)} (${this.data.tradeCount}/${this.maxDailyTrades} trades, $${this.data.totalSpent.toFixed(2)}/$${this.maxDailySpending} spent)`);
+    const platformSpentNow = (this.data.platformSpent || {})[type] || 0;
+    const spendCap = this.platformSpendLimits[type] ?? this.platformSpendLimits.crypto;
+    console.log(`[TRADE-LIMITER] Trade recorded: ${symbol} $${amount.toFixed(2)} (${this.data.tradeCount}/${this.maxDailyTrades} trades, ${type} $${platformSpentNow.toFixed(2)}/$${spendCap} spent)`);
   }
 
   /**
@@ -188,6 +195,8 @@ export class TradeLimiter {
   getStats(): {
     tradeCount: number;
     totalSpent: number;
+    /** Per-platform spent (crypto, kalshi, polymarket). Use for platform-specific limits. */
+    platformSpent: Record<string, number>;
     remainingTrades: number;
     remainingBudget: number;
   } {
@@ -197,11 +206,14 @@ export class TradeLimiter {
       this.saveData();
     }
 
+    const defaultSpendLimit = this.platformSpendLimits.crypto;
+    const platformSpent = this.data.platformSpent || {};
     return {
       tradeCount: this.data.tradeCount,
       totalSpent: this.data.totalSpent,
+      platformSpent: { ...platformSpent },
       remainingTrades: Math.max(0, this.maxDailyTrades - this.data.tradeCount),
-      remainingBudget: Math.max(0, this.maxDailySpending - this.data.totalSpent),
+      remainingBudget: Math.max(0, defaultSpendLimit - (platformSpent.crypto ?? 0)),
     };
   }
 

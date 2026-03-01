@@ -86,6 +86,67 @@ const allocationLimiter = rateLimit({
   max: 10,
 });
 
+// Stripe webhook MUST use raw body for signature verification - register before express.json()
+app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig!, endpointSecret!);
+  } catch (err: any) {
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      const session = event.data.object;
+      const userId = session.metadata?.userId;
+
+      if (userId) {
+        await pool.query(
+          `UPDATE users
+           SET subscription_status = 'active',
+               subscription_tier = 'pro',
+               stripe_subscription_id = $1
+           WHERE id = $2`,
+          [session.subscription, userId]
+        );
+      }
+      break;
+    }
+
+    case 'invoice.payment_failed': {
+      const invoice = event.data.object;
+      const customerId = invoice.customer;
+
+      await pool.query(
+        `UPDATE users
+         SET subscription_status = 'past_due'
+         WHERE stripe_customer_id = $1`,
+        [customerId]
+      );
+      break;
+    }
+
+    case 'customer.subscription.deleted': {
+      const subscription = event.data.object;
+
+      await pool.query(
+        `UPDATE users
+         SET subscription_status = 'canceled',
+             subscription_tier = 'free'
+         WHERE stripe_subscription_id = $1`,
+        [subscription.id]
+      );
+      break;
+    }
+  }
+
+  res.json({ received: true });
+});
+
 app.use(express.json({ limit: '10mb' }));
 
 // Authentication middleware
@@ -338,68 +399,6 @@ app.post('/api/create-checkout', authenticateToken, async (req, res) => {
     console.error('Stripe error:', error);
     res.status(500).json({ error: 'Checkout creation failed' });
   }
-});
-
-// Stripe Webhook
-app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig!, endpointSecret!);
-  } catch (err: any) {
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  // Handle events
-  switch (event.type) {
-    case 'checkout.session.completed': {
-      const session = event.data.object;
-      const userId = session.metadata?.userId;
-
-      if (userId) {
-        await pool.query(
-          `UPDATE users
-           SET subscription_status = 'active',
-               subscription_tier = 'pro',
-               stripe_subscription_id = $1
-           WHERE id = $2`,
-          [session.subscription, userId]
-        );
-      }
-      break;
-    }
-
-    case 'invoice.payment_failed': {
-      const invoice = event.data.object;
-      const customerId = invoice.customer;
-
-      await pool.query(
-        `UPDATE users
-         SET subscription_status = 'past_due'
-         WHERE stripe_customer_id = $1`,
-        [customerId]
-      );
-      break;
-    }
-
-    case 'customer.subscription.deleted': {
-      const subscription = event.data.object;
-
-      await pool.query(
-        `UPDATE users
-         SET subscription_status = 'canceled',
-             subscription_tier = 'free'
-         WHERE stripe_subscription_id = $1`,
-        [subscription.id]
-      );
-      break;
-    }
-  }
-
-  res.json({ received: true });
 });
 
 // ==================== HELPER FUNCTIONS ====================

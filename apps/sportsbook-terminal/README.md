@@ -75,6 +75,17 @@ sportsbook-terminal/
 
 ---
 
+## Two entrypoints
+
+| Entrypoint | Use case | Auth / limits |
+|------------|----------|----------------|
+| **`node server.js`** | Dashboard + pipeline (recommended for daily use). Serves UI at `http://localhost:3433`, runs scheduler/archive/export. | Rate-limited; admin endpoints require localhost or `SPORTSBOOK_API_KEY`. |
+| **`npm run dev`** → `api/server.ts` | Full API with Supabase auth, capital allocation, Monte Carlo, parlays, Stripe. | Token auth on most routes; rate-limited. |
+
+Use **server.js** for the dashboard and manual imports. Use **api/server.ts** when you need the allocation/simulation or Stripe flows.
+
+---
+
 ## Environment Variables
 
 Set in `.env.local`:
@@ -85,7 +96,9 @@ Set in `.env.local`:
 | `SUPABASE_SERVICE_KEY` | Service role key (bypasses RLS for imports) |
 | `PROGNO_URL` | Prognostication API base (`http://localhost:3005` or Vercel URL) |
 | `PROGNO_API_KEY` | API key for Prognostication webhook |
-| `FRONTEND_URL` | This server's URL (`http://localhost:3433`) |
+| `FRONTEND_URL` | This server's URL (`http://localhost:3433`). Also used as default CORS allowed origin. |
+| `CORS_ORIGINS` | Comma-separated allowed origins (overrides FRONTEND_URL for CORS). Use `*` to allow all (not recommended). |
+| `SPORTSBOOK_API_KEY` | Optional. If set in env, admin endpoints require this as `X-API-Key` or `Authorization: Bearer <key>`. If unset, admin accepts localhost only. (Not in keyvault by default; add to store only if you need remote admin auth.) |
 
 The server also accepts `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` as aliases (auto-bridged).
 
@@ -107,7 +120,7 @@ The server also accepts `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KE
 | `/api/v1/archive/predictions` | GET | List archived prediction files |
 | `/api/v1/archive/results` | GET | List archived results files |
 
-### Admin
+### Admin (rate-limited; require localhost or `X-API-Key` / `SPORTSBOOK_API_KEY`)
 
 | Endpoint | Method | Description |
 |---|---|---|
@@ -115,6 +128,9 @@ The server also accepts `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KE
 | `/api/archive` | POST | Trigger file archiving |
 | `/api/export-picks` | POST | Push picks from frontend → Supabase |
 | `/api/export-supabase` | POST | Run scheduler (alias) |
+| `/api/import-kalshi-sports` | GET | Import from cache file into Supabase |
+
+When `SPORTSBOOK_API_KEY` is not set, only requests from localhost are allowed. Set the key in `.env.local` and send it as `X-API-Key` or `Authorization: Bearer <key>` when calling from another machine.
 
 Full request/response examples: see `API_DOCUMENTATION.md`.
 

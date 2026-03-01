@@ -44,6 +44,7 @@ export class ExchangeManager {
   private cryptoCom: CryptoComExchange;
   private binance: BinanceExchange;
   private preferredExchange: string;
+  private readonly USD_RESERVE = parseFloat(process.env.USD_RESERVE_FLOOR || '50');
 
   constructor() {
     this.coinbase = new CoinbaseExchange();
@@ -141,6 +142,56 @@ export class ExchangeManager {
   }
 
   /**
+   * Keep at least USD_RESERVE ($50) in USDC on Coinbase (for card/spend).
+   * If USDC drops below that, sell crypto for USDC on Coinbase (BTC-USDC, ETH-USDC, SOL-USDC)
+   * so proceeds credit USDC. Prefers BTC then ETH then SOL.
+   * Does not count toward trade limiter or daily loss (maintenance rebalance).
+   */
+  async ensureUsdcReserve(): Promise<boolean> {
+    if (!this.coinbase.isConfigured()) return false;
+    const balances = await this.getTotalBalance();
+    const cb = balances.byExchange.find(b => b.exchange === 'Coinbase');
+    if (!cb || cb.usdc >= this.USD_RESERVE) return false;
+
+    const shortfall = Math.min(this.USD_RESERVE - cb.usdc, 500);
+    if (shortfall < 1) return false;
+
+    const solBal = cb.other?.SOL ?? 0;
+
+    const trySellForUsdc = async (crypto: 'BTC' | 'ETH' | 'SOL', balance: number): Promise<boolean> => {
+      if (balance <= 0) return false;
+      const productId = `${crypto}-USDC`;
+      const price = (await this.coinbase.getTicker(productId).catch(() => ({ price: 0 }))).price;
+      if (price <= 0) return false;
+      const value = balance * price;
+      if (value < shortfall * 0.99) return false;
+      const cryptoAmount = (shortfall / price) * 0.995;
+      try {
+        const order = await this.coinbase.marketSell(productId, cryptoAmount);
+        const ok = order.status === 'FILLED' || order.status === 'done' || order.status === 'pending';
+        return ok;
+      } catch {
+        return false;
+      }
+    };
+
+    if (await trySellForUsdc('BTC', cb.btc)) {
+      console.log(`[USDC RESERVE] Sold $${shortfall.toFixed(2)} BTC for USDC to restore floor ($${this.USD_RESERVE})`);
+      return true;
+    }
+    if (await trySellForUsdc('ETH', cb.eth)) {
+      console.log(`[USDC RESERVE] Sold $${shortfall.toFixed(2)} ETH for USDC to restore floor ($${this.USD_RESERVE})`);
+      return true;
+    }
+    if (await trySellForUsdc('SOL', solBal)) {
+      console.log(`[USDC RESERVE] Sold $${shortfall.toFixed(2)} SOL for USDC to restore floor ($${this.USD_RESERVE})`);
+      return true;
+    }
+    console.log(`[USDC RESERVE] USDC below $${this.USD_RESERVE} ($${cb.usdc.toFixed(2)}) but not enough crypto on Coinbase to top up`);
+    return false;
+  }
+
+  /**
    * Compare prices across exchanges
    */
   async comparePrices(crypto: 'BTC' | 'ETH' | 'SOL'): Promise<PriceComparison> {
@@ -189,6 +240,13 @@ export class ExchangeManager {
     return comparison;
   }
 
+  /** Get available balance for a crypto on an exchange (BTC/ETH/SOL). */
+  private getCryptoAvailable(bal: ExchangeBalance, crypto: 'BTC' | 'ETH' | 'SOL'): number {
+    if (crypto === 'BTC') return bal.btc ?? 0;
+    if (crypto === 'ETH') return bal.eth ?? 0;
+    return (bal.other && typeof bal.other['SOL'] === 'number') ? bal.other['SOL'] : 0;
+  }
+
   /**
    * Execute trade on best exchange
    */
@@ -199,7 +257,7 @@ export class ExchangeManager {
   ): Promise<TradeResult> {
     // Compare prices
     const prices = await this.comparePrices(crypto);
-    console.log(`\nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â± Price Comparison for ${crypto}:`);
+    console.log(`\nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â±Price Comparison for ${crypto}:`);
     if (prices.coinbase) console.log(`   Coinbase: $${prices.coinbase.toFixed(2)}`);
     if (prices.cryptoCom) console.log(`   Crypto.com: $${prices.cryptoCom.toFixed(2)}`);
     if (prices.binance) console.log(`   Binance: $${prices.binance.toFixed(2)}`);
@@ -236,8 +294,36 @@ export class ExchangeManager {
       }
     }
 
+    // Sell: cap to available crypto so we never attempt more than we have
+    let effectiveUsd = usdAmount;
+    if (side === 'sell') {
+      const targetBal = balances.byExchange.find(b =>
+        b.exchange.toLowerCase().includes(targetExchange.toLowerCase())
+      );
+      const available = targetBal ? this.getCryptoAvailable(targetBal, crypto) : 0;
+      const price = prices.bestPrice || (await this.comparePrices(crypto)).bestPrice;
+      if (price <= 0) {
+        return {
+          exchange: targetExchange, symbol: crypto, side, amount: 0, price: 0, fee: 0, orderId: '',
+          success: false, error: `Could not get price for ${crypto}`,
+        };
+      }
+      const cryptoNeeded = usdAmount / price;
+      if (available <= 0) {
+        console.log(`   [SKIP] Sell ${crypto}: none available to trade (have 0 ${crypto})`);
+        return {
+          exchange: targetExchange, symbol: crypto, side, amount: 0, price, fee: 0, orderId: '',
+          success: false, error: `No ${crypto} available to sell`,
+        };
+      }
+      if (available < cryptoNeeded) {
+        effectiveUsd = available * price * 0.995;
+        console.log(`   [CAP] Sell ${crypto}: only ${available.toFixed(8)} available ($${usdAmount} would need ${cryptoNeeded.toFixed(8)}) — selling $${effectiveUsd.toFixed(2)} instead`);
+      }
+    }
+
     // Execute on target exchange
-    return this.executeOnExchange(targetExchange, crypto, side, usdAmount);
+    return this.executeOnExchange(targetExchange, crypto, side, effectiveUsd);
   }
 
   /**

@@ -3,7 +3,10 @@
  * Fetches Polymarket picks from prognostication API
  */
 
-const PROGNO_URL = 'http://localhost:3005';
+const PROGNO_URL =
+  (typeof process !== 'undefined' && process.env?.PROGNO_URL) ||
+  process.env?.PROGNOSTICATION_URL ||
+  'http://localhost:3005';
 
 export interface PolymarketPick {
   id: string;
@@ -47,12 +50,20 @@ export async function fetchPolymarketPicks(): Promise<PolymarketPicksResponse> {
     clearTimeout(timeout);
 
     if (response.ok) {
-      const data = await response.json();
+      const data = await response.json() as {
+        success?: boolean;
+        elite?: unknown[];
+        pro?: unknown[];
+        free?: unknown[];
+        total?: number;
+        timestamp?: string;
+        [key: string]: unknown;
+      };
       if (data.success) {
         return {
           ...data,
           source: 'api'
-        };
+        } as PolymarketPicksResponse;
       }
     }
     throw new Error(`API returned ${response.status}`);

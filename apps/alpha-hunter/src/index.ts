@@ -70,7 +70,7 @@ export class TradingBot {
 
     console.log(`
 ╔══════════════════════════════════════════════════════════╗
-║          🦅 ALPHA HUNTER — UNIFIED TRADING BOT           ║
+║          ALPHA HUNTER — UNIFIED TRADING BOT              ║
 ║  Kalshi • Crypto • Progno Sports • AI Analysis           ║
 ║  Cycle: ${(this.INTERVAL / 1000).toFixed(0)}s | Max Trade: $${this.MAX_SINGLE_TRADE} | Reserve: $${this.USD_RESERVE}          ║
 ╚══════════════════════════════════════════════════════════╝
@@ -82,23 +82,23 @@ export class TradingBot {
       printSetupStatus();
       return;
     }
-    console.log('✅ Environment validated\n');
+    console.log('[OK] Environment validated\n');
 
     // Auth probe for Kalshi
     const auth = await this.kalshi.probeAuth();
     if (auth.ok) {
-      console.log(`✅ Kalshi authenticated (balance: $${(auth as any).balanceUsd?.toFixed(2) ?? '?'})`);
+      console.log(`[OK] Kalshi authenticated (balance: $${(auth as any).balanceUsd?.toFixed(2) ?? '?'})`);
     } else {
-      console.warn(`⚠️  Kalshi auth failed: ${(auth as any).message || 'unknown'} — Kalshi trading disabled`);
+      console.warn(`[WARN] Kalshi auth failed: ${(auth as any).message || 'unknown'} — Kalshi trading disabled`);
     }
 
     // Hydrate fund manager
     await this.funds.ready;
-    console.log('✅ Fund manager ready\n');
+    console.log('[OK] Fund manager ready\n');
 
     // Graceful shutdown
     const shutdown = () => {
-      console.log('\n🛑 Graceful shutdown...');
+      console.log('\n[STOP] Graceful shutdown...');
       this.running = false;
       if (this.picksSmsInterval) {
         clearInterval(this.picksSmsInterval);
@@ -108,22 +108,27 @@ export class TradingBot {
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
 
-    // Picks SMS every ~10 min (from picks-for-friends.txt) so you can copy/paste to friends when not at home
-    const PICKS_SMS_MINUTES = Math.max(5, parseInt(process.env.PICKS_SMS_INTERVAL_MINUTES || '10', 10));
-    this.picksSmsInterval = setInterval(() => {
-      const filePath = path.join(alphaRoot, 'picks-for-friends.txt');
-      try {
-        if (fs.existsSync(filePath)) {
-          const body = fs.readFileSync(filePath, 'utf8').trim();
-          if (body) {
-            this.sms.sendPicksUpdate(body).then(() => {});
+    // Picks SMS every ~10 min (optional). Set PICKS_SMS_ENABLED=true to receive periodic picks texts.
+    // Trade-execution SMS is always sent when a trade runs (via smsAlerter / sendTradeExecuted).
+    if (process.env.PICKS_SMS_ENABLED === 'true') {
+      const PICKS_SMS_MINUTES = Math.max(5, parseInt(process.env.PICKS_SMS_INTERVAL_MINUTES || '10', 10));
+      this.picksSmsInterval = setInterval(() => {
+        const filePath = path.join(alphaRoot, 'picks-for-friends.txt');
+        try {
+          if (fs.existsSync(filePath)) {
+            const body = fs.readFileSync(filePath, 'utf8').trim();
+            if (body) {
+              this.sms.sendPicksUpdate(body).then(() => {});
+            }
           }
+        } catch (e) {
+          console.warn('   [WARN] Picks SMS read failed:', (e as Error).message);
         }
-      } catch (e) {
-        console.warn('   ⚠️ Picks SMS read failed:', (e as Error).message);
-      }
-    }, PICKS_SMS_MINUTES * 60 * 1000);
-    console.log(`📱 Picks SMS: every ${PICKS_SMS_MINUTES} min (from picks-for-friends.txt)\n`);
+      }, PICKS_SMS_MINUTES * 60 * 1000);
+      console.log(`Picks SMS: every ${PICKS_SMS_MINUTES} min (from picks-for-friends.txt)\n`);
+    } else {
+      console.log('Picks SMS: disabled (trade SMS only). Set PICKS_SMS_ENABLED=true for periodic picks.\n');
+    }
 
     // Main loop
     while (this.running) {
@@ -132,7 +137,7 @@ export class TradingBot {
         try {
           await this.cycle();
         } catch (err) {
-          console.error('❌ Cycle error:', (err as Error).message);
+          console.error('[ERR] Cycle error:', (err as Error).message);
         }
         this.executionLock = false;
       }
@@ -146,8 +151,9 @@ export class TradingBot {
    * Profit-taking: check held crypto positions and sell any that are profitable.
    * This replenishes USD for new buys and Kalshi bets.
    */
-  private async profitTake(): Promise<number> {
+  private async profitTake(): Promise<{ totalSold: number; tradeCount: number }> {
     let totalSold = 0;
+    let tradeCount = 0;
     try {
       const cb = this.exchanges.getCoinbase();
       if (!cb.isConfigured()) return 0;
@@ -173,12 +179,13 @@ export class TradingBot {
             // Sell half the profitable position to lock in gains
             const sellValue = Math.floor(pos.value * 0.5);
 
-            console.log(`   💰 PROFIT-TAKE: ${pos.symbol} up ${pctChange.toFixed(1)}% — selling $${sellValue} to lock gains`);
+            console.log(`   PROFIT-TAKE: ${pos.symbol} up ${pctChange.toFixed(1)}% — selling $${sellValue} to lock gains`);
 
             const result = await this.exchanges.smartTrade(pos.symbol as 'BTC' | 'ETH' | 'SOL', 'sell', sellValue);
             if (result.success) {
               totalSold += sellValue;
-              console.log(`   ✅ Sold $${sellValue} of ${pos.symbol} (profit-take)`);
+              tradeCount++;
+              console.log(`   Sold $${sellValue} of ${pos.symbol} (profit-take)`);
               await smsAlerter.tradeExecuted(pos.symbol, sellValue, 'SELL', 'Coinbase');
             }
           }
@@ -188,9 +195,9 @@ export class TradingBot {
         }
       }
     } catch (err: any) {
-      console.warn(`   ⚠️ Profit-take check failed: ${err.message}`);
+      console.warn(`   Profit-take check failed: ${err.message}`);
     }
-    return totalSold;
+    return { totalSold, tradeCount };
   }
 
   private async cycle(): Promise<void> {
@@ -200,7 +207,7 @@ export class TradingBot {
     // Check emergency stop
     const stopCheck = emergencyStop.canTrade();
     if (!stopCheck.allowed) {
-      console.log(`🛑 Emergency stop active: ${stopCheck.reason}`);
+      console.log(`[STOP] Emergency stop active: ${stopCheck.reason}`);
       return;
     }
 
@@ -212,13 +219,25 @@ export class TradingBot {
       this.coinbaseUsd = cbBal?.usd || 0;
       const cbUsdc = cbBal?.usdc || 0;
       const spendable = Math.max(0, this.coinbaseUsd - Math.min(cbUsdc, this.USD_RESERVE));
-      console.log(`💰 Balances — Kalshi: $${this.kalshiBalance.toFixed(2)} | Coinbase: $${this.coinbaseUsd.toFixed(2)} (USDC: $${cbUsdc.toFixed(2)}, spendable: $${spendable.toFixed(2)}, reserve: $${this.USD_RESERVE} USDC)`);
+      const btcAvail = cbBal?.btc ?? 0;
+      const ethAvail = cbBal?.eth ?? 0;
+      const solAvail = (cbBal?.other && typeof cbBal.other['SOL'] === 'number') ? cbBal.other['SOL'] : 0;
+      console.log(`Balances — Kalshi: $${this.kalshiBalance.toFixed(2)} | Coinbase: $${this.coinbaseUsd.toFixed(2)} (USDC: $${cbUsdc.toFixed(2)}, spendable: $${spendable.toFixed(2)}, reserve: $${this.USD_RESERVE} USDC) | BTC: ${btcAvail.toFixed(8)} ETH: ${ethAvail.toFixed(6)} SOL: ${solAvail.toFixed(6)}`);
+
+      // Keep at least $50 USDC on Coinbase (for card/spend); top up by selling crypto if below
+      const toppedUp = await this.exchanges.ensureUsdcReserve();
+      if (toppedUp) {
+        const after = await this.exchanges.getTotalBalance();
+        const cbAfter = after.byExchange.find(b => b.exchange === 'Coinbase');
+        this.coinbaseUsd = cbAfter?.usd ?? this.coinbaseUsd;
+        console.log(`Balances after USDC top-up — Coinbase: $${this.coinbaseUsd.toFixed(2)} (USDC: $${(cbAfter?.usdc ?? 0).toFixed(2)})`);
+      }
 
       // Update fund manager with real balances
       this.funds.updateKalshiBalance(this.kalshiBalance);
       this.funds.updateCryptoBalance(this.coinbaseUsd);
     } catch (err: any) {
-      console.warn(`   ⚠️ Balance check failed: ${err.message}`);
+      console.warn(`   [WARN] Balance check failed: ${err.message}`);
     }
 
     // ── PROFIT-TAKING (every 5th cycle) ───────────────────────────
@@ -226,7 +245,7 @@ export class TradingBot {
       const profitTaken = await this.profitTake();
       if (profitTaken > 0) {
         this.coinbaseUsd += profitTaken;
-        console.log(`💰 Profit-take freed $${profitTaken.toFixed(2)} USD`);
+        console.log(`Profit-take freed $${profitTaken.toFixed(2)} USD`);
       }
     }
 
@@ -234,17 +253,17 @@ export class TradingBot {
     const analysis = await this.brain.analyzeAllSources();
     const minConf = parseFloat(process.env.MIN_CONFIDENCE || '65');
     const minEv = parseFloat(process.env.MIN_EXPECTED_VALUE || '5');
-    console.log(`📊 Found ${analysis.allOpportunities.length} opportunities (confidence ≥ ${minConf}%, EV ≥ ${minEv}%)`);
+    console.log(`Found ${analysis.allOpportunities.length} opportunities (confidence >= ${minConf}%, EV >= ${minEv}%)`);
 
     if (analysis.allOpportunities.length === 0) {
-      console.log('⏳ No actionable opportunities this cycle.');
+      console.log('No actionable opportunities this cycle.');
       return;
     }
 
     if (process.env.AUTO_EXECUTE !== 'true') {
-      console.log('⏸️  Auto-execute disabled. Review manually.');
+      console.log('Auto-execute disabled. Review manually.');
       if (analysis.topOpportunity) {
-        console.log(`🎯 Top: ${analysis.topOpportunity.title} (${analysis.topOpportunity.confidence}% conf)`);
+        console.log(`Top: ${analysis.topOpportunity.title} (${analysis.topOpportunity.confidence}% conf)`);
       }
       return;
     }
@@ -267,19 +286,22 @@ export class TradingBot {
       if (!canTrade.allowed) {
         // Only log the limiter message ONCE per platform per cycle
         if (platform === 'kalshi' && !kalshiLimitLogged) {
-          console.log(`⏸️  ${platform} limiter: ${canTrade.reason}`);
+          console.log(`[LIMIT] ${platform} limiter: ${canTrade.reason}`);
           kalshiLimitLogged = true;
         } else if (platform === 'crypto' && !cryptoLimitLogged) {
-          console.log(`⏸️  ${platform} limiter: ${canTrade.reason}`);
+          console.log(`[LIMIT] ${platform} limiter: ${canTrade.reason}`);
           cryptoLimitLogged = true;
         }
         continue;
       }
 
-      // Check spending limit
-      const stats = tradeLimiter.getStats();
-      const spendOk = await emergencyStop.checkSpendingLimit(stats.totalSpent, stake);
-      if (!spendOk) break; // Hard stop — no more trades this cycle
+      // Check spending limit (crypto only — Kalshi does not use MAX_DAILY_SPEND / emergency stop)
+      if (platform === 'crypto') {
+        const stats = tradeLimiter.getStats();
+        const cryptoSpent = stats.platformSpent?.crypto ?? stats.totalSpent;
+        const spendOk = await emergencyStop.checkSpendingLimit(cryptoSpent, stake);
+        if (!spendOk) break; // Hard stop — no more crypto trades this cycle
+      }
 
       try {
         if (opp.action.platform === 'kalshi') {
@@ -293,7 +315,7 @@ export class TradingBot {
             // Skip if Kalshi balance is too low
             if (this.kalshiBalance < stake) {
               if (!kalshiLimitLogged) {
-                console.log(`⛔ Kalshi balance too low ($${this.kalshiBalance.toFixed(2)} < $${stake.toFixed(2)}) — skipping bets`);
+                console.log(`Kalshi balance too low ($${this.kalshiBalance.toFixed(2)} < $${stake.toFixed(2)}) — skipping bets`);
                 kalshiLimitLogged = true;
               }
               continue;
@@ -323,7 +345,7 @@ export class TradingBot {
               this.kalshiBalance -= stake; // Track spend locally
               tradeLimiter.recordTrade(ticker, stake, 'kalshi');
               kalshiExecuted++;
-              console.log(`✅ Kalshi order placed: ${ticker} ${side} $${stake.toFixed(2)} (net $${profitCheck.netProfit.toFixed(2)})`);
+              console.log(`[OK] Kalshi order placed: ${ticker} ${side} $${stake.toFixed(2)} (net $${profitCheck.netProfit.toFixed(2)})`);
               await this.sms.sendTradeExecuted(opp.title, stake, 'Kalshi');
               // Record to actual_bets so progno wallboard can display it
               await recordActualBet({
@@ -339,7 +361,7 @@ export class TradingBot {
               });
             }
           } else {
-            console.log(`📋 Progno pick (needs Kalshi match): ${opp.title}`);
+            console.log(`Progno pick (needs Kalshi match): ${opp.title}`);
           }
         } else if (opp.action.platform === 'crypto_exchange') {
           // Duplicate prevention for crypto too
@@ -356,15 +378,15 @@ export class TradingBot {
             // SMS already sent inside executeBestSignal after successful trade
           }
         } else {
-          console.log(`📋 Manual action required: ${opp.action.instructions.join(' | ')}`);
+          console.log(`Manual action required: ${opp.action.instructions.join(' | ')}`);
         }
       } catch (err) {
-        console.error(`❌ Execution failed for ${opp.title}: ${(err as Error).message}`);
+        console.error(`[ERR] Execution failed for ${opp.title}: ${(err as Error).message}`);
       }
     }
 
-    if (kalshiDupeSkipped > 0) console.log(`⏭️  Skipped ${kalshiDupeSkipped} duplicate Kalshi bets (already placed today)`);
-    console.log(`📈 Cycle summary: ${kalshiExecuted} Kalshi + ${cryptoExecuted} crypto trades executed`);
+    if (kalshiDupeSkipped > 0) console.log(`Skipped ${kalshiDupeSkipped} duplicate Kalshi bets (already placed today)`);
+    console.log(`Cycle summary: ${kalshiExecuted} Kalshi + ${cryptoExecuted} crypto trades executed`);
   }
 
   private sleep(ms: number): Promise<void> {

@@ -87,8 +87,17 @@ interface CoinbaseTicker {
   time: string;
 }
 
+/** Round base size to Coinbase product's base_increment to avoid INVALID_SIZE_PRECISION */
+function roundSizeToBaseIncrement(size: number, baseIncrementStr: string): string {
+  const decimals = (baseIncrementStr.split('.')[1] || '').length;
+  const factor = 10 ** decimals;
+  const rounded = Math.floor(size * factor + 1e-10) / factor;
+  return rounded.toFixed(decimals);
+}
+
 export class CoinbaseExchange {
   private static priceErrorLogged?: Set<string>;
+  private productCache: Map<string, { base_increment: string }> = new Map();
   private apiKey: string;
   private apiSecret: string;
   private baseUrl: string;
@@ -101,32 +110,33 @@ export class CoinbaseExchange {
     this.configured = !!(this.apiKey && this.apiSecret);
 
     if (!this.configured) {
-      console.log('⚠️ Coinbase not configured - running in SIMULATION mode (no real orders)');
+      console.log('[WARN] Coinbase not configured - running in SIMULATION mode (no real orders)');
       console.log('   Set COINBASE_API_KEY and COINBASE_API_SECRET for live trading');
     } else {
-      console.log('✅ Coinbase configured - LIVE trading mode');
+      console.log('[OK] Coinbase configured - LIVE trading mode');
       console.log(`   API Key: ${this.apiKey.substring(0, 20)}...`);
     }
   }
 
   private async request(method: string, path: string, body?: any, queryParams?: Record<string, string>, retries: number = 2): Promise<any> {
     if (!this.configured) {
-      console.log(`   🔍 [COINBASE SIMULATION] ${method} ${path}`);
+      console.log(`   [COINBASE SIMULATION] ${method} ${path}`);
       return this.simulatedResponse(method, path, body);
     }
 
-    // CDP API: JWT signs path WITHOUT query params
-    const fullPath = `/api/v3/brokerage${path}`;
+    // CDP API: JWT signs path WITHOUT query params (strip any ?... from path)
+    const pathOnly = path.split('?')[0];
+    const fullPath = `/api/v3/brokerage${pathOnly}`;
     const uri = `${method} api.coinbase.com${fullPath}`;
-    console.log(`   🔍 [COINBASE REAL API] ${method} ${fullPath}`);
+    console.log(`   [COINBASE REAL API] ${method} ${fullPath}`);
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const jwt = await createJWT(this.apiKey, this.apiSecret, uri);
         const bodyStr = body ? JSON.stringify(body) : undefined;
 
-        // Build URL with query params (not included in JWT)
-        let url = `${this.baseUrl}${path}`;
+        // Build URL from path-only + explicit queryParams (path query string is never used for fetch)
+        let url = `${this.baseUrl}${pathOnly}`;
         if (queryParams && Object.keys(queryParams).length > 0) {
           const params = new URLSearchParams(queryParams);
           url += `?${params.toString()}`;
@@ -146,7 +156,7 @@ export class CoinbaseExchange {
 
           // Retry on 401 (auth issues can be transient)
           if (response.status === 401 && attempt < retries) {
-            console.log(`   ⚠️ 401 error, retrying (${attempt + 1}/${retries})...`);
+            console.log(`   [WARN] 401 error, retrying (${attempt + 1}/${retries})...`);
             await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
             continue;
           }
@@ -216,6 +226,19 @@ export class CoinbaseExchange {
   }
 
   /**
+   * Get product info (base_increment for order size precision). Cached per productId.
+   */
+  async getProduct(productId: string): Promise<{ base_increment: string }> {
+    const cached = this.productCache.get(productId);
+    if (cached) return cached;
+    const data = await this.request('GET', `/products/${productId}`);
+    const product = data.product ?? data;
+    const baseIncrement = product.base_increment ?? '0.00000001';
+    this.productCache.set(productId, { base_increment: baseIncrement });
+    return { base_increment: baseIncrement };
+  }
+
+  /**
    * Get current price for a trading pair
    */
   async getTicker(productId: string): Promise<CoinbaseTicker> {
@@ -236,7 +259,7 @@ export class CoinbaseExchange {
    * Place a market buy order
    */
   async marketBuy(productId: string, usdAmount: number): Promise<CoinbaseOrder> {
-    console.log(`📈 [COINBASE${this.configured ? '' : ' SIMULATION'}] Market BUY ${productId} for $${usdAmount}`);
+    console.log(`[COINBASE${this.configured ? '' : ' SIMULATION'}] Market BUY ${productId} for $${usdAmount}`);
 
     const response = await this.request('POST', '/orders', {
       client_order_id: `alpha_${Date.now()}`,
@@ -252,20 +275,26 @@ export class CoinbaseExchange {
     // Coinbase returns HTTP 200 with success:false for rejected orders
     if (response.success === false) {
       const errMsg = response.error_response?.error || response.error_response?.message || JSON.stringify(response.error_response || response);
-      console.error(`   ❌ [COINBASE] Order REJECTED: ${errMsg}`);
+      console.error(`   [COINBASE] Order REJECTED: ${errMsg}`);
       throw new Error(`Coinbase order rejected: ${errMsg}`);
     }
 
     const order = this.transformOrder(response);
-    console.log(`   ✅ [COINBASE] Order ${order.id} status=${order.status}`);
+    console.log(`   [COINBASE] Order ${order.id} status=${order.status}`);
     return order;
   }
 
   /**
-   * Place a market sell order
+   * Place a market sell order. Rounds base_size to product's base_increment to avoid INVALID_SIZE_PRECISION.
    */
   async marketSell(productId: string, cryptoAmount: number): Promise<CoinbaseOrder> {
-    console.log(`📉 [COINBASE${this.configured ? '' : ' SIMULATION'}] Market SELL ${cryptoAmount} ${productId}`);
+    const { base_increment } = await this.getProduct(productId);
+    const baseSizeStr = roundSizeToBaseIncrement(cryptoAmount, base_increment);
+    const baseSizeNum = parseFloat(baseSizeStr);
+    if (baseSizeNum <= 0) {
+      throw new Error(`Coinbase sell: rounded size ${baseSizeStr} is zero (original ${cryptoAmount}, increment ${base_increment})`);
+    }
+    console.log(`[COINBASE${this.configured ? '' : ' SIMULATION'}] Market SELL ${baseSizeStr} ${productId}`);
 
     const response = await this.request('POST', '/orders', {
       client_order_id: `alpha_${Date.now()}`,
@@ -273,7 +302,7 @@ export class CoinbaseExchange {
       side: 'SELL',
       order_configuration: {
         market_market_ioc: {
-          base_size: cryptoAmount.toString(),
+          base_size: baseSizeStr,
         },
       },
     });
@@ -281,20 +310,22 @@ export class CoinbaseExchange {
     // Coinbase returns HTTP 200 with success:false for rejected orders
     if (response.success === false) {
       const errMsg = response.error_response?.error || response.error_response?.message || JSON.stringify(response.error_response || response);
-      console.error(`   ❌ [COINBASE] Sell REJECTED: ${errMsg}`);
+      console.error(`   [COINBASE] Sell REJECTED: ${errMsg}`);
       throw new Error(`Coinbase sell rejected: ${errMsg}`);
     }
 
     const order = this.transformOrder(response);
-    console.log(`   ✅ [COINBASE] Sell ${order.id} status=${order.status}`);
+    console.log(`   [COINBASE] Sell ${order.id} status=${order.status}`);
     return order;
   }
 
   /**
-   * Place a limit buy order
+   * Place a limit buy order. Rounds base_size to product's base_increment.
    */
   async limitBuy(productId: string, price: number, size: number): Promise<CoinbaseOrder> {
-    console.log(`📈 [COINBASE] Limit BUY ${size} ${productId} @ $${price}`);
+    const { base_increment } = await this.getProduct(productId);
+    const baseSizeStr = roundSizeToBaseIncrement(size, base_increment);
+    console.log(`[COINBASE] Limit BUY ${baseSizeStr} ${productId} @ $${price}`);
 
     const order = await this.request('POST', '/orders', {
       client_order_id: `alpha_${Date.now()}`,
@@ -302,7 +333,7 @@ export class CoinbaseExchange {
       side: 'BUY',
       order_configuration: {
         limit_limit_gtc: {
-          base_size: size.toString(),
+          base_size: baseSizeStr,
           limit_price: price.toString(),
         },
       },
@@ -338,13 +369,11 @@ export class CoinbaseExchange {
   }
 
   /**
-   * Get recent orders
+   * Get recent orders (list fills). Uses queryParams so JWT is signed with path only.
    */
   async getOrders(productId?: string): Promise<CoinbaseOrder[]> {
-    const path = productId
-      ? `/orders/historical/fills?product_id=${productId}`
-      : '/orders/historical/fills';
-    const data = await this.request('GET', path);
+    const queryParams = productId ? { product_id: productId } : undefined;
+    const data = await this.request('GET', '/orders/historical/fills', undefined, queryParams);
     return (data.fills || []).map((o: any) => this.transformOrder(o));
   }
 
@@ -380,9 +409,9 @@ export class CoinbaseExchange {
       ? entryPrice * (1 - stopLossPercent / 100)
       : entryPrice * (1 + stopLossPercent / 100);
 
-    console.log(`🎯 Entry: $${entryPrice.toFixed(2)}`);
-    console.log(`✅ Take Profit: $${takeProfitPrice.toFixed(2)} (+${takeProfitPercent}%)`);
-    console.log(`🛑 Stop Loss: $${stopLossPrice.toFixed(2)} (-${stopLossPercent}%)`);
+    console.log(`Entry: $${entryPrice.toFixed(2)}`);
+    console.log(`Take Profit: $${takeProfitPrice.toFixed(2)} (+${takeProfitPercent}%)`);
+    console.log(`Stop Loss: $${stopLossPrice.toFixed(2)} (-${stopLossPercent}%)`);
 
     return {
       entryOrder,
@@ -425,6 +454,9 @@ export class CoinbaseExchange {
     }
     if (path.includes('/ticker')) {
       return { price: '95000', bid: '94990', ask: '95010', volume: '15000' };
+    }
+    if (path.startsWith('/products/') && !path.includes('/ticker')) {
+      return { product: { base_increment: '0.00000001' } };
     }
     if (path.includes('/orders') && method === 'POST') {
       return {
@@ -566,7 +598,7 @@ export class CoinbaseExchange {
       const portfolioId = acctData.accounts?.[0]?.retail_portfolio_id;
 
       if (!portfolioId) {
-        console.warn('   ⚠️ No portfolio ID found, falling back to accounts-only');
+        console.warn('   [WARN] No portfolio ID found, falling back to accounts-only');
         return this.getPortfolioFallback();
       }
 
@@ -598,7 +630,7 @@ export class CoinbaseExchange {
         }
       }
 
-      console.log(`   🔍 [PORTFOLIO] Wallet: $${(totalValue - stakedValue).toFixed(2)}, Staked: $${stakedValue.toFixed(2)}, Total: $${totalValue.toFixed(2)}`);
+      console.log(`   [PORTFOLIO] Wallet: $${(totalValue - stakedValue).toFixed(2)}, Staked: $${stakedValue.toFixed(2)}, Total: $${totalValue.toFixed(2)}`);
 
       return { usdBalance, positions, totalValue, stakedValue };
     } catch (error) {

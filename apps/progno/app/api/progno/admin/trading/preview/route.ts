@@ -29,22 +29,23 @@ function isAuthorized(request: NextRequest, bodySecret?: string): boolean {
 }
 
 // ── Load picks ────────────────────────────────────────────────────────────────
+function parsePicksPayload(data: any): any[] {
+  if (Array.isArray(data)) return data
+  return Array.isArray(data?.picks) ? data.picks : []
+}
+
 function loadPredictionsFile(filePath: string): any[] {
   try {
     if (!fs.existsSync(filePath)) return []
     const raw = fs.readFileSync(filePath, 'utf8')
     const data = JSON.parse(raw)
-    return Array.isArray(data.picks) ? data.picks : []
+    return parsePicksPayload(data)
   } catch { return [] }
 }
 
-function loadBestPicks(today: string, minConfidence: number, maxPicks: number): any[] {
-  const root = process.cwd()
-  const regularPicks = loadPredictionsFile(path.join(root, `predictions-${today}.json`))
-  const earlyPicks = loadPredictionsFile(path.join(root, `predictions-early-${today}.json`))
+function mergeAndRankPicks(regularPicks: any[], earlyPicks: any[], minConfidence: number, maxPicks: number): any[] {
   regularPicks.forEach(p => { p._source = 'regular' })
   earlyPicks.forEach(p => { p._source = 'early' })
-
   const seen = new Map<string, any>()
   for (const p of [...regularPicks, ...earlyPicks]) {
     const key = p.game_id || p.id || `${p.home_team}|${p.away_team}`
@@ -55,11 +56,37 @@ function loadBestPicks(today: string, minConfidence: number, maxPicks: number): 
       if ((p.confidence || 0) > (existing.confidence || 0)) seen.set(key, p)
     }
   }
-
   return Array.from(seen.values())
     .filter(p => (p.confidence || 0) >= minConfidence)
     .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
     .slice(0, maxPicks)
+}
+
+function loadBestPicks(today: string, minConfidence: number, maxPicks: number): any[] {
+  const root = process.cwd()
+  const regularPicks = loadPredictionsFile(path.join(root, `predictions-${today}.json`))
+  const earlyPicks = loadPredictionsFile(path.join(root, `predictions-early-${today}.json`))
+  return mergeAndRankPicks(regularPicks, earlyPicks, minConfidence, maxPicks)
+}
+
+/** Load today's picks from Supabase Storage when local files are missing. */
+async function loadBestPicksFromSupabase(today: string, minConfidence: number, maxPicks: number): Promise<any[]> {
+  const supUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supUrl || !supKey) return []
+  try {
+    const { createClient } = await import('@supabase/supabase-js')
+    const sb = createClient(supUrl, supKey)
+    const [regRes, earlyRes] = await Promise.all([
+      sb.storage.from('predictions').download(`predictions-${today}.json`),
+      sb.storage.from('predictions').download(`predictions-early-${today}.json`),
+    ])
+    const regularPicks = regRes.data ? parsePicksPayload(JSON.parse(await (regRes.data as Blob).text())) : []
+    const earlyPicks = earlyRes.data ? parsePicksPayload(JSON.parse(await (earlyRes.data as Blob).text())) : []
+    return mergeAndRankPicks(regularPicks, earlyPicks, minConfidence, maxPicks)
+  } catch {
+    return []
+  }
 }
 
 // ── Kalshi signing (reused from execute/route.ts) ─────────────────────────────
@@ -316,7 +343,10 @@ export async function POST(request: NextRequest) {
     const configured = !!(apiKeyId && privateKey && privateKey.includes('PRIVATE KEY'))
 
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-    const picks = loadBestPicks(today, 50, 40) // lower threshold, more picks — user will select
+    let picks = loadBestPicks(today, 50, 40) // lower threshold, more picks — user will select
+    if (picks.length === 0) {
+      picks = await loadBestPicksFromSupabase(today, 50, 40)
+    }
 
     if (picks.length === 0) {
       return NextResponse.json({

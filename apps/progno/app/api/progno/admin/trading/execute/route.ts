@@ -42,44 +42,70 @@ function loadSettings(): { enabled: boolean; stakeCents: number; minConfidence: 
 }
 
 // ── Load picks from both predictions files ────────────────────────────────────
+function parsePicksPayload(data: any): any[] {
+  if (Array.isArray(data)) return data
+  return Array.isArray(data?.picks) ? data.picks : []
+}
+
 function loadPredictionsFile(filePath: string): any[] {
   try {
     if (!fs.existsSync(filePath)) return []
     const raw = fs.readFileSync(filePath, 'utf8')
     const data = JSON.parse(raw)
-    return Array.isArray(data.picks) ? data.picks : []
+    return parsePicksPayload(data)
   } catch { return [] }
+}
+
+function mergeAndRankPicks(regularPicks: any[], earlyPicks: any[], minConfidence: number, maxPicks: number): any[] {
+  regularPicks.forEach(p => { p._source = 'regular' })
+  earlyPicks.forEach(p => { p._source = 'early' })
+  const seen = new Map<string, any>()
+  for (const p of [...regularPicks, ...earlyPicks]) {
+    const key = p.game_id || p.id || `${p.home_team}|${p.away_team}`
+    if (!key) continue
+    if (!seen.has(key)) seen.set(key, p)
+    else {
+      const existing = seen.get(key)!
+      if ((p.confidence || 0) > (existing.confidence || 0)) seen.set(key, p)
+    }
+  }
+  return Array.from(seen.values())
+    .filter(p => (p.confidence || 0) >= minConfidence)
+    .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+    .slice(0, maxPicks)
 }
 
 function loadBestPicks(today: string, minConfidence: number, maxPicks: number): any[] {
   const root = process.cwd()
   const regularPicks = loadPredictionsFile(path.join(root, `predictions-${today}.json`))
   const earlyPicks = loadPredictionsFile(path.join(root, `predictions-early-${today}.json`))
+  return mergeAndRankPicks(regularPicks, earlyPicks, minConfidence, maxPicks)
+}
 
-  // Tag source
-  regularPicks.forEach(p => { p._source = 'regular' })
-  earlyPicks.forEach(p => { p._source = 'early' })
-
-  // Merge and deduplicate by game_id (prefer regular over early if same game)
-  const seen = new Map<string, any>()
-  for (const p of [...regularPicks, ...earlyPicks]) {
-    const key = p.game_id || p.id || `${p.home_team}|${p.away_team}`
-    if (!key) continue
-    if (!seen.has(key)) {
-      seen.set(key, p)
-    } else {
-      // Keep higher confidence
-      const existing = seen.get(key)!
-      if ((p.confidence || 0) > (existing.confidence || 0)) seen.set(key, p)
-    }
+/** Load today's picks from Supabase Storage when local files are missing (e.g. serverless). */
+async function loadBestPicksFromSupabase(today: string, minConfidence: number, maxPicks: number): Promise<any[]> {
+  const supUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supUrl || !supKey) return []
+  try {
+    const { createClient } = await import('@supabase/supabase-js')
+    const sb = createClient(supUrl, supKey)
+    const regularPath = `predictions-${today}.json`
+    const earlyPath = `predictions-early-${today}.json`
+    const [regRes, earlyRes] = await Promise.all([
+      sb.storage.from('predictions').download(regularPath),
+      sb.storage.from('predictions').download(earlyPath),
+    ])
+    const regularPicks: any[] = regRes.data
+      ? parsePicksPayload(JSON.parse(await (regRes.data as Blob).text()))
+      : []
+    const earlyPicks: any[] = earlyRes.data
+      ? parsePicksPayload(JSON.parse(await (earlyRes.data as Blob).text()))
+      : []
+    return mergeAndRankPicks(regularPicks, earlyPicks, minConfidence, maxPicks)
+  } catch {
+    return []
   }
-
-  const merged = Array.from(seen.values())
-    .filter(p => (p.confidence || 0) >= minConfidence)
-    .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
-    .slice(0, maxPicks)
-
-  return merged
 }
 
 const KALSHI_BASE = 'https://api.elections.kalshi.com'
@@ -440,13 +466,17 @@ export async function POST(request: NextRequest) {
     const privateKey = rawKey ? normalizePem(rawKey) : ''
     const configured = !!(apiKeyId && privateKey && privateKey.includes('PRIVATE KEY'))
 
-    const today = new Date().toISOString().split('T')[0]
+    // Use America/Chicago date so we match cron/preview and the files they write
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
     const minConf = Math.max(50, settings.minConfidence || 57) // Floor 50% — never auto-place below 50% confidence
     const maxPicks = settings.maxPicksPerDay || 20
     const stakeCents = Math.max(1, Math.floor(settings.stakeCents || 500))
 
-    // Load best picks from BOTH regular + early predictions files
-    const picks = loadBestPicks(today, minConf, maxPicks)
+    // Load best picks from BOTH regular + early predictions files (local first, then Supabase)
+    let picks = loadBestPicks(today, minConf, maxPicks)
+    if (picks.length === 0) {
+      picks = await loadBestPicksFromSupabase(today, minConf, maxPicks)
+    }
 
     if (picks.length === 0) {
       return NextResponse.json({

@@ -84,7 +84,8 @@ When running `pnpm start run`, the bot operates on this schedule (Eastern Time):
 
 ```env
 DAILY_PROFIT_TARGET=250   # Stop trading when reached
-MAX_DAILY_LOSS=100        # Stop trading if lost this much
+MAX_DAILY_SPEND=500       # Max total $ staked per day (spending cap)
+MAX_DAILY_LOSS=250        # Stop when daily P&L loss exceeds this
 MAX_SINGLE_TRADE=50       # Maximum per trade
 MAX_OPEN_POSITIONS=5      # Maximum concurrent trades
 ```

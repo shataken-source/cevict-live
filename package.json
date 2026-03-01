@@ -1,5 +1,5 @@
 {
-  "dependencies": {
-    "qrcode": "^1.5.4"
-  }
+  "dependencies": { "qrcode": "^1.5.4" },
+  "packageManager": "pnpm@9.15.0",
+  "engines": { "node": "20.x" }
 }

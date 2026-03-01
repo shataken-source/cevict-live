@@ -5,6 +5,7 @@
   "main": "api/server.ts",
   "scripts": {
     "dev": "ts-node-dev --respawn api/server.ts",
+    "gui": "node server.js",
     "build": "tsc",
     "start": "node dist/api/server.js",
     "test": "jest",

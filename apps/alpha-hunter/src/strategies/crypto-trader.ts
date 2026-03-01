@@ -262,37 +262,38 @@ export class CryptoTrader {
     // Check emergency stop
     const emergencyCheck = emergencyStop.canTrade();
     if (!emergencyCheck.allowed) {
-      console.log(`🛑 Emergency stop active: ${emergencyCheck.reason}`);
+      console.log(`[STOP] Emergency stop active: ${emergencyCheck.reason}`);
       return null;
     }
 
     // Check persistent daily limit
     const limitCheck = tradeLimiter.canTrade(this.config.maxTradeSize, 'crypto');
     if (!limitCheck.allowed) {
-      console.log(`⏸️ ${limitCheck.reason}`);
+      console.log(`[LIMIT] ${limitCheck.reason}`);
       return null;
     }
 
     // Generate signals
     const signals = await this.generateSignals();
     if (signals.length === 0) {
-      console.log('⏳ No high-confidence signals found');
+      console.log('No high-confidence signals found');
       return null;
     }
 
     const best = signals[0];
-    console.log(`\n🎯 Best Signal: ${best.symbol} ${best.direction.toUpperCase()}`);
+    console.log(`\nBest Signal: ${best.symbol} ${best.direction.toUpperCase()}`);
     console.log(`   Confidence: ${best.confidence}%`);
     best.reasoning.forEach(r => console.log(`   • ${r}`));
 
-    // Check spending limit before trade
+    // Check spending limit before trade (crypto spent only)
     const stats = tradeLimiter.getStats();
+    const cryptoSpent = stats.platformSpent?.crypto ?? stats.totalSpent;
     const canAfford = await emergencyStop.checkSpendingLimit(
-      stats.totalSpent,
+      cryptoSpent,
       this.config.maxTradeSize
     );
     if (!canAfford) {
-      console.log('🛑 Trade blocked by emergency stop');
+      console.log('[STOP] Trade blocked by emergency stop');
       return null;
     }
 
@@ -304,7 +305,7 @@ export class CryptoTrader {
     );
 
     if (!result.success) {
-      console.log(`❌ Trade failed: ${result.error}`);
+      console.log(`[ERR] Trade failed: ${result.error}`);
       return null;
     }
 
@@ -397,7 +398,8 @@ export class CryptoTrader {
     status += '║            📊 CRYPTO TRADER STATUS            ║\n';
     status += '╠═══════════════════════════════════════════════╣\n';
     status += `║  Daily Trades: ${stats.tradeCount}/${this.config.maxDailyTrades} (${stats.remainingTrades} left)`.padEnd(46) + '║\n';
-    status += `║  Daily Spent: $${stats.totalSpent.toFixed(2)}/$${stats.totalSpent + stats.remainingBudget} ($${stats.remainingBudget.toFixed(2)} left)`.padEnd(46) + '║\n';
+    const cryptoSpent = stats.platformSpent?.crypto ?? stats.totalSpent;
+    status += `║  Daily Spent: $${cryptoSpent.toFixed(2)}/$${cryptoSpent + stats.remainingBudget} ($${stats.remainingBudget.toFixed(2)} left)`.padEnd(46) + '║\n';
     status += `║  Daily P&L: ${this.dailyPnL >= 0 ? '+' : ''}$${this.dailyPnL.toFixed(2)}`.padEnd(46) + '║\n';
     status += `║  Emergency Stop: ${emergencyState.stopped ? '🛑 ACTIVE' : '✅ Ready'}`.padEnd(46) + '║\n';
     status += `║  Active Signals: ${signals.length}`.padEnd(46) + '║\n';

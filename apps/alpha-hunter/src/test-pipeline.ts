@@ -110,10 +110,14 @@ async function simulateExecution(opp: Opportunity, label: string): Promise<{
   const canTrade = tradeLimiter.canTrade(stake, opp.action.platform === 'kalshi' ? 'kalshi' : 'crypto');
   if (!canTrade.allowed) return { action: 'BLOCKED', details: `Trade limiter: ${canTrade.reason}` };
 
-  // Spending limit
-  const stats = tradeLimiter.getStats();
-  const spendOk = await emergencyStop.checkSpendingLimit(stats.totalSpent, stake);
-  if (!spendOk) return { action: 'BLOCKED', details: 'Spending limit exceeded' };
+  // Spending limit (only for crypto; Kalshi does not use MAX_DAILY_SPEND)
+  const platform = opp.action.platform === 'kalshi' ? 'kalshi' : 'crypto';
+  if (platform === 'crypto') {
+    const stats = tradeLimiter.getStats();
+    const cryptoSpent = stats.platformSpent?.crypto ?? stats.totalSpent;
+    const spendOk = await emergencyStop.checkSpendingLimit(cryptoSpent, stake);
+    if (!spendOk) return { action: 'BLOCKED', details: 'Spending limit exceeded' };
+  }
 
   // AUTO_EXECUTE gate
   if (!opp.action.autoExecute || process.env.AUTO_EXECUTE !== 'true') {

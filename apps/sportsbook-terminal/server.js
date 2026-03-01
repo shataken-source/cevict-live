@@ -17,6 +17,7 @@ const express = require('express');
 const { spawn } = require('child_process');
 const path = require('path');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const fs = require('fs');
 
 // Load .env.local manually
@@ -44,7 +45,48 @@ if (process.env.SUPABASE_SERVICE_KEY && !process.env.SUPABASE_SERVICE_ROLE_KEY) 
 }
 
 const app = express();
-const PORT = 3433;
+const PORT = process.env.PORT || 3433;
+
+// Allowed origins (comma-separated or single; default localhost)
+const ALLOWED_ORIGINS = (process.env.FRONTEND_URL || process.env.CORS_ORIGINS || 'http://localhost:3433').split(',').map(s => s.trim());
+const corsOptions = {
+  origin: (origin, cb) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes('*')) return cb(null, true);
+    cb(null, false); // disallow other origins
+  },
+  optionsSuccessStatus: 200
+};
+
+// Optional API key for admin endpoints (set SPORTSBOOK_API_KEY in .env to require it)
+const SPORTSBOOK_API_KEY = process.env.SPORTSBOOK_API_KEY || '';
+
+function requireAdminAuth(req, res, next) {
+  if (!SPORTSBOOK_API_KEY) {
+    // No key set: allow only localhost
+    const host = req.ip || req.connection?.remoteAddress || '';
+    if (host === '127.0.0.1' || host === '::1' || host === '::ffff:127.0.0.1') return next();
+    return res.status(403).json({ success: false, message: 'Admin endpoints are localhost-only when SPORTSBOOK_API_KEY is not set' });
+  }
+  const key = req.headers['x-api-key'] || req.headers['authorization']?.replace(/^Bearer\s+/i, '');
+  if (key === SPORTSBOOK_API_KEY) return next();
+  return res.status(401).json({ success: false, message: 'Invalid or missing API key' });
+}
+
+// General API rate limit: 100 requests per 15 minutes per IP
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { success: false, message: 'Too many requests' },
+  standardHeaders: true
+});
+
+// Stricter limit for admin actions
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, message: 'Too many admin requests' },
+  standardHeaders: true
+});
 
 // Cached Supabase client — created once, reused across requests
 let _supabaseClient = null;
@@ -59,9 +101,10 @@ function getSupabase() {
 }
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.static('public'));
+app.use('/api/', apiLimiter);
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -74,8 +117,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Run scheduler endpoint
-app.post('/api/run-scheduler', async (req, res) => {
+// Admin routes: require auth (API key or localhost) + stricter rate limit
+app.post('/api/run-scheduler', adminLimiter, requireAdminAuth, async (req, res) => {
   console.log('[SERVER] Running scheduler...');
   console.log('[SERVER] CWD:', __dirname);
   console.log('[SERVER] Command: npx tsx scripts/scheduler.ts');
@@ -111,7 +154,7 @@ app.post('/api/run-scheduler', async (req, res) => {
 });
 
 // Archive files endpoint (same as scheduler)
-app.post('/api/archive', async (req, res) => {
+app.post('/api/archive', adminLimiter, requireAdminAuth, async (req, res) => {
   console.log('[SERVER] Archiving files...');
 
   try {
@@ -143,7 +186,7 @@ app.post('/api/archive', async (req, res) => {
 });
 
 // Export picks from frontend to Supabase (bypasses RLS using service key)
-app.post('/api/export-picks', async (req, res) => {
+app.post('/api/export-picks', adminLimiter, requireAdminAuth, async (req, res) => {
   console.log('[SERVER] Exporting picks from frontend to Supabase...');
 
   try {
@@ -275,7 +318,7 @@ app.post('/api/export-picks', async (req, res) => {
 });
 
 // Export to Supabase endpoint (runs scheduler which does the export)
-app.post('/api/export-supabase', async (req, res) => {
+app.post('/api/export-supabase', adminLimiter, requireAdminAuth, async (req, res) => {
   console.log('[SERVER] Exporting to Supabase...');
 
   try {
@@ -334,7 +377,7 @@ function saveKalshiCache(data) {
   }
 }
 
-app.get('/api/import-kalshi-sports', async (req, res) => {
+app.get('/api/import-kalshi-sports', adminLimiter, requireAdminAuth, async (req, res) => {
   console.log('[SERVER] Importing Kalshi sports picks...');
 
   const supabase = getSupabase();
@@ -409,10 +452,20 @@ app.get('/api/import-kalshi-sports', async (req, res) => {
   });
 });
 
+// Today in America/Chicago (YYYY-MM-DD) — matches progno cron and execute/preview
+function getTodayChicago() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
 // Find today's progno predictions file as fallback
 function findTodaysPrognoFile() {
   const prognoDir = path.join(__dirname, '..', 'progno');
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayChicago();
   const candidates = [
     path.join(prognoDir, `predictions-${today}.json`),
     path.join(prognoDir, `predictions-early-${today}.json`),
@@ -482,53 +535,85 @@ app.get('/api/kalshi-picks.json', (req, res) => {
   }
 });
 
+// Strip UTF-8 BOM so JSON.parse doesn't fail on files saved with BOM
+function stripBom(content) {
+  if (typeof content !== 'string') return content;
+  if (content.charCodeAt(0) === 0xFEFF) return content.slice(1);
+  return content;
+}
+
 // GET /api/picks/today — serves latest progno predictions file directly
 // This is the primary endpoint for the sportsbook terminal UI
 app.get('/api/picks/today', (req, res) => {
   try {
     const prognoDir = path.join(__dirname, '..', 'progno');
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayChicago();
 
-    // Priority order: today's file, then most recent non-empty file
+    // If progno dir doesn't exist, return empty (no 500)
+    if (!fs.existsSync(prognoDir)) {
+      return res.json({ success: true, picks: [], count: 0, source: 'none', message: 'No predictions folder (apps/progno) found' });
+    }
+
     const candidates = [
       path.join(prognoDir, `predictions-${today}.json`),
       path.join(prognoDir, `predictions-early-${today}.json`),
     ];
 
     let picksFile = null;
+    let usedFallback = false;
     for (const c of candidates) {
-      if (fs.existsSync(c) && fs.statSync(c).size > 100) { picksFile = c; break; }
+      if (fs.existsSync(c) && fs.statSync(c).size > 50) { picksFile = c; break; }
     }
 
-    if (!picksFile && fs.existsSync(prognoDir)) {
-      const files = fs.readdirSync(prognoDir)
-        .filter(f => f.match(/^predictions-\d{4}-\d{2}-\d{2}\.json$/) && !f.includes('early'))
-        .sort().reverse();
-      for (const f of files) {
-        const fp = path.join(prognoDir, f);
-        if (fs.statSync(fp).size > 100) { picksFile = fp; break; }
+    if (!picksFile) {
+      try {
+        const files = fs.readdirSync(prognoDir)
+          .filter(f => f.match(/^predictions-\d{4}-\d{2}-\d{2}\.json$/) && !f.includes('early'))
+          .sort().reverse();
+        for (const f of files) {
+          const fp = path.join(prognoDir, f);
+          if (fs.statSync(fp).size > 50) { picksFile = fp; usedFallback = true; break; }
+        }
+      } catch (e) {
+        console.error('[SERVER] /api/picks/today readdir:', e.message);
       }
     }
 
     if (!picksFile) {
-      return res.json({ success: true, picks: [], count: 0, source: 'none', message: 'No predictions files found' });
+      return res.json({ success: true, picks: [], count: 0, source: 'none', message: 'No predictions files found in apps/progno' });
     }
 
-    const raw = JSON.parse(fs.readFileSync(picksFile, 'utf8'));
-    const picks = raw.picks || [];
+    let raw;
+    try {
+      const content = stripBom(fs.readFileSync(picksFile, 'utf8')).trim();
+      if (!content) throw new Error('File is empty');
+      raw = JSON.parse(content);
+    } catch (parseErr) {
+      console.error('[SERVER] /api/picks/today parse error:', parseErr.message);
+      return res.json({
+        success: true,
+        picks: [],
+        count: 0,
+        source: path.basename(picksFile),
+        message: 'File could not be read (invalid JSON or format). Use "Drop predictions file" to load manually.'
+      });
+    }
+
+    const picks = Array.isArray(raw) ? raw : (raw.picks || []);
     const fileName = path.basename(picksFile);
-    console.log(`[SERVER] /api/picks/today serving ${picks.length} picks from ${fileName}`);
+    console.log(`[SERVER] /api/picks/today serving ${picks.length} picks from ${fileName}` + (usedFallback ? ' (no file for today; using latest)' : ''));
 
     res.json({
       success: true,
       source: fileName,
       generatedAt: raw.generatedAt || raw.date || null,
       count: picks.length,
-      picks
+      picks,
+      message: usedFallback ? `No predictions for today (${today}); loaded latest available: ${fileName}` : null
     });
   } catch (error) {
     console.error('[SERVER] /api/picks/today error:', error.message);
-    res.status(500).json({ success: false, error: error.message, picks: [] });
+    res.json({ success: true, picks: [], count: 0, source: 'none', message: 'Server error loading picks. Use "Drop predictions file" to load manually.' });
   }
 });
 

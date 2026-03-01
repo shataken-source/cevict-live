@@ -1056,9 +1056,10 @@ ${colors.bright}╚════════════════════�
             continue;
           }
 
-          // Safety: check emergency spending limit
+          // Safety: check emergency spending limit (crypto spent only)
           const stats = tradeLimiter.getStats();
-          const spendOk = await emergencyStop.checkSpendingLimit(stats.totalSpent, this.maxTradeUSD);
+          const cryptoSpent = stats.platformSpent?.crypto ?? stats.totalSpent;
+          const spendOk = await emergencyStop.checkSpendingLimit(cryptoSpent, this.maxTradeUSD);
           if (!spendOk) {
             console.log(`   🛑 Emergency stop triggered — spending limit`);
             break;

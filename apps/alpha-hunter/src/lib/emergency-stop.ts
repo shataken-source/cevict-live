@@ -24,7 +24,7 @@ export class EmergencyStop {
     // Use __dirname so path is stable regardless of where process is started
     const alphaRoot = path.resolve(__dirname, '..', '..');
     this.stateFile = path.join(alphaRoot, 'data', 'emergency-stop.json');
-    this.hardSpendingLimit = parseFloat(process.env.MAX_DAILY_LOSS || '50');
+    this.hardSpendingLimit = parseFloat(process.env.MAX_DAILY_SPEND || process.env.MAX_DAILY_LOSS || '50');
     this.state = this.loadState();
   }
 

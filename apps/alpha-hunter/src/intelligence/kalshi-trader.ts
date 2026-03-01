@@ -264,7 +264,7 @@ export class KalshiTrader {
     // If at limit, wait before proceeding
     if (this.rateLimitState.requests.length >= this.rateLimitState.maxPerSecond) {
       const waitTime = 500; // 500ms delay as recommended
-      console.log(`   ⏸️  Rate limit approaching (${this.rateLimitState.requests.length}/${this.rateLimitState.maxPerSecond}/sec) - waiting ${waitTime}ms`);
+      console.log(`   [RATE] Rate limit approaching (${this.rateLimitState.requests.length}/${this.rateLimitState.maxPerSecond}/sec) - waiting ${waitTime}ms`);
       await new Promise(resolve => setTimeout(resolve, waitTime));
       // Recursively check again after delay
       return this.enforceRateLimit();
@@ -319,13 +319,13 @@ export class KalshiTrader {
       if (!pageResult) break;
       const { markets, cursor: nextCursor } = pageResult as any;
       page++;
-      console.log(`   📡 Markets API page ${page}: ${markets.length} markets (cursor=${nextCursor ? String(nextCursor).slice(0, 8) + '…' : '∅'})`);
+      console.log(`   Markets API page ${page}: ${markets.length} markets (cursor=${nextCursor ? String(nextCursor).slice(0, 8) + '…' : 'none'})`);
       all.push(...markets);
       if (!nextCursor || page >= maxPages) break;
       cursor = String(nextCursor);
       await new Promise(r => setTimeout(r, 100));
     }
-    console.log(`   📊 Sequential fetch: ${all.length} markets from ${page} page(s)${seriesTicker ? ` (series: ${seriesTicker})` : ''}`);
+    console.log(`   Sequential fetch: ${all.length} markets from ${page} page(s)${seriesTicker ? ` (series: ${seriesTicker})` : ''}`);
     return all;
   }
 
@@ -365,13 +365,13 @@ export class KalshiTrader {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
-        console.log(`   ⚠️ Markets API error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText.slice(0, 100) : ''}`);
+        console.log(`   [WARN] Markets API error: ${response.status} ${response.statusText}${errorText ? ' - ' + errorText.slice(0, 100) : ''}`);
         return null;
       }
       const data: any = await response.json();
       return { markets: data.markets || [], cursor: data.cursor };
     } catch (error) {
-      console.log(`   ⚠️ Markets fetch error: ${error}`);
+      console.log(`   [WARN] Markets fetch error: ${error}`);
       return null;
     }
   }
@@ -648,7 +648,7 @@ export class KalshiTrader {
         if (response.status === 429) {
           retries++;
           const backoffDelay = Math.min(2000, 500 * Math.pow(2, retries)); // Exponential backoff: 500ms, 1000ms, 2000ms
-          console.warn(`   ⚠️  Rate limit hit (429) - waiting ${backoffDelay}ms before retry ${retries}/${maxRetries}`);
+          console.warn(`   [WARN] Rate limit hit (429) - waiting ${backoffDelay}ms before retry ${retries}/${maxRetries}`);
           await new Promise(resolve => setTimeout(resolve, backoffDelay));
           // Update signature/timestamp for new request
           const sigResult = await this.signRequestWithTimestamp('GET', fullPath);
@@ -661,7 +661,7 @@ export class KalshiTrader {
         }
 
         if (!response.ok) {
-          console.error(`   ❌ Orderbook fetch failed: ${response.status} ${response.statusText}`);
+          console.error(`   [ERR] Orderbook fetch failed: ${response.status} ${response.statusText}`);
           return null;
         }
 
@@ -698,7 +698,7 @@ export class KalshiTrader {
 
       return orderbookData;
     } catch (e: any) {
-      console.error(`   ❌ Error fetching orderbook for ${ticker}:`, e.message);
+      console.error(`   [ERR] Error fetching orderbook for ${ticker}:`, e.message);
       return null;
     }
   }
@@ -795,7 +795,7 @@ export class KalshiTrader {
       const et = (m?.event_ticker || '').toUpperCase();
       return GAME_TICKER_RE.test(t) || GAME_TICKER_RE.test(et);
     });
-    console.log(`   📊 ${dedupedMarkets.length} GAME/WINNER/TOTAL markets of ${allMarkets.length} total`);
+    console.log(`   ${dedupedMarkets.length} GAME/WINNER/TOTAL markets of ${allMarkets.length} total`);
     if (dedupedMarkets.length > 0) {
       const sampleTickers = dedupedMarkets.slice(0, 5).map(m => m?.ticker || '?');
       const sampleTitles = dedupedMarkets.slice(0, 3).map(m => (m?.title || '').slice(0, 50));
@@ -811,7 +811,7 @@ export class KalshiTrader {
     const getCbPrice = options?.getCoinbasePrice;
 
     const opps: Opportunity[] = [];
-    const picksForFriends: { pick: string; opponent: string; odds: string; gameTime: string; currentScore: string }[] = [];
+    const picksForFriends: { pick: string; opponent: string; odds: string; gameTime: string; currentScore: string; winProb: string }[] = [];
     let matchMiss = 0;
     let edgeSkip = 0;
     let profitSkip = 0;
@@ -910,6 +910,7 @@ export class KalshiTrader {
         odds: `${entryPrice}¢`,
         gameTime: gameTimeStr,
         currentScore,
+        winProb: `${modelProb}%`,
       });
     }
 
@@ -919,14 +920,14 @@ export class KalshiTrader {
 
     if (picksForFriends.length > 0) {
       const outPath = path.join(alphaHunterRoot, 'picks-for-friends.txt');
-      const lines = picksForFriends.map(({ pick, opponent, odds, gameTime, currentScore }) =>
-        [pick, opponent, odds, gameTime || '—', currentScore || '—'].join(' | ')
+      const lines = picksForFriends.map(({ pick, opponent, odds, gameTime, currentScore, winProb }) =>
+        [pick, opponent, odds, gameTime || '—', currentScore || '—', winProb || '—'].join(' | ')
       );
       try {
         fs.writeFileSync(outPath, lines.join('\n'), 'utf8');
-        console.log(`   📄 Wrote ${picksForFriends.length} pick(s) to ${outPath}`);
+        console.log(`   Wrote ${picksForFriends.length} pick(s) to ${outPath}`);
       } catch (e) {
-        console.warn(`   ⚠️ Could not write picks-for-friends.txt: ${(e as Error).message}`);
+        console.warn(`   [WARN] Could not write picks-for-friends.txt: ${(e as Error).message}`);
       }
     }
 
@@ -1026,7 +1027,7 @@ export class KalshiTrader {
    * This alias is maintained for backwards compatibility only.
    */
   async placeOrder(order: any): Promise<any> {
-    console.warn('   ⚠️  placeOrder() is deprecated. Use placeLimitOrderUsd().');
+    console.warn('   [WARN] placeOrder() is deprecated. Use placeLimitOrderUsd().');
     return this.placeLimitOrderContracts(order.ticker, order.side, order.count, order.price || 50);
   }
 
@@ -1034,7 +1035,7 @@ export class KalshiTrader {
    * @deprecated Use placeLimitOrderUsd() instead for maker orders.
    */
   async buy(ticker: string, count: number, side: string): Promise<any> {
-    console.warn('   ⚠️  buy() is deprecated. Use placeLimitOrderUsd().');
+    console.warn('   [WARN] buy() is deprecated. Use placeLimitOrderUsd().');
     return this.placeLimitOrderContracts(ticker, side as 'yes' | 'no', count, 50);
   }
 
@@ -1130,7 +1131,7 @@ export class KalshiTrader {
 
     // PRE-FLIGHT CHECK: Log exact JSON string being sent to Kalshi
     const payloadJson = JSON.stringify(body);
-    console.log(`   🔍 [PRE-FLIGHT CHECK] Kalshi API Payload: ${payloadJson}`);
+    console.log(`   [PRE-FLIGHT CHECK] Kalshi API Payload: ${payloadJson}`);
 
     // Verify payload is strictly integer-based
     if (typeof body.count !== 'number' || !Number.isInteger(body.count)) {
@@ -1190,7 +1191,7 @@ export class KalshiTrader {
    * for new trading logic. Maker limit orders are preferred.
    */
   private async executeTrade(ticker: string, side: string, count: number) {
-    console.warn('   ⚠️  executeTrade() is deprecated. Use placeLimitOrderUsd() for maker orders.');
+    console.warn('   [WARN] executeTrade() is deprecated. Use placeLimitOrderUsd() for maker orders.');
     return { status: 'deprecated', message: 'Use placeLimitOrderUsd() instead' };
   }
 

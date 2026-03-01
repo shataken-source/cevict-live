@@ -597,8 +597,8 @@ export class UnifiedFundManager {
       return { allowed: false, reason: `Maximum ${maxPositions} open positions reached` };
     }
 
-    // Check daily loss limit
-    if (account.todayProfit <= -dailyLossLimit) {
+    // Check daily loss limit (crypto only — Kalshi does not use MAX_DAILY_LOSS)
+    if (opportunity.action.platform !== 'kalshi' && account.todayProfit <= -dailyLossLimit) {
       return { allowed: false, reason: `Daily loss limit of $${dailyLossLimit} reached` };
     }
 
