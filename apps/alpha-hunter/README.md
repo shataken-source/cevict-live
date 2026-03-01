@@ -2,6 +2,8 @@
 
 **Autonomous Profit-Hunting AI Bot**
 
+> **When committing:** Include any new or updated docs (e.g. `docs/*.md`, `*.md` in app root like `KALSHI_RESULTS_FROM_SOURCE.md`) in the same commit as the code they describe.
+
 Target: **$250/day** through intelligent trading, prediction markets, and opportunity scanning.
 
 ## Features
