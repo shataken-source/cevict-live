@@ -188,6 +188,28 @@ export async function GET(request: Request) {
     }
   }
 
+  // Merge manual score overrides (from admin "Set score") for this date
+  try {
+    const overrideFileName = `score-overrides-${date}.json`
+    const { data: overrideData } = await sbClient.storage.from('predictions').download(overrideFileName)
+    if (overrideData) {
+      const overrideText = await overrideData.text()
+      const overrideJson = JSON.parse(overrideText) as { overrides?: { home_team: string; away_team: string; home_score: number; away_score: number; league: string }[] }
+      const overrides = overrideJson?.overrides ?? []
+      for (const o of overrides) {
+        const league = (o.league || 'NHL').toUpperCase()
+        if (!scoresByKey[league]) scoresByKey[league] = []
+        scoresByKey[league].push({
+          home: o.home_team,
+          away: o.away_team,
+          homeScore: o.home_score,
+          awayScore: o.away_score,
+        })
+      }
+      if (overrides.length > 0) console.log(`[GRADE] Merged ${overrides.length} manual score override(s) for ${date}`)
+    }
+  } catch { /* no overrides or invalid file */ }
+
   // ── Always persist ALL completed games to game_outcomes for backtesting ──
   // Runs regardless of whether we have picks to grade — so every day's results are captured.
   let gameOutcomesStored = 0

@@ -1,7 +1,7 @@
 /**
  * Filter: League Confidence Floor
  * Per-league minimum confidence thresholds from edge simulation findings.
- * Edge sim 2024: NBA/NHL/MLB need ≥8-10% edge to be profitable.
+ * 5000-run sim (Mar 2026): NCAAB/NCAA overconfident — raised college floors to drop marginal picks.
  */
 
 import type { FilterModule, FilterContext } from '../types'
@@ -11,11 +11,11 @@ const FLOORS: Record<string, number> = {
   nba:   Number(process.env.PROGNO_FLOOR_NBA   ?? 60),
   nhl:   Number(process.env.PROGNO_FLOOR_NHL   ?? 59),
   mlb:   Number(process.env.PROGNO_FLOOR_MLB   ?? 59),
-  ncaab: Number(process.env.PROGNO_FLOOR_NCAAB ?? 60),
-  ncaaf: Number(process.env.PROGNO_FLOOR_NCAAF ?? 62),
-  cbb:   Number(process.env.PROGNO_FLOOR_NCAAB ?? 60),
+  ncaab: Number(process.env.PROGNO_FLOOR_NCAAB ?? 64),
+  ncaaf: Number(process.env.PROGNO_FLOOR_NCAAF ?? 64),
+  cbb:   Number(process.env.PROGNO_FLOOR_NCAAB ?? 64),
 }
-const DEFAULT_FLOOR = Number(process.env.PROGNO_MIN_CONFIDENCE ?? 57)
+const DEFAULT_FLOOR = Number(process.env.PROGNO_MIN_CONFIDENCE ?? 58)
 
 export class LeagueFloorFilter implements FilterModule {
   readonly id = 'league-floor'

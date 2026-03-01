@@ -1,15 +1,16 @@
 /**
  * PROBABILITY ANALYZER A/B SIMULATION
  * ═══════════════════════════════════════════════════════════════════════════════
- * Uses historical_odds + game_outcomes from Supabase to:
+ * Uses historical_odds + game_outcomes from Supabase (last 7 days) to:
  *   1. Reconstruct games from stored odds data
  *   2. Generate predictions using the pick engine's core logic
  *   3. Run predictions WITH and WITHOUT the 16-model probability analyzer
  *   4. Grade against actual game outcomes
- *   5. Bootstrap 1000 bankroll simulations for consistency
- *   6. Tune analyzer parameters for best results across all leagues
+ *   5. Bootstrap bankroll simulations (default 1000, use --runs=20000 for 20k)
+ *   6. Tune analyzer parameters; report errors and calibration for fine-tuning
  *
  * Usage: npx tsx scripts/probability-analyzer-simulation.ts
+ *        npx tsx scripts/probability-analyzer-simulation.ts --runs=20000
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
@@ -513,7 +514,7 @@ function gradePrediction(pred: Prediction, outcome: GameOutcome): GradedPredicti
 // BOOTSTRAP 1000 BANKROLL SIMS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function bootstrapBankroll(graded: GradedPrediction[], numSims = 1000, startBR = 10000, bet = 100) {
+function bootstrapBankroll(graded: GradedPrediction[], numSims: number, startBR = 10000, bet = 100) {
   const nonPush = graded.filter(g => g.result !== 'push')
   if (!nonPush.length) return { avgBR: startBR, medBR: startBR, stdDev: 0, winRate: 0, roi: 0, profPct: 0, p5: startBR, p95: startBR, maxDD: 0 }
 
@@ -773,17 +774,104 @@ function runSweep(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// CALIBRATION & TUNING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const CONFIDENCE_BUCKETS = [50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100]
+
+function calibrationReport(graded: GradedPrediction[]): {
+  buckets: { min: number; max: number; count: number; winRate: number; avgConf: number; brier: number }[]
+  overallBrier: number
+  overconfident: string[]
+  underconfident: string[]
+  suggestions: string[]
+} {
+  const nonPush = graded.filter(g => g.result !== 'push')
+  const buckets: { min: number; max: number; count: number; wins: number; sumConf: number; brierSum: number }[] = []
+  for (let i = 0; i < CONFIDENCE_BUCKETS.length - 1; i++) {
+    const min = CONFIDENCE_BUCKETS[i]
+    const max = CONFIDENCE_BUCKETS[i + 1]
+    const inBucket = nonPush.filter(g => {
+      const c = g.prediction.confidence
+      return c >= min && c < max
+    })
+    const wins = inBucket.filter(g => g.result === 'win').length
+    const sumConf = inBucket.reduce((s, g) => s + g.prediction.confidence, 0)
+    const brierSum = inBucket.reduce((s, g) => {
+      const prob = g.prediction.confidence / 100
+      const actual = g.result === 'win' ? 1 : 0
+      return s + (prob - actual) ** 2
+    }, 0)
+    buckets.push({ min, max, count: inBucket.length, wins, sumConf, brierSum })
+  }
+  const out = buckets.map(b => ({
+    min: b.min,
+    max: b.max,
+    count: b.count,
+    winRate: b.count > 0 ? Math.round((b.wins / b.count) * 1000) / 10 : 0,
+    avgConf: b.count > 0 ? Math.round((b.sumConf / b.count) * 10) / 10 : 0,
+    brier: b.count > 0 ? Math.round((b.brierSum / b.count) * 1000) / 1000 : 0,
+  }))
+  const overallBrier = nonPush.length > 0
+    ? nonPush.reduce((s, g) => {
+        const prob = g.prediction.confidence / 100
+        const actual = g.result === 'win' ? 1 : 0
+        return s + (prob - actual) ** 2
+      }, 0) / nonPush.length
+    : 0
+  const overconfident: string[] = []
+  const underconfident: string[] = []
+  for (const b of out) {
+    if (b.count < 5) continue
+    const confMid = (b.min + b.max) / 2
+    if (b.winRate < confMid - 8) overconfident.push(`${b.min}-${b.max}%: actual WR ${b.winRate}% (avg conf ${b.avgConf}%)`)
+    if (b.winRate > confMid + 8) underconfident.push(`${b.min}-${b.max}%: actual WR ${b.winRate}% (avg conf ${b.avgConf}%)`)
+  }
+  const suggestions: string[] = []
+  if (overconfident.length) suggestions.push('Lower confidence for high-confidence picks or raise flip threshold to avoid overconfident flips.')
+  if (underconfident.length) suggestions.push('Consider boosting confidence in underconfident buckets or increasing blend weight for analyzer.')
+  if (overallBrier > 0.22) suggestions.push(`Brier score ${overallBrier.toFixed(3)} is above 0.22; consider recalibrating confidence formula or analyzer weights.`)
+  const byLeague = new Map<string, { w: number; l: number; confSum: number }>()
+  for (const g of nonPush) {
+    const lg = g.prediction.game.league
+    if (!byLeague.has(lg)) byLeague.set(lg, { w: 0, l: 0, confSum: 0 })
+    const r = byLeague.get(lg)!
+    if (g.result === 'win') r.w++; else r.l++
+    r.confSum += g.prediction.confidence
+  }
+  for (const [lg, r] of byLeague) {
+    const n = r.w + r.l
+    if (n < 10) continue
+    const wr = (r.w / n) * 100
+    const avgConf = r.confSum / n
+    if (wr < avgConf - 10) suggestions.push(`League ${lg}: actual WR ${wr.toFixed(1)}% vs avg confidence ${avgConf.toFixed(1)}% — overconfident; consider lowering Cevict multiplier for ${lg}.`)
+    if (wr > avgConf + 10) suggestions.push(`League ${lg}: actual WR ${wr.toFixed(1)}% vs avg confidence ${avgConf.toFixed(1)}% — underconfident; consider raising multiplier for ${lg}.`)
+  }
+  return { buckets: out, overallBrier, overconfident, underconfident, suggestions }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function pad(s: string, len = 16): string { return s.padStart(len) }
 function padR(s: string, len: number): string { return s.padEnd(len) }
 
+function getBootstrapRuns(): number {
+  const arg = process.argv.find(a => a.startsWith('--runs='))
+  if (arg) {
+    const n = parseInt(arg.split('=')[1], 10)
+    if (!isNaN(n) && n >= 100 && n <= 100000) return n
+  }
+  return 1000
+}
+
 async function main() {
+  const numRuns = getBootstrapRuns()
   console.log(`
 ╔══════════════════════════════════════════════════════════════════════╗
-║     CEVICT PROBABILITY ANALYZER — 1000 SIMULATION A/B TEST         ║
-║     With vs Without 16-Model Ensemble • 7 Days Real Data           ║
+║     CEVICT PROBABILITY ANALYZER — ${numRuns} RUNS • 7 DAYS SUPABASE           ║
+║     With vs Without 16-Model Ensemble • Last 7 Days Supabase         ║
 ╚══════════════════════════════════════════════════════════════════════╝`)
 
   const { games, outcomes } = await fetchAndReconstruct()
@@ -806,6 +894,15 @@ async function main() {
 
   console.log(`\n📊 MATCHED: ${matched.size} games with outcomes`)
   console.log(`   UNMATCHED: ${unmatched} (pending or no outcome)`)
+
+  const errors: string[] = []
+  if (!games.length) errors.push('No games reconstructed from historical_odds (check table and 7-day window).')
+  if (!outcomes?.length) errors.push('No rows in game_outcomes for the date range.')
+  if (unmatched > games.length * 0.8) errors.push(`Most games (${unmatched}) could not be matched to outcomes; check team name normalization or game_date/commence_time alignment.`)
+  if (errors.length) {
+    console.log('\n⚠️  ERRORS / WARNINGS:')
+    errors.forEach(e => console.log(`   • ${e}`))
+  }
 
   if (matched.size === 0) { console.error('\n❌ No games matched to outcomes.'); process.exit(1) }
 
@@ -831,7 +928,7 @@ async function main() {
     const isFav = pred.isHomePick ? game.homeNoVigProb > 0.5 : game.awayNoVigProb > 0.5
     if (isFav) baseFav++; else baseDog++
   }
-  const baseStats = bootstrapBankroll(baselineGraded)
+  const baseStats = bootstrapBankroll(baselineGraded, numRuns)
   console.log(`  Win Rate: ${baseStats.winRate}%  |  ROI: ${baseStats.roi}%  |  Avg BR: $${baseStats.avgBR}`)
   console.log(`  Pick Types: ${baseML} ML, ${baseSpread} Spread  |  Favorites: ${baseFav}, Underdogs: ${baseDog}`)
 
@@ -862,7 +959,7 @@ async function main() {
     if (isFav) analFav++; else analDog++
     if (pred.pick !== withA.pick) flips++
   }
-  const analStats = bootstrapBankroll(analyzerGraded)
+  const analStats = bootstrapBankroll(analyzerGraded, numRuns)
   console.log(`  Win Rate: ${analStats.winRate}%  |  ROI: ${analStats.roi}%  |  Avg BR: $${analStats.avgBR}`)
   console.log(`  Pick Types: ${analML} ML, ${analSpread} Spread  |  Favorites: ${analFav}, Underdogs: ${analDog}`)
   console.log(`  🔄 Analyzer flipped ${flips} picks (${(flips / matched.size * 100).toFixed(1)}%)`)
@@ -891,7 +988,7 @@ async function main() {
   // FINAL RESULTS TABLE
   // ═════════════════════════════════════════════════════════════════════
   console.log('\n\n' + '═'.repeat(70))
-  console.log('  📊 FINAL RESULTS: 1000-SIMULATION A/B TEST')
+  console.log(`  📊 FINAL RESULTS: ${numRuns}-SIMULATION A/B TEST`)
   console.log('═'.repeat(70))
 
   console.log('\n┌─────────────────────────┬──────────────────┬──────────────────┐')
@@ -939,6 +1036,28 @@ async function main() {
   }
   console.log('└──────────┴──────────────────────────┴──────────────────────────┘')
 
+  // Calibration report (with-analyzer picks)
+  const calibration = calibrationReport(analyzerGraded)
+  console.log('\n' + '═'.repeat(70))
+  console.log('  📐 CALIBRATION (WITH ANALYZER)')
+  console.log('═'.repeat(70))
+  console.log(`  Overall Brier score: ${calibration.overallBrier.toFixed(4)} (lower is better; <0.22 good)`)
+  console.log('  Confidence bucket vs actual win rate:')
+  for (const b of calibration.buckets) {
+    if (b.count > 0) console.log(`    ${b.min}-${b.max}%: n=${b.count} actual WR=${b.winRate}% avg conf=${b.avgConf}% Brier=${b.brier.toFixed(3)}`)
+  }
+  if (calibration.overconfident.length) {
+    console.log('  Overconfident buckets (actual WR below confidence):')
+    calibration.overconfident.forEach(s => console.log(`    • ${s}`))
+  }
+  if (calibration.underconfident.length) {
+    console.log('  Underconfident buckets (actual WR above confidence):')
+    calibration.underconfident.forEach(s => console.log(`    • ${s}`))
+  }
+  console.log('\n  🔧 TUNING SUGGESTIONS:')
+  if (calibration.suggestions.length) calibration.suggestions.forEach(s => console.log(`    • ${s}`))
+  else console.log('    • No strong calibration issues; current parameters are reasonable for this sample.')
+
   // Verdict
   const roiDiff = analStats.roi - baseStats.roi
   const profDiff = analStats.profPct - baseStats.profPct
@@ -971,13 +1090,23 @@ async function main() {
   // Save results to file
   const results = {
     timestamp: new Date().toISOString(),
+    bootstrapRuns: numRuns,
     gamesAnalyzed: matched.size,
+    unmatchedGames: unmatched,
     leagueBreakdown: leagueCount,
     baseline: baseStats,
     withAnalyzer: analStats,
     optimalParams: bestParams,
     verdict: roiDiff > 1 ? 'HELPS' : roiDiff < -1 ? 'HURTS' : 'MINIMAL_IMPACT',
     roiDifference: roiDiff,
+    calibration: {
+      overallBrier: calibration.overallBrier,
+      buckets: calibration.buckets,
+      overconfident: calibration.overconfident,
+      underconfident: calibration.underconfident,
+      suggestions: calibration.suggestions,
+    },
+    errors: errors,
   }
   const outPath = path.resolve(__dirname, '..', 'simulation-results.json')
   fs.writeFileSync(outPath, JSON.stringify(results, null, 2))

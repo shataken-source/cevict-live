@@ -41,7 +41,7 @@ export async function GET(request: Request) {
   const runDate = paramDate && /^\d{4}-\d{2}-\d{2}$/.test(paramDate) ? paramDate : today
 
   try {
-    const url = earlyLines ? `${baseUrl}/api/picks/today?earlyLines=1&date=${runDate}` : `${baseUrl}/api/picks/today?date=${runDate}`
+    const url = earlyLines ? `${baseUrl}/api/picks/today?earlyLines=1&date=${runDate}&debug=1` : `${baseUrl}/api/picks/today?date=${runDate}&debug=1`
     const controller = new AbortController()
     const timeoutMs = process.env.NODE_ENV !== 'production' ? 45000 : 15000
     const timeout = setTimeout(() => controller.abort(), timeoutMs)
@@ -140,6 +140,7 @@ export async function GET(request: Request) {
           sport: (p.sport || 'unknown').toLowerCase(),
           league: (p.league || p.sport || 'unknown').toUpperCase(),
           pick: p.pick,
+          pick_type: (p.pick_type || p.recommended_type || 'moneyline').toLowerCase(),
           confidence: typeof p.confidence === 'number' ? p.confidence : null,
           odds: p.odds ?? null,
           is_home: typeof p.is_home === 'boolean' ? p.is_home : (p.pick === p.home_team),
@@ -339,13 +340,25 @@ export async function GET(request: Request) {
     } else {
       console.log(`[CRON daily-predictions] Skipping syndication: ${!apiKey ? 'No API key configured' : 'No picks to syndicate'}`)
     }
+    const sportDebug = (data.debug?.sports || []).map((s: any) => {
+      const base = `${s.sport}:${s.gamesFetched}/${s.gamesInWindow}→${s.picksProduced}`
+      if (s.oddsApiStatus != null) {
+        const apiInfo = s.oddsApiCount != null ? `${s.oddsApiStatus}→${s.oddsApiCount}` : `status=${s.oddsApiStatus}`
+        return `${base} (api ${apiInfo})`
+      }
+      return base
+    })
+    const debugSuffix = picks.length === 0 && data.debug
+      ? ` — Debug: dateUsed=${data.debug.dateUsed} cacheHit=${data.debug.cacheHit} oddsKeySet=${data.debug.oddsKeySet}${data.debug.oddsKeySource ? ` keySource=${data.debug.oddsKeySource}` : ''} sports=[${sportDebug.join(', ')}]`
+      : ''
     return NextResponse.json({
       success: true,
       date: runDate,
       file: fileName,
       count: picks.length,
       earlyLines: earlyLines ?? false,
-      message: `Saved ${picks.length} picks to Supabase (${fileName})`,
+      message: `Saved ${picks.length} picks to Supabase (${fileName})${debugSuffix}`,
+      ...(picks.length === 0 && data.debug && { debug: data.debug }),
     })
   } catch (err: any) {
     console.error('[CRON daily-predictions]', err)

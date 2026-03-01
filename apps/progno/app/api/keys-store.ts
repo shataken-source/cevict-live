@@ -67,20 +67,40 @@ export function deleteKey(id: string): boolean {
   return true
 }
 
+/** Which key slot is in use (for logging only). */
+export type OddsKeySource = 'fallback' | 'primary' | 'rotation' | 'stored'
+
 /**
  * Returns the primary Odds API key.
- * Checks env vars first (populated by KeyVault), then falls back to .progno/keys.json.
+ * When USE_ODDS_FALLBACK_KEY=1, prefers ODDS_API_KEY_2. Otherwise env then .progno/keys.json.
  */
 export function getPrimaryKey(): string | null {
-  // 1. Primary env key
-  if (process.env.ODDS_API_KEY) return process.env.ODDS_API_KEY
-
-  // 2. Secondary/rotation env key
-  if (process.env.ODDS_API_KEY_2) return process.env.ODDS_API_KEY_2
-
-  // 3. Admin-UI-added keys (first entry wins)
+  const key1 = process.env.ODDS_API_KEY || process.env.NEXT_PUBLIC_ODDS_API_KEY || null
+  const key2 = process.env.ODDS_API_KEY_2 || null
+  const useFallback = process.env.USE_ODDS_FALLBACK_KEY === '1' || process.env.USE_ODDS_FALLBACK_KEY === 'true'
+  if (useFallback && key2) return key2
+  if (key1) return key1
+  if (key2) return key2
   const stored = loadKeys()
   if (stored.length > 0) return stored[0].value
+  return null
+}
 
+/** Returns the backup Odds API key (ODDS_API_KEY_2). Used to retry on 401 when primary fails. */
+export function getFallbackOddsKey(): string | null {
+  const v = process.env.ODDS_API_KEY_2
+  return v && String(v).trim() ? v : null
+}
+
+/** Returns which key slot is in use (for logging 401 / debug). */
+export function getPrimaryKeySource(): OddsKeySource | null {
+  const key1 = process.env.ODDS_API_KEY || process.env.NEXT_PUBLIC_ODDS_API_KEY || null
+  const key2 = process.env.ODDS_API_KEY_2 || null
+  const useFallback = process.env.USE_ODDS_FALLBACK_KEY === '1' || process.env.USE_ODDS_FALLBACK_KEY === 'true'
+  if (useFallback && key2) return 'fallback'
+  if (key1) return 'primary'
+  if (key2) return 'fallback'
+  const stored = loadKeys()
+  if (stored.length > 0 && stored[0].value) return 'stored'
   return null
 }

@@ -336,13 +336,16 @@ export async function POST(request: NextRequest) {
     }
 
     const defaultStake = 500 // $5.00 default
+    const MIN_PROFIT_PER_CONTRACT_CENTS = 50 // Reject if winning amount per contract < 50¢
     const previewPicks = picks.map(pick => {
       const market = matchPickToMarket(pick, openMarkets)
       const side = market ? determineSide(pick, market) : null
       const rawPrice = market ? (side === 'yes' ? market.yes_ask : market.no_ask) : null
       const price = rawPrice != null ? Math.round(Number(rawPrice) || 0) : null
-      const priceValid = price != null && price >= 1 && price <= 99
-      const contracts = price ? Math.max(1, Math.floor(defaultStake / Math.max(1, price))) : null
+      const profitPerContractCents = price != null ? 100 - price : 0
+      const rejectedLowWin = price != null && profitPerContractCents < MIN_PROFIT_PER_CONTRACT_CENTS
+      const priceValid = price != null && price >= 1 && price <= 99 && !rejectedLowWin
+      const contracts = priceValid && price ? Math.max(1, Math.floor(defaultStake / Math.max(1, price))) : null
 
       return {
         // Pick info
@@ -365,10 +368,14 @@ export async function POST(request: NextRequest) {
         price_valid: priceValid,
         contracts: priceValid ? contracts : null,
         estimated_cost_cents: priceValid && price && contracts ? price * contracts : null,
-        // Default stake for UI
         default_stake_cents: defaultStake,
+        rejected_low_win: rejectedLowWin,
+        rejected_reason: rejectedLowWin ? `Winning amount per contract would be ${profitPerContractCents}¢ (min 50¢ required)` : null,
       }
     })
+
+    const excludedLowWin = previewPicks.filter(p => p.rejected_low_win)
+    const picksOffered = previewPicks.filter(p => !p.rejected_low_win)
 
     return NextResponse.json({
       success: true,
@@ -376,9 +383,10 @@ export async function POST(request: NextRequest) {
       totalPicks: previewPicks.length,
       matched: previewPicks.filter(p => p.matched).length,
       unmatched: previewPicks.filter(p => !p.matched).length,
+      excluded_low_win_count: excludedLowWin.length,
       marketsFetched: openMarkets.length,
       marketError,
-      picks: previewPicks,
+      picks: picksOffered,
     })
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message || 'Failed' }, { status: 500 })

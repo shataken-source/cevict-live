@@ -30,19 +30,13 @@ export class MCConfidenceModule implements ConfidenceModule {
   readonly id = 'mc-confidence-v3'
 
   compute({ ctx, baseConfidence, signals, isHomePick }: ConfidenceInput): number {
-    // 1. Start from market-derived base
     let conf = baseConfidence
-
-    // 2. Anchor to MC win probability (stronger signal than market base)
     if (ctx.mcResult) {
       const mcWin = isHomePick
         ? ctx.mcResult.homeWinProbability
         : ctx.mcResult.awayWinProbability
       conf = Math.max(conf, mcWin * 100 - 5)
     }
-
-    // 3. Sum all signal deltas — each module contributes its confidenceDelta
-    //    for the pick direction (home or away)
     for (const [, signal] of Object.entries(signals)) {
       const pickFavored =
         signal.favors === 'neutral' ||
@@ -50,23 +44,14 @@ export class MCConfidenceModule implements ConfidenceModule {
         (!isHomePick && signal.favors === 'away')
       conf += pickFavored ? signal.confidenceDelta : -signal.confidenceDelta
     }
-
-    // 4. Early-line decay
     const decay = earlyDecay(ctx.commenceTime)
     if (decay < 1.0) conf = Math.round(conf * decay)
-
-    // 5. MC ceiling: MC prob + 15% (prevents over-inflation)
     if (ctx.mcResult) {
       const mcWin = isHomePick
         ? ctx.mcResult.homeWinProbability
         : ctx.mcResult.awayWinProbability
       conf = Math.min(conf, Math.round(mcWin * 100 + 15))
     }
-
-    conf = Math.round(conf)
-    // 6. High-confidence compression (20260228): calibration showed 80–95% buckets overconfident; compress above 85.
-    if (conf > 85) conf = 85 + (conf - 85) * 0.5
-    // 7. Hard clamp 30–92 (upper reduced from 95 to improve Brier / calibration)
-    return Math.max(30, Math.min(92, Math.round(conf)))
+    return Math.max(30, Math.min(95, Math.round(conf)))
   }
 }

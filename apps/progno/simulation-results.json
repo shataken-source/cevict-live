@@ -1,32 +1,35 @@
 {
-  "timestamp": "2026-02-28T13:04:13.324Z",
-  "gamesAnalyzed": 249,
+  "timestamp": "2026-02-28T19:22:29.770Z",
+  "bootstrapRuns": 20000,
+  "gamesAnalyzed": 274,
+  "unmatchedGames": 502,
   "leagueBreakdown": {
-    "NBA": 18,
-    "NCAAB": 150,
-    "NCAA": 81
+    "NBA": 19,
+    "NCAAB": 168,
+    "NCAA": 86,
+    "NHL": 1
   },
   "baseline": {
-    "avgBR": 12401,
-    "medBR": 12420,
-    "stdDev": 1490,
-    "winRate": 57.66,
-    "roi": 9.81,
-    "profPct": 94.5,
-    "p5": 9966,
-    "p95": 14867,
-    "maxDD": 9.59
+    "avgBR": 11622,
+    "medBR": 11634,
+    "stdDev": 1553,
+    "winRate": 55.72,
+    "roi": 6.03,
+    "profPct": 84.98,
+    "p5": 9030,
+    "p95": 14168,
+    "maxDD": 11.95
   },
   "withAnalyzer": {
-    "avgBR": 12837,
-    "medBR": 12867,
-    "stdDev": 1420,
-    "winRate": 58.87,
-    "roi": 11.53,
-    "profPct": 98.1,
-    "p5": 10508,
-    "p95": 15145,
-    "maxDD": 8.74
+    "avgBR": 12055,
+    "medBR": 12064,
+    "stdDev": 1548,
+    "winRate": 56.83,
+    "roi": 7.6,
+    "profPct": 90.76,
+    "p5": 9486,
+    "p95": 14581,
+    "maxDD": 10.87
   },
   "optimalParams": {
     "blendWeight": 0.1,
@@ -49,5 +52,108 @@
     }
   },
   "verdict": "HELPS",
-  "roiDifference": 1.7199999999999989
+  "roiDifference": 1.5699999999999994,
+  "calibration": {
+    "overallBrier": 0.30558026384649783,
+    "buckets": [
+      {
+        "min": 50,
+        "max": 55,
+        "count": 26,
+        "winRate": 53.8,
+        "avgConf": 52.2,
+        "brier": 0.246
+      },
+      {
+        "min": 55,
+        "max": 60,
+        "count": 17,
+        "winRate": 35.3,
+        "avgConf": 57.6,
+        "brier": 0.284
+      },
+      {
+        "min": 60,
+        "max": 65,
+        "count": 26,
+        "winRate": 57.7,
+        "avgConf": 62.7,
+        "brier": 0.247
+      },
+      {
+        "min": 65,
+        "max": 70,
+        "count": 18,
+        "winRate": 50,
+        "avgConf": 67,
+        "brier": 0.277
+      },
+      {
+        "min": 70,
+        "max": 75,
+        "count": 18,
+        "winRate": 55.6,
+        "avgConf": 72.2,
+        "brier": 0.275
+      },
+      {
+        "min": 75,
+        "max": 80,
+        "count": 17,
+        "winRate": 64.7,
+        "avgConf": 77.9,
+        "brier": 0.244
+      },
+      {
+        "min": 80,
+        "max": 85,
+        "count": 15,
+        "winRate": 40,
+        "avgConf": 82.3,
+        "brier": 0.421
+      },
+      {
+        "min": 85,
+        "max": 90,
+        "count": 27,
+        "winRate": 66.7,
+        "avgConf": 87.3,
+        "brier": 0.265
+      },
+      {
+        "min": 90,
+        "max": 95,
+        "count": 48,
+        "winRate": 64.6,
+        "avgConf": 92.8,
+        "brier": 0.307
+      },
+      {
+        "min": 95,
+        "max": 100,
+        "count": 58,
+        "winRate": 56.9,
+        "avgConf": 95,
+        "brier": 0.39
+      }
+    ],
+    "overconfident": [
+      "55-60%: actual WR 35.3% (avg conf 57.6%)",
+      "65-70%: actual WR 50% (avg conf 67%)",
+      "70-75%: actual WR 55.6% (avg conf 72.2%)",
+      "75-80%: actual WR 64.7% (avg conf 77.9%)",
+      "80-85%: actual WR 40% (avg conf 82.3%)",
+      "85-90%: actual WR 66.7% (avg conf 87.3%)",
+      "90-95%: actual WR 64.6% (avg conf 92.8%)",
+      "95-100%: actual WR 56.9% (avg conf 95%)"
+    ],
+    "underconfident": [],
+    "suggestions": [
+      "Lower confidence for high-confidence picks or raise flip threshold to avoid overconfident flips.",
+      "Brier score 0.306 is above 0.22; consider recalibrating confidence formula or analyzer weights.",
+      "League NCAAB: actual WR 53.3% vs avg confidence 81.0% — overconfident; consider lowering Cevict multiplier for NCAAB.",
+      "League NCAA: actual WR 58.8% vs avg confidence 73.9% — overconfident; consider lowering Cevict multiplier for NCAA."
+    ]
+  },
+  "errors": []
 }

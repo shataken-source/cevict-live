@@ -124,11 +124,29 @@ export async function POST(request: NextRequest) {
       continue
     }
 
+    // Reject low-confidence picks (e.g. 8% underdog) — never place when confidence < 50%
+    const conf = bet.confidence != null ? Number(bet.confidence) : null
+    if (conf != null && conf < 50) {
+      result.status = 'error'
+      result.error = `Rejected: pick confidence ${conf}% is below minimum 50%.`
+      results.push(result)
+      continue
+    }
+
     // Kalshi requires integer prices 1-99
     const price = Math.round(Number(bet.price) || 0)
     if (price < 1 || price > 99) {
       result.status = 'error'
       result.error = `Invalid price ${bet.price}¢ (must be integer 1-99). Market may have no liquidity.`
+      results.push(result)
+      continue
+    }
+
+    // Reject if winning amount per contract would be less than 50¢ (price too high)
+    const profitPerContractCents = 100 - price
+    if (profitPerContractCents < 50) {
+      result.status = 'error'
+      result.error = `Rejected: winning amount per contract would be ${profitPerContractCents}¢ (minimum 50¢ required). Price ${price}¢ is too high.`
       results.push(result)
       continue
     }

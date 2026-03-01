@@ -236,7 +236,6 @@ export class CevictScraperService {
           } else {
             console.log(`[CevictScraper] No ESPN college ID for ${team} (ncaaf), skipping ESPN injuries URL`);
           }
-          // NCAA.com generic injury page; may not have structured per-team data.
         }
         break;
       case 'ncaab':
@@ -251,9 +250,7 @@ export class CevictScraperService {
           }
         }
         break;
-      // NOTE: "cbb" = college baseball in this codebase (college basketball = "ncaab").
       case 'cbb':
-        // College baseball injury pages are not available via ESPN; skip to avoid fetch failures.
         break;
     }
 
@@ -262,7 +259,6 @@ export class CevictScraperService {
 
   /**
    * Parse injury data from scraped text with enhanced ESPN support
-   * Uses multiple pattern matching strategies for different site formats
    */
   private parseInjuryData(text: string, team: string): Array<{
     player: string;
@@ -277,28 +273,18 @@ export class CevictScraperService {
       injury: string;
     }> = [];
 
-    // Strategy 1: ESPN injury table format (common on ESPN pages)
-    // Look for table rows with player injury data
     const espnTablePattern = /<tr[^>]*>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([^<]+)<\/td>\s*<\/tr>/gi;
-
-    // Strategy 2: ESPN list format with divs
     const espnDivPattern = /<div[^>]*class="[^"]*injury[^"]*"[^>]*>.*?<span[^>]*>([^<]+)<\/span>.*?<span[^>]*>([^<]+)<\/span>.*?<span[^>]*>([^<]+)<\/span>.*?<span[^>]*>([^<]+)<\/span>.*?<\/div>/gi;
-
-    // Strategy 3: Generic player - position - status - injury pattern
     const genericPattern = /([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\s*[-–:]\s*(\w+)\s*[-–:]\s*(out|doubtful|questionable|probable)\s*[-–:]\s*([\w\s]+?)(?=\n|$|<)/gi;
-
-    // Strategy 4: Pattern with HTML tags removed (for text content)
     const cleanText = text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
     const textPattern = /([A-Z][a-z]+(?:\s[A-Z][a-z]+)+)\s+(QB|RB|WR|TE|OL|DL|LB|DB|K|P|SP|RP|C|1B|2B|3B|SS|LF|CF|RF|OF|DH|PG|SG|SF|PF|G|F|C|LW|RW)\s+(Out|Doubtful|Questionable|Probable)\s+([\w\s]+?)(?=\d{1,2}\/\d{1,2}|$|\n)/gi;
 
-    // Try ESPN table pattern first
     let match;
     while ((match = espnTablePattern.exec(text)) !== null) {
       const player = match[1].trim();
       const position = match[2].trim();
       const status = match[3].trim().toLowerCase();
       const injury = match[4].trim();
-
       if (player && player.length > 2 && !player.includes('Player') && !player.includes('Name')) {
         injuries.push({
           player,
@@ -308,14 +294,11 @@ export class CevictScraperService {
         });
       }
     }
-
-    // Try ESPN div pattern
     while ((match = espnDivPattern.exec(text)) !== null) {
       const player = match[1].trim();
       const position = match[2].trim();
       const status = match[3].trim().toLowerCase();
       const injury = match[4].trim();
-
       if (player && player.length > 2) {
         injuries.push({
           player,
@@ -325,14 +308,11 @@ export class CevictScraperService {
         });
       }
     }
-
-    // Try generic pattern
     while ((match = genericPattern.exec(text)) !== null) {
       const player = match[1].trim();
       const position = match[2].trim();
       const status = match[3].trim().toLowerCase();
       const injury = match[4].trim();
-
       if (player && player.length > 2 && !injuries.find(i => i.player === player)) {
         injuries.push({
           player,
@@ -342,14 +322,11 @@ export class CevictScraperService {
         });
       }
     }
-
-    // Try text pattern on cleaned content
     while ((match = textPattern.exec(cleanText)) !== null) {
       const player = match[1].trim();
       const position = match[2].trim();
       const status = match[3].trim().toLowerCase();
       const injury = match[4].trim();
-
       if (player && player.length > 2 && !injuries.find(i => i.player === player)) {
         injuries.push({
           player,
@@ -363,9 +340,6 @@ export class CevictScraperService {
     return injuries;
   }
 
-  /**
-   * Normalize status to standard format
-   */
   private normalizeStatus(status: string): string {
     const s = status.toLowerCase().trim();
     if (s.includes('out')) return 'out';
@@ -375,40 +349,16 @@ export class CevictScraperService {
     return 'unknown';
   }
 
-  /**
-   * Normalize position codes
-   */
   private normalizePosition(pos: string): string {
     const normalized = pos.toUpperCase().trim();
-
-    // NFL positions
-    if (['QB', 'RB', 'WR', 'TE', 'OT', 'OG', 'C', 'DE', 'DT', 'LB', 'CB', 'S', 'K', 'P'].includes(normalized)) {
-      return normalized;
-    }
-
-    // NBA positions
-    if (['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F'].includes(normalized)) {
-      return normalized === 'G' ? 'PG' : normalized === 'F' ? 'SF' : normalized;
-    }
-
-    // MLB positions
-    if (['SP', 'RP', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'OF'].includes(normalized)) {
-      return normalized === 'OF' ? 'LF' : normalized;
-    }
-
-    // NHL positions
-    if (['G', 'D', 'C', 'LW', 'RW', 'F'].includes(normalized)) {
-      return normalized === 'F' ? 'C' : normalized;
-    }
-
+    if (['QB', 'RB', 'WR', 'TE', 'OT', 'OG', 'C', 'DE', 'DT', 'LB', 'CB', 'S', 'K', 'P'].includes(normalized)) return normalized;
+    if (['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F'].includes(normalized)) return normalized === 'G' ? 'PG' : normalized === 'F' ? 'SF' : normalized;
+    if (['SP', 'RP', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'OF'].includes(normalized)) return normalized === 'OF' ? 'LF' : normalized;
+    if (['G', 'D', 'C', 'LW', 'RW', 'F'].includes(normalized)) return normalized === 'F' ? 'C' : normalized;
     return 'Unknown';
   }
 
-  /**
-   * Get team abbreviation for ESPN URLs
-   */
   private getTeamAbbreviation(team: string, league: string): string {
-    // Common team abbreviations
     const abbreviations: Record<string, string> = {
       'Arizona Cardinals': 'ari', 'Atlanta Falcons': 'atl', 'Baltimore Ravens': 'bal',
       'Buffalo Bills': 'buf', 'Carolina Panthers': 'car', 'Chicago Bears': 'chi',
@@ -421,7 +371,6 @@ export class CevictScraperService {
       'New York Jets': 'nyj', 'Philadelphia Eagles': 'phi', 'Pittsburgh Steelers': 'pit',
       'San Francisco 49ers': 'sf', 'Seattle Seahawks': 'sea', 'Tampa Bay Buccaneers': 'tb',
       'Tennessee Titans': 'ten', 'Washington Commanders': 'wsh',
-      // NBA
       'Atlanta Hawks': 'atl', 'Boston Celtics': 'bos', 'Brooklyn Nets': 'bkn',
       'Charlotte Hornets': 'cha', 'Chicago Bulls': 'chi', 'Cleveland Cavaliers': 'cle',
       'Dallas Mavericks': 'dal', 'Denver Nuggets': 'den', 'Detroit Pistons': 'det',
@@ -433,14 +382,9 @@ export class CevictScraperService {
       'Portland Trail Blazers': 'por', 'Sacramento Kings': 'sac', 'San Antonio Spurs': 'sa',
       'Toronto Raptors': 'tor', 'Utah Jazz': 'utah', 'Washington Wizards': 'wsh',
     };
-
     return abbreviations[team] || team.toLowerCase().substring(0, 3);
   }
 
-  /**
-   * Scrape betting splits (public % / money %) for Progno/Alpha-Hunter.
-   * Uses cevict-scraper to load ScoresAndOdds (or similar) and parse.
-   */
   async scrapeBettingSplits(
     sport: string,
     _homeTeam: string,
@@ -509,9 +453,6 @@ export class CevictScraperService {
     }
   }
 
-  /**
-   * Scrape lineup/player stats for props. Returns array of player data for PlayerPropsService.
-   */
   async scrapeLineups(
     sport: string,
     player: string
@@ -541,9 +482,6 @@ export class CevictScraperService {
     }
   }
 
-  /**
-   * Scrape weather for a city/date. For outdoor games (Progno/Alpha-Hunter).
-   */
   async scrapeWeatherData(
     city: string,
     _gameDate?: string
@@ -577,9 +515,6 @@ export class CevictScraperService {
     }
   }
 
-  /**
-   * Get ESPN college team ID
-   */
   private getCollegeTeamId(team: string): string {
     const ids: Record<string, string> = {
       'Alabama Crimson Tide': '333', 'Ohio State Buckeyes': '194',
@@ -593,50 +528,8 @@ export class CevictScraperService {
       'Wisconsin Badgers': '275', 'Texas A&M Aggies': '245',
       'Tennessee Volunteers': '2633', 'Nebraska Cornhuskers': '158',
       'Kentucky Wildcats': '96', 'UCLA Bruins': '26',
-      'Arizona State Sun Devils': '9', 'Texas Tech Red Raiders': '2641',
-      'Minnesota Golden Gophers': '135',
-      'Virginia Tech Hokies': '259', 'Michigan St Spartans': '127',
-      'Kansas St Wildcats': '2306', 'Baylor Bears': '239',
-      'Iowa Hawkeyes': '66',
-      'Kent State Golden Flashes': '2309',
-      'Louisville Cardinals': '97', 'Xavier Musketeers': '2752',
-      'South Carolina Upstate Spartans': '2534', 'Western Carolina Catamounts': '2697',
-      'Duke Blue Devils': '150', 'Appalachian St Mountaineers': '2026',
-      'Coastal Carolina Chanticleers': '324', 'Charleston Cougars': '232',
-      'Charlotte 49ers': '2429',
-      'East Tennessee St Buccaneers': '2016', 'Wake Forest Demon Deacons': '154',
-      'High Point Panthers': '2272', 'SIU-Edwardsville Cougars': '79',
-      'Illinois St Redbirds': '2280', 'Tennessee Tech Golden Eagles': '2635',
-      'Lipscomb Bisons': '288', 'SE Missouri St Redhawks': '2540',
-      'Saint Louis Billikens': '139', 'Samford Bulldogs': '2535',
-      'Ole Miss Rebels': '145',
-      'Arkansas St Red Wolves': '2032', 'Mississippi St Bulldogs': '344',
-      'Troy Trojans': '2653', 'Memphis Tigers': '235',
-      'Arkansas-Little Rock Trojans': '2031', 'Davidson Wildcats': '218',
-      'UNC Greensboro Spartans': '152', 'Wofford Terriers': '2747',
-      'South Carolina Gamecocks': '2579', 'Bethune-Cookman Wildcats': '206',
-      'Florida Int\'l Golden Panthers': '2229', 'North Florida Ospreys': '2450',
-      'Charleston Southern Buccaneers': '2325', 'Jacksonville Dolphins': '256',
-      'Florida St Seminoles': '52', 'Georgia Southern Eagles': '290',
-      'Georgia Tech Yellow Jackets': '59', 'Lamar Cardinals': '2320',
-      'UCF Knights': '2116',
-      'Florida Atlantic Owls': '2226', 'Missouri Tigers': '142',
-      'Stetson Hatters': '56',
-      'Cincinnati Bearcats': '2132',
-      'Nicholls St Colonels': '2447', 'South Alabama Jaguars': '6',
-      'SE Louisiana Lions': '2545', 'Southern Miss Golden Eagles': '2572',
-      'Texas State Bobcats': '326',
-      'Houston Baptist Huskies': '2277', 'Sam Houston St Bearkats': '2534',
-      'UT Rio Grande Valley Vaqueros': '292',
-      'Dallas Baptist Patriots': '1001', 'Abilene Christian Wildcats': '2000',
-      'Rice Owls': '242', 'Louisiana Ragin\' Cajuns': '309',
-      'TCU Horned Frogs': '2628', 'UT-Arlington Mavericks': '250',
-      'Tulane Green Wave': '2655',
-      'Arizona St Sun Devils': '9', 'UConn Huskies': '41',
-      'Loyola Marymount Lions': '2351',
-      'Long Beach State Dirtbags': '2349', 'San Diego Toreros': '21',
+      'Duke Blue Devils': '150',
     };
-
     return ids[team] || '';
   }
 }

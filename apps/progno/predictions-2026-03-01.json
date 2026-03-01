@@ -1,0 +1,133 @@
+{
+  "date": "2026-03-01",
+  "generatedAt": "2026-02-28T20:17:20.417Z",
+  "count": 1,
+  "message": "Top 11 picks (of 55 games) — Cevict Flex + Triple Alignment — Regular (0–1 days) — Next-day (1 picks)",
+  "earlyLines": false,
+  "picks": [
+    {
+      "sport": "NBA",
+      "league": "NBA",
+      "home_team": "Denver Nuggets",
+      "away_team": "Minnesota Timberwolves",
+      "game_matchup": "Minnesota Timberwolves @ Denver Nuggets",
+      "pick": "Denver Nuggets",
+      "pick_type": "SPREAD",
+      "recommended_line": -2,
+      "odds": -110,
+      "confidence": 60,
+      "game_time": "2026-03-01T20:40:00+00:00",
+      "game_id": "25a45928a3d4b8a0d492283f6f434421",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 30.2,
+      "expected_value": 15.19,
+      "value_bet_edge": 7.96,
+      "value_bet_ev": 15.19,
+      "value_bet_kelly": 0.042,
+      "has_value": true,
+      "mc_win_probability": 0.563,
+      "mc_predicted_score": {
+        "home": 120,
+        "away": 117,
+        "homeRange": [
+          97,
+          143
+        ],
+        "awayRange": [
+          90,
+          143
+        ]
+      },
+      "mc_spread_probability": 0.6034,
+      "mc_total_probability": 0.417,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Slight favorite (54% implied probability)",
+        "[true-edge] Altitude factor: home team has elevation edge",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] ⚠️ Upset risk: 18%",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "[probability-analyzer] [analyzer] NBA multiplier=0, skipped",
+        "MC: 56.3% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.9999999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.012499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -2.0648695661802847,
+          "favors": "away",
+          "scores": {
+            "SF": 0.013354037275614017,
+            "NM": 0,
+            "IAI": -0.02902691517076006,
+            "CSI": 0.18,
+            "NIG": 0,
+            "TRD": 0.93,
+            "EPD": 0,
+            "totalEffect": -0.020648695661802847
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        },
+        "probability-analyzer": {
+          "delta": 0,
+          "favors": "neutral",
+          "scores": {
+            "homeEnsemble": 0,
+            "awayEnsemble": 0,
+            "blend": 0,
+            "shouldFlip": 0
+          }
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Denver Nuggets",
+          "line": -2,
+          "edge": 7.96,
+          "probability": 0.603,
+          "expected_value": 15.19,
+          "kelly_fraction": 0.042
+        },
+        {
+          "type": "total",
+          "side": "Under",
+          "line": 241,
+          "edge": 4.04,
+          "probability": 0.564,
+          "expected_value": 7.71,
+          "kelly_fraction": 0.021
+        }
+      ],
+      "analysis": "🎯 Denver Nuggets (60%). [true-edge] Slight favorite (54% implied probability) [true-edge] Altitude factor: home team has elevation edge [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias",
+        "probability-analyzer"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    }
+  ]
+}

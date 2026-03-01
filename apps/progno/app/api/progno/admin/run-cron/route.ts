@@ -9,7 +9,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 120
 
-const CRON_JOBS = ['daily-predictions', 'daily-results', 'daily-kalshi'] as const
+const CRON_JOBS = ['daily-predictions', 'daily-results', 'daily-kalshi', 'kalshi-settle'] as const
 
 function getBaseUrl(): string {
   if (process.env.CRON_APP_URL) return process.env.CRON_APP_URL.replace(/\/$/, '')
@@ -47,7 +47,10 @@ export async function POST(request: NextRequest) {
     const cronSecret = process.env.CRON_SECRET
     const params = new URLSearchParams()
     if (job === 'daily-results' && date) params.set('date', date)
-    if (job === 'daily-predictions' && earlyLines) params.set('earlyLines', '1')
+    if (job === 'daily-predictions') {
+      if (earlyLines) params.set('earlyLines', '1')
+      if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) params.set('date', date)
+    }
     const path = params.toString() ? `/api/cron/${job}?${params}` : `/api/cron/${job}`
     const url = `${baseUrl}${path}`
 

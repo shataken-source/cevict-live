@@ -441,7 +441,7 @@ export async function POST(request: NextRequest) {
     const configured = !!(apiKeyId && privateKey && privateKey.includes('PRIVATE KEY'))
 
     const today = new Date().toISOString().split('T')[0]
-    const minConf = settings.minConfidence || 57
+    const minConf = Math.max(50, settings.minConfidence || 57) // Floor 50% — never auto-place below 50% confidence
     const maxPicks = settings.maxPicksPerDay || 20
     const stakeCents = Math.max(1, Math.floor(settings.stakeCents || 500))
 
@@ -470,6 +470,7 @@ export async function POST(request: NextRequest) {
 
     const results: any[] = []
 
+    const MIN_CONFIDENCE_FLOOR = 50 // Never place a bet when model confidence is below 50%
     for (const pick of picks) {
       const result: any = {
         pick: pick.pick,
@@ -477,6 +478,13 @@ export async function POST(request: NextRequest) {
         sport: pick.sport,
         confidence: pick.confidence,
         source: pick._source,
+      }
+
+      if ((pick.confidence ?? 0) < MIN_CONFIDENCE_FLOOR) {
+        result.status = 'rejected'
+        result.error = `Pick confidence ${pick.confidence ?? 0}% is below minimum ${MIN_CONFIDENCE_FLOOR}%. Skipped.`
+        results.push(result)
+        continue
       }
 
       const market = matchPickToMarket(pick, openMarkets)
@@ -494,6 +502,13 @@ export async function POST(request: NextRequest) {
       if (price < 1 || price > 99) {
         result.status = 'error'
         result.error = `Invalid price ${rawPrice}¢ for ${side} side (must be 1-99). Market may have no liquidity.`
+        results.push(result)
+        continue
+      }
+      const profitPerContractCents = 100 - price
+      if (profitPerContractCents < 50) {
+        result.status = 'rejected'
+        result.error = `Winning amount per contract would be ${profitPerContractCents}¢ (minimum 50¢ required). Skipped.`
         results.push(result)
         continue
       }
@@ -540,9 +555,10 @@ export async function POST(request: NextRequest) {
     const submitted = results.filter(r => r.status === 'submitted').length
     const dryRuns = results.filter(r => r.status === 'dry_run').length
     const noMarket = results.filter(r => r.status === 'no_market').length
+    const rejected = results.filter(r => r.status === 'rejected').length
     const errors = results.filter(r => r.status === 'error').length
     const statusBreakdown = results.map(r => `${r.pick?.slice(0, 15)}=${r.status}`).join(', ')
-    console.log(`[execute] RESPONSE: submitted=${submitted} dryRuns=${dryRuns} noMarket=${noMarket} errors=${errors} | ${statusBreakdown}`)
+    console.log(`[execute] RESPONSE: submitted=${submitted} dryRuns=${dryRuns} noMarket=${noMarket} rejected=${rejected} errors=${errors} | ${statusBreakdown}`)
 
     return NextResponse.json({
       success: true,
@@ -554,6 +570,7 @@ export async function POST(request: NextRequest) {
       submitted,
       dryRuns,
       noMarket,
+      rejected,
       errors,
       stakePerPick: `$${(stakeCents / 100).toFixed(2)}`,
       debug: {

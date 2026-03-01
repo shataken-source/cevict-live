@@ -19,7 +19,6 @@
         <div class="ticker-scroll" id="tickerScroll"></div>
       </div>
       <div class="ticker-right">
-        <span id="dataRefreshInfo" class="data-refresh" title="Bets API date and last refresh time">—</span>
         <span id="clockDisplay" class="clock"></span>
         <span id="streamStatus" class="stream-dot disconnected"></span>
       </div>
@@ -31,36 +30,22 @@
       <!-- LEFT: BANKROLL + MY PICKS -->
       <div class="col-left">
 
-        <!-- BANKROLL — single box: 2x2 (PNL, Win Rate, ROI, AVG EDGE), then Total Stake | Number of bets -->
+        <!-- BANKROLL WIDGET -->
         <div class="panel bankroll-widget">
           <div class="bk-label">BANKROLL</div>
-          <div class="bk-value" id="bankrollValue">CEVICT</div>
-          <div class="bankroll-top-grid">
-            <div class="bk-cell">
-              <div class="bk-cell-label">P/L</div>
-              <div class="bk-cell-value green" id="todayPnl">+$0</div>
+          <div class="bk-value" id="bankrollValue">$100,000</div>
+          <div class="bk-stats">
+            <div class="bk-stat">
+              <div class="bk-stat-label">TODAY P/L</div>
+              <div class="bk-stat-value green" id="todayPnl">+$0</div>
             </div>
-            <div class="bk-cell">
-              <div class="bk-cell-label">WIN RATE</div>
-              <div class="bk-cell-value cyan" id="winRate">--%</div>
+            <div class="bk-stat">
+              <div class="bk-stat-label">TOTAL STAKE</div>
+              <div class="bk-stat-value" id="exposure">$0</div>
             </div>
-            <div class="bk-cell">
-              <div class="bk-cell-label">ROI</div>
-              <div class="bk-cell-value green" id="statROI">0.0%</div>
-            </div>
-            <div class="bk-cell">
-              <div class="bk-cell-label">AVG EDGE</div>
-              <div class="bk-cell-value cyan" id="statAvgEdge">--%</div>
-            </div>
-          </div>
-          <div class="bankroll-bottom-row">
-            <div class="bk-row-item">
-              <span class="bk-row-label">TOTAL STAKE</span>
-              <span class="bk-row-value" id="exposure">$0</span>
-            </div>
-            <div class="bk-row-item">
-              <span class="bk-row-label">BETS</span>
-              <span class="bk-row-value" id="totalBetsCount">0</span>
+            <div class="bk-stat">
+              <div class="bk-stat-label">WIN RATE</div>
+              <div class="bk-stat-value cyan" id="winRate">--%</div>
             </div>
           </div>
           <div class="risk-bar">
@@ -76,6 +61,31 @@
             <span class="badge-count" id="picksCount">0</span>
           </div>
           <div id="picksList" class="picks-list"></div>
+        </div>
+
+        <!-- ROTATING STATS -->
+        <div class="panel stats-panel">
+          <div class="panel-header">
+            <span class="panel-title">PERFORMANCE</span>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-tile">
+              <div class="stat-tile-label">ROI</div>
+              <div class="stat-tile-value green" id="statROI">0.0%</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-tile-label">AVG EDGE</div>
+              <div class="stat-tile-value cyan" id="statAvgEdge">--%</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-tile-label">OPEN BETS</div>
+              <div class="stat-tile-value" id="statOpenBets">0</div>
+            </div>
+            <div class="stat-tile">
+              <div class="stat-tile-label">RECORD</div>
+              <div class="stat-tile-value" id="statRecord">0-0</div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -150,7 +160,7 @@
             </div>
             <div class="edge-item">
               <div class="edge-item-label">EDGE</div>
-              <div class="edge-item-value" id="edgeValue">--%</div>
+              <div class="edge-item-value large" id="edgeValue">--%</div>
             </div>
             <div class="edge-item">
               <div class="edge-item-label">CONFIDENCE</div>
@@ -216,7 +226,7 @@
             </div>
             <div class="pos-row">
               <span class="pos-label">STAKE</span>
-              <span class="pos-value" id="posStake" title="Real money staked on this pick. If you see &quot;MODEL PICK — not placed&quot;, the model recommends this side but no bet was placed.">—</span>
+              <span class="pos-value" id="posStake">—</span>
             </div>
             <div class="pos-row">
               <span class="pos-label">LIVE EV</span>
@@ -264,19 +274,26 @@
       </div>
     </div>
 
-    <!-- BOTTOM: MY BETS HORIZONTAL SCROLL -->
-    <div class="bets-scroll-bar">
-      <div class="bets-scroll-inner" id="betsScrollInner">
-        <span class="bets-scroll-placeholder">No bets yet</span>
-      </div>
-    </div>
-
   </div><!-- end app-wrapper -->
 
   <audio id="cheerSound" preload="auto" src="crowd-cheer.mp3"></audio>
-  <audio id="booSound" preload="auto" src="crowd-disappointment.mp3"></audio>
+  <audio id="booSound" preload="auto" src="croed-disappointment.mp3"></audio>
 
-  <!-- Base font is set in CSS for 75" TV readability; no zoom override -->
+  <script>
+    function fixZoom() {
+      // Detect browser zoom by comparing screen width to window inner width
+      // On a TV at 150% zoom, window.innerWidth will be 2/3 of screen.width
+      const ratio = window.devicePixelRatio || 1;
+      const zoom = Math.round((window.outerWidth / window.innerWidth) * 100) / 100;
+      // If zoom > 1 (browser is zoomed in), scale font down proportionally
+      const base = 1.1; // vw units
+      const adjusted = base / (zoom > 1.05 ? zoom : 1);
+      const pct = Math.max(0.6, Math.min(adjusted, 1.4));
+      document.documentElement.style.fontSize = pct + 'vw';
+    }
+    fixZoom();
+    window.addEventListener('resize', fixZoom);
+  </script>
   <script src="app.js"></script>
 </body>
 

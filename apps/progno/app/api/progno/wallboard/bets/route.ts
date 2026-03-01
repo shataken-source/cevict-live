@@ -45,13 +45,15 @@ export async function GET(request: NextRequest) {
     }
 
     const all = bets || []
-    const settled = all.filter(b => b.result === 'win' || b.result === 'loss')
-    const wins = settled.filter(b => b.result === 'win').length
-    const losses = settled.filter(b => b.result === 'loss').length
+    const r = (v: string | null | undefined) => (v || '').toLowerCase()
+    const settled = all.filter(b => r(b.result) === 'win' || r(b.result) === 'loss')
+    const wins = settled.filter(b => r(b.result) === 'win').length
+    const losses = settled.filter(b => r(b.result) === 'loss').length
     const pending = all.filter(b => !b.result && b.status !== 'cancelled' && b.status !== 'error').length
     const activeBets = all.filter(b => b.status !== 'cancelled' && b.status !== 'error')
     const totalStakeCents = activeBets.reduce((s, b) => s + (b.stake_cents || 0), 0)
     const totalProfitCents = settled.reduce((s, b) => s + (b.profit_cents || 0), 0)
+    const roi = totalStakeCents > 0 ? (totalProfitCents / totalStakeCents) * 100 : 0
 
     return NextResponse.json({
       success: true,
@@ -65,6 +67,7 @@ export async function GET(request: NextRequest) {
         totalStakeCents,
         totalProfitCents,
         winRate: (wins + losses) > 0 ? Math.round((wins / (wins + losses)) * 1000) / 10 : 0,
+        roi: Math.round(roi * 10) / 10,
       },
     })
   } catch (e: any) {

@@ -13,7 +13,7 @@ import { createClient } from '@supabase/supabase-js'
 import { runPickEngine, rankPicks } from '@/app/lib/modules/pick-engine'
 import { MonteCarloEngine } from '@/app/lib/monte-carlo-engine'
 import { GameData } from '@/app/lib/prediction-engine'
-import { getPrimaryKey, getPrimaryKeySource, getFallbackOddsKey } from '../../keys-store'
+import { getPrimaryKey } from '../../keys-store'
 import { estimateTeamStatsFromOdds, estimateTeamStatsEnhanced, shinDevig } from '@/app/lib/odds-helpers'
 import { warmStatsCache, setCurrentGameContext, clearCurrentGameContext } from '@/app/lib/espn-team-stats-service'
 // import { predictScoreComprehensive } from '../../score-prediction-service' // TODO: Fix this import - file doesn't exist
@@ -625,20 +625,10 @@ export async function GET(request: Request) {
     const url = request.url ? new URL(request.url) : null
     const favoriteOnly = url?.searchParams?.get('favoriteOnly') === '1' || url?.searchParams?.get('favoriteOnly') === 'true'
     const earlyLines = url?.searchParams?.get('earlyLines') === '1' || url?.searchParams?.get('earlyLines') === 'true'
-    const paramDate = url?.searchParams?.get('date')
-    // Use requested date when provided; otherwise "today" in America/Chicago (matches cron and Kalshi game dates)
-    const today = paramDate && /^\d{4}-\d{2}-\d{2}$/.test(paramDate)
-      ? paramDate
-      : new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+
+    const today = new Date().toISOString().split('T')[0]
 
     const forceRefresh = url?.searchParams?.get('force') === '1' || url?.searchParams?.get('force') === 'true'
-    const includeDebug = url?.searchParams?.get('debug') === '1' || url?.searchParams?.get('debug') === 'true'
-    const debugAccum: { dateUsed: string; cacheHit: boolean; oddsKeySet: boolean; oddsKeySource?: string; sports: Array<{ sport: string; gamesFetched: number; gamesInWindow: number; picksProduced: number; oddsApiStatus?: number; oddsApiCount?: number }> } = {
-      dateUsed: today,
-      cacheHit: false,
-      oddsKeySet: false,
-      sports: [],
-    }
 
     // Cache only for regular picks (same-day window); early lines always fetch fresh
     // Also skip cache if existing picks have unrealistic scores (e.g., NHL 5-5)
@@ -662,7 +652,6 @@ export async function GET(request: Request) {
       })
 
       if (existingPicks && existingPicks.length > 0 && !hasUnrealisticScores) {
-        debugAccum.cacheHit = true
         const filtered = favoriteOnly ? existingPicks.filter((p: any) => p.is_favorite_pick === true) : existingPicks
         const topFromCache = selectTop10(filtered)
         return NextResponse.json({
@@ -683,16 +672,9 @@ export async function GET(request: Request) {
 
     // Fetch games from Odds API (env + .progno/keys.json)
     const oddsApiKey = getPrimaryKey()
-    debugAccum.oddsKeySet = !!oddsApiKey
-    const oddsKeySource = getPrimaryKeySource()
-    if (oddsApiKey && (includeDebug || oddsKeySource)) {
-      const sourceLabel = oddsKeySource === 'fallback' ? 'fallback (ODDS_API_KEY_2)' : oddsKeySource === 'primary' ? 'primary (ODDS_API_KEY)' : oddsKeySource === 'stored' ? 'stored (.progno/keys.json)' : 'rotation'
-      debugAccum.oddsKeySource = sourceLabel
-      console.log(`[Picks API] Odds API key: using ${sourceLabel}`)
-    }
     if (!oddsApiKey) {
       return NextResponse.json(
-        { error: 'ODDS_API_KEY not configured', ...(includeDebug && { debug: debugAccum }) },
+        { error: 'ODDS_API_KEY not configured' },
         { status: 500 }
       )
     }
@@ -717,8 +699,6 @@ export async function GET(request: Request) {
       }
       try {
         let games: any[] = []
-        let oddsApiStatus: number | undefined
-        let oddsApiCount: number | undefined
 
         // ── LAYER 1: In-memory cache (same serverless instance, 30-min TTL) ──
         const memKey = `${sport}_${earlyLines ? 'early' : 'regular'}`
@@ -744,33 +724,18 @@ export async function GET(request: Request) {
           if (earlyLines) {
             console.log(`[EarlyLines] Fetching ${sport} from API (cache miss)`)
           }
-          let response = await fetch(oddsApiUrl)
-          oddsApiStatus = response.status
-          // On 401, retry once with backup key (ODDS_API_KEY_2) if available and not already using it
-          const fallbackKey = getFallbackOddsKey()
-          if (!response.ok && response.status === 401 && fallbackKey && fallbackKey !== oddsApiKey) {
-            console.log(`[Picks API] The-Odds ${sport} 401 — retrying with backup key (ODDS_API_KEY_2)`)
-            const fallbackUrl = `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${fallbackKey}&regions=us&markets=h2h,spreads,totals&oddsFormat=american`
-            response = await fetch(fallbackUrl)
-            oddsApiStatus = response.status
-          }
+          const response = await fetch(oddsApiUrl)
           if (response.ok) {
             const data = await response.json()
             if (Array.isArray(data)) {
               games = data
-              oddsApiCount = data.length
               // Store in memory cache
               oddsMemCache.set(memKey, { data: games, ts: Date.now() })
               const remaining = response.headers.get('x-requests-remaining')
               console.log(`[Picks API] The-Odds API ${sport}: ${games.length} games (remaining: ${remaining || '?'})`)
             }
           } else {
-            if (response.status === 401) {
-              const src = oddsKeySource === 'fallback' ? 'fallback (ODDS_API_KEY_2)' : oddsKeySource === 'primary' ? 'primary (ODDS_API_KEY)' : String(oddsKeySource)
-              console.warn(`[Picks API] The-Odds ${sport} HTTP 401 Unauthorized — key in use: ${src}. Set ODDS_API_KEY_2 in Key Vault and sync-env, or set USE_ODDS_FALLBACK_KEY=1.`)
-            } else {
-              console.warn(`[Picks API] The-Odds ${sport} HTTP ${response.status}`)
-            }
+            console.warn(`[Picks API] The-Odds ${sport} HTTP ${response.status}`)
           }
         }
 
@@ -798,10 +763,7 @@ export async function GET(request: Request) {
 
         // API-Sports fallback disabled — key quota exhausted; The-Odds is primary source
 
-        if (games.length === 0) {
-          debugAccum.sports.push({ sport, gamesFetched: 0, gamesInWindow: 0, picksProduced: 0, oddsApiStatus, oddsApiCount })
-          continue
-        }
+        if (games.length === 0) continue
 
         // Check odds freshness and write to Supabase if stale
         if (supabase && games.length > 0) {
@@ -826,12 +788,9 @@ export async function GET(request: Request) {
           await warmStatsCache(games, league).catch(() => { })
         }
 
-        let gamesInWindow = 0
-        let picksFromSport = 0
         for (const game of games) {
           const commence = game.commence_time ? new Date(game.commence_time) : null
           if (!commence || !inWindow(commence)) continue
-          gamesInWindow++
           const upper2 = sport.toUpperCase()
           if (upper2.includes('NBA') || upper2.includes('NCAAB') || upper2.includes('COLLEGE')) {
             const ctxLeague = upper2.includes('NBA') ? 'nba' : 'ncaab'
@@ -840,7 +799,6 @@ export async function GET(request: Request) {
           const pick = await runPickEngine(game, sport)
           clearCurrentGameContext()
           if (!pick) continue
-          picksFromSport++
           // Tag pick with early_lines flag so DB rows are distinguishable
           pick.early_lines = earlyLines
           // Ensure game_matchup is always set (not-null constraint)
@@ -863,10 +821,8 @@ export async function GET(request: Request) {
             allPicks.push(pick)
           }
         }
-        debugAccum.sports.push({ sport, gamesFetched: games.length, gamesInWindow, picksProduced: picksFromSport, oddsApiStatus, oddsApiCount })
       } catch (sportError) {
         console.error(`Error processing ${sport}:`, sportError)
-        debugAccum.sports.push({ sport, gamesFetched: 0, gamesInWindow: 0, picksProduced: 0, oddsApiStatus: undefined, oddsApiCount: undefined })
         continue
       }
     }
@@ -889,7 +845,6 @@ export async function GET(request: Request) {
       value_bets_count: topPicks.filter((p: any) => p.has_value).length,
       strategy: 'Triple Alignment: model pick + value bet side + MC agree. Top 20 by composite score (confidence + edge + EV + triple bonus). Max 3 per sport (NFL/NBA/NHL/MLB/NCAAF/NCAAB). Ensures all tiers (Elite/Pro/Free) receive picks. Consensus odds (up to 3 books).',
       ...(allPicks.length === 0 && { hint: 'Odds source: The Odds API (the-odds-api.com). Check quota and regions if key is set.' }),
-      ...((includeDebug || allPicks.length === 0) && { debug: debugAccum }),
       earlyLines: earlyLines,
       window: windowLabel,
       powered_by: 'Cevict Flex (7-Dimensional Claude Effect)',

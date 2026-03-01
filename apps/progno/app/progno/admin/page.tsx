@@ -114,14 +114,25 @@ function StatusLine({ ok, msg }: { ok: boolean; msg: string }) {
   );
 }
 
-function DarkResultsTable({ rows }: { rows: any[] }) {
+function DarkResultsTable({
+  rows,
+  resultsDate,
+  secret,
+  onSetScoreAndRegrade,
+}: {
+  rows: any[];
+  resultsDate?: string | null;
+  secret?: string;
+  onSetScoreAndRegrade?: (row: any, homeScore: number, awayScore: number) => Promise<void>;
+}) {
   const sorted = [...rows].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0));
+  const canSetScore = Boolean(resultsDate && secret?.trim() && onSetScoreAndRegrade);
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: C.mono, fontSize: 11 }}>
         <thead>
           <tr style={{ borderBottom: `1px solid ${C.borderBright}` }}>
-            {['#', 'MATCH', 'GAME DATE', 'PICK', 'H/A', 'CONF%', 'ODDS', 'STATUS', 'SCORE'].map(h => (
+            {['#', 'MATCH', 'GAME DATE', 'PICK', 'H/A', 'CONF%', 'ODDS', 'STATUS', 'SCORE', ...(canSetScore ? [''] : [])].map(h => (
               <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: C.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 9 }}>{h}</th>
             ))}
           </tr>
@@ -129,6 +140,7 @@ function DarkResultsTable({ rows }: { rows: any[] }) {
         <tbody>
           {sorted.map((r, i) => {
             const status = r.status || r.result || '';
+            const isPending = !status || status === 'pending';
             const statusColor = status === 'WIN' || status === 'win' ? C.green : status === 'LOSS' || status === 'loss' || status === 'LOSE' || status === 'lose' ? C.red : C.amber;
             return (
               <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? 'transparent' : '#070e18' }}>
@@ -141,6 +153,28 @@ function DarkResultsTable({ rows }: { rows: any[] }) {
                 <td style={{ padding: '7px 10px', color: (r.odds ?? 0) > 0 ? C.green : C.text }}>{fmt(r.odds)}</td>
                 <td style={{ padding: '7px 10px' }}>{status ? <Badge color={statusColor}>{status.toUpperCase()}</Badge> : <span style={{ color: C.textDim }}>pending</span>}</td>
                 <td style={{ padding: '7px 10px', color: C.textDim }}>{r.actualScore ? `${r.actualScore.home}-${r.actualScore.away}` : r.home_score != null ? `${r.home_score}-${r.away_score}` : '—'}</td>
+                {canSetScore && (
+                  <td style={{ padding: '7px 10px' }}>
+                    {isPending && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const homeStr = window.prompt(`Home score (e.g. ${r.home_team}):`, '');
+                          if (homeStr == null) return;
+                          const awayStr = window.prompt(`Away score (e.g. ${r.away_team}):`, '');
+                          if (awayStr == null) return;
+                          const homeScore = parseInt(homeStr, 10);
+                          const awayScore = parseInt(awayStr, 10);
+                          if (Number.isNaN(homeScore) || Number.isNaN(awayScore)) return;
+                          await onSetScoreAndRegrade(r, homeScore, awayScore);
+                        }}
+                        style={{ padding: '3px 8px', background: `${C.blue}22`, border: `1px solid ${C.blue}60`, borderRadius: 4, color: C.blue, cursor: 'pointer', fontFamily: C.mono, fontSize: 10 }}
+                      >
+                        Set score
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             );
           })}
@@ -210,6 +244,12 @@ export default function AdminPage() {
   // trading settings
   const [tradeSettings, setTradeSettings] = useState<{ enabled: boolean; stakeCents: number; minConfidence: number; maxPicksPerDay: number; dryRun: boolean } | null>(null);
   const [tradeMsg, setTradeMsg] = useState<string | null>(null);
+
+  // unsettled Kalshi bets (for CONFIG)
+  const [pendingKalshiBets, setPendingKalshiBets] = useState<{ pick: string; home_team?: string; away_team?: string; sport?: string; league?: string; game_date?: string; ticker?: string; market_title?: string }[]>([]);
+  const [pendingKalshiLoading, setPendingKalshiLoading] = useState(false);
+  const [marketStatuses, setMarketStatuses] = useState<Record<string, { status: string; result?: string; error?: string }>>({});
+  const [kalshiStatusLoading, setKalshiStatusLoading] = useState(false);
 
   // bet selection modal
   const [betModalOpen, setBetModalOpen] = useState(false);
@@ -291,6 +331,31 @@ export default function AdminPage() {
     try { const res = await fetch('/api/progno/admin/cron/jobs', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` }, body: JSON.stringify({ id }) }); const j = await res.json(); if (res.ok && j.success) setCronJobs(j.jobs || []); } catch { }
   };
 
+  const loadPendingKalshiBets = async () => {
+    if (!secret.trim()) return;
+    setPendingKalshiLoading(true);
+    setPendingKalshiBets([]);
+    setMarketStatuses({});
+    try {
+      const res = await fetch('/api/progno/admin/pending-kalshi-bets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: secret.trim() }) });
+      const j = await res.json();
+      if (res.ok && j.success && Array.isArray(j.pending)) setPendingKalshiBets(j.pending);
+    } catch { setPendingKalshiBets([]); } finally { setPendingKalshiLoading(false); }
+  };
+
+  const loadKalshiStatus = async () => {
+    if (!secret.trim() || pendingKalshiBets.length === 0) return;
+    const tickers = [...new Set((pendingKalshiBets as any[]).map((b) => b.ticker).filter(Boolean))] as string[];
+    if (tickers.length === 0) return;
+    setKalshiStatusLoading(true);
+    setMarketStatuses({});
+    try {
+      const res = await fetch('/api/progno/admin/kalshi-market-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ secret: secret.trim(), tickers }) });
+      const j = await res.json();
+      if (res.ok && j.success && j.markets) setMarketStatuses(j.markets);
+    } catch { } finally { setKalshiStatusLoading(false); }
+  };
+
   // gameDate already initialized to getToday() — no effect needed
 
   // -- Live Odds ---------------------------------------------------------------
@@ -323,7 +388,7 @@ export default function AdminPage() {
   };
 
   // -- Cron --------------------------------------------------------------------
-  const runCron = async (job: 'daily-predictions' | 'daily-results' | 'daily-kalshi') => {
+  const runCron = async (job: 'daily-predictions' | 'daily-results' | 'daily-kalshi' | 'kalshi-settle', dateOverride?: string) => {
     if (!secret.trim()) { setCronLog({ job, ok: false, msg: 'Enter admin secret first.' }); return; }
     setCronLoading(job);
     setCronLog(null);
@@ -331,7 +396,7 @@ export default function AdminPage() {
     setScoresByLeague(null);
     try {
       const body: any = { secret: secret.trim(), job };
-      if (job === 'daily-results') body.date = resultsDate;
+      if (job === 'daily-results') body.date = dateOverride ?? resultsDate;
       const res = await fetch('/api/progno/admin/run-cron', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -342,9 +407,30 @@ export default function AdminPage() {
           const wrong = (graded ?? 0) - (correct ?? 0);
           msg = `${total ?? 0} picks: ${correct ?? 0} correct, ${wrong} wrong, ${pending ?? 0} pending. Win rate ${winRate ?? 0}% (of ${graded ?? 0} graded).`;
           setResultsList(Array.isArray(data.data?.results) ? data.data.results : []);
-          setResultsListDate(resultsDate);
+          setResultsListDate(body.date ?? resultsDate);
           setFallbackSummary(data.data?.fallbackSummary ?? null);
           setScoresByLeague(data.data?.scoresByLeague ?? null);
+        } else if (job === 'daily-kalshi' && data.data) {
+          const d = data.data;
+          const total = d.totalPicks ?? 0;
+          const submitted = d.submitted ?? 0;
+          const errors = d.errors ?? 0;
+          const skipped = d.skipped ?? 0;
+          const noMarket = (d.results || []).filter((r: any) => r.status === 'no_market').length;
+          msg = total === 0
+            ? 'No picks found for today. Run predictions first (PICKS tab → RUN PREDICTIONS).'
+            : `${total} picks → ${submitted} submitted, ${noMarket} no market, ${errors} errors${skipped ? `, ${skipped} skipped` : ''}. ${d.dryRun ? '(Dry run — no orders placed)' : ''}`.trim();
+          if (job !== 'daily-results') setResultsList([]);
+        } else if (job === 'kalshi-settle' && data.data) {
+          const d = data.data;
+          const updated = d.updated ?? 0;
+          const cancelledCount = d.cancelled ?? 0;
+          const pending = d.pending ?? 0;
+          const parts = [];
+          if (updated > 0) parts.push(`Settled ${updated} bet(s)`);
+          if (cancelledCount > 0) parts.push(`${cancelledCount} marked cancelled (refunded)`);
+          msg = parts.length > 0 ? parts.join(', ') + '.' : (pending > 0 ? `No new settlements (${pending} still pending).` : 'No pending Kalshi bets.');
+          if (job !== 'daily-results') setResultsList([]);
         } else {
           msg = data.data?.message ?? (summary ? JSON.stringify(summary) : 'Done');
           if (job !== 'daily-results') setResultsList([]);
@@ -758,7 +844,29 @@ export default function AdminPage() {
             {resultsList.length > 0 && resultsListDate && (
               <Card>
                 <SectionLabel>RESULTS — {resultsListDate} ({resultsList.length} picks)</SectionLabel>
-                <DarkResultsTable rows={resultsList} />
+                <DarkResultsTable
+                  rows={resultsList}
+                  resultsDate={resultsListDate}
+                  secret={secret}
+                  onSetScoreAndRegrade={async (row, homeScore, awayScore) => {
+                    const res = await fetch('/api/progno/admin/score-override', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        secret: secret.trim(),
+                        date: resultsListDate,
+                        home_team: row.home_team,
+                        away_team: row.away_team,
+                        home_score: homeScore,
+                        away_score: awayScore,
+                        league: row.sport || row.league || 'NHL',
+                      }),
+                    });
+                    const j = await res.json();
+                    if (!res.ok || !j.success) { setCronLog({ job: 'daily-results', ok: false, msg: j.error || 'Override failed' }); return; }
+                    await runCron('daily-results', resultsListDate);
+                  }}
+                />
               </Card>
             )}
 
@@ -1026,8 +1134,11 @@ export default function AdminPage() {
               <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
                 <Btn onClick={loadCronJobs} disabled={!secret.trim()} color={C.textDim}>↺ LOAD JOBS</Btn>
                 <Btn onClick={() => addCronJob('Daily Kalshi', '/api/cron/daily-kalshi', '0 9 * * *')} disabled={!secret.trim()} color={C.green}>+ ADD DAILY KALSHI (9:00)</Btn>
-                <Btn onClick={() => runCron('daily-kalshi')} disabled={!secret.trim()} color={C.blue}>▶ RUN KALSHI NOW</Btn>
+                <Btn onClick={() => runCron('daily-kalshi')} disabled={!secret.trim() || cronLoading === 'daily-kalshi'} color={C.blue}>{cronLoading === 'daily-kalshi' ? '⟳ RUNNING...' : '▶ RUN KALSHI NOW'}</Btn>
+                <Btn onClick={() => runCron('kalshi-settle')} disabled={!secret.trim() || cronLoading === 'kalshi-settle'} color={C.cyan} title="Fetch Kalshi results and update actual_bets (win/loss, P/L)">{cronLoading === 'kalshi-settle' ? '⟳ SETTLING...' : '▶ SETTLE KALSHI BETS'}</Btn>
+                <Btn onClick={() => runCron('kalshi-settle')} disabled={!secret.trim() || cronLoading === 'kalshi-settle'} color={C.green} title="Settle all finalized games and mark cancelled markets (refund). Same as Settle Kalshi but one-click fix.">{cronLoading === 'kalshi-settle' ? '⟳ FIXING...' : '◆ FIX ALL'}</Btn>
               </div>
+              {(cronLog && (cronLog.job === 'daily-kalshi' || cronLog.job === 'kalshi-settle')) && <StatusLine ok={cronLog.ok} msg={cronLog.msg} />}
               {cronMsg && <div style={{ fontFamily: C.mono, fontSize: 11, color: C.textDim, marginBottom: 8 }}>{cronMsg}</div>}
               {cronJobs.length > 0 ? (
                 <div style={{ border: `1px solid ${C.border}`, borderRadius: 6 }}>
@@ -1047,6 +1158,34 @@ export default function AdminPage() {
                 <div style={{ fontFamily: C.mono, fontSize: 12, color: C.textDim }}>No cron jobs saved.</div>
               )}
               <div style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim, marginTop: 8 }}>Note: This stores jobs in .progno/cron-jobs.json for tracking. Use Vercel Cron or Windows Task Scheduler to hit the shown URLs on schedule.</div>
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <Btn onClick={loadPendingKalshiBets} disabled={!secret.trim() || pendingKalshiLoading} color={C.textDim}>{pendingKalshiLoading ? '⟳ Loading...' : '📋 SHOW UNSETTLED GAMES'}</Btn>
+                  <Btn onClick={loadKalshiStatus} disabled={!secret.trim() || pendingKalshiBets.length === 0 || kalshiStatusLoading} color={C.cyan} title="Query Kalshi for each ticker: open, settled, cancelled, etc.">{kalshiStatusLoading ? '⟳ Checking...' : '🔍 CHECK STATUS ON KALSHI'}</Btn>
+                </div>
+                {pendingKalshiBets.length > 0 && (
+                  <div style={{ background: '#060d18', borderRadius: 6, padding: 10, maxHeight: 320, overflowY: 'auto' }}>
+                    <div style={{ fontFamily: C.mono, fontSize: 11, color: C.textDim, marginBottom: 6 }}>{pendingKalshiBets.length} unsettled Kalshi bet(s). Click “Check status on Kalshi” to see if markets are cancelled, settled, or still open.</div>
+                    {(pendingKalshiBets.slice(0, 25) as any[]).map((b, i) => {
+                      const st = b.ticker ? marketStatuses[b.ticker] : null;
+                      const isSettled = st?.status === 'settled' || st?.status === 'closed' || (st?.status === 'finalized' && st?.result === 'yes');
+                      const isCancelled = st?.status === 'cancelled' || (st?.status === 'finalized' && st?.result === 'no');
+                      const isOpen = st?.status === 'open' || st?.status === 'active';
+                      const statusColor = !st ? C.textDim : st.status === 'error' ? C.red : isCancelled ? '#e67e22' : isSettled ? C.green : isOpen ? C.blue : st.status === 'inactive' ? '#8899aa' : C.textDim;
+                      return (
+                        <div key={i} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '6px 0', borderBottom: i < Math.min(25, pendingKalshiBets.length) - 1 ? `1px solid ${C.border}` : 'none', fontFamily: C.mono, fontSize: 11 }}>
+                          <span style={{ color: C.textBright }}>{b.game_date ?? '—'}</span>
+                          <span style={{ color: C.cyan }}>{(b.sport || b.league || '').toUpperCase()}</span>
+                          <span style={{ color: C.text }}>{b.pick || (b.away_team && b.home_team ? `${b.away_team} @ ${b.home_team}` : b.market_title || b.ticker || '—')}</span>
+                          {b.ticker && <span style={{ color: C.textDim, fontSize: 10 }}>{b.ticker}</span>}
+                          {st && <span style={{ color: statusColor, fontWeight: 600, fontSize: 10 }}>{st.status}{st.result ? ` (${st.result})` : ''}{st.error ? ` — ${st.error}` : ''}</span>}
+                        </div>
+                      );
+                    })}
+                    {pendingKalshiBets.length > 25 && <div style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim, marginTop: 6 }}>… and {pendingKalshiBets.length - 25} more</div>}
+                  </div>
+                )}
+              </div>
             </Card>
 
             <Card style={{ gridColumn: '1 / -1' }}>

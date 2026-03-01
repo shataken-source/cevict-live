@@ -21,6 +21,7 @@ import { TrueEdgeSignal } from './signals/true-edge-signal'
 import { ClaudeEffectSignal } from './signals/claude-effect-signal'
 import { HomeAwayBiasSignal } from './signals/home-away-bias-signal'
 import { ProbabilityAnalyzerSignal } from './signals/probability-analyzer-signal'
+// Cevict prediction analyzer: 16-model ensemble, wired into pipeline and evaluateFlip().
 import { MCConfidenceModule } from './confidence/mc-confidence'
 import { OddsRangeFilter } from './filters/odds-range-filter'
 import { LeagueFloorFilter } from './filters/league-floor-filter'
@@ -44,7 +45,7 @@ export const SIGNAL_MODULES: SignalModule[] = [
   // new SharpMoneySignal(),
 ]
 
-// Exported for pick-engine to call evaluateFlip() after value bet override
+// Cevict prediction analyzer — exported for pick-engine to call evaluateFlip() after value bet override.
 export const PROBABILITY_ANALYZER = _probabilityAnalyzer
 
 // ── Confidence formula (swap to change how signals combine) ───────────────────

@@ -19,13 +19,14 @@
  *   1. Parse consensus odds from bookmakers
  *   2. Compute Shin-devig no-vig probabilities
  *   3. Run Monte Carlo simulation
- *   4. Run all signal modules in parallel
+ *   4. Run all signal modules in parallel (includes Cevict 16-model probability analyzer)
  *   5. Aggregate signals → base pick direction
  *   6. Apply value bet override → FINAL pick
- *   7. Calculate confidence (once, with final pick)
- *   8. Run all filter modules on FINAL pick — drop if any fails
- *   9. Check MC agreement with correct bet type
- *   10. Build pick object with full signal trace
+ *   7. Cevict prediction analyzer evaluateFlip() — can flip pick for NCAAB/NCAAF
+ *   8. Calculate confidence (once, with final pick)
+ *   9. Run all filter modules on FINAL pick — drop if any fails
+ *  10. Check MC agreement with correct bet type
+ *  11. Build pick object with full signal trace
  *
  * To add a new signal: see module-registry.ts
  */
@@ -301,8 +302,8 @@ export async function runPickEngine(game: any, sport: string): Promise<any | nul
     if (bestValueBet.line != null) pickLine = bestValueBet.line
   }
 
-  // ── 7b. Probability Analyzer flip check ─────────────────────────────────
-  // 16-model ensemble can flip the pick if it strongly disagrees (NCAA only)
+  // ── 7b. Cevict prediction analyzer flip check ──────────────────────────
+  // 16-model ensemble (Cevict) can flip the pick if it strongly disagrees (NCAAB/NCAAF/NCAA).
   const analyzerFlip = PROBABILITY_ANALYZER.evaluateFlip(ctx, pick, pick === game.home_team)
   if (analyzerFlip) {
     console.log(`[probability-analyzer] FLIP: ${pick} → ${analyzerFlip.pick} (${analyzerFlip.reason})`)
