@@ -22,6 +22,67 @@ import {
   getCryptoModelProbability,
 } from './probability-bridge';
 
+/** ESPN scoreboard path by league */
+const ESPN_LEAGUE_PATH: Record<string, string> = {
+  NBA: 'basketball/nba',
+  NFL: 'football/nfl',
+  NHL: 'hockey/nhl',
+  MLB: 'baseball/mlb',
+  NCAAB: 'basketball/mens-college-basketball',
+  NCAA: 'basketball/mens-college-basketball',
+  NCAAF: 'football/college-football',
+  CBB: 'baseball/college-baseball',
+};
+
+interface LiveScore {
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number;
+  awayScore: number;
+  status: string;
+}
+
+/** Fetch current/live scores from ESPN for a league. */
+async function fetchLiveScoresForLeague(league: string): Promise<LiveScore[]> {
+  const path = ESPN_LEAGUE_PATH[league] || ESPN_LEAGUE_PATH[league?.toUpperCase()];
+  if (!path) return [];
+  try {
+    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard`, { headers: { 'Cache-Control': 'no-store' } });
+    if (!res.ok) return [];
+    const data: any = await res.json();
+    const out: LiveScore[] = [];
+    for (const event of data.events || []) {
+      const comp = event.competitions?.[0];
+      if (!comp) continue;
+      const homeComp = comp.competitors?.find((c: any) => c.homeAway === 'home');
+      const awayComp = comp.competitors?.find((c: any) => c.homeAway === 'away');
+      if (!homeComp?.team || !awayComp?.team) continue;
+      const statusType = event.status?.type;
+      const status = statusType?.state === 'in' ? 'LIVE' : statusType?.state === 'post' ? 'FINAL' : 'UPCOMING';
+      out.push({
+        homeTeam: (homeComp.team.displayName || homeComp.team.abbreviation || '').trim(),
+        awayTeam: (awayComp.team.displayName || awayComp.team.abbreviation || '').trim(),
+        homeScore: parseInt(String(homeComp.score || 0), 10) || 0,
+        awayScore: parseInt(String(awayComp.score || 0), 10) || 0,
+        status,
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+function matchTeam(a: string, b: string): boolean {
+  const x = (a || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const y = (b || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return x.length >= 2 && y.length >= 2 && (x.includes(y) || y.includes(x));
+}
+
+function findLiveScore(liveScores: LiveScore[], homeTeam: string, awayTeam: string): LiveScore | null {
+  return liveScores.find(s => matchTeam(s.homeTeam, homeTeam) && matchTeam(s.awayTeam, awayTeam)) || null;
+}
+
 /**
  * Environment loading policy (alpha-hunter):
  * - NEVER load repo-root env files (they may contain prod settings for other apps).
@@ -494,6 +555,48 @@ export class KalshiTrader {
   }
 
   /**
+   * Get a single market by ticker (includes result/expiration_value when settled).
+   * Use this to get the official resolution (e.g. final score) from Kalshi after settlement.
+   */
+  async getMarket(ticker: string): Promise<{
+    result?: 'yes' | 'no' | string;
+    status?: string;
+    expiration_value?: string;
+    settlement_ts?: string;
+    title?: string;
+  } | null> {
+    if (!this.keyConfigured || !ticker) return null;
+    try {
+      await this.enforceRateLimit();
+      const fullPath = `/trade-api/v2/markets/${encodeURIComponent(ticker)}`;
+      const { signature, timestamp } = await this.signRequestWithTimestamp('GET', fullPath);
+      if (!signature) return null;
+      const apiUrl = this.baseUrl.replace('/trade-api/v2', '') + fullPath;
+      assertKalshiRequestUrlIsDemo(apiUrl);
+      const response = await fetch(apiUrl, {
+        headers: {
+          'KALSHI-ACCESS-KEY': this.apiKeyId,
+          'KALSHI-ACCESS-SIGNATURE': signature,
+          'KALSHI-ACCESS-TIMESTAMP': timestamp,
+        },
+      });
+      if (!response.ok) return null;
+      const data: any = await response.json();
+      const m = data?.market;
+      if (!m || typeof m !== 'object') return null;
+      return {
+        result: m.result,
+        status: m.status,
+        expiration_value: m.expiration_value,
+        settlement_ts: m.settlement_ts,
+        title: m.title,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Get orderbook for a market to calculate Maker prices
    * Returns best bid/ask for YES and NO sides
    *
@@ -685,19 +788,41 @@ export class KalshiTrader {
     const envPages = parseInt(process.env.KALSHI_MAX_PAGES || '15', 10);
     const maxPages = Number.isFinite(envPages) && envPages > 0 ? envPages : 15;
     const allMarkets = await this.getMarketsParallel(1000, maxPages);
-    // For Progno matching, only use GAME/WINNER/MONEY markets (skip TOTAL, SPREAD, PROP, etc.)
-    const GAME_TICKER_RE = /GAME|WINNER|MONEY/i;
+    // For Progno matching: GAME/WINNER/MONEY (winner) + TOTAL (over/under)
+    const GAME_TICKER_RE = /GAME|WINNER|MONEY|TOTAL/i;
     const dedupedMarkets = allMarkets.filter(m => {
       const t = (m?.ticker || '').toUpperCase();
       const et = (m?.event_ticker || '').toUpperCase();
       return GAME_TICKER_RE.test(t) || GAME_TICKER_RE.test(et);
     });
-    console.log(`   📊 ${dedupedMarkets.length} GAME/WINNER markets of ${allMarkets.length} total`);
+    console.log(`   📊 ${dedupedMarkets.length} GAME/WINNER/TOTAL markets of ${allMarkets.length} total`);
+    if (dedupedMarkets.length > 0) {
+      const sampleTickers = dedupedMarkets.slice(0, 5).map(m => m?.ticker || '?');
+      const sampleTitles = dedupedMarkets.slice(0, 3).map(m => (m?.title || '').slice(0, 50));
+      console.log(`   [DEBUG] Kalshi sample tickers: ${sampleTickers.join(', ')}`);
+      sampleTitles.forEach((t, i) => console.log(`   [DEBUG]   Kalshi title ${i + 1}: ${t}…`));
+    }
 
     const prognoEvents = await getPrognoProbabilities();
+    console.log(`   [DEBUG] Progno events to match: ${prognoEvents.length}`);
+    if (prognoEvents.length === 0) {
+      console.warn(`   [DEBUG] No Progno picks — run "RUN PREDICTIONS (BOTH)" in Progno admin and set PROGNO_BASE_URL if not using default.`);
+    }
     const getCbPrice = options?.getCoinbasePrice;
 
     const opps: Opportunity[] = [];
+    const picksForFriends: { pick: string; opponent: string; odds: string; gameTime: string; currentScore: string }[] = [];
+    let matchMiss = 0;
+    let edgeSkip = 0;
+    let profitSkip = 0;
+
+    // Live scores from ESPN (for picks file)
+    const leaguesNeeded = [...new Set(prognoEvents.map(e => e.league))];
+    const liveScores: LiveScore[] = [];
+    for (const league of leaguesNeeded) {
+      const scores = await fetchLiveScoresForLeague(league);
+      liveScores.push(...scores);
+    }
 
     // 1) Sports: use Probability Bridge matching → edge vs entry price
     // pickIsYesSide tells us if Progno's pick is the YES team on Kalshi.
@@ -706,6 +831,7 @@ export class KalshiTrader {
     for (const ev of prognoEvents) {
       const matched = matchKalshiMarketToProgno(ev, dedupedMarkets);
       if (!matched) {
+        matchMiss++;
         console.log(`[MATCH MISS] ${ev.league}: ${ev.pick} (${ev.homeTeam} vs ${ev.awayTeam}) — no Kalshi market found`);
         continue;
       }
@@ -719,6 +845,7 @@ export class KalshiTrader {
       // Edge: our model prob vs the entry price we'd pay
       const edge = modelProb - entryPrice;
       if (edge < minEdge) {
+        edgeSkip++;
         console.log(`[EDGE SKIP] ${ev.league}: ${ev.pick} → ${matched.ticker} ${side} — model=${modelProb}% entry=${entryPrice}¢ edge=${edge.toFixed(1)}% (min ${minEdge}%)`);
         continue;
       }
@@ -726,6 +853,7 @@ export class KalshiTrader {
       // Fee-aware profit check
       const profitCalc = calcNetProfit(10, entryPrice);
       if (profitCalc.netProfit < MIN_NET_PROFIT) {
+        profitSkip++;
         console.log(`[PROFIT SKIP] ${ev.league}: ${ev.pick} → ${matched.ticker} ${side} — net=$${profitCalc.netProfit.toFixed(2)} (min $${MIN_NET_PROFIT})`);
         continue;
       }
@@ -758,6 +886,48 @@ export class KalshiTrader {
         expiresAt: nowIso,
         createdAt: nowIso,
       });
+      const opponent = ev.totalLine != null ? `${ev.homeTeam} vs ${ev.awayTeam}` : (ev.pick === ev.homeTeam ? ev.awayTeam : ev.homeTeam);
+      let gameTimeStr = '';
+      if (ev.gameTime) {
+        try {
+          const d = new Date(ev.gameTime);
+          if (!Number.isNaN(d.getTime())) {
+            gameTimeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+          } else {
+            gameTimeStr = ev.gameTime;
+          }
+        } catch {
+          gameTimeStr = ev.gameTime;
+        }
+      }
+      const live = findLiveScore(liveScores, ev.homeTeam, ev.awayTeam);
+      const currentScore = live
+        ? (live.status === 'LIVE' ? 'LIVE ' : live.status === 'FINAL' ? 'FINAL ' : '') + `${live.awayScore}-${live.homeScore}`
+        : '';
+      picksForFriends.push({
+        pick: ev.pick,
+        opponent,
+        odds: `${entryPrice}¢`,
+        gameTime: gameTimeStr,
+        currentScore,
+      });
+    }
+
+    if (prognoEvents.length > 0) {
+      console.log(`   [DEBUG] Progno→Kalshi: ${opps.filter(o => o.source === 'PROGNO').length} opportunities | ${matchMiss} match miss | ${edgeSkip} edge skip | ${profitSkip} profit skip`);
+    }
+
+    if (picksForFriends.length > 0) {
+      const outPath = path.join(alphaHunterRoot, 'picks-for-friends.txt');
+      const lines = picksForFriends.map(({ pick, opponent, odds, gameTime, currentScore }) =>
+        [pick, opponent, odds, gameTime || '—', currentScore || '—'].join(' | ')
+      );
+      try {
+        fs.writeFileSync(outPath, lines.join('\n'), 'utf8');
+        console.log(`   📄 Wrote ${picksForFriends.length} pick(s) to ${outPath}`);
+      } catch (e) {
+        console.warn(`   ⚠️ Could not write picks-for-friends.txt: ${(e as Error).message}`);
+      }
     }
 
     // 2) Crypto fallback: use Coinbase-based probability model

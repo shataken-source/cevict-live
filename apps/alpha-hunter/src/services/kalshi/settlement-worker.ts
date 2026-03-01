@@ -103,12 +103,23 @@ export class KalshiSettlementWorker {
 
       const closedAt = settlement.settled_time ? new Date(settlement.settled_time) : new Date();
 
+      // Get official resolution from Kalshi (result + expiration_value e.g. final score)
+      const market = await this.kalshi.getMarket(trade.market_id);
+      let resolutionDetail: string | undefined;
+      if (market?.result != null) {
+        resolutionDetail = market.expiration_value
+          ? `${market.result} (${market.expiration_value})`
+          : String(market.result);
+        console.log(`   📊 ${trade.market_id} Kalshi result: ${resolutionDetail}`);
+      }
+
       await closeTradeRecord(trade.id as string, {
         outcome,
         pnl: pnlUsd,
         exit_price: exitPriceCents,
         closed_at: closedAt,
         contracts,
+        ...(resolutionDetail !== undefined && { resolution_detail: resolutionDetail }),
       });
 
       await markBotPredictionsResolved("kalshi", trade.market_id, outcome, pnlUsd);

@@ -309,6 +309,7 @@ export interface TradeRecord {
   confidence?: number;
   edge?: number;
   outcome?: 'win' | 'loss' | 'open';
+  resolution_detail?: string;
 }
 
 export async function saveTradeRecord(trade: TradeRecord): Promise<string | null> {
@@ -431,21 +432,24 @@ export async function getOpenTradeRecords(
 
 export async function closeTradeRecord(
   tradeId: string,
-  updates: Pick<TradeRecord, 'outcome' | 'pnl' | 'exit_price' | 'closed_at'> & { contracts?: number }
+  updates: Pick<TradeRecord, 'outcome' | 'pnl' | 'exit_price' | 'closed_at' | 'resolution_detail'> & { contracts?: number }
 ): Promise<boolean> {
   const client = getClient();
   if (!client) return false;
 
+  const payload: Record<string, unknown> = {
+    outcome: updates.outcome,
+    pnl: updates.pnl,
+    exit_price: updates.exit_price,
+    closed_at: updates.closed_at?.toISOString(),
+    contracts: updates.contracts,
+  };
+  if (updates.resolution_detail !== undefined) payload.resolution_detail = updates.resolution_detail;
+
   try {
     const { error } = await client
       .from('trade_history')
-      .update({
-        outcome: updates.outcome,
-        pnl: updates.pnl,
-        exit_price: updates.exit_price,
-        closed_at: updates.closed_at?.toISOString(),
-        contracts: updates.contracts,
-      })
+      .update(payload)
       .eq('id', tradeId);
 
     if (error) {

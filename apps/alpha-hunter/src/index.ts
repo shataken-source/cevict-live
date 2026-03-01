@@ -14,6 +14,7 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as fs from 'fs';
 
 // Load env from the alpha-hunter app directory (not repo root)
 const alphaRoot = path.resolve(__dirname, '..');
@@ -43,6 +44,7 @@ export class TradingBot {
   private running = false;
   private executionLock = false;
   private cycleCount = 0;
+  private picksSmsInterval: ReturnType<typeof setInterval> | null = null;
 
   // Live balance tracking (refreshed each cycle)
   private kalshiBalance = 0;
@@ -98,9 +100,30 @@ export class TradingBot {
     const shutdown = () => {
       console.log('\n🛑 Graceful shutdown...');
       this.running = false;
+      if (this.picksSmsInterval) {
+        clearInterval(this.picksSmsInterval);
+        this.picksSmsInterval = null;
+      }
     };
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
+
+    // Picks SMS every ~10 min (from picks-for-friends.txt) so you can copy/paste to friends when not at home
+    const PICKS_SMS_MINUTES = Math.max(5, parseInt(process.env.PICKS_SMS_INTERVAL_MINUTES || '10', 10));
+    this.picksSmsInterval = setInterval(() => {
+      const filePath = path.join(alphaRoot, 'picks-for-friends.txt');
+      try {
+        if (fs.existsSync(filePath)) {
+          const body = fs.readFileSync(filePath, 'utf8').trim();
+          if (body) {
+            this.sms.sendPicksUpdate(body).then(() => {});
+          }
+        }
+      } catch (e) {
+        console.warn('   ⚠️ Picks SMS read failed:', (e as Error).message);
+      }
+    }, PICKS_SMS_MINUTES * 60 * 1000);
+    console.log(`📱 Picks SMS: every ${PICKS_SMS_MINUTES} min (from picks-for-friends.txt)\n`);
 
     // Main loop
     while (this.running) {
@@ -209,7 +232,9 @@ export class TradingBot {
 
     // Analyze all sources via AI Brain
     const analysis = await this.brain.analyzeAllSources();
-    console.log(`📊 Found ${analysis.allOpportunities.length} opportunities (confidence ≥ min)`);
+    const minConf = parseFloat(process.env.MIN_CONFIDENCE || '65');
+    const minEv = parseFloat(process.env.MIN_EXPECTED_VALUE || '5');
+    console.log(`📊 Found ${analysis.allOpportunities.length} opportunities (confidence ≥ ${minConf}%, EV ≥ ${minEv}%)`);
 
     if (analysis.allOpportunities.length === 0) {
       console.log('⏳ No actionable opportunities this cycle.');

@@ -39,7 +39,7 @@ export class TradeLimiter {
     this.maxDailySpending = parseFloat(process.env.MAX_DAILY_LOSS || '50');
     this.platformLimits = {
       crypto: parseInt(process.env.CRYPTO_MAX_DAILY_TRADES || '10'),
-      kalshi: parseInt(process.env.KALSHI_MAX_DAILY_TRADES || '10'),
+      kalshi: parseInt(process.env.KALSHI_MAX_DAILY_TRADES || '20'),
       polymarket: parseInt(process.env.POLYMARKET_MAX_DAILY_TRADES || '5'),
     };
     this.data = this.loadData();

@@ -9,6 +9,12 @@ export interface PrognoEventProbability {
   homeTeam: string;
   awayTeam: string;
   mcWinProbability?: number;
+  /** For total (over/under) picks: line value (e.g. 220.5) */
+  totalLine?: number;
+  /** For total picks: 'over' | 'under' */
+  totalSide?: 'over' | 'under';
+  /** Game start time (ISO or display string from Progno) */
+  gameTime?: string;
 }
 
 // Wrapper kept for call-site compatibility; normalizeLeague is a function declaration so it's hoisted.
@@ -138,21 +144,59 @@ export function getPrognoProbabilitiesFromFile(filePath: string): PrognoEventPro
   }
 }
 
+/** Today's date in America/Chicago (matches Progno cron and Kalshi game dates). */
+function getPrognoDateParam(): string {
+  const chicago = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  return chicago; // already YYYY-MM-DD from en-CA
+}
+
 /**
  * Fetch today's Progno picks and normalize to event + model probability (0-100).
  * Uses confidence as primary; falls back to mc_win_probability when available.
  * Base URL is read at call time so scripts can set PROGNO_BASE_URL after dotenv.
+ * Requests picks for America/Chicago "today" with debug=1 so 0-pick responses include diagnostics.
  */
 export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]> {
   const base = process.env.PROGNO_BASE_URL || 'https://prognoultimatev2-cevict-projects.vercel.app';
+  const dateParam = getPrognoDateParam();
+  const url = `${base}/api/picks/today?date=${dateParam}&debug=1`;
   try {
-    const res = await fetch(`${base}/api/picks/today`, {
+    console.log(`   [DEBUG] Progno: fetching ${url}`);
+    const res = await fetch(url, {
       headers: BOT_API_KEY ? { 'x-api-key': BOT_API_KEY } : {},
     });
-    if (!res.ok) return [];
+    console.log(`   [DEBUG] Progno: status=${res.status}`);
+    if (!res.ok) {
+      const text = await res.text();
+      console.warn(`   [DEBUG] Progno: non-OK response body (first 200 chars): ${text.slice(0, 200)}`);
+      return [];
+    }
     const data: any = await res.json();
-    if (!data || typeof data !== 'object') return [];
+    if (!data || typeof data !== 'object') {
+      console.warn(`   [DEBUG] Progno: invalid JSON or empty data`);
+      return [];
+    }
     const picks = data.picks || [];
+    console.log(`   [DEBUG] Progno: picks.length=${picks.length} (message: ${data.message ?? '—'})`);
+    if (picks.length === 0 && data.debug) {
+      const d = data.debug;
+      console.log(`   [DEBUG] Progno 0-picks debug: dateUsed=${d.dateUsed} cacheHit=${d.cacheHit} oddsKeySet=${d.oddsKeySet}${d.oddsKeySource ? ` keySource=${d.oddsKeySource}` : ''}`);
+      if (Array.isArray(d.sports) && d.sports.length > 0) {
+        const parts = d.sports.map((s: any) => {
+          const base = `${s.sport}=${s.gamesFetched}/${s.gamesInWindow}→${s.picksProduced}`;
+          if (s.oddsApiStatus != null) {
+            const apiInfo = s.oddsApiCount != null ? `api ${s.oddsApiStatus}→${s.oddsApiCount}` : `api status=${s.oddsApiStatus}`;
+            return `${base} (${apiInfo})`;
+          }
+          return base;
+        });
+        console.log(`   [DEBUG] Progno per-sport: ${parts.join(', ')}`);
+      }
+    }
+    if (picks.length > 0) {
+      const first = picks[0];
+      console.log(`   [DEBUG] Progno: first pick → ${first?.home_team ?? '?'} vs ${first?.away_team ?? '?'} | pick=${first?.pick ?? '?'} | league=${first?.league ?? first?.sport ?? '?'}`);
+    }
     const out: PrognoEventProbability[] = [];
     for (const p of picks) {
       const pick = (p.pick || '').trim();
@@ -184,6 +228,7 @@ export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]
       }
       const teamNames = [homeTeam, awayTeam].filter(Boolean);
       const label = pick === homeTeam ? `${homeTeam} win` : pick === awayTeam ? `${awayTeam} win` : pick;
+      const gameTime = (p.game_time || p.commence_time || '') ? String(p.game_time || p.commence_time) : undefined;
       out.push({
         label,
         teamNames,
@@ -193,11 +238,35 @@ export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]
         homeTeam,
         awayTeam,
         mcWinProbability: p.mc_win_probability,
+        gameTime,
       });
+      // Total (over/under) pick: emit a second event when API returns total prediction + line
+      const total = p.total;
+      if (total && typeof total.prediction === 'string' && typeof total.line === 'number') {
+        const totalSide = total.prediction.toLowerCase() === 'over' ? 'over' : 'under';
+        const totalProb = Math.max(1, Math.min(99, Math.round((total.probability ?? 0.5) * 100)));
+        out.push({
+          label: `${totalSide === 'over' ? 'Over' : 'Under'} ${total.line}`,
+          teamNames: [homeTeam, awayTeam].filter(Boolean),
+          modelProbability: totalProb,
+          league: safeNormalizeLeague((p.league || p.sport || 'NBA').trim() || 'NBA'),
+          pick: totalSide === 'over' ? 'Over' : 'Under',
+          homeTeam,
+          awayTeam,
+          totalLine: total.line,
+          totalSide,
+          gameTime: gameTime,
+        });
+      }
     }
+    console.log(`   [DEBUG] Progno: normalized ${out.length} events for matching`);
     return out;
   } catch (e) {
-    console.error('[probability-bridge] Progno fetch failed:', (e as Error).message);
+    const msg = (e as Error).message;
+    console.error('[probability-bridge] Progno fetch failed:', msg);
+    if (msg === 'fetch failed' && (process.env.PROGNO_BASE_URL || '').includes('localhost')) {
+      console.error('   Is Progno running? Start it with: cd apps/progno && npm run dev');
+    }
     return [];
   }
 }
@@ -312,10 +381,68 @@ function tickerMatchesLeague(ticker: string, eventTicker: string, league: string
  * Requires both teams present in title OR event_ticker prefix match + single team.
  * Validates market status, bounds, and returns complete market metadata.
  */
+/** Parse total line from Kalshi title (e.g. "over 220.5", "under 215", "total points be over 228.5"). */
+function parseTotalLineFromTitle(title: string): number | null {
+  const m = title.match(/(?:over|under)\s+(\d+(?:\.\d+)?)/i) || title.match(/total.*?(\d+(?:\.\d+)?)/i);
+  return m ? parseFloat(m[1]) : null;
+}
+
 export function matchKalshiMarketToProgno(
   prognoEvent: PrognoEventProbability,
   kalshiMarkets: any[]
 ): KalshiMarketMatch | null {
+  const homeTokens = teamSearchTokens(prognoEvent.homeTeam);
+  const awayTokens = teamSearchTokens(prognoEvent.awayTeam);
+
+  // Total (over/under) event: only match TOTAL markets with same teams and line
+  if (typeof prognoEvent.totalLine === 'number' && prognoEvent.totalSide) {
+    const wantLine = prognoEvent.totalLine;
+    const wantOver = prognoEvent.totalSide === 'over';
+    for (const market of kalshiMarkets) {
+      if (!market || typeof market !== 'object') continue;
+      const status = (market.status || '').toLowerCase();
+      if (status === 'settled' || status === 'suspended' || status === 'closed') continue;
+      const yesAsk = typeof market.yes_ask === 'number' ? market.yes_ask : null;
+      if (yesAsk === null || yesAsk <= 0 || yesAsk >= 100) continue;
+      const tickerStr = (market.ticker || '').toUpperCase();
+      const eventTicker = (market.event_ticker || '').toUpperCase();
+      if (!/\bTOTAL\b/i.test(tickerStr) && !/\bTOTAL\b/i.test(eventTicker)) continue;
+      const marketTitle = String(market.title || '');
+      if (!marketTitle) continue;
+      const titleLower = marketTitle.toLowerCase();
+      const hasOver = /over\s+\d/i.test(titleLower);
+      const hasUnder = /under\s+\d/i.test(titleLower);
+      if (!hasOver && !hasUnder) continue;
+      const marketLine = parseTotalLineFromTitle(marketTitle);
+      if (marketLine === null || Math.abs(marketLine - wantLine) > 1) continue;
+      const sanitized = sanitizeToken(marketTitle);
+      const hasHome = homeTokens.some(t => t.length >= 3 && sanitized.includes(t));
+      const hasAway = awayTokens.some(t => t.length >= 3 && sanitized.includes(t));
+      if (!hasHome || !hasAway) continue;
+      if (!titleLeagueMatchesEvent(marketTitle, prognoEvent.league)) continue;
+      if (!tickerMatchesLeague(tickerStr, eventTicker, prognoEvent.league)) continue;
+      // Match the market for our side: Over pick → title has "over"; Under pick → title has "under". YES = that side.
+      if (wantOver && !hasOver) continue;
+      if (!wantOver && !hasUnder) continue;
+      const pickIsYesSide = true;
+      return {
+        ticker: market.ticker || '',
+        eventTicker: market.event_ticker || '',
+        title: market.title || '',
+        yes_ask: yesAsk,
+        yes_bid: typeof market.yes_bid === 'number' ? market.yes_bid : yesAsk - 1,
+        no_ask: typeof market.no_ask === 'number' ? market.no_ask : 100 - yesAsk,
+        no_bid: typeof market.no_bid === 'number' ? market.no_bid : 100 - (typeof market.yes_bid === 'number' ? market.yes_bid : yesAsk),
+        volume: typeof market.volume === 'number' ? market.volume : 0,
+        open_interest: typeof market.open_interest === 'number' ? market.open_interest : 0,
+        status: market.status || 'unknown',
+        category: market.category || '',
+        pickIsYesSide,
+      };
+    }
+    return null;
+  }
+
   const sportsPrefixes = [
     // Winner/Game/Money markets (highest priority - these are moneyline)
     'KXNBAGAME', 'KXNCAAMBGAME', 'KXNFLGAME', 'KXNHLGAME', 'KXMLBGAME', 'KXNCAAFGAME',
@@ -334,8 +461,6 @@ export function matchKalshiMarketToProgno(
     // NEVER add: KXNCAABB (college baseball), KXNCAAWB (women's basketball),
     //            KXCS2 (esports), KXEPL/KXBUNDES/KXSERIEA (soccer), KXNASCAR
   ];
-  const homeTokens = teamSearchTokens(prognoEvent.homeTeam);
-  const awayTokens = teamSearchTokens(prognoEvent.awayTeam);
   const DEBUG = process.env.ALPHA_DEBUG === '1';
   const debugCounts: Record<string, number> = {
     status: 0,
@@ -393,7 +518,7 @@ export function matchKalshiMarketToProgno(
 
     // Skip non-game-winner markets - Progno ONLY predicts full-game winners
     // Block: halves, quarters, periods, innings, player props, mentions, spreads, totals
-    if (/First Half|1st Half|2nd Half|Second Half|Half.?time|Quarter|Period|Inning/i.test(marketTitle)) continue;
+    if (/First Half|1st Half|2nd Half|Second Half|Half.?time|\bHalf\b|Quarter|Period|Inning/i.test(marketTitle)) continue;
     if (/announcers|mentioned|rebounds|assists|points scored|three.?pointers|steals|blocks|turnovers/i.test(marketTitle)) continue;
 
     // Skip TIE/draw markets by title - Progno predicts which team wins, not ties
@@ -414,8 +539,8 @@ export function matchKalshiMarketToProgno(
     // Skip non-game-winner ticker patterns (must be after tickerStr/eventTicker are declared)
     // 2HWINNER=halftime, SPREAD/TOTAL=lines, MENTION=announcer props, PTS/REB/AST=player props
     if (/-TIE$/i.test(tickerStr)) continue;
-    if (/2HWINNER|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(tickerStr)) continue;
-    if (/2HWINNER|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(eventTicker)) continue;
+    if (/2HWINNER|1HWINNER|\b2H\b|\b1H\b|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(tickerStr)) continue;
+    if (/2HWINNER|1HWINNER|\b2H\b|\b1H\b|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(eventTicker)) continue;
 
     // Check if both teams are in title (strong match)
     const hasHome = homeTokens.some(t => t.length >= 3 && sanitizedTitle.includes(t));
@@ -492,8 +617,8 @@ export function matchKalshiMarketToProgno(
 
     // Skip non-game-winner ticker patterns (same filters as primary pass)
     if (/-TIE$/i.test(tickerStr)) continue;
-    if (/2HWINNER|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(tickerStr)) continue;
-    if (/2HWINNER|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(eventTicker)) continue;
+    if (/2HWINNER|1HWINNER|\b2H\b|\b1H\b|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(tickerStr)) continue;
+    if (/2HWINNER|1HWINNER|\b2H\b|\b1H\b|SPREAD|TOTAL|MENTION|PTS|REB|AST|PROP|FIGHT/i.test(eventTicker)) continue;
 
     let marketTitle = market.title;
     if (typeof marketTitle !== 'string') marketTitle = String(marketTitle || '');
@@ -504,7 +629,7 @@ export function matchKalshiMarketToProgno(
 
     // Skip non-game-winner title patterns (same filters as primary pass)
     if (/\bTOTAL\b|Total Points/i.test(marketTitle)) continue;
-    if (/First Half|1st Half|2nd Half|Second Half|Half.?time|Quarter|Period|Inning/i.test(marketTitle)) continue;
+    if (/First Half|1st Half|2nd Half|Second Half|Half.?time|\bHalf\b|Quarter|Period|Inning/i.test(marketTitle)) continue;
     if (/announcers|mentioned|rebounds|assists|points scored|three.?pointers|steals|blocks|turnovers/i.test(marketTitle)) continue;
     if (/\btie\b|\bdraw\b|\btied\b/i.test(marketTitle.toLowerCase())) continue;
 

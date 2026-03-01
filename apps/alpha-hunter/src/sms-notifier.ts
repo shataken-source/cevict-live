@@ -121,6 +121,21 @@ export class SMSNotifier {
     return this.sendSMS(message);
   }
 
+  /**
+   * Send current picks (for copy/paste to friends). Used by 10-min picks SMS.
+   */
+  async sendPicksUpdate(body: string): Promise<NotificationResult> {
+    if (!body || !body.trim()) {
+      return { success: true, messageId: 'empty' };
+    }
+    const message = `🏀 PICKS\n\n${body.trim()}`;
+    if (!this.enabled) {
+      console.log('📱 [SMS DISABLED] Would send picks:\n', message);
+      return { success: true, messageId: 'disabled' };
+    }
+    return this.sendSMS(message);
+  }
+
   private async sendSMS(message: string): Promise<NotificationResult> {
     try {
       // Sinch REST SMS API
