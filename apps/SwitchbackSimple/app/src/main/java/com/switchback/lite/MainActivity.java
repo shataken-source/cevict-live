@@ -20,6 +20,7 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private WebView webView;
     private LocalServer server;
+    private RemoteServer remoteServer;
     private ValueCallback<Uri[]> fileUploadCallback;
     private String pendingConfigCode = null;
 
@@ -37,6 +38,14 @@ public class MainActivity extends Activity {
             Log.i(TAG, "Local server started on port " + PORT);
         } catch (Exception e) {
             Log.e(TAG, "Failed to start local server", e);
+        }
+
+        try {
+            remoteServer = new RemoteServer(this);
+            remoteServer.start();
+            Log.i(TAG, "Remote server started on port " + RemoteServer.getPort());
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start remote server", e);
         }
 
         webView = new WebView(this);
@@ -181,6 +190,16 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Called by RemoteServer when a phone sends GET /key?name=Up etc. */
+    public void dispatchRemoteKey(int keyCode) {
+        runOnUiThread(() -> {
+            if (webView != null) {
+                webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, keyCode));
+                webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, keyCode));
+            }
+        });
+    }
+
     @Override
     public void onBackPressed() {
         // Dispatch GoBack key to JavaScript so the SPA handles navigation.
@@ -207,9 +226,8 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (server != null) {
-            server.stop();
-        }
+        if (server != null) server.stop();
+        if (remoteServer != null) remoteServer.stop();
         super.onDestroy();
     }
 }
