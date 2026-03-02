@@ -1,13 +1,14 @@
 /**
  * Cron: Submit today's picks to Kalshi
- * Proxies to /api/kalshi/submit-picks with dryRun=false
+ * Proxies to /api/progno/admin/trading/execute (which has BLOCKED_PREFIXES,
+ * MAX_CONTRACTS_PER_BET, MAX_BET_COST_CENTS safeguards)
  */
 
 import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60
+export const maxDuration = 120
 
 function getBaseUrl(): string {
   if (process.env.CRON_APP_URL) return process.env.CRON_APP_URL.replace(/\/$/, '')
@@ -23,18 +24,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const url = new URL(request.url)
-  const date = url.searchParams.get('date') || undefined
-  const dryRun = url.searchParams.get('dryRun') === '1'
-
+  // The execute route reads settings.json for enabled/dryRun/stake/minConfidence
+  // and has all Kalshi safeguards (blocked prefixes, contract caps, cost caps)
+  const secret = cronSecret || process.env.PROGNO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || ''
   const baseUrl = getBaseUrl()
-  const res = await fetch(`${baseUrl}/api/kalshi/submit-picks`, {
+  const res = await fetch(`${baseUrl}/api/progno/admin/trading/execute`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {}),
+      ...(secret ? { Authorization: `Bearer ${secret}` } : {}),
     },
-    body: JSON.stringify({ date, dryRun }),
+    body: JSON.stringify({ secret }),
     cache: 'no-store',
   })
 
