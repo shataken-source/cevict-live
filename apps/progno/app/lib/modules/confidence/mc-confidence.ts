@@ -9,10 +9,10 @@
 import type { ConfidenceModule, ConfidenceInput } from '../types'
 
 const EARLY_DECAY: Record<number, number> = {
-  2: Number(process.env.PROGNO_EARLY_DECAY_2D    ?? 0.97),
-  3: Number(process.env.PROGNO_EARLY_DECAY_3D    ?? 0.93),
-  4: Number(process.env.PROGNO_EARLY_DECAY_4D    ?? 0.88),
-  5: Number(process.env.PROGNO_EARLY_DECAY_5D    ?? 0.82),
+  2: Number(process.env.PROGNO_EARLY_DECAY_2D ?? 0.97),
+  3: Number(process.env.PROGNO_EARLY_DECAY_3D ?? 0.93),
+  4: Number(process.env.PROGNO_EARLY_DECAY_4D ?? 0.88),
+  5: Number(process.env.PROGNO_EARLY_DECAY_5D ?? 0.82),
 }
 const DECAY_5DPLUS = Number(process.env.PROGNO_EARLY_DECAY_5DPLUS ?? 0.75)
 
@@ -64,9 +64,11 @@ export class MCConfidenceModule implements ConfidenceModule {
     }
 
     conf = Math.round(conf)
-    // 6. High-confidence compression (20260228): calibration showed 80–95% buckets overconfident; compress above 85.
-    if (conf > 85) conf = 85 + (conf - 85) * 0.5
-    // 7. Hard clamp 30–92 (upper reduced from 95 to improve Brier / calibration)
-    return Math.max(30, Math.min(92, Math.round(conf)))
+    // 6. High-confidence compression (20260302 calibration tune):
+    //    85-90% conf had 44% actual WR, 90-95% had 60%, 95-100% had 40%.
+    //    Compress above 80 with 0.4 factor; cap at 88.
+    if (conf > 80) conf = 80 + (conf - 80) * 0.4
+    // 7. Hard clamp 30–88 (upper reduced from 92 to improve calibration above 85%)
+    return Math.max(30, Math.min(88, Math.round(conf)))
   }
 }

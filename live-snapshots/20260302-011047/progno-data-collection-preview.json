@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "summary": {
+    "teamName": "Kansas City Chiefs",
+    "hasStadium": true,
+    "phasesRequested": {
+      "phase1": true,
+      "phase2": false,
+      "phase3": true,
+      "phase4": true
+    },
+    "feedsEnabled": {
+      "twitter": false,
+      "news": true,
+      "weather": true,
+      "injuries": true,
+      "oddsApi": true
+    },
+    "phase1": {
+      "socialCount": 0,
+      "newsCount": 30
+    },
+    "phase3": {
+      "hasOdds": true,
+      "lineMovementSamples": 0,
+      "sharpIndicator": null
+    },
+    "phase4": {
+      "hasWeather": true,
+      "injuriesCount": 0,
+      "hasReferee": true
+    },
+    "durationMs": 491
+  }
+}

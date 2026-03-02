@@ -1,0 +1,452 @@
+{
+  "date": "2026-02-28",
+  "generatedAt": "2026-03-02T15:31:46.075Z",
+  "count": 3,
+  "message": "Top 5 picks (of 5 games) — Cevict Flex + Triple Alignment — Regular (0–1 days) — Next-day (3 picks)",
+  "earlyLines": false,
+  "picks": [
+    {
+      "sport": "NCAA",
+      "league": "NCAA",
+      "home_team": "Grand Canyon Antelopes",
+      "away_team": "Pacific Tigers",
+      "game_matchup": "Pacific Tigers @ Grand Canyon Antelopes",
+      "pick": "Grand Canyon Antelopes",
+      "pick_type": "SPREAD",
+      "recommended_line": -3.5,
+      "odds": -28,
+      "confidence": 79,
+      "game_time": "2026-03-01T01:00:00+00:00",
+      "game_id": "e2d9f9d01a421e3b1f195577ea81e475",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 73.2,
+      "expected_value": 47.92,
+      "value_bet_edge": 25.1,
+      "value_bet_ev": 47.92,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.638,
+      "mc_predicted_score": {
+        "home": 11,
+        "away": 6,
+        "homeRange": [
+          0,
+          27
+        ],
+        "awayRange": [
+          0,
+          21
+        ]
+      },
+      "mc_spread_probability": 0.7748,
+      "mc_total_probability": 0.6458,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (79% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sentiment favors home (9%)",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "[probability-analyzer] [analyzer] CBB ensemble: H=70.8 A=24.4 blend=0.10",
+        "[massager] MC-market diverge: 15.5% gap → -2.4",
+        "MC: 63.8% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -1.3462349394770197,
+          "favors": "away",
+          "scores": {
+            "SF": 0.08781375504358173,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.013462349394770198
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        },
+        "probability-analyzer": {
+          "delta": 1.0384297847107653,
+          "favors": "home",
+          "scores": {
+            "homeEnsemble": 70.7685956942153,
+            "awayEnsemble": 24.429270283731913,
+            "blend": 0.1,
+            "shouldFlip": 0
+          }
+        },
+        "massager": {
+          "delta": -2.4,
+          "favors": "away",
+          "scores": {
+            "spreadMLDisagree": 0,
+            "blowoutConfirm": 0,
+            "mcDivergence": 15.471251681193909,
+            "mcConvergence": -2.4
+          }
+        },
+        "injury": {
+          "delta": 0,
+          "favors": "neutral",
+          "scores": {}
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Grand Canyon Antelopes",
+          "line": -3.5,
+          "edge": 25.1,
+          "probability": 0.775,
+          "expected_value": 47.92,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Pacific Tigers",
+          "edge": 15.47,
+          "probability": 0.362,
+          "expected_value": 50.23,
+          "kelly_fraction": 0.04
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 12,
+          "edge": 12.2,
+          "probability": 0.646,
+          "expected_value": 23.29,
+          "kelly_fraction": 0.05
+        }
+      ],
+      "analysis": "🎯 Grand Canyon Antelopes (79%). [true-edge] Heavy favorite (79% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias",
+        "probability-analyzer",
+        "massager",
+        "injury"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NCAA",
+      "league": "NCAA",
+      "home_team": "Texas Longhorns",
+      "away_team": "Baylor Bears",
+      "game_matchup": "Baylor Bears @ Texas Longhorns",
+      "pick": "Texas Longhorns",
+      "pick_type": "SPREAD",
+      "recommended_line": -2.9,
+      "odds": -37,
+      "confidence": 76,
+      "game_time": "2026-03-01T01:00:00+00:00",
+      "game_id": "2a7d02adcd335eb254994ae4c555ea3d",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 66,
+      "expected_value": 42.38,
+      "value_bet_edge": 22.2,
+      "value_bet_ev": 42.38,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.6058,
+      "mc_predicted_score": {
+        "home": 11,
+        "away": 6,
+        "homeRange": [
+          0,
+          26
+        ],
+        "awayRange": [
+          0,
+          21
+        ]
+      },
+      "mc_spread_probability": 0.7458,
+      "mc_total_probability": 0.6618,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Heavy favorite (76% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "[probability-analyzer] [analyzer] CBB ensemble: H=69.0 A=26.0 blend=0.10",
+        "[massager] MC-market diverge: 15.6% gap → -2.4",
+        "MC: 60.6% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -1.4564773735909373,
+          "favors": "away",
+          "scores": {
+            "SF": 0.0786268855340886,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.04,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.014564773735909373
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        },
+        "probability-analyzer": {
+          "delta": 0.948114464194628,
+          "favors": "home",
+          "scores": {
+            "homeEnsemble": 68.96228928389256,
+            "awayEnsemble": 25.985094773321755,
+            "blend": 0.1,
+            "shouldFlip": 0
+          }
+        },
+        "massager": {
+          "delta": -2.4,
+          "favors": "away",
+          "scores": {
+            "spreadMLDisagree": 0,
+            "blowoutConfirm": 0,
+            "mcDivergence": 15.6289618446962,
+            "mcConvergence": -2.4
+          }
+        },
+        "injury": {
+          "delta": 0,
+          "favors": "neutral",
+          "scores": {}
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "Texas Longhorns",
+          "line": -2.9,
+          "edge": 22.2,
+          "probability": 0.746,
+          "expected_value": 42.38,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "moneyline",
+          "side": "Baylor Bears",
+          "edge": 15.63,
+          "probability": 0.394,
+          "expected_value": 45.07,
+          "kelly_fraction": 0.042
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 11,
+          "edge": 13.8,
+          "probability": 0.662,
+          "expected_value": 26.34,
+          "kelly_fraction": 0.05
+        }
+      ],
+      "analysis": "🎯 Texas Longhorns (76%). [true-edge] Heavy favorite (76% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias",
+        "probability-analyzer",
+        "massager",
+        "injury"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    },
+    {
+      "sport": "NCAA",
+      "league": "NCAA",
+      "home_team": "CSU Fullerton Titans",
+      "away_team": "Xavier Musketeers",
+      "game_matchup": "Xavier Musketeers @ CSU Fullerton Titans",
+      "pick": "CSU Fullerton Titans",
+      "pick_type": "SPREAD",
+      "recommended_line": -1.5,
+      "odds": 122,
+      "confidence": 67,
+      "game_time": "2026-03-01T01:00:00+00:00",
+      "game_id": "5ad3f55916f65046d8d7227a661edfb6",
+      "is_premium": true,
+      "is_home_pick": true,
+      "is_favorite_pick": true,
+      "triple_align": true,
+      "composite_score": 52.6,
+      "expected_value": 32.68,
+      "value_bet_edge": 17.12,
+      "value_bet_ev": 32.68,
+      "value_bet_kelly": 0.05,
+      "has_value": true,
+      "mc_win_probability": 0.5678,
+      "mc_predicted_score": {
+        "home": 10,
+        "away": 6,
+        "homeRange": [
+          0,
+          25
+        ],
+        "awayRange": [
+          0,
+          20
+        ]
+      },
+      "mc_spread_probability": 0.695,
+      "mc_total_probability": 0.6576,
+      "mc_iterations": 5000,
+      "reasoning": [
+        "[true-edge] Slight favorite (58% implied probability)",
+        "[true-edge] Standard home-court advantage applied",
+        "[true-edge] Moderate confidence — standard unit size",
+        "[claude-effect] Sharp signal: backing away",
+        "[home-away-bias] Home-team pick (+67% ROI backtest)",
+        "[probability-analyzer] [analyzer] CBB ensemble: H=55.5 A=38.7 blend=0.10",
+        "[massager] MC-market converge: 1.6% gap → +1.5",
+        "MC: 56.8% win (5,000 sims)"
+      ],
+      "signal_trace": {
+        "true-edge": {
+          "delta": 0.5199999999999999,
+          "favors": "home",
+          "scores": {
+            "totalEdge": 0.006499999999999999,
+            "confidence": 0.5
+          }
+        },
+        "claude-effect": {
+          "delta": -2.697833711476303,
+          "favors": "away",
+          "scores": {
+            "SF": 0.02518052404364147,
+            "NM": 0,
+            "IAI": -0.1,
+            "CSI": 0.1,
+            "NIG": 0,
+            "TRD": 1,
+            "EPD": 0,
+            "totalEffect": -0.02697833711476303
+          }
+        },
+        "home-away-bias": {
+          "delta": 5,
+          "favors": "home",
+          "scores": {
+            "boost": 5
+          }
+        },
+        "probability-analyzer": {
+          "delta": 0.27270646464946896,
+          "favors": "neutral",
+          "scores": {
+            "homeEnsemble": 55.45412929298938,
+            "awayEnsemble": 38.72091098405701,
+            "blend": 0.1,
+            "shouldFlip": 0
+          }
+        },
+        "massager": {
+          "delta": 1.5,
+          "favors": "home",
+          "scores": {
+            "spreadMLDisagree": 0,
+            "blowoutConfirm": 0,
+            "mcDivergence": 1.6135080145471603,
+            "mcConvergence": 1.5
+          }
+        },
+        "injury": {
+          "delta": 0,
+          "favors": "neutral",
+          "scores": {}
+        }
+      },
+      "all_value_bets": [
+        {
+          "type": "spread",
+          "side": "CSU Fullerton Titans",
+          "line": -1.5,
+          "edge": 17.12,
+          "probability": 0.695,
+          "expected_value": 32.68,
+          "kelly_fraction": 0.05
+        },
+        {
+          "type": "total",
+          "side": "Over",
+          "line": 10,
+          "edge": 13.38,
+          "probability": 0.658,
+          "expected_value": 25.54,
+          "kelly_fraction": 0.05
+        }
+      ],
+      "analysis": "🎯 CSU Fullerton Titans (67%). [true-edge] Slight favorite (58% implied probability) [true-edge] Standard home-court advantage applied [true-edge] Moderate confidence — standard unit size Powered by Cevict Flex.",
+      "powered_by": "Cevict Flex Modular Engine",
+      "active_signals": [
+        "true-edge",
+        "claude-effect",
+        "home-away-bias",
+        "probability-analyzer",
+        "massager",
+        "injury"
+      ],
+      "active_filters": [
+        "odds-range",
+        "league-floor",
+        "home-only"
+      ],
+      "early_lines": false
+    }
+  ]
+}

@@ -21,6 +21,8 @@ import { TrueEdgeSignal } from './signals/true-edge-signal'
 import { ClaudeEffectSignal } from './signals/claude-effect-signal'
 import { HomeAwayBiasSignal } from './signals/home-away-bias-signal'
 import { ProbabilityAnalyzerSignal } from './signals/probability-analyzer-signal'
+import { MassagerSignal } from './signals/massager-signal'
+import { InjurySignal } from './signals/injury-signal'
 // Cevict prediction analyzer: 16-model ensemble, wired into pipeline and evaluateFlip().
 import { MCConfidenceModule } from './confidence/mc-confidence'
 import { OddsRangeFilter } from './filters/odds-range-filter'
@@ -38,8 +40,9 @@ export const SIGNAL_MODULES: SignalModule[] = [
   new ClaudeEffectSignal(),
   new HomeAwayBiasSignal(),
   _probabilityAnalyzer,
+  new MassagerSignal(),  // v3: spread-ML disagree, blowout confirm, MC convergence
+  new InjurySignal(),     // reads from Supabase injuries table (API-Sports)
   // Drop new signals here — no other file needs to change:
-  // new InjuryReportSignal(),
   // new WeatherSignal(),
   // new RestAdvantageSignal(),
   // new SharpMoneySignal(),

@@ -440,11 +440,28 @@ export async function GET(request: Request) {
   }
 
   console.log(`[CRON daily-results] Graded ${total} picks for ${date}: ${correct}W / ${graded.length - correct}L (${pending} pending)`)
+
+  // Optional: run learning bot after results (experimental)
+  let learningBotResult: { summary: string; suggested?: Record<string, number>; applied?: boolean } | undefined
+  if (process.env.LEARNING_BOT_RUN_AFTER_RESULTS === '1') {
+    try {
+      const { runLearningBot } = await import('../../../lib/learning-bot')
+      const result = await runLearningBot({
+        days: 7,
+        autoApply: process.env.EXPERIMENTAL_LEARNING_BOT_AUTO_APPLY === '1',
+      })
+      learningBotResult = { summary: result.summary, suggested: result.suggested, applied: result.applied }
+      console.log('[CRON daily-results] Learning bot:', result.summary)
+    } catch (e) {
+      console.warn('[CRON daily-results] Learning bot failed:', (e as Error).message)
+    }
+  }
+
   const message =
     graded.length === 0 && pending > 0
       ? `${total} picks for ${date} — all pending. Games for this date may not have been played yet or scores not yet available from the Odds API. Re-run after games are complete.`
       : `Graded ${total} picks: ${correct} correct, ${graded.length - correct} wrong, ${pending} pending. Win rate ${out.summary.winRate}%.${dbInserted > 0 ? ` ${dbInserted} results saved to database.` : ''}${gameOutcomesStored > 0 ? ` ${gameOutcomesStored} game outcomes stored for backtesting.` : ''}`
-  return NextResponse.json({
+  const json: Record<string, unknown> = {
     success: true,
     date,
     file: resultsFileName,
@@ -455,5 +472,7 @@ export async function GET(request: Request) {
     results: out.results,
     fallbackSummary: Object.keys(fallbackSummary).length > 0 ? fallbackSummary : undefined,
     scoresByLeague,
-  })
+  }
+  if (learningBotResult) json.learningBot = learningBotResult
+  return NextResponse.json(json)
 }

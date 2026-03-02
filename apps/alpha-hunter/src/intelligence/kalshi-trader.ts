@@ -708,67 +708,12 @@ export class KalshiTrader {
    * This is a lightweight heuristic used by trainers/tests; primary trading uses Supabase predictions.
    */
   async findOpportunities(minEdgePct: number): Promise<Opportunity[]> {
-    const markets = await this.getMarkets();
-    const minEdge = Number(minEdgePct) || 0;
-    const nowIso = new Date().toISOString();
-
-    const opps: Opportunity[] = [];
-    for (const m of markets) {
-      const yesPrice = Number(m.yesPrice || 50);
-      const noPrice = Number(m.noPrice || 50);
-
-      // Simple contrarian calibration (placeholder until learning loop tunes these)
-      const syntheticAi = yesPrice > 50 ? Math.max(1, yesPrice - 5) : Math.min(99, yesPrice + 5);
-      const yesEdge = syntheticAi - yesPrice;
-      const noEdge = (100 - syntheticAi) - noPrice;
-
-      let side: 'yes' | 'no' | null = null;
-      let edge = 0;
-      if (yesEdge >= minEdge) {
-        side = 'yes';
-        edge = yesEdge;
-      } else if (noEdge >= minEdge) {
-        side = 'no';
-        edge = noEdge;
-      }
-      if (!side) continue;
-
-      // Fee-aware profit check: skip if net profit after settlement fee < MIN_NET_PROFIT
-      const entryPrice = side === 'yes' ? yesPrice : noPrice;
-      const profitCalc = calcNetProfit(10, entryPrice);
-      if (profitCalc.netProfit < MIN_NET_PROFIT) continue;
-
-      const confidence = Math.min(90, Math.max(50, 50 + Math.abs(edge) * 3));
-      opps.push({
-        id: `kalshi_${m.id}_${side}_${Date.now()}`,
-        type: 'prediction_market',
-        source: 'Kalshi',
-        title: `${side.toUpperCase()}: ${m.title}`,
-        description: `Heuristic edge ${edge.toFixed(1)}% at ${entryPrice}¢ (net $${profitCalc.netProfit.toFixed(2)} after ${(KALSHI_FEE_RATE * 100).toFixed(0)}% fee)`,
-        confidence,
-        expectedValue: edge,
-        riskLevel: 'medium',
-        timeframe: '48h',
-        requiredCapital: 10,
-        potentialReturn: profitCalc.netProfit,
-        reasoning: [`Heuristic contrarian edge (training mode) — net $${profitCalc.netProfit.toFixed(2)} after fees`],
-        dataPoints: [],
-        action: {
-          platform: 'kalshi',
-          actionType: 'bet',
-          amount: 10,
-          target: `${m.id} ${side.toUpperCase()}`,
-          instructions: [`Place ${side.toUpperCase()} on ${m.id} at ≤${side === 'yes' ? yesPrice : noPrice}¢`],
-          autoExecute: true,
-        },
-        expiresAt: m.expiresAt || nowIso,
-        createdAt: nowIso,
-      });
-    }
-
-    // Best first
-    opps.sort((a, b) => b.expectedValue - a.expectedValue);
-    return opps;
+    // DISABLED: The synthetic ±5 heuristic has no model, no odds, no intelligence.
+    // It blindly bet against any market (soccer, politics, weather, etc.) causing
+    // significant losses. Use findOpportunitiesWithExternalProbs() instead which
+    // uses real Progno model probabilities matched to correct Kalshi tickers.
+    console.warn('[KALSHI] findOpportunities() DISABLED — use findOpportunitiesWithExternalProbs() for Progno-backed picks');
+    return [];
   }
 
   /**

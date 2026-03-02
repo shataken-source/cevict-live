@@ -7,32 +7,51 @@
  * When the ensemble strongly disagrees with the baseline pick, it signals
  * to flip the pick direction (used by pick-engine step 7).
  *
- * Tuned via 5000-run A/B simulation (Mar 2026, 274 games with outcomes):
- *   - blend=0.1, conf=0.5, edge=0.3, spread=0.3, flip=45, underdog=0
- *   - Sport mults: NBA=0, NCAAB=0, NCAA=0.3, NHL=1
- *   - ROI: +7.6% with analyzer vs +6.0% without; profitable sims 91.7% vs 84.8%
- *   - CBB (College Baseball): 0.25 to dampen overconfidence (perf report 44% WR vs 73% avg conf).
- *   - DO NOT change without re-running probability-analyzer-simulation.ts
+ * Tuned via probability-analyzer-simulation.ts (7-day Supabase, 261 matched games):
+ *   - blend=0.1, conf=1, edge=0.8, spread=0.3, flip=45, underdog=0
+ *   - Sport mults: NBA=0, NHL=0, NCAAB=0, NCAA=0.3, MLB=1, NCAAF=1, NFL=1, CBB=1
+ *   - ROI: 4.2% with analyzer vs 2.56% without; profitable sims 75.9% vs 70.3%
+ *   - Re-run: npm run tune:probability-analyzer
  */
 
 import type { SignalModule, GameContext, SignalOutput } from '../types'
+import { getTuningConfigSync } from '@/app/lib/tuning-config'
 
-// ── Optimal from 5000-run simulation (probability-analyzer-simulation.ts) ─────
-const BLEND_WEIGHT = 0.1
-const FLIP_THRESHOLD = 45
-const CONFIDENCE_WEIGHT = 0.5
-const EDGE_WEIGHT = 0.3
-const SPREAD_WEIGHT = 0.3
+const DEFAULTS = {
+  BLEND_WEIGHT: 0.1,
+  FLIP_THRESHOLD: 45,
+  CONFIDENCE_WEIGHT: 1,
+  EDGE_WEIGHT: 0.8,
+  SPREAD_WEIGHT: 0.3,
+  SPORT_MULTIPLIERS: { NBA: 0, NHL: 0, MLB: 1, NCAAB: 0, NCAAF: 1, NFL: 1, NCAA: 0.3, CBB: 1 } as Record<string, number>,
+}
 
-const SPORT_MULTIPLIERS: Record<string, number> = {
-  NBA: 0,
-  NHL: 1,
-  MLB: 0,
-  NCAAB: 0,
-  NCAAF: 0.3,
-  NFL: 0,
-  NCAA: 0.3,
-  CBB: 0.25,  // College Baseball: dampen overconfidence (perf 44% WR vs 73% conf)
+function getAnalyzerParams(): typeof DEFAULTS {
+  const config = getTuningConfigSync()
+  const num = (v: unknown, def: number) => (typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : def)
+  const fromEnv = (key: string, def: number) =>
+    config && config[key] !== undefined ? num(config[key], def) : num(process.env[key], def)
+  return {
+    BLEND_WEIGHT: fromEnv('BLEND_WEIGHT', DEFAULTS.BLEND_WEIGHT),
+    FLIP_THRESHOLD: fromEnv('FLIP_THRESHOLD', DEFAULTS.FLIP_THRESHOLD),
+    CONFIDENCE_WEIGHT: fromEnv('CONFIDENCE_WEIGHT', DEFAULTS.CONFIDENCE_WEIGHT),
+    EDGE_WEIGHT: fromEnv('EDGE_WEIGHT', DEFAULTS.EDGE_WEIGHT),
+    SPREAD_WEIGHT: fromEnv('SPREAD_WEIGHT', DEFAULTS.SPREAD_WEIGHT),
+    SPORT_MULTIPLIERS: (() => {
+      let mults: Record<string, number> = {}
+      if (config?.SPORT_MULTIPLIERS && typeof config.SPORT_MULTIPLIERS === 'object')
+        mults = config.SPORT_MULTIPLIERS as Record<string, number>
+      else if (process.env.SPORT_MULTIPLIERS) {
+        try { mults = JSON.parse(process.env.SPORT_MULTIPLIERS) as Record<string, number> } catch { /* ignore */ }
+      }
+      const out = { ...DEFAULTS.SPORT_MULTIPLIERS }
+      for (const k of Object.keys(out)) {
+        const v = mults[k] ?? (process.env['SPORT_MULT_' + k] != null ? Number(process.env['SPORT_MULT_' + k]) : undefined)
+        if (typeof v === 'number') out[k] = v
+      }
+      return out
+    })(),
+  }
 }
 
 // ── Internal types ───────────────────────────────────────────────────────────
@@ -203,9 +222,10 @@ export class ProbabilityAnalyzerSignal implements SignalModule {
   readonly async = false
 
   analyze(ctx: GameContext): SignalOutput {
+    const params = getAnalyzerParams()
     const league = sportToLeague(ctx.sport)
-    const sportMult = SPORT_MULTIPLIERS[league] ?? 0
-    const blend = BLEND_WEIGHT * sportMult
+    const sportMult = params.SPORT_MULTIPLIERS[league] ?? 0
+    const blend = params.BLEND_WEIGHT * sportMult
 
     // Short-circuit: if sport multiplier is 0, no impact
     if (blend < 0.01) {
@@ -224,14 +244,14 @@ export class ProbabilityAnalyzerSignal implements SignalModule {
     const baseConf = Math.min(95, Math.max(35, 50 + Math.abs(ctx.homeNoVigProb - 0.5) * 80))
 
     const homeDps: DataPoint[] = [
-      { source: 'Confidence', metric: 'conf', value: baseConf - 50, weight: CONFIDENCE_WEIGHT },
-      { source: 'Edge', metric: 'edge', value: (ctx.homeNoVigProb - oddsToProb(sanitizeOdds(ctx.homeOdds))) * 100, weight: EDGE_WEIGHT },
-      { source: 'Spread', metric: 'spread', value: -ctx.spreadPoint, weight: SPREAD_WEIGHT },
+      { source: 'Confidence', metric: 'conf', value: baseConf - 50, weight: params.CONFIDENCE_WEIGHT },
+      { source: 'Edge', metric: 'edge', value: (ctx.homeNoVigProb - oddsToProb(sanitizeOdds(ctx.homeOdds))) * 100, weight: params.EDGE_WEIGHT },
+      { source: 'Spread', metric: 'spread', value: -ctx.spreadPoint, weight: params.SPREAD_WEIGHT },
     ]
     const awayDps: DataPoint[] = [
-      { source: 'Confidence', metric: 'conf', value: (100 - baseConf) - 50, weight: CONFIDENCE_WEIGHT },
-      { source: 'Edge', metric: 'edge', value: (ctx.awayNoVigProb - oddsToProb(sanitizeOdds(ctx.awayOdds))) * 100, weight: EDGE_WEIGHT },
-      { source: 'Spread', metric: 'spread', value: ctx.spreadPoint, weight: SPREAD_WEIGHT },
+      { source: 'Confidence', metric: 'conf', value: (100 - baseConf) - 50, weight: params.CONFIDENCE_WEIGHT },
+      { source: 'Edge', metric: 'edge', value: (ctx.awayNoVigProb - oddsToProb(sanitizeOdds(ctx.awayOdds))) * 100, weight: params.EDGE_WEIGHT },
+      { source: 'Spread', metric: 'spread', value: ctx.spreadPoint, weight: params.SPREAD_WEIGHT },
     ]
 
     const homeEnsemble = runEnsemble(homeProb, homeDps)
@@ -243,8 +263,8 @@ export class ProbabilityAnalyzerSignal implements SignalModule {
 
     // Check flip condition: opposite side ensemble > threshold and >10pt gap
     const shouldFlip =
-      ((ensembleFavorsHome && awayEnsemble > FLIP_THRESHOLD) ||
-       (!ensembleFavorsHome && homeEnsemble > FLIP_THRESHOLD)) &&
+      ((ensembleFavorsHome && awayEnsemble > params.FLIP_THRESHOLD) ||
+       (!ensembleFavorsHome && homeEnsemble > params.FLIP_THRESHOLD)) &&
       gap > 10
 
     // Confidence delta scaled by blend
@@ -278,8 +298,9 @@ export class ProbabilityAnalyzerSignal implements SignalModule {
     isHomePick: boolean
     reason: string
   } | null {
+    const params = getAnalyzerParams()
     const league = sportToLeague(ctx.sport)
-    const sportMult = SPORT_MULTIPLIERS[league] ?? 0
+    const sportMult = params.SPORT_MULTIPLIERS[league] ?? 0
     if (sportMult < 0.01) return null
 
     const homeProb = ctx.homeNoVigProb * 100
@@ -287,14 +308,14 @@ export class ProbabilityAnalyzerSignal implements SignalModule {
     const baseConf = Math.min(95, Math.max(35, 50 + Math.abs(ctx.homeNoVigProb - 0.5) * 80))
 
     const homeDps: DataPoint[] = [
-      { source: 'Confidence', metric: 'conf', value: (currentIsHomePick ? baseConf : 100 - baseConf) - 50, weight: CONFIDENCE_WEIGHT },
-      { source: 'Edge', metric: 'edge', value: (ctx.homeNoVigProb - oddsToProb(sanitizeOdds(ctx.homeOdds))) * 100, weight: EDGE_WEIGHT },
-      { source: 'Spread', metric: 'spread', value: -ctx.spreadPoint, weight: SPREAD_WEIGHT },
+      { source: 'Confidence', metric: 'conf', value: (currentIsHomePick ? baseConf : 100 - baseConf) - 50, weight: params.CONFIDENCE_WEIGHT },
+      { source: 'Edge', metric: 'edge', value: (ctx.homeNoVigProb - oddsToProb(sanitizeOdds(ctx.homeOdds))) * 100, weight: params.EDGE_WEIGHT },
+      { source: 'Spread', metric: 'spread', value: -ctx.spreadPoint, weight: params.SPREAD_WEIGHT },
     ]
     const awayDps: DataPoint[] = [
-      { source: 'Confidence', metric: 'conf', value: (!currentIsHomePick ? baseConf : 100 - baseConf) - 50, weight: CONFIDENCE_WEIGHT },
-      { source: 'Edge', metric: 'edge', value: (ctx.awayNoVigProb - oddsToProb(sanitizeOdds(ctx.awayOdds))) * 100, weight: EDGE_WEIGHT },
-      { source: 'Spread', metric: 'spread', value: ctx.spreadPoint, weight: SPREAD_WEIGHT },
+      { source: 'Confidence', metric: 'conf', value: (!currentIsHomePick ? baseConf : 100 - baseConf) - 50, weight: params.CONFIDENCE_WEIGHT },
+      { source: 'Edge', metric: 'edge', value: (ctx.awayNoVigProb - oddsToProb(sanitizeOdds(ctx.awayOdds))) * 100, weight: params.EDGE_WEIGHT },
+      { source: 'Spread', metric: 'spread', value: ctx.spreadPoint, weight: params.SPREAD_WEIGHT },
     ]
 
     const homeEnsemble = runEnsemble(homeProb, homeDps)
@@ -304,8 +325,8 @@ export class ProbabilityAnalyzerSignal implements SignalModule {
     const oppEnsemble = currentIsHomePick ? awayEnsemble : homeEnsemble
 
     const shouldFlip =
-      oppEnsemble > FLIP_THRESHOLD &&
-      pickEnsemble < (100 - FLIP_THRESHOLD) &&
+      oppEnsemble > params.FLIP_THRESHOLD &&
+      pickEnsemble < (100 - params.FLIP_THRESHOLD) &&
       (oppEnsemble - pickEnsemble) > 10
 
     if (!shouldFlip) return null

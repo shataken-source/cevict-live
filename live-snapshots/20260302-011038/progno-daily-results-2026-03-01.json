@@ -1,0 +1,5 @@
+{
+  "time": "2026-03-02T01:10:41.6943043-06:00",
+  "url": "http://localhost:3008/api/cron/daily-results?date=2026-03-01",
+  "error": "Response status code does not indicate success: 401 (Unauthorized)."
+}

@@ -30,6 +30,7 @@ import { ParlayBuilder } from '@/app/lib/parlay-builder'
 import { BankrollManagementService } from '@/app/lib/bankroll-management-service'
 import { ElitePicksEnhancer } from '@/app/lib/elite-picks-enhancer'
 import { TEASER_CALCULATOR } from '@/app/lib/teaser-calculator'
+import { loadTuningConfigAndApply } from '@/app/lib/tuning-config'
 
 // Initialize trackers (persist across requests)
 const lineMovementTracker = new LineMovementTracker()
@@ -427,13 +428,14 @@ const PROGNO_EARLY_DECAY_3D = Number(process.env.PROGNO_EARLY_DECAY_3D ?? 0.93)
 const PROGNO_EARLY_DECAY_4D = Number(process.env.PROGNO_EARLY_DECAY_4D ?? 0.88)
 const PROGNO_EARLY_DECAY_5D = Number(process.env.PROGNO_EARLY_DECAY_5D ?? 0.82)
 const PROGNO_EARLY_DECAY_5DPLUS = Number(process.env.PROGNO_EARLY_DECAY_5DPLUS ?? 0.75)
+// 7-day tune (run-7day-tune.ts): Floors -2 gave best ROI (60% WR, 15.45%). Env overrides supported.
 const PROGNO_FLOOR_NCAAF = Number(process.env.PROGNO_FLOOR_NCAAF ?? 62)
-const PROGNO_FLOOR_NCAAB = Number(process.env.PROGNO_FLOOR_NCAAB ?? 57)
-const PROGNO_FLOOR_NBA = Number(process.env.PROGNO_FLOOR_NBA ?? 57)
-const PROGNO_FLOOR_NFL = Number(process.env.PROGNO_FLOOR_NFL ?? 62)
+const PROGNO_FLOOR_NCAAB = Number(process.env.PROGNO_FLOOR_NCAAB ?? 62)
+const PROGNO_FLOOR_NBA = Number(process.env.PROGNO_FLOOR_NBA ?? 58)
+const PROGNO_FLOOR_NFL = Number(process.env.PROGNO_FLOOR_NFL ?? 60)
 const PROGNO_FLOOR_NHL = Number(process.env.PROGNO_FLOOR_NHL ?? 57)
 const PROGNO_FLOOR_MLB = Number(process.env.PROGNO_FLOOR_MLB ?? 57)
-const PROGNO_FLOOR_CBB = Number(process.env.PROGNO_FLOOR_CBB ?? 68)  // College Baseball: raised from 57 — perf report 44% WR at 73% avg conf
+const PROGNO_FLOOR_CBB = Number(process.env.PROGNO_FLOOR_CBB ?? 66)
 // ─────────────────────────────────────────────────────────────────────────────
 
 // NFL ≥62% prob → +20.4% ROI. Shin-devig favorites rarely exceed 65%.
@@ -446,7 +448,7 @@ const ODDS_FILTER: Record<string, { minOdds: number; maxOdds: number; minConfide
 }
 
 // Backtest 2024: home picks +117.1% ROI vs away picks -18.2% ROI. Default ON.
-const HOME_ONLY_MODE = process.env.HOME_ONLY_MODE !== '0' && process.env.HOME_ONLY_MODE !== 'false'
+const HOME_ONLY_MODE = process.env.HOME_ONLY_MODE === '1' || process.env.HOME_ONLY_MODE === 'true'
 
 const HOME_BIAS_BOOST = PROGNO_HOME_BIAS_BOOST
 const AWAY_BIAS_PENALTY = PROGNO_AWAY_BIAS_PENALTY
@@ -619,6 +621,8 @@ const supabase = supabaseUrl && supabaseKey
 
 export async function GET(request: Request) {
   try {
+    // Apply saved tuning config (floors, analyzer params, home-only) so live picks use it
+    await loadTuningConfigAndApply()
     // Load streak state from Supabase on first request (persists across server restarts)
     await loadStreakFromSupabase()
 

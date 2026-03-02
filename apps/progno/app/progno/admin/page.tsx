@@ -28,6 +28,9 @@ const ENV_VARS = [
   'NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY',
   'CRON_APP_URL', 'NEXT_PUBLIC_PROGNO_URL', 'FILTER_STRATEGY', 'HOME_ONLY_MODE',
   'OPENWEATHER_API_KEY', 'WEATHERAPI_KEY',
+  'AUTO_EXECUTE', 'MAX_DAILY_SPEND', 'KALSHI_MAX_DAILY_SPEND', 'PROGNO_SPORTS_ONLY',
+  'MASSAGER_SIGNAL', 'INJURY_SIGNAL', 'LEARNING_BOT_RUN_AFTER_RESULTS',
+  'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET',
 ];
 
 // -- Date utils ---------------------------------------------------------------
@@ -185,7 +188,7 @@ function DarkResultsTable({
 }
 
 // -- Types --------------------------------------------------------------------
-type TabId = 'odds' | 'picks' | 'results' | 'lines' | 'early' | 'analyzer' | 'config';
+type TabId = 'odds' | 'picks' | 'results' | 'lines' | 'early' | 'analyzer' | 'config' | 'fine-tune';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'odds', label: 'LIVE ODDS' },
@@ -195,6 +198,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'early', label: 'EARLY LINES' },
   { id: 'analyzer', label: 'ANALYZER' },
   { id: 'config', label: 'CONFIG' },
+  { id: 'fine-tune', label: 'FINE-TUNE' },
 ];
 
 // -- Main component -----------------------------------------------------------
@@ -792,7 +796,7 @@ export default function AdminPage() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {[
                   ['STRATEGY', 'best (FILTER_STRATEGY)'], ['ODDS RANGE', '-200 to +500'], ['MIN CONF', '57% (PROGNO_MIN_CONFIDENCE)'],
-                  ['HOME BIAS', '+5% / Away -5%'], ['HOME ONLY', 'On by default (set HOME_ONLY_MODE=0 to disable)'],
+                  ['HOME BIAS', '+5% / Away -5%'], ['HOME ONLY', 'Off by default (set HOME_ONLY_MODE=1 to enable)'],
                   ['SEASON CHECK', 'On'], ['STREAK WIN 3+', '1.1x'], ['STREAK LOSS 3+', '0.75x'],
                   ['EARLY WINDOW', '2–5 days ahead'], ['EARLY DECAY 2d', '97%'], ['EARLY DECAY 3d', '93%'], ['EARLY DECAY 5d+', '75%'],
                   ['NFL FLOOR', '62% (PROGNO_FLOOR_NFL)'], ['NCAAF FLOOR', '62%'], ['NBA FLOOR', '57%'], ['NHL FLOOR', '57%'],
@@ -1040,6 +1044,22 @@ export default function AdminPage() {
               />
             </div>
           </div>
+        )}
+
+        {/* ═══ FINE-TUNE ═══ */}
+        {activeTab === 'fine-tune' && (
+          <Card style={{ maxWidth: 520 }}>
+            <SectionLabel>PICKS FINE-TUNING</SectionLabel>
+            <p style={{ fontFamily: C.mono, fontSize: 11, color: C.text, marginBottom: 14 }}>
+              Adjust filters, floors, Probability Analyzer weights, and run 7-day backtests or auto-tune from historical odds.
+            </p>
+            <Link
+              href="/progno/admin/fine-tune"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: `${C.green}18`, border: `1px solid ${C.green}50`, borderRadius: 6, color: C.green, fontFamily: C.mono, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}
+            >
+              Open Fine-Tune Page →
+            </Link>
+          </Card>
         )}
 
         {/* ═══ CONFIG ═══ */}

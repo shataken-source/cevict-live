@@ -188,11 +188,18 @@ async function ensureDirectories() {
 }
 
 // Find prediction files
+// Only standard names: predictions-YYYY-MM-DD.json or predictions-early-YYYY-MM-DD.json
+// Excludes timestamped/corrupt names like predictions-2026-01-31-2227.json
 async function findPredictionFiles(): Promise<string[]> {
   try {
     const files = await fs.readdir(CONFIG.predictionsDir);
     return files
-      .filter(f => f.match(/predictions.*\.json$/i))
+      .filter(f => {
+        if (!f.endsWith('.json')) return false;
+        if (f.match(/^predictions-\d{4}-\d{2}-\d{2}\.json$/i)) return true;
+        if (f.match(/^predictions-early-\d{4}-\d{2}-\d{2}\.json$/i)) return true;
+        return false;
+      })
       .map(f => path.join(CONFIG.predictionsDir, f));
   } catch (err) {
     logger.error(`Failed to read predictions dir: ${err}`);
@@ -376,92 +383,106 @@ async function saveResultsToSupabase(data: ResultsFile, sourceFile: string): Pro
   }
 }
 
-// Import Kalshi sports picks from prognostication API
+// Import Kalshi sports picks from prognostication API (with retry)
 async function importKalshiSportsPicks(): Promise<number> {
-  try {
-    logger.info('Importing Kalshi sports picks from prognostication API...');
+  const prognoUrl = process.env.PROGNO_URL || 'http://localhost:3005';
+  const url = `${prognoUrl}/api/kalshi/sports?tier=all&limit=20`;
+  const maxAttempts = 3;
+  const retryDelayMs = 2000;
 
-    const prognoUrl = process.env.PROGNO_URL || 'http://localhost:3005';
-    const response = await fetch(`${prognoUrl}/api/kalshi/sports?tier=all&limit=20`, {
-      headers: { 'Content-Type': 'application/json' }
-    });
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      logger.info(`Importing Kalshi sports picks from prognostication API (attempt ${attempt}/${maxAttempts})...`);
+      const response = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-    if (!response.ok) {
-      logger.error(`Prognostication API returned ${response.status}`);
-      return 0;
-    }
-
-    const data = await response.json() as {
-      success?: boolean;
-      elite?: Array<Record<string, unknown>>;
-      pro?: Array<Record<string, unknown>>;
-      free?: Array<Record<string, unknown>>;
-    };
-
-    if (!data.success || !data.elite || !data.pro || !data.free) {
-      logger.error('Invalid response from prognostication API');
-      return 0;
-    }
-
-    // Combine all tiers
-    const allPicks = [
-      ...data.elite.map((p: any) => ({ ...p, tier: 'elite' })),
-      ...data.pro.map((p: any) => ({ ...p, tier: 'pro' })),
-      ...data.free.map((p: any) => ({ ...p, tier: 'free' }))
-    ];
-
-    let imported = 0;
-
-    for (const pick of allPicks) {
-      try {
-        // Check if already exists
-        const { data: existing } = await supabase
-          .from('kalshi_bets')
-          .select('id')
-          .eq('market_id', pick.marketId || pick.id)
-          .single();
-
-        if (existing) {
-          logger.info(`Skipping duplicate: ${pick.market}`);
+      if (!response.ok) {
+        logger.error(`Prognostication API returned ${response.status}: ${url}`);
+        if (attempt < maxAttempts) {
+          await new Promise(r => setTimeout(r, retryDelayMs));
           continue;
         }
-
-        // Insert Kalshi bet
-        const { error } = await supabase.from('kalshi_bets').insert({
-          market_id: pick.marketId || pick.id,
-          market_title: pick.market,
-          category: pick.category,
-          pick: pick.pick,
-          probability: pick.probability,
-          edge: pick.edge,
-          market_price: pick.marketPrice,
-          expires_at: pick.expires,
-          reasoning: pick.reasoning,
-          confidence: pick.confidence,
-          tier: pick.tier,
-          original_sport: pick.originalSport,
-          game_info: pick.gameInfo,
-          status: 'open',
-          source: 'prognostication_api'
-        });
-
-        if (error) {
-          logger.error(`Failed to import ${pick.market}: ${error.message}`);
-          continue;
-        }
-
-        imported++;
-      } catch (err: any) {
-        logger.error(`Error importing ${pick.market}: ${err.message}`);
+        return 0;
       }
-    }
 
-    logger.success(`Imported ${imported} Kalshi sports picks (Elite: ${data.elite.length}, Pro: ${data.pro.length}, Free: ${data.free.length})`);
-    return imported;
-  } catch (err: any) {
-    logger.error(`Failed to import Kalshi sports picks: ${err.message}`);
-    return 0;
+      const data = await response.json() as {
+        success?: boolean;
+        elite?: Array<Record<string, unknown>>;
+        pro?: Array<Record<string, unknown>>;
+        free?: Array<Record<string, unknown>>;
+      };
+
+      if (!data.success || !data.elite || !data.pro || !data.free) {
+        logger.error('Invalid response from prognostication API');
+        return 0;
+      }
+
+      // Combine all tiers
+      const allPicks = [
+        ...data.elite.map((p: any) => ({ ...p, tier: 'elite' })),
+        ...data.pro.map((p: any) => ({ ...p, tier: 'pro' })),
+        ...data.free.map((p: any) => ({ ...p, tier: 'free' }))
+      ];
+
+      let imported = 0;
+
+      for (const pick of allPicks) {
+        try {
+          // Check if already exists
+          const { data: existing } = await supabase
+            .from('kalshi_bets')
+            .select('id')
+            .eq('market_id', pick.marketId || pick.id)
+            .single();
+
+          if (existing) {
+            logger.info(`Skipping duplicate: ${pick.market}`);
+            continue;
+          }
+
+          // Insert Kalshi bet
+          const { error } = await supabase.from('kalshi_bets').insert({
+            market_id: pick.marketId || pick.id,
+            market_title: pick.market,
+            category: pick.category,
+            pick: pick.pick,
+            probability: pick.probability,
+            edge: pick.edge,
+            market_price: pick.marketPrice,
+            expires_at: pick.expires,
+            reasoning: pick.reasoning,
+            confidence: pick.confidence,
+            tier: pick.tier,
+            original_sport: pick.originalSport,
+            game_info: pick.gameInfo,
+            status: 'open',
+            source: 'prognostication_api'
+          });
+
+          if (error) {
+            logger.error(`Failed to import ${pick.market}: ${error.message}`);
+            continue;
+          }
+
+          imported++;
+        } catch (err: any) {
+          logger.error(`Error importing ${pick.market}: ${err.message}`);
+        }
+      }
+
+      logger.success(`Imported ${imported} Kalshi sports picks (Elite: ${data.elite.length}, Pro: ${data.pro.length}, Free: ${data.free.length})`);
+      return imported;
+    } catch (err: any) {
+      logger.error(`Failed to import Kalshi sports picks (attempt ${attempt}/${maxAttempts}): ${err.message}`);
+      if (attempt === maxAttempts) {
+        logger.error(`URL: ${url} — ensure Progno is running and PROGNO_URL is correct.`);
+        return 0;
+      }
+      await new Promise(r => setTimeout(r, retryDelayMs));
+    }
   }
+  return 0;
 }
 
 // Archive processed file
@@ -485,6 +506,21 @@ async function archiveFile(sourcePath: string, subdir: string): Promise<boolean>
   }
 }
 
+// Move empty/invalid file to archive/skipped so we don't retry every run
+async function moveToSkipped(sourcePath: string, reason: string): Promise<void> {
+  try {
+    const filename = path.basename(sourcePath);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const destDir = path.join(CONFIG.archiveDir, 'skipped');
+    const destPath = path.join(destDir, `${timestamp}_${filename}`);
+    await fs.mkdir(destDir, { recursive: true });
+    await fs.rename(sourcePath, destPath);
+    logger.info(`Skipped (${reason}): ${filename} → ${destPath}`);
+  } catch (err: any) {
+    logger.error(`Failed to move to skipped: ${err.message}`);
+  }
+}
+
 // Process predictions
 async function processPredictions(): Promise<number> {
   const files = await findPredictionFiles();
@@ -502,11 +538,15 @@ async function processPredictions(): Promise<number> {
 
       const content = await fs.readFile(filePath, 'utf-8');
       const data = parseJsonFile<PredictionFile>(content, filePath);
-      if (data == null) continue;
+      if (data == null) {
+        await moveToSkipped(filePath, 'empty or invalid JSON');
+        continue;
+      }
 
       // Validate structure
       if (!data.picks || !Array.isArray(data.picks)) {
         logger.error(`Invalid predictions format in ${filePath}`);
+        await moveToSkipped(filePath, 'invalid format (missing picks array)');
         continue;
       }
 
@@ -550,7 +590,10 @@ async function processResults(): Promise<number> {
 
       const content = await fs.readFile(filePath, 'utf-8');
       const raw = parseJsonFile<ResultsFile | unknown[]>(content, filePath);
-      if (raw == null) continue;
+      if (raw == null) {
+        await moveToSkipped(filePath, 'empty or invalid JSON');
+        continue;
+      }
 
       // Normalize: accept { date, results } or bare array (progno format)
       const data: ResultsFile = Array.isArray(raw)
@@ -559,6 +602,7 @@ async function processResults(): Promise<number> {
 
       if (!data.results || !Array.isArray(data.results)) {
         logger.error(`Invalid results format in ${filePath}`);
+        await moveToSkipped(filePath, 'invalid format (missing results array)');
         continue;
       }
 

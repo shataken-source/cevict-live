@@ -339,21 +339,26 @@ function titleLeagueMatchesEvent(title: string, league: string): boolean {
   if (/\bnhl\b/i.test(t)) return L === 'NHL';
   if (/\bncaa\b/i.test(t)) return L === 'NCAAB' || L === 'NCAAF' || L === 'CBB';
 
-  // Generic sport words (game/win/match/vs) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â allow only if Progno league is supported
-  // These are ambiguous ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â could be soccer, esports, etc. ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â but we already blocked
-  // soccer above and NON_SPORTS_TITLE catches other non-sports.
-  if (/\b(game|win|winner|beat|vs\.?)\b/i.test(t)) return true;
+  // Generic sport words (game/win/match/vs) — allow only if:
+  // 1. Progno league is in allowed set (already gated above)
+  // 2. Title doesn't contain spring training or other non-standard indicators
+  // 3. tickerMatchesLeague (called by caller) provides the hard sport gate
+  if (/\b(game|win|winner|beat|vs\.?)\b/i.test(t)) {
+    // Block spring training titles — Progno model has no ST data
+    if (/spring training|exhibition|preseason|grapefruit|cactus league/i.test(t)) return false;
+    return true;
+  }
 
-  return false; // no sport keyword ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â don't allow (avoids "Drake" ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Drake Bulldogs, etc.)
+  return false; // no sport keyword → don't allow (avoids "Drake" → Drake Bulldogs, etc.)
 }
 
 /** Validate that a Kalshi ticker prefix is consistent with the Progno league.
- *  Prevents cross-sport false matches like NCAABB (college baseball) ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬Â NCAAB (basketball). */
+ *  Prevents cross-sport false matches like NCAABB (college baseball) → NCAAB (basketball). */
 function tickerMatchesLeague(ticker: string, eventTicker: string, league: string): boolean {
   const t = ticker + '|' + eventTicker;
   const L = (league || '').toUpperCase();
 
-  // NCAABB = college baseball ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ only CBB
+  // NCAABB = college baseball → only CBB
   if (/NCAABB/i.test(t)) return L === 'CBB';
   // NCAAMB = men's basketball ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ NCAAB or NCAA (Progno sometimes reports bare 'NCAA')
   if (/NCAAMB/i.test(t)) return L === 'NCAAB' || L === 'NCAA';
@@ -365,15 +370,17 @@ function tickerMatchesLeague(ticker: string, eventTicker: string, league: string
   if (/\bKXNBA/i.test(t)) return L === 'NBA';
   // NHL
   if (/\bKXNHL/i.test(t)) return L === 'NHL';
-  // MLB
+  // MLB Spring Training — MUST be checked before general MLB (KXMLBST matches KXMLB)
+  if (/KXMLBST/i.test(t)) return false;
+  // MLB (regular season only — ST filtered above)
   if (/\bKXMLB/i.test(t)) return L === 'MLB';
   // NFL
   if (/\bKXNFL/i.test(t)) return L === 'NFL';
-  // Argentine soccer, Ligue 1, etc. ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â not Progno sports
-  if (/ARGPREM|LIGUE1|EPL|BUND|SERIEA|LIGA|WBC/i.test(t)) return false;
+  // Argentine soccer, Colombian soccer, Ligue 1, etc. — not Progno sports
+  if (/ARGPREM|DIMAYOR|LIGUE1|EPL|BUND|SERIEA|LIGA|WBC|MLS|COPA|CONCACAF|CONMEBOL/i.test(t)) return false;
 
-  // Unknown prefix ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â allow (don't block novel tickers)
-  return true;
+  // Unknown prefix — DENY by default (only allow explicitly matched sports above)
+  return false;
 }
 
 /**
@@ -555,6 +562,20 @@ export function matchKalshiMarketToProgno(
       if (!isGameMarket || !hasPick || !/winner\?|win\b/i.test(marketTitle)) {
         if (DEBUG) debugCounts.noPick++;
         continue;
+      }
+      // STRICTER single-team validation: prevent token collisions like
+      // "Florida" (Gators) matching "Florida Atlantic" (FAU).
+      // Require FULL team name in title OR pick token must NOT be a substring
+      // of a longer team name in the title (e.g. "florida" in "florida atlantic").
+      const fullPickName = sanitizeToken(prognoEvent.pick);
+      const fullPickInTitle = fullPickName.length >= 4 && sanitizedTitle.includes(fullPickName);
+      if (!fullPickInTitle) {
+        // Fallback: check if pick's last token (mascot) matches as whole word
+        const pickWords = fullPickName.split(/\s+/);
+        const mascot = pickWords[pickWords.length - 1];
+        if (!mascot || mascot.length < 4) { if (DEBUG) debugCounts.noPick++; continue; }
+        const mascotRegex = new RegExp(`\\b${mascot}\\b`, 'i');
+        if (!mascotRegex.test(sanitizedTitle)) { if (DEBUG) debugCounts.noPick++; continue; }
       }
     } else {
       // Both teams present ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â verify the pick team is in the title

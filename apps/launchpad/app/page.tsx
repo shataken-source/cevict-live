@@ -73,6 +73,7 @@ export default function Launchpad() {
     { name: 'SmokersRights', path: 'smokersrights', port: 3010, description: 'Advocacy platform', running: false, url: 'http://localhost:3010' },
     { name: 'Gulf Coast Charters', path: 'gcc', port: 3009, description: 'All charter types', running: false, url: 'http://localhost:3009' },
     { name: 'WTV (Where To Vacation)', path: 'wheretovacation', port: 3011, description: 'Vacation planning', running: false, url: 'http://localhost:3011' },
+    { name: 'TrailerVegas', path: 'trailervegas', port: 3012, description: 'Pick grading reports ($10 Stripe)', running: false, url: 'http://localhost:3012' },
   ]
 
   // Load live stats from all apps
@@ -226,7 +227,7 @@ export default function Launchpad() {
     try {
       const response = await fetch('/api/start-project', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: project.path, port: project.port })
       })
 
@@ -251,7 +252,7 @@ export default function Launchpad() {
     try {
       const response = await fetch('/api/kill-port', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ port })
       })
 
@@ -293,10 +294,10 @@ export default function Launchpad() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
             <div style={{ fontSize: '5rem' }}>🚀</div>
-          <div>
+            <div>
               <h1 style={{ fontSize: '4.5rem', fontWeight: 'bold', marginBottom: '0.5rem', background: 'linear-gradient(135deg, #22c55e 0%, #3b82f6 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              LAUNCHPAD
-            </h1>
+                LAUNCHPAD
+              </h1>
               <p style={{ color: '#94a3b8', fontSize: '1.5rem' }}>
                 Real-Time Operations Dashboard · Live Data Monitor
               </p>
@@ -511,12 +512,12 @@ export default function Launchpad() {
               const status = h?.status || 'unknown'
               const color =
                 status === 'up' ? '#22c55e' :
-                status === 'down' ? '#ef4444' :
-                '#eab308'
+                  status === 'down' ? '#ef4444' :
+                    '#eab308'
               const label =
                 status === 'up' ? 'UP' :
-                status === 'down' ? 'DOWN' :
-                'UNKNOWN'
+                  status === 'down' ? 'DOWN' :
+                    'UNKNOWN'
               return (
                 <div
                   key={project.name}
@@ -662,7 +663,7 @@ export default function Launchpad() {
               }}
               onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)')}
               onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0) scale(1)')}
-              >
+            >
               🧹 Clear All Caches
             </button>
 
@@ -685,7 +686,7 @@ export default function Launchpad() {
               }}
               onMouseEnter={(e) => !loading && (e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)')}
               onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0) scale(1)')}
-              >
+            >
               🔪 Kill All Ports
             </button>
 
@@ -708,7 +709,7 @@ export default function Launchpad() {
               }}
               onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)')}
               onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0) scale(1)')}
-              >
+            >
               🎛️ Command Center
             </a>
 
@@ -731,7 +732,7 @@ export default function Launchpad() {
               }}
               onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)')}
               onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0) scale(1)')}
-              >
+            >
               💰 Manage Affiliates
             </a>
           </div>
@@ -851,8 +852,8 @@ export default function Launchpad() {
             color: '#10b981',
             maxHeight: '300px',
             overflow: 'auto',
-            }}>
-              {output}
+          }}>
+            {output}
           </div>
         )}
       </div>

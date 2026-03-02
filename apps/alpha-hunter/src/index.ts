@@ -118,7 +118,7 @@ export class TradingBot {
           if (fs.existsSync(filePath)) {
             const body = fs.readFileSync(filePath, 'utf8').trim();
             if (body) {
-              this.sms.sendPicksUpdate(body).then(() => {});
+              this.sms.sendPicksUpdate(body).then(() => { });
             }
           }
         } catch (e) {
@@ -156,7 +156,7 @@ export class TradingBot {
     let tradeCount = 0;
     try {
       const cb = this.exchanges.getCoinbase();
-      if (!cb.isConfigured()) return 0;
+      if (!cb.isConfigured()) return { totalSold: 0, tradeCount: 0 };
 
       const portfolio = await cb.getPortfolio();
       const tradeableAssets = ['BTC', 'ETH', 'SOL'];
@@ -243,9 +243,9 @@ export class TradingBot {
     // ── PROFIT-TAKING (every 5th cycle) ───────────────────────────
     if (this.cycleCount % 5 === 0) {
       const profitTaken = await this.profitTake();
-      if (profitTaken > 0) {
-        this.coinbaseUsd += profitTaken;
-        console.log(`Profit-take freed $${profitTaken.toFixed(2)} USD`);
+      if (profitTaken.totalSold > 0) {
+        this.coinbaseUsd += profitTaken.totalSold;
+        console.log(`Profit-take freed $${profitTaken.totalSold.toFixed(2)} USD (${profitTaken.tradeCount} sells)`);
       }
     }
 

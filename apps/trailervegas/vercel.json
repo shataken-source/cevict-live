@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install --no-frozen-lockfile",
+  "framework": "nextjs",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/trailervegas/",
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  }
+}

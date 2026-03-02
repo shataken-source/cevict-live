@@ -1,20 +1,24 @@
 /**
  * Filter: Home Only Mode
- * When HOME_ONLY_MODE=1, drops all away picks.
- * Backtest: home picks +67% ROI vs away -19% ROI (2024 full season).
- * Disable by setting HOME_ONLY_MODE=0 in .env.local.
+ * Reads from getTuningConfigSync() when set (admin fine-tune), else env.
  */
 
 import type { FilterModule, FilterContext } from '../types'
+import { getTuningConfigSync } from '@/app/lib/tuning-config'
 
-const HOME_ONLY = process.env.HOME_ONLY_MODE !== '0' && process.env.HOME_ONLY_MODE !== 'false'
+function isHomeOnly(): boolean {
+  const config = getTuningConfigSync()
+  if (config && config.HOME_ONLY_MODE !== undefined)
+    return config.HOME_ONLY_MODE === '1' || config.HOME_ONLY_MODE === true || config.HOME_ONLY_MODE === 'true'
+  return process.env.HOME_ONLY_MODE === '1' || process.env.HOME_ONLY_MODE === 'true'
+}
 
 export class HomeOnlyFilter implements FilterModule {
   readonly id = 'home-only'
   readonly description = 'Drop away picks when HOME_ONLY_MODE is enabled'
 
   passes({ isHomePick }: FilterContext): boolean {
-    if (!HOME_ONLY) return true
+    if (!isHomeOnly()) return true
     return isHomePick
   }
 }

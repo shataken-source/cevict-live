@@ -207,6 +207,25 @@ function kalshiHdrs(apiKeyId: string, privateKey: string, method: string, urlPat
 // /events excludes multivariate/parlay events by default (no filter needed).
 // with_nested_markets=true returns the individual YES/NO markets inside each event.
 // Filter by category=Sports and game series prefixes confirmed by live API testing.
+// BLOCKED prefixes — sports/markets Progno does NOT predict
+const BLOCKED_PREFIXES = [
+  'KXDIMAYORGAME',     // Liga MX (Mexican soccer)
+  'KXNCAAHOCKEY',      // College hockey
+  'KXMLBST',           // MLB Spring Training (unreliable rosters)
+  'KXNBA2H',           // NBA 2nd half markets (not a full-game prediction)
+  'KXNCAAWB',          // NCAA Women's basketball
+  'KXWNBA',            // WNBA
+  'KXNBL',             // NBL Australia
+  'KXWTA',             // WTA Tennis
+  'KXATP',             // ATP Tennis
+  'KXUFC',             // UFC/MMA
+  'KXEPL',             // English Premier League
+  'KXLIG',             // La Liga / Ligue 1
+  'KXBUN',             // Bundesliga
+  'KXSER',             // Serie A
+  'KXMLS',             // MLS
+]
+
 const GAME_SERIES: Array<{ prefix: string; sport: string }> = [
   // Winner/Game markets (highest priority)
   { prefix: 'KXNBAGAME', sport: 'NBA' },
@@ -217,7 +236,6 @@ const GAME_SERIES: Array<{ prefix: string; sport: string }> = [
   { prefix: 'KXSHLGAME', sport: 'NHL' },
   { prefix: 'KXMLBGAME', sport: 'MLB' },
   { prefix: 'KXNCAAFGAME', sport: 'NCAAF' },
-  { prefix: 'KXUNRIVALEDGAME', sport: 'NBA' },
   // Spread markets (some games only have spread, no winner market)
   { prefix: 'KXNCAAMBSPREAD', sport: 'NCAAB' },
   { prefix: 'KXNBASPREAD', sport: 'NBA' },
@@ -233,6 +251,11 @@ const GAME_SERIES: Array<{ prefix: string; sport: string }> = [
   { prefix: 'KXNCAABASEBALL', sport: 'NCAAB' },
   { prefix: 'KXCBGAME', sport: 'NCAAB' },
 ]
+
+// Max contracts per single bet to prevent runaway costs on cheap markets
+const MAX_CONTRACTS_PER_BET = 15
+// Max total cost per single bet in cents ($10 max)
+const MAX_BET_COST_CENTS = 1000
 
 async function fetchSportsMarkets(apiKeyId: string, privateKey: string): Promise<{ markets: any[]; error: string | null }> {
   const all: any[] = []
@@ -269,6 +292,8 @@ async function fetchSportsMarkets(apiKeyId: string, privateKey: string): Promise
         const et = (ev.event_ticker || '').toUpperCase()
         // Skip women's sports (NCAAWB, WNBA, etc.) — Progno only predicts men's
         if (/NCAAWB|WNBA|WCBB|WOMEN/i.test(et)) continue
+        // Skip explicitly blocked prefixes (Liga MX, college hockey, spring training, etc.)
+        if (BLOCKED_PREFIXES.some(bp => et.startsWith(bp))) continue
         const gs = GAME_SERIES.find(s => et.startsWith(s.prefix))
         if (!gs) continue
         // Flatten nested markets, tagging each with sport and event_ticker
@@ -542,7 +567,14 @@ export async function POST(request: NextRequest) {
         results.push(result)
         continue
       }
-      const count = Math.max(1, Math.floor(stakeCents / price))
+      let count = Math.max(1, Math.floor(stakeCents / price))
+      // Cap contracts to prevent runaway costs on cheap markets (e.g. 3¢ → 166 contracts = $5)
+      count = Math.min(count, MAX_CONTRACTS_PER_BET)
+      // Also cap total cost
+      const totalCost = count * price
+      if (totalCost > MAX_BET_COST_CENTS) {
+        count = Math.max(1, Math.floor(MAX_BET_COST_CENTS / price))
+      }
 
       result.ticker = market.ticker
       result.marketTitle = market.title

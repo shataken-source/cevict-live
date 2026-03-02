@@ -1,0 +1,64 @@
+{
+  "success": true,
+  "stats": {
+    "total": 14,
+    "completed": 14,
+    "correct": 7,
+    "incorrect": 7,
+    "pending": 0,
+    "win_percentage": 50,
+    "average_confidence": 61.5,
+    "average_accuracy": 0,
+    "total_profit": 0,
+    "roi": 38.64
+  },
+  "by_type": {
+    "sports": {
+      "total": 14,
+      "completed": 14,
+      "correct": 7,
+      "win_percentage": 50,
+      "average_confidence": 61.5
+    }
+  },
+  "by_category": {
+    "NBA": {
+      "total": 4,
+      "completed": 4,
+      "correct": 2,
+      "win_percentage": 50,
+      "average_confidence": 63.75
+    },
+    "NFL": {
+      "total": 4,
+      "completed": 4,
+      "correct": 2,
+      "win_percentage": 50,
+      "average_confidence": 61.75
+    },
+    "NHL": {
+      "total": 2,
+      "completed": 2,
+      "correct": 1,
+      "win_percentage": 50,
+      "average_confidence": 60
+    },
+    "MLB": {
+      "total": 4,
+      "completed": 4,
+      "correct": 2,
+      "win_percentage": 50,
+      "average_confidence": 59.75
+    }
+  },
+  "trading": {
+    "total": 39,
+    "wins": 23,
+    "losses": 13,
+    "pending": 3,
+    "totalStakeCents": 22000,
+    "totalProfitCents": 8500,
+    "winRate": 63.9,
+    "roi": 38.64
+  }
+}

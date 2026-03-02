@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
 export const runtime = 'nodejs';
 
@@ -20,6 +21,26 @@ function getSupabaseClient() {
     return null;
   }
 }
+
+const predictionSchema = z.object({
+  prediction_type: z.string().min(1),
+  category: z.string().optional(),
+  question: z.string().min(1),
+  context: z.unknown().optional(),
+  prediction_data: z.unknown(),
+  confidence: z.preprocess(
+    (v) => (typeof v === 'string' ? Number(v) : v),
+    z.number().finite()
+  ),
+  edge_pct: z.preprocess(
+    (v) => (v === undefined || v === null ? undefined : typeof v === 'string' ? Number(v) : v),
+    z.number().finite().optional()
+  ),
+  risk_level: z.string().optional(),
+  source: z.string().optional(),
+  user_id: z.string().optional(),
+  notes: z.string().optional(),
+});
 
 // GET - Fetch predictions with filters
 export async function GET(request: NextRequest) {
@@ -140,7 +161,18 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
+    const raw = await request.json().catch(() => null);
+    const parsed = predictionSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          error: 'Invalid prediction payload',
+          details: parsed.error.flatten(),
+        },
+        { status: 400 }
+      );
+    }
+
     const {
       prediction_type,
       category,
@@ -153,15 +185,17 @@ export async function POST(request: NextRequest) {
       source,
       user_id,
       notes,
-    } = body;
+    } = parsed.data;
 
-    // Validation
-    if (!prediction_type || !question || !prediction_data || confidence === undefined) {
-      return NextResponse.json(
-        { error: 'Missing required fields: prediction_type, question, prediction_data, confidence' },
-        { status: 400 }
-      );
-    }
+    const confClamped = Math.max(0, Math.min(100, confidence));
+
+    console.log('[PROGNO DB] New prediction', {
+      type: prediction_type,
+      category,
+      conf: confClamped,
+      edge_pct,
+      source,
+    });
 
     const { data, error } = await client
       .from('progno_predictions')
@@ -171,7 +205,7 @@ export async function POST(request: NextRequest) {
         question,
         context: context || null,
         prediction_data,
-        confidence: Math.max(0, Math.min(100, confidence)), // Clamp 0-100
+        confidence: confClamped, // Clamp 0-100
         edge_pct: edge_pct || null,
         risk_level: risk_level || null,
         source: source || null,
