@@ -9,6 +9,10 @@
       "schedule": "0 12 * * *"
     },
     {
+      "path": "/api/cron/daily-sms-report",
+      "schedule": "30 12 * * *"
+    },
+    {
       "path": "/api/cron/daily-results-retry",
       "schedule": "15 13 * * *"
     },
