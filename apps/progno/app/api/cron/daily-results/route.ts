@@ -415,8 +415,11 @@ export async function GET(request: Request) {
         .upsert({
           date,
           total_picks: total,
+          picks: total,
           correct,
           wrong: graded.length - correct,
+          wins: correct,
+          losses: graded.length - correct,
           pending,
           graded: graded.length,
           win_rate: out.summary.winRate,
