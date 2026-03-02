@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "echo static"
+    "build": "echo static",
+    "remote-server": "node remote-server.js"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
   }
 }

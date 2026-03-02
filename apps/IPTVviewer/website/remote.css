@@ -24,6 +24,23 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 .conn-dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
 .conn-lbl { font-size: 11px; color: var(--muted); }
 
+/* ── Mode tabs (Switchback vs Universal) ── */
+.mode-tabs { display: flex; gap: 0; padding: 0 14px 10px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.mode-tab { flex: 1; padding: 10px 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; border-radius: var(--r); margin: 0 2px; transition: all .15s; }
+.mode-tab:first-child { margin-left: 0; }
+.mode-tab:last-child { margin-right: 0; }
+.mode-tab.on { background: rgba(229, 0, 0, 0.2); color: #fff; border-color: var(--red); }
+.mode-tab:active { transform: scale(0.98); }
+
+/* ── Universal panel ── */
+.remote-panel { padding-bottom: 0.5em; }
+.u-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.u-btn { padding: 12px 16px; background: var(--panel2); border: 1px solid var(--border); border-radius: var(--r); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+.u-btn:active { transform: scale(0.96); background: rgba(255,255,255,0.08); }
+.u-btn.u-power { background: linear-gradient(135deg, #333, #1a1a1a); border-color: rgba(255,255,255,0.15); }
+.u-hint { font-size: 11px; color: var(--muted); margin-top: 12px; padding: 10px; background: var(--panel2); border-radius: var(--r); line-height: 1.4; }
+.u-hint code { font-size: 10px; color: var(--green); }
+
 /* ── Scroll container ── */
 .scroll { overflow-y: auto; height: calc(100vh - 52px); padding: 14px 15px 90px; }
 

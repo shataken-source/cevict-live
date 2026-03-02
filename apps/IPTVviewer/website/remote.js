@@ -1,4 +1,4 @@
-/* Switchback TV Remote – remote.js */
+/* Switchback TV Remote – remote.js (Switchback + Universal mode) */
 var method = 'ls';
 var sock = null;
 var muted = false;
@@ -6,6 +6,26 @@ var playing = true;
 var nbuf = '';
 var ntimer = null;
 var toastTimer = null;
+var remoteMode = 'switchback'; // 'switchback' | 'universal'
+
+/* ── Mode: Switchback TV vs Universal ── */
+function getRemoteMode() {
+  try { return localStorage.getItem('remote_mode') || 'switchback'; } catch (e) { return 'switchback'; }
+}
+function setRemoteMode(mode) {
+  remoteMode = mode === 'universal' ? 'universal' : 'switchback';
+  try { localStorage.setItem('remote_mode', remoteMode); } catch (e) {}
+  var ps = document.getElementById('panel-switchback');
+  var pu = document.getElementById('panel-universal');
+  var ms = document.getElementById('mode-switchback');
+  var mu = document.getElementById('mode-universal');
+  var minibar = document.getElementById('minibar');
+  if (ps) ps.style.display = remoteMode === 'switchback' ? '' : 'none';
+  if (pu) pu.style.display = remoteMode === 'universal' ? '' : 'none';
+  if (ms) { ms.classList.toggle('on', remoteMode === 'switchback'); ms.classList.remove('active'); }
+  if (mu) { mu.classList.toggle('on', remoteMode === 'universal'); mu.classList.remove('active'); }
+  if (minibar) minibar.style.display = remoteMode === 'switchback' ? '' : 'none';
+}
 
 /* ── Command sender ── */
 function send(action, extra) {
@@ -67,6 +87,8 @@ function feedback(a, p) {
     toast('&#x1F634; Sleep in ' + (p && p.mins) + 'm');
   } else if (MSGS[a]) {
     toast(MSGS[a]);
+  } else if (a && a.indexOf('u_') === 0) {
+    toast('Sent');
   }
 }
 
@@ -163,6 +185,7 @@ function connectWS(url) {
   if (sock) { try { sock.close(); } catch (e) { } }
   sock = new WebSocket(url);
   sock.onopen = function () {
+    try { sock.send(JSON.stringify({ type: 'register', role: 'remote' })); } catch (e) {}
     setConn(true, url.replace('ws://', ''));
     toast('&#x2713; Connected!');
   };
@@ -243,6 +266,7 @@ window.addEventListener('DOMContentLoaded', function () {
   setConn(true, 'Same device');
   var h = localStorage.getItem('remote_ws_host');
   if (h) document.getElementById('ws-ip').value = h;
+  setRemoteMode(getRemoteMode());
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('remote-sw.js').catch(function () { });
   }

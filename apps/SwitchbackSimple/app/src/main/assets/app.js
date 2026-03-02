@@ -3736,6 +3736,9 @@ function handleRemoteCommand(cmd) {
       break;
     }
     case 'sleep_cancel': cancelSleepTimer(); break;
+    default:
+      if (a && a.indexOf('u_') === 0) { /* Universal remote key — no-op here; use IR/CEC receiver */ }
+      break;
   }
 }
 
@@ -3746,7 +3749,34 @@ window.addEventListener('storage', e => {
   }
 });
 
-// Publish TV state to localStorage so the phone remote can read it
+// Same-tab polling fallback (remote and TV in same browser, single tab)
+setInterval(() => {
+  try {
+    const raw = localStorage.getItem('sb_remote_cmd');
+    if (!raw) return;
+    const cmd = JSON.parse(raw);
+    localStorage.removeItem('sb_remote_cmd');
+    if (cmd && cmd.action) handleRemoteCommand(cmd);
+  } catch (_) { }
+}, 200);
+
+// LAN remote: WebSocket client (connects to remote-server.js on port 8765)
+let remoteWs = null;
+function connectRemoteWs() {
+  if (remoteWs && remoteWs.readyState === 1) return;
+  try {
+    const host = (typeof localStorage !== 'undefined' && localStorage.getItem('remote_ws_server')) || 'localhost';
+    const ws = new WebSocket('ws://' + host + ':8765');
+    ws.onopen = () => { try { ws.send(JSON.stringify({ type: 'register', role: 'tv' })); } catch (_) {} };
+    ws.onmessage = (e) => { try { const cmd = JSON.parse(e.data); if (cmd && cmd.action) handleRemoteCommand(cmd); } catch (_) {} };
+    ws.onclose = () => { remoteWs = null; };
+    remoteWs = ws;
+  } catch (_) {}
+}
+setInterval(connectRemoteWs, 15000);
+connectRemoteWs();
+
+// Publish TV state to localStorage and to LAN remote (WebSocket)
 function publishTVState() {
   const ch = S.currentChannel;
   const video = document.getElementById('player-video');
@@ -3764,7 +3794,10 @@ function publishTVState() {
     currentSlot: S.switchbackSlots?.indexOf(ch) ?? -1,
   };
   try { localStorage.setItem('sb_state', JSON.stringify(state)); } catch (_) { }
+  if (remoteWs && remoteWs.readyState === 1) {
+    try { remoteWs.send(JSON.stringify(state)); } catch (_) { }
+  }
 }
 setInterval(publishTVState, 1000);
 
-console.log('[Switchback TV] v3.8 — stream proxy fix, TV remote keys, phone remote bridge, focus fix ✓');
+console.log('[Switchback TV] v3.9 — remote LAN (WS server 8765), same-tab polling ✓');

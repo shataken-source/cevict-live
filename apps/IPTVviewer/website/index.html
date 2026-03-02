@@ -2818,11 +2818,39 @@ def send_setup_email(customer):
     }
 
     // ── REMOTE CONTROL HANDLER ─────────────────────────────
+    window._remoteWs = null;
+    function connectRemoteWs() {
+      if (window._remoteWs && window._remoteWs.readyState === 1) return;
+      const host = localStorage.getItem('remote_ws_server') || location.hostname || 'localhost';
+      const url = 'ws://' + host + ':8765';
+      try {
+        const ws = new WebSocket(url);
+        ws.onopen = () => { try { ws.send(JSON.stringify({ type: 'register', role: 'tv' })); } catch (e) {} };
+        ws.onmessage = (e) => { try { const cmd = JSON.parse(e.data); if (cmd && cmd.action) handleRemoteCmd(cmd.action, cmd); } catch (err) {} };
+        ws.onclose = () => { window._remoteWs = null; };
+        window._remoteWs = ws;
+      } catch (e) {}
+    }
+    setInterval(connectRemoteWs, 15000);
+    connectRemoteWs();
+    setInterval(() => {
+      if (!window._remoteWs || window._remoteWs.readyState !== 1) return;
+      const vid = document.querySelector('#player video') || document.querySelector('video');
+      const stateObj = {
+        playing: vid ? !vid.paused : false,
+        muted: vid ? vid.muted : false,
+        volume: vid ? Math.round(vid.volume * 100) : 100,
+        live: true,
+        channel: (document.getElementById('player-ch-name') || {}).textContent || '',
+        program: (document.getElementById('player-program') || {}).textContent || ''
+      };
+      try { window._remoteWs.send(JSON.stringify(stateObj)); } catch (e) {}
+    }, 1000);
+
     window.addEventListener('storage', e => {
       if (e.key !== 'sb_remote_cmd') return;
       let cmd; try { cmd = JSON.parse(e.newValue); } catch { return; }
       if (!cmd || !cmd.action) return;
-      // Pass full cmd as extra (stream_id, name etc. are top-level)
       handleRemoteCmd(cmd.action, cmd);
     });
 
@@ -2941,6 +2969,9 @@ def send_setup_email(customer):
         case 'sleep_cancel':
           clearTimeout(window._sbSleepTimer);
           break;
+        default:
+          if (action && action.indexOf('u_') === 0) { /* Universal remote key — no-op; use IR/CEC receiver */ }
+          break;
       }
       // Broadcast state back to remote
       var stateObj = {
@@ -2955,6 +2986,9 @@ def send_setup_email(customer):
       if (chNameEl && chNameEl.textContent) stateObj.channel = chNameEl.textContent;
       if (progEl && progEl.textContent) stateObj.program = progEl.textContent;
       localStorage.setItem('sb_state', JSON.stringify(stateObj));
+      if (window._remoteWs && window._remoteWs.readyState === 1) {
+        try { window._remoteWs.send(JSON.stringify(stateObj)); } catch (e) {}
+      }
     }
 
     // ── INIT ───────────────────────────────────────────────

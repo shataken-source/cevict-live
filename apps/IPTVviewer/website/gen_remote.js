@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 
 const html = `<!DOCTYPE html>
 <html lang="en">
@@ -21,7 +22,12 @@ const html = `<!DOCTYPE html>
     <span class="conn-lbl" id="clbl">Tap to connect</span>
   </div>
 </div>
+<div class="mode-tabs">
+  <button type="button" class="mode-tab on" id="mode-switchback" onclick="setRemoteMode('switchback')">Switchback TV</button>
+  <button type="button" class="mode-tab" id="mode-universal" onclick="setRemoteMode('universal')">Universal</button>
+</div>
 <div class="scroll">
+<div id="panel-switchback" class="remote-panel">
   <div class="sec">
     <div class="sec-lbl">&#x21C4; Switchback Slots</div>
     <div class="sb-grid">
@@ -106,7 +112,54 @@ const html = `<!DOCTYPE html>
     </div>
   </div>
 </div>
-<div class="minibar">
+</div>
+<div id="panel-universal" class="remote-panel" style="display:none">
+  <div class="sec">
+    <div class="sec-lbl">Power &amp; Volume</div>
+    <div class="u-row">
+      <button type="button" class="u-btn u-power" onclick="send('u_power')">&#x23FB; Power</button>
+      <button type="button" class="u-btn" onclick="send('u_vol_up')">&#x1F50A; Vol+</button>
+      <button type="button" class="u-btn" onclick="send('u_vol_down')">&#x1F509; Vol&#x2212;</button>
+      <button type="button" class="u-btn" onclick="send('u_mute')">&#x1F507; Mute</button>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-lbl">Input &amp; Channel</div>
+    <div class="u-row">
+      <button type="button" class="u-btn" onclick="send('u_input')">&#x21C4; Input</button>
+      <button type="button" class="u-btn" onclick="send('u_ch_up')">Ch &#x25B2;</button>
+      <button type="button" class="u-btn" onclick="send('u_ch_down')">Ch &#x25BC;</button>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-lbl">D-pad</div>
+    <div class="dpad">
+      <div class="dpad-row"><div style="width:62px"></div><button type="button" class="dp up" onclick="send('u_nav_up')">&#9650;</button><div style="width:62px"></div></div>
+      <div class="dpad-row"><button type="button" class="dp lt" onclick="send('u_nav_left')">&#9664;</button><button type="button" class="dp ok" onclick="send('u_ok')">OK</button><button type="button" class="dp rt" onclick="send('u_nav_right')">&#9654;</button></div>
+      <div class="dpad-row"><div style="width:62px"></div><button type="button" class="dp dn" onclick="send('u_nav_down')">&#9660;</button><div style="width:62px"></div></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-lbl">Number pad</div>
+    <div class="numpad">
+      <button type="button" class="num" onclick="send('u_num',{num:1})">1</button>
+      <button type="button" class="num" onclick="send('u_num',{num:2})">2</button>
+      <button type="button" class="num" onclick="send('u_num',{num:3})">3</button>
+      <button type="button" class="num" onclick="send('u_num',{num:4})">4</button>
+      <button type="button" class="num" onclick="send('u_num',{num:5})">5</button>
+      <button type="button" class="num" onclick="send('u_num',{num:6})">6</button>
+      <button type="button" class="num" onclick="send('u_num',{num:7})">7</button>
+      <button type="button" class="num" onclick="send('u_num',{num:8})">8</button>
+      <button type="button" class="num" onclick="send('u_num',{num:9})">9</button>
+      <button type="button" class="num" onclick="send('u_clear')">&#9003;</button>
+      <button type="button" class="num" onclick="send('u_num',{num:0})">0</button>
+      <button type="button" class="num go" onclick="send('u_enter')">OK</button>
+    </div>
+  </div>
+  <p class="u-hint">Universal keys are sent over the same connection. Use with an IR blaster, HDMI-CEC, or other receiver that listens for <code>u_*</code> actions.</p>
+</div>
+</div>
+<div class="minibar" id="minibar">
   <div class="mini-icon" id="mini-icon">&#x1F4FA;</div>
   <div class="mini-info"><div class="mini-name" id="mini-name">No channel</div><div class="mini-prog" id="mini-prog">&#8212;</div></div>
   <button class="mini-pp" id="mini-pp" onclick="send('play_pause')">&#x23F8;</button>
@@ -136,5 +189,6 @@ const html = `<!DOCTYPE html>
 </body>
 </html>`;
 
-fs.writeFileSync('C:/cevict-live/apps/IPTVviewer/website/remote.html', html, 'utf8');
-console.log('remote.html written: ' + html.length + ' bytes');
+const outPath = path.join(__dirname, 'remote.html');
+fs.writeFileSync(outPath, html, 'utf8');
+console.log('remote.html written: ' + outPath + ' (' + html.length + ' bytes)');
