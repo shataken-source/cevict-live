@@ -197,8 +197,13 @@ body {
   50% { opacity: 0.3; }
 }
 
+/* Hide MY PICKS panel (progno list); your bets are in bottom ticker + top right position */
+.panel.hidden {
+  display: none !important;
+}
+
 /* ============================================
-   BOTTOM BETS SCROLL BAR — personal bets strip
+   BOTTOM BETS TICKER — same speed as top ticker (14s)
    ============================================ */
 
 .bets-scroll-bar {
@@ -208,20 +213,15 @@ body {
   max-height: 72px;
   background: #060a10;
   border-top: 2px solid var(--border);
-  overflow-x: auto;
-  overflow-y: hidden;
   display: flex;
   align-items: stretch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  scroll-behavior: smooth;
-  scroll-snap-type: x mandatory;
-  scroll-padding: 0 0.8em;
 }
 
-.bets-scroll-bar::-webkit-scrollbar {
-  display: none;
-  height: 0;
+.bets-scroll-track {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  height: 100%;
 }
 
 .bets-scroll-inner {
@@ -231,6 +231,11 @@ body {
   padding: 0 0.8em;
   min-width: min-content;
   height: 100%;
+  white-space: nowrap;
+}
+
+.bets-scroll-inner.bets-ticker-animate {
+  animation: tickerMove 14s linear infinite;
 }
 
 .bets-scroll-placeholder {
@@ -242,15 +247,14 @@ body {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.35em;
-  padding: 0.3em 0.55em;
+  gap: 0.5em;
+  padding: 0.4em 0.7em;
   border-radius: 6px;
-  font-size: 0.52em;
+  font-size: 0.95em;
   font-weight: 700;
   white-space: nowrap;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
+  cursor: pointer;
 }
 
 .bet-chip--win {
@@ -273,10 +277,11 @@ body {
 
 .bet-chip-matchup {
   font-weight: 800;
+  font-size: 1.05em;
 }
 
 .bet-chip-result {
-  font-size: 1em;
+  font-size: 0.95em;
   opacity: 0.95;
 }
 

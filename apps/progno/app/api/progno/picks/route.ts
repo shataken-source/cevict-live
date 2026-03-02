@@ -128,43 +128,44 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Try Supabase Storage fallback
+    // Try Supabase Storage fallback: load both regular + early for this date and merge
     if (picks.length === 0 && supabase) {
+      const parsePayload = (parsed: any): any[] =>
+        Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.picks) ? parsed.picks : []);
+
       try {
-        const fileName = `predictions-${date}.json`;
-        const { data: fileData, error: storageError } = await supabase.storage
-          .from('predictions')
-          .download(fileName);
+        const [regularRes, earlyRes] = await Promise.all([
+          supabase.storage.from('predictions').download(`predictions-${date}.json`),
+          supabase.storage.from('predictions').download(`predictions-early-${date}.json`),
+        ]);
 
-        if (!storageError && fileData) {
-          const text = await fileData.text();
-          const parsed = JSON.parse(text);
-          picks = parsed.picks || parsed;
-          source = 'storage';
-        }
-      } catch (error) {
-        // Try early predictions from storage
-        try {
-          const earlyFileName = `predictions-early-${date}.json`;
-          const { data: earlyData, error: earlyError } = await supabase.storage
-            .from('predictions')
-            .download(earlyFileName);
+        const regularPicks = regularRes.data
+          ? parsePayload(JSON.parse(await regularRes.data.text()))
+          : [];
+        const earlyPicks = earlyRes.data
+          ? parsePayload(JSON.parse(await earlyRes.data.text()))
+          : [];
 
-          if (!earlyError && earlyData) {
-            const text = await earlyData.text();
-            const parsed = JSON.parse(text);
-            picks = parsed.picks || parsed;
-            source = 'storage-early';
+        if (regularPicks.length > 0 || earlyPicks.length > 0) {
+          // Merge and dedupe by game_id (prefer higher confidence)
+          const byKey = new Map<string, any>();
+          for (const p of [...regularPicks, ...earlyPicks]) {
+            const key = p.game_id || p.id || `${p.home_team || p.homeTeam}|${p.away_team || p.awayTeam}`;
+            if (!key) continue;
+            const existing = byKey.get(key);
+            if (!existing || (p.confidence ?? 0) > (existing.confidence ?? 0)) byKey.set(key, p);
           }
-        } catch {
-          // Try ESPN fallback
-          if (includeEspn) {
-            try {
-              picks = await fetchEspnPicks(date);
-              source = 'espn';
-            } catch (e) {
-              console.warn('[Picks] ESPN fallback failed:', e);
-            }
+          picks = Array.from(byKey.values());
+          source = earlyPicks.length > 0 ? 'storage+early' : 'storage';
+        }
+      } catch {
+        // Try ESPN fallback
+        if (includeEspn) {
+          try {
+            picks = await fetchEspnPicks(date);
+            source = 'espn';
+          } catch (e) {
+            console.warn('[Picks] ESPN fallback failed:', e);
           }
         }
       }

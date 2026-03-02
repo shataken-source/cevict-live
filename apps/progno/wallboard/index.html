@@ -69,8 +69,8 @@
           <div class="risk-label" id="riskLabel">RISK: LOW</div>
         </div>
 
-        <!-- MY PICKS / POSITIONS -->
-        <div class="panel picks-panel">
+        <!-- MY PICKS panel hidden: your actual bets scroll in the bottom ticker; position/stake in top right -->
+        <div class="panel picks-panel hidden" aria-hidden="true">
           <div class="panel-header">
             <span class="panel-title">MY PICKS</span>
             <span class="badge-count" id="picksCount">0</span>
@@ -238,15 +238,6 @@
           <div class="intel-content" id="intelContent"></div>
         </div>
 
-        <!-- SHARP ACTION / STEAM DETECTOR -->
-        <div class="panel steam-panel">
-          <div class="panel-header">
-            <span class="panel-title">SHARP ACTION</span>
-            <span class="steam-indicator" id="steamIndicator">QUIET</span>
-          </div>
-          <div id="steamFeed" class="steam-feed"></div>
-        </div>
-
         <!-- KEYBOARD SHORTCUTS -->
         <div class="panel shortcuts-panel">
           <div class="shortcuts-grid">
@@ -264,10 +255,12 @@
       </div>
     </div>
 
-    <!-- BOTTOM: MY BETS HORIZONTAL SCROLL -->
+    <!-- BOTTOM: MY BETS TICKER (same speed as top ticker; green=won, yellow=pending, red=lost) -->
     <div class="bets-scroll-bar">
-      <div class="bets-scroll-inner" id="betsScrollInner">
-        <span class="bets-scroll-placeholder">No bets yet</span>
+      <div class="bets-scroll-track">
+        <div class="bets-scroll-inner" id="betsScrollInner">
+          <span class="bets-scroll-placeholder">No bets yet</span>
+        </div>
       </div>
     </div>
 

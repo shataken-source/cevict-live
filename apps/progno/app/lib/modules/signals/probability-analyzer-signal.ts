@@ -11,6 +11,7 @@
  *   - blend=0.1, conf=0.5, edge=0.3, spread=0.3, flip=45, underdog=0
  *   - Sport mults: NBA=0, NCAAB=0, NCAA=0.3, NHL=1
  *   - ROI: +7.6% with analyzer vs +6.0% without; profitable sims 91.7% vs 84.8%
+ *   - CBB (College Baseball): 0.25 to dampen overconfidence (perf report 44% WR vs 73% avg conf).
  *   - DO NOT change without re-running probability-analyzer-simulation.ts
  */
 
@@ -31,7 +32,7 @@ const SPORT_MULTIPLIERS: Record<string, number> = {
   NCAAF: 0.3,
   NFL: 0,
   NCAA: 0.3,
-  CBB: 0,
+  CBB: 0.25,  // College Baseball: dampen overconfidence (perf 44% WR vs 73% conf)
 }
 
 // ── Internal types ───────────────────────────────────────────────────────────
@@ -179,6 +180,8 @@ function sanitizeOdds(odds: number): number {
 }
 
 function sportToLeague(sport: string): string {
+  // College Baseball: use CBB multiplier (dampen overconfidence), not generic NCAA
+  if (sport === 'baseball_ncaa') return 'CBB'
   return sport
     .replace('basketball_', '').replace('americanfootball_', '')
     .replace('icehockey_', '').replace('baseball_', '')

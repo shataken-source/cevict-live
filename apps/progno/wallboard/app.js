@@ -1,6 +1,6 @@
 // ============================================
 // CEVICT COMMAND CENTER v3 — REAL DATA
-// ============================================
+// ===============n=============================
 
 const API = window.location.origin + '/api';
 const REFRESH_MS = 300000;  // stats every 5 min (ROI, progno W-L, my picks W-L)
@@ -200,12 +200,20 @@ async function loadKalshiPicks(date) {
   return [];
 }
 
-// Today in CST (YYYY-MM-DD) — used to filter picks and align with wallboard bets
+// Today in CST (YYYY-MM-DD) — used for API requests and to filter picks / align with wallboard bets
 function getTodayCst() {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Chicago',
     year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(new Date());
+}
+function getYesterdayCst() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(d);
 }
 
 function getGameDateCst(gameTime) {
@@ -219,18 +227,16 @@ function getGameDateCst(gameTime) {
 }
 
 async function loadPicks() {
-  // Try today AND yesterday — picks generated overnight (CST evening = UTC next day)
-  // may have created_at from yesterday UTC
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  // Use Chicago dates so we match progno cron, Supabase game_date, and wallboard bets
   const todayCst = getTodayCst();
+  const yesterdayCst = getYesterdayCst();
   let raw = [];
 
-  // Try Kalshi matched picks first
-  raw = await loadKalshiPicks(today);
-  if (raw.length === 0) raw = await loadKalshiPicks(yesterday);
+  // Try Kalshi matched picks first (still UTC for any future endpoint)
+  raw = await loadKalshiPicks(todayCst);
+  if (raw.length === 0) raw = await loadKalshiPicks(yesterdayCst);
 
-  for (const date of [today, yesterday]) {
+  for (const date of [todayCst, yesterdayCst]) {
     if (raw.length > 0) break;
     try {
       const res = await fetch(API + '/progno/picks?date=' + date, { cache: 'no-store' });
@@ -890,6 +896,30 @@ function renderEdgePanel(g) {
 // POSITION PANEL
 // ============================================
 
+/** Find actual bet (from actual_bets / wallboard API) that matches this game for STAKE display */
+function findBetForGame(g) {
+  if (!g || !state.myBets || state.myBets.length === 0) return null;
+  return state.myBets.find(function (b) {
+    const homeMatch = fuzzyMatch(g.home, b.home_team) || fuzzyMatch(b.home_team, g.home);
+    const awayMatch = fuzzyMatch(g.away, b.away_team) || fuzzyMatch(b.away_team, g.away);
+    if (!homeMatch || !awayMatch) return false;
+    if (b.pick && g.pick && !fuzzyMatch(g.pick, b.pick)) return false;
+    return true;
+  }) || null;
+}
+
+/** Find game in state.games that matches this bet (for centering when clicking bottom ticker chip) */
+function findGameForBet(bet) {
+  if (!bet || !state.games || state.games.length === 0) return null;
+  return state.games.find(function (g) {
+    const homeMatch = fuzzyMatch(g.home, bet.home_team) || fuzzyMatch(bet.home_team, g.home);
+    const awayMatch = fuzzyMatch(g.away, bet.away_team) || fuzzyMatch(bet.away_team, g.away);
+    if (!homeMatch || !awayMatch) return false;
+    if (bet.pick && g.pick && !fuzzyMatch(g.pick, bet.pick)) return false;
+    return true;
+  }) || null;
+}
+
 function renderPositionPanel(g) {
   const details = document.getElementById('positionDetails');
   const noPos = document.getElementById('noPosition');
@@ -914,23 +944,39 @@ function renderPositionPanel(g) {
   if (details) details.style.display = 'block';
   if (noPos) noPos.style.display = 'none';
 
+  // Prefer actual bet stake from actual_bets (wallboard API) for this game
+  const actualBet = findBetForGame(g);
+  const stakeFromBet = actualBet && (actualBet.stake_cents != null || actualBet.contracts != null);
+  const displayStakeDollars = actualBet && actualBet.stake_cents != null ? (actualBet.stake_cents / 100) : null;
+  const displayContracts = actualBet && actualBet.contracts != null ? actualBet.contracts : null;
+  const displayPriceCents = actualBet && actualBet.price_cents != null ? actualBet.price_cents : (g._price != null ? parseFloat(g._price) : null);
+
   if (g._kalshi) {
-    const price = parseFloat(g._price) || 50;
+    const price = displayPriceCents != null ? displayPriceCents : (parseFloat(g._price) || 50);
     const entryEl = document.getElementById('posEntry');
-    setText('posEntry', (g._side || 'YES').toUpperCase() + ' @ ' + price + '¢');
+    setText('posEntry', (g._side || 'YES').toUpperCase() + ' @ ' + Math.round(price) + '¢');
     if (entryEl) entryEl.style.color = g._side === 'yes' ? 'var(--green)' : 'var(--cyan)';
 
-    if (g._dryRun || !g.stake) {
-      // No real bet placed — show analysis only
-      setText('posStake', 'DRY RUN — not placed');
+    if (stakeFromBet && displayStakeDollars != null) {
+      setText('posStake', '$' + displayStakeDollars.toFixed(2) + (displayContracts != null ? ' · ' + displayContracts + ' contracts' : ''));
       const stakeEl = document.getElementById('posStake');
-      if (stakeEl) stakeEl.style.color = 'var(--yellow)';
+      if (stakeEl) stakeEl.style.color = '';
+      const profit = displayContracts != null ? (displayContracts - displayStakeDollars) : (displayStakeDollars * (100 - price) / price);
+      const mp = parseFloat(g.modelProb) / 100;
+      const liveEv = ((mp * profit) - ((1 - mp) * displayStakeDollars)).toFixed(0);
+      setText('posLiveEv', (liveEv >= 0 ? '+$' : '-$') + Math.abs(liveEv));
+      setText('posIfWins', '+$' + (displayContracts != null ? (displayContracts - displayStakeDollars).toFixed(0) : profit.toFixed(0)));
+      const evEl = document.getElementById('posLiveEv');
+      if (evEl) evEl.style.color = parseFloat(liveEv) >= 0 ? 'var(--green)' : 'var(--red)';
+    } else if (g._dryRun || !g.stake) {
+      setText('posStake', '—');
+      const stakeEl = document.getElementById('posStake');
+      if (stakeEl) stakeEl.style.color = 'var(--muted)';
       setText('posLiveEv', g.confidence + '% conf');
       setText('posIfWins', price <= 50 ? '+' + Math.round((100 - price) / price * 100) + '% ROI' : '+' + Math.round((100 / price - 1) * 100) + '% ROI');
       const evEl = document.getElementById('posLiveEv');
       if (evEl) evEl.style.color = 'var(--cyan)';
     } else {
-      // Real bet placed
       const stake = g.stake;
       const contracts = Math.round((stake / price) * 100);
       const profit = contracts - stake;
@@ -953,10 +999,21 @@ function renderPositionPanel(g) {
       if (entryEl) entryEl.style.color = 'var(--cyan)';
     }
 
-    if (g._dryRun || !g.stake) {
-      setText('posStake', 'MODEL PICK — not placed');
+    if (stakeFromBet && displayStakeDollars != null) {
+      setText('posStake', '$' + displayStakeDollars.toFixed(2));
       const stakeEl = document.getElementById('posStake');
-      if (stakeEl) stakeEl.style.color = 'var(--yellow)';
+      if (stakeEl) stakeEl.style.color = '';
+      const profit = actualBet.profit_cents != null ? (actualBet.profit_cents / 100) : (displayStakeDollars * (100 / 110));
+      const mp = parseFloat(g.modelProb) / 100;
+      const liveEv = actualBet.result ? (actualBet.profit_cents != null ? (actualBet.profit_cents / 100).toFixed(0) : '—') : ((mp * profit) - ((1 - mp) * displayStakeDollars)).toFixed(0);
+      setText('posLiveEv', (liveEv === '—' ? liveEv : (parseFloat(liveEv) >= 0 ? '+$' : '-$') + Math.abs(parseFloat(liveEv))));
+      setText('posIfWins', actualBet.result === 'win' && actualBet.profit_cents != null ? '+$' + (actualBet.profit_cents / 100).toFixed(2) : '+$' + profit.toFixed(0));
+      const evEl = document.getElementById('posLiveEv');
+      if (evEl) evEl.style.color = (liveEv !== '—' && parseFloat(liveEv) >= 0) ? 'var(--green)' : (liveEv !== '—' ? 'var(--red)' : '');
+    } else if (g._dryRun || !g.stake) {
+      setText('posStake', '—');
+      const stakeEl = document.getElementById('posStake');
+      if (stakeEl) stakeEl.style.color = 'var(--muted)';
       const edgeNum = parseFloat(g.edge);
       setText('posLiveEv', (edgeNum > 0 ? '+' : '') + g.edge + '% edge');
       setText('posIfWins', g.tier ? g.tier.toUpperCase() + ' tier' : 'STANDARD');
@@ -1333,23 +1390,29 @@ function renderBetsScrollBar() {
   const bets = state.myBets || [];
   if (bets.length === 0) {
     container.innerHTML = '<span class="bets-scroll-placeholder">No bets yet</span>';
+    container.classList.remove('bets-ticker-animate');
     return;
   }
   const r = (v) => (v || '').toLowerCase();
-  container.innerHTML = bets.map(b => {
+  const chip = (b, betIndex) => {
     const matchup = (b.away_team || '?') + ' @ ' + (b.home_team || '?');
     const pick = b.pick || '—';
-    let modifier = 'pending'; // yellow = close / in progress
+    let modifier = 'pending'; // yellow = pending / close
     let resultLabel = 'PENDING';
     if (r(b.result) === 'win') { modifier = 'win'; resultLabel = 'WIN'; }
     else if (r(b.result) === 'loss') { modifier = 'loss'; resultLabel = 'LOSS'; }
     const stake = b.stake_cents ? '$' + (b.stake_cents / 100).toFixed(0) : '';
     const title = (b.market_title || (matchup + ' · ' + pick + ' · ' + resultLabel)).replace(/"/g, '&quot;');
-    return '<div class="bet-chip bet-chip--' + modifier + '" title="' + title + '">' +
+    const gameForBet = findGameForBet(b);
+    const onClick = gameForBet ? ' onclick="selectGameById(\'' + gameForBet.id + '\')"' : '';
+    return '<div class="bet-chip bet-chip--' + modifier + '" title="' + title + '" data-bet-index="' + betIndex + '"' + onClick + '>' +
       '<span class="bet-chip-matchup">' + matchup + '</span>' +
       '<span class="bet-chip-result">' + pick + ' · ' + resultLabel + (stake ? ' · ' + stake : '') + '</span>' +
       '</div>';
-  }).join('');
+  };
+  const chipsHtml = bets.map(function (b, i) { return chip(b, i); }).join('');
+  container.innerHTML = chipsHtml + chipsHtml; // duplicate for seamless loop (same as top ticker)
+  container.classList.add('bets-ticker-animate');
 }
 
 function setupBetsScrollBarWheel() {

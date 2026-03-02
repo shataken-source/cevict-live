@@ -237,18 +237,18 @@ Progno uses **Key Vault** as the source of truth for Odds API keys. Do not edit 
 
 | Key | Description |
 |-----|-------------|
-| `ODDS_API_KEY` | Primary The-Odds-API key (the-odds-api.com). |
-| `ODDS_API_KEY_2` | Secondary key for rotation or fallback when primary quota is exhausted. |
-| `USE_ODDS_FALLBACK_KEY` | Set to `1` to use `ODDS_API_KEY_2` instead of `ODDS_API_KEY` until you clear it (e.g. next morning after quota resets). |
+| `ODDS_API_KEY` | **Key 1 (primary):** The-Odds API pro plan, 20,000 calls/month. Use this first. |
+| `ODDS_API_KEY_2` | **Key 2 (fallback):** The-Odds API free tier, 500 calls/month. Used when key 1 quota is exhausted. |
+| `USE_ODDS_FALLBACK_KEY` | Set to `1` to force use of `ODDS_API_KEY_2` instead of key 1 (e.g. when key 1 quota exhausted). Clear when key 1 resets. |
 
 ### Add or update Odds API keys
 
 ```powershell
 cd C:\cevict-live\scripts\keyvault
 
-# Primary and fallback keys (get from the-odds-api.com)
-.\set-secret.ps1 -Name ODDS_API_KEY -Value "your-primary-key"
-.\set-secret.ps1 -Name ODDS_API_KEY_2 -Value "your-fallback-key"
+# Key 1 = pro 20k/mo (primary), Key 2 = free 500 (fallback)
+.\set-secret.ps1 -Name ODDS_API_KEY -Value "your-pro-key-20k"
+.\set-secret.ps1 -Name ODDS_API_KEY_2 -Value "your-free-key-500"
 
 # Use fallback key until tomorrow (e.g. primary quota exhausted)
 .\set-secret.ps1 -Name USE_ODDS_FALLBACK_KEY -Value "1"

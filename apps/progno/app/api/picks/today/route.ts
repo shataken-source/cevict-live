@@ -433,7 +433,7 @@ const PROGNO_FLOOR_NBA = Number(process.env.PROGNO_FLOOR_NBA ?? 57)
 const PROGNO_FLOOR_NFL = Number(process.env.PROGNO_FLOOR_NFL ?? 62)
 const PROGNO_FLOOR_NHL = Number(process.env.PROGNO_FLOOR_NHL ?? 57)
 const PROGNO_FLOOR_MLB = Number(process.env.PROGNO_FLOOR_MLB ?? 57)
-const PROGNO_FLOOR_CBB = Number(process.env.PROGNO_FLOOR_CBB ?? 57)  // College Baseball
+const PROGNO_FLOOR_CBB = Number(process.env.PROGNO_FLOOR_CBB ?? 68)  // College Baseball: raised from 57 — perf report 44% WR at 73% avg conf
 // ─────────────────────────────────────────────────────────────────────────────
 
 // NFL ≥62% prob → +20.4% ROI. Shin-devig favorites rarely exceed 65%.
