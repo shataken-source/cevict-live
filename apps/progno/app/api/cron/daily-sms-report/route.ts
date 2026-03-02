@@ -116,7 +116,62 @@ async function getKalshiBalance(): Promise<number | null> {
   }
 }
 
-// ── Main Handler ──
+// ── Coinbase Portfolio ──
+
+async function getCoinbasePortfolio(): Promise<{ usdBalance: number; totalValue: number; positions: Array<{ symbol: string; amount: number; value: number }> } | null> {
+  const apiKey = process.env.COINBASE_API_KEY
+  const apiSecret = process.env.COINBASE_API_SECRET
+  if (!apiKey || !apiSecret) return null
+
+  try {
+    // JWT auth for Coinbase CDP API
+    const { SignJWT } = await import('jose')
+    const formattedKey = apiSecret.replace(/\\n/g, '\n')
+    const ecPrivateKey = crypto.createPrivateKey({ key: formattedKey, format: 'pem' })
+    const now = Math.floor(Date.now() / 1000)
+    const jwt = await new SignJWT({ uri: 'GET api.coinbase.com/api/v3/brokerage/accounts' })
+      .setProtectedHeader({ alg: 'ES256', kid: apiKey, typ: 'JWT' })
+      .setIssuedAt(now)
+      .setExpirationTime(now + 120)
+      .setSubject(apiKey)
+      .setIssuer('cdp')
+      .sign(ecPrivateKey)
+
+    const res = await fetch('https://api.coinbase.com/api/v3/brokerage/accounts?limit=250', {
+      headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+    })
+
+    if (!res.ok) return null
+    const data = await res.json()
+    const accounts = (data.accounts || []).map((acc: any) => ({
+      currency: acc.currency,
+      available: parseFloat(acc.available_balance?.value || '0'),
+    }))
+
+    const usdBalance = accounts.find((a: any) => a.currency === 'USD')?.available || 0
+    const positions: Array<{ symbol: string; amount: number; value: number }> = []
+
+    // Get prices for crypto positions
+    for (const acc of accounts) {
+      if (acc.available > 0.0001 && !['USD', 'USDC'].includes(acc.currency)) {
+        try {
+          const priceRes = await fetch(`https://api.exchange.coinbase.com/products/${acc.currency}-USD/ticker`)
+          const priceData = await priceRes.json()
+          const price = parseFloat(priceData.price || '0')
+          if (price > 0) {
+            positions.push({ symbol: acc.currency, amount: acc.available, value: acc.available * price })
+          }
+        } catch { /* skip */ }
+      }
+    }
+
+    const cryptoValue = positions.reduce((sum, p) => sum + p.value, 0)
+    return { usdBalance, totalValue: usdBalance + cryptoValue, positions }
+  } catch (err) {
+    console.warn('[daily-sms] Coinbase fetch error:', err)
+    return null
+  }
+}
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
@@ -190,7 +245,10 @@ export async function GET(request: Request) {
   // ── 4. Kalshi Account Balance ──
   const balanceCents = await getKalshiBalance()
 
-  // ── 5. Build SMS Message ──
+  // ── 5. Coinbase Portfolio ──
+  const coinbasePortfolio = await getCoinbasePortfolio()
+
+  // ── 6. Build SMS Message ──
   const profitSign = totalProfit >= 0 ? '+' : ''
   const wkProfitSign = wkProfit >= 0 ? '+' : ''
   const dollarFmt = (cents: number) => `$${(Math.abs(cents) / 100).toFixed(2)}`
@@ -228,9 +286,16 @@ export async function GET(request: Request) {
     msg += ` (${wkROI >= 0 ? '+' : ''}${wkROI}% ROI)`
   }
 
-  // Kalshi balance
-  if (balanceCents !== null) {
-    msg += `\n\nKalshi Balance: $${(balanceCents / 100).toFixed(2)}`
+  // Coinbase balance
+  if (coinbasePortfolio) {
+    msg += `\n\nCOINBASE: $${coinbasePortfolio.totalValue.toFixed(2)}`
+    msg += ` (USD: $${coinbasePortfolio.usdBalance.toFixed(2)})`
+    if (coinbasePortfolio.positions.length > 0) {
+      const topPositions = coinbasePortfolio.positions
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 3)
+      msg += `\nCrypto: ${topPositions.map(p => `${p.symbol} $${p.value.toFixed(0)}`).join(', ')}`
+    }
   }
 
   // Top picks for today (quick look at what's coming)
@@ -272,6 +337,7 @@ export async function GET(request: Request) {
       predictions: summary ? { wins: summary.wins, losses: summary.losses, winRate: summary.win_rate } : null,
       week: { wins: wkWins, losses: wkLosses, winRate: wkWR, profitCents: wkProfit },
       balanceCents,
+      coinbasePortfolio: coinbasePortfolio ? { totalValue: coinbasePortfolio.totalValue, usdBalance: coinbasePortfolio.usdBalance, positions: coinbasePortfolio.positions.length } : null,
       todayPickCount,
     },
   })
