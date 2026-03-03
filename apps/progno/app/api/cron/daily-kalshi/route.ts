@@ -20,13 +20,16 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization')
   const isVercelCron = request.headers.get('x-vercel-cron') === '1'
   const cronSecret = process.env.CRON_SECRET
-  if (!isVercelCron && cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const adminPwd = process.env.PROGNO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+  const isAuth = isVercelCron || (cronSecret && token === cronSecret) || (adminPwd && token === adminPwd)
+  if (!isAuth) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
   }
 
   // The execute route reads settings.json for enabled/dryRun/stake/minConfidence
   // and has all Kalshi safeguards (blocked prefixes, contract caps, cost caps)
-  const secret = cronSecret || process.env.PROGNO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || ''
+  const secret = process.env.PROGNO_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || cronSecret || ''
   const baseUrl = getBaseUrl()
   const res = await fetch(`${baseUrl}/api/progno/admin/trading/execute`, {
     method: 'POST',
