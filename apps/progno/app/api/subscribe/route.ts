@@ -22,9 +22,7 @@ export async function POST(request: Request) {
       .from('newsletter_subscribers')
       .upsert({
         email: email.toLowerCase(),
-        source,
-        subscribed_at: new Date().toISOString(),
-        status: 'active'
+        zip: '00000',
       }, {
         onConflict: 'email'
       })
