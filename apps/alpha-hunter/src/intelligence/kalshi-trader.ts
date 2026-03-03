@@ -788,6 +788,17 @@ export class KalshiTrader {
         ? (typeof matched.yes_ask === 'number' ? matched.yes_ask : 50)
         : (typeof matched.no_ask === 'number' ? matched.no_ask : 50);
       const side: 'YES' | 'NO' = pickIsYes ? 'YES' : 'NO';
+
+      // Price guardrails: skip extreme longshots and heavy favorites
+      const PRICE_FLOOR = parseInt(process.env.KALSHI_PRICE_FLOOR || '15', 10);  // min 15¢
+      const PRICE_CEIL = parseInt(process.env.KALSHI_PRICE_CEIL || '85', 10);  // max 85¢
+      const MAX_EDGE = parseInt(process.env.KALSHI_MAX_EDGE || '55', 10);  // edge cap
+      if (entryPrice < PRICE_FLOOR || entryPrice > PRICE_CEIL) {
+        edgeSkip++;
+        console.log(`[PRICE SKIP] ${ev.league}: ${ev.pick} → ${matched.ticker} ${side} — price=${entryPrice}¢ outside ${PRICE_FLOOR}-${PRICE_CEIL}¢ range`);
+        continue;
+      }
+
       // Edge: our model prob vs the entry price we'd pay
       const edge = modelProb - entryPrice;
       if (edge < minEdge) {
@@ -795,9 +806,23 @@ export class KalshiTrader {
         console.log(`[EDGE SKIP] ${ev.league}: ${ev.pick} → ${matched.ticker} ${side} — model=${modelProb}% entry=${entryPrice}¢ edge=${edge.toFixed(1)}% (min ${minEdge}%)`);
         continue;
       }
+      if (edge > MAX_EDGE) {
+        edgeSkip++;
+        console.log(`[EDGE CAP] ${ev.league}: ${ev.pick} → ${matched.ticker} ${side} — edge=${edge.toFixed(1)}% > ${MAX_EDGE}% cap (model likely wrong)`);
+        continue;
+      }
+
+      // Kelly-fraction sizing: scale stake by edge/odds instead of flat $10
+      // Kelly f* = (bp - q) / b where b=odds, p=model prob, q=1-p
+      // Simplified: fraction = edge / (100 - entryPrice)
+      // Use quarter-Kelly for safety, capped at MAX_SINGLE_TRADE
+      const maxStake = parseFloat(process.env.MAX_SINGLE_TRADE || '10');
+      const kellyFraction = edge / (100 - entryPrice);
+      const quarterKelly = kellyFraction * 0.25;
+      const kellyStake = Math.max(2, Math.min(maxStake, Math.round(quarterKelly * maxStake * 10) / 10));
 
       // Fee-aware profit check
-      const profitCalc = calcNetProfit(10, entryPrice);
+      const profitCalc = calcNetProfit(kellyStake, entryPrice);
       if (profitCalc.netProfit < MIN_NET_PROFIT) {
         profitSkip++;
         console.log(`[PROFIT SKIP] ${ev.league}: ${ev.pick} → ${matched.ticker} ${side} — net=$${profitCalc.netProfit.toFixed(2)} (min $${MIN_NET_PROFIT})`);
@@ -810,12 +835,12 @@ export class KalshiTrader {
         type: 'prediction_market',
         source: 'PROGNO',
         title: `${side}: ${matched.title}`,
-        description: `Progno edge ${edge.toFixed(1)}% at ${entryPrice}¢ (net $${profitCalc.netProfit.toFixed(2)} after ${(KALSHI_FEE_RATE * 100).toFixed(0)}% fee)`,
+        description: `Progno edge ${edge.toFixed(1)}% at ${entryPrice}¢ (net $${profitCalc.netProfit.toFixed(2)} after ${(KALSHI_FEE_RATE * 100).toFixed(0)}% fee) [¼Kelly $${kellyStake.toFixed(2)}]`,
         confidence,
         expectedValue: edge,
         riskLevel: 'low',
         timeframe: '48h',
-        requiredCapital: 10,
+        requiredCapital: kellyStake,
         potentialReturn: profitCalc.netProfit,
         reasoning: [`Progno model${ev.league ? ` (${ev.league})` : ''}: ${ev.label} → ${modelProb}% ${side} — net $${profitCalc.netProfit.toFixed(2)} after fees`],
         dataPoints: [
@@ -824,7 +849,7 @@ export class KalshiTrader {
         action: {
           platform: 'kalshi',
           actionType: 'bet',
-          amount: 10,
+          amount: kellyStake,
           target: `${matched.ticker} ${side}`,
           instructions: [`Place ${side} on ${matched.ticker} at ≤${entryPrice}¢`],
           autoExecute: true,
