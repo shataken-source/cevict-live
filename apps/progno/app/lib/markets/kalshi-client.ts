@@ -79,7 +79,7 @@ export class KalshiClient {
   constructor() {
     this.apiKey = process.env.KALSHI_API_KEY_ID || '';
     this.apiSecret = process.env.KALSHI_PRIVATE_KEY || '';
-    this.baseUrl = process.env.KALSHI_API_URL || 'https://api.cash.kalshi.com/trade-api/v2';
+    this.baseUrl = process.env.KALSHI_API_URL || 'https://api.elections.kalshi.com/trade-api/v2';
   }
 
   /**
@@ -117,8 +117,8 @@ export class KalshiClient {
     }
 
     try {
-      const urlPath = `/trade-api/v2/markets?category=sports&limit=${limit}&status=${status}`;
-      const url = `${this.baseUrl}/markets?category=sports&limit=${limit}&status=${status}`;
+      const urlPath = `/trade-api/v2/markets?series_ticker=KXSPORTS&limit=${limit}&status=${status}`;
+      const url = `${this.baseUrl}/markets?series_ticker=KXSPORTS&limit=${limit}&status=${status}`;
 
       const response = await fetch(url, {
         headers: this.getHeaders('GET', urlPath),
