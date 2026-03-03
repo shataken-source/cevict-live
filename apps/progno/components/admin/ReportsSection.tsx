@@ -27,6 +27,8 @@ const btnColors: Record<string, string> = {
   'streak-analysis': '#dc3545',
   'roi-by-odds-range': '#20c997',
   'pick-details': '#6495ed',
+  'home-vs-away': '#e91e63',
+  'day-of-week': '#ff9800',
 };
 
 interface ReportResult { type: string; data: any; generatedAt: string; }
@@ -123,6 +125,8 @@ export default function ReportsSection({ secret, date }: ReportsSectionProps) {
     { id: 'confidence-vs-results', label: '\ud83d\udcca Confidence vs Results' },
     { id: 'monthly-summary', label: '\ud83d\udcc5 Monthly Summary' },
     { id: 'streak-analysis', label: '\ud83d\udd25 Streak Analysis' },
+    { id: 'home-vs-away', label: '\ud83c\udfe0 Home vs Away' },
+    { id: 'day-of-week', label: '\ud83d\udcc6 Day of Week' },
   ];
 
   return (
@@ -353,6 +357,93 @@ export default function ReportsSection({ secret, date }: ReportsSectionProps) {
                   {item.sub && <div style={{ fontSize: 12, color: T.textDim, marginTop: 4, fontFamily: T.mono }}>{item.sub}</div>}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ── HOME VS AWAY ────────────────────────────────────── */}
+          {report.type === 'home-vs-away' && report.data.sides?.length > 0 && (
+            <div>
+              <div style={{ overflowX: 'auto', marginBottom: 16 }}>
+                <table style={tableStyle}>
+                  <thead><tr>
+                    <th style={thStyle}>Side</th><th style={thR}>W</th><th style={thR}>L</th>
+                    <th style={thR}>Win %</th><th style={thR}>Bets</th>
+                    <th style={thR}>Avg Odds</th><th style={thR}>Profit</th>
+                  </tr></thead>
+                  <tbody>
+                    {report.data.sides.map((s: any, i: number) => (
+                      <tr key={s.side} style={{ background: i % 2 ? '#070e18' : 'transparent' }}>
+                        <td style={{ ...tdStyle, color: s.side === 'HOME' ? T.green : T.amber, fontWeight: 700 }}>{s.side}</td>
+                        <td style={{ ...tdR, color: T.green }}>{s.wins}</td>
+                        <td style={{ ...tdR, color: T.red }}>{s.losses}</td>
+                        <td style={{ ...tdR, color: wrColor(s.winRate) }}>{s.winRate}%</td>
+                        <td style={tdR}>{s.total}</td>
+                        <td style={{ ...tdR, color: oddsColor(s.avgOdds) }}>{s.avgOdds}</td>
+                        <td style={{ ...tdR, color: profitColor(s.profit) }}>{fmtProfit(s.profit)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {report.data.bySport?.length > 0 && (
+                <div>
+                  <div style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim, marginBottom: 8, letterSpacing: 1 }}>BY SPORT</div>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={tableStyle}>
+                      <thead><tr>
+                        <th style={thStyle}>Sport</th>
+                        <th style={thR}>Home W%</th><th style={thR}>Home Rec</th><th style={thR}>Home N</th>
+                        <th style={thR}>Away W%</th><th style={thR}>Away Rec</th><th style={thR}>Away N</th>
+                      </tr></thead>
+                      <tbody>
+                        {report.data.bySport.map((s: any, i: number) => (
+                          <tr key={s.sport} style={{ background: i % 2 ? '#070e18' : 'transparent' }}>
+                            <td style={{ ...tdStyle, color: T.blue, fontWeight: 600 }}>{s.sport}</td>
+                            <td style={{ ...tdR, color: wrColor(s.homeWinRate) }}>{s.homeWinRate}%</td>
+                            <td style={{ ...tdR, color: T.green }}>{s.homeRecord}</td>
+                            <td style={{ ...tdR, color: T.textDim }}>{s.homeTotal}</td>
+                            <td style={{ ...tdR, color: wrColor(s.awayWinRate) }}>{s.awayWinRate}%</td>
+                            <td style={{ ...tdR, color: T.amber }}>{s.awayRecord}</td>
+                            <td style={{ ...tdR, color: T.textDim }}>{s.awayTotal}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── DAY OF WEEK ─────────────────────────────────────── */}
+          {report.type === 'day-of-week' && report.data.days?.length > 0 && (
+            <div>
+              {report.data.bestDay && report.data.bestDay !== '—' && (
+                <div style={{ marginBottom: 14, padding: '10px 14px', background: '#0a1422', border: `1px solid ${T.border}`, borderRadius: 6 }}>
+                  <span style={{ fontFamily: T.mono, fontSize: 11, color: T.textDim }}>Best day: </span>
+                  <span style={{ fontFamily: T.mono, fontSize: 13, color: T.green, fontWeight: 700 }}>{report.data.bestDay}</span>
+                </div>
+              )}
+              <div style={{ overflowX: 'auto' }}>
+                <table style={tableStyle}>
+                  <thead><tr>
+                    <th style={thStyle}>Day</th><th style={thR}>W</th><th style={thR}>L</th>
+                    <th style={thR}>Win %</th><th style={thR}>Bets</th><th style={thR}>Profit</th>
+                  </tr></thead>
+                  <tbody>
+                    {report.data.days.map((d: any, i: number) => (
+                      <tr key={d.day} style={{ background: i % 2 ? '#070e18' : 'transparent' }}>
+                        <td style={{ ...tdStyle, color: T.blue, fontWeight: 600 }}>{d.day}</td>
+                        <td style={{ ...tdR, color: T.green }}>{d.wins}</td>
+                        <td style={{ ...tdR, color: T.red }}>{d.losses}</td>
+                        <td style={{ ...tdR, color: wrColor(d.winRate) }}>{d.winRate}%</td>
+                        <td style={tdR}>{d.total}</td>
+                        <td style={{ ...tdR, color: profitColor(d.profit) }}>{fmtProfit(d.profit)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

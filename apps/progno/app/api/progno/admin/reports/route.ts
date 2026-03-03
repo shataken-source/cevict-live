@@ -24,9 +24,11 @@ function winRate(wins: number, total: number): string {
 }
 
 /** Calculate profit from American odds for a $1 unit bet.
- *  Loss = -1.00, Win at -110 = +0.91, Win at +150 = +1.50 */
-function profitFromOdds(odds: number, won: boolean): number {
+ *  Loss = -1.00, Win at -110 = +0.91, Win at +150 = +1.50
+ *  If odds are missing (null/0), assume even money: win = +1, loss = -1 */
+function profitFromOdds(odds: number | undefined | null, won: boolean): number {
   if (!won) return -1;
+  if (odds == null || odds === 0) return 1;   // even money when odds unknown
   if (odds > 0) return odds / 100;           // +200 wins $2.00 per $1
   return 100 / Math.abs(odds);               // -150 wins $0.6667 per $1
 }
@@ -189,12 +191,14 @@ function valueBetsAnalysis(rows: Row[]) {
 
 function confidenceVsResults(rows: Row[]) {
   const ranges = [
-    { min: 0, max: 70, range: '<70%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
-    { min: 70, max: 80, range: '70-80%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
+    { min: 0, max: 60, range: '<60%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
+    { min: 60, max: 65, range: '60-65%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
+    { min: 65, max: 70, range: '65-70%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
+    { min: 70, max: 75, range: '70-75%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
+    { min: 75, max: 80, range: '75-80%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
     { min: 80, max: 85, range: '80-85%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
     { min: 85, max: 90, range: '85-90%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
-    { min: 90, max: 95, range: '90-95%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
-    { min: 95, max: 101, range: '95-100%', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
+    { min: 90, max: 101, range: '90%+', wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 },
   ];
   for (const r of rows) {
     const rng = ranges.find(x => r.confidence >= x.min && r.confidence < x.max);
@@ -305,13 +309,14 @@ function roiByOddsRange(rows: Row[]) {
     { min: 500, max: Infinity, range: 'Longshot (+500+)', wins: 0, losses: 0, total: 0, profit: 0 },
   ];
   for (const r of rows) {
-    const odds = r.odds || 0;
+    if (r.odds == null) continue;  // skip picks with no odds — don't bucket as 0
+    const odds = r.odds;
     const rng = ranges.find(x => odds >= x.min && odds < x.max);
     if (!rng) continue;
     const won = r.status === 'win';
     if (won) rng.wins++; else rng.losses++;
     rng.total++;
-    rng.profit += profitFromOdds(r.odds || -110, won);
+    rng.profit += profitFromOdds(r.odds, won);
   }
   return {
     ranges: ranges.map(r => ({
@@ -320,6 +325,77 @@ function roiByOddsRange(rows: Row[]) {
       roi: r.total > 0 ? ((r.profit / r.total) * 100).toFixed(1) : '0.0'
     })),
     bestRange: ranges.reduce((b, r) => r.profit > b.profit ? r : b, ranges[0]).range
+  };
+}
+
+function homeVsAway(rows: Row[]) {
+  const home = { wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 };
+  const away = { wins: 0, losses: 0, total: 0, profit: 0, oddsSum: 0, oddsCount: 0 };
+  for (const r of rows) {
+    // Determine if pick was the home team
+    const isHome = r.pick && r.home_team && r.pick.toLowerCase().trim() === r.home_team.toLowerCase().trim();
+    const bucket = isHome ? home : away;
+    const won = r.status === 'win';
+    if (won) bucket.wins++; else bucket.losses++;
+    bucket.total++;
+    bucket.profit += profitFromOdds(r.odds, won);
+    if (r.odds != null) { bucket.oddsSum += r.odds; bucket.oddsCount++; }
+  }
+  // Also break down by sport + side
+  const bySport: Record<string, { homeW: number; homeL: number; homeTotal: number; awayW: number; awayL: number; awayTotal: number }> = {};
+  for (const r of rows) {
+    const sport = r.sport || 'UNKNOWN';
+    if (!bySport[sport]) bySport[sport] = { homeW: 0, homeL: 0, homeTotal: 0, awayW: 0, awayL: 0, awayTotal: 0 };
+    const isHome = r.pick && r.home_team && r.pick.toLowerCase().trim() === r.home_team.toLowerCase().trim();
+    const won = r.status === 'win';
+    if (isHome) { bySport[sport].homeTotal++; if (won) bySport[sport].homeW++; else bySport[sport].homeL++; }
+    else { bySport[sport].awayTotal++; if (won) bySport[sport].awayW++; else bySport[sport].awayL++; }
+  }
+  return {
+    sides: [
+      { side: 'HOME', wins: home.wins, losses: home.losses, total: home.total, winRate: winRate(home.wins, home.total), profit: Math.round(home.profit * 100) / 100, avgOdds: home.oddsCount > 0 ? fmtOdds(Math.round(home.oddsSum / home.oddsCount)) : '—' },
+      { side: 'AWAY', wins: away.wins, losses: away.losses, total: away.total, winRate: winRate(away.wins, away.total), profit: Math.round(away.profit * 100) / 100, avgOdds: away.oddsCount > 0 ? fmtOdds(Math.round(away.oddsSum / away.oddsCount)) : '—' },
+    ],
+    bySport: Object.entries(bySport).map(([sport, s]) => ({
+      sport,
+      homeWinRate: winRate(s.homeW, s.homeTotal),
+      homeRecord: `${s.homeW}-${s.homeL}`,
+      homeTotal: s.homeTotal,
+      awayWinRate: winRate(s.awayW, s.awayTotal),
+      awayRecord: `${s.awayW}-${s.awayL}`,
+      awayTotal: s.awayTotal,
+    })).filter(s => s.homeTotal + s.awayTotal >= 3).sort((a, b) => (b.homeTotal + b.awayTotal) - (a.homeTotal + a.awayTotal)),
+  };
+}
+
+function dayOfWeek(rows: Row[]) {
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const byDay: Record<number, { wins: number; losses: number; total: number; profit: number }> = {};
+  for (let i = 0; i < 7; i++) byDay[i] = { wins: 0, losses: 0, total: 0, profit: 0 };
+  for (const r of rows) {
+    if (!r.game_date) continue;
+    const d = new Date(r.game_date + 'T12:00:00Z');
+    if (isNaN(d.getTime())) continue;
+    const day = d.getUTCDay();
+    const won = r.status === 'win';
+    if (won) byDay[day].wins++; else byDay[day].losses++;
+    byDay[day].total++;
+    byDay[day].profit += profitFromOdds(r.odds, won);
+  }
+  return {
+    days: Object.entries(byDay).map(([dayNum, s]) => ({
+      day: DAYS[Number(dayNum)],
+      dayNum: Number(dayNum),
+      wins: s.wins,
+      losses: s.losses,
+      total: s.total,
+      winRate: winRate(s.wins, s.total),
+      profit: Math.round(s.profit * 100) / 100,
+    })).filter(d => d.total > 0).sort((a, b) => a.dayNum - b.dayNum),
+    bestDay: Object.entries(byDay).reduce((best, [dayNum, s]) => {
+      const wr = s.total > 0 ? s.wins / s.total : 0;
+      return wr > best.wr && s.total >= 3 ? { wr, day: DAYS[Number(dayNum)] } : best;
+    }, { wr: 0, day: '—' }).day,
   };
 }
 
@@ -359,6 +435,12 @@ export async function POST(request: NextRequest) {
         break;
       case 'pick-details':
         reportData = pickDetails(rows);
+        break;
+      case 'home-vs-away':
+        reportData = homeVsAway(rows);
+        break;
+      case 'day-of-week':
+        reportData = dayOfWeek(rows);
         break;
       default:
         return NextResponse.json({ error: 'Unknown report type' }, { status: 400 });

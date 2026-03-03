@@ -188,10 +188,11 @@ function DarkResultsTable({
 }
 
 // -- Types --------------------------------------------------------------------
-type TabId = 'odds' | 'picks' | 'results' | 'lines' | 'early' | 'analyzer' | 'config' | 'fine-tune';
+type TabId = 'odds' | 'picks' | 'results' | 'lines' | 'early' | 'analyzer' | 'config' | 'fine-tune' | 'my-picks';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'odds', label: 'LIVE ODDS' },
+  { id: 'my-picks', label: 'MY PICKS' },
   { id: 'picks', label: 'PICKS' },
   { id: 'results', label: 'RESULTS' },
   { id: 'lines', label: 'LINE MOVES' },
@@ -260,6 +261,111 @@ export default function AdminPage() {
   const [betPreviewPicks, setBetPreviewPicks] = useState<PreviewPick[]>([]);
   const [betPreviewDate, setBetPreviewDate] = useState('');
   const [betPreviewLoading, setBetPreviewLoading] = useState(false);
+
+  // my picks — manual bets from LIVE ODDS
+  const [myPicksSelected, setMyPicksSelected] = useState<Set<number>>(new Set());
+  const [myPicksSides, setMyPicksSides] = useState<Record<number, 'home' | 'away'>>({});
+  const [myPicksSaving, setMyPicksSaving] = useState(false);
+  const [myPicksMsg, setMyPicksMsg] = useState<string | null>(null);
+  const [myPicksList, setMyPicksList] = useState<any[]>([]);
+  const [myPicksLoading, setMyPicksLoading] = useState(false);
+  const [myPicksGrading, setMyPicksGrading] = useState(false);
+
+  const toggleMyPick = (idx: number) => {
+    setMyPicksSelected(prev => { const n = new Set(prev); if (n.has(idx)) n.delete(idx); else n.add(idx); return n; });
+  };
+  const setMyPickSide = (idx: number, side: 'home' | 'away') => {
+    setMyPicksSides(prev => ({ ...prev, [idx]: side }));
+  };
+
+  const saveMyPicks = async () => {
+    if (!secret.trim()) { setMyPicksMsg('Enter admin secret first.'); return; }
+    if (myPicksSelected.size === 0) { setMyPicksMsg('Select at least one game.'); return; }
+    setMyPicksSaving(true);
+    setMyPicksMsg(null);
+    try {
+      const picks = Array.from(myPicksSelected).map(idx => {
+        const g = filteredOdds[idx];
+        if (!g) return null;
+        const side = myPicksSides[idx] || 'home';
+        const pick = side === 'home' ? g.home_team : g.away_team;
+        const odds = side === 'home' ? (g.consensus?.homeML ?? null) : (g.consensus?.awayML ?? null);
+        const sportMap: Record<string, string> = { basketball_nba: 'NBA', basketball_ncaab: 'NCAAB', icehockey_nhl: 'NHL', americanfootball_nfl: 'NFL', baseball_mlb: 'MLB', baseball_ncaa: 'NCAA', americanfootball_ncaaf: 'NCAAF' };
+        return {
+          game_date: g.commence_time ? new Date(g.commence_time).toISOString().split('T')[0] : gameDate,
+          sport: g.sport,
+          league: sportMap[g.sport] || g.sport,
+          home_team: g.home_team,
+          away_team: g.away_team,
+          pick,
+          is_home_pick: side === 'home',
+          odds: odds != null ? Math.round(odds) : null,
+          commence_time: g.commence_time || null,
+        };
+      }).filter(Boolean);
+      const res = await fetch('/api/progno/admin/my-picks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` },
+        body: JSON.stringify({ secret: secret.trim(), picks }),
+      });
+      const j = await res.json();
+      if (res.ok && j.success) {
+        setMyPicksMsg(`Saved ${j.saved} pick(s).`);
+        setMyPicksSelected(new Set());
+        setMyPicksSides({});
+      } else {
+        setMyPicksMsg(j.error || 'Save failed');
+      }
+    } catch (e: any) { setMyPicksMsg(e?.message || 'Save failed'); }
+    finally { setMyPicksSaving(false); }
+  };
+
+  const loadMyPicks = async (dateFilter?: string) => {
+    if (!secret.trim()) return;
+    setMyPicksLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (dateFilter) params.set('date', dateFilter);
+      const res = await fetch(`/api/progno/admin/my-picks?${params}`, { headers: { Authorization: `Bearer ${secret.trim()}` }, cache: 'no-store' });
+      const j = await res.json();
+      if (res.ok && j.success) setMyPicksList(j.picks || []);
+      else setMyPicksList([]);
+    } catch { setMyPicksList([]); }
+    finally { setMyPicksLoading(false); }
+  };
+
+  const gradeMyPicks = async () => {
+    if (!secret.trim()) { setMyPicksMsg('Enter admin secret first.'); return; }
+    setMyPicksGrading(true);
+    setMyPicksMsg(null);
+    try {
+      const res = await fetch('/api/progno/admin/my-picks/grade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` },
+        body: JSON.stringify({ secret: secret.trim(), date: resultsDate }),
+      });
+      const j = await res.json();
+      if (res.ok && j.success) {
+        setMyPicksMsg(`Graded: ${j.graded} of ${j.total} picks. ${j.wins}W / ${j.losses}L / ${j.pending} pending.`);
+        loadMyPicks();
+      } else {
+        setMyPicksMsg(j.error || 'Grade failed');
+      }
+    } catch (e: any) { setMyPicksMsg(e?.message || 'Grade failed'); }
+    finally { setMyPicksGrading(false); }
+  };
+
+  const deleteMyPick = async (id: string) => {
+    if (!secret.trim()) return;
+    try {
+      await fetch('/api/progno/admin/my-picks', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` },
+        body: JSON.stringify({ secret: secret.trim(), id }),
+      });
+      setMyPicksList(prev => prev.filter(p => p.id !== id));
+    } catch { }
+  };
   const loadTrading = async () => {
     if (!secret.trim()) { setTradeMsg('Enter admin secret first.'); return; }
     setTradeMsg(null);
@@ -685,55 +791,183 @@ export default function AdminPage() {
                 {oddsLastFetched && <span style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim }}>last: {oddsLastFetched}</span>}
               </div>
               {oddsError && <div style={{ marginTop: 10, fontFamily: C.mono, fontSize: 11, color: C.amber }}>⚠ {oddsError}</div>}
+              {myPicksMsg && <div style={{ marginTop: 10, padding: '10px 14px', background: `${myPicksMsg.includes('Saved') ? C.green : C.amber}10`, border: `1px solid ${myPicksMsg.includes('Saved') ? C.green : C.amber}30`, borderRadius: 5, fontFamily: C.mono, fontSize: 12, color: myPicksMsg.includes('Saved') ? C.green : C.amber }}>{myPicksMsg}</div>}
             </Card>
 
             {filteredOdds.length > 0 && (
-              <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 8 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: C.mono, fontSize: 11 }}>
-                  <thead>
-                    <tr style={{ borderBottom: `1px solid ${C.borderBright}`, background: '#060d18' }}>
-                      {['SPORT', 'MATCHUP', 'TIME', 'HOME ML', 'AWAY ML', 'BEST HOME', 'BEST AWAY', 'SPREAD', 'TOTAL', 'NO-VIG H', 'NO-VIG A', 'EDGE', 'BKS'].map(h => (
-                        <th key={h} style={{ padding: '9px 8px', textAlign: 'left', color: C.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 9, whiteSpace: 'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredOdds.map((game, i) => {
-                      const nvHome = game.noVig?.home;
-                      const nvAway = game.noVig?.away;
-                      const mktImplied = game.consensus?.homeML != null ? (game.consensus.homeML < 0 ? Math.abs(game.consensus.homeML) / (Math.abs(game.consensus.homeML) + 100) * 100 : 100 / (game.consensus.homeML + 100) * 100) : null;
-                      const edge = nvHome != null && mktImplied != null ? (nvHome - mktImplied).toFixed(1) : null;
-                      const edgeNum = edge != null ? parseFloat(edge) : 0;
-                      return (
-                        <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? 'transparent' : '#060d18' }}>
-                          <td style={{ padding: '9px 8px' }}><Badge color={C.green}>{game.sport}</Badge></td>
-                          <td style={{ padding: '9px 8px', color: C.textBright, whiteSpace: 'nowrap' }}>
-                            <div>{game.away_team}</div>
-                            <div style={{ color: C.textDim, fontSize: 10 }}>@ {game.home_team}</div>
-                          </td>
-                          <td style={{ padding: '9px 8px', color: C.textDim, fontSize: 10, whiteSpace: 'nowrap' }}>{fmtTime(game.commence_time)}</td>
-                          <td style={{ padding: '9px 8px', color: (game.consensus?.homeML ?? 0) > 0 ? C.green : C.text }}>{fmt(game.consensus?.homeML)}</td>
-                          <td style={{ padding: '9px 8px', color: (game.consensus?.awayML ?? 0) > 0 ? C.green : C.text }}>{fmt(game.consensus?.awayML)}</td>
-                          <td style={{ padding: '9px 8px', color: C.blue }}>{fmt(game.best?.homeML)}</td>
-                          <td style={{ padding: '9px 8px', color: C.blue }}>{fmt(game.best?.awayML)}</td>
-                          <td style={{ padding: '9px 8px', color: C.amber }}>{game.consensus?.spread != null ? game.consensus.spread : '—'}</td>
-                          <td style={{ padding: '9px 8px' }}>{game.consensus?.total != null ? game.consensus.total : '—'}</td>
-                          <td style={{ padding: '9px 8px', color: C.blue }}>{nvHome != null ? nvHome.toFixed(1) + '%' : '—'}</td>
-                          <td style={{ padding: '9px 8px', color: C.blue }}>{nvAway != null ? nvAway.toFixed(1) + '%' : '—'}</td>
-                          <td style={{ padding: '9px 8px', color: edgeNum > 3 ? C.green : edgeNum < -3 ? C.red : C.textDim }}>{edge != null ? (edgeNum > 0 ? '+' : '') + edge + '%' : '—'}</td>
-                          <td style={{ padding: '9px 8px', color: C.textDim }}>{game.bookmakerCount}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                {myPicksSelected.size > 0 && (
+                  <Card style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Badge color={C.purple}>{myPicksSelected.size} SELECTED</Badge>
+                      <Btn onClick={saveMyPicks} disabled={myPicksSaving || !secret.trim()} color={C.purple}>
+                        {myPicksSaving ? '⟳ SAVING...' : `💜 SAVE ${myPicksSelected.size} AS MY PICKS`}
+                      </Btn>
+                      <Btn onClick={() => { setMyPicksSelected(new Set()); setMyPicksSides({}); }} color={C.textDim}>CLEAR</Btn>
+                    </div>
+                  </Card>
+                )}
+                <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 8 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: C.mono, fontSize: 11 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${C.borderBright}`, background: '#060d18' }}>
+                        <th style={{ padding: '9px 8px', textAlign: 'center', width: 30 }}>
+                          <input type="checkbox" checked={myPicksSelected.size === filteredOdds.length && filteredOdds.length > 0} onChange={() => { if (myPicksSelected.size === filteredOdds.length) setMyPicksSelected(new Set()); else setMyPicksSelected(new Set(filteredOdds.map((_, i) => i))); }} style={{ cursor: 'pointer' }} />
+                        </th>
+                        <th style={{ padding: '9px 8px', textAlign: 'center', width: 80, color: C.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 9 }}>MY PICK</th>
+                        {['SPORT', 'MATCHUP', 'TIME', 'HOME ML', 'AWAY ML', 'BEST HOME', 'BEST AWAY', 'SPREAD', 'TOTAL', 'NO-VIG H', 'NO-VIG A', 'EDGE', 'BKS'].map(h => (
+                          <th key={h} style={{ padding: '9px 8px', textAlign: 'left', color: C.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 9, whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredOdds.map((game, i) => {
+                        const nvHome = game.noVig?.home;
+                        const nvAway = game.noVig?.away;
+                        const mktImplied = game.consensus?.homeML != null ? (game.consensus.homeML < 0 ? Math.abs(game.consensus.homeML) / (Math.abs(game.consensus.homeML) + 100) * 100 : 100 / (game.consensus.homeML + 100) * 100) : null;
+                        const edge = nvHome != null && mktImplied != null ? (nvHome - mktImplied).toFixed(1) : null;
+                        const edgeNum = edge != null ? parseFloat(edge) : 0;
+                        const isSel = myPicksSelected.has(i);
+                        const side = myPicksSides[i] || 'home';
+                        return (
+                          <tr key={i} style={{ borderBottom: `1px solid ${C.border}`, background: isSel ? `${C.purple}10` : i % 2 === 0 ? 'transparent' : '#060d18' }}>
+                            <td style={{ padding: '9px 8px', textAlign: 'center' }}>
+                              <input type="checkbox" checked={isSel} onChange={() => toggleMyPick(i)} style={{ cursor: 'pointer' }} />
+                            </td>
+                            <td style={{ padding: '9px 4px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                              {isSel ? (
+                                <div style={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                                  <button onClick={() => setMyPickSide(i, 'home')} style={{ padding: '2px 5px', fontSize: 9, fontFamily: C.mono, fontWeight: 700, background: side === 'home' ? `${C.green}30` : 'transparent', border: `1px solid ${side === 'home' ? C.green : C.border}`, borderRadius: 3, color: side === 'home' ? C.green : C.textDim, cursor: 'pointer' }}>H</button>
+                                  <button onClick={() => setMyPickSide(i, 'away')} style={{ padding: '2px 5px', fontSize: 9, fontFamily: C.mono, fontWeight: 700, background: side === 'away' ? `${C.amber}30` : 'transparent', border: `1px solid ${side === 'away' ? C.amber : C.border}`, borderRadius: 3, color: side === 'away' ? C.amber : C.textDim, cursor: 'pointer' }}>A</button>
+                                </div>
+                              ) : <span style={{ color: C.textDim, fontSize: 9 }}>—</span>}
+                            </td>
+                            <td style={{ padding: '9px 8px' }}><Badge color={C.green}>{game.sport}</Badge></td>
+                            <td style={{ padding: '9px 8px', color: C.textBright, whiteSpace: 'nowrap' }}>
+                              <div style={{ color: isSel && side === 'away' ? C.amber : C.textBright, fontWeight: isSel && side === 'away' ? 700 : 400 }}>{game.away_team}</div>
+                              <div style={{ color: isSel && side === 'home' ? C.green : C.textDim, fontSize: 10, fontWeight: isSel && side === 'home' ? 700 : 400 }}>@ {game.home_team}</div>
+                            </td>
+                            <td style={{ padding: '9px 8px', color: C.textDim, fontSize: 10, whiteSpace: 'nowrap' }}>{fmtTime(game.commence_time)}</td>
+                            <td style={{ padding: '9px 8px', color: (game.consensus?.homeML ?? 0) > 0 ? C.green : C.text }}>{fmt(game.consensus?.homeML)}</td>
+                            <td style={{ padding: '9px 8px', color: (game.consensus?.awayML ?? 0) > 0 ? C.green : C.text }}>{fmt(game.consensus?.awayML)}</td>
+                            <td style={{ padding: '9px 8px', color: C.blue }}>{fmt(game.best?.homeML)}</td>
+                            <td style={{ padding: '9px 8px', color: C.blue }}>{fmt(game.best?.awayML)}</td>
+                            <td style={{ padding: '9px 8px', color: C.amber }}>{game.consensus?.spread != null ? game.consensus.spread : '—'}</td>
+                            <td style={{ padding: '9px 8px' }}>{game.consensus?.total != null ? game.consensus.total : '—'}</td>
+                            <td style={{ padding: '9px 8px', color: C.blue }}>{nvHome != null ? nvHome.toFixed(1) + '%' : '—'}</td>
+                            <td style={{ padding: '9px 8px', color: C.blue }}>{nvAway != null ? nvAway.toFixed(1) + '%' : '—'}</td>
+                            <td style={{ padding: '9px 8px', color: edgeNum > 3 ? C.green : edgeNum < -3 ? C.red : C.textDim }}>{edge != null ? (edgeNum > 0 ? '+' : '') + edge + '%' : '—'}</td>
+                            <td style={{ padding: '9px 8px', color: C.textDim }}>{game.bookmakerCount}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
 
             {liveOdds.length === 0 && !oddsLoading && (
               <Card style={{ textAlign: 'center', padding: 40 }}>
                 <div style={{ fontFamily: C.mono, fontSize: 12, color: C.textDim }}>
                   ◈ Select sports and click FETCH LIVE ODDS to load the latest lines
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* ═══ MY PICKS ═══ */}
+        {activeTab === 'my-picks' && (
+          <div>
+            <Card style={{ marginBottom: 16 }}>
+              <SectionLabel>MY MANUAL PICKS — TRACK YOUR OWN BETS</SectionLabel>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+                <Btn onClick={() => loadMyPicks()} disabled={!secret.trim() || myPicksLoading} color={C.purple}>
+                  {myPicksLoading ? '⟳ LOADING...' : '↺ LOAD ALL'}
+                </Btn>
+                <Btn onClick={() => loadMyPicks(gameDate)} disabled={!secret.trim() || myPicksLoading} color={C.blue}>
+                  {`📅 LOAD ${gameDate}`}
+                </Btn>
+                <Btn onClick={gradeMyPicks} disabled={!secret.trim() || myPicksGrading} color={C.green}>
+                  {myPicksGrading ? '⟳ GRADING...' : `◈ GRADE (${resultsDate})`}
+                </Btn>
+                <span style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim }}>
+                  Go to LIVE ODDS tab → check games → pick H/A → save
+                </span>
+              </div>
+              {myPicksMsg && <StatusLine ok={myPicksMsg.includes('Graded') || myPicksMsg.includes('Saved')} msg={myPicksMsg} />}
+            </Card>
+
+            {myPicksList.length > 0 ? (
+              <Card>
+                <SectionLabel>MY PICKS ({myPicksList.length})</SectionLabel>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: C.mono, fontSize: 11 }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${C.borderBright}` }}>
+                        {['#', 'DATE', 'SPORT', 'MATCHUP', 'MY PICK', 'H/A', 'ODDS', 'STATUS', 'SCORE', ''].map(h => (
+                          <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: C.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 9 }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myPicksList.map((p: any, i: number) => {
+                        const statusColor = p.status === 'win' ? C.green : p.status === 'lose' ? C.red : C.amber;
+                        return (
+                          <tr key={p.id || i} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? 'transparent' : '#070e18' }}>
+                            <td style={{ padding: '7px 10px', color: C.textDim }}>{i + 1}</td>
+                            <td style={{ padding: '7px 10px', color: C.textDim, fontSize: 10 }}>{p.game_date}</td>
+                            <td style={{ padding: '7px 10px' }}><Badge color={C.blue}>{p.league}</Badge></td>
+                            <td style={{ padding: '7px 10px', color: C.textBright }}>{p.away_team} @ {p.home_team}</td>
+                            <td style={{ padding: '7px 10px', color: C.purple, fontWeight: 700 }}>{p.pick}</td>
+                            <td style={{ padding: '7px 10px' }}><Badge color={p.is_home_pick ? C.green : C.amber}>{p.is_home_pick ? 'H' : 'A'}</Badge></td>
+                            <td style={{ padding: '7px 10px', color: (p.odds ?? 0) > 0 ? C.green : C.text }}>{p.odds != null ? fmt(p.odds) : '—'}</td>
+                            <td style={{ padding: '7px 10px' }}><Badge color={statusColor}>{(p.status || 'pending').toUpperCase()}</Badge></td>
+                            <td style={{ padding: '7px 10px', color: C.textDim }}>{p.home_score != null ? `${p.home_score}-${p.away_score}` : '—'}</td>
+                            <td style={{ padding: '7px 10px' }}>
+                              {p.status === 'pending' && (
+                                <button onClick={() => deleteMyPick(p.id)} style={{ padding: '2px 6px', background: `${C.red}18`, border: `1px solid ${C.red}40`, borderRadius: 3, color: C.red, cursor: 'pointer', fontSize: 9, fontFamily: C.mono }}>✗</button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {(() => {
+                  const wins = myPicksList.filter((p: any) => p.status === 'win').length;
+                  const losses = myPicksList.filter((p: any) => p.status === 'lose').length;
+                  const pending = myPicksList.filter((p: any) => p.status === 'pending').length;
+                  const graded = wins + losses;
+                  const rate = graded > 0 ? ((wins / graded) * 100).toFixed(1) : '—';
+                  return (
+                    <div style={{ marginTop: 12, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                      <div style={{ padding: '6px 12px', background: '#0a1525', border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                        <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1 }}>WINS</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: C.green }}>{wins}</div>
+                      </div>
+                      <div style={{ padding: '6px 12px', background: '#0a1525', border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                        <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1 }}>LOSSES</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: C.red }}>{losses}</div>
+                      </div>
+                      <div style={{ padding: '6px 12px', background: '#0a1525', border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                        <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1 }}>PENDING</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: C.amber }}>{pending}</div>
+                      </div>
+                      <div style={{ padding: '6px 12px', background: '#0a1525', border: `1px solid ${C.border}`, borderRadius: 6 }}>
+                        <div style={{ fontSize: 9, color: C.textDim, letterSpacing: 1 }}>WIN RATE</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: C.blue }}>{rate}%</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </Card>
+            ) : (
+              <Card style={{ textAlign: 'center', padding: 40 }}>
+                <div style={{ fontFamily: C.mono, fontSize: 12, color: C.textDim }}>
+                  ◇ No picks loaded. Go to LIVE ODDS → check games → pick Home/Away → Save as My Picks.
                 </div>
               </Card>
             )}
