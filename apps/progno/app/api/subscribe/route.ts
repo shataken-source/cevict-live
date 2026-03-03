@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,7 +9,7 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
-    const { email, source = 'unknown' } = await request.json()
+    const { email, zip = '00000' } = await request.json()
 
     if (!email || !email.includes('@')) {
       return NextResponse.json(
@@ -22,7 +23,8 @@ export async function POST(request: Request) {
       .from('newsletter_subscribers')
       .upsert({
         email: email.toLowerCase(),
-        zip: '00000',
+        zip,
+        unsub_token: crypto.randomUUID(),
       }, {
         onConflict: 'email'
       })
