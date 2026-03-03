@@ -278,6 +278,25 @@ async function loadPicks() {
     }
   }
 
+  // Final fallback: /api/picks/today (Cevict Flex engine — always has picks)
+  if (raw.length === 0) {
+    for (const date of [todayCst, yesterdayCst]) {
+      if (raw.length > 0) break;
+      try {
+        const res = await fetch(API + '/picks/today?date=' + date, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          const list = data.picks || (Array.isArray(data) ? data : []);
+          console.log('[picks/today] date=' + date + ' count=' + list.length);
+          if (list.length > 0) {
+            raw = list;
+            pushAlert('green', 'Picks Loaded', raw.length + ' picks · Cevict Flex (' + date + ')');
+          }
+        }
+      } catch (e) { console.warn('[picks/today] Failed for ' + date + ':', e.message); }
+    }
+  }
+
   if (raw.length === 0) {
     pushAlert('red', 'No Picks Found', 'No picks available for today yet');
     renderAll();

@@ -62,7 +62,7 @@ export class PrognoIntegration {
 
   constructor() {
     // Progno production URL (Vercel). Override PROGNO_BASE_URL for local or custom domain.
-    this.baseUrl = process.env.PROGNO_BASE_URL || 'https://prognoultimatev2-cevict-projects.vercel.app';
+    this.baseUrl = process.env.PROGNO_BASE_URL || 'https://cevict-monorepo-progno-one.vercel.app';
     this.apiKey = process.env.BOT_API_KEY;
   }
 

@@ -12,7 +12,7 @@ export interface MarketMakerAdvice {
 }
 
 /** Progno production URL (Vercel). Override with PROGNO_BASE_URL for local or custom domain. */
-const PROGNO_BASE = process.env.PROGNO_BASE_URL || 'https://prognoultimatev2-cevict-projects.vercel.app';
+const PROGNO_BASE = process.env.PROGNO_BASE_URL || 'https://cevict-monorepo-progno-one.vercel.app';
 const TIMEOUT_MS = 3500;
 const DISABLED = process.env.DISABLE_MARKET_MAKER === '1' || process.env.DISABLE_MARKET_MAKER === 'true';
 

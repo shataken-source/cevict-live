@@ -1,11 +1,13 @@
 const express = require('express');
 const path = require('path');
-const http = require('http');
+const https = require('https');
 const qrcode = require('qrcode-terminal');
 
 const app = express();
 const PORT = 3434;
-const API_PORT = 3008;
+
+// Production API base — no local dev server needed
+const API_HOST = 'cevict-monorepo-progno-one.vercel.app';
 
 // SAFE proxy allowlist — only read-only public endpoints.
 // Admin/trading/cron routes are NEVER proxied.
@@ -22,6 +24,7 @@ const ALLOWED_PROXY_PREFIXES = [
   '/api/progno/wallboard/',
   '/api/progno/kalshi/',
   '/api/progno/v2',
+  '/api/tv-schedule',
 ];
 
 function isProxyAllowed(url) {
@@ -37,21 +40,17 @@ app.use('/api', (req, res) => {
     return res.status(403).json({ error: 'Forbidden: this route is not available through the wallboard proxy' });
   }
 
-  // Strip sensitive headers before forwarding
-  const safeHeaders = { ...req.headers, host: `localhost:${API_PORT}` };
-  delete safeHeaders['authorization'];
-  delete safeHeaders['x-admin-secret'];
-  delete safeHeaders['cookie'];
-
   const options = {
-    hostname: 'localhost',
-    port: API_PORT,
+    hostname: API_HOST,
+    port: 443,
     path: apiPath,
     method: 'GET',
-    headers: safeHeaders,
+    headers: { 'host': API_HOST, 'accept': 'application/json' },
   };
-  const proxy = http.request(options, (apiRes) => {
+  const proxy = https.request(options, (apiRes) => {
     const headers = { ...apiRes.headers, 'cache-control': 'no-store, no-cache, must-revalidate', 'pragma': 'no-cache' };
+    // Remove transfer-encoding since we're buffering
+    delete headers['transfer-encoding'];
     res.writeHead(apiRes.statusCode, headers);
     apiRes.pipe(res, { end: true });
   });
@@ -59,7 +58,7 @@ app.use('/api', (req, res) => {
     console.error('[proxy error]', e.message);
     res.status(502).json({ error: 'API unavailable', detail: e.message });
   });
-  req.pipe(proxy, { end: true });
+  proxy.end();
 });
 
 // Serve static files — only known safe extensions (not package.json, node_modules, etc.)

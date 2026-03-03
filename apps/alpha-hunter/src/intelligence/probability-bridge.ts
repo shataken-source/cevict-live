@@ -157,7 +157,7 @@ function getPrognoDateParam(): string {
  * Requests picks for America/Chicago "today" with debug=1 so 0-pick responses include diagnostics.
  */
 export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]> {
-  const base = process.env.PROGNO_BASE_URL || 'https://prognoultimatev2-cevict-projects.vercel.app';
+  const base = process.env.PROGNO_BASE_URL || 'https://cevict-monorepo-progno-one.vercel.app';
   const dateParam = getPrognoDateParam();
   const url = `${base}/api/picks/today?date=${dateParam}&debug=1`;
   try {
