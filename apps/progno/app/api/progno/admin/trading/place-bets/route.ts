@@ -196,6 +196,25 @@ export async function POST(request: NextRequest) {
           console.error(`[place-bets] DB write error for ${bet.pick}:`, dbError.message)
           result.db_error = dbError.message
         }
+
+        // Also write to my_picks so these bets appear in MY PICKS tab for grading
+        const isHomePick = bet.is_home_pick ?? (bet.pick === bet.home_team)
+        const { error: myPicksErr } = await supabase.from('my_picks').upsert({
+          game_date: today,
+          sport: bet.sport || 'unknown',
+          league: bet.league || bet.sport || 'unknown',
+          home_team: bet.home_team,
+          away_team: bet.away_team,
+          pick: bet.pick,
+          is_home_pick: isHomePick,
+          odds: bet.price ? (bet.side === 'yes' ? -Math.round((bet.price / (100 - bet.price)) * 100) : Math.round(((100 - bet.price) / bet.price) * 100)) : null,
+          commence_time: null,
+          notes: `Kalshi: ${bet.ticker} ${bet.side} @ ${bet.price}¢ × ${bet.contracts} ($${((bet.stake_cents || 0) / 100).toFixed(2)})`,
+          status: 'pending',
+        }, { onConflict: 'game_date,home_team,away_team' })
+        if (myPicksErr) {
+          console.warn(`[place-bets] my_picks write error for ${bet.pick}:`, myPicksErr.message)
+        }
       }
 
       results.push(result)
