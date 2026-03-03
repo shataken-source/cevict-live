@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/trade-cycle",
+      "schedule": "*/15 * * * *"
+    }
+  ],
   "framework": "nextjs",
   "buildCommand": "next build",
   "outputDirectory": ".next",
