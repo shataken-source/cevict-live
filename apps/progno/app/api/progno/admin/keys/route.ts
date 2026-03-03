@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { addKey, deleteKey, loadKeys } from '../../../../keys-store'
+import { addKeyAsync, deleteKeyAsync, loadKeysAsync } from '../../../../keys-store'
 
 export const runtime = 'nodejs'
 
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    const keys = loadKeys().map(({ id, label, createdAt }) => ({ id, label, createdAt }))
+    const keys = (await loadKeysAsync()).map(({ id, label, createdAt }) => ({ id, label, createdAt }))
     return NextResponse.json({ success: true, keys })
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message }, { status: 500 })
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     if (!value) {
       return NextResponse.json({ success: false, error: 'value required' }, { status: 400 })
     }
-    const key = addKey(label, value)
+    const key = await addKeyAsync(label, value)
     return NextResponse.json({ success: true, key: { id: key.id, label: key.label, createdAt: key.createdAt } })
   } catch (e: any) {
     return NextResponse.json({ success: false, error: e?.message }, { status: 500 })
@@ -54,7 +54,7 @@ export async function DELETE(request: NextRequest) {
     const body = await request.json()
     const { id } = body || {}
     if (!id) return NextResponse.json({ success: false, error: 'id required' }, { status: 400 })
-    const ok = deleteKey(id)
+    const ok = await deleteKeyAsync(id)
     if (!ok) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
     return NextResponse.json({ success: true })
   } catch (e: any) {

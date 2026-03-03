@@ -10,12 +10,51 @@ export interface StoredKey {
 
 const baseDir = path.join(process.cwd(), ".progno");
 const filePath = path.join(baseDir, "keys.json");
+const SUPABASE_BUCKET = 'predictions';
+const SUPABASE_KEY_PATH = 'config/keys.json';
+
+// Detect Vercel (read-only filesystem)
+const isVercel = !!process.env.VERCEL;
 
 function ensureDir() {
+  if (isVercel) return;
   if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true });
 }
 
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    return createClient(url, key);
+  } catch { return null; }
+}
+
+async function loadKeysFromSupabase(): Promise<StoredKey[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  try {
+    const { data, error } = await sb.storage.from(SUPABASE_BUCKET).download(SUPABASE_KEY_PATH);
+    if (error || !data) return [];
+    const text = await data.text();
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+
+async function saveKeysToSupabase(keys: StoredKey[]): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  try {
+    const blob = new Blob([JSON.stringify(keys, null, 2)], { type: 'application/json' });
+    await sb.storage.from(SUPABASE_BUCKET).upload(SUPABASE_KEY_PATH, blob, { upsert: true, contentType: 'application/json' });
+  } catch (e: any) { console.error('[keys-store] Supabase save error:', e?.message); }
+}
+
+// Synchronous local-only load (used by getPrimaryKey and other hot-path callers)
 export function loadKeys(): StoredKey[] {
+  if (isVercel) return []; // On Vercel, use async loadKeysAsync instead
   ensureDir();
   if (!fs.existsSync(filePath)) return [];
   try {
@@ -27,9 +66,29 @@ export function loadKeys(): StoredKey[] {
   }
 }
 
+// Async load — works on both local and Vercel
+export async function loadKeysAsync(): Promise<StoredKey[]> {
+  if (isVercel) return loadKeysFromSupabase();
+  return loadKeys();
+}
+
 export function saveKeys(keys: StoredKey[]): void {
-  ensureDir();
-  fs.writeFileSync(filePath, JSON.stringify(keys, null, 2), "utf8");
+  if (!isVercel) {
+    ensureDir();
+    fs.writeFileSync(filePath, JSON.stringify(keys, null, 2), "utf8");
+  }
+  // Also save to Supabase (fire-and-forget)
+  saveKeysToSupabase(keys).catch(() => { });
+}
+
+export async function addKeyAsync(label: string, value: string): Promise<StoredKey> {
+  const keys = await loadKeysAsync();
+  const id = `key_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const next: StoredKey = { id, label: label || "default", value, createdAt: new Date().toISOString() };
+  keys.unshift(next);
+  saveKeys(keys);
+  if (isVercel) await saveKeysToSupabase(keys);
+  return next;
 }
 
 export function addKey(label: string, value: string): StoredKey {
@@ -39,6 +98,15 @@ export function addKey(label: string, value: string): StoredKey {
   keys.unshift(next);
   saveKeys(keys);
   return next;
+}
+
+export async function deleteKeyAsync(id: string): Promise<boolean> {
+  const keys = await loadKeysAsync();
+  const next = keys.filter(k => k.id !== id);
+  if (next.length === keys.length) return false;
+  saveKeys(next);
+  if (isVercel) await saveKeysToSupabase(next);
+  return true;
 }
 
 export function deleteKey(id: string): boolean {
