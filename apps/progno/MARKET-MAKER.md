@@ -127,7 +127,7 @@ Progno runs in production on Vercel. The **base URL** alpha-hunter (and any othe
 
 Confirm in **Vercel Dashboard → progno project → Settings → Domains** (or the deployment URL of your latest production deployment). If you use a custom domain for Progno, set that as `PROGNO_BASE_URL` instead.
 
-- **Alpha-hunter:** Set `PROGNO_BASE_URL` in alpha-hunter’s environment (e.g. Vercel env vars or keyvault for prod) to this URL so market-maker and picks calls hit the live Progno deployment.
+- **Alpha-hunter:** Set `PROGNO_BASE_URL` in alpha-hunter's environment (e.g. Vercel env vars or keyvault for prod) to this URL so market-maker and picks calls hit the live Progno deployment.
 - **Local:** Use `PROGNO_BASE_URL=http://localhost:3008` when running Progno locally.
 
 ---
