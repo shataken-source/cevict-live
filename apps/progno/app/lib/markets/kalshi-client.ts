@@ -133,11 +133,9 @@ export class KalshiClient {
   ];
 
   /**
-   * Fetch sports game-winner markets from Kalshi via /events endpoint.
-   * Uses the same approach as the trading execute route:
-   * - /events excludes multi-leg parlays by default
-   * - Filters by category=Sports and GAME_SERIES prefixes
-   * - Skips blocked prefixes (women's, spring training, etc.)
+   * Fetch sports game-winner markets from Kalshi via /markets endpoint.
+   * Queries each GAME_SERIES prefix as a series_ticker (e.g. KXNBAGAME).
+   * The /events endpoint does NOT return individual game events — only futures/props.
    */
   async getSportsMarkets(
     limit: number = 100,
@@ -149,54 +147,62 @@ export class KalshiClient {
     }
 
     const all: KalshiMarket[] = [];
-    let cursor: string | undefined;
-    const eventsPath = '/trade-api/v2/events';
+    const marketsPath = '/trade-api/v2/markets';
     const baseHost = this.baseUrl.replace('/trade-api/v2', '');
+    const seen = new Set<string>();
 
-    try {
-      for (let pg = 0; pg < 10; pg++) {
-        const params = new URLSearchParams({ status, limit: '200', with_nested_markets: 'true' });
-        if (cursor) params.set('cursor', cursor);
-        const urlPath = `${eventsPath}?${params}`;
+    // Query each game series prefix via /markets?series_ticker=PREFIX
+    for (const gs of KalshiClient.GAME_SERIES) {
+      try {
+        let cursor: string | undefined;
+        for (let pg = 0; pg < 5; pg++) {
+          const params = new URLSearchParams({
+            status,
+            limit: '200',
+            series_ticker: gs.prefix,
+            mve_filter: 'exclude',
+          });
+          if (cursor) params.set('cursor', cursor);
+          const urlPath = `${marketsPath}?${params}`;
 
-        const response = await fetch(`${baseHost}${urlPath}`, {
-          headers: this.getHeaders('GET', eventsPath),
-        });
+          const response = await fetch(`${baseHost}${urlPath}`, {
+            headers: this.getHeaders('GET', marketsPath),
+          });
 
-        if (!response.ok) {
-          console.error(`[KalshiClient] events page ${pg}: ${response.status}`);
-          break;
-        }
-
-        const d = await response.json();
-        const events: any[] = d.events || [];
-        if (pg === 0 && events.length === 0) break;
-
-        for (const ev of events) {
-          if ((ev.category || '').toUpperCase() !== 'SPORTS') continue;
-          const et = (ev.event_ticker || '').toUpperCase();
-          if (/NCAAWB|WNBA|WCBB|WOMEN/i.test(et)) continue;
-          if (KalshiClient.BLOCKED_PREFIXES.some(bp => et.startsWith(bp))) continue;
-          const gs = KalshiClient.GAME_SERIES.find(s => et.startsWith(s.prefix));
-          if (!gs) continue;
-          for (const m of (ev.markets || [])) {
-            all.push({ ...m, event_ticker: ev.event_ticker, category: 'Sports', subcategory: gs.sport } as KalshiMarket);
+          if (!response.ok) {
+            console.error(`[KalshiClient] ${gs.prefix} page ${pg}: ${response.status}`);
+            break;
           }
-        }
 
-        cursor = d.cursor;
-        if (events.length < 200 || !cursor) break;
-        await new Promise(r => setTimeout(r, 150));
+          const d = await response.json();
+          const markets: any[] = d.markets || [];
+
+          for (const m of markets) {
+            const ticker = m.ticker || '';
+            if (seen.has(ticker)) continue;
+            const et = (m.event_ticker || ticker).toUpperCase();
+            if (/NCAAWB|WNBA|WCBB|WOMEN/i.test(et)) continue;
+            if (KalshiClient.BLOCKED_PREFIXES.some(bp => et.startsWith(bp))) continue;
+            seen.add(ticker);
+            all.push({ ...m, event_ticker: m.event_ticker || '', category: 'Sports', subcategory: gs.sport } as KalshiMarket);
+          }
+
+          cursor = d.cursor;
+          if (markets.length < 200 || !cursor) break;
+          await new Promise(r => setTimeout(r, 150));
+        }
+      } catch (error: any) {
+        console.error(`[KalshiClient] Error fetching ${gs.prefix}:`, error.message);
       }
-    } catch (error: any) {
-      console.error('Error fetching Kalshi sports events:', error.message);
     }
 
     // Sort by volume descending, return top N
     all.sort((a, b) => (b.volume || 0) - (a.volume || 0));
     const result = all.slice(0, limit);
     const withVol = result.filter(m => m.volume > 0).length;
-    console.log(`[KalshiClient] Found ${all.length} sports game markets via /events, returning ${result.length} (${withVol} with volume)`);
+    const sportCounts: Record<string, number> = {};
+    result.forEach(m => { sportCounts[m.subcategory] = (sportCounts[m.subcategory] || 0) + 1; });
+    console.log(`[KalshiClient] Found ${all.length} sports game markets via /markets, returning ${result.length} (${withVol} with volume). ${JSON.stringify(sportCounts)}`);
     return result;
   }
 

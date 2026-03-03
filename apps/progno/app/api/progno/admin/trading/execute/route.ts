@@ -203,10 +203,9 @@ function kalshiHdrs(apiKeyId: string, privateKey: string, method: string, urlPat
   return { 'Content-Type': 'application/json', 'KALSHI-ACCESS-KEY': apiKeyId, 'KALSHI-ACCESS-SIGNATURE': sig, 'KALSHI-ACCESS-TIMESTAMP': ts }
 }
 
-// ── Fetch sports game-winner markets via /events endpoint ───────────────────
-// /events excludes multivariate/parlay events by default (no filter needed).
-// with_nested_markets=true returns the individual YES/NO markets inside each event.
-// Filter by category=Sports and game series prefixes confirmed by live API testing.
+// ── Fetch sports game-winner markets via /markets endpoint ───────────────────
+// Queries each GAME_SERIES prefix as a series_ticker (e.g. KXNBAGAME).
+// The /events endpoint does NOT return individual game events — only futures/props.
 // BLOCKED prefixes — sports/markets Progno does NOT predict
 const BLOCKED_PREFIXES = [
   'KXDIMAYORGAME',     // Liga MX (Mexican soccer)
@@ -260,63 +259,53 @@ const MAX_BET_COST_CENTS = 1000
 async function fetchSportsMarkets(apiKeyId: string, privateKey: string): Promise<{ markets: any[]; error: string | null }> {
   const all: any[] = []
   const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
-  let cursor: string | undefined
   let fetchError: string | null = null
-  // Use /events endpoint — excludes parlays by default, returns nested markets per event
-  const eventsPath = '/trade-api/v2/events'
+  const seen = new Set<string>()
+  // Use /markets endpoint with series_ticker — /events doesn't return individual game markets
+  const marketsPath = '/trade-api/v2/markets'
 
-  for (let pg = 0; pg < 25; pg++) {
-    const params = new URLSearchParams({ status: 'open', limit: '200', with_nested_markets: 'true' })
-    if (cursor) params.set('cursor', cursor)
-    const p = `${eventsPath}?${params}`
+  for (const gs of GAME_SERIES) {
     try {
-      const res = await fetch(`${KALSHI_BASE}${p}`, { headers: kalshiHdrs(apiKeyId, privateKey, 'GET', eventsPath) })
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '')
-        const errMsg = `HTTP ${res.status}: ${txt.slice(0, 300)}`
-        console.error(`[kalshi] events page ${pg} ${errMsg}`)
-        fetchError = errMsg
-        if (res.status === 429) await sleep(2000)
-        break
-      }
-      const d = await res.json()
-      const events: any[] = d.events || []
-      console.log(`[kalshi] events page ${pg}: ${events.length} events, cursor=${d.cursor?.slice?.(0, 8) ?? 'none'}`)
-      if (pg === 0 && events.length === 0) {
-        fetchError = `Events API returned 0 events on page 0. Raw: ${JSON.stringify(d).slice(0, 200)}`
-        break
-      }
-      for (const ev of events) {
-        const cat = (ev.category || '').toUpperCase()
-        if (cat !== 'SPORTS') continue
-        const et = (ev.event_ticker || '').toUpperCase()
-        // Skip women's sports (NCAAWB, WNBA, etc.) — Progno only predicts men's
-        if (/NCAAWB|WNBA|WCBB|WOMEN/i.test(et)) continue
-        // Skip explicitly blocked prefixes (Liga MX, college hockey, spring training, etc.)
-        if (BLOCKED_PREFIXES.some(bp => et.startsWith(bp))) continue
-        const gs = GAME_SERIES.find(s => et.startsWith(s.prefix))
-        if (!gs) continue
-        // Flatten nested markets, tagging each with sport and event_ticker
-        for (const m of (ev.markets || [])) {
-          all.push({ ...m, _sport: gs.sport, event_ticker: ev.event_ticker })
+      let cursor: string | undefined
+      for (let pg = 0; pg < 5; pg++) {
+        const params = new URLSearchParams({ status: 'open', limit: '200', series_ticker: gs.prefix, mve_filter: 'exclude' })
+        if (cursor) params.set('cursor', cursor)
+        const p = `${marketsPath}?${params}`
+        const res = await fetch(`${KALSHI_BASE}${p}`, { headers: kalshiHdrs(apiKeyId, privateKey, 'GET', marketsPath) })
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '')
+          const errMsg = `HTTP ${res.status} for ${gs.prefix}: ${txt.slice(0, 300)}`
+          console.error(`[kalshi] ${gs.prefix} page ${pg} ${errMsg}`)
+          if (!fetchError) fetchError = errMsg
+          if (res.status === 429) await sleep(2000)
+          break
         }
+        const d = await res.json()
+        const markets: any[] = d.markets || []
+        for (const m of markets) {
+          const ticker = m.ticker || ''
+          if (seen.has(ticker)) continue
+          const et = (m.event_ticker || ticker).toUpperCase()
+          if (/NCAAWB|WNBA|WCBB|WOMEN/i.test(et)) continue
+          if (BLOCKED_PREFIXES.some(bp => et.startsWith(bp))) continue
+          seen.add(ticker)
+          all.push({ ...m, _sport: gs.sport, event_ticker: m.event_ticker || '' })
+        }
+        cursor = d.cursor
+        if (markets.length < 200 || !cursor) break
+        await sleep(150)
       }
-      cursor = d.cursor
-      if (events.length < 200 || !cursor) break
-      await sleep(150)
     } catch (e: any) {
-      const errMsg = `exception: ${e?.message}`
-      console.error(`[kalshi] events page ${pg} ${errMsg}`)
-      fetchError = errMsg
-      break
+      const errMsg = `${gs.prefix} exception: ${e?.message}`
+      console.error(`[kalshi] ${errMsg}`)
+      if (!fetchError) fetchError = errMsg
     }
   }
 
   // Log sport breakdown
   const sportCounts: Record<string, number> = {}
   for (const m of all) { sportCounts[m._sport] = (sportCounts[m._sport] || 0) + 1 }
-  console.log(`[kalshi] fetched ${all.length} sports game markets from events endpoint. Breakdown: ${JSON.stringify(sportCounts)}, error=${fetchError}`)
-  // Log sample titles for debugging
+  console.log(`[kalshi] fetched ${all.length} sports game markets via /markets. Breakdown: ${JSON.stringify(sportCounts)}, error=${fetchError}`)
   if (all.length > 0) {
     all.slice(0, 5).forEach(m => console.log(`[kalshi]   sample: ticker=${m.ticker} title="${m.title}" sport=${m._sport} event=${m.event_ticker}`))
   }
