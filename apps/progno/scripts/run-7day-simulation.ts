@@ -177,35 +177,47 @@ function gradePick(
 }
 
 // ── Fetch 7 days historical_odds + game_outcomes and reconstruct games ────────
-async function fetchAndReconstruct(): Promise<{
+async function fetchAndReconstruct(optionalEndDate?: string): Promise<{
   games: ReconstructedGame[]
   outcomes: GameOutcome[]
 }> {
-  const { data: latestOdds } = await supabase
-    .from('historical_odds')
-    .select('captured_at')
-    .order('captured_at', { ascending: false })
-    .limit(1)
-  const { data: earliestOdds } = await supabase
-    .from('historical_odds')
-    .select('captured_at')
-    .order('captured_at', { ascending: true })
-    .limit(1)
+  let endDateStr: string
+  let startDateStr: string
 
-  if (!latestOdds?.length) {
-    console.error('No historical_odds data')
-    return { games: [], outcomes: [] }
+  if (optionalEndDate) {
+    const end = new Date(optionalEndDate + 'T12:00:00Z')
+    const start = new Date(end)
+    start.setDate(start.getDate() - 7)
+    startDateStr = start.toISOString().split('T')[0]
+    endDateStr = end.toISOString().split('T')[0]
+    console.log(`  📅 7-day window (--date=${optionalEndDate}): ${startDateStr} → ${endDateStr}`)
+  } else {
+    const { data: latestOdds } = await supabase
+      .from('historical_odds')
+      .select('captured_at')
+      .order('captured_at', { ascending: false })
+      .limit(1)
+    const { data: earliestOdds } = await supabase
+      .from('historical_odds')
+      .select('captured_at')
+      .order('captured_at', { ascending: true })
+      .limit(1)
+
+    if (!latestOdds?.length) {
+      console.error('No historical_odds data')
+      return { games: [], outcomes: [] }
+    }
+
+    const latest = new Date(latestOdds[0].captured_at)
+    const start = new Date(latest)
+    start.setDate(start.getDate() - 7)
+    startDateStr = start.toISOString().split('T')[0]
+    endDateStr = latest.toISOString().split('T')[0]
+    console.log(`  📅 7-day window: ${startDateStr} → ${endDateStr}`)
   }
 
-  const latest = new Date(latestOdds[0].captured_at)
-  const start = new Date(latest)
-  start.setDate(start.getDate() - 7)
-  const startStr = start.toISOString()
-  const endStr = latest.toISOString()
-  const startDate = start.toISOString().split('T')[0]
-  const endDate = latest.toISOString().split('T')[0]
-
-  console.log(`  📅 7-day window: ${startDate} → ${endDate}`)
+  const startStr = new Date(startDateStr + 'T00:00:00Z').toISOString()
+  const endStr = new Date(endDateStr + 'T23:59:59.999Z').toISOString()
 
   let allOdds: any[] = []
   let page = 0
@@ -227,9 +239,9 @@ async function fetchAndReconstruct(): Promise<{
     page++
   }
 
-  const outStart = new Date(start)
+  const outStart = new Date(startDateStr + 'T00:00:00Z')
   outStart.setDate(outStart.getDate() - 1)
-  const outEnd = new Date(latest)
+  const outEnd = new Date(endDateStr + 'T00:00:00Z')
   outEnd.setDate(outEnd.getDate() + 1)
   const { data: outcomes } = await supabase
     .from('game_outcomes')
@@ -350,11 +362,27 @@ function getTodayDateStr(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).replace(/\//g, '-')
 }
 
+function getDateArg(): string | null {
+  const arg = process.argv.find((a) => a.startsWith('--date='))
+  if (!arg) return null
+  const date = arg.split('=')[1]?.trim()
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
+  return date
+}
+
 async function main() {
   const todayOnly = process.argv.includes('--today-only')
+  const dateArg = getDateArg()
   const todayStr = getTodayDateStr()
+  const singleDay = dateArg || (todayOnly ? todayStr : null)
 
-  if (todayOnly) {
+  if (dateArg) {
+    console.log(`
+╔══════════════════════════════════════════════════════════════════════════╗
+║  SINGLE-DAY SIMULATION — ${dateArg} (historical data → picks → grading)   ║
+╚══════════════════════════════════════════════════════════════════════════╝
+`)
+  } else if (todayOnly) {
     console.log(`
 ╔══════════════════════════════════════════════════════════════════════════╗
 ║  TODAY'S PREDICTIONS — New code (home-only off, tuned floors, analyzer) ║
@@ -371,21 +399,25 @@ async function main() {
   }
 
   // ═══ STEP 1: Load historical data ═══
-  console.log(todayOnly ? '═══ Loading odds (7-day window, then filter to today) ═══\n' : '═══ STEP 1: Load 7-day historical data (historical_odds + game_outcomes) ═══\n')
-  let { games, outcomes } = await fetchAndReconstruct()
+  const step1Msg = dateArg
+    ? `═══ Loading odds (7-day window ending ${dateArg}, then filter to ${dateArg}) ═══\n`
+    : todayOnly
+      ? '═══ Loading odds (7-day window, then filter to today) ═══\n'
+      : '═══ STEP 1: Load 7-day historical data (historical_odds + game_outcomes) ═══\n'
+  console.log(step1Msg)
+  let { games, outcomes } = await fetchAndReconstruct(dateArg || undefined)
   if (!games.length) {
-    console.error('❌ No games reconstructed. Ensure historical_odds has data for the last 7 days.')
+    console.error('❌ No games reconstructed. Ensure historical_odds has data for the window.')
     process.exit(1)
   }
 
-  if (todayOnly) {
-    const utcToday = new Date().toISOString().slice(0, 10)
-    games = games.filter((g) => g.commenceTime && (g.commenceTime.slice(0, 10) === todayStr || g.commenceTime.slice(0, 10) === utcToday))
+  if (singleDay) {
+    games = games.filter((g) => g.commenceTime && g.commenceTime.slice(0, 10) === singleDay)
     if (!games.length) {
-      console.error(`❌ No games found for today (${todayStr} CT / ${utcToday} UTC). Try without --today-only to use last 7 days.`)
+      console.error(`❌ No games found for ${singleDay}. Check historical_odds and game dates.`)
       process.exit(1)
     }
-    console.log(`  Games for today (${todayStr} CT / ${utcToday} UTC): ${games.length}\n`)
+    console.log(`  Games for ${singleDay}: ${games.length}\n`)
     outcomes = outcomes || []
   } else {
     if (!outcomes.length) {

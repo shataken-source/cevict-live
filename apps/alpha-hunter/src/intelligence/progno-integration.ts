@@ -61,6 +61,7 @@ export class PrognoIntegration {
   private readonly TOMORROW_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
   constructor() {
+    // Progno production URL (Vercel). Override PROGNO_BASE_URL for local or custom domain.
     this.baseUrl = process.env.PROGNO_BASE_URL || 'https://prognoultimatev2-cevict-projects.vercel.app';
     this.apiKey = process.env.BOT_API_KEY;
   }

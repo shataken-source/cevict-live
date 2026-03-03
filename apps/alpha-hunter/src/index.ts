@@ -341,6 +341,10 @@ export class TradingBot {
             }
 
             const result = await this.kalshi.placeLimitOrderUsd(ticker, side, stake, price);
+            if (result?.status === 'skipped') {
+              console.log(`[SKIP] ${ticker}: ${result.reason || result.message || 'market-maker'}`);
+              continue;
+            }
             if (result) {
               this.kalshiBalance -= stake; // Track spend locally
               tradeLimiter.recordTrade(ticker, stake, 'kalshi');

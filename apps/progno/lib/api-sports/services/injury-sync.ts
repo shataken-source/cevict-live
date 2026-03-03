@@ -4,6 +4,7 @@
  * Hardened with timeouts, retries, validation, logging, and robust fallbacks
  */
 
+import { createClient } from '@supabase/supabase-js';
 import { createNBAClient, createNFLClient, createNHLClient, LEAGUE_IDS } from '../client';
 
 let _supabaseWarned = false;
@@ -17,7 +18,6 @@ const getSupabase = () => {
     }
     return null;
   }
-  const { createClient } = require('@supabase/supabase-js');
   return createClient(url, key);
 };
 

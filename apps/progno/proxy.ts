@@ -48,6 +48,13 @@ export async function proxy(request: NextRequest) {
 
   const isAdminApiPath = pathname.startsWith('/api/admin');
 
+  // Root → send to main progno dashboard
+  if (pathname === '/' || pathname === '') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/progno';
+    return NextResponse.redirect(url);
+  }
+
   // Always allow login page, auth endpoints, and /progno pages
   if (pathname === '/admin/login' || pathname === '/api/admin/auth' || pathname === '/api/admin/login') {
     return NextResponse.next();

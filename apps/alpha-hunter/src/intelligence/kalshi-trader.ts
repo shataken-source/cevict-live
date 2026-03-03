@@ -21,6 +21,7 @@ import {
   matchKalshiMarketToProgno,
   getCryptoModelProbability,
 } from './probability-bridge';
+import { getMarketMakerAdvice } from './market-maker-client';
 
 /** ESPN scoreboard path by league */
 const ESPN_LEAGUE_PATH: Record<string, string> = {
@@ -1006,6 +1007,17 @@ export class KalshiTrader {
    */
   async placeLimitOrderContracts(ticker: string, side: 'yes' | 'no', contracts: number, limitPrice: number): Promise<any> {
     if (!this.keyConfigured) return { status: 'simulated' };
+
+    // Market-maker execution filter (Progno): skip "avoid" markets; fallback on error
+    const mmAdvice = await getMarketMakerAdvice(ticker);
+    if (mmAdvice?.action === 'avoid') {
+      console.log(`   [market-maker] SKIP ${ticker}: ${mmAdvice.reason || 'avoid'}`);
+      return { status: 'skipped', reason: 'market_maker_avoid', message: mmAdvice.reason };
+    }
+    // Use suggested limit when trade + YES side (API returns yes mid-price in cents)
+    if (side === 'yes' && mmAdvice?.action === 'trade' && mmAdvice.suggestedLimitPrice != null && Math.abs(mmAdvice.suggestedLimitPrice - limitPrice) <= 5) {
+      limitPrice = mmAdvice.suggestedLimitPrice;
+    }
 
     // CRITICAL: Verify count is a rounded integer derived from $5 notional allocation
     const countInteger = Math.round(contracts);
