@@ -7,7 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "live": "tsx src/live-trader-24-7.ts",
-    "train": "tsx src/crypto-trainer.ts"
+    "train": "tsx src/crypto-trainer.ts",
+    "build": "next build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",
