@@ -103,9 +103,41 @@ export class KalshiClient {
     };
   }
 
+  // Game-winner series prefixes (matches execute/route.ts)
+  private static GAME_SERIES: Array<{ prefix: string; sport: string }> = [
+    { prefix: 'KXNBAGAME', sport: 'NBA' },
+    { prefix: 'KXNCAAMBGAME', sport: 'NCAAB' },
+    { prefix: 'KXNCAABGAME', sport: 'NCAAB' },
+    { prefix: 'KXNFLGAME', sport: 'NFL' },
+    { prefix: 'KXNHLGAME', sport: 'NHL' },
+    { prefix: 'KXSHLGAME', sport: 'NHL' },
+    { prefix: 'KXMLBGAME', sport: 'MLB' },
+    { prefix: 'KXNCAAFGAME', sport: 'NCAAF' },
+    { prefix: 'KXNCAAMBSPREAD', sport: 'NCAAB' },
+    { prefix: 'KXNBASPREAD', sport: 'NBA' },
+    { prefix: 'KXNFLSPREAD', sport: 'NFL' },
+    { prefix: 'KXNHLSPREAD', sport: 'NHL' },
+    { prefix: 'KXNCAAMBTOTAL', sport: 'NCAAB' },
+    { prefix: 'KXNBATOTAL', sport: 'NBA' },
+    { prefix: 'KXNFLTOTAL', sport: 'NFL' },
+    { prefix: 'KXNHLTOTAL', sport: 'NHL' },
+    { prefix: 'KXNCAABBGAME', sport: 'NCAAB' },
+    { prefix: 'KXNCAABASEBALL', sport: 'NCAAB' },
+    { prefix: 'KXCBGAME', sport: 'NCAAB' },
+  ];
+
+  private static BLOCKED_PREFIXES = [
+    'KXDIMAYORGAME', 'KXNCAAHOCKEY', 'KXMLBST', 'KXNBA2H',
+    'KXNCAAWB', 'KXWNBA', 'KXNBL', 'KXWTA', 'KXATP',
+    'KXUFC', 'KXEPL', 'KXLIG', 'KXBUN', 'KXSER', 'KXMLS',
+  ];
+
   /**
-   * Fetch sports markets from Kalshi
-   * Focus: Sports category only
+   * Fetch sports game-winner markets from Kalshi via /events endpoint.
+   * Uses the same approach as the trading execute route:
+   * - /events excludes multi-leg parlays by default
+   * - Filters by category=Sports and GAME_SERIES prefixes
+   * - Skips blocked prefixes (women's, spring training, etc.)
    */
   async getSportsMarkets(
     limit: number = 100,
@@ -116,24 +148,56 @@ export class KalshiClient {
       return [];
     }
 
+    const all: KalshiMarket[] = [];
+    let cursor: string | undefined;
+    const eventsPath = '/trade-api/v2/events';
+    const baseHost = this.baseUrl.replace('/trade-api/v2', '');
+
     try {
-      const urlPath = `/trade-api/v2/markets?series_ticker=KXSPORTS&limit=${limit}&status=${status}`;
-      const url = `${this.baseUrl}/markets?series_ticker=KXSPORTS&limit=${limit}&status=${status}`;
+      for (let pg = 0; pg < 10; pg++) {
+        const params = new URLSearchParams({ status, limit: '200', with_nested_markets: 'true' });
+        if (cursor) params.set('cursor', cursor);
+        const urlPath = `${eventsPath}?${params}`;
 
-      const response = await fetch(url, {
-        headers: this.getHeaders('GET', urlPath),
-      });
+        const response = await fetch(`${baseHost}${urlPath}`, {
+          headers: this.getHeaders('GET', eventsPath),
+        });
 
-      if (!response.ok) {
-        throw new Error(`Kalshi API error: ${response.status} ${response.statusText}`);
+        if (!response.ok) {
+          console.error(`[KalshiClient] events page ${pg}: ${response.status}`);
+          break;
+        }
+
+        const d = await response.json();
+        const events: any[] = d.events || [];
+        if (pg === 0 && events.length === 0) break;
+
+        for (const ev of events) {
+          if ((ev.category || '').toUpperCase() !== 'SPORTS') continue;
+          const et = (ev.event_ticker || '').toUpperCase();
+          if (/NCAAWB|WNBA|WCBB|WOMEN/i.test(et)) continue;
+          if (KalshiClient.BLOCKED_PREFIXES.some(bp => et.startsWith(bp))) continue;
+          const gs = KalshiClient.GAME_SERIES.find(s => et.startsWith(s.prefix));
+          if (!gs) continue;
+          for (const m of (ev.markets || [])) {
+            all.push({ ...m, event_ticker: ev.event_ticker, category: 'Sports', subcategory: gs.sport } as KalshiMarket);
+          }
+        }
+
+        cursor = d.cursor;
+        if (events.length < 200 || !cursor) break;
+        await new Promise(r => setTimeout(r, 150));
       }
-
-      const data = await response.json();
-      return data.markets || [];
     } catch (error: any) {
-      console.error('Error fetching Kalshi sports markets:', error.message);
-      return [];
+      console.error('Error fetching Kalshi sports events:', error.message);
     }
+
+    // Sort by volume descending, return top N
+    all.sort((a, b) => (b.volume || 0) - (a.volume || 0));
+    const result = all.slice(0, limit);
+    const withVol = result.filter(m => m.volume > 0).length;
+    console.log(`[KalshiClient] Found ${all.length} sports game markets via /events, returning ${result.length} (${withVol} with volume)`);
+    return result;
   }
 
   /**
