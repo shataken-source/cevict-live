@@ -35,6 +35,8 @@ export class CryptoTrader {
   private config: StrategyConfig;
   private dailyTrades: number = 0;
   private dailyPnL: number = 0;
+  private lastTradeTime: Map<string, number> = new Map();
+  private readonly TRADE_COOLDOWN_MS = 30 * 60 * 1000; // 30 min cooldown per asset
 
   constructor() {
     this.exchanges = new ExchangeManager();
@@ -56,24 +58,46 @@ export class CryptoTrader {
     const signals: CryptoSignal[] = [];
 
     for (const crypto of ['BTC', 'ETH', 'SOL'] as const) {
+      // Skip asset if recently traded (cooldown)
+      const lastTrade = this.lastTradeTime.get(crypto) || 0;
+      if (Date.now() - lastTrade < this.TRADE_COOLDOWN_MS) continue;
+
       // Get market data
       const prices = await this.exchanges.comparePrices(crypto);
       if (!prices.bestPrice) continue;
 
-      // Run enabled strategies
+      // Collect per-asset signals to check for conflicts
+      const assetSignals: CryptoSignal[] = [];
+
       if (this.config.enabledStrategies.includes('mean_reversion')) {
         const mrSignal = await this.meanReversionStrategy(crypto, prices.bestPrice);
-        if (mrSignal) signals.push(mrSignal);
+        if (mrSignal) assetSignals.push(mrSignal);
       }
 
       if (this.config.enabledStrategies.includes('momentum')) {
         const momSignal = await this.momentumStrategy(crypto, prices.bestPrice);
-        if (momSignal) signals.push(momSignal);
+        if (momSignal) assetSignals.push(momSignal);
       }
 
       if (this.config.enabledStrategies.includes('breakout')) {
         const boSignal = await this.breakoutStrategy(crypto, prices.bestPrice);
-        if (boSignal) signals.push(boSignal);
+        if (boSignal) assetSignals.push(boSignal);
+      }
+
+      // Conflict detection: if strategies disagree on direction, skip this asset
+      if (assetSignals.length >= 2) {
+        const directions = new Set(assetSignals.map(s => s.direction));
+        if (directions.size > 1) {
+          console.log(`   [SKIP] ${crypto}: conflicting signals (${assetSignals.map(s => s.direction).join(' vs ')})`);
+          continue;
+        }
+        // Agreement bonus: boost confidence when multiple strategies agree
+        const best = assetSignals.sort((a, b) => b.confidence - a.confidence)[0];
+        best.confidence = Math.min(best.confidence + 5, 85);
+        best.reasoning.push(`Signal confirmed by ${assetSignals.length} strategies`);
+        signals.push(best);
+      } else {
+        signals.push(...assetSignals);
       }
     }
 
@@ -93,8 +117,9 @@ export class CryptoTrader {
   ): Promise<CryptoSignal | null> {
     // Get real 24h price change from candles
     let change24h: number;
+    let candles: { close: number; high: number; low: number; volume: number }[];
     try {
-      const candles = await this.exchanges.getCoinbase().getCandles(`${symbol}-USD`, 3600); // 1h candles
+      candles = await this.exchanges.getCoinbase().getCandles(`${symbol}-USD`, 3600) as any; // 1h candles
       if (candles.length >= 24) {
         const price24hAgo = candles[candles.length - 24].close;
         change24h = ((currentPrice - price24hAgo) / price24hAgo) * 100;
@@ -108,11 +133,21 @@ export class CryptoTrader {
       return null; // Can't get candle data
     }
 
-    // Strong move = potential reversion opportunity
-    if (Math.abs(change24h) < 2) return null;
+    // Require stronger move to avoid noise (3.5% threshold, was 2%)
+    if (Math.abs(change24h) < 3.5) return null;
+
+    // RSI-like filter: count recent candles going against the move (signs of exhaustion)
+    const recentCandles = candles.slice(-6);
+    let reversalCandles = 0;
+    for (let i = 1; i < recentCandles.length; i++) {
+      if (change24h > 0 && recentCandles[i].close < recentCandles[i - 1].close) reversalCandles++;
+      if (change24h < 0 && recentCandles[i].close > recentCandles[i - 1].close) reversalCandles++;
+    }
+    // Need at least 2 reversal candles in last 6 to confirm exhaustion
+    if (reversalCandles < 2) return null;
 
     const direction = change24h > 0 ? 'short' : 'long';
-    const confidence = Math.min(50 + Math.abs(change24h) * 3, 80);
+    const confidence = Math.min(55 + Math.abs(change24h) * 2.5 + reversalCandles * 3, 82);
 
     return {
       symbol,
@@ -120,16 +155,16 @@ export class CryptoTrader {
       confidence,
       reasoning: [
         `${symbol} moved ${change24h.toFixed(1)}% in 24h`,
-        `Mean reversion expected after ${Math.abs(change24h).toFixed(1)}% move`,
-        `Historical reversion rate: ~70% (mean reversion after ${Math.abs(change24h) >= 5 ? 'large' : 'moderate'} moves)`,
+        `Mean reversion expected — ${reversalCandles}/5 recent candles show exhaustion`,
+        `Historical reversion rate: ~70% after ${Math.abs(change24h) >= 5 ? 'large' : 'moderate'} moves`,
       ],
       entryPrice: currentPrice,
       targetPrice: direction === 'long'
-        ? currentPrice * (1 + Math.abs(change24h) * 0.003)
-        : currentPrice * (1 - Math.abs(change24h) * 0.003),
+        ? currentPrice * (1 + Math.abs(change24h) * 0.004)
+        : currentPrice * (1 - Math.abs(change24h) * 0.004),
       stopLoss: direction === 'long'
-        ? currentPrice * 0.97
-        : currentPrice * 1.03,
+        ? currentPrice * 0.98
+        : currentPrice * 1.02,
     };
   }
 
@@ -161,16 +196,23 @@ export class CryptoTrader {
     const totalMoves = upCount + downCount;
     if (totalMoves === 0) return null;
     const trendRatio = Math.max(upCount, downCount) / totalMoves;
-    if (trendRatio < 0.7) return null; // Need 70%+ directional consistency
+    if (trendRatio < 0.75) return null; // Need 75%+ directional consistency (was 70%)
 
     const direction: 'long' | 'short' = upCount > downCount ? 'long' : 'short';
     const strength = trendRatio * 100;
     const pctMove = ((recent[recent.length - 1].close - recent[0].close) / recent[0].close) * 100;
 
-    // Only signal if move is meaningful (>1%)
-    if (Math.abs(pctMove) < 1) return null;
+    // Only signal if move is meaningful (>2%, was 1%)
+    if (Math.abs(pctMove) < 2) return null;
 
-    const confidence = Math.min(50 + strength * 0.3, 78);
+    // Volume check: ensure recent candles have increasing volume (trend confirmation)
+    let volIncreasing = 0;
+    for (let i = Math.max(1, recent.length - 4); i < recent.length; i++) {
+      if ((recent[i] as any).volume > (recent[i - 1] as any).volume) volIncreasing++;
+    }
+    if (volIncreasing < 2) return null; // Need volume expanding with trend
+
+    const confidence = Math.min(52 + strength * 0.3 + volIncreasing * 2, 80);
 
     return {
       symbol,
@@ -220,21 +262,28 @@ export class CryptoTrader {
 
     let direction: 'long' | 'short';
     let level: number;
-    if (currentPrice > rangeHigh * 1.002) {
+    if (currentPrice > rangeHigh * 1.003) {
       direction = 'long';
       level = rangeHigh;
-    } else if (currentPrice < rangeLow * 0.998) {
+    } else if (currentPrice < rangeLow * 0.997) {
       direction = 'short';
       level = rangeLow;
     } else {
-      return null; // No breakout
+      return null; // No breakout (widened threshold from 0.2% to 0.3%)
     }
+
+    // Volume confirmation: breakout candles should have higher volume than range average
+    const rangeAvgVol = rangeCandles.reduce((s, c) => s + ((c as any).volume || 0), 0) / rangeCandles.length;
+    const breakoutCandles = candles.slice(-2);
+    const breakoutAvgVol = breakoutCandles.reduce((s, c) => s + ((c as any).volume || 0), 0) / breakoutCandles.length;
+    const volMultiple = rangeAvgVol > 0 ? breakoutAvgVol / rangeAvgVol : 1;
+    if (volMultiple < 1.3) return null; // Need 30%+ more volume on breakout
 
     const breakoutPct = direction === 'long'
       ? ((currentPrice - rangeHigh) / rangeHigh) * 100
       : ((rangeLow - currentPrice) / rangeLow) * 100;
 
-    const confidence = Math.min(55 + breakoutPct * 10, 75);
+    const confidence = Math.min(55 + breakoutPct * 8 + (volMultiple - 1) * 15, 78);
 
     return {
       symbol,
@@ -308,6 +357,9 @@ export class CryptoTrader {
       console.log(`[ERR] Trade failed: ${result.error}`);
       return null;
     }
+
+    // Record cooldown for this asset
+    this.lastTradeTime.set(best.symbol, Date.now());
 
     // BEEP AND ALERT AFTER successful trade (not before — avoids false alerts on INSUFFICIENT_FUND etc.)
     await beeper.tradeExecuted();

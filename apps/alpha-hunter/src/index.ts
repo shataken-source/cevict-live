@@ -148,8 +148,9 @@ export class TradingBot {
   }
 
   /**
-   * Profit-taking: check held crypto positions and sell any that are profitable.
-   * This replenishes USD for new buys and Kalshi bets.
+   * Profit-taking & stop-loss: check held crypto positions.
+   * - Tiered profit-take: sell 30% at +3%, 50% at +5%, 75% at +8%
+   * - Trailing stop-loss: sell if price dropped >2% from 24h high
    */
   private async profitTake(): Promise<{ totalSold: number; tradeCount: number }> {
     let totalSold = 0;
@@ -164,22 +165,39 @@ export class TradingBot {
       for (const pos of portfolio.positions) {
         if (pos.staked || !tradeableAssets.includes(pos.symbol) || pos.value < 10) continue;
 
-        // Get current price and compare to 24h candle data for profit estimate
         const pair = `${pos.symbol}-USD`;
         try {
           const candles = await cb.getCandles(pair, 3600); // 1h candles
           if (candles.length < 24) continue;
 
           const price24hAgo = candles[candles.length - 24].close;
+          const high24h = Math.max(...candles.slice(-24).map(c => c.high));
           const currentPrice = pos.price;
           const pctChange = ((currentPrice - price24hAgo) / price24hAgo) * 100;
+          const pctFromHigh = ((currentPrice - high24h) / high24h) * 100;
 
-          // Only sell if up more than PROFIT_TAKE_PCT in 24h
-          if (pctChange >= this.PROFIT_TAKE_PCT && pos.value >= 15) {
-            // Sell half the profitable position to lock in gains
-            const sellValue = Math.floor(pos.value * 0.5);
+          // TRAILING STOP-LOSS: sell all if dropped >2% from 24h high (and we had gains)
+          if (pctFromHigh < -2 && pctChange > 0.5 && pos.value >= 10) {
+            const sellValue = Math.floor(pos.value * 0.9);
+            console.log(`   STOP-LOSS: ${pos.symbol} fell ${pctFromHigh.toFixed(1)}% from high — selling $${sellValue}`);
+            const result = await this.exchanges.smartTrade(pos.symbol as 'BTC' | 'ETH' | 'SOL', 'sell', sellValue);
+            if (result.success) {
+              totalSold += sellValue;
+              tradeCount++;
+              await smsAlerter.tradeExecuted(pos.symbol, sellValue, 'SELL', 'Coinbase');
+            }
+            continue;
+          }
 
-            console.log(`   PROFIT-TAKE: ${pos.symbol} up ${pctChange.toFixed(1)}% — selling $${sellValue} to lock gains`);
+          // TIERED PROFIT-TAKE: sell more aggressively at higher gains
+          let sellPct = 0;
+          if (pctChange >= 8) sellPct = 0.75;
+          else if (pctChange >= 5) sellPct = 0.50;
+          else if (pctChange >= 3) sellPct = 0.30;
+
+          if (sellPct > 0 && pos.value >= 15) {
+            const sellValue = Math.floor(pos.value * sellPct);
+            console.log(`   PROFIT-TAKE: ${pos.symbol} up ${pctChange.toFixed(1)}% — selling ${(sellPct * 100).toFixed(0)}% ($${sellValue})`);
 
             const result = await this.exchanges.smartTrade(pos.symbol as 'BTC' | 'ETH' | 'SOL', 'sell', sellValue);
             if (result.success) {
@@ -190,7 +208,6 @@ export class TradingBot {
             }
           }
         } catch (err: any) {
-          // Skip this asset if candle fetch fails
           continue;
         }
       }
@@ -240,8 +257,8 @@ export class TradingBot {
       console.warn(`   [WARN] Balance check failed: ${err.message}`);
     }
 
-    // ── PROFIT-TAKING (every 5th cycle) ───────────────────────────
-    if (this.cycleCount % 5 === 0) {
+    // ── PROFIT-TAKING & STOP-LOSS (every 3rd cycle) ───────────────
+    if (this.cycleCount % 3 === 0) {
       const profitTaken = await this.profitTake();
       if (profitTaken.totalSold > 0) {
         this.coinbaseUsd += profitTaken.totalSold;
