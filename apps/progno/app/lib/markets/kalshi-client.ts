@@ -4,6 +4,40 @@
  * Focus: Sports probability markets only
  */
 
+import crypto from 'crypto'
+
+function normalizePem(raw: string): string {
+  const normalized = raw.replace(/\\n/g, '\n').replace(/"/g, '').trim()
+  const beginMatch = normalized.match(/-----BEGIN ([^-]+)-----/)
+  const endMatch = normalized.match(/-----END ([^-]+)-----/)
+  if (!beginMatch || !endMatch) return normalized
+  const type = beginMatch[1]
+  const b64 = normalized.replace(/-----BEGIN [^-]+-----/, '').replace(/-----END [^-]+-----/, '').replace(/\s+/g, '')
+  const wrapped = (b64.match(/.{1,64}/g) ?? []).join('\n')
+  return `-----BEGIN ${type}-----\n${wrapped}\n-----END ${type}-----`
+}
+
+function kalshiSign(privateKey: string, method: string, urlPath: string) {
+  const ts = Date.now().toString()
+  const pathOnly = urlPath.split('?')[0]
+  const msg = ts + method.toUpperCase() + pathOnly
+  try {
+    const s = crypto.createSign('RSA-SHA256')
+    s.update(msg)
+    s.end()
+    const sig = s
+      .sign({
+        key: privateKey,
+        padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+        saltLength: crypto.constants.RSA_PSS_SALTLEN_DIGEST,
+      })
+      .toString('base64')
+    return { sig, ts }
+  } catch {
+    return { sig: '', ts: '' }
+  }
+}
+
 export interface KalshiMarket {
   ticker: string;
   title: string;
@@ -56,17 +90,17 @@ export class KalshiClient {
   }
 
   /**
-   * Get authentication token
+   * Build authenticated headers for Kalshi API requests (RSA-PSS signing)
    */
-  private async authenticate(): Promise<string> {
-    if (!this.isConfigured()) {
-      throw new Error('Kalshi API credentials not configured');
-    }
-
-    // Kalshi uses JWT authentication
-    // In production, implement proper JWT signing
-    // For now, return placeholder
-    return 'auth_token_placeholder';
+  private getHeaders(method: string, urlPath: string): Record<string, string> {
+    const pem = normalizePem(this.apiSecret);
+    const { sig, ts } = kalshiSign(pem, method, urlPath);
+    return {
+      'Content-Type': 'application/json',
+      'KALSHI-ACCESS-KEY': this.apiKey,
+      'KALSHI-ACCESS-SIGNATURE': sig,
+      'KALSHI-ACCESS-TIMESTAMP': ts,
+    };
   }
 
   /**
@@ -83,26 +117,21 @@ export class KalshiClient {
     }
 
     try {
-      const token = await this.authenticate();
-      
-      // Kalshi API endpoint for markets
+      const urlPath = `/trade-api/v2/markets?category=sports&limit=${limit}&status=${status}`;
       const url = `${this.baseUrl}/markets?category=sports&limit=${limit}&status=${status}`;
-      
+
       const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders('GET', urlPath),
       });
 
       if (!response.ok) {
-        throw new Error(`Kalshi API error: ${response.statusText}`);
+        throw new Error(`Kalshi API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
       return data.markets || [];
     } catch (error: any) {
-      console.error('Error fetching Kalshi sports markets:', error);
+      console.error('Error fetching Kalshi sports markets:', error.message);
       return [];
     }
   }
@@ -116,14 +145,11 @@ export class KalshiClient {
     }
 
     try {
-      const token = await this.authenticate();
+      const urlPath = `/trade-api/v2/markets/${ticker}`;
       const url = `${this.baseUrl}/markets/${ticker}`;
-      
+
       const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders('GET', urlPath),
       });
 
       if (!response.ok) {
@@ -152,14 +178,11 @@ export class KalshiClient {
     }
 
     try {
-      const token = await this.authenticate();
+      const urlPath = `/trade-api/v2/markets/${ticker}/orderbook`;
       const url = `${this.baseUrl}/markets/${ticker}/orderbook`;
-      
+
       const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders('GET', urlPath),
       });
 
       if (!response.ok) {
@@ -185,14 +208,14 @@ export class KalshiClient {
   } {
     const yesMid = (market.yes_bid + market.yes_ask) / 2;
     const noMid = (market.no_bid + market.no_ask) / 2;
-    
+
     // Normalize to probabilities (Kalshi prices are in cents, 0-100)
     const yesProb = yesMid / 100;
     const noProb = noMid / 100;
-    
+
     // Calculate spread
     const spread = market.yes_ask - market.yes_bid;
-    
+
     // Assess liquidity based on volume and open interest
     let liquidity: 'high' | 'medium' | 'low' = 'low';
     if (market.volume > 10000 || market.open_interest > 50000) {
@@ -200,7 +223,7 @@ export class KalshiClient {
     } else if (market.volume > 1000 || market.open_interest > 5000) {
       liquidity = 'medium';
     }
-    
+
     return {
       yesProb,
       noProb,
