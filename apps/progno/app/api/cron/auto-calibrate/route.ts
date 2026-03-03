@@ -102,34 +102,109 @@ async function runCalibration(days: number = 14): Promise<CalibrationResult> {
   const startStr = start.toISOString().split('T')[0]
   const endStr = now.toISOString().split('T')[0]
 
-  // Fetch predictions + outcomes
-  const { data: predictions } = await supabase
-    .from('predictions')
-    .select('*')
-    .gte('game_date', startStr)
-    .lte('game_date', endStr)
+  // ── Load picks from storage bucket (primary) or picks table (fallback) ──
+  // The daily-predictions cron saves JSON files like predictions-YYYY-MM-DD.json
+  // to the 'predictions' storage bucket. The picks table may also have data.
+  interface RawPick {
+    home_team: string
+    away_team: string
+    pick: string
+    sport: string
+    league?: string
+    confidence?: number
+    odds?: number
+    pick_type?: string
+    recommended_line?: number
+    game_date?: string
+  }
 
+  const allPicks: RawPick[] = []
+
+  // Try storage bucket first — iterate each date in range
+  const dateList: string[] = []
+  const cursor = new Date(startStr + 'T12:00:00Z')
+  const endDate = new Date(endStr + 'T12:00:00Z')
+  while (cursor <= endDate) {
+    dateList.push(cursor.toISOString().split('T')[0])
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  for (const d of dateList) {
+    try {
+      const { data: blob, error } = await supabase.storage
+        .from('predictions')
+        .download(`predictions-${d}.json`)
+      if (error || !blob) continue
+      const raw = await blob.text()
+      const clean = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw
+      const payload = JSON.parse(clean)
+      const picks = Array.isArray(payload) ? payload : (payload.picks ?? [])
+      for (const p of picks) {
+        if (p.pick && p.home_team && p.away_team) {
+          allPicks.push({
+            home_team: p.home_team,
+            away_team: p.away_team,
+            pick: p.pick,
+            sport: (p.sport || 'unknown').toLowerCase(),
+            league: p.league || p.sport,
+            confidence: typeof p.confidence === 'number' ? p.confidence : undefined,
+            odds: p.odds ?? undefined,
+            pick_type: p.pick_type || p.recommended_type || 'moneyline',
+            recommended_line: p.recommended_line ?? undefined,
+            game_date: d,
+          })
+        }
+      }
+    } catch { /* file missing or corrupt — skip */ }
+  }
+
+  // Fallback: try picks table if storage had nothing
+  if (allPicks.length === 0) {
+    const { data: tableRows } = await supabase
+      .from('picks')
+      .select('*')
+      .gte('game_date', startStr)
+      .lte('game_date', endStr)
+    if (tableRows?.length) {
+      for (const p of tableRows) {
+        allPicks.push({
+          home_team: p.home_team,
+          away_team: p.away_team,
+          pick: p.pick,
+          sport: (p.sport || 'unknown').toLowerCase(),
+          league: p.league,
+          confidence: p.confidence,
+          odds: p.odds,
+          pick_type: p.pick_type || 'moneyline',
+          recommended_line: p.recommended_line,
+          game_date: p.game_date,
+        })
+      }
+    }
+  }
+
+  // Load outcomes
   const { data: outcomes } = await supabase
     .from('game_outcomes')
     .select('*')
     .gte('game_date', startStr)
     .lte('game_date', endStr)
 
-  if (!predictions?.length || !outcomes?.length) {
+  if (!allPicks.length || !outcomes?.length) {
     return {
       timestamp: now.toISOString(),
       days,
-      totalPicks: 0,
+      totalPicks: allPicks.length,
       totalWR: 0,
       totalROI: 0,
       overallBrier: 1,
       sports: [],
       adjustments: {},
-      recommendations: ['Not enough data for calibration.'],
+      recommendations: [`Not enough data: ${allPicks.length} picks, ${outcomes?.length ?? 0} outcomes in ${days}-day window.`],
     }
   }
 
-  // Match predictions to outcomes
+  // ── Grade picks against outcomes ──────────────────────────────────────────
   interface GradedPick {
     sport: string
     confidence: number
@@ -140,11 +215,11 @@ async function runCalibration(days: number = 14): Promise<CalibrationResult> {
 
   const graded: GradedPick[] = []
 
-  for (const pred of predictions) {
+  for (const pred of allPicks) {
     const outcome = outcomes.find(o =>
       teamsMatch(o.home_team, pred.home_team) &&
       teamsMatch(o.away_team, pred.away_team) &&
-      o.game_date === pred.game_date
+      (!pred.game_date || o.game_date === pred.game_date)
     )
     if (!outcome || (outcome.home_score + outcome.away_score === 0)) continue
 
@@ -155,7 +230,7 @@ async function runCalibration(days: number = 14): Promise<CalibrationResult> {
     const pickedHome = teamsMatch(pred.pick, outcome.home_team)
 
     // Handle spread picks
-    if (pred.pick_type === 'SPREAD' && pred.recommended_line != null) {
+    if (pred.pick_type?.toUpperCase() === 'SPREAD' && pred.recommended_line != null) {
       const margin = outcome.home_score - outcome.away_score
       const line = pred.recommended_line
       const covered = pickedHome ? (margin + line > 0) : (-margin - line > 0)
@@ -235,7 +310,34 @@ async function runCalibration(days: number = 14): Promise<CalibrationResult> {
     })
   }
 
-  // ── Auto-adjust logic ────────────────────────────────────────────────────
+  // ── GUARDRAILS ──────────────────────────────────────────────────────────
+  // These prevent the auto-calibration from going wild:
+  //   1. Min 20 picks per sport to adjust floors (noisy below that)
+  //   2. Min 25 picks per sport to touch analyzer multipliers
+  //   3. Min 30 total graded picks to make ANY adjustments
+  //   4. Max 3 floor adjustments per run (won't change every sport at once)
+  //   5. Floor step: max +2 up, -1 down per run (asymmetric — raising is safer)
+  //   6. Absolute floor bounds: 55-72 (never go above 72 or below 55)
+  //   7. Cooldown: if last calibration adjusted config <3 days ago, skip adjustments
+  //   8. Never auto-enable analyzer — only auto-disable (recommend-only for enable)
+  //   9. PROGNO_MIN_CONFIDENCE is NEVER touched by auto-calibration
+  const GUARDRAIL = {
+    MIN_PICKS_FLOOR: 20,
+    MIN_PICKS_ANALYZER: 25,
+    MIN_TOTAL_PICKS: 30,
+    MAX_FLOOR_ADJUSTMENTS: 3,
+    MAX_FLOOR_RAISE: 2,
+    MAX_FLOOR_LOWER: 1,
+    FLOOR_CEILING: 72,
+    FLOOR_BOTTOM: 55,
+    COOLDOWN_DAYS: 3,
+    ROI_RAISE_THRESHOLD: -10,
+    ROI_LOWER_THRESHOLD: 20,
+    GAP_RAISE_THRESHOLD: -10,
+    GAP_LOWER_THRESHOLD: 5,
+    ANALYZER_DISABLE_ROI: -5,
+  }
+
   const adjustments: Record<string, unknown> = {}
   const recommendations: string[] = []
 
@@ -247,35 +349,77 @@ async function runCalibration(days: number = 14): Promise<CalibrationResult> {
     .single()
   const currentConfig = (configRow?.config as Record<string, unknown>) || {}
 
+  // Guardrail: check overall sample size
+  if (graded.length < GUARDRAIL.MIN_TOTAL_PICKS) {
+    recommendations.push(`⚠️ Only ${graded.length} total graded picks (need ${GUARDRAIL.MIN_TOTAL_PICKS}). Skipping all adjustments.`)
+  }
+
+  // Guardrail: cooldown — check if last calibration adjusted config recently
+  let cooldownActive = false
+  try {
+    const { data: lastCal } = await supabase
+      .from('calibration_history')
+      .select('run_date, adjustments')
+      .not('adjustments', 'is', null)
+      .order('run_date', { ascending: false })
+      .limit(1)
+    if (lastCal?.length) {
+      const lastRun = new Date(lastCal[0].run_date)
+      const daysSince = (now.getTime() - lastRun.getTime()) / (1000 * 60 * 60 * 24)
+      if (daysSince < GUARDRAIL.COOLDOWN_DAYS) {
+        cooldownActive = true
+        recommendations.push(`⚠️ Last calibration adjustment was ${daysSince.toFixed(1)} days ago (cooldown: ${GUARDRAIL.COOLDOWN_DAYS}d). Skipping adjustments — report only.`)
+      }
+    }
+  } catch { /* table might be empty — no cooldown */ }
+
+  const canAdjust = graded.length >= GUARDRAIL.MIN_TOTAL_PICKS && !cooldownActive
+
   // Adjust league floors based on calibration
+  let floorAdjustCount = 0
   for (const sc of sports) {
     const floorKey = 'PROGNO_FLOOR_' + sportToLeague(sc.sport)
     const currentFloor = (typeof currentConfig[floorKey] === 'number'
       ? currentConfig[floorKey]
       : DEFAULT_FLOORS[sportToFloorKey(sc.sport)] ?? DEFAULT_MIN_CONFIDENCE) as number
 
-    if (sc.picks < 10) {
-      recommendations.push(`${sportToLeague(sc.sport)}: Only ${sc.picks} picks — too few for reliable calibration.`)
+    if (sc.picks < GUARDRAIL.MIN_PICKS_FLOOR) {
+      recommendations.push(`${sportToLeague(sc.sport)}: Only ${sc.picks} picks (need ${GUARDRAIL.MIN_PICKS_FLOOR}) — too few for reliable calibration.`)
       continue
     }
 
-    // If ROI is very negative, raise the floor
-    if (sc.roi < -10) {
-      const newFloor = Math.min(75, currentFloor + 3)
-      adjustments[floorKey] = newFloor
-      recommendations.push(`${sportToLeague(sc.sport)}: ROI ${sc.roi.toFixed(1)}% is very negative. Floor ${currentFloor}→${newFloor}.`)
+    // Guardrail: max floor adjustments per run
+    if (floorAdjustCount >= GUARDRAIL.MAX_FLOOR_ADJUSTMENTS) {
+      recommendations.push(`${sportToLeague(sc.sport)}: Already made ${GUARDRAIL.MAX_FLOOR_ADJUSTMENTS} floor changes this run — skipping (WR ${sc.winRate}%, ROI ${sc.roi.toFixed(1)}%).`)
+      continue
+    }
+
+    // If ROI is very negative, raise the floor (cautiously)
+    if (canAdjust && sc.roi < GUARDRAIL.ROI_RAISE_THRESHOLD) {
+      const newFloor = Math.min(GUARDRAIL.FLOOR_CEILING, currentFloor + GUARDRAIL.MAX_FLOOR_RAISE)
+      if (newFloor !== currentFloor) {
+        adjustments[floorKey] = newFloor
+        floorAdjustCount++
+        recommendations.push(`${sportToLeague(sc.sport)}: ROI ${sc.roi.toFixed(1)}% is very negative. Floor ${currentFloor}→${newFloor}.`)
+      }
     }
     // If overconfident by >10pp, raise floor
-    else if (sc.gap < -10) {
-      const newFloor = Math.min(75, currentFloor + 2)
-      adjustments[floorKey] = newFloor
-      recommendations.push(`${sportToLeague(sc.sport)}: Overconfident by ${Math.abs(sc.gap).toFixed(1)}pp. Floor ${currentFloor}→${newFloor}.`)
+    else if (canAdjust && sc.gap < GUARDRAIL.GAP_RAISE_THRESHOLD) {
+      const newFloor = Math.min(GUARDRAIL.FLOOR_CEILING, currentFloor + GUARDRAIL.MAX_FLOOR_RAISE)
+      if (newFloor !== currentFloor) {
+        adjustments[floorKey] = newFloor
+        floorAdjustCount++
+        recommendations.push(`${sportToLeague(sc.sport)}: Overconfident by ${Math.abs(sc.gap).toFixed(1)}pp. Floor ${currentFloor}→${newFloor}.`)
+      }
     }
-    // If strongly profitable and underconfident, lower floor (be less restrictive)
-    else if (sc.roi > 20 && sc.gap > 5 && currentFloor > 55) {
-      const newFloor = Math.max(55, currentFloor - 2)
-      adjustments[floorKey] = newFloor
-      recommendations.push(`${sportToLeague(sc.sport)}: Strong performance (ROI +${sc.roi.toFixed(1)}%, underconfident +${sc.gap.toFixed(1)}pp). Floor ${currentFloor}→${newFloor}.`)
+    // If strongly profitable and underconfident, lower floor (very cautiously — only -1)
+    else if (canAdjust && sc.roi > GUARDRAIL.ROI_LOWER_THRESHOLD && sc.gap > GUARDRAIL.GAP_LOWER_THRESHOLD && currentFloor > GUARDRAIL.FLOOR_BOTTOM) {
+      const newFloor = Math.max(GUARDRAIL.FLOOR_BOTTOM, currentFloor - GUARDRAIL.MAX_FLOOR_LOWER)
+      if (newFloor !== currentFloor) {
+        adjustments[floorKey] = newFloor
+        floorAdjustCount++
+        recommendations.push(`${sportToLeague(sc.sport)}: Strong performance (ROI +${sc.roi.toFixed(1)}%, gap +${sc.gap.toFixed(1)}pp). Floor ${currentFloor}→${newFloor}.`)
+      }
     }
     // Otherwise keep current
     else {
@@ -283,7 +427,7 @@ async function runCalibration(days: number = 14): Promise<CalibrationResult> {
     }
   }
 
-  // Adjust analyzer sport multipliers
+  // Adjust analyzer sport multipliers (only disable, never enable)
   const currentMults = (currentConfig.SPORT_MULTIPLIERS as Record<string, number>) || {
     NBA: 0, NHL: 0, MLB: 1, NCAAB: 0, NCAAF: 1, NFL: 1, NCAA: 0, CBB: 0,
   }
@@ -291,18 +435,16 @@ async function runCalibration(days: number = 14): Promise<CalibrationResult> {
 
   for (const sc of sports) {
     const league = sportToLeague(sc.sport)
-    if (sc.picks < 15) continue
+    if (sc.picks < GUARDRAIL.MIN_PICKS_ANALYZER) continue
 
-    // If sport has negative ROI and analyzer is active, disable it
-    if (sc.roi < -5 && (newMults[league] ?? 0) > 0) {
+    // Only auto-DISABLE analyzer, never auto-enable
+    if (canAdjust && sc.roi < GUARDRAIL.ANALYZER_DISABLE_ROI && (newMults[league] ?? 0) > 0) {
       newMults[league] = 0
-      recommendations.push(`${league}: Negative ROI with analyzer active. Disabling analyzer (mult ${currentMults[league]}→0).`)
+      recommendations.push(`${league}: Negative ROI (${sc.roi.toFixed(1)}%) with analyzer active. Disabling (mult ${currentMults[league]}→0).`)
     }
-    // If sport has very strong ROI and analyzer is off, consider enabling
-    // (conservative — only enable if ROI > 25% and WR > 60%)
+    // Recommend-only for enabling (human decision)
     else if (sc.roi > 25 && sc.winRate > 60 && (newMults[league] ?? 0) === 0) {
-      // Don't auto-enable — just recommend. Too risky to auto-change.
-      recommendations.push(`${league}: Strong performance without analyzer. Consider enabling (currently off).`)
+      recommendations.push(`${league}: Strong performance without analyzer. Consider enabling manually (currently off).`)
     }
   }
 
@@ -311,7 +453,7 @@ async function runCalibration(days: number = 14): Promise<CalibrationResult> {
   }
 
   // Merge adjustments into config
-  if (Object.keys(adjustments).length > 0) {
+  if (Object.keys(adjustments).length > 0 && canAdjust) {
     const newConfig = { ...currentConfig, ...adjustments }
     const { error } = await supabase.from('tuning_config').upsert(
       { id: 'default', config: newConfig, updated_at: now.toISOString() },
@@ -322,6 +464,10 @@ async function runCalibration(days: number = 14): Promise<CalibrationResult> {
     } else {
       recommendations.push(`✅ Saved ${Object.keys(adjustments).length} config adjustments to Supabase.`)
     }
+  } else if (!canAdjust && Object.keys(adjustments).length > 0) {
+    recommendations.push(`ℹ️ Would have made ${Object.keys(adjustments).length} adjustments but guardrails prevented it (report-only mode).`)
+    // Clear adjustments so they're not shown as "applied"
+    for (const key of Object.keys(adjustments)) delete adjustments[key]
   } else {
     recommendations.push('✅ No adjustments needed — all sports well-calibrated.')
   }
