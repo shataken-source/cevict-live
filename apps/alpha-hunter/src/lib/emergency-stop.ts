@@ -97,10 +97,14 @@ export class EmergencyStop {
     // Send SMS alert
     await smsAlerter.emergencyStop(reason, totalSpent || 0);
 
-    // Log to file
-    const logFile = path.join(path.resolve(__dirname, '..', '..'), 'data', 'emergency-stops.log');
-    const logEntry = `${new Date().toISOString()} - ${reason} - $${(totalSpent || 0).toFixed(2)}\n`;
-    fs.appendFileSync(logFile, logEntry, 'utf-8');
+    // Log to file (may fail on serverless read-only fs)
+    try {
+      const logFile = path.join(path.resolve(__dirname, '..', '..'), 'data', 'emergency-stops.log');
+      const logEntry = `${new Date().toISOString()} - ${reason} - $${(totalSpent || 0).toFixed(2)}\n`;
+      fs.appendFileSync(logFile, logEntry, 'utf-8');
+    } catch {
+      console.warn('[EMERGENCY-STOP] Could not write log file (read-only fs)');
+    }
   }
 
   /**
