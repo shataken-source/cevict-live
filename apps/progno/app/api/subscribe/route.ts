@@ -17,9 +17,9 @@ export async function POST(request: Request) {
       )
     }
 
-    // Insert into email_subscribers table
+    // Insert into newsletter_subscribers table
     const { error } = await supabase
-      .from('email_subscribers')
+      .from('newsletter_subscribers')
       .upsert({
         email: email.toLowerCase(),
         source,
