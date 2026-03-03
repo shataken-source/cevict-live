@@ -5,11 +5,6 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 
-  // Silence "multiple lockfiles" warning: use current dir (progno) as Turbopack root
-  turbopack: {
-    root: process.cwd(),
-  },
-
   async headers() {
     return [
       {
