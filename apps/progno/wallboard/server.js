@@ -1,11 +1,18 @@
 const express = require('express');
 const path = require('path');
 const http = require('http');
+const https = require('https');
 const qrcode = require('qrcode-terminal');
 
 const app = express();
 const PORT = 3434;
 const API_PORT = 3008;
+
+// Base URL for Progno API. In production, point this at your live Progno deployment
+// (e.g. https://prognoultimatev2-cevict-projects.vercel.app). By default it targets
+// a local Progno instance on port 3008.
+const PROGNO_BASE_URL =
+  process.env.PROGNO_BASE_URL || `http://localhost:${API_PORT}`;
 
 // SAFE proxy allowlist — only read-only public endpoints.
 // Admin/trading/cron routes are NEVER proxied.
@@ -38,28 +45,44 @@ app.use('/api', (req, res) => {
   }
 
   // Strip sensitive headers before forwarding
-  const safeHeaders = { ...req.headers, host: `localhost:${API_PORT}` };
+  const safeHeaders = { ...req.headers };
   delete safeHeaders['authorization'];
   delete safeHeaders['x-admin-secret'];
   delete safeHeaders['cookie'];
+  try {
+    const target = new URL(PROGNO_BASE_URL);
+    const useHttps = target.protocol === 'https:';
+    const agent = useHttps ? https : http;
 
-  const options = {
-    hostname: 'localhost',
-    port: API_PORT,
-    path: apiPath,
-    method: 'GET',
-    headers: safeHeaders,
-  };
-  const proxy = http.request(options, (apiRes) => {
-    const headers = { ...apiRes.headers, 'cache-control': 'no-store, no-cache, must-revalidate', 'pragma': 'no-cache' };
-    res.writeHead(apiRes.statusCode, headers);
-    apiRes.pipe(res, { end: true });
-  });
+    const options = {
+      hostname: target.hostname,
+      port: target.port || (useHttps ? 443 : 80),
+      path: (target.pathname.endsWith('/') ? target.pathname.slice(0, -1) : target.pathname) + apiPath,
+      method: 'GET',
+      headers: {
+        ...safeHeaders,
+        host: target.host,
+      },
+    };
+
+    const proxy = agent.request(options, (apiRes) => {
+      const headers = {
+        ...apiRes.headers,
+        'cache-control': 'no-store, no-cache, must-revalidate',
+        pragma: 'no-cache',
+      };
+      res.writeHead(apiRes.statusCode, headers);
+      apiRes.pipe(res, { end: true });
+    });
   proxy.on('error', (e) => {
     console.error('[proxy error]', e.message);
     res.status(502).json({ error: 'API unavailable', detail: e.message });
   });
   req.pipe(proxy, { end: true });
+  } catch (e) {
+    console.error('[proxy config error]', e.message);
+    res.status(500).json({ error: 'Invalid PROGNO_BASE_URL', detail: e.message });
+  }
 });
 
 // Serve static files — only known safe extensions (not package.json, node_modules, etc.)
