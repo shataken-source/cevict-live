@@ -47,8 +47,8 @@ import {
 
 const MC_ENGINE = new MonteCarloEngine({ iterations: 5000 })
 const EV_DISPLAY_CAP = Number(process.env.PROGNO_EV_CAP ?? 10000) // Configurable, effectively uncapped by default
-const VALUE_MIN_EDGE = 10  // High-confidence value bet threshold
-const VALUE_MED_EDGE = 5   // Medium-confidence value bet threshold
+const VALUE_MIN_EDGE = 15  // High-confidence value bet threshold (was 10, raised — 10-20% edge had negative ROI)
+const VALUE_MED_EDGE = 7   // Medium-confidence value bet threshold (was 5, raised for selectivity)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -359,17 +359,17 @@ export async function runPickEngine(game: any, sport: string): Promise<any | nul
   const mcAgrees = checkMCAlignment(mcResult, pick, pickType, isHomePick, game)
   const tripleAlign = !!(bestValueBet && bestValueBet.edge >= VALUE_MED_EDGE && mcAgrees)
 
-  // ── 11. Composite score ───────────────────────────────────────────────────
+  // ── 11. Composite score (v2 — matches ranking module 20260303) ──────────
   const edgeNum = bestValueBet?.edge ?? 0
   const evNum = bestValueBet?.expectedValue ?? 0
 
   let compositeScore =
-    (Math.min(Math.max(edgeNum, 0), 30) / 30) * 40 +
-    (Math.min(Math.max(evNum, 0), 80) / 80) * 40 +
-    (confidence / 100) * 20
+    (confidence / 100) * 50 +
+    (Math.min(Math.max(evNum, 0), 80) / 80) * 30 +
+    (Math.min(Math.max(edgeNum, 0), 10) / 10) * 20
 
-  // Penalty for low edge without triple alignment
-  if (edgeNum < 2 && !tripleAlign) compositeScore -= 8
+  // Penalize unreliable high-edge picks (10%+ edge had negative ROI in audit)
+  if (edgeNum > 10) compositeScore -= 5
 
   // ── 12. Collect all signal reasoning ──────────────────────────────────────
   const allReasoning: string[] = []

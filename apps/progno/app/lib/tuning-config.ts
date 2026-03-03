@@ -98,13 +98,14 @@ function getEnvDefaults(): Record<string, unknown> {
   return {
     HOME_ONLY_MODE: process.env.HOME_ONLY_MODE ?? '0',
     PROGNO_FLOOR_NBA: Number(process.env.PROGNO_FLOOR_NBA ?? 58),
-    PROGNO_FLOOR_NHL: Number(process.env.PROGNO_FLOOR_NHL ?? 57),
+    PROGNO_FLOOR_NHL: Number(process.env.PROGNO_FLOOR_NHL ?? 62),
     PROGNO_FLOOR_NFL: Number(process.env.PROGNO_FLOOR_NFL ?? 60),
     PROGNO_FLOOR_MLB: Number(process.env.PROGNO_FLOOR_MLB ?? 57),
     PROGNO_FLOOR_NCAAB: Number(process.env.PROGNO_FLOOR_NCAAB ?? 62),
     PROGNO_FLOOR_NCAAF: Number(process.env.PROGNO_FLOOR_NCAAF ?? 62),
     PROGNO_FLOOR_CBB: Number(process.env.PROGNO_FLOOR_CBB ?? 66),
-    PROGNO_MIN_CONFIDENCE: Number(process.env.PROGNO_MIN_CONFIDENCE ?? 56),
+    PROGNO_FLOOR_NCAA: Number(process.env.PROGNO_FLOOR_NCAA ?? 66),
+    PROGNO_MIN_CONFIDENCE: Number(process.env.PROGNO_MIN_CONFIDENCE ?? 58),
     BLEND_WEIGHT: 0.1,
     CONFIDENCE_WEIGHT: 1,
     EDGE_WEIGHT: 0.8,
@@ -117,8 +118,8 @@ function getEnvDefaults(): Record<string, unknown> {
       NCAAB: 0,
       NCAAF: 1,
       NFL: 1,
-      NCAA: 0.3,
-      CBB: 1,
+      NCAA: 0,
+      CBB: 0,
     },
   }
 }

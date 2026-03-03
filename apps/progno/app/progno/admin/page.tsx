@@ -222,7 +222,9 @@ export default function AdminPage() {
   const [oddsError, setOddsError] = useState<string | null>(null);
   const [selectedSports, setSelectedSports] = useState<string[]>(['basketball_nba', 'basketball_ncaab', 'icehockey_nhl']);
   const [oddsFilter, setOddsFilter] = useState('');
-  const [oddsSort, setOddsSort] = useState<'time' | 'sport' | 'edge'>('time');
+  const [oddsSort, setOddsSort] = useState<string>('time');
+  const [oddsSortDir, setOddsSortDir] = useState<'asc' | 'desc'>('asc');
+  const [oddsLeagueFilter, setOddsLeagueFilter] = useState<string>('all');
   const [oddsLastFetched, setOddsLastFetched] = useState<string | null>(null);
 
   // cron
@@ -439,6 +441,21 @@ export default function AdminPage() {
   const deleteCronJob = async (id: string) => {
     if (!secret.trim()) return;
     try { const res = await fetch('/api/progno/admin/cron/jobs', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` }, body: JSON.stringify({ id }) }); const j = await res.json(); if (res.ok && j.success) setCronJobs(j.jobs || []); } catch { }
+  };
+
+  // auto-calibration
+  const [calLoading, setCalLoading] = useState(false);
+  const [calResult, setCalResult] = useState<any>(null);
+  const [calDays, setCalDays] = useState(14);
+  const runCalibration = async () => {
+    if (!secret.trim()) { setCalResult({ error: 'Enter admin secret first.' }); return; }
+    setCalLoading(true); setCalResult(null);
+    try {
+      const res = await fetch('/api/cron/auto-calibrate', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret.trim()}` }, body: JSON.stringify({ days: calDays }) });
+      const j = await res.json();
+      setCalResult(j);
+    } catch (e: any) { setCalResult({ error: e?.message || 'Calibration failed' }); }
+    finally { setCalLoading(false); }
   };
 
   const loadPendingKalshiBets = async () => {
@@ -676,16 +693,50 @@ export default function AdminPage() {
   };
 
   // -- Render ------------------------------------------------------------------
+  // helper: compute edge for a game (no-vig home% minus market implied home%)
+  const getEdge = (g: any): number => {
+    if (g.noVig?.home == null || g.consensus?.homeML == null) return 0;
+    const ml = g.consensus.homeML;
+    const mktImplied = ml < 0 ? Math.abs(ml) / (Math.abs(ml) + 100) * 100 : 100 / (ml + 100) * 100;
+    return g.noVig.home - mktImplied;
+  };
+  const getVal = (g: any, key: string): number => {
+    switch (key) {
+      case 'time': return new Date(g.commence_time).getTime();
+      case 'sport': return 0; // string sort handled separately
+      case 'homeML': return g.consensus?.homeML ?? 0;
+      case 'awayML': return g.consensus?.awayML ?? 0;
+      case 'bestHome': return g.best?.homeML ?? -9999;
+      case 'bestAway': return g.best?.awayML ?? -9999;
+      case 'spread': return g.consensus?.spread ?? 0;
+      case 'total': return g.consensus?.total ?? 0;
+      case 'nvHome': return g.noVig?.home ?? 0;
+      case 'nvAway': return g.noVig?.away ?? 0;
+      case 'edge': return getEdge(g);
+      case 'bks': return g.bookmakerCount ?? 0;
+      default: return 0;
+    }
+  };
+  const toggleSort = (key: string) => {
+    if (oddsSort === key) setOddsSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setOddsSort(key); setOddsSortDir(key === 'edge' ? 'desc' : 'asc'); }
+  };
+  const sortArrow = (key: string) => oddsSort === key ? (oddsSortDir === 'asc' ? ' ▲' : ' ▼') : '';
+
+  // unique leagues from fetched odds
+  const oddsLeagues = [...new Set(liveOdds.map(g => g.sport as string))].sort();
+
   const filteredOdds = liveOdds
-    .filter(g => !oddsFilter || g.home_team.toLowerCase().includes(oddsFilter.toLowerCase()) || g.away_team.toLowerCase().includes(oddsFilter.toLowerCase()))
+    .filter(g => {
+      if (oddsLeagueFilter !== 'all' && g.sport !== oddsLeagueFilter) return false;
+      if (oddsFilter && !g.home_team.toLowerCase().includes(oddsFilter.toLowerCase()) && !g.away_team.toLowerCase().includes(oddsFilter.toLowerCase())) return false;
+      return true;
+    })
     .sort((a, b) => {
-      if (oddsSort === 'sport') return a.sport.localeCompare(b.sport);
-      if (oddsSort === 'edge') {
-        const ea = a.noVig?.home != null ? Math.abs(a.noVig.home - 50) : 0;
-        const eb = b.noVig?.home != null ? Math.abs(b.noVig.home - 50) : 0;
-        return eb - ea;
-      }
-      return new Date(a.commence_time).getTime() - new Date(b.commence_time).getTime();
+      const dir = oddsSortDir === 'asc' ? 1 : -1;
+      if (oddsSort === 'sport') return dir * (a.sport || '').localeCompare(b.sport || '');
+      if (oddsSort === 'matchup') return dir * (a.away_team || '').localeCompare(b.away_team || '');
+      return dir * (getVal(a, oddsSort) - getVal(b, oddsSort));
     });
 
   return (
@@ -777,13 +828,13 @@ export default function AdminPage() {
                       style={{ padding: '5px 10px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11, width: 180 }}
                     />
                     <select
-                      value={oddsSort}
-                      onChange={e => setOddsSort(e.target.value as any)}
+                      value={oddsLeagueFilter}
+                      onChange={e => setOddsLeagueFilter(e.target.value)}
+                      title="Filter by league"
                       style={{ padding: '5px 10px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11 }}
                     >
-                      <option value="time">Sort: TIME</option>
-                      <option value="sport">Sort: SPORT</option>
-                      <option value="edge">Sort: EDGE</option>
+                      <option value="all">ALL LEAGUES</option>
+                      {oddsLeagues.map(lg => <option key={lg} value={lg}>{lg}</option>)}
                     </select>
                     <Badge color={C.green}>{filteredOdds.length} GAMES</Badge>
                   </>
@@ -815,8 +866,13 @@ export default function AdminPage() {
                           <input type="checkbox" checked={myPicksSelected.size === filteredOdds.length && filteredOdds.length > 0} onChange={() => { if (myPicksSelected.size === filteredOdds.length) setMyPicksSelected(new Set()); else setMyPicksSelected(new Set(filteredOdds.map((_, i) => i))); }} style={{ cursor: 'pointer' }} />
                         </th>
                         <th style={{ padding: '9px 8px', textAlign: 'center', width: 80, color: C.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 9 }}>MY PICK</th>
-                        {['SPORT', 'MATCHUP', 'TIME', 'HOME ML', 'AWAY ML', 'BEST HOME', 'BEST AWAY', 'SPREAD', 'TOTAL', 'NO-VIG H', 'NO-VIG A', 'EDGE', 'BKS'].map(h => (
-                          <th key={h} style={{ padding: '9px 8px', textAlign: 'left', color: C.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 9, whiteSpace: 'nowrap' }}>{h}</th>
+                        {([
+                          ['sport', 'SPORT'], ['matchup', 'MATCHUP'], ['time', 'TIME'],
+                          ['homeML', 'HOME ML'], ['awayML', 'AWAY ML'], ['bestHome', 'BEST HOME'], ['bestAway', 'BEST AWAY'],
+                          ['spread', 'SPREAD'], ['total', 'TOTAL'], ['nvHome', 'NO-VIG H'], ['nvAway', 'NO-VIG A'],
+                          ['edge', 'EDGE'], ['bks', 'BKS'],
+                        ] as [string, string][]).map(([key, label]) => (
+                          <th key={key} onClick={() => toggleSort(key)} style={{ padding: '9px 8px', textAlign: 'left', color: oddsSort === key ? C.blue : C.textDim, fontWeight: 700, letterSpacing: 1, fontSize: 9, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}>{label}{sortArrow(key)}</th>
                         ))}
                       </tr>
                     </thead>
@@ -1282,18 +1338,98 @@ export default function AdminPage() {
 
         {/* ═══ FINE-TUNE ═══ */}
         {activeTab === 'fine-tune' && (
-          <Card style={{ maxWidth: 520 }}>
-            <SectionLabel>PICKS FINE-TUNING</SectionLabel>
-            <p style={{ fontFamily: C.mono, fontSize: 11, color: C.text, marginBottom: 14 }}>
-              Adjust filters, floors, Probability Analyzer weights, and run 7-day backtests or auto-tune from historical odds.
-            </p>
-            <Link
-              href="/progno/admin/fine-tune"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: `${C.green}18`, border: `1px solid ${C.green}50`, borderRadius: 6, color: C.green, fontFamily: C.mono, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}
-            >
-              Open Fine-Tune Page →
-            </Link>
-          </Card>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 16 }}>
+            <Card>
+              <SectionLabel>AUTO-CALIBRATION ENGINE</SectionLabel>
+              <p style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim, marginBottom: 12 }}>
+                Analyzes recent picks vs outcomes, auto-adjusts league floors and analyzer multipliers.
+                Runs weekly (Monday 3:30 AM UTC) or on-demand below.
+              </p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+                <label style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim }}>
+                  DAYS:
+                  <select value={calDays} onChange={e => setCalDays(Number(e.target.value))} title="Days to analyze" style={{ marginLeft: 6, padding: '4px 8px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11 }}>
+                    {[7, 14, 21, 30, 60, 90].map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </label>
+                <Btn onClick={runCalibration} disabled={calLoading || !secret.trim()} color={C.green}>
+                  {calLoading ? '⟳ CALIBRATING...' : '◈ RUN CALIBRATION'}
+                </Btn>
+              </div>
+
+              {calResult && !calResult.error && (
+                <div>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+                    <Badge color={C.green}>{calResult.totalPicks} PICKS</Badge>
+                    <Badge color={calResult.totalWR >= 60 ? C.green : C.amber}>WR {calResult.totalWR}%</Badge>
+                    <Badge color={calResult.totalROI >= 0 ? C.green : C.red}>ROI {calResult.totalROI > 0 ? '+' : ''}{calResult.totalROI}%</Badge>
+                    <Badge color={calResult.overallBrier < 0.22 ? C.green : calResult.overallBrier < 0.25 ? C.amber : C.red}>BRIER {calResult.overallBrier}</Badge>
+                  </div>
+
+                  {calResult.sports?.length > 0 && (
+                    <div style={{ overflowX: 'auto', border: `1px solid ${C.border}`, borderRadius: 6, marginBottom: 14 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: C.mono, fontSize: 10 }}>
+                        <thead>
+                          <tr style={{ borderBottom: `1px solid ${C.borderBright}`, background: '#060d18' }}>
+                            {['SPORT', 'PICKS', 'WR%', 'AVG CONF', 'GAP', 'ROI%', 'BRIER'].map(h => (
+                              <th key={h} style={{ padding: '7px 8px', textAlign: 'left', color: C.textDim, fontWeight: 700, fontSize: 8, letterSpacing: 1 }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {calResult.sports.map((s: any) => (
+                            <tr key={s.sport} style={{ borderBottom: `1px solid ${C.border}` }}>
+                              <td style={{ padding: '6px 8px' }}><Badge color={C.blue}>{s.sport}</Badge></td>
+                              <td style={{ padding: '6px 8px' }}>{s.picks}</td>
+                              <td style={{ padding: '6px 8px', color: s.winRate >= 60 ? C.green : C.amber }}>{s.winRate}%</td>
+                              <td style={{ padding: '6px 8px' }}>{s.avgConfidence}%</td>
+                              <td style={{ padding: '6px 8px', color: s.gap > 0 ? C.green : s.gap < -5 ? C.red : C.amber }}>{s.gap > 0 ? '+' : ''}{s.gap}pp</td>
+                              <td style={{ padding: '6px 8px', color: s.roi >= 0 ? C.green : C.red }}>{s.roi > 0 ? '+' : ''}{s.roi}%</td>
+                              <td style={{ padding: '6px 8px', color: s.brierScore < 0.22 ? C.green : s.brierScore < 0.25 ? C.amber : C.red }}>{s.brierScore}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {calResult.adjustments && Object.keys(calResult.adjustments).length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontFamily: C.mono, fontSize: 10, fontWeight: 700, color: C.amber, marginBottom: 6, letterSpacing: 1 }}>ADJUSTMENTS APPLIED</div>
+                      {Object.entries(calResult.adjustments).map(([k, v]) => (
+                        <div key={k} style={{ fontFamily: C.mono, fontSize: 10, color: C.text, padding: '3px 0' }}>
+                          <span style={{ color: C.blue }}>{k}</span>: {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {calResult.recommendations?.length > 0 && (
+                    <div>
+                      <div style={{ fontFamily: C.mono, fontSize: 10, fontWeight: 700, color: C.textDim, marginBottom: 6, letterSpacing: 1 }}>RECOMMENDATIONS</div>
+                      {calResult.recommendations.map((r: string, i: number) => (
+                        <div key={i} style={{ fontFamily: C.mono, fontSize: 10, color: C.text, padding: '3px 0', borderBottom: `1px solid ${C.border}` }}>{r}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {calResult?.error && <div style={{ fontFamily: C.mono, fontSize: 11, color: C.red, marginTop: 8 }}>{calResult.error}</div>}
+            </Card>
+
+            <Card>
+              <SectionLabel>MANUAL FINE-TUNE</SectionLabel>
+              <p style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim, marginBottom: 12 }}>
+                Adjust filters, floors, and analyzer weights manually.
+              </p>
+              <Link
+                href="/progno/admin/fine-tune"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', background: `${C.green}18`, border: `1px solid ${C.green}50`, borderRadius: 6, color: C.green, fontFamily: C.mono, fontSize: 12, fontWeight: 600, textDecoration: 'none' }}
+              >
+                Open Fine-Tune Page →
+              </Link>
+            </Card>
+          </div>
         )}
 
         {/* ═══ CONFIG ═══ */}

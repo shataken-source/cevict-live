@@ -31,11 +31,41 @@ function impliedProb(odds: number): number {
   return (1 / americanToDecimal(odds)) * 100
 }
 
+// Shin devig — matches pick engine probability calculation exactly
+function shinDevig(impliedHome: number, impliedAway: number): { home: number; away: number } {
+  const eps = 1e-9
+  function solveTrueProb(implied: number, z: number): number {
+    let p = Math.max(eps, Math.min(1 - eps, implied))
+    for (let i = 0; i < 25; i++) {
+      const next = implied - z * Math.sqrt(p * (1 - p))
+      const nc = Math.max(eps, Math.min(1 - eps, next))
+      if (Math.abs(nc - p) < eps) return nc
+      p = nc
+    }
+    return p
+  }
+  let zLo = 0, zHi = 2
+  for (let b = 0; b < 40; b++) {
+    const zMid = (zLo + zHi) / 2
+    const th = solveTrueProb(impliedHome, zMid)
+    const ta = solveTrueProb(impliedAway, zMid)
+    const sum = th + ta
+    if (Math.abs(sum - 1) < eps) {
+      return { home: th * 100, away: ta * 100 }
+    }
+    if (sum > 1) zLo = zMid; else zHi = zMid
+  }
+  const z = (zLo + zHi) / 2
+  const home = solveTrueProb(impliedHome, z)
+  const away = solveTrueProb(impliedAway, z)
+  const s = home + away
+  return { home: (s > 0 ? home / s : 0.5) * 100, away: (s > 0 ? away / s : 0.5) * 100 }
+}
+
 function noVigProb(homeOdds: number, awayOdds: number) {
-  const rawHome = impliedProb(homeOdds)
-  const rawAway = impliedProb(awayOdds)
-  const overround = rawHome + rawAway
-  return { home: rawHome / overround * 100, away: rawAway / overround * 100 }
+  const rawHome = impliedProb(homeOdds) / 100 // convert to 0-1 for Shin
+  const rawAway = impliedProb(awayOdds) / 100
+  return shinDevig(rawHome, rawAway)
 }
 
 function isAuthorized(request: NextRequest): boolean {

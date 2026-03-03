@@ -27,48 +27,49 @@ function earlyDecay(commenceTime: string): number {
 }
 
 export class MCConfidenceModule implements ConfidenceModule {
-  readonly id = 'mc-confidence-v3'
+  readonly id = 'mc-confidence-v4'
 
   compute({ ctx, baseConfidence, signals, isHomePick }: ConfidenceInput): number {
     // 1. Start from market-derived base
     let conf = baseConfidence
 
-    // 2. Anchor to MC win probability (stronger signal than market base)
+    // 2. Anchor to MC win probability (offset -12)
     if (ctx.mcResult) {
       const mcWin = isHomePick
         ? ctx.mcResult.homeWinProbability
         : ctx.mcResult.awayWinProbability
-      conf = Math.max(conf, mcWin * 100 - 5)
+      conf = Math.max(conf, mcWin * 100 - 12)
     }
 
-    // 3. Sum all signal deltas — each module contributes its confidenceDelta
-    //    for the pick direction (home or away)
+    // 3. Sum all signal deltas — dampened to 70%
     for (const [, signal] of Object.entries(signals)) {
       const pickFavored =
         signal.favors === 'neutral' ||
         (isHomePick && signal.favors === 'home') ||
         (!isHomePick && signal.favors === 'away')
-      conf += pickFavored ? signal.confidenceDelta : -signal.confidenceDelta
+      const dampened = signal.confidenceDelta * 0.7
+      conf += pickFavored ? dampened : -dampened
     }
 
     // 4. Early-line decay
     const decay = earlyDecay(ctx.commenceTime)
     if (decay < 1.0) conf = Math.round(conf * decay)
 
-    // 5. MC ceiling: MC prob + 15% (prevents over-inflation)
+    // 5. MC ceiling: MC prob + 10%
     if (ctx.mcResult) {
       const mcWin = isHomePick
         ? ctx.mcResult.homeWinProbability
         : ctx.mcResult.awayWinProbability
-      conf = Math.min(conf, Math.round(mcWin * 100 + 15))
+      conf = Math.min(conf, Math.round(mcWin * 100 + 10))
     }
 
     conf = Math.round(conf)
-    // 6. High-confidence compression (20260302 calibration tune):
-    //    85-90% conf had 44% actual WR, 90-95% had 60%, 95-100% had 40%.
-    //    Compress above 80 with 0.4 factor; cap at 88.
-    if (conf > 80) conf = 80 + (conf - 80) * 0.4
-    // 7. Hard clamp 30–88 (upper reduced from 92 to improve calibration above 85%)
-    return Math.max(30, Math.min(88, Math.round(conf)))
+    // 6. High-confidence compression (v4h — 20260303 iter10):
+    //    Bucket analysis: 65-70% is well-calibrated (75% WR vs 68.2% conf = +6.8pp).
+    //    70-75% is catastrophically overconfident (53.6% WR vs 70.7% conf = -17pp).
+    //    Solution: compress at 67 with factor 0.1, cap 69 to keep everything in the good bucket.
+    if (conf > 67) conf = 67 + (conf - 67) * 0.1
+    // 7. Hard clamp 30–69
+    return Math.max(30, Math.min(69, Math.round(conf)))
   }
 }

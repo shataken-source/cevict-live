@@ -23,7 +23,7 @@ const DEFAULTS = {
   CONFIDENCE_WEIGHT: 1,
   EDGE_WEIGHT: 0.8,
   SPREAD_WEIGHT: 0.3,
-  SPORT_MULTIPLIERS: { NBA: 0, NHL: 0, MLB: 1, NCAAB: 0, NCAAF: 1, NFL: 1, NCAA: 0.3, CBB: 1 } as Record<string, number>,
+  SPORT_MULTIPLIERS: { NBA: 0, NHL: 0, MLB: 1, NCAAB: 0, NCAAF: 1, NFL: 1, NCAA: 0, CBB: 0 } as Record<string, number>,
 }
 
 function getAnalyzerParams(): typeof DEFAULTS {
@@ -264,7 +264,7 @@ export class ProbabilityAnalyzerSignal implements SignalModule {
     // Check flip condition: opposite side ensemble > threshold and >10pt gap
     const shouldFlip =
       ((ensembleFavorsHome && awayEnsemble > params.FLIP_THRESHOLD) ||
-       (!ensembleFavorsHome && homeEnsemble > params.FLIP_THRESHOLD)) &&
+        (!ensembleFavorsHome && homeEnsemble > params.FLIP_THRESHOLD)) &&
       gap > 10
 
     // Confidence delta scaled by blend
