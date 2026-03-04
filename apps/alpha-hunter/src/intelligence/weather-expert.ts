@@ -21,14 +21,17 @@
 
 import { Opportunity } from '../types';
 
-// WeatherAPI.com for cross-validation (key in KeyVault as WEATHER_API_KEY)
-interface WeatherApiValidation {
+// ── Multi-Source Forecast Validation ─────────────────────────────────────────
+
+interface ForecastValidation {
   tempHighF: number;
   tempLowF: number;
-  condition: string;
+  source: string;
+  condition?: string;
 }
 
-async function fetchWeatherApiCrossCheck(city: CityInfo, targetDate: string): Promise<WeatherApiValidation | null> {
+// Source 1: WeatherAPI.com (key in KeyVault as WEATHER_API_KEY)
+async function fetchWeatherApiCrossCheck(city: CityInfo, targetDate: string): Promise<ForecastValidation | null> {
   const apiKey = process.env.WEATHER_API_KEY;
   if (!apiKey) return null;
   try {
@@ -38,14 +41,136 @@ async function fetchWeatherApiCrossCheck(city: CityInfo, targetDate: string): Pr
     const data = await res.json();
     const day = data?.forecast?.forecastday?.find((d: any) => d.date === targetDate);
     if (!day) return null;
-    return {
-      tempHighF: day.day.maxtemp_f,
-      tempLowF: day.day.mintemp_f,
-      condition: day.day.condition?.text || '',
-    };
-  } catch {
-    return null;
+    return { tempHighF: day.day.maxtemp_f, tempLowF: day.day.mintemp_f, source: 'WeatherAPI', condition: day.day.condition?.text || '' };
+  } catch { return null; }
+}
+
+// Source 2: NWS (National Weather Service) — free, no key, unlimited
+// Uses the gridpoint forecast API: /points/{lat},{lon} → /gridpoints/{office}/{x},{y}/forecast
+const nwsGridCache: Map<string, string> = new Map();
+
+async function fetchNWSForecast(city: CityInfo, targetDate: string): Promise<ForecastValidation | null> {
+  try {
+    // Step 1: Get gridpoint URL (cached)
+    const cacheKey = `${city.lat},${city.lon}`;
+    let forecastUrl = nwsGridCache.get(cacheKey);
+    if (!forecastUrl) {
+      const pointsRes = await fetch(`https://api.weather.gov/points/${city.lat.toFixed(4)},${city.lon.toFixed(4)}`, {
+        headers: { 'User-Agent': 'CevictAlphaHunter/1.0 (weather@cevict.com)', 'Accept': 'application/geo+json' },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!pointsRes.ok) return null;
+      const pointsData = await pointsRes.json();
+      forecastUrl = pointsData?.properties?.forecast;
+      if (!forecastUrl) return null;
+      nwsGridCache.set(cacheKey, forecastUrl);
+    }
+
+    // Step 2: Get forecast
+    const fcRes = await fetch(forecastUrl, {
+      headers: { 'User-Agent': 'CevictAlphaHunter/1.0 (weather@cevict.com)', 'Accept': 'application/geo+json' },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!fcRes.ok) return null;
+    const fcData = await fcRes.json();
+    const periods = fcData?.properties?.periods;
+    if (!Array.isArray(periods) || periods.length === 0) return null;
+
+    // NWS returns periods like "Tuesday" / "Tuesday Night" — match by date
+    // Each period has startTime (ISO), temperature, temperatureUnit
+    let highF: number | null = null;
+    let lowF: number | null = null;
+    for (const p of periods) {
+      const pDate = p.startTime?.split('T')[0];
+      if (pDate !== targetDate) continue;
+      const temp = p.temperature;
+      const unit = p.temperatureUnit;
+      const tempF = unit === 'C' ? (temp * 9 / 5 + 32) : temp;
+      if (p.isDaytime === true || p.name?.toLowerCase().includes('day') || !p.name?.toLowerCase().includes('night')) {
+        if (highF === null || tempF > highF) highF = tempF;
+      }
+      if (p.isDaytime === false || p.name?.toLowerCase().includes('night')) {
+        if (lowF === null || tempF < lowF) lowF = tempF;
+      }
+    }
+    if (highF === null && lowF === null) return null;
+    return { tempHighF: highF ?? (lowF! + 15), tempLowF: lowF ?? (highF! - 15), source: 'NWS' };
+  } catch { return null; }
+}
+
+// Source 3: Visual Crossing — historical actuals for bias correction (key in KeyVault as VISUAL_CROSSING_KEY)
+interface HistoricalActual {
+  tempHighF: number;
+  tempLowF: number;
+  date: string;
+}
+
+async function fetchYesterdayActuals(city: CityInfo): Promise<HistoricalActual | null> {
+  const apiKey = process.env.VISUAL_CROSSING_KEY;
+  if (!apiKey) return null;
+  try {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${city.lat},${city.lon}/${yesterday}?unitGroup=us&include=days&key=${apiKey}&contentType=json`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const day = data?.days?.[0];
+    if (!day) return null;
+    return { tempHighF: day.tempmax, tempLowF: day.tempmin, date: yesterday };
+  } catch { return null; }
+}
+
+// ── Forecast Bias Tracker (per city, per metric) ────────────────────────────
+// Stores recent forecast errors to calculate systematic bias
+// bias = mean(forecast - actual) over recent days. Positive = model runs hot.
+interface BiasEntry { forecastHigh: number; forecastLow: number; actualHigh: number; actualLow: number; date: string; }
+const biasHistory: Map<string, BiasEntry[]> = new Map();
+const MAX_BIAS_ENTRIES = 14; // 2 weeks of data
+
+function recordBias(cityPrefix: string, entry: BiasEntry): void {
+  const entries = biasHistory.get(cityPrefix) || [];
+  entries.push(entry);
+  if (entries.length > MAX_BIAS_ENTRIES) entries.shift();
+  biasHistory.set(cityPrefix, entries);
+}
+
+function getBias(cityPrefix: string): { highBias: number; lowBias: number } {
+  const entries = biasHistory.get(cityPrefix);
+  if (!entries || entries.length < 3) return { highBias: 0, lowBias: 0 }; // Need 3+ days for meaningful bias
+  const highBias = entries.reduce((s, e) => s + (e.forecastHigh - e.actualHigh), 0) / entries.length;
+  const lowBias = entries.reduce((s, e) => s + (e.forecastLow - e.actualLow), 0) / entries.length;
+  return { highBias, lowBias };
+}
+
+// ── Consensus Forecast (average of all available sources) ───────────────────
+async function getConsensusForecast(
+  city: CityInfo, targetDate: string, openMeteoHigh: number, openMeteoLow: number
+): Promise<{ highF: number; lowF: number; sources: number; spread: number }> {
+  const highs = [openMeteoHigh];
+  const lows = [openMeteoLow];
+
+  const [wapi, nws] = await Promise.all([
+    fetchWeatherApiCrossCheck(city, targetDate),
+    fetchNWSForecast(city, targetDate),
+  ]);
+
+  if (wapi) { highs.push(wapi.tempHighF); lows.push(wapi.tempLowF); }
+  if (nws) { highs.push(nws.tempHighF); lows.push(nws.tempLowF); }
+
+  const avgHigh = highs.reduce((a, b) => a + b, 0) / highs.length;
+  const avgLow = lows.reduce((a, b) => a + b, 0) / lows.length;
+  const spread = Math.max(...highs) - Math.min(...highs); // Agreement measure
+
+  // Apply bias correction
+  const bias = getBias(city.kalshiPrefix);
+  const correctedHigh = avgHigh - bias.highBias;
+  const correctedLow = avgLow - bias.lowBias;
+
+  if (bias.highBias !== 0 || bias.lowBias !== 0) {
+    console.log(`[weather-expert] ${city.name}: bias correction high=${bias.highBias > 0 ? '+' : ''}${bias.highBias.toFixed(1)}°F low=${bias.lowBias > 0 ? '+' : ''}${bias.lowBias.toFixed(1)}°F`);
   }
+
+  return { highF: correctedHigh, lowF: correctedLow, sources: highs.length, spread };
 }
 
 // ── City Coordinates for NWS + Open-Meteo ────────────────────────────────────
@@ -372,7 +497,7 @@ export async function findWeatherOpportunities(
   }
   console.log(`[weather-expert] Found ${weatherMarkets.length} weather markets, analyzing...`);
 
-  // Step 2: Group by city and fetch forecasts
+  // Step 2: Group by city, fetch forecasts + learn bias from yesterday's actuals
   const citiesNeeded = new Set(weatherMarkets.map(m => m.city!.kalshiPrefix));
   const forecastsByCity: Map<string, DailyForecast[]> = new Map();
 
@@ -383,6 +508,23 @@ export async function findWeatherOpportunities(
       const forecasts = await fetchOpenMeteoForecast(city);
       if (forecasts.length > 0) {
         forecastsByCity.set(prefix, forecasts);
+      }
+      // Learn from yesterday: fetch actual temps and record bias
+      const actual = await fetchYesterdayActuals(city);
+      if (actual && forecasts.length > 0) {
+        const yesterdayFc = forecasts.find(f => f.date === actual.date);
+        if (yesterdayFc) {
+          recordBias(prefix, {
+            forecastHigh: yesterdayFc.tempHighF,
+            forecastLow: yesterdayFc.tempLowF,
+            actualHigh: actual.tempHighF,
+            actualLow: actual.tempLowF,
+            date: actual.date,
+          });
+          const highErr = yesterdayFc.tempHighF - actual.tempHighF;
+          const lowErr = yesterdayFc.tempLowF - actual.tempLowF;
+          console.log(`[weather-expert] ${city.name} yesterday: forecast H=${yesterdayFc.tempHighF.toFixed(0)}°F actual H=${actual.tempHighF.toFixed(0)}°F (err=${highErr > 0 ? '+' : ''}${highErr.toFixed(1)}°F)`);
+        }
       }
     })
   );
@@ -398,29 +540,6 @@ export async function findWeatherOpportunities(
       const dayForecast = forecasts.find(f => f.date === wm.targetDate);
       if (!dayForecast) continue;
 
-      // Get ensemble spread for uncertainty
-      const ensemble = await fetchEnsembleSpread(wm.city, wm.targetDate!);
-
-      let forecastTemp: number;
-      let spread: number;
-      if (wm.type === 'temp_high') {
-        forecastTemp = dayForecast.tempHighF;
-        spread = ensemble.highSpread;
-      } else if (wm.type === 'temp_low') {
-        forecastTemp = dayForecast.tempLowF;
-        spread = ensemble.lowSpread;
-      } else if (wm.type === 'snowfall') {
-        // Snowfall markets: "Will it snow more than X inches in Chicago?"
-        forecastTemp = dayForecast.snowfallInches; // repurpose variable for snow
-        spread = Math.max(forecastTemp * 0.5, 0.5); // Snow forecasts are very uncertain — 50% of forecast as std dev
-      } else if (wm.type === 'precipitation') {
-        // Precipitation probability markets: "Will it rain in NYC?"
-        forecastTemp = dayForecast.precipProbability; // repurpose for precip %
-        spread = 15; // Fixed uncertainty for precip probability
-      } else {
-        continue;
-      }
-
       // Calculate days until target date (affects forecast uncertainty)
       const now = new Date();
       const target = new Date(wm.targetDate + 'T12:00:00Z');
@@ -429,20 +548,41 @@ export async function findWeatherOpportunities(
       // Skip markets > 5 days out — forecast skill degrades too much
       if (daysOut > 5) continue;
 
-      // Cross-validate with WeatherAPI.com if available
-      const wapiCheck = await fetchWeatherApiCrossCheck(wm.city, wm.targetDate!);
-      if (wapiCheck) {
-        const wapiTemp = wm.type === 'temp_high' ? wapiCheck.tempHighF : wapiCheck.tempLowF;
-        const modelDiff = Math.abs(forecastTemp - wapiTemp);
-        // If the two forecasts disagree by > 5°F, skip — too uncertain
-        if (modelDiff > 5) {
-          console.log(`[weather-expert] ${wm.ticker}: Open-Meteo=${forecastTemp.toFixed(0)}°F vs WeatherAPI=${wapiTemp.toFixed(0)}°F — models disagree by ${modelDiff.toFixed(0)}°F, skipping`);
+      // Get ensemble spread for uncertainty baseline
+      const ensemble = await fetchEnsembleSpread(wm.city, wm.targetDate!);
+
+      let forecastTemp: number;
+      let spread: number;
+      let sourceCount = 1;
+
+      if (wm.type === 'temp_high' || wm.type === 'temp_low') {
+        // Use 3-source consensus (Open-Meteo + WeatherAPI + NWS) with bias correction
+        const consensus = await getConsensusForecast(
+          wm.city, wm.targetDate!,
+          dayForecast.tempHighF, dayForecast.tempLowF,
+        );
+        forecastTemp = wm.type === 'temp_high' ? consensus.highF : consensus.lowF;
+        sourceCount = consensus.sources;
+
+        // Use ensemble spread as base, but widen if sources disagree
+        spread = wm.type === 'temp_high' ? ensemble.highSpread : ensemble.lowSpread;
+        if (consensus.spread > 4) {
+          // Sources disagree by > 4°F — too uncertain, skip
+          console.log(`[weather-expert] ${wm.ticker}: ${consensus.sources} sources disagree by ${consensus.spread.toFixed(0)}°F, skipping`);
           continue;
         }
-        // Average the two forecasts for better accuracy
-        forecastTemp = (forecastTemp + wapiTemp) / 2;
-        // Reduce spread if models agree closely (< 2°F difference)
-        if (modelDiff < 2) spread = Math.max(spread * 0.8, 3);
+        // Tighten spread if all 3 sources agree closely (< 2°F)
+        if (consensus.sources >= 3 && consensus.spread < 2) {
+          spread = Math.max(spread * 0.7, 2.5);
+        }
+      } else if (wm.type === 'snowfall') {
+        forecastTemp = dayForecast.snowfallInches;
+        spread = Math.max(forecastTemp * 0.5, 0.5);
+      } else if (wm.type === 'precipitation') {
+        forecastTemp = dayForecast.precipProbability;
+        spread = 15;
+      } else {
+        continue;
       }
 
       // Calculate model probability (with horizon-adjusted uncertainty)
@@ -471,9 +611,10 @@ export async function findWeatherOpportunities(
       const fullKelly = kellyOdds > 0 ? (kellyProb - (1 - kellyProb) / kellyOdds) : 0;
       const stake = Math.max(2, Math.min(2, Math.round(fullKelly * 0.25 * 100))); // Hard cap $2 — same as sports
 
+      const typeLabel = wm.type === 'temp_high' ? 'high' : wm.type === 'temp_low' ? 'low' : wm.type;
       const reasoning = [
-        `[WEATHER] ${wm.city.name} ${wm.type === 'temp_high' ? 'high' : 'low'} on ${wm.targetDate}`,
-        `Forecast: ${forecastTemp.toFixed(0)}°F (±${spread.toFixed(1)}°F ensemble spread)`,
+        `[WEATHER] ${wm.city.name} ${typeLabel} on ${wm.targetDate} (${daysOut}d out, ${sourceCount} sources)`,
+        `Consensus forecast: ${forecastTemp.toFixed(0)}°F (±${spread.toFixed(1)}°F, ${sourceCount} source${sourceCount > 1 ? 's' : ''})`,
         `Threshold: ${wm.direction} ${wm.threshold}°F → model ${modelProb.toFixed(0)}% vs market ${marketProb}¢`,
         `Edge: ${edge > 0 ? '+' : ''}${edge.toFixed(1)}% → ${side.toUpperCase()} at ${tradePrice}¢`,
       ];
@@ -492,8 +633,10 @@ export async function findWeatherOpportunities(
         potentialReturn: stake * (100 / tradePrice - 1),
         reasoning,
         dataPoints: [
-          { source: 'Open-Meteo', metric: 'forecast_temp', value: forecastTemp, relevance: 95, timestamp: new Date().toISOString() },
-          { source: 'Open-Meteo', metric: 'ensemble_spread', value: spread, relevance: 80, timestamp: new Date().toISOString() },
+          { source: 'Consensus', metric: 'forecast_temp', value: forecastTemp, relevance: 95, timestamp: new Date().toISOString() },
+          { source: 'Consensus', metric: 'ensemble_spread', value: spread, relevance: 80, timestamp: new Date().toISOString() },
+          { source: 'Consensus', metric: 'source_count', value: sourceCount, relevance: 70, timestamp: new Date().toISOString() },
+          { source: 'Consensus', metric: 'days_out', value: daysOut, relevance: 60, timestamp: new Date().toISOString() },
         ],
         action: {
           platform: 'kalshi',
@@ -501,7 +644,7 @@ export async function findWeatherOpportunities(
           amount: stake,
           target: `${wm.ticker} ${side.toUpperCase()}`,
           instructions: [`Place ${side.toUpperCase()} on ${wm.ticker} at ≤${tradePrice}¢ (model ${modelProb.toFixed(0)}%)`],
-          autoExecute: false, // Manual review until validated
+          autoExecute: true, // Re-enabled: 3-source consensus + bias correction + $2 cap + $15/day limit
         },
         expiresAt: wm.targetDate ? `${wm.targetDate}T23:59:59Z` : new Date(Date.now() + 86400000).toISOString(),
         createdAt: new Date().toISOString(),
