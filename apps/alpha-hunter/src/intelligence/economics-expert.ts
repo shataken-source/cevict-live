@@ -72,13 +72,19 @@ interface EconSnapshot {
   cryptoMarketCap: number | null;  // Total crypto market cap in billions
   btcDominance: number | null;     // BTC dominance %
   fearGreedIndex: number | null;   // 0-100 (0=extreme fear, 100=extreme greed)
+  // FMP stock market data
+  sp500Price: number | null;       // S&P 500 current price
+  dowPrice: number | null;         // Dow Jones current price
+  nasdaqPrice: number | null;      // Nasdaq current price
+  vix: number | null;              // CBOE Volatility Index
+  sp500DayChange: number | null;   // S&P 500 day change %
   fetchedAt: Date;
 }
 
 interface EconMarketSignal {
   ticker: string;
   title: string;
-  category: 'fed_rate' | 'inflation' | 'unemployment' | 'gdp' | 'recession' | 'energy' | 'crypto';
+  category: 'fed_rate' | 'inflation' | 'unemployment' | 'gdp' | 'recession' | 'energy' | 'crypto' | 'stock_market';
   modelProbability: number; // 0-100
   marketPrice: number;      // yes_ask in cents
   edge: number;             // model - market
@@ -225,6 +231,66 @@ async function fetchCoinGeckoData(): Promise<CryptoSnapshot> {
   return result;
 }
 
+// ── FMP (Financial Modeling Prep) Fetcher ────────────────────────────────────
+// Provides real-time stock indices (S&P 500, Dow, Nasdaq) and VIX
+
+const FMP_BASE = 'https://financialmodelingprep.com/stable';
+
+interface FMPStockData {
+  sp500Price: number | null;
+  dowPrice: number | null;
+  nasdaqPrice: number | null;
+  vix: number | null;
+  sp500DayChange: number | null;
+}
+
+async function fetchFMPData(): Promise<FMPStockData> {
+  const result: FMPStockData = { sp500Price: null, dowPrice: null, nasdaqPrice: null, vix: null, sp500DayChange: null };
+  const apiKey = process.env.FMP_API_KEY;
+  if (!apiKey) return result;
+  try {
+    // Batch fetch: S&P 500, Dow, Nasdaq, VIX in one call
+    const symbols = '^GSPC,^DJI,^IXIC,^VIX';
+    const url = `${FMP_BASE}/batch-quote?symbols=${symbols}&apikey=${apiKey}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) {
+      // Try individual quotes as fallback
+      const [spRes, vixRes] = await Promise.all([
+        fetch(`${FMP_BASE}/quote?symbol=%5EGSPC&apikey=${apiKey}`, { signal: AbortSignal.timeout(8000) }).catch(() => null),
+        fetch(`${FMP_BASE}/quote?symbol=%5EVIX&apikey=${apiKey}`, { signal: AbortSignal.timeout(8000) }).catch(() => null),
+      ]);
+      if (spRes?.ok) {
+        const d = await spRes.json();
+        const sp = Array.isArray(d) ? d[0] : d;
+        result.sp500Price = sp?.price ?? null;
+        result.sp500DayChange = sp?.changesPercentage ?? null;
+      }
+      if (vixRes?.ok) {
+        const d = await vixRes.json();
+        const v = Array.isArray(d) ? d[0] : d;
+        result.vix = v?.price ?? null;
+      }
+      return result;
+    }
+    const data = await res.json();
+    const quotes = Array.isArray(data) ? data : [data];
+    for (const q of quotes) {
+      const sym = (q.symbol || '').toUpperCase();
+      if (sym.includes('GSPC') || sym.includes('SPX')) {
+        result.sp500Price = q.price ?? null;
+        result.sp500DayChange = q.changesPercentage ?? null;
+      } else if (sym.includes('DJI') || sym.includes('DOW')) {
+        result.dowPrice = q.price ?? null;
+      } else if (sym.includes('IXIC') || sym.includes('NASDAQ') || sym.includes('COMP')) {
+        result.nasdaqPrice = q.price ?? null;
+      } else if (sym.includes('VIX')) {
+        result.vix = q.price ?? null;
+      }
+    }
+  } catch { /* silent */ }
+  return result;
+}
+
 // Cache snapshot per cycle
 let snapshotCache: EconSnapshot | null = null;
 let snapshotCacheTime = 0;
@@ -235,7 +301,7 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
   if (snapshotCache && (now - snapshotCacheTime) < SNAPSHOT_TTL) return snapshotCache;
 
   // Fetch all data sources in parallel
-  const [fedFunds, cpi, unemployment, gdp, recession, yieldCurve, claims, treasury10y, treasury2y, treasury30y, eia, worldGdp, crypto] = await Promise.all([
+  const [fedFunds, cpi, unemployment, gdp, recession, yieldCurve, claims, treasury10y, treasury2y, treasury30y, eia, worldGdp, crypto, fmp] = await Promise.all([
     fetchFredSeries(FRED_SERIES.FED_FUNDS_RATE, 3),
     fetchFredSeries(FRED_SERIES.CPI_ALL_URBAN, 13), // 13 months for YoY
     fetchFredSeries(FRED_SERIES.UNEMPLOYMENT, 3),
@@ -251,6 +317,7 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
     fetchEIAData(),
     fetchWorldBankGDP(),
     fetchCoinGeckoData(),
+    fetchFMPData(),
   ]);
 
   // Calculate CPI YoY: (latest / 12-months-ago - 1) * 100
@@ -285,6 +352,12 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
     cryptoMarketCap: crypto.totalMarketCap,
     btcDominance: crypto.btcDominance,
     fearGreedIndex: crypto.fearGreedIndex,
+    // FMP stock market
+    sp500Price: fmp.sp500Price,
+    dowPrice: fmp.dowPrice,
+    nasdaqPrice: fmp.nasdaqPrice,
+    vix: fmp.vix,
+    sp500DayChange: fmp.sp500DayChange,
     fetchedAt: new Date(),
   };
   snapshotCacheTime = now;
@@ -293,6 +366,7 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
   console.log(`   [ECON]   Treasury: 2Y=${snapshotCache.treasury2Y}% 10Y=${snapshotCache.treasury10Y}% 30Y=${snapshotCache.treasury30Y}% Curve=${snapshotCache.yieldCurveSpread}`);
   console.log(`   [ECON]   Energy: WTI=$${snapshotCache.oilPriceWTI} Gas=$${snapshotCache.gasolinePrice} | WorldGDP=${snapshotCache.globalGdpGrowth?.toFixed(1)}%`);
   console.log(`   [ECON]   Crypto: BTC=$${snapshotCache.btcPrice?.toLocaleString()} ETH=$${snapshotCache.ethPrice?.toLocaleString()} MCap=$${snapshotCache.cryptoMarketCap?.toFixed(0)}B Dom=${snapshotCache.btcDominance?.toFixed(1)}% F&G=${snapshotCache.fearGreedIndex}`);
+  console.log(`   [ECON]   Markets: S&P=${snapshotCache.sp500Price?.toLocaleString()} (${snapshotCache.sp500DayChange?.toFixed(2)}%) Dow=${snapshotCache.dowPrice?.toLocaleString()} Nasdaq=${snapshotCache.nasdaqPrice?.toLocaleString()} VIX=${snapshotCache.vix}`);
   return snapshotCache;
 }
 
@@ -314,6 +388,8 @@ function classifyEconMarket(title: string, ticker: string): EconMarketSignal['ca
     return 'energy';
   if (t.includes('bitcoin') || t.includes('btc') || t.includes('ethereum') || t.includes('eth') || t.includes('crypto') || t.includes('digital asset'))
     return 'crypto';
+  if (t.includes('s&p') || t.includes('sp500') || t.includes('s&p 500') || t.includes('dow') || t.includes('nasdaq') || t.includes('stock market') || t.includes('djia') || t.includes('vix') || t.includes('volatility index'))
+    return 'stock_market';
   return null;
 }
 
@@ -512,6 +588,23 @@ function analyzeRecession(title: string, yesAsk: number, snap: EconSnapshot): { 
     baseProb = Math.min(baseProb + 5, 65);
     reasoning.push(`Global GDP growth only ${snap.globalGdpGrowth.toFixed(1)}% — weak global backdrop`);
   }
+  // VIX as fear gauge
+  if (snap.vix !== null) {
+    if (snap.vix > 30) {
+      baseProb = Math.min(baseProb + 8, 70);
+      reasoning.push(`VIX at ${snap.vix.toFixed(1)} — extreme fear, recession signal`);
+    } else if (snap.vix > 25) {
+      baseProb = Math.min(baseProb + 4, 65);
+      reasoning.push(`VIX at ${snap.vix.toFixed(1)} — elevated fear`);
+    } else {
+      reasoning.push(`VIX at ${snap.vix.toFixed(1)} — markets calm`);
+    }
+  }
+  // S&P 500 drawdown indicator
+  if (snap.sp500DayChange !== null && snap.sp500DayChange < -2) {
+    baseProb = Math.min(baseProb + 5, 70);
+    reasoning.push(`S&P 500 down ${snap.sp500DayChange.toFixed(1)}% today — market stress`);
+  }
   return { prob: Math.round(baseProb), confidence: 62, reasoning };
 }
 
@@ -676,6 +769,97 @@ function analyzeCrypto(title: string, yesAsk: number, snap: EconSnapshot): { pro
   return null;
 }
 
+function analyzeStockMarket(title: string, yesAsk: number, snap: EconSnapshot): { prob: number; confidence: number; reasoning: string[] } | null {
+  const t = title.toLowerCase();
+  const reasoning: string[] = [];
+
+  // S&P 500 price markets: "Will S&P 500 close above X?"
+  if (t.includes('s&p') || t.includes('sp500') || t.includes('s&p 500')) {
+    if (snap.sp500Price === null) return null;
+
+    const aboveMatch = t.match(/(?:above|over|close above|finish above|exceed|higher than)\s*[\$]?([\d,]+)/);
+    const belowMatch = t.match(/(?:below|under|close below|finish below|fall below|lower than)\s*[\$]?([\d,]+)/);
+
+    if (aboveMatch || belowMatch) {
+      const isAbove = !!aboveMatch;
+      const threshold = parseFloat((isAbove ? aboveMatch![1] : belowMatch![1]).replace(/,/g, ''));
+      const gap = snap.sp500Price - threshold;
+      const gapPct = (gap / threshold) * 100;
+
+      reasoning.push(`S&P 500 at ${snap.sp500Price.toLocaleString()} vs ${threshold.toLocaleString()} threshold`);
+      if (snap.sp500DayChange !== null) reasoning.push(`Day change: ${snap.sp500DayChange > 0 ? '+' : ''}${snap.sp500DayChange.toFixed(2)}%`);
+      if (snap.vix !== null) {
+        const vixLabel = snap.vix > 30 ? 'high fear' : snap.vix > 20 ? 'elevated' : 'calm';
+        reasoning.push(`VIX: ${snap.vix.toFixed(1)} (${vixLabel})`);
+      }
+
+      // S&P daily close markets are short-term — current price is strong signal
+      // but intraday can move 1-2%, so need wider bands than you'd think
+      let prob: number;
+      if (isAbove) {
+        if (gapPct > 2) prob = 85;
+        else if (gapPct > 0.5) prob = 68;
+        else if (gapPct > 0) prob = 55;
+        else if (gapPct > -0.5) prob = 42;
+        else if (gapPct > -1.5) prob = 28;
+        else prob = 12;
+      } else {
+        if (gapPct < -2) prob = 85;
+        else if (gapPct < -0.5) prob = 68;
+        else if (gapPct < 0) prob = 55;
+        else if (gapPct < 0.5) prob = 42;
+        else if (gapPct < 1.5) prob = 28;
+        else prob = 12;
+      }
+
+      // VIX adjustment: high VIX = more uncertainty = push probabilities toward 50
+      if (snap.vix !== null && snap.vix > 25) {
+        prob = prob > 50 ? Math.max(50, prob - 8) : Math.min(50, prob + 8);
+        reasoning.push(`High VIX → increased uncertainty, moderating prediction`);
+      }
+
+      return { prob, confidence: 62, reasoning };
+    }
+  }
+
+  // Dow Jones markets
+  if (t.includes('dow') || t.includes('djia')) {
+    if (snap.dowPrice === null) return null;
+    const aboveMatch = t.match(/(?:above|over|close above|exceed)\s*[\$]?([\d,]+)/);
+    if (aboveMatch) {
+      const threshold = parseFloat(aboveMatch[1].replace(/,/g, ''));
+      const gapPct = ((snap.dowPrice - threshold) / threshold) * 100;
+      reasoning.push(`Dow at ${snap.dowPrice.toLocaleString()} vs ${threshold.toLocaleString()} (${gapPct > 0 ? '+' : ''}${gapPct.toFixed(2)}%)`);
+      if (gapPct > 1.5) return { prob: 82, confidence: 60, reasoning };
+      if (gapPct > 0.3) return { prob: 65, confidence: 55, reasoning };
+      if (gapPct > -0.3) return { prob: 48, confidence: 50, reasoning };
+      if (gapPct > -1.5) return { prob: 30, confidence: 55, reasoning };
+      return { prob: 12, confidence: 60, reasoning };
+    }
+  }
+
+  // VIX markets: "Will VIX be above X?"
+  if (t.includes('vix') || t.includes('volatility index')) {
+    if (snap.vix === null) return null;
+    const aboveMatch = t.match(/(?:above|over|exceed)\s*(\d+)/);
+    if (aboveMatch) {
+      const threshold = parseFloat(aboveMatch[1]);
+      const gap = snap.vix - threshold;
+      reasoning.push(`VIX at ${snap.vix.toFixed(1)} vs ${threshold} threshold`);
+      // VIX is mean-reverting — tends to drift back to ~15-20 range
+      if (snap.vix > 30) reasoning.push(`VIX elevated — likely to mean-revert down`);
+      if (snap.vix < 15) reasoning.push(`VIX historically low — upside risk`);
+      if (gap > 5) return { prob: 75, confidence: 60, reasoning };
+      if (gap > 2) return { prob: 58, confidence: 55, reasoning };
+      if (gap > 0) return { prob: 48, confidence: 50, reasoning };
+      if (gap > -3) return { prob: 35, confidence: 55, reasoning };
+      return { prob: 18, confidence: 60, reasoning };
+    }
+  }
+
+  return null;
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -744,6 +928,9 @@ export async function findEconomicsOpportunities(
         break;
       case 'crypto':
         result = analyzeCrypto(m.title, yesAsk, snap);
+        break;
+      case 'stock_market':
+        result = analyzeStockMarket(m.title, yesAsk, snap);
         break;
     }
 
