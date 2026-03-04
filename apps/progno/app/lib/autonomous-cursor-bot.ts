@@ -254,7 +254,7 @@ export class AutonomousCursorBot {
               spread: game.odds.spread,
               total: game.odds.total,
             },
-            date: game.date instanceof Date ? game.date.toISOString() : game.date,
+            date: game.date ?? new Date().toISOString(),
             venue: game.venue,
           };
 

@@ -55,19 +55,19 @@ export class BettingSplitsMonitor {
   ): Promise<BettingSplit | null> {
     try {
       const splits = await this.scraper.scrapeBettingSplits(sport, homeTeam, awayTeam);
-      
+
       if (!splits || splits.length === 0) {
         return null;
       }
 
       // Find the split matching our market
-      const matchingSplit = splits.find((s: any) => 
-        s.market?.toLowerCase() === market || 
+      const matchingSplit = splits.find((s: any) =>
+        s.market?.toLowerCase() === market ||
         s.type?.toLowerCase() === market
       ) || splits[0]; // Fallback to first split
 
-      const publicPct = parseInt(matchingSplit.publicPercentage || matchingSplit.public || 50);
-      const moneyPct = parseInt(matchingSplit.moneyPercentage || matchingSplit.money || 50);
+      const publicPct = parseInt(String(matchingSplit.publicPercentage || matchingSplit.public || 50));
+      const moneyPct = parseInt(String(matchingSplit.moneyPercentage || matchingSplit.money || 50));
 
       return {
         gameId,
@@ -75,10 +75,10 @@ export class BettingSplitsMonitor {
         homeTeam,
         awayTeam,
         market,
-        line: parseFloat(matchingSplit.line || 0),
+        line: parseFloat(String(matchingSplit.line || 0)),
         publicPercentage: publicPct,
         moneyPercentage: moneyPct,
-        ticketCount: parseInt(matchingSplit.tickets || matchingSplit.count || 0),
+        ticketCount: parseInt(String(matchingSplit.tickets || matchingSplit.count || 0)),
         sharpIndicator: this.identifySharpAction(publicPct, moneyPct),
         recommendation: this.generateRecommendation(publicPct, moneyPct),
       };
@@ -94,7 +94,7 @@ export class BettingSplitsMonitor {
   analyzeSplits(splits: BettingSplit, lineMovement: number = 0): SplitsAnalysis {
     const publicFavoringHome = splits.publicPercentage > 50;
     const sharpFavoringHome = splits.moneyPercentage > 50;
-    
+
     // Detect reverse line movement
     const publicBias = publicFavoringHome ? 'home' : 'away';
     const sharpBias = sharpFavoringHome ? 'home' : 'away';
@@ -108,12 +108,12 @@ export class BettingSplitsMonitor {
 
     // Generate fade recommendation if public/sharp divergence is significant
     const divergence = Math.abs(splits.publicPercentage - splits.moneyPercentage);
-    
+
     if (divergence >= PUBLIC_SHARP_DIVERGENCE_THRESHOLD) {
       // Public is heavy on one side, sharp money on the other
       const fadeSide = splits.publicPercentage > 50 ? splits.awayTeam : splits.homeTeam;
       const sharpSide = splits.moneyPercentage > 50 ? splits.homeTeam : splits.awayTeam;
-      
+
       analysis.fadeRecommendation = {
         side: fadeSide,
         confidence: Math.min(85, 60 + divergence / 3),
@@ -129,15 +129,15 @@ export class BettingSplitsMonitor {
    */
   private identifySharpAction(publicPct: number, moneyPct: number): BettingSplit['sharpIndicator'] {
     const divergence = Math.abs(publicPct - moneyPct);
-    
+
     if (divergence >= PUBLIC_SHARP_DIVERGENCE_THRESHOLD) {
       return moneyPct > publicPct ? 'sharp' : 'public';
     }
-    
+
     if (moneyPct >= SHARP_MONEY_THRESHOLD || moneyPct <= (100 - SHARP_MONEY_THRESHOLD)) {
       return 'sharp';
     }
-    
+
     return 'neutral';
   }
 
@@ -146,11 +146,11 @@ export class BettingSplitsMonitor {
    */
   private generateRecommendation(publicPct: number, moneyPct: number): BettingSplit['recommendation'] {
     const divergence = Math.abs(publicPct - moneyPct);
-    
+
     if (divergence >= PUBLIC_SHARP_DIVERGENCE_THRESHOLD) {
       return moneyPct > publicPct ? 'follow_sharp' : 'fade_public';
     }
-    
+
     return 'neutral';
   }
 
@@ -185,7 +185,7 @@ export class BettingSplitsMonitor {
       if (!split) continue;
 
       const analysis = this.analyzeSplits(split);
-      
+
       if (analysis.fadeRecommendation) {
         opportunities.push({
           game,
@@ -211,7 +211,7 @@ export class BettingSplitsMonitor {
     const isHomeTeam = pick === splits.homeTeam;
     const publicOnPick = isHomeTeam ? splits.publicPercentage > 50 : splits.publicPercentage < 50;
     const sharpOnPick = isHomeTeam ? splits.moneyPercentage > 50 : splits.moneyPercentage < 50;
-    
+
     // If public is heavy on our pick but sharp money is elsewhere
     if (publicOnPick && !sharpOnPick) {
       const divergence = Math.abs(splits.publicPercentage - splits.moneyPercentage);
@@ -237,8 +237,8 @@ export class BettingSplitsMonitor {
     if (splits.publicPercentage >= 65 || splits.publicPercentage <= 35) {
       const fadeSide = splits.publicPercentage > 50 ? splits.awayTeam : splits.homeTeam;
       const sharpAlignment = (splits.publicPercentage > 50 && splits.moneyPercentage < 50) ||
-                             (splits.publicPercentage < 50 && splits.moneyPercentage > 50);
-      
+        (splits.publicPercentage < 50 && splits.moneyPercentage > 50);
+
       if (sharpAlignment) {
         return {
           side: fadeSide,

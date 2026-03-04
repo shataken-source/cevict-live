@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}))
     const overrides = (body.overrides && typeof body.overrides === 'object') ? body.overrides : {}
-    const env: Record<string, string> = { ...process.env }
+    const env: NodeJS.ProcessEnv = { ...process.env }
     for (const [k, v] of Object.entries(overrides)) {
       if (v !== undefined && v !== null) env[k] = typeof v === 'object' ? JSON.stringify(v) : String(v)
     }

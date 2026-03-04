@@ -347,7 +347,7 @@ export async function fetchScheduleFromOddsApi(apiKey: string, sport: SupportedS
       homeTeam,
       awayTeam,
       sport,
-      date: item.commence_time ? new Date(item.commence_time) : new Date(),
+      date: item.commence_time ? new Date(item.commence_time).toISOString() : new Date().toISOString(),
       venue: item.venue || "TBD",
       odds: {
         home: finalHome ?? -110,

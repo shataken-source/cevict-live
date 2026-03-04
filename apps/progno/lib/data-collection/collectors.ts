@@ -253,15 +253,12 @@ export class IAIDataCollector extends BaseDataCollector {
     // Line movement tracking
     if (this.config.phase3.sources.lineMovement && gameId && currentLine !== undefined) {
       try {
-        const movement = this.lineTracker.trackMovement(
-          gameId,
-          currentLine,
-          openingLine,
-          betSplits?.publicTicketPct,
-          betSplits?.publicHandlePct
-        );
-        data.lineMovement = [movement];
-        data.sharpIndicator = movement.sharpIndicator;
+        this.lineTracker.recordSnapshot(gameId, 'unknown', currentLine);
+        const movement = this.lineTracker.getMovement(gameId);
+        if (movement) {
+          data.lineMovement = [movement];
+          data.sharpIndicator = movement.sharpMoneyIndicator;
+        }
       } catch (error) {
         console.warn('[Collector] Line movement tracking failed:', error);
       }

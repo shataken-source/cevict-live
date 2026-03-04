@@ -1,3 +1,4 @@
+// @ts-nocheck — standalone verification script
 // Accurate API Verification - Uses the SAME authentication as trading classes
 // This is the TRUE independent verification
 
@@ -74,13 +75,13 @@ async function verifyCoinbase(): Promise<boolean> {
       const data = await response.json();
       const accounts = data.accounts || [];
       console.log(`      ✅ SUCCESS: Got ${accounts.length} accounts`);
-      
+
       const usdAccount = accounts.find((a: any) => a.currency === 'USD');
       if (usdAccount) {
         const usdBalance = parseFloat(usdAccount.available_balance?.value || '0');
         console.log(`      💰 USD Balance: $${usdBalance.toFixed(2)}`);
       }
-      
+
       return true;
     } else {
       const errorText = await response.text();
@@ -112,7 +113,7 @@ async function verifyKalshi(): Promise<boolean> {
 
   // Parse private key (handle \n escapes and quotes)
   let privateKey = privateKeyRaw.replace(/\\n/g, '\n').replace(/\"/g, '');
-  
+
   // Validate key format
   try {
     crypto.createPrivateKey(privateKey);
@@ -127,7 +128,7 @@ async function verifyKalshi(): Promise<boolean> {
   const baseUrl = kalshiEnv === 'production'
     ? 'https://api.elections.kalshi.com'
     : 'https://demo-api.kalshi.co';
-  
+
   console.log(`   ✓ Environment: ${kalshiEnv || 'demo (default)'}`);
   console.log(`   ✓ Base URL: ${baseUrl}`);
 
@@ -167,13 +168,13 @@ async function verifyKalshi(): Promise<boolean> {
     } else {
       const errorText = await response.text();
       console.log(`      ❌ FAILED: ${errorText.substring(0, 300)}`);
-      
+
       // Helpful diagnostics
       if (errorText.includes('NOT_FOUND')) {
         console.log(`      💡 HINT: API key might be for ${kalshiEnv === 'production' ? 'demo' : 'production'} environment`);
         console.log(`      💡 Try setting KALSHI_ENV=${kalshiEnv === 'production' ? 'demo' : 'production'}`);
       }
-      
+
       return false;
     }
   } catch (error: any) {

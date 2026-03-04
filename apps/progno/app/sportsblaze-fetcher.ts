@@ -231,10 +231,10 @@ export async function fetchSportsBlazeStandings(
 
 // ---- Adapters into Progno Game model ----
 
-function parseDateOrNow(iso: string | undefined): Date {
-  if (!iso) return new Date();
+function parseDateOrNow(iso: string | undefined): string {
+  if (!iso) return new Date().toISOString();
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? new Date() : d;
+  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
 }
 
 function neutralOdds(league: SportsBlazeLeagueId): Game["odds"] {

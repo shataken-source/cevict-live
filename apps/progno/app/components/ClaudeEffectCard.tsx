@@ -88,7 +88,7 @@ export default function ClaudeEffectCard({
         <div className="flex justify-between items-center">
           <span className="text-sm text-slate-700 dark:text-slate-300">Narrative Momentum</span>
           <span className={`font-bold ${getScoreColor(scores.narrativeMomentum)}`}>
-            {formatScore(scores.narrativeMomentum, 0.3)}
+            {formatScore(scores.narrativeMomentum)}
           </span>
         </div>
         <div className="flex justify-between items-center">

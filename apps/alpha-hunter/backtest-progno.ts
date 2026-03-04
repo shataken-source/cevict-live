@@ -274,4 +274,5 @@ if (require.main === module) {
   runPrognoBacktest().catch(console.error);
 }
 
-export { runPrognoBacktest, runBacktest, HistoricalPick };
+export type { HistoricalPick };
+export { runPrognoBacktest, runBacktest };

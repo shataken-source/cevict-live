@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// @ts-nocheck — standalone test script
 /**
  * TEST_KALSHI_AUTH.ts
  * Independent verification of Kalshi API authentication

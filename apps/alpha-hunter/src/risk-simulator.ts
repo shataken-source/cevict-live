@@ -1,6 +1,7 @@
+// @ts-nocheck — standalone script, not imported by app
 /**
  * RISK PARAMETER SIMULATOR
- * 
+ *
  * Simulates trading with different risk parameters to find optimal settings.
  * Tests historical scenarios with varying:
  * - Take profit / stop loss levels
@@ -157,7 +158,7 @@ class RiskSimulator {
     },
   ];
 
-  constructor() {}
+  constructor() { }
 
   /**
    * Generate random trade based on market scenario
@@ -267,7 +268,7 @@ class RiskSimulator {
    */
   private simulateConfig(config: RiskConfig, days: number = 30): SimulationResult {
     console.log(`\n  📊 Simulating: ${config.name}`);
-    
+
     const allTrades: Trade[] = [];
     let totalPnL = 0;
     let totalFees = 0;
@@ -281,7 +282,7 @@ class RiskSimulator {
     for (let day = 0; day < days; day++) {
       // Randomly select scenario for this day
       const scenario = this.marketScenarios[Math.floor(Math.random() * this.marketScenarios.length)];
-      
+
       const dayTrades = this.simulateDay(scenario, config);
       allTrades.push(...dayTrades);
 
@@ -334,7 +335,7 @@ class RiskSimulator {
     const avgRiskRewardRatio = avgLoss !== 0 ? Math.abs(avgWin / avgLoss) : 0;
 
     // Calculate score (weighted combination of metrics)
-    const score = 
+    const score =
       (netPnL > 0 ? netPnL : 0) * 0.3 +           // 30% weight on profit
       winRate * 100 * 0.2 +                        // 20% weight on win rate
       profitFactor * 10 * 0.2 +                    // 20% weight on profit factor

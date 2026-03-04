@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
             homeTeam: item.home_team,
             awayTeam: item.away_team,
             sport: sport,
-            date: new Date(item.commence_time),
+            date: new Date(item.commence_time).toISOString(),
             venue: 'TBD',
             odds: {
               home: -110,

@@ -1,6 +1,6 @@
 /**
  * PREDICTION ENGINE PATCH
- * 
+ *
  * This patch ensures that score predictions always use the comprehensive
  * prediction with sport-specific caps, fixing the NHL 7-7 issue.
  */
@@ -10,10 +10,13 @@ import { getEnhancedScorePrediction } from '../score-prediction-service';
 interface GameData {
   homeTeam: string;
   awayTeam: string;
-  sport?: string;
+  sport: string;
   league?: string;
   odds?: any;
-  teamStats?: any;
+  teamStats?: {
+    home: { recentAvgPoints?: number; recentAvgAllowed?: number };
+    away: { recentAvgPoints?: number; recentAvgAllowed?: number };
+  };
   injuries?: any;
   recentForm?: any;
 }
@@ -28,16 +31,16 @@ export async function predictScoreWithCaps(
 ): Promise<{ home: number; away: number }> {
   try {
     console.log(`[PredictionPatch] Using comprehensive score prediction for ${gameData.homeTeam} vs ${gameData.awayTeam}`);
-    
+
     // Always use comprehensive prediction to ensure sport caps are applied
     const enhanced = await getEnhancedScorePrediction(gameData, homeWinProb);
-    
+
     if (enhanced) {
       console.log(`[PredictionPatch] Score caps applied: ${enhanced.home}-${enhanced.away}`);
       console.log(`[PredictionPatch] Reasoning: ${enhanced.reasoning.join(', ')}`);
       return { home: enhanced.home, away: enhanced.away };
     }
-    
+
     // Fallback with sport-appropriate defaults
     const sport = (gameData.sport || gameData.league || '').toUpperCase();
     const defaults: Record<string, { home: number; away: number }> = {
@@ -59,7 +62,7 @@ export async function predictScoreWithCaps(
     return { home: 0, away: 0 };
   } catch (error) {
     console.warn('[PredictionPatch] Comprehensive prediction failed, using fallback:', error);
-    
+
     // Safe fallback
     const sport = (gameData.sport || gameData.league || '').toUpperCase();
     if (sport.includes('NHL')) {

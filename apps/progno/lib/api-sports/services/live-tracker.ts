@@ -98,7 +98,7 @@ export class LiveGameTracker {
 
     try {
       const gameData: any = await this.fetchWithRetry(
-        () => client.getLiveGames({ date: new Date().toISOString().split('T')[0] }).then((games: any[]) => games?.find((g: any) => String(g.id) === String(gameId))),
+        () => client.getLiveGames().then((games: any[]) => games?.find((g: any) => String(g.id) === String(gameId))),
         10000,
         2
       );

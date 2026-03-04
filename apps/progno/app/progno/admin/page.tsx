@@ -96,11 +96,11 @@ function Badge({ children, color = C.blue }: { children: React.ReactNode; color?
   );
 }
 
-function Btn({ children, onClick, disabled, color = C.blue, style }: {
-  children: React.ReactNode; onClick?: () => void; disabled?: boolean; color?: string; style?: React.CSSProperties;
+function Btn({ children, onClick, disabled, color = C.blue, style, title }: {
+  children: React.ReactNode; onClick?: () => void; disabled?: boolean; color?: string; style?: React.CSSProperties; title?: string;
 }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{
+    <button onClick={onClick} disabled={disabled} title={title} style={{
       padding: '7px 15px', background: disabled ? '#0a1422' : `${color}18`, color: disabled ? C.textDim : color,
       border: `1px solid ${disabled ? C.border : color + '50'}`, borderRadius: 5, cursor: disabled ? 'not-allowed' : 'pointer',
       fontSize: 12, fontFamily: C.mono, fontWeight: 600, letterSpacing: '0.5px', transition: 'all 0.15s', ...style,
@@ -550,7 +550,7 @@ export default function AdminPage() {
           msg = total === 0
             ? 'No picks found for today. Run predictions first (PICKS tab → RUN PREDICTIONS).'
             : `${total} picks → ${submitted} submitted, ${noMarket} no market, ${errors} errors${skipped ? `, ${skipped} skipped` : ''}. ${d.dryRun ? '(Dry run — no orders placed)' : ''}`.trim();
-          if (job !== 'daily-results') setResultsList([]);
+          setResultsList([]);
         } else if (job === 'kalshi-settle' && data.data) {
           const d = data.data;
           const updated = d.updated ?? 0;
@@ -560,7 +560,7 @@ export default function AdminPage() {
           if (updated > 0) parts.push(`Settled ${updated} bet(s)`);
           if (cancelledCount > 0) parts.push(`${cancelledCount} marked cancelled (refunded)`);
           msg = parts.length > 0 ? parts.join(', ') + '.' : (pending > 0 ? `No new settlements (${pending} still pending).` : 'No pending Kalshi bets.');
-          if (job !== 'daily-results') setResultsList([]);
+          setResultsList([]);
         } else {
           msg = data.data?.message ?? (summary ? JSON.stringify(summary) : 'Done');
           if (job !== 'daily-results') setResultsList([]);

@@ -50,7 +50,7 @@ export interface PerformanceMetrics {
   };
 }
 
-class AccuracyTracker {
+export class AccuracyTracker {
   private metricsCache: PerformanceMetrics | null = null;
   private cacheTime: number = 0;
   private readonly CACHE_DURATION = 15 * 60 * 1000; // 15 minutes

@@ -1,3 +1,4 @@
+// @ts-nocheck — dead code, backup file, 0 imports
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -178,9 +179,8 @@ export default function PrognoDashboard() {
           <button
             onClick={() => fetchData()}
             disabled={loading}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              loading ? 'bg-gray-500 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${loading ? 'bg-gray-500 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
           >
             {loading ? 'Refreshing...' : 'Refresh Now'}
           </button>
@@ -377,9 +377,8 @@ export default function PrognoDashboard() {
                     <button
                       onClick={() => predictGame(game.id)}
                       disabled={loading}
-                      className={`w-full py-3 rounded-lg font-medium text-white transition-colors ${
-                        loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                      }`}
+                      className={`w-full py-3 rounded-lg font-medium text-white transition-colors ${loading ? 'bg-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                        }`}
                     >
                       Run Prediction
                     </button>

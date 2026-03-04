@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+// @ts-nocheck — standalone test script
 /**
  * TEST_KALSHI_AUTH_REAL.ts
  * Test using the actual KalshiTrader class to verify authentication
@@ -19,17 +20,17 @@ console.log(`━━━━━━━━━━━━━━━━━━━━━━�
 
 async function testKalshiAuth() {
   console.log(`🔍 Initializing KalshiTrader...\n`);
-  
+
   const trader = new KalshiTrader();
-  
+
   // Wait a moment for initialization
   await new Promise(resolve => setTimeout(resolve, 1000));
-  
+
   console.log(`🔍 Testing getBalanceResponse()...\n`);
-  
+
   try {
     const balance = await trader.getBalanceResponse();
-    
+
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
     console.log(`✅ AUTHENTICATION SUCCESSFUL!\n`);
     console.log(`📊 Balance Response:\n`);

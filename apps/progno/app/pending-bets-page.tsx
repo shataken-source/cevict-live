@@ -60,7 +60,7 @@ export default function PendingBetsPage() {
       sport: 'Unknown', // Not available in HistoricalBet
       homeTeam: homeTeam.trim(),
       awayTeam: awayTeam.trim(),
-      date: bet.date,
+      date: bet.date instanceof Date ? bet.date.toISOString() : String(bet.date),
       odds: {
         home: bet.odds,
         away: -bet.odds, // Calculate away odds

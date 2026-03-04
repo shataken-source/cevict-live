@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
             homeTeam: result.homeTeam,
             awayTeam: result.awayTeam,
             sport: league,
-            date: new Date(result.date),
+            date: typeof result.date === 'string' ? result.date : new Date(result.date).toISOString(),
             venue: 'TBD',
             odds: result.odds || {
               home: -110, // Default if not available

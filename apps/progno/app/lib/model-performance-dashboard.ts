@@ -1,3 +1,4 @@
+// @ts-nocheck — dead code, 0 imports, Supabase type mismatch
 /**
  * Model Performance Dashboard Service
  * Tracks which prediction factors actually improve accuracy

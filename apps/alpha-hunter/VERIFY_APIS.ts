@@ -1,3 +1,4 @@
+// @ts-nocheck — standalone verification script
 // Independent API Verification Script
 // This bypasses the traders and verifies APIs directly
 
@@ -56,14 +57,14 @@ async function verifyCoinbase(): Promise<boolean> {
       const data = await response.json();
       const accounts = data.accounts || [];
       console.log(`      ✅ SUCCESS: Got ${accounts.length} accounts`);
-      
+
       // Show USD balance
       const usdAccount = accounts.find((a: any) => a.currency === 'USD');
       if (usdAccount) {
         const usdBalance = parseFloat(usdAccount.available_balance?.value || '0');
         console.log(`      💰 USD Balance: $${usdBalance.toFixed(2)}`);
       }
-      
+
       return true;
     } else {
       const errorText = await response.text();
@@ -95,7 +96,7 @@ async function verifyKalshi(): Promise<boolean> {
 
   // Parse private key (handle \n escapes)
   let privateKey = privateKeyRaw.replace(/\\n/g, '\n');
-  
+
   // Validate key format
   try {
     crypto.createPrivateKey(privateKey);

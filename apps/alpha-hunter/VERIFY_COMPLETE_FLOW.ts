@@ -1,6 +1,7 @@
+// @ts-nocheck — standalone verification script
 /**
  * END-TO-END FLOW VERIFICATION
- * 
+ *
  * This script traces the COMPLETE data flow from raw market data
  * through all processing steps to the Prognostication homepage.
  */
@@ -31,10 +32,10 @@ const results: VerificationStep[] = [];
 // ============================================================================
 async function step1_VerifyRawDataSource(): Promise<VerificationStep> {
   console.log('📡 [STEP 1/10] Verifying Raw Data Source (Kalshi API)...\n');
-  
+
   const apiKeyId = process.env.KALSHI_API_KEY_ID;
   const privateKey = process.env.KALSHI_PRIVATE_KEY;
-  
+
   if (!apiKeyId || !privateKey) {
     return {
       step: 1,
@@ -48,14 +49,14 @@ async function step1_VerifyRawDataSource(): Promise<VerificationStep> {
     const { KalshiTrader } = await import('./src/intelligence/kalshi-trader');
     const kalshi = new KalshiTrader();
     const markets = await kalshi.getMarkets();
-    
+
     console.log(`   ✅ Kalshi API connected`);
     console.log(`   ✅ Retrieved ${markets.length} live markets`);
     console.log(`   📊 Sample markets:`);
     markets.slice(0, 3).forEach((m, i) => {
       console.log(`      ${i + 1}. ${m.title?.substring(0, 60) || 'Unknown'}...`);
     });
-    
+
     return {
       step: 1,
       name: 'Raw Data Source (Kalshi API)',
@@ -82,14 +83,14 @@ async function step1_VerifyRawDataSource(): Promise<VerificationStep> {
 // ============================================================================
 async function step2_VerifyPROGNO(): Promise<VerificationStep> {
   console.log('\n🎯 [STEP 2/10] Verifying PROGNO Integration...\n');
-  
+
   try {
     const { PrognoIntegration } = await import('./src/intelligence/progno-integration');
     const progno = new PrognoIntegration();
-    
+
     console.log('   🔍 Fetching PROGNO picks...');
     const picks = await progno.getTodaysPicks();
-    
+
     if (picks.length > 0) {
       console.log(`   ✅ PROGNO connected`);
       console.log(`   ✅ Retrieved ${picks.length} predictions`);
@@ -97,7 +98,7 @@ async function step2_VerifyPROGNO(): Promise<VerificationStep> {
       picks.slice(0, 3).forEach((p, i) => {
         console.log(`      ${i + 1}. ${p.homeTeam || 'N/A'} vs ${p.awayTeam || 'N/A'} - ${p.confidence}% confidence`);
       });
-      
+
       return {
         step: 2,
         name: 'PROGNO Integration',
@@ -134,24 +135,24 @@ async function step2_VerifyPROGNO(): Promise<VerificationStep> {
 // ============================================================================
 async function step3_VerifyClaudeEffect(): Promise<VerificationStep> {
   console.log('\n🌟 [STEP 3/10] Verifying 7-Dimensional Claude Effect (Cevict Flex)...\n');
-  
+
   try {
     // Check if PROGNO picks contain Claude Effect dimensions
     const { PrognoIntegration } = await import('./src/intelligence/progno-integration');
     const progno = new PrognoIntegration();
     const picks = await progno.getTodaysPicks();
-    
+
     if (picks.length > 0) {
       const samplePick = picks[0];
-      
+
       console.log('   🔍 Analyzing Claude Effect dimensions in picks...');
       console.log(`   📊 Sample pick: ${samplePick.homeTeam || 'N/A'} vs ${samplePick.awayTeam || 'N/A'}`);
-      
+
       // Check for Claude Effect data in the pick
       const hasSentimentField = samplePick.sentimentField !== undefined;
       const hasNarrativeMomentum = samplePick.narrativeMomentum !== undefined;
       const hasClaudeEffectData = samplePick.claudeEffect !== undefined;
-      
+
       console.log(`\n   7-Dimensional Claude Effect Components:`);
       console.log(`      1. Sentiment Field (SF): ${hasSentimentField ? '✅' : '⚠️  Implicit'}`);
       console.log(`      2. Narrative Momentum (NM): ${hasNarrativeMomentum ? '✅' : '⚠️  Implicit'}`);
@@ -160,9 +161,9 @@ async function step3_VerifyClaudeEffect(): Promise<VerificationStep> {
       console.log(`      5. News Impact Grade (NIG): ⚠️  Implicit`);
       console.log(`      6. Temporal Recency Decay (TRD): ⚠️  Implicit`);
       console.log(`      7. External Pressure Differential (EPD): ⚠️  Implicit`);
-      
+
       console.log(`\n   💡 Claude Effect integrated into PROGNO confidence scores`);
-      
+
       return {
         step: 3,
         name: '7-Dimensional Claude Effect',
@@ -196,13 +197,13 @@ async function step3_VerifyClaudeEffect(): Promise<VerificationStep> {
 // ============================================================================
 async function step4_VerifyCategoryBots(): Promise<VerificationStep> {
   console.log('\n🤖 [STEP 4/10] Verifying Category Learning Bots...\n');
-  
+
   try {
     const { categoryLearners } = await import('./src/intelligence/category-learners');
-    
+
     const categories = ['sports', 'politics', 'entertainment', 'economics', 'weather', 'technology'];
     const activeBots: string[] = [];
-    
+
     console.log('   🔍 Checking category bots...');
     for (const category of categories) {
       const bot = (categoryLearners as any)[`${category}Bot`];
@@ -211,9 +212,9 @@ async function step4_VerifyCategoryBots(): Promise<VerificationStep> {
         console.log(`      ✅ ${category.toUpperCase()} Bot: Active`);
       }
     }
-    
+
     console.log(`\n   ✅ ${activeBots.length} category bots operational`);
-    
+
     return {
       step: 4,
       name: 'Category Learning Bots',
@@ -240,19 +241,19 @@ async function step4_VerifyCategoryBots(): Promise<VerificationStep> {
 // ============================================================================
 async function step5_VerifyMassager(): Promise<VerificationStep> {
   console.log('\n🔬 [STEP 5/10] Verifying Progno-Massager (AI Safety 2025)...\n');
-  
+
   try {
     const { PrognoMassagerIntegration } = await import('./src/intelligence/progno-massager');
     const massager = new PrognoMassagerIntegration();
-    
+
     console.log('   🔍 Checking Python availability...');
     const available = await massager.checkAvailability();
-    
+
     if (available) {
       console.log('   ✅ Python installed and accessible');
       console.log('   ✅ Progno-Massager ready');
       console.log('   🛡️  AI Safety 2025 validation: ACTIVE');
-      
+
       return {
         step: 5,
         name: 'Progno-Massager Integration',
@@ -266,7 +267,7 @@ async function step5_VerifyMassager(): Promise<VerificationStep> {
     } else {
       console.log('   ⚠️  Python not available');
       console.log('   💡 Bot will use internal validation (fallback)');
-      
+
       return {
         step: 5,
         name: 'Progno-Massager Integration',
@@ -293,25 +294,25 @@ async function step5_VerifyMassager(): Promise<VerificationStep> {
 // ============================================================================
 async function step6_VerifyAnalysisPipeline(): Promise<VerificationStep> {
   console.log('\n⚙️  [STEP 6/10] Verifying Market Analysis Pipeline...\n');
-  
+
   try {
     // Check if live trader is running
     const terminalFiles = fs.readdirSync(path.join(process.cwd(), '..', '..', 'users', 'shata', '.cursor', 'projects', 'c-cevict-live', 'terminals'));
     const latestTerminal = terminalFiles.filter(f => f.endsWith('.txt')).sort().pop();
-    
+
     if (latestTerminal) {
       const terminalPath = path.join(process.cwd(), '..', '..', 'users', 'shata', '.cursor', 'projects', 'c-cevict-live', 'terminals', latestTerminal);
       const content = fs.readFileSync(terminalPath, 'utf8');
-      
+
       const hasKalshiAnalysis = content.includes('KALSHI PREDICTION MARKETS');
       const hasPROGNO = content.includes('PROGNO') || content.includes('Claude Effect');
       const hasCategoryBots = content.includes('Learning Bot');
-      
+
       console.log(`   🔍 Analyzing bot output...`);
       console.log(`      ${hasKalshiAnalysis ? '✅' : '❌'} Kalshi market analysis`);
       console.log(`      ${hasPROGNO ? '✅' : '❌'} PROGNO integration active`);
       console.log(`      ${hasCategoryBots ? '✅' : '❌'} Category bots learning`);
-      
+
       return {
         step: 6,
         name: 'Market Analysis Pipeline',
@@ -345,21 +346,21 @@ async function step6_VerifyAnalysisPipeline(): Promise<VerificationStep> {
 // ============================================================================
 async function step7_VerifyOpportunityCollection(): Promise<VerificationStep> {
   console.log('\n📊 [STEP 7/10] Verifying Opportunity Collection...\n');
-  
+
   // Check if .kalshi-picks.json exists (created by prognostication-sync)
   const picksFile = path.join(process.cwd(), '.kalshi-picks.json');
-  
+
   if (fs.existsSync(picksFile)) {
     try {
       const content = JSON.parse(fs.readFileSync(picksFile, 'utf8'));
       const picks = content.picks || [];
       const timestamp = content.timestamp;
-      
+
       console.log(`   ✅ Opportunity collection active`);
       console.log(`   📄 Picks file: .kalshi-picks.json`);
       console.log(`   ⏰ Last updated: ${timestamp}`);
       console.log(`   📊 Picks collected: ${picks.length}`);
-      
+
       if (picks.length > 0) {
         console.log(`\n   Sample opportunities:`);
         picks.slice(0, 3).forEach((p: any, i: number) => {
@@ -367,7 +368,7 @@ async function step7_VerifyOpportunityCollection(): Promise<VerificationStep> {
           console.log(`         Edge: ${p.edge}% | Confidence: ${p.confidence}%`);
         });
       }
-      
+
       return {
         step: 7,
         name: 'Opportunity Collection',
@@ -406,15 +407,15 @@ async function step7_VerifyOpportunityCollection(): Promise<VerificationStep> {
 // ============================================================================
 async function step8_VerifyPrognosticationSync(): Promise<VerificationStep> {
   console.log('\n📡 [STEP 8/10] Verifying Prognostication Sync Module...\n');
-  
+
   try {
     const { PrognosticationSync } = await import('./src/intelligence/prognostication-sync');
     const sync = new PrognosticationSync();
-    
+
     console.log('   ✅ PrognosticationSync module loaded');
     console.log('   ✅ Sync logic: updatePrognosticationHomepage() available');
     console.log('   📡 Target: http://localhost:3002/api/kalshi/picks');
-    
+
     return {
       step: 8,
       name: 'Prognostication Sync',
@@ -440,25 +441,25 @@ async function step8_VerifyPrognosticationSync(): Promise<VerificationStep> {
 // ============================================================================
 async function step9_VerifyPrognosticationHomepage(): Promise<VerificationStep> {
   console.log('\n🌐 [STEP 9/10] Verifying Prognostication Homepage...\n');
-  
+
   const prognoUrl = process.env.PROGNOSTICATION_URL || 'http://localhost:3002';
-  
+
   try {
     console.log(`   🔍 Checking ${prognoUrl}...`);
     const response = await fetch(prognoUrl, { signal: AbortSignal.timeout(5000) });
-    
+
     if (response.ok) {
       console.log(`   ✅ Prognostication homepage is ONLINE`);
       console.log(`   ✅ Status: ${response.status} ${response.statusText}`);
-      
+
       // Try to fetch picks API
       try {
         const picksResponse = await fetch(`${prognoUrl}/api/kalshi/picks`, { signal: AbortSignal.timeout(5000) });
         const picksData = await picksResponse.json();
-        
+
         console.log(`   ✅ API endpoint /api/kalshi/picks responding`);
         console.log(`   📊 Picks on homepage: ${picksData.picks?.length || 0}`);
-        
+
         return {
           step: 9,
           name: 'Prognostication Homepage',
@@ -510,18 +511,18 @@ async function step9_VerifyPrognosticationHomepage(): Promise<VerificationStep> 
 // ============================================================================
 async function step10_VerifyCompleteFlow(): Promise<VerificationStep> {
   console.log('\n🔄 [STEP 10/10] Verifying Complete End-to-End Flow...\n');
-  
+
   const passedSteps = results.filter(r => r.status === 'pass').length;
   const warningSteps = results.filter(r => r.status === 'warning').length;
   const failedSteps = results.filter(r => r.status === 'fail').length;
-  
+
   console.log(`   📊 Flow Analysis:`);
   console.log(`      ✅ Passed: ${passedSteps}/9`);
   console.log(`      ⚠️  Warnings: ${warningSteps}/9`);
   console.log(`      ❌ Failed: ${failedSteps}/9`);
-  
+
   const flowComplete = passedSteps >= 7 && failedSteps === 0;
-  
+
   if (flowComplete) {
     console.log(`\n   ✅ END-TO-END FLOW VERIFIED!`);
     console.log(`\n   📝 Data Flow Summary:`);
@@ -534,7 +535,7 @@ async function step10_VerifyCompleteFlow(): Promise<VerificationStep> {
     console.log(`      7. Collection → High-confidence picks`);
     console.log(`      8. Sync Module → Homepage updates`);
     console.log(`      9. Prognostication → Public display`);
-    
+
     return {
       step: 10,
       name: 'Complete End-to-End Flow',
@@ -573,12 +574,12 @@ async function runCompleteVerification() {
   results.push(await step8_VerifyPrognosticationSync());
   results.push(await step9_VerifyPrognosticationHomepage());
   results.push(await step10_VerifyCompleteFlow());
-  
+
   // Print final summary
   console.log('\n\n╔════════════════════════════════════════════════════════════════╗');
   console.log('║              📋 END-TO-END VERIFICATION RESULTS               ║');
   console.log('╚════════════════════════════════════════════════════════════════╝\n');
-  
+
   results.forEach(result => {
     const icon = result.status === 'pass' ? '✅' : result.status === 'warning' ? '⚠️' : '❌';
     console.log(`${icon} STEP ${result.step}: ${result.name}`);
@@ -587,18 +588,18 @@ async function runCompleteVerification() {
     });
     console.log('');
   });
-  
+
   const passCount = results.filter(r => r.status === 'pass').length;
   const warnCount = results.filter(r => r.status === 'warning').length;
   const failCount = results.filter(r => r.status === 'fail').length;
-  
+
   console.log('╔════════════════════════════════════════════════════════════════╗');
   console.log('║                    FINAL VERDICT                              ║');
   console.log('╚════════════════════════════════════════════════════════════════╝\n');
   console.log(`   ✅ Passed:   ${passCount}/10`);
   console.log(`   ⚠️  Warnings: ${warnCount}/10`);
   console.log(`   ❌ Failed:   ${failCount}/10\n`);
-  
+
   if (passCount >= 8 && failCount === 0) {
     console.log('   🎉 COMPLETE DATA FLOW IS OPERATIONAL!\n');
     console.log('   Raw Data → PROGNO → Claude Effect → Bots → Massager → Homepage ✅\n');

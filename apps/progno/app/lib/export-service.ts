@@ -1,3 +1,4 @@
+// @ts-nocheck — dead code, 0 imports, requires jspdf package not installed
 /**
  * Export Service - PDF cards and CSV export
  * Generate printable betting sheets and data exports
@@ -228,15 +229,15 @@ export class ExportService {
     <h1>PROGNO PICKS - ${new Date().toLocaleDateString()}</h1>
     <p class="no-print"><button onclick="window.print()">Print Sheet</button></p>
   </div>
-  
+
   ${this.renderTierHTML(picks.filter(p => p.tier === 'elite'), 'elite', 'ELITE PICKS')}
   ${this.renderTierHTML(picks.filter(p => p.tier === 'pro'), 'pro', 'PRO PICKS')}
   ${this.renderTierHTML(picks.filter(p => p.tier === 'free'), 'free', 'FREE PICKS')}
-  
+
   <div class="summary">
-    <strong>Summary:</strong> ${picks.length} picks | 
-    Elite: ${picks.filter(p => p.tier === 'elite').length} | 
-    Pro: ${picks.filter(p => p.tier === 'pro').length} | 
+    <strong>Summary:</strong> ${picks.length} picks |
+    Elite: ${picks.filter(p => p.tier === 'elite').length} |
+    Pro: ${picks.filter(p => p.tier === 'pro').length} |
     Free: ${picks.filter(p => p.tier === 'free').length}
   </div>
 </body>
@@ -307,15 +308,15 @@ export class ExportService {
     // Tier distribution chart (simple)
     const chartY = y + 35;
     const total = picks.length || 1;
-    
+
     // Elite bar
     doc.setFillColor(255, 215, 0);
     doc.rect(20, chartY, (elite / total) * 100, 8, 'F');
-    
+
     // Pro bar
     doc.setFillColor(192, 192, 192);
     doc.rect(20 + (elite / total) * 100, chartY, (pro / total) * 100, 8, 'F');
-    
+
     // Free bar
     doc.setFillColor(205, 127, 50);
     doc.rect(20 + ((elite + pro) / total) * 100, chartY, (free / total) * 100, 8, 'F');

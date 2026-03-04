@@ -5,7 +5,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { createNBAClient, createNFLClient, createNHLClient, LEAGUE_IDS } from '../client';
+import { createNBAClient, createNFLClient, createNHLClient, LEAGUE_IDS, getClientForSport } from '../client';
 
 let _supabaseWarned = false;
 const getSupabase = () => {
@@ -55,7 +55,7 @@ export async function syncInjuries(sport: 'nba' | 'nfl' | 'nhl'): Promise<Injury
   try {
     // Fetch injuries with timeout & retry
     const injuries = await fetchWithRetry(
-      () => client.getInjuries(),
+      () => client.getInjuries({}),
       12000,
       2
     );

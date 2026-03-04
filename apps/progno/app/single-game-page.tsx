@@ -181,7 +181,7 @@ export default function SingleGamePage() {
         const simPrediction = await predictGame(simulatedGame);
         confidences.push(simPrediction.confidence);
 
-        if (simPrediction.predictedWinner === game.homeTeam) {
+        if (simPrediction.winner === game.homeTeam) {
           homeWins++;
         } else {
           awayWins++;

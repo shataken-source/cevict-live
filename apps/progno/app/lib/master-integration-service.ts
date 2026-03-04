@@ -24,7 +24,7 @@ export interface MasterWorkflowResult {
   parlays: any[];
   arbitrageOpportunities: any[];
   earlyBetOpportunities: any[];
-  tierBreakdown: Record<string, number>;
+  tierBreakdown: Record<string, any>;
   publishingSchedule: any;
   bankrollState: any;
   alerts: any[];

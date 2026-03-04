@@ -276,7 +276,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Authoritative Supabase-backed check
-  const usage = await checkAndIncrementUsage(supabase, keyHash, auth.tier, tierConfig.maxRequestsPerDay)
+  const usage = await checkAndIncrementUsage(supabase as any, keyHash, auth.tier, tierConfig.maxRequestsPerDay)
   if (!usage.allowed) {
     return NextResponse.json(
       {
