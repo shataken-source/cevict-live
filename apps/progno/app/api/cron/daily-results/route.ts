@@ -81,53 +81,70 @@ export async function GET(request: Request) {
   }
   const sbClient = createClient(supabaseUrl!, supabaseKey)
 
-  // Load predictions from Supabase Storage
-  const fileName = `predictions-${date}.json`
-  let payload: any
+  // Load predictions from picks DB table (primary) with Storage fallback
+  let picks: any[] = []
+  let picksSource = 'db'
   try {
-    const { data: storageData, error: storageErr } = await sbClient.storage
-      .from('predictions')
-      .download(fileName)
-    if (storageErr || !storageData) {
-      return NextResponse.json({
-        success: false,
-        error: `No predictions file in storage: ${fileName}`,
-        detail: storageErr?.message,
-      }, { status: 404 })
+    const { data: dbPicks, error: dbErr } = await sbClient
+      .from('picks')
+      .select('*')
+      .eq('game_date', date)
+      .eq('early_lines', false)
+    if (!dbErr && dbPicks && dbPicks.length > 0) {
+      picks = dbPicks.map((p: any) => ({
+        ...p,
+        pick: p.pick,
+        home_team: p.home_team,
+        away_team: p.away_team,
+        sport: p.sport || p.league,
+        league: p.league || p.sport,
+        confidence: p.confidence,
+        game_id: p.game_id,
+        game_time: p.game_time || p.commence_time,
+        odds: p.odds,
+        is_home_pick: p.is_home,
+      }))
+      console.log(`[GRADE] Loaded ${picks.length} picks from DB (picks table) for ${date}`)
     }
-    const raw = await storageData.text()
-    const clean = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw
-    payload = JSON.parse(clean)
   } catch (e) {
-    return NextResponse.json({ success: false, error: 'Invalid predictions JSON' }, { status: 400 })
+    console.warn(`[GRADE] DB picks read failed:`, (e as Error).message)
   }
 
-  // Support both formats: { date, picks: [...] } (new) or top-level array (old)
-  const rawPicks = Array.isArray(payload) ? payload : (payload.picks ?? [])
-  // Normalize each item: ensure home_team, away_team, pick (old format has winner, no home/away)
-  const picks = rawPicks.map((p: any) => {
-    const pick = p.pick ?? p.winner
-    let home_team = p.home_team
-    let away_team = p.away_team
-    if ((!home_team || !away_team) && p.keyFactors?.[0]) {
-      const text = p.keyFactors[0]
-      // e.g. "Team strength: Carolina Hurricanes (104%) vs Ottawa Senators (103%)"
-      const vsMatch = text.match(/Team strength:\s*([^(]+?)\s*\([^)]*\)\s+vs\s+([^(]+?)\s*\(/)
-      if (vsMatch) {
-        home_team = (home_team || vsMatch[1].trim()) as string
-        away_team = (away_team || vsMatch[2].trim()) as string
+  // Fallback: load from Supabase Storage if DB has no picks
+  if (picks.length === 0) {
+    picksSource = 'storage'
+    const fileName = `predictions-${date}.json`
+    try {
+      const { data: storageData, error: storageErr } = await sbClient.storage
+        .from('predictions')
+        .download(fileName)
+      if (!storageErr && storageData) {
+        const raw = await storageData.text()
+        const clean = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw
+        const payload = JSON.parse(clean)
+        const rawPicks = Array.isArray(payload) ? payload : (payload.picks ?? [])
+        picks = rawPicks.map((p: any) => {
+          const pick = p.pick ?? p.winner
+          let home_team = p.home_team
+          let away_team = p.away_team
+          if ((!home_team || !away_team) && p.keyFactors?.[0]) {
+            const text = p.keyFactors[0]
+            const vsMatch = text.match(/Team strength:\s*([^(]+?)\s*\([^)]*\)\s+vs\s+([^(]+?)\s*\(/)
+            if (vsMatch) {
+              home_team = (home_team || vsMatch[1].trim()) as string
+              away_team = (away_team || vsMatch[2].trim()) as string
+            }
+          }
+          return { ...p, home_team, away_team, pick }
+        }).filter((p: any) => p.pick && p.home_team && p.away_team)
+        console.log(`[GRADE] Loaded ${picks.length} picks from Storage fallback for ${date}`)
       }
-    }
-    return { ...p, home_team, away_team, pick }
-  }).filter((p: any) => p.pick && p.home_team && p.away_team)
+    } catch { /* no storage file either */ }
+  }
 
-  const noPicksMsg = picks.length === 0
-    ? (rawPicks.length === 0
-      ? 'No picks to grade'
-      : `No valid picks to grade (file had ${rawPicks.length} entries but missing home_team/away_team or pick; use daily-predictions cron format).`)
-    : null
+  const noPicksMsg = picks.length === 0 ? 'No picks to grade' : null
 
-  console.log(`[GRADE] Loaded ${picks.length} picks from ${fileName}:`, picks.map(p => `${p.away_team} @ ${p.home_team} (${p.sport || p.league || 'unknown'})`).join(', '))
+  console.log(`[GRADE] Loaded ${picks.length} picks from ${picksSource} for ${date}:`, picks.map(p => `${p.away_team} @ ${p.home_team} (${p.sport || p.league || 'unknown'})`).join(', '))
 
   // Fetch scores — ESPN free scoreboard is primary (no key, near real-time, full coverage)
   // Collect ALL dates we need to check: the file date, date+1, and every unique game_time date
@@ -363,7 +380,31 @@ export async function GET(request: Request) {
     summary: { total, correct, pending, graded: graded.length, winRate: Math.round(winRate * 10) / 10 },
   }
 
-  // Store results JSON in Supabase Storage
+  // Update picks table with graded results (DB is source of truth)
+  if (picksSource === 'db') {
+    try {
+      for (const r of results) {
+        if (r.status === 'pending') continue
+        const { error: updateErr } = await sbClient
+          .from('picks')
+          .update({
+            status: r.status === 'win' ? 'win' : 'loss',
+            result: r.status === 'win' ? 'win' : 'loss',
+          })
+          .eq('game_date', date)
+          .eq('home_team', r.home_team)
+          .eq('away_team', r.away_team)
+          .eq('early_lines', false)
+        if (updateErr) console.warn(`[CRON daily-results] picks update error:`, updateErr.message)
+      }
+      const gradedCount = results.filter(r => r.status !== 'pending').length
+      if (gradedCount > 0) console.log(`[CRON daily-results] Updated ${gradedCount} picks in DB with results`)
+    } catch (e) {
+      console.warn(`[CRON daily-results] picks table update failed:`, (e as Error).message)
+    }
+  }
+
+  // Store results JSON in Supabase Storage (backup)
   const resultsFileName = `results-${date}.json`
   const { error: resStorErr } = await sbClient.storage
     .from('predictions')
