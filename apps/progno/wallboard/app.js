@@ -15,7 +15,7 @@ const ESPN_SPORTS = {
   MLB: 'baseball/mlb',
   NCAAB: 'basketball/mens-college-basketball',
   NCAA: 'basketball/mens-college-basketball',
-  CBB: 'baseball/college-baseball',
+  CBB: 'basketball/mens-college-basketball',
   NCAAF: 'football/college-football',
 };
 
@@ -252,7 +252,7 @@ async function loadPicks() {
   }
 
   if (raw.length === 0) {
-    for (const date of [today, yesterday]) {
+    for (const date of [todayCst, yesterdayCst]) {
       if (raw.length > 0) break;
       try {
         const res = await fetch(API + '/progno/predictions?date=' + date, { cache: 'no-store' });

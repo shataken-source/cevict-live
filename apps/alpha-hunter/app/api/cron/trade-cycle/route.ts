@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { AIBrain } from '../../../../src/ai-brain';
 import { KalshiTrader, calcNetProfit, MIN_NET_PROFIT } from '../../../../src/intelligence/kalshi-trader';
 import { CryptoTrader } from '../../../../src/strategies/crypto-trader';
@@ -17,6 +18,50 @@ import { tradeLimiter } from '../../../../src/lib/trade-limiter';
 import { recordActualBet } from '../../../../src/lib/supabase-memory';
 import { emergencyStop } from '../../../../src/lib/emergency-stop';
 import { smsAlerter } from '../../../../src/lib/sms-alerter';
+
+// ── Supabase-backed guards (persist across Vercel invocations) ──────────────
+function getSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
+function getTodayCst(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+}
+
+/** Check actual_bets in Supabase for today's tickers — TRUE dupe prevention on serverless */
+async function getAlreadyBetTickers(): Promise<Set<string>> {
+  const sb = getSupabase();
+  if (!sb) return new Set();
+  try {
+    const { data } = await sb
+      .from('actual_bets')
+      .select('ticker')
+      .eq('game_date', getTodayCst())
+      .not('status', 'eq', 'cancelled');
+    return new Set((data || []).map((r: any) => r.ticker).filter(Boolean));
+  } catch { return new Set(); }
+}
+
+/** Get today's total Kalshi spend from actual_bets (cents) */
+async function getTodayKalshiSpendCents(): Promise<number> {
+  const sb = getSupabase();
+  if (!sb) return 0;
+  try {
+    const { data } = await sb
+      .from('actual_bets')
+      .select('stake_cents')
+      .eq('game_date', getTodayCst())
+      .not('status', 'eq', 'cancelled')
+      .not('dry_run', 'eq', true);
+    return (data || []).reduce((s: number, r: any) => s + (r.stake_cents || 0), 0);
+  } catch { return 0; }
+}
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 min max (Pro plan)
@@ -163,6 +208,19 @@ export async function GET(req: NextRequest) {
     let cryptoExecuted = 0;
     let kalshiDupeSkipped = 0;
 
+    // ── Supabase-backed guards ──────────────────────────────────────
+    const alreadyBet = await getAlreadyBetTickers();
+    log(`Dupe guard: ${alreadyBet.size} tickers already bet today (from Supabase)`);
+
+    const todaySpentCents = await getTodayKalshiSpendCents();
+    const KALSHI_MAX_DAILY_SPEND = parseFloat(process.env.KALSHI_MAX_DAILY_SPEND || process.env.MAX_DAILY_SPEND || '100');
+    const kalshiDailyBudgetLeft = KALSHI_MAX_DAILY_SPEND - (todaySpentCents / 100);
+    log(`Kalshi daily budget: $${(todaySpentCents / 100).toFixed(2)} spent / $${KALSHI_MAX_DAILY_SPEND} max → $${kalshiDailyBudgetLeft.toFixed(2)} remaining`);
+
+    // Price guardrails — reject longshots and heavy favorites
+    const KALSHI_PRICE_FLOOR = parseInt(process.env.KALSHI_PRICE_FLOOR || '15', 10);
+    const KALSHI_PRICE_CEIL = parseInt(process.env.KALSHI_PRICE_CEIL || '85', 10);
+
     for (const opp of analysis.allOpportunities) {
       if (!opp.action.autoExecute) continue;
 
@@ -189,12 +247,21 @@ export async function GET(req: NextRequest) {
 
           if (isKalshiTicker && isValidSide) {
             if (kalshiBalance < stake) continue;
-            if (tradeLimiter.hasAlreadyBet(ticker)) { kalshiDupeSkipped++; continue; }
+            // Supabase-backed dupe check (persists across Vercel invocations)
+            if (alreadyBet.has(ticker) || tradeLimiter.hasAlreadyBet(ticker)) { kalshiDupeSkipped++; continue; }
+            // Daily spend cap (Supabase-backed)
+            if (kalshiDailyBudgetLeft <= 0) { log('Kalshi daily spend cap reached — skipping'); continue; }
 
             const side = sideRaw.toLowerCase() as 'yes' | 'no';
             const priceMatch = (opp.action.instructions[0] || '').match(/(\d+)¢/);
             if (!priceMatch) continue;
             const price = parseInt(priceMatch[1], 10);
+
+            // Price guardrails: reject longshots (< floor) and heavy favorites (> ceil)
+            if (price < KALSHI_PRICE_FLOOR || price > KALSHI_PRICE_CEIL) {
+              log(`[SKIP] ${ticker} price ${price}¢ outside ${KALSHI_PRICE_FLOOR}-${KALSHI_PRICE_CEIL}¢ range`);
+              continue;
+            }
 
             const profitCheck = calcNetProfit(stake, price);
             if (profitCheck.netProfit < MIN_NET_PROFIT) continue;
@@ -204,6 +271,7 @@ export async function GET(req: NextRequest) {
             if (result) {
               kalshiBalance -= stake;
               tradeLimiter.recordTrade(ticker, stake, 'kalshi');
+              alreadyBet.add(ticker); // Update in-memory set for this invocation
               kalshiExecuted++;
               log(`[OK] Kalshi: ${ticker} ${side} $${stake.toFixed(2)} (net $${profitCheck.netProfit.toFixed(2)})`);
               await sms.sendTradeExecuted(opp.title, stake, 'Kalshi');
