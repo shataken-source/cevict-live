@@ -117,6 +117,17 @@ interface OddsSnapshot {
   };
 }
 
+// Convert decimal odds (1.57, 3.1) to American (-175, +210) if needed.
+// The Odds API returns decimal for some baseball markets but our DB stores American (integer).
+function toAmericanOdds(price: number): number {
+  if (!Number.isFinite(price)) return -110;
+  // Already American format: values like -110, +150, -200 (magnitude > 20 or negative)
+  if (price <= 0 || price > 20) return Math.round(price);
+  // Decimal odds: 1.01–20.00
+  if (price >= 2) return Math.round((price - 1) * 100);     // e.g. 3.1 → +210
+  return Math.round(-100 / (price - 1));                      // e.g. 1.57 → -175
+}
+
 function createOddsSnapshot(game: any): OddsSnapshot {
   const snapshot: OddsSnapshot = {
     gameId: game.id,
@@ -139,8 +150,8 @@ function createOddsSnapshot(game: any): OddsSnapshot {
           bookData.spreads = {
             home: homeOutcome.point || 0,
             away: awayOutcome.point || 0,
-            homeOdds: homeOutcome.price || -110,
-            awayOdds: awayOutcome.price || -110,
+            homeOdds: toAmericanOdds(homeOutcome.price || -110),
+            awayOdds: toAmericanOdds(awayOutcome.price || -110),
           };
         }
       } else if (market.key === 'totals') {
@@ -149,8 +160,8 @@ function createOddsSnapshot(game: any): OddsSnapshot {
         if (overOutcome && underOutcome) {
           bookData.totals = {
             line: overOutcome.point || 0,
-            overOdds: overOutcome.price || -110,
-            underOdds: underOutcome.price || -110,
+            overOdds: toAmericanOdds(overOutcome.price || -110),
+            underOdds: toAmericanOdds(underOutcome.price || -110),
           };
         }
       } else if (market.key === 'h2h') {
@@ -158,8 +169,8 @@ function createOddsSnapshot(game: any): OddsSnapshot {
         const awayOutcome = market.outcomes?.find((o: any) => o.name === game.away_team);
         if (homeOutcome && awayOutcome) {
           bookData.moneyline = {
-            home: homeOutcome.price || -110,
-            away: awayOutcome.price || -110,
+            home: toAmericanOdds(homeOutcome.price || -110),
+            away: toAmericanOdds(awayOutcome.price || -110),
           };
         }
       }

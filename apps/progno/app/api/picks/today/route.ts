@@ -2197,6 +2197,14 @@ async function fetchGamesFromSupabaseCache(sport: string): Promise<any[]> {
  * Check if odds in Supabase are stale and write fresh odds if needed.
  * Stale = older than 30 minutes
  */
+// Convert decimal odds (1.57, 3.1) to American (-175, +210) if needed.
+function toAmericanOdds(price: number): number {
+  if (!Number.isFinite(price)) return -110
+  if (price <= 0 || price > 20) return Math.round(price)
+  if (price >= 2) return Math.round((price - 1) * 100)
+  return Math.round(-100 / (price - 1))
+}
+
 async function checkAndStoreOdds(games: any[], sport: string): Promise<void> {
   try {
     if (!supabase) return
@@ -2250,8 +2258,8 @@ async function checkAndStoreOdds(games: any[], sport: string): Promise<void> {
                   commence_time: game.commence_time,
                   bookmaker: bookmaker.key,
                   market_type: 'moneyline',
-                  home_odds: homeOutcome.price,
-                  away_odds: awayOutcome.price,
+                  home_odds: toAmericanOdds(homeOutcome.price),
+                  away_odds: toAmericanOdds(awayOutcome.price),
                   captured_at: timestamp
                 })
               }
@@ -2269,8 +2277,8 @@ async function checkAndStoreOdds(games: any[], sport: string): Promise<void> {
                   market_type: 'spreads',
                   home_spread: homeOutcome.point,
                   away_spread: awayOutcome.point,
-                  home_odds: homeOutcome.price,
-                  away_odds: awayOutcome.price,
+                  home_odds: toAmericanOdds(homeOutcome.price),
+                  away_odds: toAmericanOdds(awayOutcome.price),
                   captured_at: timestamp
                 })
               }
@@ -2287,8 +2295,8 @@ async function checkAndStoreOdds(games: any[], sport: string): Promise<void> {
                   bookmaker: bookmaker.key,
                   market_type: 'totals',
                   total_line: overOutcome.point,
-                  over_odds: overOutcome.price,
-                  under_odds: underOutcome.price,
+                  over_odds: toAmericanOdds(overOutcome.price),
+                  under_odds: toAmericanOdds(underOutcome.price),
                   captured_at: timestamp
                 })
               }
