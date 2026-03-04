@@ -9,6 +9,7 @@ import { NewsScanner } from './intelligence/news-scanner';
 import { PrognoIntegration } from './intelligence/progno-integration';
 import { KalshiTrader } from './intelligence/kalshi-trader';
 import { CryptoTrader } from './strategies/crypto-trader';
+import { findEconomicsOpportunities } from './intelligence/economics-expert';
 
 interface AnalysisResult {
   topOpportunity: Opportunity | null;
@@ -51,15 +52,16 @@ export class AIBrain {
     const sportsOnly = process.env.PROGNO_SPORTS_ONLY === '1';
 
     if (sportsOnly) {
-      console.log('AI Brain (sports only) — fetching Progno→Kalshi + Coinbase crypto...\n');
-      // Kalshi/Progno + crypto (Coinbase production): both run in sports-only mode
+      console.log('AI Brain (sports only + econ) — fetching Progno→Kalshi + Crypto + Economics...\n');
       const [kalshiOpps, cryptoOpps] = await Promise.all([
         this.kalshi.findOpportunitiesWithExternalProbs(5),
         this.cryptoTrader.getOpportunities(),
       ]);
+      // Economics expert: scan ALL fetched markets for fed/cpi/unemployment edge
+      const econOpps = await findEconomicsOpportunities(await this.kalshi.getRawMarkets(), 8).catch(() => [] as Opportunity[]);
       const prognoResolved = kalshiOpps.filter(o => o.source === 'PROGNO').length;
-      console.log(`Progno: ${prognoResolved} matched to Kalshi tickers (${kalshiOpps.length} total) | Crypto: ${cryptoOpps.length}`);
-      const allOpportunities = [...kalshiOpps, ...cryptoOpps].filter(
+      console.log(`Progno: ${prognoResolved} matched to Kalshi tickers (${kalshiOpps.length} total) | Crypto: ${cryptoOpps.length} | Econ: ${econOpps.length}`);
+      const allOpportunities = [...kalshiOpps, ...cryptoOpps, ...econOpps].filter(
         (opp: Opportunity) => opp.confidence >= this.config.minConfidence && opp.expectedValue >= this.config.minExpectedValue
       );
       return this.rankOpportunities(allOpportunities, []);
@@ -76,12 +78,15 @@ export class AIBrain {
       this.progno.getArbitrageOpportunities(),
       this.cryptoTrader.getOpportunities(),
     ]);
+    // Economics expert: scan ALL fetched markets for fed/cpi/unemployment edge
+    const econOpps = await findEconomicsOpportunities(await this.kalshi.getRawMarkets(), 8).catch(() => [] as Opportunity[]);
     const prognoResolved = kalshiOpps.filter(o => o.source === 'PROGNO').length;
-    console.log(`News: ${news.length} | Progno: ${prognoResolved} (via Kalshi) | Kalshi: ${kalshiOpps.length} | Arb: ${arbitrageOpps.length} | Crypto: ${cryptoOpps.length}`);
+    console.log(`News: ${news.length} | Progno: ${prognoResolved} (via Kalshi) | Kalshi: ${kalshiOpps.length} | Arb: ${arbitrageOpps.length} | Crypto: ${cryptoOpps.length} | Econ: ${econOpps.length}`);
     const allOpportunities = [
       ...arbitrageOpps,
       ...kalshiOpps,
       ...cryptoOpps,
+      ...econOpps,
     ].filter(opp => opp.confidence >= this.config.minConfidence && opp.expectedValue >= this.config.minExpectedValue);
     return this.rankOpportunities(allOpportunities, news);
   }

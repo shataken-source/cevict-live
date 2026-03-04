@@ -22,6 +22,7 @@ import {
   getCryptoModelProbability,
 } from './probability-bridge';
 import { getMarketMakerAdvice } from './market-maker-client';
+import { getGameContext } from './game-context';
 
 /** ESPN scoreboard path by league */
 const ESPN_LEAGUE_PATH: Record<string, string> = {
@@ -385,6 +386,13 @@ export class KalshiTrader {
     const maxPages = Number.isFinite(envPages) && envPages > 0 ? envPages : 10;
     const apiMarkets = await this.getMarketsParallel(1000, maxPages);
     return this.transformMarkets(apiMarkets);
+  }
+
+  /** Raw Kalshi API market objects (yes_ask, ticker, status, etc.) for non-sports experts */
+  async getRawMarkets(): Promise<any[]> {
+    const envPages = parseInt(process.env.KALSHI_MAX_PAGES || '10', 10);
+    const maxPages = Number.isFinite(envPages) && envPages > 0 ? envPages : 10;
+    return this.getMarketsParallel(1000, maxPages);
   }
 
   async getBalance(): Promise<number> {
@@ -782,7 +790,24 @@ export class KalshiTrader {
         continue;
       }
 
-      const modelProb = Math.max(1, Math.min(99, ev.modelProbability)); // 0-100
+      // ── Game Context: weather + injury adjustments ──
+      let contextAdj = 0;
+      const contextReasons: string[] = [];
+      try {
+        const ctx = await getGameContext(ev.homeTeam, ev.awayTeam, ev.pick, ev.league || '');
+        if (ctx.shouldSkip) {
+          matchMiss++;
+          console.log(`[CONTEXT SKIP] ${ev.league}: ${ev.pick} — ${ctx.reasons[0] || 'severe conditions'}`);
+          continue;
+        }
+        contextAdj = ctx.probAdjustment;
+        contextReasons.push(...ctx.reasons);
+        if (ctx.reasons.length > 0) {
+          console.log(`   [CONTEXT] ${ev.pick}: adj=${contextAdj > 0 ? '+' : ''}${contextAdj}% — ${ctx.reasons.join(' | ')}`);
+        }
+      } catch { /* context unavailable — proceed with raw model */ }
+
+      const modelProb = Math.max(1, Math.min(99, ev.modelProbability + contextAdj)); // 0-100 with context adjustment
       const pickIsYes = matched.pickIsYesSide;
       const entryPrice = pickIsYes
         ? (typeof matched.yes_ask === 'number' ? matched.yes_ask : 50)
@@ -842,7 +867,10 @@ export class KalshiTrader {
         timeframe: '48h',
         requiredCapital: kellyStake,
         potentialReturn: profitCalc.netProfit,
-        reasoning: [`Progno model${ev.league ? ` (${ev.league})` : ''}: ${ev.label} → ${modelProb}% ${side} — net $${profitCalc.netProfit.toFixed(2)} after fees`],
+        reasoning: [
+          `Progno model${ev.league ? ` (${ev.league})` : ''}: ${ev.label} → ${modelProb}% ${side} — net $${profitCalc.netProfit.toFixed(2)} after fees`,
+          ...contextReasons,
+        ],
         dataPoints: [
           ...(typeof matched.volume === 'number' ? [{ source: 'Kalshi', metric: 'Volume', value: matched.volume, relevance: 80, timestamp: nowIso }] : []),
         ],
