@@ -445,7 +445,7 @@ export async function findWeatherOpportunities(
       const kellyProb = (side === 'yes' ? modelProb : (100 - modelProb)) / 100;
       const kellyOdds = (100 / tradePrice) - 1;
       const fullKelly = kellyOdds > 0 ? (kellyProb - (1 - kellyProb) / kellyOdds) : 0;
-      const stake = Math.max(2, Math.min(10, Math.round(fullKelly * 0.25 * 100)));
+      const stake = Math.max(2, Math.min(2, Math.round(fullKelly * 0.25 * 100))); // Hard cap $2 — same as sports
 
       const reasoning = [
         `[WEATHER] ${wm.city.name} ${wm.type === 'temp_high' ? 'high' : 'low'} on ${wm.targetDate}`,

@@ -526,7 +526,7 @@ export async function findEconomicsOpportunities(
   const PRICE_FLOOR = parseInt(process.env.KALSHI_PRICE_FLOOR || '15', 10);
   const PRICE_CEIL = parseInt(process.env.KALSHI_PRICE_CEIL || '85', 10);
   const MAX_EDGE = parseInt(process.env.KALSHI_MAX_EDGE || '55', 10);
-  const maxStake = parseFloat(process.env.MAX_SINGLE_TRADE || '10');
+  const maxStake = Math.min(2, parseFloat(process.env.MAX_SINGLE_TRADE || '10')); // Hard cap $2 — same as sports
 
   for (const m of allMarkets) {
     if (!m?.title || !m?.ticker) continue;
