@@ -333,11 +333,9 @@ export class CryptoTrader {
       const spreadPct = ((ask - bid) / bid) * 100;
       const midPrice = (bid + ask) / 2;
 
-      // Need spread > 0.15% to cover round-trip maker fees (0.4% × 2 = 0.8%)
-      // But we only enter on one side — buy at bid, sell at market later when price moves up
-      // So effective cost is ~0.4% maker + 0.6% taker = 1.0%
-      // Spread must be wide enough that buying at bid gives us edge
-      if (spreadPct < 0.12) return null;
+      // Round-trip fees: 0.4% maker (entry) + 0.6% taker (exit) = 1.0% minimum
+      // Need spread > 1.0% to profit. Use 1.2% for safety margin.
+      if (spreadPct < 1.2) return null;
 
       // Check recent candles: only buy if price is near support (not falling knife)
       const candles = await cb.getCandles(pair, 300); // 5-min candles

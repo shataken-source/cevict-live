@@ -194,7 +194,7 @@ export class ExchangeManager {
   /**
    * Compare prices across exchanges
    */
-  async comparePrices(crypto: 'BTC' | 'ETH' | 'SOL'): Promise<PriceComparison> {
+  async comparePrices(crypto: 'BTC' | 'ETH' | 'SOL', side: 'buy' | 'sell' = 'buy'): Promise<PriceComparison> {
     const comparison: PriceComparison = {
       symbol: crypto,
       best: '',
@@ -225,9 +225,11 @@ export class ExchangeManager {
       prices.push({ exchange: 'Binance', price: ticker.price });
     } catch { }
 
-    // Find best price (lowest for buying)
+    // Find best price: lowest for buying, highest for selling
     if (prices.length > 0) {
-      const sorted = prices.sort((a, b) => a.price - b.price);
+      const sorted = side === 'sell'
+        ? prices.sort((a, b) => b.price - a.price)  // highest first for sells
+        : prices.sort((a, b) => a.price - b.price); // lowest first for buys
       comparison.best = sorted[0].exchange;
       comparison.bestPrice = sorted[0].price;
 
@@ -255,8 +257,8 @@ export class ExchangeManager {
     side: 'buy' | 'sell',
     usdAmount: number
   ): Promise<TradeResult> {
-    // Compare prices
-    const prices = await this.comparePrices(crypto);
+    // Compare prices (pick best exchange for the side)
+    const prices = await this.comparePrices(crypto, side);
     console.log(`\nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â±Price Comparison for ${crypto}:`);
     if (prices.coinbase) console.log(`   Coinbase: $${prices.coinbase.toFixed(2)}`);
     if (prices.cryptoCom) console.log(`   Crypto.com: $${prices.cryptoCom.toFixed(2)}`);
@@ -301,7 +303,7 @@ export class ExchangeManager {
         b.exchange.toLowerCase().includes(targetExchange.toLowerCase())
       );
       const available = targetBal ? this.getCryptoAvailable(targetBal, crypto) : 0;
-      const price = prices.bestPrice || (await this.comparePrices(crypto)).bestPrice;
+      const price = prices.bestPrice || (await this.comparePrices(crypto, 'sell')).bestPrice;
       if (price <= 0) {
         return {
           exchange: targetExchange, symbol: crypto, side, amount: 0, price: 0, fee: 0, orderId: '',

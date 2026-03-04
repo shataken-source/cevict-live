@@ -63,6 +63,21 @@ async function getTodayKalshiSpendCents(): Promise<number> {
   } catch { return 0; }
 }
 
+/** Supabase-backed crypto trade tracking — prevents duplicate trades on serverless */
+async function getCryptoTradesThisCycle(): Promise<Set<string>> {
+  const sb = getSupabase();
+  if (!sb) return new Set();
+  try {
+    const { data } = await sb
+      .from('alpha_hunter_trades')
+      .select('pair')
+      .gte('opened_at', new Date(Date.now() - 30 * 60 * 1000).toISOString()) // last 30 min
+      .eq('platform', 'coinbase')
+      .eq('closed', false);
+    return new Set((data || []).map((r: any) => r.pair?.split('-')[0]).filter(Boolean));
+  } catch { return new Set(); }
+}
+
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 min max (Pro plan)
 
@@ -288,7 +303,11 @@ export async function GET(req: NextRequest) {
             }
           }
         } else if (opp.action.platform === 'crypto_exchange') {
-          if (tradeLimiter.hasAlreadyBet(opp.action.target)) continue;
+          // Only execute crypto once per cycle — executeBestSignal generates its own signals
+          if (cryptoExecuted > 0) continue;
+          // Supabase-backed dupe check: skip if we traded this asset in last 30 min
+          const recentCrypto = await getCryptoTradesThisCycle();
+          if (recentCrypto.size >= 3) { log('[SKIP] Crypto: all assets traded recently'); continue; }
           const trade = await crypto.executeBestSignal();
           if (trade) {
             cryptoExecuted++;
