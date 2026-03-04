@@ -257,7 +257,7 @@ export async function GET(req: NextRequest) {
           const parts = opp.action.target.split(' ');
           const ticker = parts[0];
           const sideRaw = parts[parts.length - 1]?.toUpperCase();
-          const isKalshiTicker = ticker.startsWith('KX') || ticker.includes('-') || /^(FED|CPI|INF|UNRATE|GDP|RECESSION|ECON)/i.test(ticker);
+          const isKalshiTicker = ticker.startsWith('KX') || ticker.includes('-') || /^(FED|CPI|INF|UNRATE|GDP|RECESSION|ECON|HIGHTEMP|LOWTEMP|TEMP|SNOW|FREEZE|HEAT|WEATHER)/i.test(ticker);
           const isValidSide = sideRaw === 'YES' || sideRaw === 'NO';
 
           if (isKalshiTicker && isValidSide) {
