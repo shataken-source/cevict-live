@@ -104,12 +104,24 @@ export async function GET(req: NextRequest) {
   try {
     log(`─── Cron Trade Cycle @ ${new Date().toLocaleTimeString()} ───`);
 
-    // Check emergency stop
+    // Check emergency stop (file-based — defense-in-depth)
     const stopCheck = emergencyStop.canTrade();
     if (!stopCheck.allowed) {
       log(`[STOP] Emergency stop active: ${stopCheck.reason}`);
       return NextResponse.json({ success: true, stopped: true, reason: stopCheck.reason, logs });
     }
+
+    // Check Supabase kill switch (SMS-triggered, persists across serverless invocations)
+    try {
+      const sb = getSupabase();
+      if (sb) {
+        const { data } = await sb.from('kill_switch').select('active, reason').eq('id', 'alpha-hunter').single();
+        if (data?.active) {
+          log(`[STOP] SMS kill switch active: ${data.reason || 'no reason'}`);
+          return NextResponse.json({ success: true, stopped: true, reason: `SMS kill switch: ${data.reason}`, logs });
+        }
+      }
+    } catch { /* no kill_switch row = trading allowed */ }
 
     const brain = new AIBrain();
     const kalshi = new KalshiTrader();
