@@ -11,6 +11,7 @@ import { KalshiTrader } from './intelligence/kalshi-trader';
 import { CryptoTrader } from './strategies/crypto-trader';
 import { findEconomicsOpportunities } from './intelligence/economics-expert';
 import { findWeatherOpportunities } from './intelligence/weather-expert';
+import { findEntertainmentOpportunities } from './intelligence/entertainment-expert';
 
 interface AnalysisResult {
   topOpportunity: Opportunity | null;
@@ -53,20 +54,21 @@ export class AIBrain {
     const sportsOnly = process.env.PROGNO_SPORTS_ONLY === '1';
 
     if (sportsOnly) {
-      console.log('AI Brain (sports only + econ) — fetching Progno→Kalshi + Crypto + Economics...\n');
+      console.log('AI Brain (sports only + econ) — fetching Progno→Kalshi + Crypto + Economics + Weather + Entertainment...\n');
       const [kalshiOpps, cryptoOpps] = await Promise.all([
         this.kalshi.findOpportunitiesWithExternalProbs(5),
         this.cryptoTrader.getOpportunities(),
       ]);
       // Non-sports experts: scan ALL fetched markets for edge
       const rawMarkets = await this.kalshi.getRawMarkets();
-      const [econOpps, weatherOpps] = await Promise.all([
+      const [econOpps, weatherOpps, entertainmentOpps] = await Promise.all([
         findEconomicsOpportunities(rawMarkets, 8).catch(() => [] as Opportunity[]),
         findWeatherOpportunities(rawMarkets, 8).catch(() => [] as Opportunity[]),
+        findEntertainmentOpportunities(rawMarkets, 8).catch(() => [] as Opportunity[]),
       ]);
       const prognoResolved = kalshiOpps.filter(o => o.source === 'PROGNO').length;
-      console.log(`Progno: ${prognoResolved} matched to Kalshi tickers (${kalshiOpps.length} total) | Crypto: ${cryptoOpps.length} | Econ: ${econOpps.length} | Weather: ${weatherOpps.length}`);
-      const allOpportunities = [...kalshiOpps, ...cryptoOpps, ...econOpps, ...weatherOpps].filter(
+      console.log(`Progno: ${prognoResolved} matched to Kalshi tickers (${kalshiOpps.length} total) | Crypto: ${cryptoOpps.length} | Econ: ${econOpps.length} | Weather: ${weatherOpps.length} | Entertainment: ${entertainmentOpps.length}`);
+      const allOpportunities = [...kalshiOpps, ...cryptoOpps, ...econOpps, ...weatherOpps, ...entertainmentOpps].filter(
         (opp: Opportunity) => opp.confidence >= this.config.minConfidence && opp.expectedValue >= this.config.minExpectedValue
       );
       return this.rankOpportunities(allOpportunities, []);
@@ -85,18 +87,20 @@ export class AIBrain {
     ]);
     // Non-sports experts: scan ALL fetched markets for edge
     const rawMarkets = await this.kalshi.getRawMarkets();
-    const [econOpps, weatherOpps] = await Promise.all([
+    const [econOpps, weatherOpps, entertainmentOpps] = await Promise.all([
       findEconomicsOpportunities(rawMarkets, 8).catch(() => [] as Opportunity[]),
       findWeatherOpportunities(rawMarkets, 8).catch(() => [] as Opportunity[]),
+      findEntertainmentOpportunities(rawMarkets, 8).catch(() => [] as Opportunity[]),
     ]);
     const prognoResolved = kalshiOpps.filter(o => o.source === 'PROGNO').length;
-    console.log(`News: ${news.length} | Progno: ${prognoResolved} (via Kalshi) | Kalshi: ${kalshiOpps.length} | Arb: ${arbitrageOpps.length} | Crypto: ${cryptoOpps.length} | Econ: ${econOpps.length} | Weather: ${weatherOpps.length}`);
+    console.log(`News: ${news.length} | Progno: ${prognoResolved} (via Kalshi) | Kalshi: ${kalshiOpps.length} | Arb: ${arbitrageOpps.length} | Crypto: ${cryptoOpps.length} | Econ: ${econOpps.length} | Weather: ${weatherOpps.length} | Entertainment: ${entertainmentOpps.length}`);
     const allOpportunities = [
       ...arbitrageOpps,
       ...kalshiOpps,
       ...cryptoOpps,
       ...econOpps,
       ...weatherOpps,
+      ...entertainmentOpps,
     ].filter(opp => opp.confidence >= this.config.minConfidence && opp.expectedValue >= this.config.minExpectedValue);
     return this.rankOpportunities(allOpportunities, news);
   }

@@ -257,7 +257,7 @@ export async function GET(req: NextRequest) {
           const parts = opp.action.target.split(' ');
           const ticker = parts[0];
           const sideRaw = parts[parts.length - 1]?.toUpperCase();
-          const isKalshiTicker = ticker.startsWith('KX') || ticker.includes('-') || /^(FED|CPI|INF|UNRATE|GDP|RECESSION|ECON|HIGHTEMP|LOWTEMP|TEMP|SNOW|FREEZE|HEAT|WEATHER)/i.test(ticker);
+          const isKalshiTicker = ticker.startsWith('KX') || ticker.includes('-') || /^(FED|CPI|INF|UNRATE|GDP|RECESSION|ECON|HIGHTEMP|LOWTEMP|TEMP|SNOW|FREEZE|HEAT|WEATHER|GOLD|SILVER|COPPER|PLATINUM|EURUSD|FXPESO|JPY|GBP|DXY|OSCAR|EMMY|GRAMMY|GLOBE|STREAM|BOXOFFICE)/i.test(ticker);
           const isValidSide = sideRaw === 'YES' || sideRaw === 'NO';
 
           if (isKalshiTicker && isValidSide) {
@@ -320,12 +320,24 @@ export async function GET(req: NextRequest) {
     }
 
     if (kalshiDupeSkipped > 0) log(`Skipped ${kalshiDupeSkipped} duplicate Kalshi bets`);
-    log(`Cycle done: ${kalshiExecuted} Kalshi + ${cryptoExecuted} crypto trades`);
+
+    // ── ROBINHOOD SECOND-CHANCE SANDBOX ─────────────────────────────
+    let rhExecuted = 0;
+    try {
+      const rhResult = await crypto.executeSecondChanceOnRobinhood();
+      rhExecuted = rhResult.executed;
+      for (const l of rhResult.logs) log(l);
+    } catch (err: any) {
+      log(`[RH] Second-chance error: ${err.message}`);
+    }
+
+    log(`Cycle done: ${kalshiExecuted} Kalshi + ${cryptoExecuted} crypto + ${rhExecuted} Robinhood trades`);
 
     return NextResponse.json({
       success: true,
       kalshiTrades: kalshiExecuted,
       cryptoTrades: cryptoExecuted,
+      robinhoodTrades: rhExecuted,
       opportunities: analysis.allOpportunities.length,
       durationMs: Date.now() - startTime,
       logs,

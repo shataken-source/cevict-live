@@ -84,7 +84,7 @@ interface EconSnapshot {
 interface EconMarketSignal {
   ticker: string;
   title: string;
-  category: 'fed_rate' | 'inflation' | 'unemployment' | 'gdp' | 'recession' | 'energy' | 'crypto' | 'stock_market';
+  category: 'fed_rate' | 'inflation' | 'unemployment' | 'gdp' | 'recession' | 'energy' | 'crypto' | 'stock_market' | 'metals' | 'forex';
   modelProbability: number; // 0-100
   marketPrice: number;      // yes_ask in cents
   edge: number;             // model - market
@@ -390,6 +390,10 @@ function classifyEconMarket(title: string, ticker: string): EconMarketSignal['ca
     return 'crypto';
   if (t.includes('s&p') || t.includes('sp500') || t.includes('s&p 500') || t.includes('dow') || t.includes('nasdaq') || t.includes('stock market') || t.includes('djia') || t.includes('vix') || t.includes('volatility index'))
     return 'stock_market';
+  if (t.includes('gold') || t.includes('silver') || t.includes('copper') || t.includes('platinum') || t.includes('palladium') || t.includes('metal') || /GOLD|SILVER|COPPER/i.test(ticker))
+    return 'metals';
+  if (t.includes('euro') || t.includes('eur/usd') || t.includes('dollar') || t.includes('yen') || t.includes('gbp') || t.includes('pound') || t.includes('peso') || t.includes('forex') || t.includes('exchange rate') || t.includes('currency') || t.includes('de-dollarization') || /EURUSD|DXY|FXPESO|JPY|GBP/i.test(ticker))
+    return 'forex';
   return null;
 }
 
@@ -860,7 +864,113 @@ function analyzeStockMarket(title: string, yesAsk: number, snap: EconSnapshot): 
   return null;
 }
 
-// ── Public API ───────────────────────────────────────────────────────────────
+function analyzeMetals(title: string, yesAsk: number, snap: EconSnapshot): { prob: number; confidence: number; reasoning: string[] } | null {
+  const t = title.toLowerCase();
+  const reasoning: string[] = [];
+
+  // Gold price markets: "Will gold be above $X?" or "Gold price above X"
+  const goldAboveMatch = t.match(/gold.*(?:above|over|exceed|at or above)\s*\$?([\d,]+)/);
+  const goldBelowMatch = t.match(/gold.*(?:below|under|at or below)\s*\$?([\d,]+)/);
+  const silverAboveMatch = t.match(/silver.*(?:above|over|exceed)\s*\$?([\d.]+)/);
+  const copperAboveMatch = t.match(/copper.*(?:above|over|exceed)\s*\$?([\d.]+)/);
+
+  // Gold tends to rally with: high inflation, low real rates, geopolitical risk, weak dollar
+  // Gold tends to fall with: rate hikes, strong dollar, low inflation
+  if (goldAboveMatch || goldBelowMatch) {
+    // Use macro signals as proxy (we don't have live gold price in snap yet)
+    const inflationHigh = (snap.cpiYoY ?? 2.5) > 3.0;
+    const ratesCutting = (snap.fedFundsRate ?? 5) < 5.0;
+    const yieldCurveInverted = (snap.yieldCurveSpread ?? 0) < 0;
+
+    let bullishSignals = 0;
+    if (inflationHigh) { bullishSignals++; reasoning.push(`CPI YoY ${snap.cpiYoY?.toFixed(1)}% — inflation supports gold`); }
+    if (ratesCutting) { bullishSignals++; reasoning.push(`Fed funds ${snap.fedFundsRate}% — rate cuts bullish for gold`); }
+    if (yieldCurveInverted) { bullishSignals++; reasoning.push(`Yield curve inverted — recession fear supports gold`); }
+    if ((snap.vix ?? 15) > 25) { bullishSignals++; reasoning.push(`VIX elevated (${snap.vix}) — flight to safety`); }
+
+    if (goldAboveMatch) {
+      // "Gold above $X" — bullish signals support YES
+      const prob = 35 + bullishSignals * 10;
+      return { prob: Math.min(78, prob), confidence: 55 + bullishSignals * 4, reasoning };
+    }
+    if (goldBelowMatch) {
+      // "Gold below $X" — bullish signals oppose YES (gold going UP not down)
+      const prob = 65 - bullishSignals * 10;
+      return { prob: Math.max(22, prob), confidence: 55 + bullishSignals * 4, reasoning };
+    }
+  }
+
+  if (silverAboveMatch || copperAboveMatch) {
+    // Silver/copper correlate with: industrial demand, inflation, infrastructure spending
+    const inflationSignal = (snap.cpiYoY ?? 2.5) > 2.5;
+    const growthSignal = (snap.gdpGrowth ?? 2) > 2;
+    let bullish = 0;
+    if (inflationSignal) { bullish++; reasoning.push(`Inflation ${snap.cpiYoY?.toFixed(1)}% supports industrial metals`); }
+    if (growthSignal) { bullish++; reasoning.push(`GDP growth ${snap.gdpGrowth?.toFixed(1)}% supports demand`); }
+    const prob = 40 + bullish * 10;
+    return { prob: Math.min(72, prob), confidence: 52 + bullish * 5, reasoning };
+  }
+
+  // Generic gold/silver weekly/monthly
+  reasoning.push('Metals market — macro-driven analysis');
+  return { prob: 50, confidence: 50, reasoning };
+}
+
+function analyzeForex(title: string, yesAsk: number, snap: EconSnapshot): { prob: number; confidence: number; reasoning: string[] } | null {
+  const t = title.toLowerCase();
+  const reasoning: string[] = [];
+
+  // EUR/USD: "Will Euro be worth more than Dollar?"
+  if (t.includes('euro') && t.includes('dollar') || t.includes('eur/usd') || t.includes('eur>') || t.includes('euro >')) {
+    // Strong dollar when: Fed hiking, US growth strong, risk-off
+    // Weak dollar when: Fed cutting, inflation dropping, global recovery
+    const fedHigh = (snap.fedFundsRate ?? 5) > 4.5;
+    const usGrowthStrong = (snap.gdpGrowth ?? 2) > 2.5;
+    let dollarBullish = 0;
+    if (fedHigh) { dollarBullish++; reasoning.push(`Fed funds ${snap.fedFundsRate}% — high rates support USD`); }
+    if (usGrowthStrong) { dollarBullish++; reasoning.push(`US GDP ${snap.gdpGrowth?.toFixed(1)}% — strong growth supports USD`); }
+    if ((snap.vix ?? 15) > 25) { dollarBullish++; reasoning.push(`Risk-off (VIX ${snap.vix}) — safe-haven demand for USD`); }
+
+    // "Euro > Dollar" → YES means dollar weakening
+    const prob = 50 - dollarBullish * 10; // More dollar-bullish signals = less likely EUR > USD
+    return { prob: Math.max(20, Math.min(80, prob)), confidence: 52 + dollarBullish * 5, reasoning };
+  }
+
+  // USD/JPY: "Dollar/Yen above X?"
+  if (t.includes('yen') || t.includes('jpy') || t.includes('usd/jpy')) {
+    // USD/JPY rises when US rates are high relative to Japan (carry trade)
+    const fedHigh = (snap.fedFundsRate ?? 5) > 4.0;
+    if (fedHigh) reasoning.push(`High US rates (${snap.fedFundsRate}%) support USD/JPY via carry trade`);
+    else reasoning.push(`Low US rates favor JPY strengthening`);
+    const prob = fedHigh ? 62 : 40;
+    return { prob, confidence: 55, reasoning };
+  }
+
+  // GBP/USD
+  if (t.includes('pound') || t.includes('gbp') || t.includes('sterling')) {
+    reasoning.push('GBP analysis: tracking UK vs US rate differential');
+    return { prob: 50, confidence: 50, reasoning };
+  }
+
+  // USD/MXN (Peso)
+  if (t.includes('peso') || t.includes('mxn')) {
+    // Peso tends to weaken with: US tariffs, EM risk-off, Fed hikes
+    reasoning.push('USD/MXN: tracking tariff risk and rate differentials');
+    return { prob: 50, confidence: 50, reasoning };
+  }
+
+  // De-dollarization / DXY
+  if (t.includes('dollarization') || t.includes('dxy') || t.includes('dollar index')) {
+    reasoning.push('Dollar index: macro-driven');
+    const fedHigh = (snap.fedFundsRate ?? 5) > 4.5;
+    return { prob: fedHigh ? 35 : 55, confidence: 52, reasoning };
+  }
+
+  reasoning.push('Forex market — macro-driven analysis');
+  return { prob: 50, confidence: 50, reasoning };
+}
+
+// ── Public API ───────────────────────────────────────────────────────────
 
 /**
  * Scan Kalshi markets and generate economics opportunities.
@@ -931,6 +1041,12 @@ export async function findEconomicsOpportunities(
         break;
       case 'stock_market':
         result = analyzeStockMarket(m.title, yesAsk, snap);
+        break;
+      case 'metals':
+        result = analyzeMetals(m.title, yesAsk, snap);
+        break;
+      case 'forex':
+        result = analyzeForex(m.title, yesAsk, snap);
         break;
     }
 

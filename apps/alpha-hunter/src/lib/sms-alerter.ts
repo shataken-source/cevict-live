@@ -80,7 +80,7 @@ export class SMSAlerter {
     symbol: string,
     amount: number,
     type: 'BUY' | 'SELL',
-    platform: 'Coinbase' | 'Kalshi' | 'Polymarket'
+    platform: 'Coinbase' | 'Kalshi' | 'Polymarket' | 'Robinhood' | 'Robinhood (sandbox)'
   ): Promise<void> {
     const message = `🚨 ALPHA HUNTER TRADE\n${type} ${symbol}\nAmount: $${amount.toFixed(2)}\nPlatform: ${platform}\nTime: ${new Date().toLocaleTimeString()}`;
 

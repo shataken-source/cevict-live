@@ -7,6 +7,7 @@
 import { CoinbaseExchange } from './coinbase';
 import { CryptoComExchange } from './crypto-com';
 import { BinanceExchange } from './binance';
+import { RobinhoodExchange } from './robinhood';
 
 interface ExchangeBalance {
   exchange: string;
@@ -43,6 +44,7 @@ export class ExchangeManager {
   private coinbase: CoinbaseExchange;
   private cryptoCom: CryptoComExchange;
   private binance: BinanceExchange;
+  private robinhood: RobinhoodExchange;
   private preferredExchange: string;
   private readonly USD_RESERVE = parseFloat(process.env.USD_RESERVE_FLOOR || '50');
 
@@ -50,11 +52,13 @@ export class ExchangeManager {
     this.coinbase = new CoinbaseExchange();
     this.cryptoCom = new CryptoComExchange();
     this.binance = new BinanceExchange();
+    this.robinhood = new RobinhoodExchange();
     this.preferredExchange = process.env.PREFERRED_EXCHANGE || 'coinbase';
     console.log('   [*] Exchange Manager initialized');
     console.log(`   Coinbase: ${this.coinbase.isConfigured() ? 'Ready' : 'Simulated'}`);
     console.log(`   Crypto.com: Disabled (re-enable when API key is ready)`);
     console.log(`   Binance: ${this.binance.isConfigured() ? 'Ready' : 'Simulated'}`);
+    console.log(`   Robinhood: ${this.robinhood.isConfigured() ? 'Ready' : 'Not configured'}`);
     console.log(`   Preferred: ${this.preferredExchange}\n`);
   }
 
@@ -130,6 +134,26 @@ export class ExchangeManager {
         });
       } catch (error) {
         console.error('Binance balance error:', error);
+      }
+    }
+
+    // Robinhood
+    if (this.robinhood.isConfigured()) {
+      try {
+        const accounts = await this.robinhood.getAccounts();
+        const usd = accounts.find(a => a.asset === 'USD')?.free || 0;
+        balances.push({
+          exchange: 'Robinhood',
+          usd,
+          usdc: 0,
+          btc: accounts.find(a => a.asset === 'BTC')?.free || 0,
+          eth: accounts.find(a => a.asset === 'ETH')?.free || 0,
+          other: accounts
+            .filter(a => !['USD', 'BTC', 'ETH'].includes(a.asset))
+            .reduce((acc, a) => ({ ...acc, [a.asset]: a.free }), {}),
+        });
+      } catch (error) {
+        console.error('Robinhood balance error:', error);
       }
     }
 
@@ -224,6 +248,14 @@ export class ExchangeManager {
       comparison.binance = ticker.price;
       prices.push({ exchange: 'Binance', price: ticker.price });
     } catch { }
+
+    // Robinhood
+    if (this.robinhood.isConfigured()) {
+      try {
+        const ticker = await this.robinhood.getTicker(`${crypto}-USD`);
+        prices.push({ exchange: 'Robinhood', price: ticker.price });
+      } catch { }
+    }
 
     // Find best price: lowest for buying, highest for selling
     if (prices.length > 0) {
@@ -426,6 +458,24 @@ export class ExchangeManager {
             result.orderId = bnbOrder.orderId.toString();
             result.price = bnbTicker.price;
             result.success = bnbOrder.status === 'FILLED';
+          }
+          break;
+
+        case 'robinhood':
+          const rhSymbol = `${crypto}-USD`;
+          if (side === 'buy') {
+            const rhOrder = await this.robinhood.marketBuy(rhSymbol, usdAmount);
+            result.orderId = rhOrder.id;
+            result.price = parseFloat(rhOrder.average_price || '0');
+            result.success = rhOrder.state === 'filled' || rhOrder.state === 'confirmed';
+          } else {
+            const rhPrice = await this.robinhood.getPrice(rhSymbol);
+            if (rhPrice <= 0) throw new Error(`Could not get price for ${rhSymbol}`);
+            const cryptoAmount = (usdAmount / rhPrice) * 0.995;
+            const rhOrder = await this.robinhood.marketSell(rhSymbol, cryptoAmount);
+            result.orderId = rhOrder.id;
+            result.price = rhPrice;
+            result.success = rhOrder.state === 'filled' || rhOrder.state === 'confirmed';
           }
           break;
 

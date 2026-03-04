@@ -5,6 +5,7 @@
  */
 
 import { ExchangeManager } from '../exchanges/exchange-manager';
+import { RobinhoodExchange } from '../exchanges/robinhood';
 import { Opportunity, Trade, LearningData } from '../types';
 import { tradeLimiter } from '../lib/trade-limiter';
 import { smsAlerter } from '../lib/sms-alerter';
@@ -127,6 +128,59 @@ export class CryptoTrader {
     return signals
       .filter(s => s.confidence >= this.config.minConfidence)
       .sort((a, b) => b.confidence - a.confidence);
+  }
+
+  /**
+   * Generate ALL signals including near-misses (for Robinhood sandbox).
+   * Returns { primary: signals above minConfidence, secondChance: signals in 45-minConfidence range }
+   */
+  async generateAllSignals(): Promise<{ primary: CryptoSignal[]; secondChance: CryptoSignal[] }> {
+    const signals: CryptoSignal[] = [];
+
+    for (const crypto of ['BTC', 'ETH', 'SOL'] as const) {
+      const lastTrade = this.lastTradeTime.get(crypto) || 0;
+      if (Date.now() - lastTrade < this.TRADE_COOLDOWN_MS) continue;
+
+      const prices = await this.exchanges.comparePrices(crypto);
+      if (!prices.bestPrice) continue;
+
+      const assetSignals: CryptoSignal[] = [];
+
+      if (this.config.enabledStrategies.includes('mean_reversion')) {
+        const mrSignal = await this.meanReversionStrategy(crypto, prices.bestPrice);
+        if (mrSignal) assetSignals.push(mrSignal);
+      }
+      if (this.config.enabledStrategies.includes('momentum')) {
+        const momSignal = await this.momentumStrategy(crypto, prices.bestPrice);
+        if (momSignal) assetSignals.push(momSignal);
+      }
+      if (this.config.enabledStrategies.includes('breakout')) {
+        const boSignal = await this.breakoutStrategy(crypto, prices.bestPrice);
+        if (boSignal) assetSignals.push(boSignal);
+      }
+      if (this.config.enabledStrategies.includes('spread')) {
+        const spreadSignal = await this.spreadStrategy(crypto, prices.bestPrice);
+        if (spreadSignal) assetSignals.push(spreadSignal);
+      }
+
+      if (assetSignals.length >= 2) {
+        const directions = new Set(assetSignals.map(s => s.direction));
+        if (directions.size > 1) continue;
+        const best = assetSignals.sort((a, b) => b.confidence - a.confidence)[0];
+        best.confidence = Math.min(best.confidence + 5, 85);
+        best.reasoning.push(`Signal confirmed by ${assetSignals.length} strategies`);
+        signals.push(best);
+      } else {
+        signals.push(...assetSignals);
+      }
+    }
+
+    const sorted = signals.sort((a, b) => b.confidence - a.confidence);
+    const RH_MIN = 45; // minimum confidence for Robinhood sandbox
+    return {
+      primary: sorted.filter(s => s.confidence >= this.config.minConfidence),
+      secondChance: sorted.filter(s => s.confidence >= RH_MIN && s.confidence < this.config.minConfidence),
+    };
   }
 
   /**
@@ -609,6 +663,123 @@ export class CryptoTrader {
   resetDailyCounters(): void {
     this.dailyTrades = 0;
     this.dailyPnL = 0;
+  }
+
+  // ── Robinhood Second-Chance Sandbox ──────────────────────────────────────
+
+  /**
+   * Execute near-miss signals on Robinhood as a live sandbox.
+   * Smaller position sizes ($10-25 vs $50 on Coinbase), buy-only for safety.
+   * Returns number of trades executed.
+   */
+  async executeSecondChanceOnRobinhood(): Promise<{ executed: number; logs: string[] }> {
+    const rh = new RobinhoodExchange();
+    if (!rh.isConfigured()) return { executed: 0, logs: ['Robinhood not configured'] };
+
+    const logs: string[] = [];
+    const RH_MAX_TRADE = parseFloat(process.env.RH_MAX_TRADE || '15');
+    const RH_MAX_DAILY_TRADES = parseInt(process.env.RH_MAX_DAILY_TRADES || '3', 10);
+
+    const { secondChance } = await this.generateAllSignals();
+    if (secondChance.length === 0) {
+      logs.push('[RH] No second-chance signals this cycle');
+      return { executed: 0, logs };
+    }
+
+    logs.push(`[RH] ${secondChance.length} second-chance signal(s): ${secondChance.map(s => `${s.symbol} ${s.direction} ${s.confidence}%`).join(', ')}`);
+
+    // Check how many RH trades today (from Supabase)
+    let rhTradesToday = 0;
+    try {
+      const { createClient } = require('@supabase/supabase-js');
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (url && key) {
+        const sb = createClient(url, key);
+        const today = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit',
+        }).format(new Date());
+        const { data } = await sb.from('alpha_hunter_trades')
+          .select('id')
+          .eq('platform', 'robinhood')
+          .gte('opened_at', `${today}T00:00:00`);
+        rhTradesToday = (data || []).length;
+      }
+    } catch { /* ignore */ }
+
+    if (rhTradesToday >= RH_MAX_DAILY_TRADES) {
+      logs.push(`[RH] Daily limit reached (${rhTradesToday}/${RH_MAX_DAILY_TRADES})`);
+      return { executed: 0, logs };
+    }
+
+    let executed = 0;
+
+    for (const signal of secondChance) {
+      if (executed + rhTradesToday >= RH_MAX_DAILY_TRADES) break;
+
+      // Sandbox safety: buy-only (no shorts on Robinhood sandbox)
+      if (signal.direction === 'short') {
+        logs.push(`[RH] Skip ${signal.symbol} short — sandbox is buy-only`);
+        continue;
+      }
+
+      // Scale position by confidence: 45% conf → $10, 64% conf → $25
+      const confPct = (signal.confidence - 45) / (this.config.minConfidence - 45);
+      const tradeSize = Math.max(10, Math.min(RH_MAX_TRADE, Math.round(10 + confPct * 15)));
+
+      const symbol = `${signal.symbol}-USD`;
+      // Check if Robinhood supports this pair
+      try {
+        const pairs = await rh.getTradingPairs([symbol]);
+        const pair = (pairs || []).find((p: any) => p.symbol === symbol && p.status === 'tradable');
+        if (!pair) {
+          logs.push(`[RH] ${symbol} not tradable on Robinhood`);
+          continue;
+        }
+      } catch {
+        logs.push(`[RH] Could not check ${symbol} tradability`);
+        continue;
+      }
+
+      try {
+        const order = await rh.marketBuy(symbol, tradeSize);
+        const ok = order.state === 'filled' || order.state === 'confirmed' || order.state === 'queued';
+        if (ok) {
+          executed++;
+          logs.push(`[RH] ✅ ${symbol} BUY $${tradeSize} (conf ${signal.confidence}%, order ${order.id})`);
+
+          // Record to Supabase alpha_hunter_trades
+          try {
+            const { createClient } = require('@supabase/supabase-js');
+            const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+            const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+            if (url && key) {
+              const sb = createClient(url, key);
+              await sb.from('alpha_hunter_trades').insert({
+                pair: symbol,
+                side: 'buy',
+                amount: tradeSize,
+                price: parseFloat(order.average_price || '0'),
+                platform: 'robinhood',
+                confidence: signal.confidence,
+                reasoning: signal.reasoning.join('; '),
+                opened_at: new Date().toISOString(),
+                closed: false,
+                sandbox: true,
+              });
+            }
+          } catch { /* non-fatal */ }
+
+          await smsAlerter.tradeExecuted(signal.symbol, tradeSize, 'BUY', 'Robinhood (sandbox)');
+        } else {
+          logs.push(`[RH] ❌ ${symbol} order state: ${order.state}`);
+        }
+      } catch (err: any) {
+        logs.push(`[RH] ❌ ${symbol} error: ${err.message}`);
+      }
+    }
+
+    return { executed, logs };
   }
 }
 

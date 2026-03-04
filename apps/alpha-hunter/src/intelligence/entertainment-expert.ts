@@ -7,6 +7,7 @@
 
 import 'dotenv/config';
 import { OllamaAsAnthropic as Anthropic } from '../lib/local-ai';
+import { Opportunity } from '../types';
 
 // ANSI Colors
 const c = {
@@ -713,5 +714,83 @@ ${c.brightMagenta}╚═══════════════════�
 // Run if executed directly
 if (require.main === module) {
   main().catch(console.error);
+}
+
+// ── Public API (same shape as weather-expert / economics-expert) ─────────
+
+/**
+ * Scan Kalshi markets for entertainment opportunities.
+ * Called alongside weather/econ experts in ai-brain.ts.
+ */
+export async function findEntertainmentOpportunities(
+  allMarkets: any[],
+  minEdgePct: number = 8,
+): Promise<Opportunity[]> {
+  const expert = new EntertainmentExpert();
+  const PRICE_FLOOR = parseInt(process.env.KALSHI_PRICE_FLOOR || '15', 10);
+  const PRICE_CEIL = parseInt(process.env.KALSHI_PRICE_CEIL || '85', 10);
+  const MAX_EDGE = parseInt(process.env.KALSHI_MAX_EDGE || '55', 10);
+
+  // Step 1: Filter entertainment markets from the raw Kalshi feed
+  const entMarkets = expert.filterEntertainmentMarkets(allMarkets);
+  if (entMarkets.length === 0) {
+    console.log('   [ENTERTAINMENT] No entertainment markets found');
+    return [];
+  }
+  console.log(`   [ENTERTAINMENT] Found ${entMarkets.length} entertainment markets, analyzing...`);
+
+  // Step 2: Analyze each market
+  const opps: Opportunity[] = [];
+  const nowIso = new Date().toISOString();
+
+  for (const market of entMarkets) {
+    try {
+      const prediction = await expert.analyzeMarket(market);
+      const absEdge = Math.abs(prediction.edge);
+
+      if (absEdge < minEdgePct || absEdge > MAX_EDGE) continue;
+      if (prediction.confidence < 50) continue;
+
+      const side: 'YES' | 'NO' = prediction.prediction === 'yes' ? 'YES' : 'NO';
+      const entryPrice = side === 'YES' ? market.yesPrice : market.noPrice;
+      if (entryPrice < PRICE_FLOOR || entryPrice > PRICE_CEIL) continue;
+
+      // Hard cap $2 stake — same as weather/econ
+      const stake = 2;
+
+      console.log(`   [ENTERTAINMENT] ${market.id} ${side} — model=${(prediction.probability * 100).toFixed(0)}% market=${entryPrice}¢ edge=${prediction.edge.toFixed(1)}%`);
+
+      opps.push({
+        id: `ent_${market.id}_${side}_${Date.now()}`,
+        type: 'prediction_market',
+        source: 'ENTERTAINMENT_EXPERT',
+        title: `${side}: ${market.title}`,
+        description: `Entertainment Expert: ${prediction.market.category} — edge ${prediction.edge.toFixed(1)}% at ${entryPrice}¢`,
+        confidence: Math.min(85, prediction.confidence),
+        expectedValue: absEdge,
+        riskLevel: prediction.riskLevel,
+        timeframe: market.expiresAt || '30d',
+        requiredCapital: stake,
+        potentialReturn: (stake * (100 - entryPrice) / 100) * 0.93,
+        reasoning: [prediction.reasoning, ...prediction.factors],
+        dataPoints: [],
+        action: {
+          platform: 'kalshi',
+          actionType: 'bet',
+          amount: stake,
+          target: `${market.id} ${side}`,
+          instructions: [`Place ${side} on ${market.id} at ≤${entryPrice}¢`],
+          autoExecute: true,
+        },
+        expiresAt: market.expiresAt || nowIso,
+        createdAt: nowIso,
+      });
+    } catch (err) {
+      console.warn(`   [ENTERTAINMENT] Error analyzing ${market.id}:`, (err as Error).message);
+    }
+  }
+
+  console.log(`   [ENTERTAINMENT] Generated ${opps.length} opportunities from ${entMarkets.length} markets`);
+  return opps;
 }
 
