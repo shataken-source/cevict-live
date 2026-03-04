@@ -385,10 +385,9 @@ export class TradingBot {
             console.log(`Progno pick (needs Kalshi match): ${opp.title}`);
           }
         } else if (opp.action.platform === 'crypto_exchange') {
-          // Duplicate prevention for crypto too
-          if (tradeLimiter.hasAlreadyBet(opp.action.target)) {
-            continue;
-          }
+          // No duplicate prevention for crypto — the 30-min per-asset cooldown
+          // in CryptoTrader.generateSignals() already prevents spam. Crypto should
+          // allow re-entry on the same asset when conditions change.
 
           // NOTE: executeBestSignal() generates its own signals, manages its own
           // limiter checks, and records the trade internally. We only track the

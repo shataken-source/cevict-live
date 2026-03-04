@@ -343,6 +343,29 @@ export class CoinbaseExchange {
   }
 
   /**
+   * Place a limit sell order. Rounds base_size to product's base_increment.
+   */
+  async limitSell(productId: string, price: number, size: number): Promise<CoinbaseOrder> {
+    const { base_increment } = await this.getProduct(productId);
+    const baseSizeStr = roundSizeToBaseIncrement(size, base_increment);
+    console.log(`[COINBASE] Limit SELL ${baseSizeStr} ${productId} @ $${price}`);
+
+    const order = await this.request('POST', '/orders', {
+      client_order_id: `alpha_${Date.now()}`,
+      product_id: productId,
+      side: 'SELL',
+      order_configuration: {
+        limit_limit_gtc: {
+          base_size: baseSizeStr,
+          limit_price: price.toString(),
+        },
+      },
+    });
+
+    return this.transformOrder(order);
+  }
+
+  /**
    * Cancel an order
    */
   async cancelOrder(orderId: string): Promise<boolean> {

@@ -47,7 +47,7 @@ export class CryptoTrader {
       stopLossPercent: parseFloat(process.env.CRYPTO_STOP_LOSS || '3'),
       maxDailyTrades: parseInt(process.env.CRYPTO_MAX_DAILY_TRADES || '5'),
       minConfidence: parseFloat(process.env.CRYPTO_MIN_CONFIDENCE || '65'),
-      enabledStrategies: (process.env.CRYPTO_STRATEGIES || 'mean_reversion,momentum,breakout').split(','),
+      enabledStrategies: (process.env.CRYPTO_STRATEGIES || 'mean_reversion,momentum,breakout,spread').split(','),
     };
   }
 
@@ -82,6 +82,12 @@ export class CryptoTrader {
       if (this.config.enabledStrategies.includes('breakout')) {
         const boSignal = await this.breakoutStrategy(crypto, prices.bestPrice);
         if (boSignal) assetSignals.push(boSignal);
+      }
+
+      // Spread / market-maker strategy runs independently (always 'long' — buys the dip)
+      if (this.config.enabledStrategies.includes('spread')) {
+        const spreadSignal = await this.spreadStrategy(crypto, prices.bestPrice);
+        if (spreadSignal) assetSignals.push(spreadSignal);
       }
 
       // Conflict detection: if strategies disagree on direction, skip this asset
@@ -305,6 +311,81 @@ export class CryptoTrader {
   }
 
   /**
+   * Spread / Market-Maker Strategy
+   * Like Kalshi's market-maker: capture the bid-ask spread by placing limit orders.
+   * Buys slightly below mid-price when spread is wide enough to cover fees.
+   * Coinbase taker fee = 0.6%, maker fee = 0.4%. Need spread > 1% to profit.
+   */
+  private async spreadStrategy(
+    symbol: 'BTC' | 'ETH' | 'SOL',
+    currentPrice: number
+  ): Promise<CryptoSignal | null> {
+    try {
+      const cb = this.exchanges.getCoinbase();
+      const pair = `${symbol}-USD`;
+      const ticker = await cb.getTicker(pair);
+
+      // Calculate spread as percentage of price
+      const bid = ticker.bid;
+      const ask = ticker.ask;
+      if (bid <= 0 || ask <= 0 || ask <= bid) return null;
+
+      const spreadPct = ((ask - bid) / bid) * 100;
+      const midPrice = (bid + ask) / 2;
+
+      // Need spread > 0.15% to cover round-trip maker fees (0.4% × 2 = 0.8%)
+      // But we only enter on one side — buy at bid, sell at market later when price moves up
+      // So effective cost is ~0.4% maker + 0.6% taker = 1.0%
+      // Spread must be wide enough that buying at bid gives us edge
+      if (spreadPct < 0.12) return null;
+
+      // Check recent candles: only buy if price is near support (not falling knife)
+      const candles = await cb.getCandles(pair, 300); // 5-min candles
+      if (candles.length < 12) return null;
+
+      // Check if price is near recent low (within 0.5%) — good entry for spread capture
+      const recent12 = candles.slice(-12);
+      const recentLow = Math.min(...recent12.map(c => c.low));
+      const recentHigh = Math.max(...recent12.map(c => c.high));
+      const range = recentHigh - recentLow;
+      if (range <= 0) return null;
+
+      // Price position in range: 0 = at low, 1 = at high
+      const positionInRange = (currentPrice - recentLow) / range;
+
+      // Only signal buy if price is in lower 40% of recent range (buying the dip)
+      if (positionInRange > 0.4) return null;
+
+      // Volume check: need decent volume for spread capture to work
+      const avgVolume = recent12.reduce((s, c) => s + c.volume, 0) / recent12.length;
+      const currentVolume = recent12[recent12.length - 1].volume;
+      if (currentVolume < avgVolume * 0.5) return null; // Below-average volume = wide spreads unreliable
+
+      // Confidence based on spread width and position in range
+      const spreadBonus = Math.min(spreadPct * 20, 10); // Up to +10 for wide spread
+      const positionBonus = (1 - positionInRange) * 10; // Up to +10 for being at the low
+      const confidence = Math.min(58 + spreadBonus + positionBonus, 80);
+
+      // Entry at bid price (limit order), target at ask price
+      return {
+        symbol,
+        direction: 'long',
+        confidence,
+        reasoning: [
+          `${symbol} spread: ${spreadPct.toFixed(3)}% ($${bid.toFixed(2)} / $${ask.toFixed(2)})`,
+          `Price in lower ${(positionInRange * 100).toFixed(0)}% of 1h range — good entry`,
+          `Market-maker style: buy at bid, target mid-price for ${(spreadPct / 2).toFixed(3)}% edge`,
+        ],
+        entryPrice: bid, // Enter at bid via limit order
+        targetPrice: midPrice, // Target the mid-price
+        stopLoss: bid * 0.995, // Tight stop: 0.5% below bid
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Execute the best signal
    */
   async executeBestSignal(): Promise<Trade | null> {
@@ -344,6 +425,26 @@ export class CryptoTrader {
     if (!canAfford) {
       console.log('[STOP] Trade blocked by emergency stop');
       return null;
+    }
+
+    // For sell signals, verify we actually hold the asset before trying
+    if (best.direction === 'short') {
+      try {
+        const balances = await this.exchanges.getTotalBalance();
+        const cbBal = balances.byExchange.find(b => b.exchange === 'Coinbase');
+        const held = best.symbol === 'BTC' ? cbBal?.btc
+          : best.symbol === 'ETH' ? cbBal?.eth
+            : (cbBal?.other?.[best.symbol] ?? 0);
+        const price = (await this.exchanges.comparePrices(best.symbol)).bestPrice;
+        const heldUsd = (held || 0) * price;
+        if (heldUsd < 5) {
+          console.log(`[SKIP] Sell ${best.symbol}: only $${heldUsd.toFixed(2)} held (need $5+)`);
+          return null;
+        }
+      } catch (err) {
+        console.log(`[WARN] Could not check ${best.symbol} holdings, skipping sell`);
+        return null;
+      }
     }
 
     // Execute trade
@@ -429,7 +530,7 @@ export class CryptoTrader {
           `Target: $${(signal.targetPrice || 0).toFixed(2)} (+${this.config.takeProfitPercent}%)`,
           `Stop: $${(signal.stopLoss || 0).toFixed(2)} (-${this.config.stopLossPercent}%)`,
         ],
-        autoExecute: signal.confidence >= 70,
+        autoExecute: signal.confidence >= this.config.minConfidence,
       },
       expiresAt: new Date(Date.now() + 24 * 3600000).toISOString(),
       createdAt: new Date().toISOString(),
