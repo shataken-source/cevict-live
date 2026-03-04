@@ -909,10 +909,8 @@ export async function recordActualBet(bet: {
       confidence: bet.confidence || null,
       market_title: bet.market_title || bet.ticker,
       game_date: today,
-      status: 'open',
-      result: null,
-      profit_cents: null,
-      payout_cents: null,
+      // NOTE: Do NOT set status here — actual_bets_status_check only allows 'won'/'lost'.
+      // Let the DB default handle it. Setting 'open' was silently failing every insert.
       dry_run: bet.dry_run || false,
       created_at: new Date().toISOString(),
     });
