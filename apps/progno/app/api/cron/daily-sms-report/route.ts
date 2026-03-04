@@ -215,6 +215,18 @@ export async function GET(request: Request) {
   const totalProfit = settled.reduce((s, b) => s + (b.profit_cents || 0), 0)
   const totalPayout = wins.reduce((s, b) => s + (b.payout_cents || 0), 0)
 
+  // ── 1b. Classify bets by source (sports / weather / econ) ──
+  const isWeatherTicker = (t: string) => /KXHIGH|KXLOW|HIGHTEMP|LOWTEMP|KXTEMP|KXSNOW|KXFREEZE|KXHEAT/i.test(t)
+  const isSportsTicker = (t: string) => /GAME|WINNER|SPREAD|TOTAL/i.test(t)
+  function betSource(b: any): 'sports' | 'weather' | 'econ' {
+    const t = b.ticker || ''
+    if (isWeatherTicker(t)) return 'weather'
+    if (isSportsTicker(t)) return 'sports'
+    return 'econ'
+  }
+  const bySource = { sports: settled.filter(b => betSource(b) === 'sports'), weather: settled.filter(b => betSource(b) === 'weather'), econ: settled.filter(b => betSource(b) === 'econ') }
+  const pendingBySource = { sports: pending.filter(b => betSource(b) === 'sports'), weather: pending.filter(b => betSource(b) === 'weather'), econ: pending.filter(b => betSource(b) === 'econ') }
+
   // ── 2. Prediction Summary for Yesterday ──
   const { data: summary } = await supabase
     .from('prediction_daily_summary')
@@ -255,7 +267,7 @@ export async function GET(request: Request) {
 
   let msg = `PROGNO Daily Report - ${yesterday}\n\n`
 
-  // Yesterday's Kalshi bets
+  // Yesterday's Kalshi bets — total line
   if (settled.length > 0) {
     msg += `KALSHI: ${wins.length}W/${losses.length}L`
     if (pending.length > 0) msg += ` (${pending.length} pending)`
@@ -269,6 +281,20 @@ export async function GET(request: Request) {
     msg += `KALSHI: ${pending.length} bets pending settlement\n`
   } else {
     msg += `KALSHI: No bets yesterday\n`
+  }
+
+  // Per-source breakdown (sports / weather / econ)
+  for (const [label, emoji] of [['sports', '🏀'], ['weather', '🌤'], ['econ', '📈']] as const) {
+    const src = bySource[label]
+    const srcPending = pendingBySource[label]
+    if (src.length === 0 && srcPending.length === 0) continue
+    const srcW = src.filter(b => b.result === 'win').length
+    const srcL = src.filter(b => b.result === 'loss').length
+    const srcPnl = src.reduce((s: number, b: any) => s + (b.profit_cents || 0), 0)
+    const pSign = srcPnl >= 0 ? '+' : ''
+    let line = `  ${emoji} ${label}: ${srcW}W/${srcL}L P&L: ${pSign}${dollarFmt(srcPnl)}`
+    if (srcPending.length > 0) line += ` (${srcPending.length} pending)`
+    msg += line + `\n`
   }
 
   // Prediction accuracy

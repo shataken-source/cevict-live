@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
+import { createClient } from '@supabase/supabase-js'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -514,6 +515,26 @@ export async function POST(request: NextRequest) {
 
     const results: any[] = []
 
+    // ── Supabase-backed dupe guard + daily spend cap (shared with Alpha Hunter) ──
+    const supUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const sb = (supUrl && supKey) ? createClient(supUrl, supKey) : null
+    const alreadyBet = new Set<string>()
+    let todaySpentCents = 0
+    const KALSHI_MAX_DAILY_SPEND_CENTS = (parseFloat(process.env.KALSHI_MAX_DAILY_SPEND || '15')) * 100
+    if (sb) {
+      try {
+        const { data: existing } = await sb.from('actual_bets').select('ticker, stake_cents').eq('game_date', today).not('status', 'eq', 'cancelled')
+        for (const row of (existing || [])) {
+          if (row.ticker) alreadyBet.add(row.ticker)
+          todaySpentCents += (row.stake_cents || 0)
+        }
+        console.log(`[execute] Dupe guard: ${alreadyBet.size} tickers already bet today, $${(todaySpentCents / 100).toFixed(2)} spent`)
+      } catch (e: any) {
+        console.warn('[execute] Supabase dupe guard failed:', e.message)
+      }
+    }
+
     const MIN_CONFIDENCE_FLOOR = 50 // Never place a bet when model confidence is below 50%
     for (const pick of picks) {
       const result: any = {
@@ -572,6 +593,23 @@ export async function POST(request: NextRequest) {
       result.contracts = count
       result.estimatedCost = `$${((count * price) / 100).toFixed(2)}`
 
+      // Dupe guard: skip if already bet this ticker today
+      if (alreadyBet.has(market.ticker)) {
+        result.status = 'skipped'
+        result.note = `Already bet ${market.ticker} today (dupe guard)`
+        results.push(result)
+        continue
+      }
+
+      // Daily spend cap
+      const betCostCents = count * price
+      if (todaySpentCents + betCostCents > KALSHI_MAX_DAILY_SPEND_CENTS) {
+        result.status = 'skipped'
+        result.note = `Daily spend cap: $${(todaySpentCents / 100).toFixed(2)} + $${(betCostCents / 100).toFixed(2)} > $${(KALSHI_MAX_DAILY_SPEND_CENTS / 100).toFixed(2)}`
+        results.push(result)
+        continue
+      }
+
       if (settings.dryRun || !configured || !settings.enabled) {
         result.status = 'dry_run'
         result.note = `Would buy ${count} ${side.toUpperCase()} @ ${price}¢ on ${market.ticker}`
@@ -595,6 +633,33 @@ export async function POST(request: NextRequest) {
         result.status = 'submitted'
         result.orderId = placed?.order?.order_id || placed?.id || null
         results.push(result)
+
+        // Record to actual_bets (shared with Alpha Hunter for dupe prevention + spend tracking)
+        const actualCostCents = count * price
+        alreadyBet.add(market.ticker)
+        todaySpentCents += actualCostCents
+        if (sb) {
+          try {
+            await sb.from('actual_bets').insert({
+              ticker: market.ticker,
+              side,
+              stake_cents: actualCostCents,
+              price_cents: price,
+              contracts: count,
+              pick: pick.pick || market.ticker,
+              market_title: market.title || market.ticker,
+              confidence: pick.confidence || null,
+              sport: pick.sport || pick.league || null,
+              game_date: today,
+              dry_run: false,
+              source: 'progno_execute',
+              created_at: new Date().toISOString(),
+            })
+            console.log(`[execute] Recorded to actual_bets: ${market.ticker} ${side} $${(actualCostCents / 100).toFixed(2)}`)
+          } catch (e: any) {
+            console.warn(`[execute] Failed to record ${market.ticker} to actual_bets:`, e.message)
+          }
+        }
       } catch (e: any) {
         console.error(`[execute] ORDER ERROR for ${pick.pick}: ${e.message}`)
         result.status = 'error'
