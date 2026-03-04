@@ -602,7 +602,10 @@ export async function findWeatherOpportunities(
       // Determine trade direction
       const side: 'yes' | 'no' = edge > 0 ? 'yes' : 'no';
       const tradePrice = side === 'yes' ? marketProb : (100 - marketProb);
-      const confidence = Math.min(85, 50 + absEdge * 0.8);
+      // Confidence reflects data quality: 3-source consensus + bias correction + ensemble spread
+      // sourceCount=3 → +6 bonus, sourceCount=2 → +3 bonus, sourceCount=1 → no bonus
+      const sourceBonus = Math.max(0, (sourceCount - 1) * 3);
+      const confidence = Math.min(85, 55 + absEdge * 1.0 + sourceBonus);
 
       // Quarter-Kelly sizing
       const kellyEdge = absEdge / 100;

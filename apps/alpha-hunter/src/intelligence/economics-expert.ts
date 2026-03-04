@@ -406,38 +406,38 @@ function analyzeFedRate(title: string, yesAsk: number, snap: EconSnapshot): { pr
     // If Fed funds rate is already low and inflation is above 2.5%, cuts are unlikely
     if (snap.cpiYoY !== null && snap.cpiYoY > 3.0) {
       reasoning.push(`CPI YoY at ${snap.cpiYoY.toFixed(1)}% — too hot for cuts`);
-      return { prob: 25, confidence: 70, reasoning };
+      return { prob: 25, confidence: 72, reasoning };
     }
     if (snap.cpiYoY !== null && snap.cpiYoY > 2.5) {
       reasoning.push(`CPI YoY at ${snap.cpiYoY.toFixed(1)}% — slightly above target, cuts possible but not certain`);
-      return { prob: 40, confidence: 60, reasoning };
+      return { prob: 40, confidence: 66, reasoning };
     }
     if (snap.cpiYoY !== null && snap.cpiYoY <= 2.5 && snap.unemployment !== null && snap.unemployment > 4.2) {
       reasoning.push(`CPI ${snap.cpiYoY.toFixed(1)}% near target + unemployment ${snap.unemployment}% rising → cuts likely`);
-      return { prob: 70, confidence: 65, reasoning };
+      return { prob: 70, confidence: 68, reasoning };
     }
     reasoning.push(`Fed funds at ${snap.fedFundsRate}%, CPI YoY ${snap.cpiYoY?.toFixed(1) || '?'}%`);
-    return { prob: 45, confidence: 55, reasoning };
+    return { prob: 45, confidence: 60, reasoning };
   }
 
   // "Will the Fed raise/hike rates?"
   if (t.includes('hike') || t.includes('raise') || t.includes('increase')) {
     if (snap.cpiYoY !== null && snap.cpiYoY > 4.0) {
       reasoning.push(`CPI YoY ${snap.cpiYoY.toFixed(1)}% — high inflation could force hike`);
-      return { prob: 35, confidence: 60, reasoning };
+      return { prob: 35, confidence: 66, reasoning };
     }
     reasoning.push(`CPI YoY ${snap.cpiYoY?.toFixed(1) || '?'}% — hikes unlikely in current environment`);
-    return { prob: 10, confidence: 70, reasoning };
+    return { prob: 10, confidence: 72, reasoning };
   }
 
   // "Will the Fed hold rates?"
   if (t.includes('hold') || t.includes('unchanged') || t.includes('pause')) {
     if (snap.cpiYoY !== null && snap.cpiYoY > 2.5 && snap.cpiYoY < 3.5) {
       reasoning.push(`CPI YoY ${snap.cpiYoY.toFixed(1)}% — moderate range favors hold`);
-      return { prob: 65, confidence: 65, reasoning };
+      return { prob: 65, confidence: 68, reasoning };
     }
     reasoning.push(`Fed funds ${snap.fedFundsRate}%, uncertain direction`);
-    return { prob: 55, confidence: 55, reasoning };
+    return { prob: 55, confidence: 60, reasoning };
   }
 
   return null;
@@ -457,18 +457,18 @@ function analyzeInflation(title: string, yesAsk: number, snap: EconSnapshot): { 
     // CPI moves slowly — if current is 0.3%+ above threshold, likely stays above
     if (gap > 0.5) {
       reasoning.push(`Current CPI YoY ${snap.cpiYoY.toFixed(1)}% is ${gap.toFixed(1)}pp above ${threshold}% threshold — likely YES`);
-      return { prob: 80, confidence: 70, reasoning };
+      return { prob: 80, confidence: 72, reasoning };
     }
     if (gap > 0) {
       reasoning.push(`Current CPI YoY ${snap.cpiYoY.toFixed(1)}% barely above ${threshold}% — could go either way`);
-      return { prob: 55, confidence: 55, reasoning };
+      return { prob: 55, confidence: 62, reasoning };
     }
     if (gap > -0.3) {
       reasoning.push(`Current CPI YoY ${snap.cpiYoY.toFixed(1)}% close to ${threshold}% — slight lean NO`);
-      return { prob: 40, confidence: 55, reasoning };
+      return { prob: 40, confidence: 62, reasoning };
     }
     reasoning.push(`Current CPI YoY ${snap.cpiYoY.toFixed(1)}% well below ${threshold}% threshold — likely NO`);
-    return { prob: 15, confidence: 70, reasoning };
+    return { prob: 15, confidence: 72, reasoning };
   }
 
   // "Will CPI be below X%?"
@@ -478,14 +478,14 @@ function analyzeInflation(title: string, yesAsk: number, snap: EconSnapshot): { 
     const gap = threshold - snap.cpiYoY;
     if (gap > 0.5) {
       reasoning.push(`Current CPI YoY ${snap.cpiYoY.toFixed(1)}% is ${gap.toFixed(1)}pp below ${threshold}% — likely YES`);
-      return { prob: 80, confidence: 70, reasoning };
+      return { prob: 80, confidence: 72, reasoning };
     }
     if (gap > 0) {
       reasoning.push(`Current CPI YoY ${snap.cpiYoY.toFixed(1)}% close to ${threshold}%`);
-      return { prob: 55, confidence: 55, reasoning };
+      return { prob: 55, confidence: 62, reasoning };
     }
     reasoning.push(`Current CPI YoY ${snap.cpiYoY.toFixed(1)}% above ${threshold}% — likely NO`);
-    return { prob: 20, confidence: 65, reasoning };
+    return { prob: 20, confidence: 68, reasoning };
   }
 
   return null;
@@ -504,18 +504,18 @@ function analyzeUnemployment(title: string, yesAsk: number, snap: EconSnapshot):
     const gap = snap.unemployment - threshold;
     if (gap > 0.3) {
       reasoning.push(`Unemployment at ${snap.unemployment}% already ${gap.toFixed(1)}pp above ${threshold}% — likely YES`);
-      return { prob: 80, confidence: 70, reasoning };
+      return { prob: 80, confidence: 72, reasoning };
     }
     if (gap > 0) {
       reasoning.push(`Unemployment ${snap.unemployment}% barely above ${threshold}%`);
-      return { prob: 55, confidence: 55, reasoning };
+      return { prob: 55, confidence: 62, reasoning };
     }
     if (gap > -0.3) {
       reasoning.push(`Unemployment ${snap.unemployment}% close to ${threshold}% — could reach it`);
-      return { prob: 40, confidence: 55, reasoning };
+      return { prob: 40, confidence: 62, reasoning };
     }
     reasoning.push(`Unemployment ${snap.unemployment}% well below ${threshold}%`);
-    return { prob: 15, confidence: 65, reasoning };
+    return { prob: 15, confidence: 68, reasoning };
   }
 
   // "Will unemployment be below X%?"
@@ -525,10 +525,10 @@ function analyzeUnemployment(title: string, yesAsk: number, snap: EconSnapshot):
     const gap = threshold - snap.unemployment;
     if (gap > 0.3) {
       reasoning.push(`Unemployment at ${snap.unemployment}% well below ${threshold}% — likely YES`);
-      return { prob: 80, confidence: 70, reasoning };
+      return { prob: 80, confidence: 72, reasoning };
     }
     reasoning.push(`Unemployment ${snap.unemployment}% near ${threshold}%`);
-    return { prob: 50, confidence: 50, reasoning };
+    return { prob: 50, confidence: 58, reasoning };
   }
 
   return null;
@@ -605,7 +605,7 @@ function analyzeRecession(title: string, yesAsk: number, snap: EconSnapshot): { 
     baseProb = Math.min(baseProb + 5, 70);
     reasoning.push(`S&P 500 down ${snap.sp500DayChange.toFixed(1)}% today — market stress`);
   }
-  return { prob: Math.round(baseProb), confidence: 62, reasoning };
+  return { prob: Math.round(baseProb), confidence: 68, reasoning };
 }
 
 function analyzeGDP(title: string, yesAsk: number, snap: EconSnapshot): { prob: number; confidence: number; reasoning: string[] } | null {
@@ -620,18 +620,18 @@ function analyzeGDP(title: string, yesAsk: number, snap: EconSnapshot): { prob: 
     const gap = snap.gdpGrowth - threshold;
     reasoning.push(`GDP growth at ${snap.gdpGrowth.toFixed(1)}% vs ${threshold}% threshold`);
     if (snap.globalGdpGrowth !== null) reasoning.push(`Global GDP: ${snap.globalGdpGrowth.toFixed(1)}%`);
-    if (gap > 1.0) return { prob: 80, confidence: 65, reasoning };
-    if (gap > 0.3) return { prob: 60, confidence: 55, reasoning };
-    if (gap > -0.3) return { prob: 45, confidence: 50, reasoning };
-    return { prob: 20, confidence: 60, reasoning };
+    if (gap > 1.0) return { prob: 80, confidence: 68, reasoning };
+    if (gap > 0.3) return { prob: 60, confidence: 62, reasoning };
+    if (gap > -0.3) return { prob: 45, confidence: 58, reasoning };
+    return { prob: 20, confidence: 66, reasoning };
   }
 
   // "Will GDP be negative?" / "contraction"
   if (t.includes('negative') || t.includes('contraction') || t.includes('shrink')) {
     reasoning.push(`GDP growth at ${snap.gdpGrowth.toFixed(1)}%`);
-    if (snap.gdpGrowth < -0.5) return { prob: 80, confidence: 70, reasoning };
-    if (snap.gdpGrowth < 0.5) return { prob: 40, confidence: 55, reasoning };
-    return { prob: 15, confidence: 60, reasoning };
+    if (snap.gdpGrowth < -0.5) return { prob: 80, confidence: 72, reasoning };
+    if (snap.gdpGrowth < 0.5) return { prob: 40, confidence: 62, reasoning };
+    return { prob: 15, confidence: 66, reasoning };
   }
 
   return null;
@@ -656,12 +656,12 @@ function analyzeEnergy(title: string, yesAsk: number, snap: EconSnapshot): { pro
       reasoning.push(`WTI crude at $${snap.oilPriceWTI.toFixed(2)} vs $${threshold} threshold`);
       if (snap.gasolinePrice !== null) reasoning.push(`Gasoline: $${snap.gasolinePrice.toFixed(2)}/gal`);
       // Oil is mean-reverting but slow — current price is strong predictor
-      if (gapPct > 10) return { prob: 82, confidence: 68, reasoning };
-      if (gapPct > 3) return { prob: 62, confidence: 58, reasoning };
-      if (gapPct > 0) return { prob: 52, confidence: 50, reasoning };
-      if (gapPct > -5) return { prob: 38, confidence: 52, reasoning };
-      if (gapPct > -15) return { prob: 22, confidence: 58, reasoning };
-      return { prob: 12, confidence: 65, reasoning };
+      if (gapPct > 10) return { prob: 82, confidence: 70, reasoning };
+      if (gapPct > 3) return { prob: 62, confidence: 66, reasoning };
+      if (gapPct > 0) return { prob: 52, confidence: 60, reasoning };
+      if (gapPct > -5) return { prob: 38, confidence: 62, reasoning };
+      if (gapPct > -15) return { prob: 22, confidence: 66, reasoning };
+      return { prob: 12, confidence: 70, reasoning };
     }
 
     if (belowMatch) {
@@ -669,11 +669,11 @@ function analyzeEnergy(title: string, yesAsk: number, snap: EconSnapshot): { pro
       const gap = threshold - snap.oilPriceWTI;
       const gapPct = (gap / threshold) * 100;
       reasoning.push(`WTI crude at $${snap.oilPriceWTI.toFixed(2)} vs $${threshold} threshold`);
-      if (gapPct > 10) return { prob: 82, confidence: 68, reasoning };
-      if (gapPct > 3) return { prob: 62, confidence: 58, reasoning };
-      if (gapPct > 0) return { prob: 52, confidence: 50, reasoning };
-      if (gapPct > -5) return { prob: 38, confidence: 52, reasoning };
-      return { prob: 15, confidence: 60, reasoning };
+      if (gapPct > 10) return { prob: 82, confidence: 70, reasoning };
+      if (gapPct > 3) return { prob: 62, confidence: 66, reasoning };
+      if (gapPct > 0) return { prob: 52, confidence: 60, reasoning };
+      if (gapPct > -5) return { prob: 38, confidence: 62, reasoning };
+      return { prob: 15, confidence: 66, reasoning };
     }
   }
 
@@ -689,15 +689,15 @@ function analyzeEnergy(title: string, yesAsk: number, snap: EconSnapshot): { pro
 
     const isAboveQ = t.includes('above') || t.includes('over') || t.includes('exceed');
     if (isAboveQ) {
-      if (gap > 0.30) return { prob: 80, confidence: 65, reasoning };
-      if (gap > 0.10) return { prob: 60, confidence: 55, reasoning };
-      if (gap > -0.10) return { prob: 45, confidence: 50, reasoning };
-      return { prob: 20, confidence: 60, reasoning };
+      if (gap > 0.30) return { prob: 80, confidence: 68, reasoning };
+      if (gap > 0.10) return { prob: 60, confidence: 62, reasoning };
+      if (gap > -0.10) return { prob: 45, confidence: 58, reasoning };
+      return { prob: 20, confidence: 66, reasoning };
     } else {
-      if (gap < -0.30) return { prob: 80, confidence: 65, reasoning };
-      if (gap < -0.10) return { prob: 60, confidence: 55, reasoning };
-      if (gap < 0.10) return { prob: 45, confidence: 50, reasoning };
-      return { prob: 20, confidence: 60, reasoning };
+      if (gap < -0.30) return { prob: 80, confidence: 68, reasoning };
+      if (gap < -0.10) return { prob: 60, confidence: 62, reasoning };
+      if (gap < 0.10) return { prob: 45, confidence: 58, reasoning };
+      return { prob: 20, confidence: 66, reasoning };
     }
   }
 
@@ -762,8 +762,8 @@ function analyzeCrypto(title: string, yesAsk: number, snap: EconSnapshot): { pro
       if (!isAbove && snap.fearGreedIndex > 70) prob = Math.max(prob - 5, 5);
     }
 
-    // Lower confidence for crypto — it's inherently less predictable
-    return { prob, confidence: 52, reasoning };
+    // Lower confidence for crypto — inherently less predictable, but we have real data
+    return { prob, confidence: 60, reasoning };
   }
 
   return null;
@@ -818,7 +818,7 @@ function analyzeStockMarket(title: string, yesAsk: number, snap: EconSnapshot): 
         reasoning.push(`High VIX → increased uncertainty, moderating prediction`);
       }
 
-      return { prob, confidence: 62, reasoning };
+      return { prob, confidence: 68, reasoning };
     }
   }
 
@@ -830,11 +830,11 @@ function analyzeStockMarket(title: string, yesAsk: number, snap: EconSnapshot): 
       const threshold = parseFloat(aboveMatch[1].replace(/,/g, ''));
       const gapPct = ((snap.dowPrice - threshold) / threshold) * 100;
       reasoning.push(`Dow at ${snap.dowPrice.toLocaleString()} vs ${threshold.toLocaleString()} (${gapPct > 0 ? '+' : ''}${gapPct.toFixed(2)}%)`);
-      if (gapPct > 1.5) return { prob: 82, confidence: 60, reasoning };
-      if (gapPct > 0.3) return { prob: 65, confidence: 55, reasoning };
-      if (gapPct > -0.3) return { prob: 48, confidence: 50, reasoning };
-      if (gapPct > -1.5) return { prob: 30, confidence: 55, reasoning };
-      return { prob: 12, confidence: 60, reasoning };
+      if (gapPct > 1.5) return { prob: 82, confidence: 66, reasoning };
+      if (gapPct > 0.3) return { prob: 65, confidence: 62, reasoning };
+      if (gapPct > -0.3) return { prob: 48, confidence: 58, reasoning };
+      if (gapPct > -1.5) return { prob: 30, confidence: 62, reasoning };
+      return { prob: 12, confidence: 66, reasoning };
     }
   }
 
@@ -849,11 +849,11 @@ function analyzeStockMarket(title: string, yesAsk: number, snap: EconSnapshot): 
       // VIX is mean-reverting — tends to drift back to ~15-20 range
       if (snap.vix > 30) reasoning.push(`VIX elevated — likely to mean-revert down`);
       if (snap.vix < 15) reasoning.push(`VIX historically low — upside risk`);
-      if (gap > 5) return { prob: 75, confidence: 60, reasoning };
-      if (gap > 2) return { prob: 58, confidence: 55, reasoning };
-      if (gap > 0) return { prob: 48, confidence: 50, reasoning };
-      if (gap > -3) return { prob: 35, confidence: 55, reasoning };
-      return { prob: 18, confidence: 60, reasoning };
+      if (gap > 5) return { prob: 75, confidence: 66, reasoning };
+      if (gap > 2) return { prob: 58, confidence: 62, reasoning };
+      if (gap > 0) return { prob: 48, confidence: 58, reasoning };
+      if (gap > -3) return { prob: 35, confidence: 62, reasoning };
+      return { prob: 18, confidence: 66, reasoning };
     }
   }
 
