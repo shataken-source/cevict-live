@@ -16,6 +16,7 @@ import { GameData } from '@/app/lib/prediction-engine'
 import { getPrimaryKey, getPrimaryKeySource, getFallbackOddsKey } from '../../keys-store'
 import { estimateTeamStatsFromOdds, estimateTeamStatsEnhanced, shinDevig } from '@/app/lib/odds-helpers'
 import { warmStatsCache, setCurrentGameContext, clearCurrentGameContext } from '@/app/lib/espn-team-stats-service'
+import { loadRatingsFromSupabase } from '@/app/lib/modules/signals/elo-signal'
 // import { predictScoreComprehensive } from '../../score-prediction-service' // TODO: Fix this import - file doesn't exist
 // import { fetchApiSportsOdds, ApiSportsGame } from '@/app/lib/api-sports-client' // TODO: Fix this import - file doesn't exist
 import { SPORT_VARIANCE, applySportVariance, getCalibratedWinProbability } from '@/app/lib/model-calibration'
@@ -625,6 +626,8 @@ export async function GET(request: Request) {
     await loadTuningConfigAndApply()
     // Load streak state from Supabase on first request (persists across server restarts)
     await loadStreakFromSupabase()
+    // Hydrate Elo ratings from Supabase (NFL/NCAAF signal module)
+    if (supabase) await loadRatingsFromSupabase(supabase).catch(() => { })
 
     const url = request.url ? new URL(request.url) : null
     const favoriteOnly = url?.searchParams?.get('favoriteOnly') === '1' || url?.searchParams?.get('favoriteOnly') === 'true'

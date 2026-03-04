@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { fetchPreviousDayResultsFromProviders } from '../../../../lib/data-sources/results-apis'
 import { gameTeamsMatch, teamsMatch, normalizeForMatch } from '../../../lib/team-matcher'
+import { loadRatingsFromSupabase, saveRatingsToSupabase, updateEloFromResult } from '../../../lib/modules/signals/elo-signal'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -275,6 +276,24 @@ export async function GET(request: Request) {
         } else {
           gameOutcomesStored = uniqueRows.length
           console.log(`[CRON daily-results] Stored ${gameOutcomesStored} game outcomes for backtesting`)
+        }
+
+        // ── Update Elo ratings for NFL/NCAAF games ──
+        const ELO_SPORTS = new Set(['americanfootball_nfl', 'americanfootball_ncaaf'])
+        const eloGames = uniqueRows.filter((r: any) => ELO_SPORTS.has(r.sport) && r.home_score > 0 && r.away_score > 0)
+        if (eloGames.length > 0) {
+          try {
+            await loadRatingsFromSupabase(sbClient)
+            let eloUpdated = 0
+            for (const g of eloGames) {
+              updateEloFromResult(g.home_team, g.away_team, g.home_score, g.away_score, g.sport)
+              eloUpdated++
+            }
+            await saveRatingsToSupabase(sbClient)
+            console.log(`[CRON daily-results] Updated Elo for ${eloUpdated} football games`)
+          } catch (eloErr) {
+            console.warn(`[CRON daily-results] Elo update failed:`, (eloErr as Error).message)
+          }
         }
       }
     } catch (e) {
