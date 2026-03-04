@@ -60,7 +60,7 @@ interface PrognoPick {
 interface KalshiMarket {
   ticker: string; title: string; subtitle?: string;
   yes_ask: number; yes_bid: number; no_ask: number; no_bid: number;
-  close_time?: string; _sport?: string;
+  close_time?: string; _sport?: string; _marketType?: 'game' | 'spread' | 'total';
 }
 
 interface ExecResult {
@@ -156,9 +156,16 @@ function matchPickToMarket(pick: PrognoPick, markets: KalshiMarket[]): KalshiMar
   const homeLower = (pick.home_team || '').toLowerCase();
   const awayLower = (pick.away_team || '').toLowerCase();
   const pickSport = normSport(pick.league || pick.sport || '');
+  const pickType = (pick.pick_type || 'moneyline').toLowerCase();
 
   // Only search markets of the same sport (when tagged)
-  const sportMarkets = markets.filter(m => !m._sport || m._sport === pickSport);
+  // AND matching market type: spread picks → spread markets, moneyline → game/winner markets
+  const sportMarkets = markets.filter(m => {
+    if (m._sport && m._sport !== pickSport) return false;
+    if (pickType === 'spread') return m._marketType === 'spread';
+    if (pickType === 'total') return m._marketType === 'total';
+    return m._marketType === 'game' || !m._marketType; // moneyline → game markets
+  });
 
   // Strategy 1: ticker suffix → keyword map
   for (const m of sportMarkets) {
@@ -261,7 +268,10 @@ class KalshiClient {
           const r = await fetch(`${BASE_URL}${p}`, { headers: this.hdrs(sig, ts) });
           if (!r.ok) { if (r.status === 429) await sleep(2000); break; }
           const d: any = await r.json();
-          const ms: KalshiMarket[] = (d.markets || []).map((m: KalshiMarket) => ({ ...m, _sport: sport }));
+          const ms: KalshiMarket[] = (d.markets || []).map((m: KalshiMarket) => ({
+            ...m, _sport: sport,
+            _marketType: /SPREAD/i.test(seriesTicker) ? 'spread' as const : /TOTAL/i.test(seriesTicker) ? 'total' as const : 'game' as const,
+          }));
           all.push(...ms); seriesTotal += ms.length; cursor = d.cursor;
           if (ms.length < 200 || !cursor) break;
           await sleep(200);
@@ -291,8 +301,11 @@ class KalshiClient {
             const t = (m.ticker || '').toUpperCase();
             return sportPrefixes.some(pfx => t.startsWith(pfx));
           }).map(m => {
-            const sport = GAME_SERIES.find(s => m.ticker.toUpperCase().startsWith(s.ticker.toUpperCase()))?.sport;
-            return { ...m, _sport: sport };
+            const matched = GAME_SERIES.find(s => m.ticker.toUpperCase().startsWith(s.ticker.toUpperCase()));
+            const sport = matched?.sport;
+            const tk = (matched?.ticker || '').toUpperCase();
+            const _marketType: 'game' | 'spread' | 'total' = /SPREAD/i.test(tk) ? 'spread' : /TOTAL/i.test(tk) ? 'total' : 'game';
+            return { ...m, _sport: sport, _marketType };
           });
           all.push(...sports);
           cursor = d.cursor;

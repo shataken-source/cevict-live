@@ -734,14 +734,14 @@ export class KalshiTrader {
     const envPages = parseInt(process.env.KALSHI_MAX_PAGES || '15', 10);
     const maxPages = Number.isFinite(envPages) && envPages > 0 ? envPages : 15;
     const allMarkets = await this.getMarketsParallel(1000, maxPages);
-    // For Progno matching: GAME/WINNER/MONEY (winner) + TOTAL (over/under)
-    const GAME_TICKER_RE = /GAME|WINNER|MONEY|TOTAL/i;
+    // For Progno matching: GAME/WINNER/MONEY (winner) + TOTAL (over/under) + SPREAD (point spread)
+    const GAME_TICKER_RE = /GAME|WINNER|MONEY|TOTAL|SPREAD/i;
     const dedupedMarkets = allMarkets.filter(m => {
       const t = (m?.ticker || '').toUpperCase();
       const et = (m?.event_ticker || '').toUpperCase();
       return GAME_TICKER_RE.test(t) || GAME_TICKER_RE.test(et);
     });
-    console.log(`   ${dedupedMarkets.length} GAME/WINNER/TOTAL markets of ${allMarkets.length} total`);
+    console.log(`   ${dedupedMarkets.length} GAME/WINNER/TOTAL/SPREAD markets of ${allMarkets.length} total`);
     if (dedupedMarkets.length > 0) {
       const sampleTickers = dedupedMarkets.slice(0, 5).map(m => m?.ticker || '?');
       const sampleTitles = dedupedMarkets.slice(0, 3).map(m => (m?.title || '').slice(0, 50));

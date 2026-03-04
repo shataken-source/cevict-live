@@ -15,6 +15,8 @@ export interface PrognoEventProbability {
   totalSide?: 'over' | 'under';
   /** Game start time (ISO or display string from Progno) */
   gameTime?: string;
+  /** Pick type: 'moneyline' | 'spread' | 'total' — controls which Kalshi market type to target */
+  pickType?: 'moneyline' | 'spread' | 'total';
 }
 
 // Wrapper kept for call-site compatibility; normalizeLeague is a function declaration so it's hoisted.
@@ -126,6 +128,9 @@ export function getPrognoProbabilitiesFromFile(filePath: string): PrognoEventPro
       if (homeTeam) teamNames.push(homeTeam);
       if (awayTeam) teamNames.push(awayTeam);
 
+      const rawPickType = (p.pick_type || 'moneyline').toLowerCase();
+      const pickType: 'moneyline' | 'spread' | 'total' =
+        rawPickType === 'spread' ? 'spread' : rawPickType === 'total' ? 'total' : 'moneyline';
       out.push({
         label: pick === homeTeam ? `${homeTeam} win` : pick === awayTeam ? `${awayTeam} win` : pick,
         teamNames,
@@ -135,6 +140,7 @@ export function getPrognoProbabilitiesFromFile(filePath: string): PrognoEventPro
         homeTeam,
         awayTeam,
         mcWinProbability: p.mc_win_probability,
+        pickType,
       });
     }
     return out;
@@ -229,6 +235,9 @@ export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]
       const teamNames = [homeTeam, awayTeam].filter(Boolean);
       const label = pick === homeTeam ? `${homeTeam} win` : pick === awayTeam ? `${awayTeam} win` : pick;
       const gameTime = (p.game_time || p.commence_time || '') ? String(p.game_time || p.commence_time) : undefined;
+      const rawPT = (p.pick_type || 'moneyline').toLowerCase();
+      const pickType: 'moneyline' | 'spread' | 'total' =
+        rawPT === 'spread' ? 'spread' : rawPT === 'total' ? 'total' : 'moneyline';
       out.push({
         label,
         teamNames,
@@ -239,6 +248,7 @@ export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]
         awayTeam,
         mcWinProbability: p.mc_win_probability,
         gameTime,
+        pickType,
       });
       // Total (over/under) pick: emit a second event when API returns total prediction + line
       const total = p.total;
@@ -256,6 +266,7 @@ export async function getPrognoProbabilities(): Promise<PrognoEventProbability[]
           totalLine: total.line,
           totalSide,
           gameTime: gameTime,
+          pickType: 'total',
         });
       }
     }
@@ -447,6 +458,59 @@ export function matchKalshiMarketToProgno(
         pickIsYesSide,
       };
     }
+    return null;
+  }
+
+  // Spread pick: only match SPREAD markets (e.g. KXNBASPREAD, KXNCAAMBSPREAD)
+  // Kalshi spread titles: "Will [Team] win by [N]+ points?" or "Will [Team] win the ... game by [N]+ points?"
+  if (prognoEvent.pickType === 'spread') {
+    const pickTokens = teamSearchTokens(prognoEvent.pick);
+    for (const market of kalshiMarkets) {
+      if (!market || typeof market !== 'object') continue;
+      const status = (market.status || '').toLowerCase();
+      if (status === 'settled' || status === 'suspended' || status === 'closed') continue;
+      const yesAsk = typeof market.yes_ask === 'number' ? market.yes_ask : null;
+      if (yesAsk === null || yesAsk <= 0 || yesAsk >= 100) continue;
+      const tickerStr = (market.ticker || '').toUpperCase();
+      const eventTicker = (market.event_ticker || '').toUpperCase();
+      // MUST be a SPREAD market
+      if (!/SPREAD/i.test(tickerStr) && !/SPREAD/i.test(eventTicker)) continue;
+      // Skip halves, player props
+      if (/2HWINNER|1HWINNER|\b2H\b|\b1H\b|MENTION|PTS|REB|AST|PROP/i.test(tickerStr)) continue;
+      const marketTitle = String(market.title || '');
+      if (!marketTitle) continue;
+      // Skip non-sports
+      if (NON_SPORTS_TITLE.test(marketTitle)) continue;
+      // League consistency
+      if (!titleLeagueMatchesEvent(marketTitle, prognoEvent.league)) continue;
+      if (!tickerMatchesLeague(tickerStr, eventTicker, prognoEvent.league)) continue;
+      // Both teams must be in title
+      const sanitized = sanitizeToken(marketTitle);
+      const hasHome = homeTokens.some(t => t.length >= 3 && sanitized.includes(t));
+      const hasAway = awayTokens.some(t => t.length >= 3 && sanitized.includes(t));
+      if (!hasHome || !hasAway) continue;
+      // Determine YES side: "Will [Team] win ... by N+ points?" → that Team is YES
+      const willWinMatch = marketTitle.toLowerCase().match(/will\s+(.+?)\s+win/i);
+      const yesTeamText = willWinMatch ? sanitizeToken(willWinMatch[1]) : '';
+      const pickIsYesSide = yesTeamText
+        ? pickTokens.some(t => t.length >= 3 && yesTeamText.includes(t))
+        : true;
+      return {
+        ticker: market.ticker || '',
+        eventTicker: market.event_ticker || '',
+        title: market.title || '',
+        yes_ask: yesAsk,
+        yes_bid: typeof market.yes_bid === 'number' ? market.yes_bid : yesAsk - 1,
+        no_ask: typeof market.no_ask === 'number' ? market.no_ask : 100 - yesAsk,
+        no_bid: typeof market.no_bid === 'number' ? market.no_bid : 100 - (typeof market.yes_bid === 'number' ? market.yes_bid : yesAsk),
+        volume: typeof market.volume === 'number' ? market.volume : 0,
+        open_interest: typeof market.open_interest === 'number' ? market.open_interest : 0,
+        status: market.status || 'unknown',
+        category: market.category || '',
+        pickIsYesSide,
+      };
+    }
+    // No spread market found — do NOT fall through to moneyline matching
     return null;
   }
 
