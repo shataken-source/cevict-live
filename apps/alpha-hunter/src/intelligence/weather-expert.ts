@@ -21,6 +21,33 @@
 
 import { Opportunity } from '../types';
 
+// WeatherAPI.com for cross-validation (key in KeyVault as WEATHER_API_KEY)
+interface WeatherApiValidation {
+  tempHighF: number;
+  tempLowF: number;
+  condition: string;
+}
+
+async function fetchWeatherApiCrossCheck(city: CityInfo, targetDate: string): Promise<WeatherApiValidation | null> {
+  const apiKey = process.env.WEATHER_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const url = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${city.lat},${city.lon}&days=7&aqi=no&alerts=no`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const day = data?.forecast?.forecastday?.find((d: any) => d.date === targetDate);
+    if (!day) return null;
+    return {
+      tempHighF: day.day.maxtemp_f,
+      tempLowF: day.day.mintemp_f,
+      condition: day.day.condition?.text || '',
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── City Coordinates for NWS + Open-Meteo ────────────────────────────────────
 
 interface CityInfo {
@@ -285,9 +312,13 @@ function estimateTempProbability(
   threshold: number,
   direction: 'above' | 'below' | 'between',
   spread: number,
+  daysOut: number = 1,
 ): number {
-  // Minimum uncertainty: even good models have ±2°F error
-  const sigma = Math.max(spread, 2.0);
+  // Forecast error grows with horizon:
+  //   Day 0-1: ±3-4°F,  Day 2-3: ±5-6°F,  Day 4-7: ±7-9°F
+  // This is the single most important parameter — too tight = overconfident = bad trades
+  const horizonPenalty = daysOut <= 1 ? 0 : daysOut <= 3 ? 2 : daysOut <= 5 ? 4 : 6;
+  const sigma = Math.max(spread, 4.0) + horizonPenalty;
 
   if (direction === 'above') {
     // P(temp >= threshold)
@@ -304,7 +335,7 @@ function estimateTempProbability(
 
 export async function findWeatherOpportunities(
   allMarkets: any[],
-  minEdgePct: number = 8,
+  minEdgePct: number = 12,
 ): Promise<Opportunity[]> {
   const opportunities: Opportunity[] = [];
   const PRICE_FLOOR = parseInt(process.env.KALSHI_PRICE_FLOOR || '15', 10);
@@ -366,8 +397,32 @@ export async function findWeatherOpportunities(
         continue; // snowfall/precip handled differently (TODO)
       }
 
-      // Calculate model probability
-      const modelProb = estimateTempProbability(forecastTemp, wm.threshold, wm.direction, spread);
+      // Calculate days until target date (affects forecast uncertainty)
+      const now = new Date();
+      const target = new Date(wm.targetDate + 'T12:00:00Z');
+      const daysOut = Math.max(0, Math.round((target.getTime() - now.getTime()) / 86400000));
+
+      // Skip markets > 5 days out — forecast skill degrades too much
+      if (daysOut > 5) continue;
+
+      // Cross-validate with WeatherAPI.com if available
+      const wapiCheck = await fetchWeatherApiCrossCheck(wm.city, wm.targetDate!);
+      if (wapiCheck) {
+        const wapiTemp = wm.type === 'temp_high' ? wapiCheck.tempHighF : wapiCheck.tempLowF;
+        const modelDiff = Math.abs(forecastTemp - wapiTemp);
+        // If the two forecasts disagree by > 5°F, skip — too uncertain
+        if (modelDiff > 5) {
+          console.log(`[weather-expert] ${wm.ticker}: Open-Meteo=${forecastTemp.toFixed(0)}°F vs WeatherAPI=${wapiTemp.toFixed(0)}°F — models disagree by ${modelDiff.toFixed(0)}°F, skipping`);
+          continue;
+        }
+        // Average the two forecasts for better accuracy
+        forecastTemp = (forecastTemp + wapiTemp) / 2;
+        // Reduce spread if models agree closely (< 2°F difference)
+        if (modelDiff < 2) spread = Math.max(spread * 0.8, 3);
+      }
+
+      // Calculate model probability (with horizon-adjusted uncertainty)
+      const modelProb = estimateTempProbability(forecastTemp, wm.threshold, wm.direction, spread, daysOut);
 
       // Market price
       const marketProb = wm.yesAsk;
@@ -422,7 +477,7 @@ export async function findWeatherOpportunities(
           amount: stake,
           target: `${wm.ticker} ${side.toUpperCase()}`,
           instructions: [`Place ${side.toUpperCase()} on ${wm.ticker} at ≤${tradePrice}¢ (model ${modelProb.toFixed(0)}%)`],
-          autoExecute: true,
+          autoExecute: false, // Manual review until validated
         },
         expiresAt: wm.targetDate ? `${wm.targetDate}T23:59:59Z` : new Date(Date.now() + 86400000).toISOString(),
         createdAt: new Date().toISOString(),

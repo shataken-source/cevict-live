@@ -57,13 +57,28 @@ interface EconSnapshot {
   recessionProb: number | null;
   yieldCurveSpread: number | null; // 10Y-2Y (negative = inverted)
   initialClaims: number | null;
+  // Treasury.gov data
+  treasury10Y: number | null;      // 10-year treasury yield
+  treasury2Y: number | null;       // 2-year treasury yield
+  treasury30Y: number | null;      // 30-year treasury yield
+  // EIA energy data
+  oilPriceWTI: number | null;      // WTI crude $/barrel
+  gasolinePrice: number | null;    // Regular gasoline $/gallon
+  // World Bank global indicators
+  globalGdpGrowth: number | null;  // World GDP growth forecast %
+  // CoinGecko crypto data
+  btcPrice: number | null;
+  ethPrice: number | null;
+  cryptoMarketCap: number | null;  // Total crypto market cap in billions
+  btcDominance: number | null;     // BTC dominance %
+  fearGreedIndex: number | null;   // 0-100 (0=extreme fear, 100=extreme greed)
   fetchedAt: Date;
 }
 
 interface EconMarketSignal {
   ticker: string;
   title: string;
-  category: 'fed_rate' | 'inflation' | 'unemployment' | 'gdp' | 'recession';
+  category: 'fed_rate' | 'inflation' | 'unemployment' | 'gdp' | 'recession' | 'energy' | 'crypto';
   modelProbability: number; // 0-100
   marketPrice: number;      // yes_ask in cents
   edge: number;             // model - market
@@ -72,9 +87,12 @@ interface EconMarketSignal {
   reasoning: string[];
 }
 
-// ── FRED API Client ──────────────────────────────────────────────────────────
+// ── API Clients ─────────────────────────────────────────────────────────────
 
 const FRED_BASE = 'https://api.stlouisfed.org/fred';
+const TREASURY_BASE = 'https://api.fiscaldata.treasury.gov/services/api/fiscal_service';
+const EIA_BASE = 'https://api.eia.gov/v2';
+const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 
 async function fetchFredSeries(seriesId: string, limit: number = 5): Promise<FredObservation[]> {
   const apiKey = process.env.FRED_API_KEY;
@@ -94,6 +112,119 @@ async function fetchFredSeries(seriesId: string, limit: number = 5): Promise<Fre
   }
 }
 
+// ── Treasury.gov Fetcher (no API key needed) ────────────────────────────────
+
+async function fetchTreasuryYields(): Promise<{ y10: number | null; y2: number | null; y30: number | null }> {
+  try {
+    // Treasury daily rates: most recent record
+    const url = `${TREASURY_BASE}/v2/accounting/od/avg_interest_rates?sort=-record_date&page[size]=10&filter=security_desc:eq:Treasury Bonds,security_desc:eq:Treasury Notes`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return { y10: null, y2: null, y30: null };
+    const data = await res.json();
+    // Fallback: try the daily treasury yield curve endpoint
+    const yieldUrl = `${TREASURY_BASE}/v1/accounting/od/rates_of_exchange?sort=-record_date&page[size]=1`;
+    // Use FRED for treasury yields instead (more reliable)
+    return { y10: null, y2: null, y30: null };
+  } catch {
+    return { y10: null, y2: null, y30: null };
+  }
+}
+
+// ── EIA Energy Fetcher ───────────────────────────────────────────────────────
+
+async function fetchEIAData(): Promise<{ oilWTI: number | null; gasoline: number | null }> {
+  const apiKey = process.env.EIA_API_KEY;
+  // EIA v2 API: fetch WTI crude and retail gasoline prices
+  try {
+    // WTI Crude Oil (PET.RWTC.W = weekly WTI spot)
+    const oilUrl = apiKey
+      ? `${EIA_BASE}/petroleum/pri/spt/data/?api_key=${apiKey}&frequency=weekly&data[0]=value&facets[series][]=RWTC&sort[0][column]=period&sort[0][direction]=desc&length=2`
+      : `${EIA_BASE}/petroleum/pri/spt/data/?frequency=weekly&data[0]=value&facets[series][]=RWTC&sort[0][column]=period&sort[0][direction]=desc&length=2`;
+    const gasUrl = apiKey
+      ? `${EIA_BASE}/petroleum/pri/gnd/data/?api_key=${apiKey}&frequency=weekly&data[0]=value&facets[series][]=EMM_EPMR_PTE_NUS_DPG&sort[0][column]=period&sort[0][direction]=desc&length=2`
+      : `${EIA_BASE}/petroleum/pri/gnd/data/?frequency=weekly&data[0]=value&facets[series][]=EMM_EPMR_PTE_NUS_DPG&sort[0][column]=period&sort[0][direction]=desc&length=2`;
+
+    const [oilRes, gasRes] = await Promise.all([
+      fetch(oilUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null),
+      fetch(gasUrl, { signal: AbortSignal.timeout(8000) }).catch(() => null),
+    ]);
+
+    let oilWTI: number | null = null;
+    let gasoline: number | null = null;
+
+    if (oilRes?.ok) {
+      const d = await oilRes.json();
+      oilWTI = d?.response?.data?.[0]?.value ?? null;
+    }
+    if (gasRes?.ok) {
+      const d = await gasRes.json();
+      gasoline = d?.response?.data?.[0]?.value ?? null;
+    }
+    return { oilWTI, gasoline };
+  } catch {
+    return { oilWTI: null, gasoline: null };
+  }
+}
+
+// ── World Bank Fetcher (no API key needed) ───────────────────────────────────
+
+async function fetchWorldBankGDP(): Promise<number | null> {
+  try {
+    // World GDP growth rate, most recent year
+    const url = 'https://api.worldbank.org/v2/country/WLD/indicator/NY.GDP.MKTP.KD.ZG?format=json&per_page=3&mrv=3';
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    // data[1] is the array of observations
+    const obs = data?.[1];
+    if (Array.isArray(obs) && obs.length > 0) {
+      for (const o of obs) {
+        if (o.value !== null && o.value !== undefined) return parseFloat(o.value);
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ── CoinGecko Fetcher (no API key needed, 10-30 req/min) ────────────────────
+
+interface CryptoSnapshot {
+  btcPrice: number | null;
+  ethPrice: number | null;
+  totalMarketCap: number | null;  // billions
+  btcDominance: number | null;
+  fearGreedIndex: number | null;
+}
+
+async function fetchCoinGeckoData(): Promise<CryptoSnapshot> {
+  const result: CryptoSnapshot = { btcPrice: null, ethPrice: null, totalMarketCap: null, btcDominance: null, fearGreedIndex: null };
+  try {
+    const [priceRes, globalRes, fgRes] = await Promise.all([
+      fetch(`${COINGECKO_BASE}/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true`, { signal: AbortSignal.timeout(8000) }).catch(() => null),
+      fetch(`${COINGECKO_BASE}/global`, { signal: AbortSignal.timeout(8000) }).catch(() => null),
+      fetch('https://api.alternative.me/fng/?limit=1', { signal: AbortSignal.timeout(5000) }).catch(() => null),
+    ]);
+
+    if (priceRes?.ok) {
+      const d = await priceRes.json();
+      result.btcPrice = d?.bitcoin?.usd ?? null;
+      result.ethPrice = d?.ethereum?.usd ?? null;
+    }
+    if (globalRes?.ok) {
+      const d = await globalRes.json();
+      result.totalMarketCap = d?.data?.total_market_cap?.usd ? d.data.total_market_cap.usd / 1e9 : null;
+      result.btcDominance = d?.data?.market_cap_percentage?.btc ?? null;
+    }
+    if (fgRes?.ok) {
+      const d = await fgRes.json();
+      result.fearGreedIndex = d?.data?.[0]?.value ? parseInt(d.data[0].value) : null;
+    }
+  } catch { /* silent */ }
+  return result;
+}
+
 // Cache snapshot per cycle
 let snapshotCache: EconSnapshot | null = null;
 let snapshotCacheTime = 0;
@@ -103,7 +234,8 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
   const now = Date.now();
   if (snapshotCache && (now - snapshotCacheTime) < SNAPSHOT_TTL) return snapshotCache;
 
-  const [fedFunds, cpi, unemployment, gdp, recession, yieldCurve, claims] = await Promise.all([
+  // Fetch all data sources in parallel
+  const [fedFunds, cpi, unemployment, gdp, recession, yieldCurve, claims, treasury10y, treasury2y, treasury30y, eia, worldGdp, crypto] = await Promise.all([
     fetchFredSeries(FRED_SERIES.FED_FUNDS_RATE, 3),
     fetchFredSeries(FRED_SERIES.CPI_ALL_URBAN, 13), // 13 months for YoY
     fetchFredSeries(FRED_SERIES.UNEMPLOYMENT, 3),
@@ -111,6 +243,14 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
     fetchFredSeries(FRED_SERIES.RECESSION_PROB, 2),
     fetchFredSeries(FRED_SERIES.T10Y2Y, 5),
     fetchFredSeries(FRED_SERIES.INITIAL_CLAIMS, 4),
+    // Treasury yields via FRED (more reliable than Treasury.gov API)
+    fetchFredSeries('DGS10', 3),    // 10-Year Treasury
+    fetchFredSeries('DGS2', 3),     // 2-Year Treasury
+    fetchFredSeries('DGS30', 3),    // 30-Year Treasury
+    // External APIs
+    fetchEIAData(),
+    fetchWorldBankGDP(),
+    fetchCoinGeckoData(),
   ]);
 
   // Calculate CPI YoY: (latest / 12-months-ago - 1) * 100
@@ -130,11 +270,29 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
     recessionProb: recession[0]?.value ?? null,
     yieldCurveSpread: yieldCurve[0]?.value ?? null,
     initialClaims: claims[0]?.value ?? null,
+    // Treasury yields
+    treasury10Y: treasury10y[0]?.value ?? null,
+    treasury2Y: treasury2y[0]?.value ?? null,
+    treasury30Y: treasury30y[0]?.value ?? null,
+    // EIA energy
+    oilPriceWTI: eia.oilWTI,
+    gasolinePrice: eia.gasoline,
+    // World Bank
+    globalGdpGrowth: worldGdp,
+    // CoinGecko
+    btcPrice: crypto.btcPrice,
+    ethPrice: crypto.ethPrice,
+    cryptoMarketCap: crypto.totalMarketCap,
+    btcDominance: crypto.btcDominance,
+    fearGreedIndex: crypto.fearGreedIndex,
     fetchedAt: new Date(),
   };
   snapshotCacheTime = now;
 
-  console.log(`   [ECON] Snapshot: Fed=${snapshotCache.fedFundsRate}% CPI_YoY=${cpiYoY?.toFixed(1)}% Unemp=${snapshotCache.unemployment}% GDP=${snapshotCache.gdpGrowth}% RecProb=${snapshotCache.recessionProb}% YieldCurve=${snapshotCache.yieldCurveSpread}`);
+  console.log(`   [ECON] Snapshot: Fed=${snapshotCache.fedFundsRate}% CPI_YoY=${cpiYoY?.toFixed(1)}% Unemp=${snapshotCache.unemployment}% GDP=${snapshotCache.gdpGrowth}%`);
+  console.log(`   [ECON]   Treasury: 2Y=${snapshotCache.treasury2Y}% 10Y=${snapshotCache.treasury10Y}% 30Y=${snapshotCache.treasury30Y}% Curve=${snapshotCache.yieldCurveSpread}`);
+  console.log(`   [ECON]   Energy: WTI=$${snapshotCache.oilPriceWTI} Gas=$${snapshotCache.gasolinePrice} | WorldGDP=${snapshotCache.globalGdpGrowth?.toFixed(1)}%`);
+  console.log(`   [ECON]   Crypto: BTC=$${snapshotCache.btcPrice?.toLocaleString()} ETH=$${snapshotCache.ethPrice?.toLocaleString()} MCap=$${snapshotCache.cryptoMarketCap?.toFixed(0)}B Dom=${snapshotCache.btcDominance?.toFixed(1)}% F&G=${snapshotCache.fearGreedIndex}`);
   return snapshotCache;
 }
 
@@ -152,6 +310,10 @@ function classifyEconMarket(title: string, ticker: string): EconMarketSignal['ca
     return 'gdp';
   if (t.includes('recession'))
     return 'recession';
+  if (t.includes('oil') || t.includes('crude') || t.includes('wti') || t.includes('brent') || t.includes('gasoline') || t.includes('gas price') || t.includes('energy price') || t.includes('opec'))
+    return 'energy';
+  if (t.includes('bitcoin') || t.includes('btc') || t.includes('ethereum') || t.includes('eth') || t.includes('crypto') || t.includes('digital asset'))
+    return 'crypto';
   return null;
 }
 
