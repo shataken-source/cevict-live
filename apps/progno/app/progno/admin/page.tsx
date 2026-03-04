@@ -7,6 +7,7 @@ import EnhancedEarlyLinesSection from '../../../components/admin/EnhancedEarlyLi
 import PrintBetsSection from '../../../components/admin/PrintBetsSection';
 import ReportsSection from '../../../components/admin/ReportsSection';
 import EarlyLinesSection from '../../../components/admin/EarlyLinesSection';
+import EarlyLinesPerformance from '../../../components/admin/EarlyLinesPerformance';
 import BetSelectionModal, { type PreviewPick, type SelectedBet } from '../../../components/admin/BetSelectionModal';
 import PerformanceSection from '../../../components/admin/PerformanceSection';
 
@@ -210,8 +211,10 @@ export default function AdminPage() {
   // dates
   const [gameDate, setGameDate] = useState(() => getToday());
   const [earlyOffset, setEarlyOffset] = useState(4);
-  const earlyDate = subtractDays(gameDate, earlyOffset);
-  // Note: earlyOffset is MAX days for the range (0 to earlyOffset)
+  // Both early + regular files share the SAME date stamp (the cron run date).
+  // The "early" distinction is the lookahead window (0-N days ahead vs 0-1 days),
+  // NOT a different file date. earlyOffset is only used by the cron job itself.
+  const earlyDate = gameDate;
   const regularDate = gameDate;
   const [resultsDate, setResultsDate] = useState<string>(getYesterday());
   const cronFileDate = getToday();
@@ -1177,25 +1180,19 @@ export default function AdminPage() {
           <div>
             <Card style={{ marginBottom: 16 }}>
               <SectionLabel>EARLY vs REGULAR — LINE MOVE DETECTION</SectionLabel>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 12 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 12, alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 3 }}>EARLY FILE</div>
+                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 3 }}>EARLY FILE (0–4 days ahead)</div>
                   <code style={{ color: C.amber, fontSize: 11 }}>predictions-early-{earlyDate}.json</code>
                 </div>
+                <div style={{ fontSize: 16, color: C.textDim }}>vs</div>
                 <div>
-                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 3 }}>REGULAR FILE</div>
+                  <div style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1, marginBottom: 3 }}>REGULAR FILE (0–1 days ahead)</div>
                   <code style={{ color: C.green, fontSize: 11 }}>predictions-{regularDate}.json</code>
                 </div>
-                <div>
-                  <span style={{ fontFamily: C.mono, fontSize: 9, color: C.textDim, letterSpacing: 1 }}>RANGE: </span>
-                  <select
-                    value={earlyOffset}
-                    onChange={e => setEarlyOffset(Number(e.target.value))}
-                    style={{ padding: '4px 8px', background: '#050c16', border: `1px solid ${C.border}`, borderRadius: 4, color: C.text, fontFamily: C.mono, fontSize: 11, marginLeft: 6 }}
-                  >
-                    {[2, 3, 4, 5].map(n => <option key={n} value={n}>0-{n} days</option>)}
-                  </select>
-                </div>
+              </div>
+              <div style={{ fontFamily: C.mono, fontSize: 10, color: C.textDim, marginBottom: 10 }}>
+                Both files generated on the same date — overlap comes from games that appear in both lookahead windows. Use the date picker (top-right) to change which day&apos;s cron run to compare.
               </div>
               <Btn onClick={runEarlyVsRegular} disabled={compareLoading || !secret.trim()} color={C.amber}>
                 {compareLoading ? '⟳ COMPARING...' : '⟺ COMPARE LINES'}
@@ -1298,6 +1295,11 @@ export default function AdminPage() {
             <Card style={{ marginBottom: 16 }}>
               <SectionLabel>ENHANCED EARLY-LINE ANALYSIS</SectionLabel>
               <EnhancedEarlyLinesSection secret={secret} earlyDate={earlyDate} regularDate={regularDate} />
+            </Card>
+
+            <Card style={{ marginBottom: 16 }}>
+              <SectionLabel>EARLY LINES — HELPING OR HURTING?</SectionLabel>
+              <EarlyLinesPerformance secret={secret} />
             </Card>
 
             <Card>
