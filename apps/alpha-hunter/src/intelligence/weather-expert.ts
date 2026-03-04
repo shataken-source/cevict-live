@@ -78,6 +78,22 @@ const CITIES: CityInfo[] = [
   { name: 'Philadelphia', lat: 39.9526, lon: -75.1652, kalshiPrefix: 'PHL', aliases: ['philadelphia', 'philly', 'phl'] },
   { name: 'Austin', lat: 30.2672, lon: -97.7431, kalshiPrefix: 'AUS', aliases: ['austin', 'aus'] },
   { name: 'Nashville', lat: 36.1627, lon: -86.7816, kalshiPrefix: 'BNA', aliases: ['nashville', 'bna'] },
+  { name: 'Las Vegas', lat: 36.1699, lon: -115.1398, kalshiPrefix: 'LAS', aliases: ['las vegas', 'vegas', 'las'] },
+  { name: 'Orlando', lat: 28.5383, lon: -81.3792, kalshiPrefix: 'MCO', aliases: ['orlando', 'mco'] },
+  { name: 'Portland', lat: 45.5152, lon: -122.6784, kalshiPrefix: 'PDX', aliases: ['portland', 'pdx'] },
+  { name: 'St. Louis', lat: 38.6270, lon: -90.1994, kalshiPrefix: 'STL', aliases: ['st louis', 'stl', 'saint louis'] },
+  { name: 'Kansas City', lat: 39.0997, lon: -94.5786, kalshiPrefix: 'MCI', aliases: ['kansas city', 'mci', 'kc'] },
+  { name: 'Charlotte', lat: 35.2271, lon: -80.8431, kalshiPrefix: 'CLT', aliases: ['charlotte', 'clt'] },
+  { name: 'Salt Lake City', lat: 40.7608, lon: -111.8910, kalshiPrefix: 'SLC', aliases: ['salt lake', 'slc', 'salt lake city'] },
+  { name: 'Pittsburgh', lat: 40.4406, lon: -79.9959, kalshiPrefix: 'PIT', aliases: ['pittsburgh', 'pit'] },
+  { name: 'Cleveland', lat: 41.4993, lon: -81.6944, kalshiPrefix: 'CLE', aliases: ['cleveland', 'cle'] },
+  { name: 'Tampa', lat: 27.9506, lon: -82.4572, kalshiPrefix: 'TPA', aliases: ['tampa', 'tpa'] },
+  { name: 'Raleigh', lat: 35.7796, lon: -78.6382, kalshiPrefix: 'RDU', aliases: ['raleigh', 'rdu'] },
+  { name: 'Cincinnati', lat: 39.1031, lon: -84.5120, kalshiPrefix: 'CVG', aliases: ['cincinnati', 'cvg'] },
+  { name: 'Indianapolis', lat: 39.7684, lon: -86.1581, kalshiPrefix: 'IND', aliases: ['indianapolis', 'ind', 'indy'] },
+  { name: 'Milwaukee', lat: 43.0389, lon: -87.9065, kalshiPrefix: 'MKE', aliases: ['milwaukee', 'mke'] },
+  { name: 'Buffalo', lat: 42.8864, lon: -78.8784, kalshiPrefix: 'BUF', aliases: ['buffalo', 'buf'] },
+  { name: 'Anchorage', lat: 61.2181, lon: -149.9003, kalshiPrefix: 'ANC', aliases: ['anchorage', 'anc'] },
 ];
 
 // ── Weather Data Types ───────────────────────────────────────────────────────
@@ -393,8 +409,16 @@ export async function findWeatherOpportunities(
       } else if (wm.type === 'temp_low') {
         forecastTemp = dayForecast.tempLowF;
         spread = ensemble.lowSpread;
+      } else if (wm.type === 'snowfall') {
+        // Snowfall markets: "Will it snow more than X inches in Chicago?"
+        forecastTemp = dayForecast.snowfallInches; // repurpose variable for snow
+        spread = Math.max(forecastTemp * 0.5, 0.5); // Snow forecasts are very uncertain — 50% of forecast as std dev
+      } else if (wm.type === 'precipitation') {
+        // Precipitation probability markets: "Will it rain in NYC?"
+        forecastTemp = dayForecast.precipProbability; // repurpose for precip %
+        spread = 15; // Fixed uncertainty for precip probability
       } else {
-        continue; // snowfall/precip handled differently (TODO)
+        continue;
       }
 
       // Calculate days until target date (affects forecast uncertainty)

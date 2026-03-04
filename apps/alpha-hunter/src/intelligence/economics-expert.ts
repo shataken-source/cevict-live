@@ -492,7 +492,188 @@ function analyzeRecession(title: string, yesAsk: number, snap: EconSnapshot): { 
   }
 
   reasoning.push(`FRED recession probability: ${snap.recessionProb?.toFixed(0) ?? '?'}%`);
-  return { prob: Math.round(baseProb), confidence: 60, reasoning };
+  // Enrich with live treasury yield data
+  if (snap.treasury10Y !== null && snap.treasury2Y !== null) {
+    const liveSpread = snap.treasury10Y - snap.treasury2Y;
+    if (liveSpread < -0.3) {
+      baseProb = Math.min(baseProb + 10, 70);
+      reasoning.push(`Live 10Y-2Y spread: ${liveSpread.toFixed(2)}% (inverted — recession signal)`);
+    } else if (liveSpread > 0.5) {
+      reasoning.push(`Live 10Y-2Y spread: +${liveSpread.toFixed(2)}% (healthy)`);
+    }
+  }
+  // Oil price shock indicator
+  if (snap.oilPriceWTI !== null && snap.oilPriceWTI > 100) {
+    baseProb = Math.min(baseProb + 8, 70);
+    reasoning.push(`WTI crude at $${snap.oilPriceWTI.toFixed(0)} — energy shock adds recession risk`);
+  }
+  // Global GDP slowdown
+  if (snap.globalGdpGrowth !== null && snap.globalGdpGrowth < 2.0) {
+    baseProb = Math.min(baseProb + 5, 65);
+    reasoning.push(`Global GDP growth only ${snap.globalGdpGrowth.toFixed(1)}% — weak global backdrop`);
+  }
+  return { prob: Math.round(baseProb), confidence: 62, reasoning };
+}
+
+function analyzeGDP(title: string, yesAsk: number, snap: EconSnapshot): { prob: number; confidence: number; reasoning: string[] } | null {
+  const t = title.toLowerCase();
+  const reasoning: string[] = [];
+  if (snap.gdpGrowth === null) return null;
+
+  // "Will GDP growth be above X%?" or "Will GDP be positive?"
+  const aboveMatch = t.match(/(?:above|over|exceed|higher than|positive)\s*(\d+(?:\.\d+)?)?/);
+  if (aboveMatch || t.includes('positive')) {
+    const threshold = aboveMatch?.[1] ? parseFloat(aboveMatch[1]) : 0;
+    const gap = snap.gdpGrowth - threshold;
+    reasoning.push(`GDP growth at ${snap.gdpGrowth.toFixed(1)}% vs ${threshold}% threshold`);
+    if (snap.globalGdpGrowth !== null) reasoning.push(`Global GDP: ${snap.globalGdpGrowth.toFixed(1)}%`);
+    if (gap > 1.0) return { prob: 80, confidence: 65, reasoning };
+    if (gap > 0.3) return { prob: 60, confidence: 55, reasoning };
+    if (gap > -0.3) return { prob: 45, confidence: 50, reasoning };
+    return { prob: 20, confidence: 60, reasoning };
+  }
+
+  // "Will GDP be negative?" / "contraction"
+  if (t.includes('negative') || t.includes('contraction') || t.includes('shrink')) {
+    reasoning.push(`GDP growth at ${snap.gdpGrowth.toFixed(1)}%`);
+    if (snap.gdpGrowth < -0.5) return { prob: 80, confidence: 70, reasoning };
+    if (snap.gdpGrowth < 0.5) return { prob: 40, confidence: 55, reasoning };
+    return { prob: 15, confidence: 60, reasoning };
+  }
+
+  return null;
+}
+
+function analyzeEnergy(title: string, yesAsk: number, snap: EconSnapshot): { prob: number; confidence: number; reasoning: string[] } | null {
+  const t = title.toLowerCase();
+  const reasoning: string[] = [];
+
+  // Oil price markets
+  if (t.includes('oil') || t.includes('crude') || t.includes('wti') || t.includes('brent')) {
+    if (snap.oilPriceWTI === null) return null;
+
+    // Extract threshold: "Will oil be above $X?"
+    const aboveMatch = t.match(/(?:above|over|exceed|higher than|reach)\s*\$?(\d+)/);
+    const belowMatch = t.match(/(?:below|under|less than|lower than|fall below)\s*\$?(\d+)/);
+
+    if (aboveMatch) {
+      const threshold = parseFloat(aboveMatch[1]);
+      const gap = snap.oilPriceWTI - threshold;
+      const gapPct = (gap / threshold) * 100;
+      reasoning.push(`WTI crude at $${snap.oilPriceWTI.toFixed(2)} vs $${threshold} threshold`);
+      if (snap.gasolinePrice !== null) reasoning.push(`Gasoline: $${snap.gasolinePrice.toFixed(2)}/gal`);
+      // Oil is mean-reverting but slow — current price is strong predictor
+      if (gapPct > 10) return { prob: 82, confidence: 68, reasoning };
+      if (gapPct > 3) return { prob: 62, confidence: 58, reasoning };
+      if (gapPct > 0) return { prob: 52, confidence: 50, reasoning };
+      if (gapPct > -5) return { prob: 38, confidence: 52, reasoning };
+      if (gapPct > -15) return { prob: 22, confidence: 58, reasoning };
+      return { prob: 12, confidence: 65, reasoning };
+    }
+
+    if (belowMatch) {
+      const threshold = parseFloat(belowMatch[1]);
+      const gap = threshold - snap.oilPriceWTI;
+      const gapPct = (gap / threshold) * 100;
+      reasoning.push(`WTI crude at $${snap.oilPriceWTI.toFixed(2)} vs $${threshold} threshold`);
+      if (gapPct > 10) return { prob: 82, confidence: 68, reasoning };
+      if (gapPct > 3) return { prob: 62, confidence: 58, reasoning };
+      if (gapPct > 0) return { prob: 52, confidence: 50, reasoning };
+      if (gapPct > -5) return { prob: 38, confidence: 52, reasoning };
+      return { prob: 15, confidence: 60, reasoning };
+    }
+  }
+
+  // Gas price markets
+  if (t.includes('gasoline') || t.includes('gas price') || t.includes('gallon')) {
+    if (snap.gasolinePrice === null) return null;
+    const numMatch = t.match(/\$?(\d+(?:\.\d+)?)/);
+    if (!numMatch) return null;
+    const threshold = parseFloat(numMatch[1]);
+    const gap = snap.gasolinePrice - threshold;
+    reasoning.push(`Gasoline at $${snap.gasolinePrice.toFixed(2)}/gal vs $${threshold}`);
+    if (snap.oilPriceWTI !== null) reasoning.push(`WTI crude: $${snap.oilPriceWTI.toFixed(0)}`);
+
+    const isAboveQ = t.includes('above') || t.includes('over') || t.includes('exceed');
+    if (isAboveQ) {
+      if (gap > 0.30) return { prob: 80, confidence: 65, reasoning };
+      if (gap > 0.10) return { prob: 60, confidence: 55, reasoning };
+      if (gap > -0.10) return { prob: 45, confidence: 50, reasoning };
+      return { prob: 20, confidence: 60, reasoning };
+    } else {
+      if (gap < -0.30) return { prob: 80, confidence: 65, reasoning };
+      if (gap < -0.10) return { prob: 60, confidence: 55, reasoning };
+      if (gap < 0.10) return { prob: 45, confidence: 50, reasoning };
+      return { prob: 20, confidence: 60, reasoning };
+    }
+  }
+
+  return null;
+}
+
+function analyzeCrypto(title: string, yesAsk: number, snap: EconSnapshot): { prob: number; confidence: number; reasoning: string[] } | null {
+  const t = title.toLowerCase();
+  const reasoning: string[] = [];
+
+  // Bitcoin price markets
+  const isBtc = t.includes('bitcoin') || t.includes('btc');
+  const isEth = t.includes('ethereum') || t.includes('eth');
+  const currentPrice = isBtc ? snap.btcPrice : isEth ? snap.ethPrice : null;
+  const label = isBtc ? 'BTC' : 'ETH';
+
+  if (!currentPrice) return null;
+
+  // Extract threshold: "Will BTC be above $100,000?"
+  const aboveMatch = t.match(/(?:above|over|exceed|higher than|reach|hit)\s*\$?([\d,]+)/);
+  const belowMatch = t.match(/(?:below|under|less than|lower than|fall below|drop to)\s*\$?([\d,]+)/);
+
+  if (aboveMatch || belowMatch) {
+    const isAbove = !!aboveMatch;
+    const threshold = parseFloat((isAbove ? aboveMatch![1] : belowMatch![1]).replace(/,/g, ''));
+    const gap = currentPrice - threshold;
+    const gapPct = (gap / threshold) * 100;
+
+    reasoning.push(`${label} at $${currentPrice.toLocaleString()} vs $${threshold.toLocaleString()} threshold`);
+    if (snap.fearGreedIndex !== null) {
+      const fgLabel = snap.fearGreedIndex > 75 ? 'extreme greed' : snap.fearGreedIndex > 60 ? 'greed' : snap.fearGreedIndex > 40 ? 'neutral' : snap.fearGreedIndex > 25 ? 'fear' : 'extreme fear';
+      reasoning.push(`Fear & Greed Index: ${snap.fearGreedIndex} (${fgLabel})`);
+    }
+    if (snap.btcDominance !== null) reasoning.push(`BTC dominance: ${snap.btcDominance.toFixed(1)}%`);
+    if (snap.cryptoMarketCap !== null) reasoning.push(`Total crypto market cap: $${snap.cryptoMarketCap.toFixed(0)}B`);
+
+    // Crypto is volatile — current price is less predictive than econ/weather
+    // Use wider uncertainty bands, lower confidence
+    let prob: number;
+    if (isAbove) {
+      if (gapPct > 15) prob = 82;
+      else if (gapPct > 5) prob = 65;
+      else if (gapPct > 0) prob = 52;
+      else if (gapPct > -5) prob = 38;
+      else if (gapPct > -15) prob = 22;
+      else prob = 10;
+    } else {
+      // "below" question — invert the logic
+      if (gapPct < -15) prob = 82;
+      else if (gapPct < -5) prob = 65;
+      else if (gapPct < 0) prob = 52;
+      else if (gapPct < 5) prob = 38;
+      else if (gapPct < 15) prob = 22;
+      else prob = 10;
+    }
+
+    // Fear/greed adjustment: extreme fear → more likely to go down, extreme greed → more likely to go up
+    if (snap.fearGreedIndex !== null) {
+      if (isAbove && snap.fearGreedIndex > 70) prob = Math.min(prob + 5, 90);
+      if (isAbove && snap.fearGreedIndex < 30) prob = Math.max(prob - 5, 5);
+      if (!isAbove && snap.fearGreedIndex < 30) prob = Math.min(prob + 5, 90);
+      if (!isAbove && snap.fearGreedIndex > 70) prob = Math.max(prob - 5, 5);
+    }
+
+    // Lower confidence for crypto — it's inherently less predictable
+    return { prob, confidence: 52, reasoning };
+  }
+
+  return null;
 }
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -556,8 +737,14 @@ export async function findEconomicsOpportunities(
         result = analyzeRecession(m.title, yesAsk, snap);
         break;
       case 'gdp':
-        // GDP is quarterly — too infrequent for real-time edge
-        continue;
+        result = analyzeGDP(m.title, yesAsk, snap);
+        break;
+      case 'energy':
+        result = analyzeEnergy(m.title, yesAsk, snap);
+        break;
+      case 'crypto':
+        result = analyzeCrypto(m.title, yesAsk, snap);
+        break;
     }
 
     if (!result) continue;
