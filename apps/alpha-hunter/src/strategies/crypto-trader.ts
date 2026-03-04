@@ -11,6 +11,22 @@ import { smsAlerter } from '../lib/sms-alerter';
 import { emergencyStop } from '../lib/emergency-stop';
 import { beeper } from '../lib/beep';
 
+// ── RSI Calculation ──────────────────────────────────────────────────────────
+function calculateRSI(closes: number[], period: number = 14): number {
+  if (closes.length < period + 1) return 50; // Not enough data
+  let gainSum = 0, lossSum = 0;
+  for (let i = closes.length - period; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff > 0) gainSum += diff;
+    else lossSum += Math.abs(diff);
+  }
+  const avgGain = gainSum / period;
+  const avgLoss = lossSum / period;
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - (100 / (1 + rs));
+}
+
 interface CryptoSignal {
   symbol: 'BTC' | 'ETH' | 'SOL';
   direction: 'long' | 'short';
@@ -152,8 +168,17 @@ export class CryptoTrader {
     // Need at least 2 reversal candles in last 6 to confirm exhaustion
     if (reversalCandles < 2) return null;
 
+    // RSI filter: confirm mean reversion setup
+    const closes = candles.map(c => c.close);
+    const rsi = calculateRSI(closes, 14);
+    // For long (buying dip): RSI should be < 40 (oversold territory)
+    // For short (selling top): RSI should be > 60 (overbought territory)
+    if (change24h > 0 && rsi < 60) return null; // Not overbought enough to short
+    if (change24h < 0 && rsi > 40) return null; // Not oversold enough to buy
+
     const direction = change24h > 0 ? 'short' : 'long';
-    const confidence = Math.min(55 + Math.abs(change24h) * 2.5 + reversalCandles * 3, 82);
+    const rsiBonus = direction === 'long' ? Math.max(0, (40 - rsi) * 0.3) : Math.max(0, (rsi - 60) * 0.3);
+    const confidence = Math.min(55 + Math.abs(change24h) * 2.5 + reversalCandles * 3 + rsiBonus, 82);
 
     return {
       symbol,
@@ -217,6 +242,12 @@ export class CryptoTrader {
       if ((recent[i] as any).volume > (recent[i - 1] as any).volume) volIncreasing++;
     }
     if (volIncreasing < 2) return null; // Need volume expanding with trend
+
+    // RSI filter: avoid chasing exhausted trends
+    const closes = candles.map(c => c.close);
+    const rsi = calculateRSI(closes, 14);
+    if (direction === 'long' && rsi > 75) return null;  // Too overbought to chase
+    if (direction === 'short' && rsi < 25) return null;  // Too oversold to chase
 
     const confidence = Math.min(52 + strength * 0.3 + volIncreasing * 2, 80);
 

@@ -663,16 +663,17 @@ class CryptoTrainer {
 
     // Use momentum if we have enough history
     if (momentum.trend !== 'unknown') {
-      if (momentum.trend === 'UP' && momentum.strength > 0.05) {
+      // 0.5% minimum to clear bid-ask spread + fees (was 0.05% = noise)
+      if (momentum.trend === 'UP' && momentum.strength > 0.5) {
         signal = 'buy';
-        confidence = 55 + Math.min(momentum.strength * 10, 15);
+        confidence = 55 + Math.min(momentum.strength * 5, 15);
         reason = `Upward momentum ${momentum.strength.toFixed(2)}%`;
-      } else if (momentum.trend === 'DOWN' && momentum.strength > 0.05) {
+      } else if (momentum.trend === 'DOWN' && momentum.strength > 0.5) {
         signal = 'sell';
-        confidence = 55 + Math.min(momentum.strength * 10, 15);
+        confidence = 55 + Math.min(momentum.strength * 5, 15);
         reason = `Downward momentum ${momentum.strength.toFixed(2)}%`;
       } else {
-        reason = 'Sideways - waiting for trend';
+        reason = `Sideways (${momentum.strength.toFixed(2)}% < 0.5% threshold) - waiting`;
       }
     }
 
