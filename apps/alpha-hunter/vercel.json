@@ -10,5 +10,5 @@
   "buildCommand": "next build",
   "outputDirectory": ".next",
   "installCommand": "npm install",
-  "ignoreCommand": "git diff --quiet $VERCEL_GIT_PREVIOUS_SHA HEAD -- apps/alpha-hunter/"
+  "ignoreCommand": "exit 1"
 }
