@@ -885,6 +885,7 @@ export async function recordActualBet(bet: {
   confidence?: number;
   market_title?: string;
   dry_run?: boolean;
+  source?: string;
 }): Promise<void> {
   const client = getClient();
   if (!client) return;
@@ -911,6 +912,7 @@ export async function recordActualBet(bet: {
       game_date: today,
       // NOTE: Do NOT set status here — actual_bets_status_check only allows 'won'/'lost'.
       // Let the DB default handle it. Setting 'open' was silently failing every insert.
+      source: bet.source || 'trade_cycle',
       dry_run: bet.dry_run || false,
       created_at: new Date().toISOString(),
     });

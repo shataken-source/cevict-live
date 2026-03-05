@@ -27,19 +27,43 @@ function getBaseUrl(req: NextRequest): string {
   try { const u = new URL(req.url); return `${u.protocol}//${u.host}` } catch { return process.env.CRON_APP_URL || 'http://localhost:3008' }
 }
 
-// ── Settings (read directly from file — no self-HTTP call) ───────────────────
-function loadSettings(): { enabled: boolean; stakeCents: number; minConfidence: number; maxPicksPerDay: number; dryRun: boolean } {
-  const defaults = { enabled: false, stakeCents: 500, minConfidence: 60, maxPicksPerDay: 25, dryRun: true }
+// ── Settings (local file first, then Supabase Storage on Vercel) ─────────────
+const SETTINGS_DEFAULTS = { enabled: false, stakeCents: 500, minConfidence: 60, maxPicksPerDay: 25, dryRun: true }
+
+async function loadSettings(): Promise<{ enabled: boolean; stakeCents: number; minConfidence: number; maxPicksPerDay: number; dryRun: boolean }> {
+  // 1. Try local filesystem (works locally, not on Vercel)
   try {
     const settingsPath = path.join(process.cwd(), '.progno', 'trading-settings.json')
-    if (!fs.existsSync(settingsPath)) return defaults
-    const raw = fs.readFileSync(settingsPath, 'utf8')
-    const parsed = JSON.parse(raw)
-    return { ...defaults, ...parsed }
+    if (fs.existsSync(settingsPath)) {
+      const raw = fs.readFileSync(settingsPath, 'utf8')
+      const parsed = JSON.parse(raw)
+      console.log('[execute] Settings loaded from local file')
+      return { ...SETTINGS_DEFAULTS, ...parsed }
+    }
   } catch (e) {
-    console.warn('[execute] Failed to read trading-settings.json, using defaults:', (e as Error).message)
-    return defaults
+    console.warn('[execute] Local settings read failed:', (e as Error).message)
   }
+
+  // 2. Fallback: Supabase Storage (Vercel — ephemeral FS has no local file)
+  const supUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (supUrl && supKey) {
+    try {
+      const sb = createClient(supUrl, supKey)
+      const { data, error } = await sb.storage.from('predictions').download('config/trading-settings.json')
+      if (!error && data) {
+        const text = await (data as Blob).text()
+        const parsed = JSON.parse(text)
+        console.log('[execute] Settings loaded from Supabase Storage:', JSON.stringify(parsed))
+        return { ...SETTINGS_DEFAULTS, ...parsed }
+      }
+    } catch (e) {
+      console.warn('[execute] Supabase Storage settings read failed:', (e as Error).message)
+    }
+  }
+
+  console.warn('[execute] Using default settings (enabled=false, dryRun=true)')
+  return { ...SETTINGS_DEFAULTS }
 }
 
 // ── Load picks from both predictions files ────────────────────────────────────
@@ -473,7 +497,7 @@ export async function POST(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const settings = loadSettings()
+    const settings = await loadSettings()
     console.log(`[execute] settings loaded: enabled=${settings.enabled} dryRun=${settings.dryRun} stake=${settings.stakeCents}`)
 
     const apiKeyId = process.env.KALSHI_API_KEY_ID || ''
