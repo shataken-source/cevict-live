@@ -2028,10 +2028,15 @@ async function checkDeviceLicense() {
       showDeviceBlocked(did, 'This device has been deactivated.');
       return false;
     }
-    // Not found — device not registered
-    console.warn('[license] Not registered: ' + did);
-    showDeviceBlocked(did, 'This device is not registered.');
-    return false;
+    // Not found — device not pre-registered; allow and auto-register
+    console.log('[license] Device not in DB — allowing (auto-register on first boot)');
+    // Fire-and-forget: insert this device so it shows up in the dashboard
+    fetch(_SB_URL + '/rest/v1/switchback_devices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': _SB_ANON, 'Authorization': 'Bearer ' + _SB_ANON, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ device_id: did, status: 'active', label: 'Auto-registered', app_version: APP_VERSION }),
+    }).catch(() => { });
+    return true;
   } catch (e) {
     console.warn('[license] Check failed: ' + e.message + ' — allowing (offline grace)');
     return true; // don't block if offline
