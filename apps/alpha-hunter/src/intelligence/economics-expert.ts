@@ -203,16 +203,17 @@ async function fetchWorldBankGDP(): Promise<number | null> {
 interface CryptoSnapshot {
   btcPrice: number | null;
   ethPrice: number | null;
+  paxgPrice: number | null;       // PAXG = 1 troy oz gold (gold spot proxy)
   totalMarketCap: number | null;  // billions
   btcDominance: number | null;
   fearGreedIndex: number | null;
 }
 
 async function fetchCoinGeckoData(): Promise<CryptoSnapshot> {
-  const result: CryptoSnapshot = { btcPrice: null, ethPrice: null, totalMarketCap: null, btcDominance: null, fearGreedIndex: null };
+  const result: CryptoSnapshot = { btcPrice: null, ethPrice: null, paxgPrice: null, totalMarketCap: null, btcDominance: null, fearGreedIndex: null };
   try {
     const [priceRes, globalRes, fgRes] = await Promise.all([
-      fetch(`${COINGECKO_BASE}/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true`, { signal: AbortSignal.timeout(8000) }).catch(() => null),
+      fetch(`${COINGECKO_BASE}/simple/price?ids=bitcoin,ethereum,pax-gold&vs_currencies=usd&include_24hr_change=true`, { signal: AbortSignal.timeout(8000) }).catch(() => null),
       fetch(`${COINGECKO_BASE}/global`, { signal: AbortSignal.timeout(8000) }).catch(() => null),
       fetch('https://api.alternative.me/fng/?limit=1', { signal: AbortSignal.timeout(5000) }).catch(() => null),
     ]);
@@ -221,6 +222,7 @@ async function fetchCoinGeckoData(): Promise<CryptoSnapshot> {
       const d = await priceRes.json();
       result.btcPrice = d?.bitcoin?.usd ?? null;
       result.ethPrice = d?.ethereum?.usd ?? null;
+      result.paxgPrice = d?.['pax-gold']?.usd ?? null;  // PAXG ≈ gold spot price
     }
     if (globalRes?.ok) {
       const d = await globalRes.json();
@@ -371,8 +373,8 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
     nasdaqPrice: fmp.nasdaqPrice,
     vix: fmp.vix,
     sp500DayChange: fmp.sp500DayChange,
-    // Metals (live via FMP)
-    goldPrice: fmp.goldPrice,
+    // Metals: PAXG from CoinGecko (free, 1:1 gold-backed) → FMP fallback
+    goldPrice: crypto.paxgPrice ?? fmp.goldPrice,
     silverPrice: fmp.silverPrice,
     copperPrice: fmp.copperPrice,
     fetchedAt: new Date(),
