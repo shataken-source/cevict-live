@@ -2935,7 +2935,10 @@ initSettings = function () {
         <div class="section-title">📱 Phone Remote</div>
         <div class="settings-group" style="padding:13px">
           <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">
-            Open this URL on your phone (same Wi-Fi):
+            Scan this QR code with your phone to open the remote:
+          </div>
+          <div id="remote-qr" style="background:#fff;border-radius:12px;padding:12px;text-align:center;margin:0 auto 12px;width:fit-content;min-height:180px;display:flex;align-items:center;justify-content:center">
+            <div style="color:#999;font-size:12px">Detecting IP…</div>
           </div>
           <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;margin-bottom:10px">
             <div style="font-size:11px;color:var(--muted);margin-bottom:4px">URL</div>
@@ -2954,7 +2957,7 @@ initSettings = function () {
             </div>
           </div>
           <div style="font-size:11px;color:var(--muted);line-height:1.5">
-            The remote works with any phone or tablet on the same network. No app install needed — it's a web page.
+            Scan the QR code or type the URL on any phone/tablet on the same Wi-Fi. No app install needed.
           </div>
         </div>`;
       rightCol.appendChild(remoteSection);
@@ -4078,9 +4081,21 @@ setInterval(publishTVState, 1000);
 // ── LAN IP DETECTION (for Settings remote info) ─────────────
 // Uses WebRTC ICE candidates to discover the device's LAN IP.
 // Falls back to showing the hostname if WebRTC isn't available.
+function updateRemoteQr(url) {
+  const qrEl = document.getElementById('remote-qr');
+  if (!qrEl) return;
+  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(url);
+  qrEl.innerHTML = '<img src="' + qrUrl + '" alt="QR Code" style="width:160px;height:160px;image-rendering:pixelated" onerror="this.parentElement.innerHTML=\'<div style=color:#999;font-size:12px>QR unavailable offline</div>\'" />';
+}
+
 function detectLanIp(port) {
   const urlEl = document.getElementById('remote-url');
   if (!urlEl) return;
+
+  function setUrl(url) {
+    urlEl.textContent = url;
+    updateRemoteQr(url);
+  }
 
   // Try WebRTC ICE candidate trick (works on most Android WebViews)
   try {
@@ -4092,7 +4107,7 @@ function detectLanIp(port) {
       const parts = e.candidate.candidate.split(' ');
       const ip = parts[4];
       if (ip && !ip.includes(':') && ip !== '0.0.0.0' && !ip.startsWith('127.')) {
-        urlEl.textContent = 'http://' + ip + ':' + port;
+        setUrl('http://' + ip + ':' + port);
         pc.close();
       }
     };
@@ -4101,6 +4116,8 @@ function detectLanIp(port) {
       if (urlEl.textContent.includes('Detecting')) {
         urlEl.textContent = 'http://<TV-IP>:' + port;
         urlEl.style.color = 'var(--muted)';
+        const qrEl = document.getElementById('remote-qr');
+        if (qrEl) qrEl.innerHTML = '<div style="color:#999;font-size:12px">Could not detect IP.<br>Check your TV\'s network settings.</div>';
       }
       try { pc.close(); } catch (_) { }
     }, 3000);
