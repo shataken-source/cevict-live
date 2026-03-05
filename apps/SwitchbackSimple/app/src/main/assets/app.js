@@ -2,8 +2,8 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.9.1';
-const APP_BUILD = 52;
+const APP_VERSION = '5.9.2';
+const APP_BUILD = 53;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -167,6 +167,19 @@ function buildApiUrl(action, extra = {}) {
 async function api(action, extra = {}) {
   const url = buildApiUrl(action, extra);
   const res = await fetch(url);
+  if (!res.ok) throw new Error(`API ${action} failed: ${res.status}`);
+  return res.json();
+}
+
+// Fetch with timeout — prevents boot from hanging forever on slow IPTV providers
+function fetchWithTimeout(url, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+async function apiWithTimeout(action, extra = {}, timeoutMs = 15000) {
+  const url = buildApiUrl(action, extra);
+  const res = await fetchWithTimeout(url, timeoutMs);
   if (!res.ok) throw new Error(`API ${action} failed: ${res.status}`);
   return res.json();
 }
@@ -1974,18 +1987,15 @@ async function checkDeviceLicense() {
   // Store for other parts of the app
   window.__DEVICE_ID = did;
 
-  // Check localStorage cache (valid for 24h) so offline boot works
-  try {
-    const cache = JSON.parse(localStorage.getItem('_dev_lic') || '{}');
-    if (cache.id === did && cache.status === 'active' && cache.ts > Date.now() - 86400000) {
-      console.log('[license] Cached: active');
-      return true;
-    }
-  } catch (_) { }
+  // Always check Supabase on boot — no cache. User needs to see the check happening.
+  console.log('[license] Checking device: ' + did);
 
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
     const res = await fetch(_SB_URL + '/rest/v1/rpc/check_switchback_device', {
       method: 'POST',
+      signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
         'apikey': _SB_ANON,
@@ -1993,13 +2003,15 @@ async function checkDeviceLicense() {
       },
       body: JSON.stringify({ p_device_id: did, p_version: APP_VERSION }),
     });
+    clearTimeout(timer);
+    console.log('[license] Supabase response status:', res.status);
     if (!res.ok) {
       console.warn('[license] Server error ' + res.status + ' — allowing (grace)');
       return true; // don't block on server errors
     }
     const rows = await res.json();
+    console.log('[license] Supabase response:', JSON.stringify(rows));
     if (rows && rows.length > 0 && rows[0].status === 'active') {
-      localStorage.setItem('_dev_lic', JSON.stringify({ id: did, status: 'active', ts: Date.now() }));
       console.log('[license] Active: ' + (rows[0].label || did));
       return true;
     }
@@ -2053,9 +2065,14 @@ function hideSplash() {
 
 async function bootData() {
   splashStatus('Checking device license...');
+  console.log('[boot] Starting boot sequence...');
   // ── DEVICE LICENSE CHECK (must pass before anything loads) ──
   const licensed = await checkDeviceLicense();
+  console.log('[boot] License check result:', licensed);
   if (!licensed) { hideSplash(); return; }
+  // Brief pause so user sees the license check passed
+  splashStatus('Device authorized ✓');
+  await new Promise(r => setTimeout(r, 800));
 
   // If no credentials at all, go straight to Settings for manual entry / config import.
   // The pairing API (pair-create/pair-poll) requires a backend that doesn't exist yet,
@@ -2079,10 +2096,18 @@ async function bootData() {
     }
   }
 
+  // Start a countdown timer on the splash so user knows it's not frozen
+  let _bootSec = 0;
+  const _bootTimer = setInterval(() => {
+    _bootSec++;
+    if (_bootSec > 10) splashStatus(`Still connecting... ${_bootSec}s`);
+  }, 1000);
+
   try {
     splashStatus('Authenticating...');
+    console.log('[boot] Authenticating with server:', S.server);
     // User info first (fast) — also validates credentials
-    const info = await api('get_user_info');
+    const info = await apiWithTimeout('get_user_info', {}, 20000);
 
     // Check if auth succeeded
     if (info?.user_info?.auth === 0) {
@@ -2101,12 +2126,16 @@ async function bootData() {
     S.userInfo = info;
     renderAccountInfo(info);
 
+    splashStatus('Authenticated ✓');
+    console.log('[boot] Auth OK, loading categories...');
+    await new Promise(r => setTimeout(r, 600));
     splashStatus('Loading categories...');
     // Only fetch categories at boot (tiny payload ~50KB).
     // The full channel list (16+ MB) is loaded in the background AFTER the app is usable.
     try {
-      const cats = await api('get_live_categories');
+      const cats = await apiWithTimeout('get_live_categories', {}, 20000);
       if (Array.isArray(cats)) S.liveCategories = cats;
+      console.log('[boot] Categories loaded:', S.liveCategories.length);
     } catch (e) {
       console.warn('[boot] Categories failed:', e.message);
     }
@@ -2122,6 +2151,7 @@ async function bootData() {
     if (chSub) chSub.textContent = `${S.liveCategories.length} categories · loading channels...`;
 
     // Hide splash immediately — app is usable (categories loaded)
+    clearInterval(_bootTimer);
     hideSplash();
 
     // ── BACKGROUND: load full channel list + VOD/series (non-blocking) ──
@@ -2142,7 +2172,8 @@ async function bootData() {
     api('get_series').then(d => { if (Array.isArray(d)) S.allSeries = d; }).catch(() => { });
 
   } catch (e) {
-    console.warn('[boot]', e.message);
+    clearInterval(_bootTimer);
+    console.warn('[boot] Boot failed:', e.message);
     // Connection failed — likely server is down or wrong URL
     hideSplash();
     initSettings();
