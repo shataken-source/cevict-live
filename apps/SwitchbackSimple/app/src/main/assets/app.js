@@ -311,6 +311,9 @@ function initSettings() {
   document.getElementById('cfg-pass').value = S.pass || '';
   if (S.userInfo) renderAccountInfo(S.userInfo);
   renderLangFilterUI();
+  // Show device ID
+  const devIdEl = document.getElementById('settings-device-id');
+  if (devIdEl && window.__DEVICE_ID) devIdEl.textContent = window.__DEVICE_ID;
 }
 
 function renderLangFilterUI() {
@@ -1734,7 +1737,94 @@ const DEFAULT_PROVIDER = {
   password: _d('MTllOTkzYjdmNQ=='),
 };
 
+// ── DEVICE LICENSE CHECK ─────────────────────────────────────
+// Checks ANDROID_ID against Supabase switchback_devices table.
+// Blocks app if device is not registered or revoked.
+const _SB_URL = 'https://rdbuwyefbgnbuhmjrizo.supabase.co';
+const _SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkYnV3eWVmYmduYnVobWpyaXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2Mjk4NzksImV4cCI6MjA3OTIwNTg3OX0.YZV-svCsqxaJaH7NGAa0FyW5F5VXrAwlQKAUon-FsLw';
+
+async function checkDeviceLicense() {
+  const deviceId = window.__DEVICE_ID;
+  if (!deviceId) {
+    // Running in browser (dev) or injection not ready — retry once after delay
+    await new Promise(r => setTimeout(r, 1500));
+    if (!window.__DEVICE_ID) {
+      console.warn('[license] No device ID available — allowing (dev mode)');
+      return true;
+    }
+  }
+  const did = window.__DEVICE_ID;
+
+  // Check localStorage cache (valid for 24h) so offline boot works
+  try {
+    const cache = JSON.parse(localStorage.getItem('_dev_lic') || '{}');
+    if (cache.id === did && cache.status === 'active' && cache.ts > Date.now() - 86400000) {
+      console.log('[license] Cached: active');
+      return true;
+    }
+  } catch (_) { }
+
+  try {
+    const res = await fetch(_SB_URL + '/rest/v1/rpc/check_switchback_device', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': _SB_ANON,
+        'Authorization': 'Bearer ' + _SB_ANON,
+      },
+      body: JSON.stringify({ p_device_id: did, p_version: '4.9' }),
+    });
+    if (!res.ok) {
+      console.warn('[license] Server error ' + res.status + ' — allowing (grace)');
+      return true; // don't block on server errors
+    }
+    const rows = await res.json();
+    if (rows && rows.length > 0 && rows[0].status === 'active') {
+      localStorage.setItem('_dev_lic', JSON.stringify({ id: did, status: 'active', ts: Date.now() }));
+      console.log('[license] Active: ' + (rows[0].label || did));
+      return true;
+    }
+    if (rows && rows.length > 0 && rows[0].status === 'revoked') {
+      console.warn('[license] REVOKED');
+      showDeviceBlocked(did, 'This device has been deactivated.');
+      return false;
+    }
+    // Not found — device not registered
+    console.warn('[license] Not registered: ' + did);
+    showDeviceBlocked(did, 'This device is not registered.');
+    return false;
+  } catch (e) {
+    console.warn('[license] Check failed: ' + e.message + ' — allowing (offline grace)');
+    return true; // don't block if offline
+  }
+}
+
+function showDeviceBlocked(deviceId, reason) {
+  // Hide everything and show a blocking overlay
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.getElementById('sidebar')?.setAttribute('style', 'display:none!important');
+  document.getElementById('topbar')?.setAttribute('style', 'display:none!important');
+  const main = document.getElementById('main-content') || document.body;
+  const overlay = document.createElement('div');
+  overlay.id = 'device-blocked';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;font-family:inherit;color:#fff';
+  overlay.innerHTML = `
+    <div style="font-size:72px;margin-bottom:20px">🔒</div>
+    <div style="font-size:24px;font-weight:800;margin-bottom:10px">Device Not Authorized</div>
+    <div style="font-size:14px;color:#999;max-width:400px;margin-bottom:24px;line-height:1.6">${reason}<br>Contact your provider with your Device ID to get activated.</div>
+    <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 28px;margin-bottom:16px">
+      <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Device ID</div>
+      <div style="font-size:18px;font-weight:700;font-family:monospace;letter-spacing:2px;color:#e50000">${deviceId}</div>
+    </div>
+    <div style="font-size:11px;color:#555">Switchback TV</div>`;
+  main.appendChild(overlay);
+}
+
 async function bootData() {
+  // ── DEVICE LICENSE CHECK (must pass before anything loads) ──
+  const licensed = await checkDeviceLicense();
+  if (!licensed) return;
+
   // If no credentials at all, go straight to Settings for manual entry / config import.
   // The pairing API (pair-create/pair-poll) requires a backend that doesn't exist yet,
   // so we skip the broken pairing screen entirely.

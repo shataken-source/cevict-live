@@ -3,6 +3,7 @@ package com.switchback.lite;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.provider.Settings;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -109,8 +110,10 @@ public class MainActivity extends Activity {
                     int rPort = RemoteServer.getPort();
                     String lanIp = getLanIp();
                     String ipJs = lanIp != null ? "window.__LAN_IP='" + lanIp + "';" : "";
+                    String deviceId = getDeviceId();
+                    String devJs = deviceId != null ? "window.__DEVICE_ID='" + deviceId + "';" : "";
                     view.evaluateJavascript(
-                        "window.__REMOTE_PIN='" + rPin + "';window.__REMOTE_PORT=" + rPort + ";" + ipJs,
+                        "window.__REMOTE_PIN='" + rPin + "';window.__REMOTE_PORT=" + rPort + ";" + ipJs + devJs,
                         null);
                 }
                 if (pendingConfigCode != null) {
@@ -202,6 +205,20 @@ public class MainActivity extends Activity {
                 Log.i(TAG, "Deep link config received");
             }
         }
+    }
+
+    /** Get unique device identifier (ANDROID_ID — 64-bit hex, unique per device+app). */
+    private String getDeviceId() {
+        try {
+            String id = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
+            if (id != null && !id.isEmpty()) {
+                Log.i(TAG, "Device ID: " + id);
+                return id;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to get device ID", e);
+        }
+        return null;
     }
 
     /** Get the device's LAN IPv4 address using NetworkInterface (reliable on Android TV). */
