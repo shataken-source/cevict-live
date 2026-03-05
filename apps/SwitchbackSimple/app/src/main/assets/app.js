@@ -1685,9 +1685,8 @@ async function pollPairCode(code) {
   }
 }
 
-// Manual fallback: skip pairing and go to Settings for manual credential entry
-document.getElementById('pair-manual-btn')?.addEventListener('click', () => {
-  if (pairPollTimer) { clearInterval(pairPollTimer); pairPollTimer = null; }
+// Manual fallback: skip setup screen and go to Settings for manual credential entry
+document.getElementById('setup-manual-btn')?.addEventListener('click', () => {
   initSettings();
   nav('settings');
   showToast('Enter your IPTV credentials manually below.', 5000);
@@ -1717,11 +1716,9 @@ async function bootData() {
       localStorage.setItem('iptv_user', S.user);
       localStorage.setItem('iptv_pass', S.pass);
     } else {
-      console.log('[boot] No credentials configured — showing settings for setup');
-      initSettings();
-      nav('settings');
-      const resultEl = document.getElementById('cfg-import-result');
-      if (resultEl) resultEl.innerHTML = '<span style="color:var(--accent)">👋 Welcome! Paste your activation code, Xtream URL, or import a config file above to get started.</span>';
+      console.log('[boot] No credentials — showing QR setup screen');
+      nav('setup');
+      initSetupScreen();
       return;
     }
   }
@@ -3633,7 +3630,7 @@ function nav(screen) {
     sbItem.focus(); // keep focus on active item for TV remote
   }
   const TITLES = {
-    tvhome: 'Home', channels: 'Live TV', movies: 'Movies', series: 'Series',
+    setup: 'Welcome', tvhome: 'Home', channels: 'Live TV', movies: 'Movies', series: 'Series',
     favorites: 'Favorites', history: 'History', recordings: 'Recordings',
     catchup: 'Catch-Up', epg: 'TV Guide', search: 'Search', devices: 'Devices',
     quality: 'Quality', pricing: 'Plans', settings: 'Settings',
@@ -3644,7 +3641,11 @@ function nav(screen) {
 
   // ── Show/hide topbar back button ────────────────────────────
   const backBtn = document.getElementById('topbar-back-btn');
-  if (backBtn) backBtn.style.display = screen === 'tvhome' ? 'none' : 'inline-block';
+  if (backBtn) backBtn.style.display = (screen === 'tvhome' || screen === 'setup') ? 'none' : 'inline-block';
+
+  // ── Hide sidebar on setup screen for clean first-boot look ──
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) sidebar.style.display = screen === 'setup' ? 'none' : 'flex';
 
   // ── Lazy init ─────────────────────────────────────────────────
   const lazy = {
@@ -4077,6 +4078,53 @@ function publishTVState() {
   }
 }
 setInterval(publishTVState, 1000);
+
+// ── SETUP SCREEN (first boot QR) ─────────────────────────────
+function initSetupScreen() {
+  const pin = window.__REMOTE_PIN || '----';
+  const port = window.__REMOTE_PORT || 8124;
+  const pinEl = document.getElementById('setup-pin');
+  if (pinEl) pinEl.textContent = pin;
+
+  // Detect LAN IP and render QR
+  const urlEl = document.getElementById('setup-url');
+  const qrEl = document.getElementById('setup-qr');
+  if (!urlEl) return;
+
+  function setSetupUrl(url) {
+    urlEl.textContent = url;
+    if (qrEl) {
+      const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
+      qrEl.innerHTML = '<img src="' + qrUrl + '" alt="QR Code" style="width:200px;height:200px;image-rendering:pixelated" onerror="this.parentElement.innerHTML=\'<div style=color:#999;font-size:12px;padding:60px>Could not generate QR code</div>\'" />';
+    }
+  }
+
+  try {
+    const pc = new RTCPeerConnection({ iceServers: [] });
+    pc.createDataChannel('');
+    pc.createOffer().then(offer => pc.setLocalDescription(offer));
+    pc.onicecandidate = e => {
+      if (!e || !e.candidate) return;
+      const parts = e.candidate.candidate.split(' ');
+      const ip = parts[4];
+      if (ip && !ip.includes(':') && ip !== '0.0.0.0' && !ip.startsWith('127.')) {
+        setSetupUrl('http://' + ip + ':' + port);
+        pc.close();
+      }
+    };
+    setTimeout(() => {
+      if (urlEl.textContent === '—' || urlEl.textContent.includes('Detecting')) {
+        urlEl.textContent = 'http://<TV-IP>:' + port;
+        urlEl.style.color = 'var(--muted)';
+        if (qrEl) qrEl.innerHTML = '<div style="color:#999;font-size:12px;padding:60px 20px">Could not detect IP.<br>Check TV network settings<br>or set up manually below.</div>';
+      }
+      try { pc.close(); } catch (_) { }
+    }, 3000);
+  } catch (_) {
+    urlEl.textContent = 'http://<TV-IP>:' + port;
+    urlEl.style.color = 'var(--muted)';
+  }
+}
 
 // ── LAN IP DETECTION (for Settings remote info) ─────────────
 // Uses WebRTC ICE candidates to discover the device's LAN IP.
