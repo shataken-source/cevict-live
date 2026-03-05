@@ -2,8 +2,8 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.2';
-const APP_BUILD = 44;
+const APP_VERSION = '5.3';
+const APP_BUILD = 45;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -1238,6 +1238,35 @@ function showPlayerError(msg, duration) {
 function clearPlayerError() {
   const el = document.getElementById('player-error-msg');
   if (el) el.style.display = 'none';
+  const branded = document.getElementById('player-stream-error');
+  if (branded) branded.style.display = 'none';
+}
+
+function showStreamUnavailable(detail) {
+  clearPlayerError();
+  let el = document.getElementById('player-stream-error');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'player-stream-error';
+    el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;' +
+      'justify-content:center;gap:18px;background:rgba(10,10,15,0.95);z-index:10002;pointer-events:none;';
+    el.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="80" height="80">
+        <defs><linearGradient id="eg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e50000"/><stop offset="100%" stop-color="#ff3a3a"/></linearGradient>
+        <linearGradient id="eg2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00c2ff"/><stop offset="100%" stop-color="#7c4dff"/></linearGradient></defs>
+        <rect x="10" y="10" width="180" height="180" rx="36" fill="#13131a" stroke="url(#eg2)" stroke-width="3"/>
+        <polygon points="78,55 78,145 152,100" fill="url(#eg1)" opacity="0.4"/>
+        <line x1="60" y1="60" x2="140" y2="140" stroke="#e50000" stroke-width="6" stroke-linecap="round"/>
+        <line x1="140" y1="60" x2="60" y2="140" stroke="#e50000" stroke-width="6" stroke-linecap="round"/>
+      </svg>
+      <div style="font-size:18px;font-weight:800;color:#fff">Stream Unavailable</div>
+      <div id="stream-error-detail" style="font-size:13px;color:#8b8b9e;max-width:340px;text-align:center"></div>
+      <div style="font-size:12px;color:#555;margin-top:8px">Press BACK to return · UP/DOWN to try another channel</div>`;
+    document.getElementById('player-overlay').appendChild(el);
+  }
+  el.style.display = 'flex';
+  const detailEl = el.querySelector('#stream-error-detail');
+  if (detailEl) detailEl.textContent = detail || 'This stream is not available right now. Try again later.';
 }
 
 function safePlay(video, onError) {
@@ -1315,7 +1344,7 @@ async function loadStream(ch) {
           : `/api/stream?url=${encodeURIComponent(tsRaw)}`;
         video.src = tsUrl;
         safePlay(video, function (err) {
-          showPlayerError('Cannot play stream. Check your connection. (' + err.message + ')');
+          showStreamUnavailable('Could not play this stream. Try again later.');
         });
       }
     });
@@ -1331,9 +1360,14 @@ async function loadStream(ch) {
       ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
       : `/api/stream?url=${encodeURIComponent(tsRaw)}`;
     safePlay(video, function (err) {
-      showPlayerError('Stream unavailable. (' + err.message + ')');
+      showStreamUnavailable('Stream unavailable. Try again later.');
     });
   }
+
+  // Catch video-level load errors (e.g. 404, network timeout)
+  video.onerror = function () {
+    showStreamUnavailable('This stream is not available right now. Try again later.');
+  };
 
   updateEPGBar(ch);
   fetchCurrentEPG(ch);
@@ -4608,7 +4642,7 @@ function updateRemoteQr(url) {
   renderQrInto(document.getElementById('remote-qr'), url, 160);
 }
 
-function detectLanIp(port) {
+function detectLanIp(port, _retries) {
   const urlEl = document.getElementById('remote-url');
   if (!urlEl) return;
   const ip = window.__LAN_IP;
@@ -4616,6 +4650,10 @@ function detectLanIp(port) {
     const url = 'http://' + ip + ':' + port;
     urlEl.textContent = url;
     updateRemoteQr(url);
+  } else if ((_retries || 0) < 3) {
+    // Java injects __LAN_IP in onPageFinished — may not be ready yet
+    urlEl.textContent = 'Detecting IP…';
+    setTimeout(() => detectLanIp(port, (_retries || 0) + 1), 2000);
   } else {
     urlEl.textContent = 'http://<TV-IP>:' + port;
     urlEl.style.color = 'var(--muted)';
