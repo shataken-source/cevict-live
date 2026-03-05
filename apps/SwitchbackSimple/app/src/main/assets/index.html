@@ -446,6 +446,31 @@
       border-color: var(--primary);
     }
 
+    /* D-pad focus ring for all navigable elements */
+    .sb-item-nav:focus,
+    .tile:focus,
+    .sidebar-tile:focus,
+    .ch-row:focus,
+    .media-card:focus,
+    .hist-item:focus,
+    .rec-card:focus,
+    .epg-row:focus,
+    .price-card:focus,
+    .toggle-sw:focus,
+    .settings-group:focus,
+    label[role=checkbox]:focus,
+    button.btn:focus,
+    select:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 4px rgba(0, 194, 255, 0.15);
+    }
+
+    .sb-item:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+    }
+
     .inp::placeholder {
       color: var(--muted);
     }

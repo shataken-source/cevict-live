@@ -2,8 +2,8 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.3';
-const APP_BUILD = 45;
+const APP_VERSION = '5.4';
+const APP_BUILD = 46;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -261,8 +261,13 @@ function initTVHome() {
         <div data-screen="catchup"    class="sb-item-nav tile"><div style="font-size:24px;margin-bottom:5px">⏪</div><div style="font-size:13px;font-weight:700">Catch-Up</div></div>
       </div>
     </div>`;
-  document.querySelectorAll('.sb-item-nav[data-screen]').forEach(el =>
-    el.addEventListener('click', () => nav(el.dataset.screen)));
+  document.querySelectorAll('.sb-item-nav[data-screen]').forEach(el => {
+    el.setAttribute('tabindex', '-1');
+    el.addEventListener('click', () => nav(el.dataset.screen));
+  });
+  // Focus the first tile for immediate D-pad navigation
+  const firstTile = document.querySelector('#tvhome-content .sb-item-nav[data-screen]');
+  if (firstTile) setTimeout(() => firstTile.focus(), 100);
 }
 
 // ── LANGUAGE / COUNTRY CHANNEL FILTER ────────────────────────
@@ -1243,6 +1248,7 @@ function clearPlayerError() {
 }
 
 function showStreamUnavailable(detail) {
+  clearPlayerUITimer(); // stop auto-hide — error stays until user acts
   clearPlayerError();
   let el = document.getElementById('player-stream-error');
   if (!el) {
@@ -1445,6 +1451,9 @@ function seekRelative(secs) {
 function navigateChannel(delta) {
   const list = S.channelList;
   if (!list?.length) return;
+  // Clear stream error when switching channels
+  const streamErr = document.getElementById('player-stream-error');
+  if (streamErr) streamErr.style.display = 'none';
   const newIdx = ((S.currentChannelIndex + delta) + list.length) % list.length;
   openPlayer(list[newIdx], list, newIdx);
 }
@@ -1467,6 +1476,9 @@ function showPlayerUI() {
 }
 
 function hidePlayerUI() {
+  // Don't auto-hide controls while stream error is showing — user needs to see instructions
+  const streamErr = document.getElementById('player-stream-error');
+  if (streamErr && streamErr.style.display !== 'none') return;
   ['player-overlay-top', 'player-overlay-bottom', 'player-controls'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.style.transition = 'opacity 0.4s ease'; el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
@@ -3214,7 +3226,7 @@ initSettings = function () {
   if (!document.getElementById('remote-info-section')) {
     const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns:1fr 1fr"]');
     if (settingsGrid) {
-      const rightCol = settingsGrid.children[1];
+      const leftCol = settingsGrid.children[0];
       const remoteSection = document.createElement('div');
       remoteSection.id = 'remote-info-section';
       const pin = window.__REMOTE_PIN || '----';
@@ -3248,7 +3260,7 @@ initSettings = function () {
             Scan the QR code or type the URL on any phone/tablet on the same Wi-Fi. No app install needed.
           </div>
         </div>`;
-      rightCol.appendChild(remoteSection);
+      leftCol.appendChild(remoteSection);
 
       // Try to detect the LAN IP via WebRTC (best effort)
       detectLanIp(port);
