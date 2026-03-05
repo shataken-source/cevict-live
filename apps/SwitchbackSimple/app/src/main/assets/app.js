@@ -321,7 +321,7 @@ function renderLangFilterUI() {
   if (!listEl) return;
   const hidden = getLangFilterHidden();
   listEl.innerHTML = LANG_FILTER_GROUPS.map(g => `
-    <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;font-size:13px" tabindex="-1" role="checkbox" aria-checked="${hidden.includes(g.id)}">
+    <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;font-size:13px" tabindex="0" role="checkbox" aria-checked="${hidden.includes(g.id)}">
       <span style="width:18px;height:18px;border:2px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${hidden.includes(g.id) ? 'var(--primary)' : 'transparent'};font-size:11px">
         ${hidden.includes(g.id) ? '✓' : ''}
       </span>
@@ -570,20 +570,25 @@ async function initMovies() {
 }
 
 function renderMovieCats() {
-  const pills = document.getElementById('movies-cat-pills');
-  pills.innerHTML = `<button class="pill pill-active" data-vod-cat="">All</button>` +
-    S.vodCategories.slice(0, 16).map(c =>
-      `<button class="pill pill-inactive" data-vod-cat="${esc(c.category_id)}">${esc(c.category_name)}</button>`
-    ).join('');
-  pills.querySelectorAll('.pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      pills.querySelectorAll('.pill').forEach(p => p.className = 'pill pill-inactive');
-      btn.className = 'pill pill-active';
-      const catId = btn.dataset.vodCat;
+  const sel = document.getElementById('movies-cat-select');
+  if (!sel) return;
+  // Count per category
+  const catCount = {};
+  S.allVod.forEach(v => { const cid = v.category_id || ''; catCount[cid] = (catCount[cid] || 0) + 1; });
+  sel.innerHTML = `<option value="">All Categories (${S.allVod.length})</option>` +
+    S.vodCategories
+      .filter(c => catCount[c.category_id] > 0)
+      .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
+      .join('');
+  if (!sel._wired) {
+    sel._wired = true;
+    sel.addEventListener('change', () => {
+      const catId = sel.value;
       const list = catId ? S.allVod.filter(v => v.category_id == catId) : S.allVod;
+      document.getElementById('movies-search').value = '';
       renderVodGrid('movies-grid', list, 'vod');
     });
-  });
+  }
   renderVodGrid('movies-grid', S.allVod, 'vod');
 }
 
@@ -661,20 +666,24 @@ async function initSeries() {
 }
 
 function renderSeriesCats() {
-  const pills = document.getElementById('series-cat-pills');
-  pills.innerHTML = `<button class="pill pill-active" data-series-cat="">All</button>` +
-    S.seriesCategories.slice(0, 16).map(c =>
-      `<button class="pill pill-inactive" data-series-cat="${esc(c.category_id)}">${esc(c.category_name)}</button>`
-    ).join('');
-  pills.querySelectorAll('.pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      pills.querySelectorAll('.pill').forEach(p => p.className = 'pill pill-inactive');
-      btn.className = 'pill pill-active';
-      const catId = btn.dataset.seriesCat;
+  const sel = document.getElementById('series-cat-select');
+  if (!sel) return;
+  const catCount = {};
+  S.allSeries.forEach(s => { const cid = s.category_id || ''; catCount[cid] = (catCount[cid] || 0) + 1; });
+  sel.innerHTML = `<option value="">All Categories (${S.allSeries.length})</option>` +
+    S.seriesCategories
+      .filter(c => catCount[c.category_id] > 0)
+      .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
+      .join('');
+  if (!sel._wired) {
+    sel._wired = true;
+    sel.addEventListener('change', () => {
+      const catId = sel.value;
       const list = catId ? S.allSeries.filter(s => s.category_id == catId) : S.allSeries;
+      document.getElementById('series-search').value = '';
       renderVodGrid('series-grid', list, 'series');
     });
-  });
+  }
   renderVodGrid('series-grid', S.allSeries, 'series');
 }
 
@@ -700,14 +709,18 @@ async function openSeriesDetail(seriesId) {
   }
 }
 
-// search within movies/series
+// search within movies/series — respects selected category
 document.getElementById('movies-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
-  renderVodGrid('movies-grid', q ? S.allVod.filter(v => (v.name || '').toLowerCase().includes(q)) : S.allVod, 'vod');
+  const catId = document.getElementById('movies-cat-select')?.value || '';
+  const base = catId ? S.allVod.filter(v => v.category_id == catId) : S.allVod;
+  renderVodGrid('movies-grid', q ? base.filter(v => (v.name || '').toLowerCase().includes(q)) : base, 'vod');
 });
 document.getElementById('series-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
-  renderVodGrid('series-grid', q ? S.allSeries.filter(s => (s.name || '').toLowerCase().includes(q)) : S.allSeries, 'series');
+  const catId = document.getElementById('series-cat-select')?.value || '';
+  const base = catId ? S.allSeries.filter(s => s.category_id == catId) : S.allSeries;
+  renderVodGrid('series-grid', q ? base.filter(s => (s.name || '').toLowerCase().includes(q)) : base, 'series');
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -3804,7 +3817,7 @@ document.querySelectorAll('.sb-item[data-screen], .tb-btn[data-screen], button[d
 // ═══════════════════════════════════════════════════════════════
 
 // All interactive selectors in priority order
-const TV_FOCUSABLE = '.sb-item, .ch-row, .media-card, .sb-item-nav, .epg-row, .hist-item, .rec-card, .pill, button.btn, .toggle-sw, .price-card, input.inp, select';
+const TV_FOCUSABLE = '.sb-item, .ch-row, .media-card, .sb-item-nav, .epg-row, .hist-item, .rec-card, .pill, button.btn, .toggle-sw, .price-card, input.inp, select, label[role=checkbox]';
 
 // Get visible focusable elements within a container
 function tvFocusable(container) {
@@ -3913,8 +3926,9 @@ document.addEventListener('keydown', function tvNav(e) {
   const overlay = document.getElementById('player-overlay');
   if (overlay && overlay.style.display !== 'none') return;
 
-  // Let inputs handle their own arrow keys (cursor movement)
-  if (inInput && isArrow) return;
+  // Let text inputs handle their own arrow keys (cursor movement)
+  // But allow arrows on SELECT so D-pad can navigate away from dropdowns
+  if ((tag === 'INPUT' || tag === 'TEXTAREA') && isArrow) return;
 
   // ── Tab key: sequential navigation ──
   if (isTab) {
@@ -3933,15 +3947,26 @@ document.addEventListener('keydown', function tvNav(e) {
   }
 
   // ── Enter/Space: activate focused element ──
-  if (isActivate && !inInput) {
+  if (isActivate) {
     const el = document.activeElement;
     if (!el || el === document.body) return;
     // For sidebar items, nav directly
     if (el.dataset && el.dataset.screen && tvInSidebar(el)) {
       e.preventDefault();
       nav(el.dataset.screen);
-      // After nav, focus first content item
       setTimeout(tvFocusContent, 100);
+      return;
+    }
+    // INPUT: focus it to bring up keyboard on Android TV
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      // Don't prevent default — let the system handle Enter in inputs
+      el.focus();
+      return;
+    }
+    // SELECT: open the native dropdown picker
+    if (el.tagName === 'SELECT') {
+      e.preventDefault();
+      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
       return;
     }
     // Toggle switches
@@ -3950,11 +3975,15 @@ document.addEventListener('keydown', function tvNav(e) {
       el.click();
       return;
     }
-    // Generic click
-    if (el.tagName !== 'INPUT') {
+    // LABEL with checkbox role: toggle it
+    if (el.tagName === 'LABEL' || el.getAttribute('role') === 'checkbox') {
       e.preventDefault();
       el.click();
+      return;
     }
+    // Generic click
+    e.preventDefault();
+    el.click();
     return;
   }
 
