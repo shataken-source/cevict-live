@@ -82,7 +82,22 @@ interface EconSnapshot {
   goldPrice: number | null;        // Gold spot $/oz (XAUUSD)
   silverPrice: number | null;      // Silver spot $/oz (XAGUSD)
   copperPrice: number | null;      // Copper $/lb (HG=F)
+  // News sentiment (NewsAPI.org)
+  news: NewsSentiment;
   fetchedAt: Date;
+}
+
+interface NewsSentiment {
+  headlines: string[];             // Raw headlines for logging
+  fedScore: number;                // -3 to +3 (negative=dovish/cuts, positive=hawkish/hikes)
+  inflationScore: number;          // -3 to +3 (negative=cooling, positive=hot)
+  recessionScore: number;          // -3 to +3 (negative=growth, positive=recession risk)
+  tradeWarScore: number;           // -3 to +3 (negative=de-escalation, positive=tariffs/tension)
+  goldScore: number;               // -3 to +3 (negative=bearish, positive=bullish for gold)
+  stockScore: number;              // -3 to +3 (negative=bearish, positive=bullish for equities)
+  cryptoScore: number;             // -3 to +3 (negative=bearish, positive=bullish)
+  energyScore: number;             // -3 to +3 (negative=bearish, positive=bullish for oil)
+  totalArticles: number;
 }
 
 interface EconMarketSignal {
@@ -306,6 +321,103 @@ async function fetchFMPData(): Promise<FMPStockData> {
   return result;
 }
 
+// ── NewsAPI.org Fetcher (economic news sentiment) ────────────────────────────
+// Free tier: 100 requests/day, 1000 results/request. We fetch once per 30-min cycle.
+
+const EMPTY_NEWS: NewsSentiment = {
+  headlines: [], fedScore: 0, inflationScore: 0, recessionScore: 0,
+  tradeWarScore: 0, goldScore: 0, stockScore: 0, cryptoScore: 0, energyScore: 0, totalArticles: 0,
+};
+
+// Keyword → category → direction mapping for headline sentiment
+const NEWS_RULES: { pattern: RegExp; category: keyof Omit<NewsSentiment, 'headlines' | 'totalArticles'>; direction: 1 | -1 }[] = [
+  // Fed / rates
+  { pattern: /rate\s*cut|dovish|ease|easing|lower.*rate|fed.*pivot/i, category: 'fedScore', direction: -1 },
+  { pattern: /rate\s*hike|hawkish|tighten|higher.*rate|fed.*hold|no.*cut/i, category: 'fedScore', direction: 1 },
+  // Inflation
+  { pattern: /inflation.*cool|inflation.*slow|inflation.*drop|inflation.*ease|cpi.*below|disinflation/i, category: 'inflationScore', direction: -1 },
+  { pattern: /inflation.*hot|inflation.*rise|inflation.*surge|inflation.*jump|cpi.*above|cpi.*high|price.*soar|stagflation/i, category: 'inflationScore', direction: 1 },
+  // Recession / growth
+  { pattern: /recession.*fear|recession.*risk|recession.*warn|downturn|contraction|layoff|job.*loss|economic.*slow/i, category: 'recessionScore', direction: 1 },
+  { pattern: /economic.*growth|gdp.*beat|gdp.*strong|hiring.*surge|job.*growth|expansion|soft.*landing|resilient.*econom/i, category: 'recessionScore', direction: -1 },
+  // Trade war / tariffs / geopolitics
+  { pattern: /tariff|trade.*war|sanction|ban.*import|ban.*export|trade.*tension|retaliatory|duties|embargo/i, category: 'tradeWarScore', direction: 1 },
+  { pattern: /trade.*deal|trade.*agree|tariff.*reduc|tariff.*remov|de-escalat|trade.*resolution/i, category: 'tradeWarScore', direction: -1 },
+  // Gold / safe haven
+  { pattern: /gold.*surge|gold.*rally|gold.*rise|gold.*record|gold.*high|safe.*haven.*demand|flight.*to.*safety/i, category: 'goldScore', direction: 1 },
+  { pattern: /gold.*drop|gold.*fall|gold.*slide|gold.*sell|gold.*bear/i, category: 'goldScore', direction: -1 },
+  // Stocks / equities
+  { pattern: /rally|bull.*market|stock.*surge|market.*boom|record.*high|all.?time.*high|buy.*dip/i, category: 'stockScore', direction: 1 },
+  { pattern: /crash|bear.*market|sell.?off|market.*plunge|correction|rout|market.*tank|bloodbath/i, category: 'stockScore', direction: -1 },
+  // Crypto
+  { pattern: /bitcoin.*surge|crypto.*rally|btc.*bull|ethereum.*rise|crypto.*boom|bitcoin.*record/i, category: 'cryptoScore', direction: 1 },
+  { pattern: /bitcoin.*crash|crypto.*crash|btc.*bear|crypto.*ban|crypto.*crackdown|bitcoin.*plunge/i, category: 'cryptoScore', direction: -1 },
+  // Energy / oil
+  { pattern: /oil.*surge|oil.*rally|oil.*spike|opec.*cut|energy.*crisis|oil.*supply.*tight/i, category: 'energyScore', direction: 1 },
+  { pattern: /oil.*drop|oil.*fall|oil.*crash|opec.*increase|oil.*glut|oil.*oversupply/i, category: 'energyScore', direction: -1 },
+];
+
+function scoreHeadlines(articles: { title: string; description?: string }[]): NewsSentiment {
+  const result: NewsSentiment = { ...EMPTY_NEWS, headlines: [], totalArticles: articles.length };
+
+  for (const art of articles) {
+    const text = `${art.title || ''} ${art.description || ''}`;
+    result.headlines.push(art.title || '(no title)');
+
+    for (const rule of NEWS_RULES) {
+      if (rule.pattern.test(text)) {
+        (result[rule.category] as number) += rule.direction;
+      }
+    }
+  }
+
+  // Clamp all scores to [-3, +3]
+  const cats: (keyof Omit<NewsSentiment, 'headlines' | 'totalArticles'>)[] = [
+    'fedScore', 'inflationScore', 'recessionScore', 'tradeWarScore',
+    'goldScore', 'stockScore', 'cryptoScore', 'energyScore',
+  ];
+  for (const c of cats) {
+    (result[c] as number) = Math.max(-3, Math.min(3, result[c] as number));
+  }
+  return result;
+}
+
+async function fetchEconNews(): Promise<NewsSentiment> {
+  const apiKey = process.env.NEWS_API_KEY;
+  if (!apiKey) return EMPTY_NEWS;
+
+  try {
+    // Fetch top US business headlines + economy keyword search in parallel
+    const [headlinesRes, econRes] = await Promise.all([
+      fetch(`https://newsapi.org/v2/top-headlines?country=us&category=business&pageSize=20&apiKey=${apiKey}`, {
+        signal: AbortSignal.timeout(8000),
+      }).catch(() => null),
+      fetch(`https://newsapi.org/v2/everything?q=(fed OR inflation OR recession OR tariff OR "interest rate" OR GDP OR gold OR "stock market" OR bitcoin OR oil)&language=en&sortBy=publishedAt&pageSize=30&apiKey=${apiKey}`, {
+        signal: AbortSignal.timeout(8000),
+      }).catch(() => null),
+    ]);
+
+    const articles: { title: string; description?: string }[] = [];
+    const seen = new Set<string>();
+
+    for (const res of [headlinesRes, econRes]) {
+      if (!res?.ok) continue;
+      const data = await res.json();
+      for (const art of (data.articles || [])) {
+        const key = (art.title || '').slice(0, 60);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        articles.push({ title: art.title, description: art.description });
+      }
+    }
+
+    const sentiment = scoreHeadlines(articles);
+    return sentiment;
+  } catch {
+    return EMPTY_NEWS;
+  }
+}
+
 // Cache snapshot per cycle
 let snapshotCache: EconSnapshot | null = null;
 let snapshotCacheTime = 0;
@@ -316,7 +428,7 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
   if (snapshotCache && (now - snapshotCacheTime) < SNAPSHOT_TTL) return snapshotCache;
 
   // Fetch all data sources in parallel
-  const [fedFunds, cpi, unemployment, gdp, recession, yieldCurve, claims, treasury10y, treasury2y, treasury30y, eia, worldGdp, crypto, fmp] = await Promise.all([
+  const [fedFunds, cpi, unemployment, gdp, recession, yieldCurve, claims, treasury10y, treasury2y, treasury30y, eia, worldGdp, crypto, fmp, news] = await Promise.all([
     fetchFredSeries(FRED_SERIES.FED_FUNDS_RATE, 3),
     fetchFredSeries(FRED_SERIES.CPI_ALL_URBAN, 13), // 13 months for YoY
     fetchFredSeries(FRED_SERIES.UNEMPLOYMENT, 3),
@@ -333,6 +445,7 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
     fetchWorldBankGDP(),
     fetchCoinGeckoData(),
     fetchFMPData(),
+    fetchEconNews(),
   ]);
 
   // Calculate CPI YoY: (latest / 12-months-ago - 1) * 100
@@ -377,6 +490,8 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
     goldPrice: crypto.paxgPrice ?? fmp.goldPrice,
     silverPrice: fmp.silverPrice,
     copperPrice: fmp.copperPrice,
+    // News sentiment
+    news,
     fetchedAt: new Date(),
   };
   snapshotCacheTime = now;
@@ -387,6 +502,7 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
   console.log(`   [ECON]   Crypto: BTC=$${snapshotCache.btcPrice?.toLocaleString()} ETH=$${snapshotCache.ethPrice?.toLocaleString()} MCap=$${snapshotCache.cryptoMarketCap?.toFixed(0)}B Dom=${snapshotCache.btcDominance?.toFixed(1)}% F&G=${snapshotCache.fearGreedIndex}`);
   console.log(`   [ECON]   Markets: S&P=${snapshotCache.sp500Price?.toLocaleString()} (${snapshotCache.sp500DayChange?.toFixed(2)}%) Dow=${snapshotCache.dowPrice?.toLocaleString()} Nasdaq=${snapshotCache.nasdaqPrice?.toLocaleString()} VIX=${snapshotCache.vix}`);
   console.log(`   [ECON]   Metals: Gold=$${snapshotCache.goldPrice?.toLocaleString()} Silver=$${snapshotCache.silverPrice?.toFixed(2)} Copper=$${snapshotCache.copperPrice?.toFixed(2)}`);
+  console.log(`   [ECON]   News: ${news.totalArticles} articles | Fed=${news.fedScore} Infl=${news.inflationScore} Recess=${news.recessionScore} Trade=${news.tradeWarScore} Gold=${news.goldScore} Stocks=${news.stockScore} Crypto=${news.cryptoScore} Energy=${news.energyScore}`);
   return snapshotCache;
 }
 
@@ -415,6 +531,62 @@ function classifyEconMarket(title: string, ticker: string): EconMarketSignal['ca
   if (t.includes('euro') || t.includes('eur/usd') || t.includes('dollar') || t.includes('yen') || t.includes('gbp') || t.includes('pound') || t.includes('peso') || t.includes('forex') || t.includes('exchange rate') || t.includes('currency') || t.includes('de-dollarization') || /EURUSD|DXY|FXPESO|JPY|GBP/i.test(ticker))
     return 'forex';
   return null;
+}
+
+/**
+ * Apply news sentiment adjustment to an analysis result.
+ * Nudges probability ±5 and confidence +3 when news strongly agrees with direction.
+ */
+function applyNewsAdjustment(
+  result: { prob: number; confidence: number; reasoning: string[] },
+  category: EconMarketSignal['category'],
+  snap: EconSnapshot,
+): { prob: number; confidence: number; reasoning: string[] } {
+  const n = snap.news;
+  if (!n || n.totalArticles === 0) return result;
+
+  // Map category → relevant news score
+  const scoreMap: Partial<Record<EconMarketSignal['category'], { score: number; label: string }>> = {
+    fed_rate: { score: n.fedScore, label: 'Fed news' },
+    inflation: { score: n.inflationScore, label: 'Inflation news' },
+    recession: { score: n.recessionScore, label: 'Recession news' },
+    energy: { score: n.energyScore, label: 'Energy news' },
+    crypto: { score: n.cryptoScore, label: 'Crypto news' },
+    stock_market: { score: n.stockScore, label: 'Market news' },
+    metals: { score: n.goldScore, label: 'Gold news' },
+    forex: { score: n.tradeWarScore, label: 'Trade/tariff news' },
+    gdp: { score: -n.recessionScore, label: 'Growth news' }, // recession score inverted for GDP
+    unemployment: { score: n.recessionScore, label: 'Jobs news' },
+  };
+
+  const entry = scoreMap[category];
+  if (!entry || entry.score === 0) return result;
+
+  // Trade war news affects multiple categories as a general risk signal
+  const tradeRisk = n.tradeWarScore;
+
+  // Each point of score = ~2% probability nudge, capped at ±5%
+  const newsAdj = Math.max(-5, Math.min(5, entry.score * 2));
+  // Trade war adds risk to recession, supports gold, hurts stocks
+  let tradeAdj = 0;
+  if (tradeRisk !== 0) {
+    if (category === 'recession') tradeAdj = Math.min(3, tradeRisk);
+    else if (category === 'metals') tradeAdj = Math.min(3, tradeRisk); // tariffs → gold up
+    else if (category === 'stock_market') tradeAdj = Math.max(-3, -tradeRisk); // tariffs → stocks down
+  }
+
+  const totalAdj = Math.max(-8, Math.min(8, newsAdj + tradeAdj));
+  if (totalAdj === 0) return result;
+
+  const adjProb = Math.max(5, Math.min(95, result.prob + totalAdj));
+  const confBoost = Math.abs(totalAdj) >= 3 ? 3 : 0; // strong signal boosts confidence
+  const adjConf = Math.min(90, result.confidence + confBoost);
+
+  const direction = totalAdj > 0 ? 'bullish' : 'bearish';
+  result.reasoning.push(`${entry.label}: ${direction} (${n.totalArticles} articles, score ${entry.score > 0 ? '+' : ''}${entry.score}) → adj ${totalAdj > 0 ? '+' : ''}${totalAdj}%`);
+  if (tradeAdj !== 0) result.reasoning.push(`Trade/tariff headlines: ${tradeRisk > 0 ? 'elevated tension' : 'de-escalation'} → adj ${tradeAdj > 0 ? '+' : ''}${tradeAdj}%`);
+
+  return { prob: adjProb, confidence: adjConf, reasoning: result.reasoning };
 }
 
 function analyzeFedRate(title: string, yesAsk: number, snap: EconSnapshot): { prob: number; confidence: number; reasoning: string[] } | null {
@@ -1152,6 +1324,9 @@ export async function findEconomicsOpportunities(
 
     if (!result) continue;
 
+    // Apply news sentiment adjustment to the analysis result
+    result = applyNewsAdjustment(result, category, snap);
+
     const modelProb = Math.max(1, Math.min(99, result.prob));
     const noAsk = typeof m.no_ask === 'number' ? m.no_ask : (100 - yesAsk);
 
@@ -1269,7 +1444,17 @@ export async function getMetalsSignal(): Promise<MetalsSignal> {
   if ((snap.vix ?? 15) < 15) { macroScore--; reasoning.push(`VIX ${snap.vix} low — risk-on environment, less gold demand`); }
   if ((snap.sp500DayChange ?? 0) > 1.5) { macroScore--; reasoning.push(`S&P up ${snap.sp500DayChange?.toFixed(1)}% — equity rally reduces gold appeal`); }
 
-  reasoning.push(`Macro score: ${macroScore > 0 ? '+' : ''}${macroScore} (range -3 to +5)`);
+  // ── News sentiment signals ──
+  const n = snap.news;
+  if (n && n.totalArticles > 0) {
+    if (n.goldScore >= 2) { macroScore++; reasoning.push(`News: gold bullish headlines (score +${n.goldScore})`); }
+    else if (n.goldScore <= -2) { macroScore--; reasoning.push(`News: gold bearish headlines (score ${n.goldScore})`); }
+    if (n.tradeWarScore >= 2) { macroScore++; reasoning.push(`News: trade tensions elevated (score +${n.tradeWarScore}) — supports gold`); }
+    if (n.recessionScore >= 2) { macroScore++; reasoning.push(`News: recession fears (score +${n.recessionScore}) — safe-haven demand`); }
+    if (n.stockScore <= -2) { macroScore++; reasoning.push(`News: bearish equity sentiment (score ${n.stockScore}) — flight to gold`); }
+  }
+
+  reasoning.push(`Macro score: ${macroScore > 0 ? '+' : ''}${macroScore} (range -4 to +9)`);
 
   // ── Decision ──
   // Robinhood is buy-only for crypto, so we can only go long PAXG

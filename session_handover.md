@@ -1,28 +1,28 @@
 # Session Handover
 
-**Last updated:** 2026-03-05 12:55 CST
-**Status:** Idle — all systems verified
+**Last updated:** 2026-03-05 13:45 CST
+**Status:** News integration built, ready to commit+deploy
 
 ## Completed
-- Metals expert audit + fix: added live gold price via CoinGecko PAXG, rewrote analyzeMetals() with price-based probability
-- Metals → Robinhood pipeline: `getMetalsSignal()` → PAXG-USD BUY, $5 max, 2/day limit, conf≥60
-- Fixed Robinhood API: `asset_quantity` (not `quote_amount`), `marketBuyWithPrice()` bypasses WAF-blocked `getBestBidAsk`, `open` state added to success check
-- SMS kill switch verified end-to-end: STOP halts trade-cycle, RESUME re-enables, STATUS returns state
-- Supabase `alpha_hunter_trades` schema fixed: 17 columns added, NOT NULL constraints dropped, check constraints recreated (side: buy/sell/yes/no/long/short, status: open/filled/closed/pending/won/lost/settled/cancelled/expired)
-- `picks` table: CBB added to sport constraint
-- `.windsurfrules` updated: pending deploys cleared, price guardrails corrected (30/80), SMS kill switch section added, Robinhood metals documented
-- Both Progno and AH deployed on commit `926bbac0` (2026-03-05)
-- Verified: PAXG-USD trade recorded to `alpha_hunter_trades` in Supabase
-- (From 03-03) Progno pick engine tuning, auto-calibration, admin UI, Live Odds, pipeline audit
+- **Economics Expert news integration:** NewsAPI.org wired into economics-expert.ts — fetches ~50 business/economy headlines per cycle, scores them across 8 categories (fed, inflation, recession, trade war, gold, stocks, crypto, energy) using keyword sentiment
+- `applyNewsAdjustment()` nudges all analyze* function probabilities ±8% based on news, with trade-war cross-category effects
+- `getMetalsSignal()` macro score now includes news sentiment (gold headlines, trade tensions, recession fear, equity sell-offs)
+- NEWS_API_KEY pushed to Vercel production for alpha-hunter
+- `.windsurfrules` + `session_handover.md` committed and pushed (`48cd4787`)
+- SMS kill switch: code verified working (POST handler + GET manual control), outbound SMS works
+- Sinch webhook URL verified correct (screenshot confirmed)
+- (Prior) All metals, Robinhood, trades schema, calibration work from earlier sessions
 
 ## Pending
-- Sinch dashboard: verify inbound SMS callback URL is `https://alpha-hunter-liart.vercel.app/api/emergency/sms-kill` — cannot verify programmatically
-- `alpha_hunter_trades.price` shows $0 for RH orders (average_price not populated until fill) — cosmetic, consider polling order status later
+- **Sinch inbound SMS not working:** Outbound works, webhook handler works, but Sinch isn't forwarding inbound texts to webhook. Likely 10DLC/inbound provisioning issue. User needs to check Sinch dashboard → Numbers → inbound SMS capability for +12704238428
+- `alpha_hunter_trades.price` shows $0 for RH orders — cosmetic
+- Commit + push economics-expert.ts news integration (needs user approval)
 
 ## Blockers / Warnings
 - Progno has dashboard-level build ignore on Vercel — must clear ignore → deploy → restore ignore
 - Each git push triggers ALL Vercel project builds (~$10+ per push)
-- FMP commodity endpoints restricted on current plan — gold comes from CoinGecko PAXG, silver/copper unavailable
+- FMP commodity endpoints restricted — gold from CoinGecko PAXG, FMP news also restricted
+- NewsAPI.org free tier = 100 requests/day — we use 2 per 30-min cycle = ~96/day (tight, consider caching)
 
 ## Next step
-In the next run, I must immediately: verify Sinch webhook URL in dashboard and monitor metals trades for tuning.
+Commit + push economics-expert.ts news integration. Monitor next trade-cycle logs for news sentiment scores. Check Sinch 10DLC registration for inbound SMS.
