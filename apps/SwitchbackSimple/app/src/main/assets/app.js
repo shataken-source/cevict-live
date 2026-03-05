@@ -2,6 +2,8 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
+const APP_VERSION = '5.2';
+const APP_BUILD = 44;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -1209,9 +1211,10 @@ function openPlayer(ch, list, idx) {
     document.querySelectorAll('#player-overlay button, #player-overlay input[type=range]').forEach(el => {
       el.setAttribute('tabindex', '-1');
     });
-    const pp = document.getElementById('play-pause-btn');
-    if (pp) pp.focus();
   }, 150);
+
+  // Show overlay UI and start auto-hide timer
+  showPlayerUI();
 }
 
 let _playerErrTimer = null;
@@ -1366,6 +1369,12 @@ function closePlayer() {
   if (S.hlsInstance) { S.hlsInstance.destroy(); S.hlsInstance = null; }
   video.src = '';
   clearPlayerError();
+  clearPlayerUITimer();
+  // Reset UI opacity so it's visible next time player opens
+  ['player-overlay-top', 'player-overlay-bottom', 'player-controls'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
+  });
   document.getElementById('player-overlay').style.display = 'none';
   document.getElementById('topbar-title').textContent = TITLES[S.currentScreen] || S.currentScreen;
   // Stop ad detection polling
@@ -1404,6 +1413,39 @@ function navigateChannel(delta) {
   if (!list?.length) return;
   const newIdx = ((S.currentChannelIndex + delta) + list.length) % list.length;
   openPlayer(list[newIdx], list, newIdx);
+}
+
+// ── PLAYER OVERLAY AUTO-HIDE ───────────────────────────────
+let _playerUITimer = null;
+const PLAYER_UI_TIMEOUT = 4000; // 4 seconds
+
+function isPlayerUIVisible() {
+  const top = document.getElementById('player-overlay-top');
+  return top && top.style.opacity !== '0';
+}
+
+function showPlayerUI() {
+  ['player-overlay-top', 'player-overlay-bottom', 'player-controls'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.transition = 'opacity 0.3s ease'; el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
+  });
+  resetPlayerUITimer();
+}
+
+function hidePlayerUI() {
+  ['player-overlay-top', 'player-overlay-bottom', 'player-controls'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.style.transition = 'opacity 0.4s ease'; el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
+  });
+}
+
+function resetPlayerUITimer() {
+  if (_playerUITimer) clearTimeout(_playerUITimer);
+  _playerUITimer = setTimeout(hidePlayerUI, PLAYER_UI_TIMEOUT);
+}
+
+function clearPlayerUITimer() {
+  if (_playerUITimer) { clearTimeout(_playerUITimer); _playerUITimer = null; }
 }
 
 document.getElementById('next-ch-btn')?.addEventListener('click', () => navigateChannel(1));
@@ -1496,54 +1538,71 @@ document.addEventListener('keydown', e => {
   const overlay = document.getElementById('player-overlay');
   if (!overlay || overlay.style.display === 'none') return;
   if (e.target.tagName === 'INPUT') return;
-  // Back/Escape → close player (handled first so back key works in player)
+
+  const uiVisible = isPlayerUIVisible();
+
+  // Back/Escape → close player (always works, UI visible or not)
   if (e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack') {
-    e.preventDefault(); closePlayer(); return;
+    e.preventDefault(); clearPlayerUITimer(); closePlayer(); return;
   }
+
+  // Enter/OK when UI is hidden → just show UI, don't activate anything
+  if ((e.key === 'Enter' || e.key === ' ') && !uiVisible) {
+    e.preventDefault(); showPlayerUI(); return;
+  }
+
   // Play/Pause — space bar, 'k', Enter on play button, or media key
   if (e.key === ' ' || e.key === 'k' || e.key === 'MediaPlayPause' || e.key === 'MediaPlay' || e.key === 'MediaStop') {
-    e.preventDefault(); togglePlay(); return;
+    e.preventDefault(); showPlayerUI(); togglePlay(); return;
   }
-  if (e.key === 'm' || e.key === 'AudioVolumeMute') { toggleMute(); return; }
+  // Enter when UI is visible → activate focused button
+  if (e.key === 'Enter' && uiVisible) {
+    showPlayerUI(); // reset timer
+    return; // let default click handling work
+  }
+  if (e.key === 'm' || e.key === 'AudioVolumeMute') { showPlayerUI(); toggleMute(); return; }
   // Volume up/down — hardware remote volume keys
   if (e.key === 'AudioVolumeUp') {
     e.preventDefault();
     const v = document.getElementById('player-video');
     if (v) { v.volume = Math.min(1, v.volume + 0.1); v.muted = false; }
-    return;
+    showPlayerUI(); return;
   }
   if (e.key === 'AudioVolumeDown') {
     e.preventDefault();
     const v = document.getElementById('player-video');
     if (v) v.volume = Math.max(0, v.volume - 0.1);
-    return;
+    showPlayerUI(); return;
   }
-  // Channel up/down — dedicated remote buttons
+  // Channel up/down — dedicated remote buttons (always work)
   if (e.key === 'ChannelUp' || e.key === 'PageUp') { e.preventDefault(); navigateChannel(-1); return; }
   if (e.key === 'ChannelDown' || e.key === 'PageDown') { e.preventDefault(); navigateChannel(1); return; }
-  // D-pad navigation
-  if (e.key === 'ArrowLeft') { e.preventDefault(); seekRelative(-10); }
-  if (e.key === 'ArrowRight') { e.preventDefault(); seekRelative(10); }
-  if (e.key === 'ArrowUp') { e.preventDefault(); navigateChannel(-1); }
-  if (e.key === 'ArrowDown') { e.preventDefault(); navigateChannel(1); }
+  // D-pad arrows — always perform action + show UI briefly
+  if (e.key === 'ArrowLeft') { e.preventDefault(); seekRelative(-10); showPlayerUI(); return; }
+  if (e.key === 'ArrowRight') { e.preventDefault(); seekRelative(10); showPlayerUI(); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); navigateChannel(-1); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); navigateChannel(1); return; }
   // Numeric channel entry — type digits then auto-jump after 1.5s pause
   if (/^[0-9]$/.test(e.key)) {
     e.preventDefault();
     _numBuf += e.key;
     clearTimeout(_numTimer);
+    showPlayerUI();
     showPlayerError('Channel: ' + _numBuf);
     _numTimer = setTimeout(() => {
       const num = parseInt(_numBuf, 10);
       _numBuf = '';
       clearPlayerError();
       if (S.channelList?.length) {
-        // Try matching by channel number first, then by index
         const byNum = S.channelList.findIndex(c => parseInt(c.num, 10) === num || parseInt(c.stream_id, 10) === num);
         const idx = byNum >= 0 ? byNum : Math.min(num - 1, S.channelList.length - 1);
         if (idx >= 0 && idx < S.channelList.length) openPlayer(S.channelList[idx], S.channelList, idx);
       }
     }, 1500);
+    return;
   }
+  // Any other key → show UI
+  showPlayerUI();
 });
 
 function togglePlayerFav() {
@@ -1978,6 +2037,13 @@ async function bootData() {
 
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  // Show version everywhere
+  const verStr = `v${APP_VERSION} (build ${APP_BUILD})`;
+  const splashVer = document.getElementById('splash-version');
+  if (splashVer) splashVer.textContent = verStr;
+  const sbVer = document.getElementById('sb-version');
+  if (sbVer) sbVer.textContent = verStr;
+
   nav('tvhome');
   bootData();
   // Clock tick in player
