@@ -2066,15 +2066,26 @@ async function bootData() {
     renderAccountInfo(info);
 
     splashStatus('Loading channels...');
-    // Channels + categories in parallel
+    // Channels + categories in parallel (60s timeout so we don't hang forever)
+    const timeout = (ms) => new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), ms));
+    let _loadSec = 0;
+    const _loadTimer = setInterval(() => {
+      _loadSec++;
+      splashStatus(`Loading channels... ${_loadSec}s${_loadSec > 15 ? ' (large channel list, please wait)' : ''}`);
+    }, 1000);
     const [cats, streams] = await Promise.allSettled([
-      api('get_live_categories'),
-      api('get_live_streams'),
+      Promise.race([api('get_live_categories'), timeout(60000)]),
+      Promise.race([api('get_live_streams'), timeout(60000)]),
     ]);
+    clearInterval(_loadTimer);
     if (cats.status === 'fulfilled' && Array.isArray(cats.value)) S.liveCategories = cats.value;
     if (streams.status === 'fulfilled' && Array.isArray(streams.value)) {
       S.allChannels = assignChannelNumbers(streams.value);
       S.channelList = []; // empty until user picks a category
+    }
+    if (streams.status === 'rejected') {
+      splashStatus('Channel loading timed out — continuing with limited data');
+      await new Promise(r => setTimeout(r, 2000));
     }
 
     // Update TV home with real counts
@@ -3139,7 +3150,7 @@ async function runBandwidthTest() {
       for (let i = 0; i < 3; i++) {
         if (bwEl) bwEl.textContent = `Speed ${i + 1}/3…`;
         const t1 = performance.now();
-        const data = await api('get_live_streams');
+        const data = await api('get_live_categories');
         const bytes = JSON.stringify(data).length;
         const secs = (performance.now() - t1) / 1000;
         speeds.push((bytes * 8) / secs / 1000000);
