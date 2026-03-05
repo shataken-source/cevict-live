@@ -373,21 +373,24 @@ export async function GET(req: NextRequest) {
           if (metalsTradesToday >= RH_METALS_MAX_DAILY) {
             log(`[METALS] Daily limit reached (${metalsTradesToday}/${RH_METALS_MAX_DAILY})`);
           } else {
-            // Check if PAXG-USD is tradable on Robinhood
-            let paxgTradable = false;
+            // Check if PAXG-USD is tradable (assume yes if WAF-blocked — order will fail gracefully)
+            let paxgTradable = true;
             try {
               const pairs = await rh.getTradingPairs(['PAXG-USD']);
-              paxgTradable = (pairs || []).some((p: any) => p.symbol === 'PAXG-USD' && p.status === 'tradable');
+              if (pairs && pairs.length > 0) {
+                paxgTradable = pairs.some((p: any) => p.symbol === 'PAXG-USD' && p.status === 'tradable');
+              }
+              // If pairs is empty (WAF-blocked), keep paxgTradable = true and let order attempt
             } catch (e: any) {
-              log(`[METALS] Could not check PAXG tradability: ${e.message}`);
+              log(`[METALS] Could not check PAXG tradability (WAF?): ${e.message} — attempting anyway`);
             }
 
             if (!paxgTradable) {
-              log('[METALS] PAXG-USD not tradable on Robinhood — skipping');
+              log('[METALS] PAXG-USD confirmed not tradable on Robinhood — skipping');
             } else {
               const tradeSize = metalsSignal.suggestedSize;
               try {
-                const order = await rh.marketBuy('PAXG-USD', tradeSize);
+                const order = await rh.marketBuyWithPrice('PAXG-USD', tradeSize, metalsSignal.goldPrice!);
                 const ok = order.state === 'filled' || order.state === 'confirmed' || order.state === 'queued';
                 if (ok) {
                   rhMetalsExecuted++;

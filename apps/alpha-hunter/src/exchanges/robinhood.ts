@@ -256,6 +256,36 @@ export class RobinhoodExchange {
     return this.transformOrder(data);
   }
 
+  /**
+   * Market buy using an externally-provided price (avoids WAF-blocked getBestBidAsk).
+   * Used when caller already has a reliable price (e.g., CoinGecko PAXG for gold).
+   */
+  async marketBuyWithPrice(symbol: string, usdAmount: number, knownPrice: number): Promise<RobinhoodOrder> {
+    console.log(`[ROBINHOOD] Market BUY ${symbol} for $${usdAmount.toFixed(2)} (ext price $${knownPrice.toFixed(2)})`);
+
+    if (!knownPrice || knownPrice <= 0) throw new Error(`Invalid external price for ${symbol}: ${knownPrice}`);
+    const effectivePrice = knownPrice * 1.005; // 0.5% slippage buffer
+    const quantity = usdAmount / effectivePrice;
+    const decimals = knownPrice > 1000 ? 6 : knownPrice > 100 ? 4 : 8;
+    const qtyStr = quantity.toFixed(decimals);
+
+    console.log(`[ROBINHOOD] ${symbol} extPrice=$${knownPrice.toFixed(2)} qty=${qtyStr} ($${usdAmount.toFixed(2)})`);
+
+    const clientOrderId = crypto.randomUUID();
+    const body = {
+      client_order_id: clientOrderId,
+      side: 'buy',
+      type: 'market',
+      symbol,
+      market_order_config: {
+        asset_quantity: qtyStr,
+      },
+    };
+
+    const data = await this.request('POST', '/api/v1/crypto/trading/orders/', body);
+    return this.transformOrder(data);
+  }
+
   async marketSell(symbol: string, cryptoAmount: number): Promise<RobinhoodOrder> {
     console.log(`[ROBINHOOD] Market SELL ${symbol} qty=${cryptoAmount}`);
 
