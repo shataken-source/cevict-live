@@ -151,9 +151,20 @@ export async function GET(request: Request) {
           status: 'pending',
           result: null,                         // verify-results reads .is('result', null)
         }))
+        // Delete existing picks for this date+earlyLines combo, then insert fresh
+        // (upsert requires a unique constraint which doesn't exist on picks table)
+        const datesToClear = [...new Set(pickRows.map((r: any) => r.game_date))]
+        for (const gd of datesToClear) {
+          const { error: delErr } = await _sb
+            .from('picks')
+            .delete()
+            .eq('game_date', gd)
+            .eq('early_lines', earlyLines)
+          if (delErr) console.warn(`[CRON daily-predictions] Delete picks ${gd}:`, delErr.message)
+        }
         const { error: _pErr } = await _sb
           .from('picks')
-          .upsert(pickRows, { onConflict: 'game_date,home_team,away_team,early_lines' })
+          .insert(pickRows)
         if (_pErr) {
           console.warn(`[CRON daily-predictions] Supabase picks write:`, _pErr.message)
         } else {
