@@ -1,29 +1,28 @@
 # Session Handover
 
-**Last updated:** 2026-03-03 13:20 CST
-**Status:** Idle
+**Last updated:** 2026-03-05 12:55 CST
+**Status:** Idle — all systems verified
 
 ## Completed
-- Progno pick engine tuning: 10-iteration calibration (MC confidence, ranking, floors, analyzer multipliers)
-- Auto-calibration engine: `/api/cron/auto-calibrate` route + weekly cron (Mon 3:30 AM UTC)
-- Admin FINE-TUNE tab: manual calibration button with days selector + results UI
-- Live Odds tab: click-to-sort any column, league filter dropdown, Shin devig upgrade
-- Live Odds API: upgraded no-vig from simple overround to Shin devig (matches pick engine)
-- Pipeline audit script: `scripts/run-pipeline-audit.ts`
-- Supabase migration: `20260303_calibration_history.sql` (file created, NOT yet run against Supabase)
-- Tuning config defaults updated (NHL floor 62, NCAA floor 66, min conf 58, NCAA/CBB analyzer off)
-- Reran today's predictions (59 picks), Kalshi execute (5 matched, all rejected — heavy favorites below 50¢ win threshold)
-- Session continuity protocol added to `.windsurfrules`
-- Committed and pushed: `67b87dde` on `gcc-vessels`
+- Metals expert audit + fix: added live gold price via CoinGecko PAXG, rewrote analyzeMetals() with price-based probability
+- Metals → Robinhood pipeline: `getMetalsSignal()` → PAXG-USD BUY, $5 max, 2/day limit, conf≥60
+- Fixed Robinhood API: `asset_quantity` (not `quote_amount`), `marketBuyWithPrice()` bypasses WAF-blocked `getBestBidAsk`, `open` state added to success check
+- SMS kill switch verified end-to-end: STOP halts trade-cycle, RESUME re-enables, STATUS returns state
+- Supabase `alpha_hunter_trades` schema fixed: 17 columns added, NOT NULL constraints dropped, check constraints recreated (side: buy/sell/yes/no/long/short, status: open/filled/closed/pending/won/lost/settled/cancelled/expired)
+- `picks` table: CBB added to sport constraint
+- `.windsurfrules` updated: pending deploys cleared, price guardrails corrected (30/80), SMS kill switch section added, Robinhood metals documented
+- Both Progno and AH deployed on commit `926bbac0` (2026-03-05)
+- Verified: PAXG-USD trade recorded to `alpha_hunter_trades` in Supabase
+- (From 03-03) Progno pick engine tuning, auto-calibration, admin UI, Live Odds, pipeline audit
 
 ## Pending
-- Run `20260303_calibration_history.sql` migration against production Supabase
-- Progno needs Vercel deploy to pick up all changes (dashboard-level build ignore must be cleared first)
-- Alpha Hunter still needs deploy for trade sizing fix (commit `25dcbd3e`)
+- Sinch dashboard: verify inbound SMS callback URL is `https://alpha-hunter-liart.vercel.app/api/emergency/sms-kill` — cannot verify programmatically
+- `alpha_hunter_trades.price` shows $0 for RH orders (average_price not populated until fill) — cosmetic, consider polling order status later
 
 ## Blockers / Warnings
 - Progno has dashboard-level build ignore on Vercel — must clear ignore → deploy → restore ignore
 - Each git push triggers ALL Vercel project builds (~$10+ per push)
+- FMP commodity endpoints restricted on current plan — gold comes from CoinGecko PAXG, silver/copper unavailable
 
 ## Next step
-In the next run, I must immediately: check if the user wants to deploy Progno/Alpha Hunter, and run the calibration_history migration.
+In the next run, I must immediately: verify Sinch webhook URL in dashboard and monitor metals trades for tuning.

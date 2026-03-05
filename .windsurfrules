@@ -22,8 +22,8 @@
 - If a command will break production, **refuse and explain why**.
 
 ## Pending Deploys (remind user on session start)
-- **Progno** needs a deploy to pick up the Kalshi `/events` → `/markets` fix (KalshiClient + execute route). Pushed in commit `2354cc35` on 2026-03-03 but Progno has dashboard-level build ignore — must clear ignore → deploy → restore ignore.
-- **Alpha Hunter** needs a deploy to pick up the trade sizing fix (price floor/ceiling, edge cap 55%, Kelly sizing). Pushed in commit `25dcbd3e` on 2026-03-03.
+- **None currently.** Both Progno and Alpha Hunter are deployed on latest commit `926bbac0` (2026-03-05).
+- Previous pending items (Kalshi fix `2354cc35`, trade sizing `25dcbd3e`) are deployed.
 
 ## Git / Deployment
 - **NEVER commit or push without explicit user approval.** Each push triggers builds on ALL Vercel projects and costs real money (~$10+ per push). Batch changes and wait for the user to say "commit" or "push".
@@ -78,11 +78,20 @@
 - **Progno admin UI:** The REAL admin page is `app/progno/admin/page.tsx` (route `/progno/admin`), NOT `app/admin/page.tsx`.
 
 ## Alpha Hunter Trade Safety
-- **Price guardrails:** Floor 15¢, ceiling 85¢ (env: `KALSHI_PRICE_FLOOR`, `KALSHI_PRICE_CEIL`).
+- **Price guardrails:** Floor 30¢, ceiling 80¢ (env: `KALSHI_PRICE_FLOOR`, `KALSHI_PRICE_CEIL`).
 - **Edge cap:** 55% max (env: `KALSHI_MAX_EDGE`) — rejects "too good to be true" model-vs-market gaps.
 - **Sizing:** Quarter-Kelly, $2 min, $10 max (env: `MAX_SINGLE_TRADE`).
 - **Blocked prefixes:** Liga MX, college hockey, MLB Spring Training, NBA 2nd half, women's sports, tennis, soccer, UFC, NBL.
 - **Market-maker filter:** Before every bet, Alpha Hunter calls Progno `/api/markets/market-makers?marketId=TICKER`. If `action: "avoid"` → skip. If `action: "trade"` + suggested price within 5¢ → use it.
+- **Robinhood metals:** Trades PAXG-USD (gold-backed token) via `getMetalsSignal()`. Max $5 (`RH_METALS_MAX_TRADE`), 2/day (`RH_METALS_MAX_DAILY`), conf ≥ 60.
+
+## SMS Kill Switch
+- **Endpoint:** `POST /api/emergency/sms-kill` (Sinch inbound webhook)
+- **Production URL:** `https://alpha-hunter-liart.vercel.app/api/emergency/sms-kill`
+- **Sinch number:** `+12704238428` — must have inbound SMS callback pointed at the production URL above.
+- **Commands:** Text STOP/KILL/HALT/PAUSE → halt trading. RESUME/START/RESTART → re-enable. STATUS/CHECK/PING → get state.
+- **Supabase table:** `kill_switch` — row `id='alpha-hunter'`, `active` boolean, `reason` text.
+- **GET endpoint:** `/api/emergency/sms-kill` returns status unauthenticated. With `Bearer CRON_SECRET`: `?action=stop` or `?action=resume`.
 
 ## Vercel Projects
 | App | Project ID | Production URL |
