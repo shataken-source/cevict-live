@@ -675,6 +675,7 @@ export async function POST(request: NextRequest) {
               confidence: pick.confidence || null,
               sport: pick.sport || pick.league || null,
               game_date: today,
+              order_id: result.orderId || null,
               dry_run: false,
               source: 'progno_execute',
               created_at: new Date().toISOString(),

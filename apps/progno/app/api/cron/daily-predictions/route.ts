@@ -137,7 +137,7 @@ export async function GET(request: Request) {
           game_matchup: p.game_matchup || `${p.away_team} @ ${p.home_team}`,
           home_team: p.home_team,
           away_team: p.away_team,
-          sport: (p.sport || 'unknown').toLowerCase(),
+          sport: (p.sport || 'unknown').toUpperCase(),
           league: (p.league || p.sport || 'unknown').toUpperCase(),
           pick: p.pick,
           pick_type: (p.pick_type || p.recommended_type || 'moneyline').toLowerCase(),
