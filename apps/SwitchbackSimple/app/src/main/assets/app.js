@@ -351,11 +351,12 @@ function renderLangFilterUI() {
       // Re-filter and reload channels + refresh category dropdown
       if (S.allChannels.length) {
         const catSel = document.getElementById('cat-select');
-        if (catSel) catSel.value = ''; // reset to All
-        S.channelList = applyLangFilter(S.allChannels);
+        if (catSel) catSel.value = '';
+        S.channelList = [];
         renderChannelCats();
+        const visCount = applyLangFilter(S.allChannels).length;
         const statusEl = document.getElementById('lang-filter-status');
-        if (statusEl) statusEl.textContent = `Showing ${S.channelList.length.toLocaleString()} of ${S.allChannels.length.toLocaleString()} channels`;
+        if (statusEl) statusEl.textContent = `Showing ${visCount.toLocaleString()} of ${S.allChannels.length.toLocaleString()} channels`;
       }
       showToast('Filters applied ✓');
     });
@@ -370,7 +371,7 @@ function renderLangFilterUI() {
       if (S.allChannels.length) {
         const catSel = document.getElementById('cat-select');
         if (catSel) catSel.value = '';
-        S.channelList = applyLangFilter(S.allChannels);
+        S.channelList = [];
         renderChannelCats();
       }
       renderLangFilterUI();
@@ -467,7 +468,6 @@ function clearAllData() {
 
 async function initChannels() {
   if (S.allChannels.length) {
-    S.channelList = applyLangFilter(S.allChannels);
     renderChannelCats();
     return;
   }
@@ -479,9 +479,10 @@ async function initChannels() {
     ]);
     S.liveCategories = Array.isArray(cats) ? cats : [];
     S.allChannels = Array.isArray(streams) ? streams : [];
-    S.channelList = applyLangFilter(S.allChannels);
+    const visibleCount = applyLangFilter(S.allChannels).length;
     document.getElementById('channels-sub').textContent =
-      `${S.channelList.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
+      `${visibleCount.toLocaleString()} channels · ${S.liveCategories.length} categories`;
+    S.channelList = []; // empty until user picks a category
     renderChannelCats();
   } catch (e) {
     document.getElementById('channel-list').innerHTML =
@@ -499,9 +500,9 @@ function renderChannelCats() {
     const cid = ch.category_id || '';
     catCount[cid] = (catCount[cid] || 0) + 1;
   });
-  sel.innerHTML = `<option value="">All Categories (${filtered.length})</option>` +
+  sel.innerHTML = `<option value="">Select a Category (${filtered.length} channels)</option>` +
     S.liveCategories
-      .filter(c => catCount[c.category_id] > 0) // hide empty categories
+      .filter(c => catCount[c.category_id] > 0)
       .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
       .join('');
   // Wire change event (only once)
@@ -509,13 +510,29 @@ function renderChannelCats() {
     sel._wired = true;
     sel.addEventListener('change', () => {
       const catId = sel.value;
-      const base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
+      if (!catId) {
+        S.channelList = [];
+        showCategoryPrompt();
+        return;
+      }
+      const base = S.allChannels.filter(c => c.category_id == catId);
       S.channelList = applyLangFilter(base);
       document.getElementById('ch-search').value = '';
       renderChannelList(S.channelList);
     });
   }
-  renderChannelList(S.channelList);
+  // Don't render all channels — show prompt until user picks a category
+  showCategoryPrompt();
+}
+
+function showCategoryPrompt() {
+  const el = document.getElementById('channel-list');
+  if (!el) return;
+  el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
+    <div style="font-size:48px;margin-bottom:12px">📡</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:6px">Select a category to browse channels</div>
+    <div style="font-size:12px">Use the dropdown above to pick a category</div>
+  </div>`;
 }
 
 function focusFirstChannelRow() {
@@ -539,10 +556,12 @@ function renderChannelList(list) {
 document.getElementById('ch-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
   const catId = document.getElementById('cat-select')?.value || '';
+  if (!catId && !q) { showCategoryPrompt(); return; }
+  // If searching with no category, search ALL channels
   const base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
   const langFiltered = applyLangFilter(base);
   const filtered = q ? langFiltered.filter(c => c.name.toLowerCase().includes(q)) : langFiltered;
-  S.channelList = langFiltered; // keep channelList in sync for player navigation
+  S.channelList = langFiltered;
   renderChannelList(filtered);
 });
 
@@ -575,7 +594,7 @@ function renderMovieCats() {
   // Count per category
   const catCount = {};
   S.allVod.forEach(v => { const cid = v.category_id || ''; catCount[cid] = (catCount[cid] || 0) + 1; });
-  sel.innerHTML = `<option value="">All Categories (${S.allVod.length})</option>` +
+  sel.innerHTML = `<option value="">Select a Category (${S.allVod.length} movies)</option>` +
     S.vodCategories
       .filter(c => catCount[c.category_id] > 0)
       .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
@@ -584,12 +603,13 @@ function renderMovieCats() {
     sel._wired = true;
     sel.addEventListener('change', () => {
       const catId = sel.value;
-      const list = catId ? S.allVod.filter(v => v.category_id == catId) : S.allVod;
+      if (!catId) { showVodCategoryPrompt('movies-grid', '🎬', 'movies'); return; }
+      const list = S.allVod.filter(v => v.category_id == catId);
       document.getElementById('movies-search').value = '';
       renderVodGrid('movies-grid', list, 'vod');
     });
   }
-  renderVodGrid('movies-grid', S.allVod, 'vod');
+  showVodCategoryPrompt('movies-grid', '🎬', 'movies');
 }
 
 function renderVodGrid(containerId, list, type) {
@@ -670,7 +690,7 @@ function renderSeriesCats() {
   if (!sel) return;
   const catCount = {};
   S.allSeries.forEach(s => { const cid = s.category_id || ''; catCount[cid] = (catCount[cid] || 0) + 1; });
-  sel.innerHTML = `<option value="">All Categories (${S.allSeries.length})</option>` +
+  sel.innerHTML = `<option value="">Select a Category (${S.allSeries.length} series)</option>` +
     S.seriesCategories
       .filter(c => catCount[c.category_id] > 0)
       .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
@@ -679,12 +699,13 @@ function renderSeriesCats() {
     sel._wired = true;
     sel.addEventListener('change', () => {
       const catId = sel.value;
-      const list = catId ? S.allSeries.filter(s => s.category_id == catId) : S.allSeries;
+      if (!catId) { showVodCategoryPrompt('series-grid', '🎭', 'series'); return; }
+      const list = S.allSeries.filter(s => s.category_id == catId);
       document.getElementById('series-search').value = '';
       renderVodGrid('series-grid', list, 'series');
     });
   }
-  renderVodGrid('series-grid', S.allSeries, 'series');
+  showVodCategoryPrompt('series-grid', '🎭', 'series');
 }
 
 async function openSeriesDetail(seriesId) {
@@ -709,16 +730,28 @@ async function openSeriesDetail(seriesId) {
   }
 }
 
+function showVodCategoryPrompt(containerId, emoji, label) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted);grid-column:1/-1">
+    <div style="font-size:48px;margin-bottom:12px">${emoji}</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:6px">Select a category to browse ${label}</div>
+    <div style="font-size:12px">Use the dropdown above to pick a category</div>
+  </div>`;
+}
+
 // search within movies/series — respects selected category
 document.getElementById('movies-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
   const catId = document.getElementById('movies-cat-select')?.value || '';
+  if (!catId && !q) { showVodCategoryPrompt('movies-grid', '🎬', 'movies'); return; }
   const base = catId ? S.allVod.filter(v => v.category_id == catId) : S.allVod;
   renderVodGrid('movies-grid', q ? base.filter(v => (v.name || '').toLowerCase().includes(q)) : base, 'vod');
 });
 document.getElementById('series-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
   const catId = document.getElementById('series-cat-select')?.value || '';
+  if (!catId && !q) { showVodCategoryPrompt('series-grid', '🎭', 'series'); return; }
   const base = catId ? S.allSeries.filter(s => s.category_id == catId) : S.allSeries;
   renderVodGrid('series-grid', q ? base.filter(s => (s.name || '').toLowerCase().includes(q)) : base, 'series');
 });
@@ -1886,7 +1919,7 @@ async function bootData() {
     if (cats.status === 'fulfilled' && Array.isArray(cats.value)) S.liveCategories = cats.value;
     if (streams.status === 'fulfilled' && Array.isArray(streams.value)) {
       S.allChannels = assignChannelNumbers(streams.value);
-      S.channelList = applyLangFilter(S.allChannels);
+      S.channelList = []; // empty until user picks a category
     }
 
     // Update TV home with real counts
