@@ -228,6 +228,19 @@ export class RobinhoodExchange {
   async marketBuy(symbol: string, usdAmount: number): Promise<RobinhoodOrder> {
     console.log(`[ROBINHOOD] Market BUY ${symbol} for $${usdAmount.toFixed(2)}`);
 
+    // Robinhood API requires asset_quantity for market orders via API.
+    // Get current ask price, calculate quantity, use a small buffer for slippage.
+    const price = await this.getPrice(symbol);
+    if (!price || price <= 0) throw new Error(`Cannot get price for ${symbol}`);
+    // Use ask-side price + 0.5% slippage buffer so we don't under-buy
+    const effectivePrice = price * 1.005;
+    const quantity = usdAmount / effectivePrice;
+    // Determine decimal precision: high-price assets (PAXG ~$5000) need more decimals
+    const decimals = price > 1000 ? 6 : price > 100 ? 4 : 8;
+    const qtyStr = quantity.toFixed(decimals);
+
+    console.log(`[ROBINHOOD] ${symbol} price=$${price.toFixed(2)} qty=${qtyStr} ($${usdAmount.toFixed(2)})`);
+
     const clientOrderId = crypto.randomUUID();
     const body = {
       client_order_id: clientOrderId,
@@ -235,12 +248,9 @@ export class RobinhoodExchange {
       type: 'market',
       symbol,
       market_order_config: {
-        asset_quantity: undefined as string | undefined,
-        quote_amount: usdAmount.toFixed(2),
+        asset_quantity: qtyStr,
       },
     };
-    // For market buys, use quote_amount (USD); remove asset_quantity
-    delete body.market_order_config.asset_quantity;
 
     const data = await this.request('POST', '/api/v1/crypto/trading/orders/', body);
     return this.transformOrder(data);
