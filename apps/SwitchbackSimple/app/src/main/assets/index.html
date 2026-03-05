@@ -958,6 +958,7 @@
     </nav>
     <div id="main">
       <div id="topbar">
+        <button id="topbar-back-btn" class="btn btn-ghost" style="padding:4px 10px;font-size:16px;display:none" tabindex="-1">◀</button>
         <span id="topbar-title">Home</span>
         <div class="tb-search">
           <span style="color:var(--muted);font-size:13px">🔍</span>
@@ -1012,7 +1013,7 @@
           <input class="inp" id="ch-search" placeholder="🔍 Search channels..." style="margin-bottom:14px" />
           <div id="channel-list">
             <div class="loading">
-              <div class="spinner"></div> Loading channels from blogyfy.xyz...
+              <div class="spinner"></div> Loading channels...
             </div>
           </div>
         </div>
@@ -1073,8 +1074,8 @@
 
         <!-- RECORDINGS -->
         <div class="screen" id="screen-recordings">
-          <div class="page-title">⏺ DVR Recordings</div>
-          <div class="page-sub">Cloud DVR · Record and manage your shows</div>
+          <div class="page-title">⏺ Bookmarks &amp; Recordings</div>
+          <div class="page-sub">Save programs to watch later · Active recordings tracked here</div>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:20px">
             <div class="stat-box">
               <div class="stat-val" style="color:var(--primary)" id="rec-count">0</div>
@@ -1380,8 +1381,9 @@
             style="margin-top:18px;padding:14px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--radius);max-width:860px">
             <div style="font-size:13px;font-weight:700;margin-bottom:7px">📦 Download the Android TV App</div>
             <div style="display:flex;gap:11px;align-items:center">
-              <a href="http://192.168.8.152:9000/switchback-v2.apk" class="btn btn-ghost btn-sm">⬇ Download APK</a>
-              <span style="font-size:12px;color:var(--muted)">Version 3.9 · Android 5.1+ · Feb 2026</span>
+              <a href="https://switchback-tv-apk.vercel.app/switchback-latest.apk" class="btn btn-ghost btn-sm">⬇
+                Download APK</a>
+              <span style="font-size:12px;color:var(--muted)">Version 4.3 · Android 5.1+ · Feb 2026</span>
             </div>
           </div>
         </div>

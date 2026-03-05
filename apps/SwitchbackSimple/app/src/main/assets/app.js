@@ -1760,6 +1760,9 @@ async function bootData() {
     // Update TV home with real counts
     if (S.currentScreen === 'tvhome') initTVHome();
 
+    // Re-stamp focusable elements and re-focus sidebar after async data load
+    setTimeout(() => { tvStampFocusable(); tvFocusSidebar(); }, 300);
+
     // Update channels sub
     const chSub = document.getElementById('channels-sub');
     if (chSub) chSub.textContent = `${S.allChannels.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
@@ -3636,6 +3639,10 @@ function nav(screen) {
   if (titleEl) titleEl.textContent = TITLES[screen] || screen;
   S.currentScreen = screen;
 
+  // ── Show/hide topbar back button ────────────────────────────
+  const backBtn = document.getElementById('topbar-back-btn');
+  if (backBtn) backBtn.style.display = screen === 'tvhome' ? 'none' : 'inline-block';
+
   // ── Lazy init ─────────────────────────────────────────────────
   const lazy = {
     tvhome: initTVHome, channels: initChannels, movies: initMovies,
@@ -3671,7 +3678,7 @@ document.querySelectorAll('.sb-item[data-screen], .tb-btn[data-screen], button[d
 // ═══════════════════════════════════════════════════════════════
 
 // All interactive selectors in priority order
-const TV_FOCUSABLE = '.ch-row, .media-card, .sb-item-nav, .epg-row, .hist-item, .rec-card, .pill, button.btn, .toggle-sw, .price-card, input.inp, select';
+const TV_FOCUSABLE = '.sb-item, .ch-row, .media-card, .sb-item-nav, .epg-row, .hist-item, .rec-card, .pill, button.btn, .toggle-sw, .price-card, input.inp, select';
 
 // Get visible focusable elements within a container
 function tvFocusable(container) {
@@ -3922,7 +3929,20 @@ document.addEventListener('keydown', function tvNav(e) {
 // ── TOGGLE-SW KEYBOARD SUPPORT ───────────────────────────────
 // Handled in master D-pad handler above (Enter/Space on .toggle-sw).
 
-// ── BOOT TV REMOTE ───────────────────────────────────────────
+// ── BACK BUTTON ──────────────────────────────────────────
+function navBack() {
+  if (S._screenHistory && S._screenHistory.length) {
+    const prev = S._screenHistory.pop();
+    // Call nav but remove the push it would do (we already popped)
+    S.currentScreen = null; // reset so nav doesn't double-push
+    nav(prev);
+  } else {
+    nav('tvhome');
+  }
+}
+document.getElementById('topbar-back-btn')?.addEventListener('click', navBack);
+
+// ── BOOT TV REMOTE ───────────────────────────────────────
 initSidebarNav();
 
 // Focus active sidebar item on initial load
