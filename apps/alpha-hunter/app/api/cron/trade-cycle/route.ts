@@ -391,7 +391,7 @@ export async function GET(req: NextRequest) {
               const tradeSize = metalsSignal.suggestedSize;
               try {
                 const order = await rh.marketBuyWithPrice('PAXG-USD', tradeSize, metalsSignal.goldPrice!);
-                const ok = order.state === 'filled' || order.state === 'confirmed' || order.state === 'queued';
+                const ok = order.state === 'filled' || order.state === 'confirmed' || order.state === 'queued' || order.state === 'open';
                 if (ok) {
                   rhMetalsExecuted++;
                   log(`[METALS] ✅ PAXG-USD BUY $${tradeSize} (conf ${metalsSignal.confidence}%, gold $${metalsSignal.goldPrice?.toLocaleString()}, order ${order.id})`);

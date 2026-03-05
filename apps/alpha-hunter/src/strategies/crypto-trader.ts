@@ -743,7 +743,7 @@ export class CryptoTrader {
 
       try {
         const order = await rh.marketBuy(symbol, tradeSize);
-        const ok = order.state === 'filled' || order.state === 'confirmed' || order.state === 'queued';
+        const ok = order.state === 'filled' || order.state === 'confirmed' || order.state === 'queued' || order.state === 'open';
         if (ok) {
           executed++;
           logs.push(`[RH] ✅ ${symbol} BUY $${tradeSize} (conf ${signal.confidence}%, order ${order.id})`);
