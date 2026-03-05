@@ -1149,18 +1149,22 @@ function openPlayer(ch, list, idx) {
   }, 150);
 }
 
-function showPlayerError(msg) {
+let _playerErrTimer = null;
+function showPlayerError(msg, duration) {
   let el = document.getElementById('player-error-msg');
   if (!el) {
     el = document.createElement('div');
     el.id = 'player-error-msg';
     el.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);' +
       'background:rgba(229,0,0,0.85);color:#fff;padding:18px 28px;border-radius:12px;' +
-      'font-size:14px;font-weight:600;z-index:10001;text-align:center;max-width:320px;';
+      'font-size:14px;font-weight:600;z-index:10001;text-align:center;max-width:320px;pointer-events:none;';
     document.getElementById('player-overlay').appendChild(el);
   }
   el.textContent = msg;
   el.style.display = 'block';
+  if (_playerErrTimer) clearTimeout(_playerErrTimer);
+  const ms = duration || 4000;
+  _playerErrTimer = setTimeout(clearPlayerError, ms);
 }
 
 function clearPlayerError() {
@@ -1296,6 +1300,7 @@ function closePlayer() {
   video.pause();
   if (S.hlsInstance) { S.hlsInstance.destroy(); S.hlsInstance = null; }
   video.src = '';
+  clearPlayerError();
   document.getElementById('player-overlay').style.display = 'none';
   document.getElementById('topbar-title').textContent = TITLES[S.currentScreen] || S.currentScreen;
   // Stop ad detection polling
@@ -1427,7 +1432,7 @@ document.addEventListener('keydown', e => {
   if (!overlay || overlay.style.display === 'none') return;
   if (e.target.tagName === 'INPUT') return;
   // Back/Escape → close player (handled first so back key works in player)
-  if (e.key === 'Escape') {
+  if (e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack') {
     e.preventDefault(); closePlayer(); return;
   }
   // Play/Pause — space bar, 'k', Enter on play button, or media key
