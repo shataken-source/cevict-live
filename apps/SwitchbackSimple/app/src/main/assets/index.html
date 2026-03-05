@@ -1617,6 +1617,27 @@
                 </div>
                 <div id="lang-filter-status" style="margin-top:7px;font-size:11px;color:var(--muted)"></div>
               </div>
+              <div class="settings-group" style="padding:13px;margin-top:10px" id="cat-filter-group">
+                <div
+                  style="font-size:10px;color:var(--muted);margin-bottom:9px;text-transform:uppercase;letter-spacing:1px">
+                  Hide / Show categories from your provider</div>
+                <div id="cat-filter-search-wrap" style="margin-bottom:8px">
+                  <input class="inp" id="cat-filter-search" placeholder="Search categories..."
+                    style="width:100%;font-size:12px;padding:6px 10px" />
+                </div>
+                <div id="cat-filter-list"
+                  style="display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto;padding-right:4px">
+                  <div style="color:var(--muted);font-size:12px;padding:20px 0;text-align:center">Load channels first to
+                    see categories</div>
+                </div>
+                <div style="margin-top:10px;display:flex;gap:8px">
+                  <button class="btn btn-red btn-sm" id="cat-filter-apply-btn" tabindex="0" style="flex:1">✓
+                    Apply</button>
+                  <button class="btn btn-ghost btn-sm" id="cat-filter-show-all-btn" tabindex="0">Show All</button>
+                  <button class="btn btn-ghost btn-sm" id="cat-filter-hide-all-btn" tabindex="0">Hide All</button>
+                </div>
+                <div id="cat-filter-status" style="margin-top:7px;font-size:11px;color:var(--muted)"></div>
+              </div>
               <div class="section-title">Playback</div>
               <div class="settings-group">
                 <div class="row-item"><span style="font-size:13px">Auto-Play on Start</span>
