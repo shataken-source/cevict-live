@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Switchback Remote</title>
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --panel: #13131a;
+      --border: rgba(255, 255, 255, 0.08);
+      --red: #e50000;
+      --red2: #ff3a3a;
+      --green: #00e676;
+      --accent: #00c2ff;
+      --muted: #666;
+      --text: #fff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      touch-action: manipulation;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── PIN SCREEN ── */
+    #pin-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 40px 20px;
+      text-align: center;
+    }
+
+    #pin-screen h1 {
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    #pin-screen p {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    .pin-dots {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .pin-dot {
+      width: 48px;
+      height: 56px;
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      font-size: 28px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s;
+    }
+
+    .pin-dot.filled {
+      border-color: var(--red);
+      color: var(--red2);
+    }
+
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      max-width: 280px;
+      width: 100%;
+    }
+
+    .num-btn {
+      height: 56px;
+      border-radius: 14px;
+      border: none;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.1s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .num-btn:active {
+      background: rgba(229, 0, 0, 0.25);
+    }
+
+    .num-btn.del {
+      font-size: 16px;
+      color: var(--muted);
+    }
+
+    #pin-error {
+      color: var(--red2);
+      font-size: 13px;
+      margin-top: 14px;
+      min-height: 20px;
+    }
+
+    /* ── REMOTE SCREEN ── */
+    #remote-screen {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* Now Playing Bar */
+    .now-bar {
+      padding: 12px 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .now-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+    }
+
+    .now-dot.off {
+      background: var(--muted);
+    }
+
+    .now-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .now-ch {
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .now-prog {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .now-badge {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      background: rgba(229, 0, 0, 0.2);
+      color: var(--red2);
+      flex-shrink: 0;
+    }
+
+    /* Remote Body */
+    .remote-body {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      padding: 12px;
+      gap: 10px;
+      overflow-y: auto;
+    }
+
+    .remote-body.active {
+      display: flex;
+    }
+
+    /* D-Pad */
+    .dpad-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 8px 0;
+    }
+
+    .dpad {
+      width: 220px;
+      height: 220px;
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+    }
+
+    .dpad-btn {
+      border: none;
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .dpad-btn:active {
+      background: rgba(229, 0, 0, 0.3);
+    }
+
+    .dpad-up {
+      grid-column: 2;
+      grid-row: 1;
+      border-radius: 16px 16px 0 0;
+    }
+
+    .dpad-left {
+      grid-column: 1;
+      grid-row: 2;
+      border-radius: 16px 0 0 16px;
+    }
+
+    .dpad-ok {
+      grid-column: 2;
+      grid-row: 2;
+      background: var(--red);
+      border-radius: 50%;
+      margin: 6px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .dpad-ok:active {
+      background: var(--red2);
+    }
+
+    .dpad-right {
+      grid-column: 3;
+      grid-row: 2;
+      border-radius: 0 16px 16px 0;
+    }
+
+    .dpad-down {
+      grid-column: 2;
+      grid-row: 3;
+      border-radius: 0 0 16px 16px;
+    }
+
+    /* corner cells invisible */
+    .dpad-empty {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    /* Transport Row */
+    .transport {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .t-btn {
+      flex: 1;
+      max-width: 72px;
+      height: 48px;
+      border-radius: 12px;
+      border: none;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .t-btn:active {
+      background: rgba(229, 0, 0, 0.25);
+    }
+
+    .t-btn.play-btn {
+      background: var(--red);
+    }
+
+    .t-btn.play-btn:active {
+      background: var(--red2);
+    }
+
+    /* Volume / Channel strip */
+    .vol-ch-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .vol-ch-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-radius: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .vol-ch-label {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
+      padding: 6px 0 2px;
+    }
+
+    .vol-ch-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 22px;
+      cursor: pointer;
+      padding: 12px;
+      text-align: center;
+      transition: background 0.1s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .vol-ch-btn:active {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .vol-ch-sep {
+      height: 1px;
+      background: var(--border);
+      margin: 0 10px;
+    }
+
+    /* Quick Nav */
+    .quick-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .nav-btn {
+      padding: 10px 4px;
+      border-radius: 10px;
+      border: none;
+      background: var(--panel);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      transition: background 0.1s, color 0.1s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .nav-btn:active {
+      background: rgba(229, 0, 0, 0.2);
+      color: var(--text);
+    }
+
+    .nav-icon {
+      font-size: 18px;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* Switchback Slots */
+    .sb-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .sb-slot {
+      flex: 1;
+      padding: 8px 6px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      cursor: pointer;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      transition: all 0.15s;
+      -webkit-user-select: none;
+      user-select: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sb-slot:active {
+      background: rgba(229, 0, 0, 0.15);
+      border-color: var(--red);
+    }
+
+    .sb-slot.active {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .sb-slot .sb-num {
+      font-size: 9px;
+      color: var(--muted);
+      display: block;
+    }
+
+    /* Number pad overlay */
+    #numpad-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #numpad-overlay.show {
+      display: flex;
+    }
+
+    .ch-entry {
+      font-size: 48px;
+      font-weight: 800;
+      margin-bottom: 20px;
+      color: var(--red2);
+      min-height: 60px;
+    }
+
+    .ch-numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      max-width: 280px;
+      width: 100%;
+    }
+
+    .ch-num-btn {
+      height: 60px;
+      border-radius: 14px;
+      border: none;
+      background: var(--panel);
+      color: var(--text);
+      font-size: 24px;
+      font-weight: 600;
+      cursor: pointer;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .ch-num-btn:active {
+      background: rgba(229, 0, 0, 0.3);
+    }
+
+    /* Haptic feedback animation */
+    @keyframes pulse {
+      0% {
+        transform: scale(1)
+      }
+
+      50% {
+        transform: scale(0.95)
+      }
+
+      100% {
+        transform: scale(1)
+      }
+    }
+
+    .pressed {
+      animation: pulse 0.12s ease-out;
+    }
+
+    /* Status bar */
+    .status-bar {
+      padding: 6px 16px;
+      text-align: center;
+      font-size: 10px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .status-bar .connected {
+      color: var(--green);
+    }
+
+    .status-bar .disconnected {
+      color: var(--red2);
+    }
+
+    /* Tab bar */
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tab-btn.active {
+      color: var(--red2);
+      border-bottom-color: var(--red);
+    }
+
+    /* Setup tab */
+    .setup-body {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .setup-body.active {
+      display: flex;
+    }
+
+    .setup-section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .setup-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .setup-sub {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    .setup-input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-family: inherit;
+    }
+
+    .setup-input:focus {
+      outline: none;
+      border-color: var(--red);
+    }
+
+    .setup-btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .setup-btn-red {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .setup-btn-red:active {
+      background: var(--red2);
+    }
+
+    .setup-btn-ghost {
+      background: var(--panel);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .setup-result {
+      font-size: 12px;
+      margin-top: 8px;
+      min-height: 18px;
+    }
+
+    .setup-or {
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      padding: 4px 0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    textarea.setup-input {
+      min-height: 80px;
+      resize: vertical;
+      font-family: monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══ PIN ENTRY ═══ -->
+  <div id="pin-screen">
+    <div style="font-size:48px;margin-bottom:16px">📺</div>
+    <h1>Switchback Remote</h1>
+    <p>Enter the 4-digit PIN shown on your TV</p>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="numpad" id="pin-numpad">
+      <button class="num-btn" data-n="1">1</button>
+      <button class="num-btn" data-n="2">2</button>
+      <button class="num-btn" data-n="3">3</button>
+      <button class="num-btn" data-n="4">4</button>
+      <button class="num-btn" data-n="5">5</button>
+      <button class="num-btn" data-n="6">6</button>
+      <button class="num-btn" data-n="7">7</button>
+      <button class="num-btn" data-n="8">8</button>
+      <button class="num-btn" data-n="9">9</button>
+      <button class="num-btn del" data-n="del">⌫</button>
+      <button class="num-btn" data-n="0">0</button>
+      <button class="num-btn del" data-n="clear">✕</button>
+    </div>
+    <div id="pin-error"></div>
+  </div>
+
+  <!-- ═══ REMOTE CONTROL ═══ -->
+  <div id="remote-screen">
+
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="remote" onclick="switchTab('remote')">📺 Remote</button>
+      <button class="tab-btn" data-tab="setup" onclick="switchTab('setup')">⚙️ Setup</button>
+    </div>
+
+    <!-- Now Playing -->
+    <div class="now-bar">
+      <div class="now-dot" id="now-dot"></div>
+      <div class="now-info">
+        <div class="now-ch" id="now-ch">Not connected</div>
+        <div class="now-prog" id="now-prog">—</div>
+      </div>
+      <div class="now-badge" id="now-badge">LIVE</div>
+    </div>
+
+    <div class="remote-body active" id="tab-remote">
+
+      <!-- Switchback Slots -->
+      <div class="sb-row" id="sb-slots">
+        <div class="sb-slot" data-slot="0"><span class="sb-num">1</span>Empty</div>
+        <div class="sb-slot" data-slot="1"><span class="sb-num">2</span>Empty</div>
+        <div class="sb-slot" data-slot="2"><span class="sb-num">3</span>Empty</div>
+        <div class="sb-slot" data-slot="3"><span class="sb-num">4</span>Empty</div>
+      </div>
+
+      <!-- D-Pad -->
+      <div class="dpad-wrap">
+        <div class="dpad">
+          <div class="dpad-empty"></div>
+          <button class="dpad-btn dpad-up" data-key="Up">▲</button>
+          <div class="dpad-empty"></div>
+          <button class="dpad-btn dpad-left" data-key="Left">◀</button>
+          <button class="dpad-btn dpad-ok" data-key="Select">OK</button>
+          <button class="dpad-btn dpad-right" data-key="Right">▶</button>
+          <div class="dpad-empty"></div>
+          <button class="dpad-btn dpad-down" data-key="Down">▼</button>
+          <div class="dpad-empty"></div>
+        </div>
+      </div>
+
+      <!-- Transport -->
+      <div class="transport">
+        <button class="t-btn" data-key="Back">↩</button>
+        <button class="t-btn" onclick="seekKey(-30)">⏪</button>
+        <button class="t-btn play-btn" data-key="PlayPause">⏯</button>
+        <button class="t-btn" onclick="seekKey(30)">⏩</button>
+        <button class="t-btn" data-key="Menu">☰</button>
+      </div>
+
+      <!-- Volume / Channel -->
+      <div class="vol-ch-row">
+        <div class="vol-ch-group">
+          <div class="vol-ch-label">Volume</div>
+          <button class="vol-ch-btn" onclick="sendCmd({action:'vol_up'})">+</button>
+          <div class="vol-ch-sep"></div>
+          <button class="vol-ch-btn" onclick="sendCmd({action:'vol_down'})">−</button>
+          <div class="vol-ch-sep"></div>
+          <button class="vol-ch-btn" style="font-size:14px" onclick="sendCmd({action:'mute'})">🔇</button>
+        </div>
+        <div class="vol-ch-group">
+          <div class="vol-ch-label">Channel</div>
+          <button class="vol-ch-btn" onclick="sendCmd({action:'ch_up'})">▲</button>
+          <div class="vol-ch-sep"></div>
+          <button class="vol-ch-btn" onclick="sendCmd({action:'ch_down'})">▼</button>
+          <div class="vol-ch-sep"></div>
+          <button class="vol-ch-btn" style="font-size:14px" onclick="showNumpad()">123</button>
+        </div>
+      </div>
+
+      <!-- Quick Nav -->
+      <div class="quick-nav">
+        <button class="nav-btn" onclick="sendCmd({action:'nav_home'})"><span class="nav-icon">🏠</span>Home</button>
+        <button class="nav-btn" onclick="sendCmd({action:'nav_guide'})"><span class="nav-icon">📋</span>Guide</button>
+        <button class="nav-btn" onclick="sendCmd({action:'nav_channels'})"><span class="nav-icon">📡</span>Live</button>
+        <button class="nav-btn" onclick="sendCmd({action:'nav_search'})"><span class="nav-icon">🔍</span>Search</button>
+        <button class="nav-btn" onclick="sendCmd({action:'nav_favorites'})"><span class="nav-icon">⭐</span>Favs</button>
+        <button class="nav-btn" onclick="sendCmd({action:'nav_recordings'})"><span class="nav-icon">⏺</span>DVR</button>
+        <button class="nav-btn" onclick="sendCmd({action:'nav_settings'})"><span
+            class="nav-icon">⚙️</span>Settings</button>
+        <button class="nav-btn" onclick="sendCmd({action:'sb_cycle'})"><span class="nav-icon">⇄</span>Swap</button>
+      </div>
+    </div>
+
+    <!-- ═══ SETUP TAB ═══ -->
+    <div class="setup-body" id="tab-setup">
+      <div class="setup-section">
+        <div class="setup-title">📋 Paste Xtream URL</div>
+        <div class="setup-sub">Your provider sends a URL
+          like:<br><code>http://server.com:port/get.php?username=X&password=Y</code></div>
+        <textarea class="setup-input" id="cfg-url-paste" placeholder="Paste your full Xtream URL here..."></textarea>
+        <button class="setup-btn setup-btn-red" onclick="parseAndSend()">Send to TV</button>
+        <div class="setup-result" id="cfg-paste-result"></div>
+      </div>
+
+      <div class="setup-or">— or —</div>
+
+      <div class="setup-section">
+        <div class="setup-title">✏️ Enter Manually</div>
+        <input class="setup-input" id="cfg-server" placeholder="Server URL (e.g. http://example.com:8080)" />
+        <input class="setup-input" id="cfg-user" placeholder="Username" />
+        <input class="setup-input" id="cfg-pass" type="password" placeholder="Password" />
+        <button class="setup-btn setup-btn-red" onclick="sendManual()">Send to TV</button>
+        <div class="setup-result" id="cfg-manual-result"></div>
+      </div>
+
+      <div class="setup-or">— or —</div>
+
+      <div class="setup-section">
+        <div class="setup-title">📁 Import Config File</div>
+        <div class="setup-sub">Upload an M3U, .txt, or JSON config file from your provider.</div>
+        <input type="file" id="cfg-file" accept=".m3u,.m3u8,.txt,.json,.cfg" style="display:none" />
+        <button class="setup-btn setup-btn-ghost" onclick="document.getElementById('cfg-file').click()">Choose
+          File</button>
+        <div class="setup-result" id="cfg-file-result"></div>
+      </div>
+    </div>
+
+    <div class="status-bar" id="status-bar">
+      <span class="connected">● Connected</span> · Switchback Remote
+    </div>
+  </div>
+
+  <!-- ═══ CHANNEL NUMBER PAD OVERLAY ═══ -->
+  <div id="numpad-overlay">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">GO TO CHANNEL</div>
+    <div class="ch-entry" id="ch-entry">_</div>
+    <div class="ch-numpad">
+      <button class="ch-num-btn" onclick="chNum('1')">1</button>
+      <button class="ch-num-btn" onclick="chNum('2')">2</button>
+      <button class="ch-num-btn" onclick="chNum('3')">3</button>
+      <button class="ch-num-btn" onclick="chNum('4')">4</button>
+      <button class="ch-num-btn" onclick="chNum('5')">5</button>
+      <button class="ch-num-btn" onclick="chNum('6')">6</button>
+      <button class="ch-num-btn" onclick="chNum('7')">7</button>
+      <button class="ch-num-btn" onclick="chNum('8')">8</button>
+      <button class="ch-num-btn" onclick="chNum('9')">9</button>
+      <button class="ch-num-btn" onclick="chNumClear()" style="color:var(--muted)">✕</button>
+      <button class="ch-num-btn" onclick="chNum('0')">0</button>
+      <button class="ch-num-btn" onclick="chNumGo()" style="background:var(--red);color:#fff">GO</button>
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════
+    // Switchback TV Phone Remote
+    // Connects to RemoteServer.java on port 8124 (same host)
+    // Protocol: GET /key?name=<key>&pin=<pin>
+    // Also sends high-level commands via WebSocket to app.js
+    // ═══════════════════════════════════════════════════════════════
+
+    const BASE = window.location.origin; // e.g. http://192.168.1.50:8124
+    let PIN = localStorage.getItem('sb_remote_pin') || '';
+    let ws = null;
+
+    // ── PIN ENTRY ────────────────────────────────────────────────
+    let pinBuf = '';
+
+    function updatePinDots() {
+      for (let i = 0; i < 4; i++) {
+        const dot = document.getElementById('d' + i);
+        dot.textContent = i < pinBuf.length ? '●' : '';
+        dot.classList.toggle('filled', i < pinBuf.length);
+      }
+    }
+
+    document.getElementById('pin-numpad').addEventListener('click', e => {
+      const btn = e.target.closest('[data-n]');
+      if (!btn) return;
+      vibrate();
+      const n = btn.dataset.n;
+      if (n === 'del') { pinBuf = pinBuf.slice(0, -1); updatePinDots(); return; }
+      if (n === 'clear') { pinBuf = ''; updatePinDots(); return; }
+      if (pinBuf.length >= 4) return;
+      pinBuf += n;
+      updatePinDots();
+      if (pinBuf.length === 4) {
+        verifyPin(pinBuf);
+      }
+    });
+
+    async function verifyPin(code) {
+      const errEl = document.getElementById('pin-error');
+      errEl.textContent = 'Connecting…';
+      try {
+        const res = await fetch(BASE + '/pin?pin=' + code);
+        if (res.ok) {
+          PIN = code;
+          localStorage.setItem('sb_remote_pin', PIN);
+          document.getElementById('pin-screen').style.display = 'none';
+          document.getElementById('remote-screen').style.display = 'flex';
+          connectWs();
+          pollState();
+        } else {
+          errEl.textContent = 'Wrong PIN. Try again.';
+          pinBuf = '';
+          updatePinDots();
+        }
+      } catch (e) {
+        errEl.textContent = 'Cannot reach TV. Check Wi-Fi.';
+        pinBuf = '';
+        updatePinDots();
+      }
+    }
+
+    // Auto-connect if PIN is saved
+    if (PIN.length === 4) {
+      verifyPin(PIN);
+    }
+
+    // ── KEY SENDING (D-pad, transport, etc) ──────────────────────
+    async function sendKey(name) {
+      try {
+        await fetch(BASE + '/key?name=' + encodeURIComponent(name) + '&pin=' + PIN);
+      } catch (_) {
+        showDisconnected();
+      }
+    }
+
+    // Wire all [data-key] buttons
+    document.querySelectorAll('[data-key]').forEach(btn => {
+      const handler = e => {
+        e.preventDefault();
+        vibrate();
+        btn.classList.add('pressed');
+        setTimeout(() => btn.classList.remove('pressed'), 120);
+        sendKey(btn.dataset.key);
+      };
+      btn.addEventListener('touchstart', handler, { passive: false });
+      btn.addEventListener('mousedown', handler);
+    });
+
+    // ── HIGH-LEVEL COMMANDS (via WebSocket to app.js) ────────────
+    // These go beyond simple key injection — they control the app directly
+    function sendCmd(cmd) {
+      vibrate();
+      // Try WebSocket first
+      if (ws && ws.readyState === 1) {
+        try { ws.send(JSON.stringify(cmd)); return; } catch (_) { }
+      }
+      // Fallback: encode as key presses for simple actions
+      const keyMap = {
+        'vol_up': null, 'vol_down': null, 'mute': null,
+        'ch_up': null, 'ch_down': null,
+        'play_pause': 'PlayPause',
+      };
+      if (keyMap[cmd.action]) {
+        sendKey(keyMap[cmd.action]);
+        return;
+      }
+      // For nav commands and complex actions, use a POST to a /cmd endpoint
+      // or localStorage bridge — but since we're on different origins, POST is simplest
+      // Fallback: try WS reconnect
+      connectWs();
+    }
+
+    function seekKey(secs) {
+      vibrate();
+      sendCmd({ action: secs < 0 ? 'seek_back' : 'seek_fwd' });
+    }
+
+    // ── WEBSOCKET ────────────────────────────────────────────────
+    function connectWs() {
+      if (ws && ws.readyState <= 1) return;
+      try {
+        const host = window.location.hostname;
+        ws = new WebSocket('ws://' + host + ':8765');
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ type: 'register', role: 'remote', pin: PIN }));
+          showConnected();
+        };
+        ws.onmessage = e => {
+          try {
+            const state = JSON.parse(e.data);
+            if (state.channel !== undefined) updateNowPlaying(state);
+          } catch (_) { }
+        };
+        ws.onclose = () => { ws = null; };
+        ws.onerror = () => { ws = null; };
+      } catch (_) { }
+    }
+
+    // ── POLL TV STATE ────────────────────────────────────────────
+    // Even without WS, we can poll the TV state from localStorage bridge
+    // Since we're cross-origin (different port), we use the /key endpoint as a heartbeat
+    let pollTimer = null;
+    function pollState() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(async () => {
+        try {
+          const res = await fetch(BASE + '/pin?pin=' + PIN);
+          if (res.ok) showConnected();
+          else showDisconnected();
+        } catch (_) {
+          showDisconnected();
+        }
+      }, 5000);
+    }
+
+    // ── NOW PLAYING ──────────────────────────────────────────────
+    function updateNowPlaying(state) {
+      document.getElementById('now-ch').textContent = state.channel || 'No channel';
+      document.getElementById('now-prog').textContent = state.program || '—';
+      document.getElementById('now-dot').className = 'now-dot' + (state.playing ? '' : ' off');
+      document.getElementById('now-badge').textContent = state.playing ? 'LIVE' : 'PAUSED';
+
+      // Update switchback slots
+      if (state.slots) {
+        const slotsEl = document.getElementById('sb-slots');
+        state.slots.forEach((s, i) => {
+          const el = slotsEl.children[i];
+          if (!el) return;
+          const isActive = s && state.channel && s.name === state.channel;
+          el.className = 'sb-slot' + (isActive ? ' active' : '');
+          el.innerHTML = '<span class="sb-num">' + (i + 1) + '</span>' + (s ? esc(s.name.slice(0, 12)) : 'Empty');
+        });
+      }
+    }
+
+    // ── SWITCHBACK SLOT TAP ──────────────────────────────────────
+    document.getElementById('sb-slots').addEventListener('click', e => {
+      const slot = e.target.closest('[data-slot]');
+      if (!slot) return;
+      vibrate();
+      sendCmd({ action: 'sb_jump', slot: parseInt(slot.dataset.slot) });
+    });
+
+    // ── CHANNEL NUMBER PAD ──────────────────────────────────────
+    let chBuf = '';
+    function showNumpad() {
+      chBuf = '';
+      document.getElementById('ch-entry').textContent = '_';
+      document.getElementById('numpad-overlay').classList.add('show');
+    }
+    function chNum(n) {
+      vibrate();
+      if (chBuf.length >= 5) return;
+      chBuf += n;
+      document.getElementById('ch-entry').textContent = chBuf;
+    }
+    function chNumClear() {
+      vibrate();
+      chBuf = '';
+      document.getElementById('ch-entry').textContent = '_';
+      document.getElementById('numpad-overlay').classList.remove('show');
+    }
+    function chNumGo() {
+      vibrate();
+      if (!chBuf) return;
+      sendCmd({ action: 'ch_goto', num: parseInt(chBuf) });
+      document.getElementById('numpad-overlay').classList.remove('show');
+      chBuf = '';
+    }
+    // Close numpad on back gesture / outside tap
+    document.getElementById('numpad-overlay').addEventListener('click', e => {
+      if (e.target.id === 'numpad-overlay') chNumClear();
+    });
+
+    // ── STATUS ──────────────────────────────────────────────────
+    function showConnected() {
+      document.getElementById('status-bar').innerHTML = '<span class="connected">● Connected</span> · Switchback Remote';
+    }
+    function showDisconnected() {
+      document.getElementById('status-bar').innerHTML = '<span class="disconnected">● Disconnected</span> · Check Wi-Fi';
+    }
+
+    // ── HELPERS ─────────────────────────────────────────────────
+    function vibrate() {
+      if (navigator.vibrate) navigator.vibrate(15);
+    }
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    // ── TAB SWITCHING ─────────────────────────────────────────
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      document.getElementById('tab-remote').classList.toggle('active', tab === 'remote');
+      document.getElementById('tab-setup').classList.toggle('active', tab === 'setup');
+    }
+
+    // ── PUSH CONFIG TO TV ────────────────────────────────────
+    async function pushConfig(server, username, password, resultEl) {
+      if (!server || !username || !password) {
+        if (resultEl) resultEl.innerHTML = '<span style="color:#ff5555">All 3 fields are required.</span>';
+        return;
+      }
+      // Normalize server URL
+      server = server.trim().replace(/\/+$/, '');
+      if (resultEl) resultEl.innerHTML = '<span style="color:#00c2ff">Sending to TV…</span>';
+      try {
+        const body = 'server=' + encodeURIComponent(server) +
+          '&username=' + encodeURIComponent(username.trim()) +
+          '&password=' + encodeURIComponent(password.trim()) +
+          '&pin=' + encodeURIComponent(PIN);
+        const res = await fetch(BASE + '/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: body,
+        });
+        const data = await res.json();
+        if (data.ok) {
+          if (resultEl) resultEl.innerHTML = '<span style="color:#00e676">✓ Sent to TV! Channels loading…</span>';
+          vibrate();
+          // Switch back to remote tab after a moment
+          setTimeout(() => switchTab('remote'), 2000);
+        } else {
+          if (resultEl) resultEl.innerHTML = '<span style="color:#ff5555">Error: ' + esc(data.error || 'Unknown') + '</span>';
+        }
+      } catch (e) {
+        if (resultEl) resultEl.innerHTML = '<span style="color:#ff5555">Cannot reach TV. Check Wi-Fi.</span>';
+      }
+    }
+
+    // ── PARSE XTREAM URL ──────────────────────────────────────
+    function parseXtreamUrl(raw) {
+      raw = raw.trim();
+      // Try: http://server:port/get.php?username=X&password=Y
+      // Or:  http://server:port/player_api.php?username=X&password=Y
+      // Or:  http://server:port/live/user/pass/...m3u8
+      // Or just: server\nuser\npass (line-separated)
+      try {
+        const url = new URL(raw.split('\n')[0].trim());
+        const u = url.searchParams.get('username') || url.searchParams.get('user');
+        const p = url.searchParams.get('password') || url.searchParams.get('pass');
+        if (u && p) {
+          const server = url.origin;
+          return { server, username: u, password: p };
+        }
+        // Try /live/user/pass/... format
+        const parts = url.pathname.split('/').filter(Boolean);
+        if (parts.length >= 3 && parts[0] === 'live') {
+          return { server: url.origin, username: parts[1], password: parts[2] };
+        }
+      } catch (_) { }
+      // Try line-separated: server\nuser\npass
+      const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length >= 3) {
+        return { server: lines[0], username: lines[1], password: lines[2] };
+      }
+      return null;
+    }
+
+    function parseAndSend() {
+      vibrate();
+      const raw = document.getElementById('cfg-url-paste').value;
+      const resultEl = document.getElementById('cfg-paste-result');
+      const parsed = parseXtreamUrl(raw);
+      if (!parsed) {
+        resultEl.innerHTML = '<span style="color:#ff5555">Could not parse URL. Check the format.</span>';
+        return;
+      }
+      pushConfig(parsed.server, parsed.username, parsed.password, resultEl);
+    }
+
+    // ── MANUAL ENTRY ──────────────────────────────────────────
+    function sendManual() {
+      vibrate();
+      const server = document.getElementById('cfg-server').value;
+      const user = document.getElementById('cfg-user').value;
+      const pass = document.getElementById('cfg-pass').value;
+      pushConfig(server, user, pass, document.getElementById('cfg-manual-result'));
+    }
+
+    // ── FILE IMPORT ───────────────────────────────────────────
+    document.getElementById('cfg-file').addEventListener('change', function () {
+      const file = this.files[0];
+      if (!file) return;
+      const resultEl = document.getElementById('cfg-file-result');
+      resultEl.innerHTML = '<span style="color:#00c2ff">Reading ' + esc(file.name) + '…</span>';
+      const reader = new FileReader();
+      reader.onload = function () {
+        const text = reader.result;
+        // Try JSON first
+        try {
+          const json = JSON.parse(text);
+          const s = json.server || json.url || json.host || '';
+          const u = json.username || json.user || '';
+          const p = json.password || json.pass || '';
+          if (s && u && p) {
+            pushConfig(s, u, p, resultEl);
+            return;
+          }
+        } catch (_) { }
+        // Try Xtream URL parse
+        const parsed = parseXtreamUrl(text);
+        if (parsed) {
+          pushConfig(parsed.server, parsed.username, parsed.password, resultEl);
+          return;
+        }
+        // Try M3U with extinf and URL
+        const m3uMatch = text.match(/https?:\/\/[^\s]+/);
+        if (m3uMatch) {
+          const urlParsed = parseXtreamUrl(m3uMatch[0]);
+          if (urlParsed) {
+            pushConfig(urlParsed.server, urlParsed.username, urlParsed.password, resultEl);
+            return;
+          }
+        }
+        resultEl.innerHTML = '<span style="color:#ff5555">Could not extract credentials from file.</span>';
+      };
+      reader.readAsText(file);
+    });
+
+    // Prevent zoom on double-tap
+    document.addEventListener('dblclick', e => e.preventDefault());
+
+    // Prevent pull-to-refresh
+    document.body.addEventListener('touchmove', e => {
+      if (e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
+  </script>
+</body>
+
+</html>

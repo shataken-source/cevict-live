@@ -99,6 +99,14 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                // Inject remote server PIN + port so Settings screen can display it
+                if (remoteServer != null) {
+                    String rPin = remoteServer.getPin();
+                    int rPort = RemoteServer.getPort();
+                    view.evaluateJavascript(
+                        "window.__REMOTE_PIN='" + rPin + "';window.__REMOTE_PORT=" + rPort + ";",
+                        null);
+                }
                 if (pendingConfigCode != null) {
                     String code = pendingConfigCode.replace("\\", "\\\\")
                             .replace("'", "\\'");
@@ -188,6 +196,24 @@ public class MainActivity extends Activity {
                 Log.i(TAG, "Deep link config received");
             }
         }
+    }
+
+    /** Called by RemoteServer to inject JavaScript into the WebView (e.g. config push). */
+    public void injectJs(String js) {
+        runOnUiThread(() -> {
+            if (webView != null) {
+                webView.evaluateJavascript(js, null);
+            }
+        });
+    }
+
+    /** Called by RemoteServer to get current TV state as JSON. */
+    private volatile String lastTvState = "{}";
+    public String getTvState() {
+        return lastTvState;
+    }
+    public void setTvState(String state) {
+        if (state != null) lastTvState = state;
     }
 
     /** Called by RemoteServer when a phone sends GET /key?name=Up etc. */

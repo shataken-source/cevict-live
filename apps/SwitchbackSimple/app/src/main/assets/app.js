@@ -1692,6 +1692,22 @@ document.getElementById('setup-manual-btn')?.addEventListener('click', () => {
   showToast('Enter your IPTV credentials manually below.', 5000);
 });
 
+// ── REMOTE CONFIG HANDLER ────────────────────────────────────
+// Called by RemoteServer.java when phone pushes credentials via POST /config
+function handleRemoteConfig(server, username, password) {
+  console.log('[config] Received credentials from phone remote');
+  S.server = server;
+  S.user = username;
+  S.pass = password;
+  localStorage.setItem('iptv_server', server);
+  localStorage.setItem('iptv_user', username);
+  localStorage.setItem('iptv_pass', password);
+  showToast('Credentials received! Loading channels...', 3000);
+  // Navigate to home and boot with new credentials
+  nav('tvhome');
+  bootData();
+}
+
 // ── BUNDLED DEFAULT PROVIDER ─────────────────────────────────
 // Auto-load these credentials on first boot so the app works out of the box.
 // Users can change credentials in Settings at any time.
