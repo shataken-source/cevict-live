@@ -1462,7 +1462,7 @@ S._screenHistory = [];
 document.addEventListener('keydown', e => {
   const tag = (document.activeElement || {}).tagName;
   const inInput = tag === 'INPUT' || tag === 'TEXTAREA';
-  const isBack = e.key === 'GoBack' || e.key === 'BrowserBack'
+  const isBack = e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack'
     || (e.key === 'Backspace' && !inInput);
   if (!isBack) return;
 
