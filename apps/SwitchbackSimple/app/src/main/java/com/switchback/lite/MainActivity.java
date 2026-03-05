@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
                     int rPort = RemoteServer.getPort();
                     String lanIp = getLanIp();
                     String ipJs = lanIp != null ? "window.__LAN_IP='" + lanIp + "';" : "";
-                    String deviceId = getDeviceId();
+                    String deviceId = getAndroidId();
                     String devJs = deviceId != null ? "window.__DEVICE_ID='" + deviceId + "';" : "";
                     view.evaluateJavascript(
                         "window.__REMOTE_PIN='" + rPin + "';window.__REMOTE_PORT=" + rPort + ";" + ipJs + devJs,
@@ -208,7 +208,7 @@ public class MainActivity extends Activity {
     }
 
     /** Get unique device identifier (ANDROID_ID — 64-bit hex, unique per device+app). */
-    private String getDeviceId() {
+    private String getAndroidId() {
         try {
             String id = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
             if (id != null && !id.isEmpty()) {
