@@ -18,6 +18,8 @@ import { tradeLimiter } from '../../../../src/lib/trade-limiter';
 import { recordActualBet } from '../../../../src/lib/supabase-memory';
 import { emergencyStop } from '../../../../src/lib/emergency-stop';
 import { smsAlerter } from '../../../../src/lib/sms-alerter';
+import { getMetalsSignal } from '../../../../src/intelligence/economics-expert';
+import { RobinhoodExchange } from '../../../../src/exchanges/robinhood';
 
 // ── Supabase-backed guards (persist across Vercel invocations) ──────────────
 function getSupabase() {
@@ -343,13 +345,97 @@ export async function GET(req: NextRequest) {
       log(`[RH] Second-chance error: ${err.message}`);
     }
 
-    log(`Cycle done: ${kalshiExecuted} Kalshi + ${cryptoExecuted} crypto + ${rhExecuted} Robinhood trades`);
+    // ── ROBINHOOD METALS (PAXG-USD gold proxy) ──────────────────────
+    let rhMetalsExecuted = 0;
+    try {
+      const rh = new RobinhoodExchange();
+      if (rh.isConfigured()) {
+        const metalsSignal = await getMetalsSignal();
+        log(`[METALS] Signal: ${metalsSignal.direction ?? 'none'} | Gold=$${metalsSignal.goldPrice?.toLocaleString() ?? '?'} | Conf=${metalsSignal.confidence}%`);
+        for (const r of metalsSignal.reasoning) log(`[METALS]   ${r}`);
+
+        if (metalsSignal.direction === 'long' && metalsSignal.confidence >= 60) {
+          // Check daily metals trade limit
+          const sb = getSupabase();
+          let metalsTradesToday = 0;
+          if (sb) {
+            try {
+              const { data } = await sb.from('alpha_hunter_trades')
+                .select('id')
+                .eq('platform', 'robinhood')
+                .like('pair', '%PAXG%')
+                .gte('opened_at', `${getTodayCst()}T00:00:00`);
+              metalsTradesToday = (data || []).length;
+            } catch { /* ignore */ }
+          }
+
+          const RH_METALS_MAX_DAILY = parseInt(process.env.RH_METALS_MAX_DAILY || '2', 10);
+          if (metalsTradesToday >= RH_METALS_MAX_DAILY) {
+            log(`[METALS] Daily limit reached (${metalsTradesToday}/${RH_METALS_MAX_DAILY})`);
+          } else {
+            // Check if PAXG-USD is tradable on Robinhood
+            let paxgTradable = false;
+            try {
+              const pairs = await rh.getTradingPairs(['PAXG-USD']);
+              paxgTradable = (pairs || []).some((p: any) => p.symbol === 'PAXG-USD' && p.status === 'tradable');
+            } catch (e: any) {
+              log(`[METALS] Could not check PAXG tradability: ${e.message}`);
+            }
+
+            if (!paxgTradable) {
+              log('[METALS] PAXG-USD not tradable on Robinhood — skipping');
+            } else {
+              const tradeSize = metalsSignal.suggestedSize;
+              try {
+                const order = await rh.marketBuy('PAXG-USD', tradeSize);
+                const ok = order.state === 'filled' || order.state === 'confirmed' || order.state === 'queued';
+                if (ok) {
+                  rhMetalsExecuted++;
+                  log(`[METALS] ✅ PAXG-USD BUY $${tradeSize} (conf ${metalsSignal.confidence}%, gold $${metalsSignal.goldPrice?.toLocaleString()}, order ${order.id})`);
+
+                  // Record to Supabase
+                  if (sb) {
+                    try {
+                      await sb.from('alpha_hunter_trades').insert({
+                        pair: 'PAXG-USD',
+                        side: 'buy',
+                        amount: tradeSize,
+                        price: parseFloat(order.average_price || '0'),
+                        platform: 'robinhood',
+                        confidence: metalsSignal.confidence,
+                        reasoning: metalsSignal.reasoning.join('; '),
+                        opened_at: new Date().toISOString(),
+                        closed: false,
+                        sandbox: false,
+                      });
+                    } catch { /* non-fatal */ }
+                  }
+
+                  await smsAlerter.tradeExecuted('PAXG (Gold)', tradeSize, 'BUY', 'Robinhood');
+                } else {
+                  log(`[METALS] ❌ PAXG-USD order state: ${order.state}`);
+                }
+              } catch (err: any) {
+                log(`[METALS] ❌ PAXG-USD error: ${err.message}`);
+              }
+            }
+          }
+        }
+      } else {
+        log('[METALS] Robinhood not configured — skipping metals');
+      }
+    } catch (err: any) {
+      log(`[METALS] Error: ${err.message}`);
+    }
+
+    log(`Cycle done: ${kalshiExecuted} Kalshi + ${cryptoExecuted} crypto + ${rhExecuted} RH-crypto + ${rhMetalsExecuted} RH-metals trades`);
 
     return NextResponse.json({
       success: true,
       kalshiTrades: kalshiExecuted,
       cryptoTrades: cryptoExecuted,
       robinhoodTrades: rhExecuted,
+      robinhoodMetalsTrades: rhMetalsExecuted,
       opportunities: analysis.allOpportunities.length,
       durationMs: Date.now() - startTime,
       logs,

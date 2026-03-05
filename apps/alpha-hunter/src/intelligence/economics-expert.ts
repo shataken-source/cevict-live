@@ -78,6 +78,10 @@ interface EconSnapshot {
   nasdaqPrice: number | null;      // Nasdaq current price
   vix: number | null;              // CBOE Volatility Index
   sp500DayChange: number | null;   // S&P 500 day change %
+  // Metals prices (live via FMP)
+  goldPrice: number | null;        // Gold spot $/oz (XAUUSD)
+  silverPrice: number | null;      // Silver spot $/oz (XAGUSD)
+  copperPrice: number | null;      // Copper $/lb (HG=F)
   fetchedAt: Date;
 }
 
@@ -242,15 +246,18 @@ interface FMPStockData {
   nasdaqPrice: number | null;
   vix: number | null;
   sp500DayChange: number | null;
+  goldPrice: number | null;
+  silverPrice: number | null;
+  copperPrice: number | null;
 }
 
 async function fetchFMPData(): Promise<FMPStockData> {
-  const result: FMPStockData = { sp500Price: null, dowPrice: null, nasdaqPrice: null, vix: null, sp500DayChange: null };
+  const result: FMPStockData = { sp500Price: null, dowPrice: null, nasdaqPrice: null, vix: null, sp500DayChange: null, goldPrice: null, silverPrice: null, copperPrice: null };
   const apiKey = process.env.FMP_API_KEY;
   if (!apiKey) return result;
   try {
-    // Batch fetch: S&P 500, Dow, Nasdaq, VIX in one call
-    const symbols = '^GSPC,^DJI,^IXIC,^VIX';
+    // Batch fetch: S&P 500, Dow, Nasdaq, VIX + metals in one call
+    const symbols = '^GSPC,^DJI,^IXIC,^VIX,GCUSD,SIUSD,HGUSD';
     const url = `${FMP_BASE}/batch-quote?symbols=${symbols}&apikey=${apiKey}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) {
@@ -285,6 +292,12 @@ async function fetchFMPData(): Promise<FMPStockData> {
         result.nasdaqPrice = q.price ?? null;
       } else if (sym.includes('VIX')) {
         result.vix = q.price ?? null;
+      } else if (sym.includes('GC') || sym.includes('GOLD') || sym.includes('XAU')) {
+        result.goldPrice = q.price ?? null;
+      } else if (sym.includes('SI') || sym.includes('SILVER') || sym.includes('XAG')) {
+        result.silverPrice = q.price ?? null;
+      } else if (sym.includes('HG') || sym.includes('COPPER')) {
+        result.copperPrice = q.price ?? null;
       }
     }
   } catch { /* silent */ }
@@ -358,6 +371,10 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
     nasdaqPrice: fmp.nasdaqPrice,
     vix: fmp.vix,
     sp500DayChange: fmp.sp500DayChange,
+    // Metals (live via FMP)
+    goldPrice: fmp.goldPrice,
+    silverPrice: fmp.silverPrice,
+    copperPrice: fmp.copperPrice,
     fetchedAt: new Date(),
   };
   snapshotCacheTime = now;
@@ -367,6 +384,7 @@ async function getEconSnapshot(): Promise<EconSnapshot> {
   console.log(`   [ECON]   Energy: WTI=$${snapshotCache.oilPriceWTI} Gas=$${snapshotCache.gasolinePrice} | WorldGDP=${snapshotCache.globalGdpGrowth?.toFixed(1)}%`);
   console.log(`   [ECON]   Crypto: BTC=$${snapshotCache.btcPrice?.toLocaleString()} ETH=$${snapshotCache.ethPrice?.toLocaleString()} MCap=$${snapshotCache.cryptoMarketCap?.toFixed(0)}B Dom=${snapshotCache.btcDominance?.toFixed(1)}% F&G=${snapshotCache.fearGreedIndex}`);
   console.log(`   [ECON]   Markets: S&P=${snapshotCache.sp500Price?.toLocaleString()} (${snapshotCache.sp500DayChange?.toFixed(2)}%) Dow=${snapshotCache.dowPrice?.toLocaleString()} Nasdaq=${snapshotCache.nasdaqPrice?.toLocaleString()} VIX=${snapshotCache.vix}`);
+  console.log(`   [ECON]   Metals: Gold=$${snapshotCache.goldPrice?.toLocaleString()} Silver=$${snapshotCache.silverPrice?.toFixed(2)} Copper=$${snapshotCache.copperPrice?.toFixed(2)}`);
   return snapshotCache;
 }
 
@@ -868,52 +886,132 @@ function analyzeMetals(title: string, yesAsk: number, snap: EconSnapshot): { pro
   const t = title.toLowerCase();
   const reasoning: string[] = [];
 
-  // Gold price markets: "Will gold be above $X?" or "Gold price above X"
-  const goldAboveMatch = t.match(/gold.*(?:above|over|exceed|at or above)\s*\$?([\d,]+)/);
-  const goldBelowMatch = t.match(/gold.*(?:below|under|at or below)\s*\$?([\d,]+)/);
-  const silverAboveMatch = t.match(/silver.*(?:above|over|exceed)\s*\$?([\d.]+)/);
-  const copperAboveMatch = t.match(/copper.*(?:above|over|exceed)\s*\$?([\d.]+)/);
+  // Parse thresholds from market titles
+  const goldAboveMatch = t.match(/gold.*(?:above|over|exceed|at or above|close above|end above)\s*\$?([\d,]+)/);
+  const goldBelowMatch = t.match(/gold.*(?:below|under|at or below|close below|end below)\s*\$?([\d,]+)/);
+  const silverAboveMatch = t.match(/silver.*(?:above|over|exceed|close above)\s*\$?([\d.]+)/);
+  const silverBelowMatch = t.match(/silver.*(?:below|under|close below)\s*\$?([\d.]+)/);
+  const copperAboveMatch = t.match(/copper.*(?:above|over|exceed|close above)\s*\$?([\d.]+)/);
 
-  // Gold tends to rally with: high inflation, low real rates, geopolitical risk, weak dollar
-  // Gold tends to fall with: rate hikes, strong dollar, low inflation
+  // ── Macro sentiment (bullish/bearish for gold) ──
+  const inflationHigh = (snap.cpiYoY ?? 2.5) > 3.0;
+  const ratesCutting = (snap.fedFundsRate ?? 5) < 5.0;
+  const yieldCurveInverted = (snap.yieldCurveSpread ?? 0) < 0;
+  const vixElevated = (snap.vix ?? 15) > 25;
+  let bullishSignals = 0;
+  if (inflationHigh) { bullishSignals++; reasoning.push(`CPI YoY ${snap.cpiYoY?.toFixed(1)}% — inflation supports gold`); }
+  if (ratesCutting) { bullishSignals++; reasoning.push(`Fed funds ${snap.fedFundsRate}% — rate cuts bullish for gold`); }
+  if (yieldCurveInverted) { bullishSignals++; reasoning.push(`Yield curve inverted — recession fear supports gold`); }
+  if (vixElevated) { bullishSignals++; reasoning.push(`VIX elevated (${snap.vix}) — flight to safety`); }
+  // Macro adjustment: each bullish signal nudges probability +3% toward "gold goes up"
+  const macroAdj = bullishSignals * 3;
+
+  // ── Gold markets ──
   if (goldAboveMatch || goldBelowMatch) {
-    // Use macro signals as proxy (we don't have live gold price in snap yet)
-    const inflationHigh = (snap.cpiYoY ?? 2.5) > 3.0;
-    const ratesCutting = (snap.fedFundsRate ?? 5) < 5.0;
-    const yieldCurveInverted = (snap.yieldCurveSpread ?? 0) < 0;
+    const threshold = parseFloat((goldAboveMatch?.[1] || goldBelowMatch?.[1] || '0').replace(/,/g, ''));
+    const livePrice = snap.goldPrice;
 
-    let bullishSignals = 0;
-    if (inflationHigh) { bullishSignals++; reasoning.push(`CPI YoY ${snap.cpiYoY?.toFixed(1)}% — inflation supports gold`); }
-    if (ratesCutting) { bullishSignals++; reasoning.push(`Fed funds ${snap.fedFundsRate}% — rate cuts bullish for gold`); }
-    if (yieldCurveInverted) { bullishSignals++; reasoning.push(`Yield curve inverted — recession fear supports gold`); }
-    if ((snap.vix ?? 15) > 25) { bullishSignals++; reasoning.push(`VIX elevated (${snap.vix}) — flight to safety`); }
+    if (livePrice && threshold > 0) {
+      // Price-based probability: how far is current price from threshold?
+      const pctFromThreshold = ((livePrice - threshold) / threshold) * 100;
+      reasoning.push(`Gold: $${livePrice.toLocaleString()} vs threshold $${threshold.toLocaleString()} (${pctFromThreshold > 0 ? '+' : ''}${pctFromThreshold.toFixed(1)}%)`);
 
-    if (goldAboveMatch) {
-      // "Gold above $X" — bullish signals support YES
-      const prob = 35 + bullishSignals * 10;
-      return { prob: Math.min(78, prob), confidence: 55 + bullishSignals * 4, reasoning };
+      let prob: number;
+      if (goldAboveMatch) {
+        // "Gold above $X": if gold is already well above → high prob, if below → low prob
+        if (pctFromThreshold > 5) prob = 85;       // 5%+ above threshold → very likely
+        else if (pctFromThreshold > 2) prob = 72;   // 2-5% above
+        else if (pctFromThreshold > 0) prob = 58;   // slightly above
+        else if (pctFromThreshold > -2) prob = 42;  // slightly below
+        else if (pctFromThreshold > -5) prob = 28;  // 2-5% below
+        else prob = 15;                              // 5%+ below → very unlikely
+      } else {
+        // "Gold below $X": inverse logic
+        if (pctFromThreshold < -5) prob = 85;
+        else if (pctFromThreshold < -2) prob = 72;
+        else if (pctFromThreshold < 0) prob = 58;
+        else if (pctFromThreshold < 2) prob = 42;
+        else if (pctFromThreshold < 5) prob = 28;
+        else prob = 15;
+      }
+      // Apply macro adjustment (capped)
+      prob = Math.max(5, Math.min(95, prob + (goldAboveMatch ? macroAdj : -macroAdj)));
+      const conf = livePrice ? 68 + Math.min(15, Math.abs(pctFromThreshold) * 2) : 55;
+      return { prob, confidence: Math.min(85, conf), reasoning };
     }
-    if (goldBelowMatch) {
-      // "Gold below $X" — bullish signals oppose YES (gold going UP not down)
-      const prob = 65 - bullishSignals * 10;
-      return { prob: Math.max(22, prob), confidence: 55 + bullishSignals * 4, reasoning };
-    }
+
+    // No live price — fall back to macro-only (low confidence)
+    const prob = goldAboveMatch ? (35 + bullishSignals * 10) : (65 - bullishSignals * 10);
+    reasoning.push('No live gold price — macro-only estimate (low confidence)');
+    return { prob: Math.max(15, Math.min(85, prob)), confidence: 50, reasoning };
   }
 
-  if (silverAboveMatch || copperAboveMatch) {
-    // Silver/copper correlate with: industrial demand, inflation, infrastructure spending
-    const inflationSignal = (snap.cpiYoY ?? 2.5) > 2.5;
-    const growthSignal = (snap.gdpGrowth ?? 2) > 2;
-    let bullish = 0;
-    if (inflationSignal) { bullish++; reasoning.push(`Inflation ${snap.cpiYoY?.toFixed(1)}% supports industrial metals`); }
-    if (growthSignal) { bullish++; reasoning.push(`GDP growth ${snap.gdpGrowth?.toFixed(1)}% supports demand`); }
-    const prob = 40 + bullish * 10;
-    return { prob: Math.min(72, prob), confidence: 52 + bullish * 5, reasoning };
+  // ── Silver markets ──
+  if (silverAboveMatch || silverBelowMatch) {
+    const threshold = parseFloat((silverAboveMatch?.[1] || silverBelowMatch?.[1] || '0').replace(/,/g, ''));
+    const livePrice = snap.silverPrice;
+    const isAbove = !!silverAboveMatch;
+
+    if (livePrice && threshold > 0) {
+      const pctFromThreshold = ((livePrice - threshold) / threshold) * 100;
+      reasoning.push(`Silver: $${livePrice.toFixed(2)} vs threshold $${threshold} (${pctFromThreshold > 0 ? '+' : ''}${pctFromThreshold.toFixed(1)}%)`);
+
+      let prob: number;
+      if (isAbove) {
+        if (pctFromThreshold > 5) prob = 82;
+        else if (pctFromThreshold > 2) prob = 68;
+        else if (pctFromThreshold > 0) prob = 55;
+        else if (pctFromThreshold > -2) prob = 40;
+        else if (pctFromThreshold > -5) prob = 25;
+        else prob = 15;
+      } else {
+        if (pctFromThreshold < -5) prob = 82;
+        else if (pctFromThreshold < -2) prob = 68;
+        else if (pctFromThreshold < 0) prob = 55;
+        else if (pctFromThreshold < 2) prob = 40;
+        else if (pctFromThreshold < 5) prob = 25;
+        else prob = 15;
+      }
+      prob = Math.max(5, Math.min(95, prob + (isAbove ? macroAdj : -macroAdj)));
+      const conf = 65 + Math.min(15, Math.abs(pctFromThreshold) * 2);
+      return { prob, confidence: Math.min(82, conf), reasoning };
+    }
+
+    reasoning.push('No live silver price — macro-only estimate');
+    return { prob: 50, confidence: 45, reasoning };
   }
 
-  // Generic gold/silver weekly/monthly
-  reasoning.push('Metals market — macro-driven analysis');
-  return { prob: 50, confidence: 50, reasoning };
+  // ── Copper markets ──
+  if (copperAboveMatch) {
+    const threshold = parseFloat(copperAboveMatch[1].replace(/,/g, ''));
+    const livePrice = snap.copperPrice;
+
+    if (livePrice && threshold > 0) {
+      const pctFromThreshold = ((livePrice - threshold) / threshold) * 100;
+      reasoning.push(`Copper: $${livePrice.toFixed(2)} vs threshold $${threshold} (${pctFromThreshold > 0 ? '+' : ''}${pctFromThreshold.toFixed(1)}%)`);
+      // Copper: industrial demand driven — use GDP/inflation instead of gold macro signals
+      const growthAdj = (snap.gdpGrowth ?? 2) > 2 ? 3 : (snap.gdpGrowth ?? 2) < 1 ? -3 : 0;
+      let prob: number;
+      if (pctFromThreshold > 5) prob = 80;
+      else if (pctFromThreshold > 2) prob = 65;
+      else if (pctFromThreshold > 0) prob = 55;
+      else if (pctFromThreshold > -2) prob = 40;
+      else if (pctFromThreshold > -5) prob = 25;
+      else prob = 15;
+      prob = Math.max(5, Math.min(95, prob + growthAdj));
+      return { prob, confidence: Math.min(78, 62 + Math.min(12, Math.abs(pctFromThreshold) * 2)), reasoning };
+    }
+
+    reasoning.push('No live copper price — skipping');
+    return null;
+  }
+
+  // Generic metals market — only return if we have live data to add value
+  if (snap.goldPrice) {
+    reasoning.push(`Metals market — gold at $${snap.goldPrice.toLocaleString()}, macro-driven`);
+    return { prob: 50, confidence: 45, reasoning };
+  }
+  return null; // No data, no signal — don't return garbage
 }
 
 function analyzeForex(title: string, yesAsk: number, snap: EconSnapshot): { prob: number; confidence: number; reasoning: string[] } | null {
@@ -1115,4 +1213,86 @@ export async function findEconomicsOpportunities(
 
   console.log(`   [ECON] Scanned ${scanned} economics markets → ${matched} with edge ≥ ${minEdgePct}%`);
   return opps;
+}
+
+// ── Metals Signal for Robinhood (PAXG-USD gold proxy) ────────────────────────
+
+export interface MetalsSignal {
+  direction: 'long' | 'short' | null;  // null = no trade
+  symbol: 'PAXG-USD';
+  confidence: number;    // 0-100
+  reasoning: string[];
+  goldPrice: number | null;
+  suggestedSize: number; // USD amount
+}
+
+/**
+ * Generate a directional gold signal for Robinhood using live gold price + macro.
+ * Returns null direction when no clear signal. Used by trade-cycle cron.
+ *
+ * Strategy: momentum + macro confluence.
+ * - If gold is up and macro is bullish → buy PAXG
+ * - If gold is down and macro is bearish → hold/skip (no shorting on RH)
+ * - Confidence drives sizing (min $2, max from env RH_METALS_MAX_TRADE)
+ */
+export async function getMetalsSignal(): Promise<MetalsSignal> {
+  const noSignal: MetalsSignal = { direction: null, symbol: 'PAXG-USD', confidence: 0, reasoning: ['No signal'], goldPrice: null, suggestedSize: 0 };
+
+  const fredKey = process.env.FRED_API_KEY;
+  if (!fredKey) return { ...noSignal, reasoning: ['FRED_API_KEY not set'] };
+
+  const snap = await getEconSnapshot();
+  const goldPrice = snap.goldPrice;
+  if (!goldPrice) return { ...noSignal, reasoning: ['No live gold price available'] };
+
+  const reasoning: string[] = [];
+  reasoning.push(`Gold spot: $${goldPrice.toLocaleString()}`);
+
+  // ── Macro sentiment score (-4 to +4) ──
+  let macroScore = 0;
+  const inflationHigh = (snap.cpiYoY ?? 2.5) > 3.0;
+  const ratesCutting = (snap.fedFundsRate ?? 5) < 5.0;
+  const yieldCurveInverted = (snap.yieldCurveSpread ?? 0) < 0;
+  const vixElevated = (snap.vix ?? 15) > 25;
+  const dollarWeak = (snap.fedFundsRate ?? 5) < 4.5; // proxy: low rates → weak dollar
+
+  if (inflationHigh) { macroScore++; reasoning.push(`CPI ${snap.cpiYoY?.toFixed(1)}% > 3% — inflation supports gold`); }
+  if (ratesCutting) { macroScore++; reasoning.push(`Fed ${snap.fedFundsRate}% — rate environment supports gold`); }
+  if (yieldCurveInverted) { macroScore++; reasoning.push(`Yield curve inverted — recession risk supports gold`); }
+  if (vixElevated) { macroScore++; reasoning.push(`VIX ${snap.vix} elevated — risk-off supports gold`); }
+  if (dollarWeak) { macroScore++; reasoning.push(`Dollar weakness supports gold`); }
+
+  // Bearish signals
+  if ((snap.fedFundsRate ?? 5) > 5.5) { macroScore--; reasoning.push(`Fed ${snap.fedFundsRate}% — high rates headwind for gold`); }
+  if ((snap.vix ?? 15) < 15) { macroScore--; reasoning.push(`VIX ${snap.vix} low — risk-on environment, less gold demand`); }
+  if ((snap.sp500DayChange ?? 0) > 1.5) { macroScore--; reasoning.push(`S&P up ${snap.sp500DayChange?.toFixed(1)}% — equity rally reduces gold appeal`); }
+
+  reasoning.push(`Macro score: ${macroScore > 0 ? '+' : ''}${macroScore} (range -3 to +5)`);
+
+  // ── Decision ──
+  // Robinhood is buy-only for crypto, so we can only go long PAXG
+  // Need at least 2 bullish signals to justify entry
+  if (macroScore < 2) {
+    reasoning.push('Insufficient bullish confluence — no trade');
+    return { direction: null, symbol: 'PAXG-USD', confidence: 0, reasoning, goldPrice, suggestedSize: 0 };
+  }
+
+  // Confidence: 55 base + 5 per macro signal above threshold
+  const confidence = Math.min(82, 55 + (macroScore - 1) * 7);
+
+  // Size: scale with confidence, $2 min, RH_METALS_MAX_TRADE max (default $5)
+  const maxTrade = parseFloat(process.env.RH_METALS_MAX_TRADE || '5');
+  const sizePct = (confidence - 50) / 35; // 0-1 scale
+  const suggestedSize = Math.max(2, Math.min(maxTrade, Math.round(2 + sizePct * (maxTrade - 2))));
+
+  reasoning.push(`Signal: LONG PAXG — ${confidence}% confidence — $${suggestedSize}`);
+
+  return {
+    direction: 'long',
+    symbol: 'PAXG-USD',
+    confidence,
+    reasoning,
+    goldPrice,
+    suggestedSize,
+  };
 }
