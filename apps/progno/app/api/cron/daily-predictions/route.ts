@@ -133,7 +133,7 @@ export async function GET(request: Request) {
         const pickRows = picks.map((p: any) => ({
           game_id: p.game_id || p.id || null,
           game_date: gameDate(p),
-          game_time: p.commence_time || null,   // verify-results cron reads this
+          game_time: p.commence_time ? new Date(p.commence_time).toISOString().slice(11, 19) : null,   // DB column is type 'time' (HH:MM:SS)
           game_matchup: p.game_matchup || `${p.away_team} @ ${p.home_team}`,
           home_team: p.home_team,
           away_team: p.away_team,
