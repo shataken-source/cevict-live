@@ -2,8 +2,8 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.6';
-const APP_BUILD = 48;
+const APP_VERSION = '5.7';
+const APP_BUILD = 49;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
