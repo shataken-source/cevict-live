@@ -345,13 +345,16 @@ function renderLangFilterUI() {
   if (applyBtn && !applyBtn._wired) {
     applyBtn._wired = true;
     applyBtn.addEventListener('click', () => {
-      // Re-filter and reload channels
+      // Re-filter and reload channels + refresh category dropdown
       if (S.allChannels.length) {
+        const catSel = document.getElementById('cat-select');
+        if (catSel) catSel.value = ''; // reset to All
         S.channelList = applyLangFilter(S.allChannels);
+        renderChannelCats();
         const statusEl = document.getElementById('lang-filter-status');
         if (statusEl) statusEl.textContent = `Showing ${S.channelList.length.toLocaleString()} of ${S.allChannels.length.toLocaleString()} channels`;
       }
-      showToast('Channel filters applied — go to Live TV to see results');
+      showToast('Filters applied ✓');
     });
   }
 
@@ -361,6 +364,12 @@ function renderLangFilterUI() {
     clearBtn._wired = true;
     clearBtn.addEventListener('click', () => {
       localStorage.removeItem('lang_filter_hidden');
+      if (S.allChannels.length) {
+        const catSel = document.getElementById('cat-select');
+        if (catSel) catSel.value = '';
+        S.channelList = applyLangFilter(S.allChannels);
+        renderChannelCats();
+      }
       renderLangFilterUI();
       showToast('All language filters cleared');
     });
@@ -478,28 +487,31 @@ async function initChannels() {
 }
 
 function renderChannelCats() {
-  const pills = document.getElementById('cat-pills');
-  pills.innerHTML = `<button class="pill pill-active" data-cat-id="" tabindex="-1">All</button>` +
-    S.liveCategories.slice(0, 18).map(c =>
-      `<button class="pill pill-inactive" data-cat-id="${esc(c.category_id)}" tabindex="-1">${esc(c.category_name)}</button>`
-    ).join('');
-  const pillBtns = Array.from(pills.querySelectorAll('.pill'));
-  pillBtns.forEach((btn, pi) => {
-    btn.addEventListener('click', () => {
-      pillBtns.forEach(p => p.className = 'pill pill-inactive');
-      btn.className = 'pill pill-active';
-      const catId = btn.dataset.catId;
+  const sel = document.getElementById('cat-select');
+  if (!sel) return;
+  // Count channels per category (after lang filter)
+  const filtered = applyLangFilter(S.allChannels);
+  const catCount = {};
+  filtered.forEach(ch => {
+    const cid = ch.category_id || '';
+    catCount[cid] = (catCount[cid] || 0) + 1;
+  });
+  sel.innerHTML = `<option value="">All Categories (${filtered.length})</option>` +
+    S.liveCategories
+      .filter(c => catCount[c.category_id] > 0) // hide empty categories
+      .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
+      .join('');
+  // Wire change event (only once)
+  if (!sel._wired) {
+    sel._wired = true;
+    sel.addEventListener('change', () => {
+      const catId = sel.value;
       const base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
       S.channelList = applyLangFilter(base);
+      document.getElementById('ch-search').value = '';
       renderChannelList(S.channelList);
     });
-    // D-pad left/right between pills
-    btn.addEventListener('keydown', e => {
-      if (e.key === 'ArrowRight') { e.preventDefault(); const n = pillBtns[pi + 1]; if (n) n.focus(); }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); const n = pillBtns[pi - 1]; if (n) n.focus(); }
-      if (e.key === 'ArrowDown') { e.preventDefault(); focusFirstChannelRow(); }
-    });
-  });
+  }
   renderChannelList(S.channelList);
 }
 
@@ -520,10 +532,14 @@ function renderChannelList(list) {
   el.innerHTML = '<div class="loading"><div class="spinner"></div> Loading...</div>';
 }
 
-// channel search
+// channel search — filters within currently selected category
 document.getElementById('ch-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
-  const filtered = q ? S.channelList.filter(c => c.name.toLowerCase().includes(q)) : S.channelList;
+  const catId = document.getElementById('cat-select')?.value || '';
+  const base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
+  const langFiltered = applyLangFilter(base);
+  const filtered = q ? langFiltered.filter(c => c.name.toLowerCase().includes(q)) : langFiltered;
+  S.channelList = langFiltered; // keep channelList in sync for player navigation
   renderChannelList(filtered);
 });
 
