@@ -72,6 +72,30 @@ public class MainActivity extends Activity {
         webView.setFocusableInTouchMode(true);
         webView.requestFocus();
 
+        // Expose native data to JS synchronously via Android.getDeviceId() etc.
+        webView.addJavascriptInterface(new Object() {
+            @android.webkit.JavascriptInterface
+            public String getDeviceId() {
+                return getAndroidId();
+            }
+
+            @android.webkit.JavascriptInterface
+            public String getLanIp() {
+                String ip = MainActivity.this.getLanIp();
+                return ip != null ? ip : "";
+            }
+
+            @android.webkit.JavascriptInterface
+            public String getRemotePin() {
+                return remoteServer != null ? remoteServer.getPin() : "";
+            }
+
+            @android.webkit.JavascriptInterface
+            public int getRemotePort() {
+                return RemoteServer.getPort();
+            }
+        }, "Android");
+
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {

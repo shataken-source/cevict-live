@@ -2,8 +2,8 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.8';
-const APP_BUILD = 50;
+const APP_VERSION = '5.9';
+const APP_BUILD = 51;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -104,6 +104,17 @@ const IS_ANDROID_WEBVIEW = (
   window.location.hostname === '127.0.0.1' ||
   window.location.hostname === 'localhost'
 ) && window.location.port === '8123';
+
+// ── EARLY NATIVE DATA INJECTION ──────────────────────────────
+// Pull device info synchronously from the Android JavascriptInterface
+// so it's available BEFORE any async boot code (checkDeviceLicense etc.)
+if (IS_ANDROID_WEBVIEW && typeof Android !== 'undefined') {
+  try { window.__DEVICE_ID = Android.getDeviceId(); } catch (_) { }
+  try { const ip = Android.getLanIp(); if (ip) window.__LAN_IP = ip; } catch (_) { }
+  try { window.__REMOTE_PIN = Android.getRemotePin(); } catch (_) { }
+  try { window.__REMOTE_PORT = Android.getRemotePort(); } catch (_) { }
+  console.log('[init] Device ID:', window.__DEVICE_ID || 'unavailable');
+}
 
 // Pairing API lives on the Vercel deployment.
 // Android WebView can't use relative URLs for pairing, so we need the full origin.
@@ -1949,16 +1960,22 @@ const _SB_URL = 'https://rdbuwyefbgnbuhmjrizo.supabase.co';
 const _SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkYnV3eWVmYmduYnVobWpyaXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2Mjk4NzksImV4cCI6MjA3OTIwNTg3OX0.YZV-svCsqxaJaH7NGAa0FyW5F5VXrAwlQKAUon-FsLw';
 
 async function checkDeviceLicense() {
-  const deviceId = window.__DEVICE_ID;
-  if (!deviceId) {
-    // Running in browser (dev) or injection not ready — retry once after delay
-    await new Promise(r => setTimeout(r, 1500));
-    if (!window.__DEVICE_ID) {
-      console.warn('[license] No device ID available — allowing (dev mode)');
-      return true;
+  // Use synchronous JavascriptInterface (Android.getDeviceId()) — no race condition.
+  // Falls back to window.__DEVICE_ID for legacy or if interface unavailable.
+  let did = null;
+  try {
+    if (typeof Android !== 'undefined' && Android.getDeviceId) {
+      did = Android.getDeviceId();
     }
+  } catch (_) { }
+  if (!did) did = window.__DEVICE_ID;
+  if (!did) {
+    // Running in browser (dev) — no Android interface, no injected ID
+    console.warn('[license] No device ID available — allowing (dev mode)');
+    return true;
   }
-  const did = window.__DEVICE_ID;
+  // Store for other parts of the app
+  window.__DEVICE_ID = did;
 
   // Check localStorage cache (valid for 24h) so offline boot works
   try {
@@ -1977,7 +1994,7 @@ async function checkDeviceLicense() {
         'apikey': _SB_ANON,
         'Authorization': 'Bearer ' + _SB_ANON,
       },
-      body: JSON.stringify({ p_device_id: did, p_version: '4.9' }),
+      body: JSON.stringify({ p_device_id: did, p_version: APP_VERSION }),
     });
     if (!res.ok) {
       console.warn('[license] Server error ' + res.status + ' — allowing (grace)');
