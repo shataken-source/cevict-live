@@ -2,8 +2,8 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.5';
-const APP_BUILD = 47;
+const APP_VERSION = '5.6';
+const APP_BUILD = 48;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -11,12 +11,12 @@ const APP_BUILD = 47;
 // on focus/tab. Only an explicit pointer click OR pressing Enter/OK
 // while the input is already focused will open the keyboard.
 (function () {
-  const INPUTS = 'INPUT, TEXTAREA, SELECT';
+  const TEXT_INPUTS = 'INPUT, TEXTAREA';
 
-  // Ensure inputmode=none on every input at all times unless we opened it
+  // Ensure inputmode=none on text inputs unless explicitly opened
   document.addEventListener('focusin', e => {
     const el = e.target;
-    if (!el.matches(INPUTS)) return;
+    if (!el.matches(TEXT_INPUTS)) return;
     if (!el._kbOpen) {
       el.setAttribute('inputmode', 'none');
     }
@@ -25,7 +25,7 @@ const APP_BUILD = 47;
   // Pointer click on an input → open real keyboard
   document.addEventListener('pointerdown', e => {
     const el = e.target;
-    if (!el.matches(INPUTS)) return;
+    if (!el.matches(TEXT_INPUTS)) return;
     el._kbOpen = true;
     el.removeAttribute('inputmode');
   }, true);
@@ -34,22 +34,33 @@ const APP_BUILD = 47;
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     const el = document.activeElement;
-    if (!el || !el.matches(INPUTS)) return;
+    if (!el || !el.matches(TEXT_INPUTS)) return;
     e.preventDefault();
     el._kbOpen = true;
     el.removeAttribute('inputmode');
-    el.focus();
-    el.click();
+    // Blur + re-focus forces Android WebView to re-evaluate inputmode
+    el.blur();
+    setTimeout(() => { el.focus(); el.click(); }, 50);
   }, true);
 
   // When input loses focus, re-arm suppression
   document.addEventListener('focusout', e => {
     const el = e.target;
-    if (!el.matches(INPUTS)) return;
-    el._kbOpen = false;
+    if (!el.matches(TEXT_INPUTS)) return;
+    // Don't re-arm if we just blurred for the blur/refocus trick above
+    if (el._kbOpen) return;
     el.setAttribute('inputmode', 'none');
   });
 })();
+
+// Helper: explicitly open keyboard on an input element
+function openKeyboardOn(el) {
+  if (!el) return;
+  el._kbOpen = true;
+  el.removeAttribute('inputmode');
+  el.blur();
+  setTimeout(() => { el.focus(); el.click(); }, 50);
+}
 
 // ── DEFAULTS ─────────────────────────────────────────────────
 // No hardcoded credentials. User must enter their own via Settings
@@ -922,7 +933,9 @@ function initSearch() {
       });
     });
   }
-  document.getElementById('search-input').focus();
+  // Focus search input and open keyboard for immediate typing
+  const searchEl = document.getElementById('search-input');
+  setTimeout(() => openKeyboardOn(searchEl), 200);
 }
 
 document.getElementById('search-input').addEventListener('input', function () {
@@ -1093,6 +1106,7 @@ function renderDeviceInfo(info) {
       <div class="row-item"><span style="font-size:13px">Max Connections</span><span style="font-size:12px;color:var(--muted)">${max}</span></div>
       <div class="row-item"><span style="font-size:13px">Server Timezone</span><span style="font-size:12px;color:var(--muted)">${esc(si.timezone || '—')}</span></div>
       <div class="row-item"><span style="font-size:13px">Server Time</span><span style="font-size:12px;color:var(--muted)">${esc(si.time_now || '—')}</span></div>
+      <div class="row-item"><span style="font-size:13px">Device ID</span><span style="font-size:11px;color:var(--muted);font-family:monospace;word-break:break-all">${esc(window.__DEVICE_ID || 'Unknown')}</span></div>
     </div>
     ${pct > 75 ? `<div style="margin-top:14px;padding:13px;background:rgba(229,0,0,0.07);border:1px solid rgba(229,0,0,0.2);border-radius:var(--radius)"><div style="font-size:13px;font-weight:700;margin-bottom:3px">⚠️ Approaching Stream Limit</div><div style="font-size:12px;color:var(--muted)">You're using ${active} of ${max} allowed streams.</div></div>` : ''}`;
 }
@@ -3096,29 +3110,42 @@ async function runBandwidthTest() {
   const btn = document.getElementById('bw-test-btn');
   const bwEl = document.getElementById('bw-result');
   const pingEl = document.getElementById('bw-ping-result');
-  if (btn) btn.textContent = 'Testing…';
+  if (btn) { btn.textContent = 'Testing…'; btn.disabled = true; }
   if (bwEl) { bwEl.textContent = '…'; bwEl.style.color = 'var(--muted)'; }
+  if (pingEl) { pingEl.textContent = '…'; pingEl.style.color = 'var(--muted)'; }
 
   try {
-    // Ping test — use api() so it routes through Android proxy automatically
-    const t0 = performance.now();
-    await api('get_user_info');
-    const ping = Math.round(performance.now() - t0);
+    // ── Ping test: 3 samples, take median ──
+    const pings = [];
+    for (let i = 0; i < 3; i++) {
+      if (bwEl) bwEl.textContent = `Ping ${i + 1}/3…`;
+      const t0 = performance.now();
+      await api('get_user_info');
+      pings.push(Math.round(performance.now() - t0));
+    }
+    pings.sort((a, b) => a - b);
+    const ping = pings[1]; // median
 
     if (pingEl) { pingEl.textContent = ping + 'ms'; pingEl.style.color = ping < 100 ? 'var(--green)' : ping < 300 ? 'var(--yellow)' : 'var(--primary)'; }
     const qPingEl = document.getElementById('q-ping');
     if (qPingEl) qPingEl.textContent = ping + 'ms';
 
-    // Bandwidth estimate: use HLS if stream active, else time a categories fetch
+    // ── Bandwidth test: 3 samples, take best ──
     let mbps = null;
     if (S.hlsInstance?.bandwidthEstimate) {
       mbps = (S.hlsInstance.bandwidthEstimate / 1000000).toFixed(1);
     } else {
-      const t1 = performance.now();
-      const cats = await api('get_live_categories');
-      const bytes = JSON.stringify(cats).length;
-      const secs = (performance.now() - t1) / 1000;
-      mbps = ((bytes * 8) / secs / 1000000).toFixed(2);
+      const speeds = [];
+      for (let i = 0; i < 3; i++) {
+        if (bwEl) bwEl.textContent = `Speed ${i + 1}/3…`;
+        const t1 = performance.now();
+        const data = await api('get_live_streams');
+        const bytes = JSON.stringify(data).length;
+        const secs = (performance.now() - t1) / 1000;
+        speeds.push((bytes * 8) / secs / 1000000);
+      }
+      speeds.sort((a, b) => b - a);
+      mbps = speeds[0].toFixed(1); // best of 3
     }
 
     if (bwEl) {
@@ -3135,7 +3162,8 @@ async function runBandwidthTest() {
     if (sub) sub.textContent = ping < 200 ? 'Excellent connection' : ping < 500 ? 'Good connection' : 'Slow connection';
 
     // Update quality screen top stats
-    document.getElementById('q-bitrate').textContent = mbps || '—';
+    const qBit = document.getElementById('q-bitrate');
+    if (qBit) qBit.textContent = mbps || '—';
 
     updateQualityHealthStats();
   } catch (e) {
@@ -3145,7 +3173,7 @@ async function runBandwidthTest() {
     const lbl = document.getElementById('q-server-label');
     if (lbl) lbl.textContent = 'Unreachable';
   } finally {
-    if (btn) btn.textContent = 'Re-test';
+    if (btn) { btn.textContent = 'Re-test'; btn.disabled = false; }
   }
 }
 
@@ -3851,6 +3879,29 @@ function patchChRowLongPress(list) {
     row.addEventListener('mouseleave', sbCancel);
     row.addEventListener('touchend', sbCancel);
     row.addEventListener('touchcancel', sbCancel);
+
+    // TV remote: long-press Enter/OK on focused row → toggle favorite
+    let keyTimer = null;
+    row.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      if (keyTimer) return; // already timing
+      keyTimer = setTimeout(() => {
+        row._longPressed = true;
+        e.preventDefault();
+        const idx = parseInt(row.dataset.idx);
+        const ch = list[idx];
+        if (!ch) return;
+        const isFav = S.favorites.some(f => f.stream_id == ch.stream_id);
+        toggleFav(ch, null);
+        showToast(isFav ? 'Removed from favorites' : '★ Added to favorites');
+        // Update the star icon in this row
+        const star = row.querySelector('.fav-star');
+        if (star) { star.classList.toggle('on'); }
+      }, 700);
+    });
+    row.addEventListener('keyup', e => {
+      if (e.key === 'Enter' && keyTimer) { clearTimeout(keyTimer); keyTimer = null; }
+    });
   });
 }
 
