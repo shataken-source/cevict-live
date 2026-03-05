@@ -417,7 +417,7 @@ const FILTER_STRATEGY = (process.env.FILTER_STRATEGY || 'best') as 'baseline' | 
 // Set any of these in .env.local (local) or Vercel Dashboard (production)
 const PROGNO_MIN_ODDS = Number(process.env.PROGNO_MIN_ODDS ?? -200)
 const PROGNO_MAX_ODDS = Number(process.env.PROGNO_MAX_ODDS ?? 500)
-const PROGNO_MIN_CONFIDENCE = Number(process.env.PROGNO_MIN_CONFIDENCE ?? 57)
+const PROGNO_MIN_CONFIDENCE = Number(process.env.PROGNO_MIN_CONFIDENCE ?? 63)
 const PROGNO_HOME_BIAS_BOOST = Number(process.env.PROGNO_HOME_BIAS_BOOST ?? 5)
 const PROGNO_AWAY_BIAS_PENALTY = Number(process.env.PROGNO_AWAY_BIAS_PENALTY ?? 5)
 const PROGNO_STREAK_WIN_MULT_3 = Number(process.env.PROGNO_STREAK_WIN_MULT_3 ?? 1.1)
@@ -430,13 +430,13 @@ const PROGNO_EARLY_DECAY_4D = Number(process.env.PROGNO_EARLY_DECAY_4D ?? 0.88)
 const PROGNO_EARLY_DECAY_5D = Number(process.env.PROGNO_EARLY_DECAY_5D ?? 0.82)
 const PROGNO_EARLY_DECAY_5DPLUS = Number(process.env.PROGNO_EARLY_DECAY_5DPLUS ?? 0.75)
 // 7-day tune (run-7day-tune.ts): Floors -2 gave best ROI (60% WR, 15.45%). Env overrides supported.
-const PROGNO_FLOOR_NCAAF = Number(process.env.PROGNO_FLOOR_NCAAF ?? 62)
-const PROGNO_FLOOR_NCAAB = Number(process.env.PROGNO_FLOOR_NCAAB ?? 62)
-const PROGNO_FLOOR_NBA = Number(process.env.PROGNO_FLOOR_NBA ?? 58)
-const PROGNO_FLOOR_NFL = Number(process.env.PROGNO_FLOOR_NFL ?? 60)
-const PROGNO_FLOOR_NHL = Number(process.env.PROGNO_FLOOR_NHL ?? 57)
-const PROGNO_FLOOR_MLB = Number(process.env.PROGNO_FLOOR_MLB ?? 57)
-const PROGNO_FLOOR_CBB = Number(process.env.PROGNO_FLOOR_CBB ?? 66)
+const PROGNO_FLOOR_NCAAF = Number(process.env.PROGNO_FLOOR_NCAAF ?? 66)
+const PROGNO_FLOOR_NCAAB = Number(process.env.PROGNO_FLOOR_NCAAB ?? 67)
+const PROGNO_FLOOR_NBA = Number(process.env.PROGNO_FLOOR_NBA ?? 66)
+const PROGNO_FLOOR_NFL = Number(process.env.PROGNO_FLOOR_NFL ?? 65)
+const PROGNO_FLOOR_NHL = Number(process.env.PROGNO_FLOOR_NHL ?? 65)
+const PROGNO_FLOOR_MLB = Number(process.env.PROGNO_FLOOR_MLB ?? 65)
+const PROGNO_FLOOR_CBB = Number(process.env.PROGNO_FLOOR_CBB ?? 68)
 // ─────────────────────────────────────────────────────────────────────────────
 
 // NFL ≥62% prob → +20.4% ROI. Shin-devig favorites rarely exceed 65%.
@@ -449,7 +449,7 @@ const ODDS_FILTER: Record<string, { minOdds: number; maxOdds: number; minConfide
 }
 
 // Backtest 2024: home picks +117.1% ROI vs away picks -18.2% ROI. Default ON.
-const HOME_ONLY_MODE = process.env.HOME_ONLY_MODE === '1' || process.env.HOME_ONLY_MODE === 'true'
+const HOME_ONLY_MODE = process.env.HOME_ONLY_MODE !== '0' && process.env.HOME_ONLY_MODE !== 'false'
 
 const HOME_BIAS_BOOST = PROGNO_HOME_BIAS_BOOST
 const AWAY_BIAS_PENALTY = PROGNO_AWAY_BIAS_PENALTY
