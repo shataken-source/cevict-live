@@ -1168,10 +1168,23 @@ function clearPlayerError() {
   if (el) el.style.display = 'none';
 }
 
+function safePlay(video, onError) {
+  const p = video.play();
+  if (p && p.catch) {
+    p.then(function () { clearPlayerError(); }).catch(function (err) {
+      if (err.name === 'AbortError') return;
+      if (onError) onError(err); else showPlayerError('Playback error: ' + err.message);
+    });
+  }
+}
+
 async function loadStream(ch) {
   const video = document.getElementById('player-video');
 
   clearPlayerError();
+
+  // Stop current playback before loading new stream (prevents play/pause race)
+  video.pause();
 
   // Destroy previous HLS instance
   if (S.hlsInstance) { S.hlsInstance.destroy(); S.hlsInstance = null; }
@@ -1179,7 +1192,7 @@ async function loadStream(ch) {
   // If VOD direct URL already provided
   if (ch._vodUrl) {
     video.src = ch._vodUrl;
-    video.play().catch(err => showPlayerError('Playback error: ' + err.message));
+    safePlay(video);
     updateEPGBar(ch);
     return;
   }
@@ -1212,7 +1225,7 @@ async function loadStream(ch) {
     hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED, function () {
       clearPlayerError();
-      video.play().catch(function (err) { showPlayerError('Play blocked: ' + err.message); });
+      safePlay(video);
       hls.on(Hls.Events.FRAG_LOADED, function (_, data) {
         const bw = Math.round((data.frag.stats && data.frag.stats.loaded || 0) * 8 /
           ((data.frag.stats && data.frag.stats.loading && (data.frag.stats.loading.end - data.frag.stats.loading.start) || 1)) / 1000);
@@ -1229,9 +1242,7 @@ async function loadStream(ch) {
           ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
           : `/api/stream?url=${encodeURIComponent(tsRaw)}`;
         video.src = tsUrl;
-        video.play().then(function () {
-          clearPlayerError();
-        }).catch(function (err) {
+        safePlay(video, function (err) {
           showPlayerError('Cannot play stream. Check your connection. (' + err.message + ')');
         });
       }
@@ -1239,7 +1250,7 @@ async function loadStream(ch) {
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     // Safari native HLS
     video.src = hlsUrl;
-    video.play().catch(function (err) { showPlayerError('Play error: ' + err.message); });
+    safePlay(video);
   } else {
     // No HLS support — try .ts directly through proxy
     showPlayerError('Loading stream…');
@@ -1247,9 +1258,7 @@ async function loadStream(ch) {
     video.src = IS_ANDROID_WEBVIEW
       ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
       : `/api/stream?url=${encodeURIComponent(tsRaw)}`;
-    video.play().then(function () {
-      clearPlayerError();
-    }).catch(function (err) {
+    safePlay(video, function (err) {
       showPlayerError('Stream unavailable. (' + err.message + ')');
     });
   }
@@ -1297,7 +1306,7 @@ function closePlayer() {
 function togglePlay() {
   const video = document.getElementById('player-video');
   const btn = document.getElementById('play-pause-btn');
-  if (video.paused) { video.play(); btn.textContent = '⏸'; }
+  if (video.paused) { safePlay(video); btn.textContent = '⏸'; }
   else { video.pause(); btn.textContent = '▶'; }
 }
 
