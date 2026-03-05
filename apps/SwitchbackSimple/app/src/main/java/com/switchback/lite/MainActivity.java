@@ -13,6 +13,10 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.view.KeyEvent;
 import java.io.File;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.Enumeration;
 
 public class MainActivity extends Activity {
     private static final String TAG = "SwitchbackLite";
@@ -103,8 +107,10 @@ public class MainActivity extends Activity {
                 if (remoteServer != null) {
                     String rPin = remoteServer.getPin();
                     int rPort = RemoteServer.getPort();
+                    String lanIp = getLanIp();
+                    String ipJs = lanIp != null ? "window.__LAN_IP='" + lanIp + "';" : "";
                     view.evaluateJavascript(
-                        "window.__REMOTE_PIN='" + rPin + "';window.__REMOTE_PORT=" + rPort + ";",
+                        "window.__REMOTE_PIN='" + rPin + "';window.__REMOTE_PORT=" + rPort + ";" + ipJs,
                         null);
                 }
                 if (pendingConfigCode != null) {
@@ -196,6 +202,31 @@ public class MainActivity extends Activity {
                 Log.i(TAG, "Deep link config received");
             }
         }
+    }
+
+    /** Get the device's LAN IPv4 address using NetworkInterface (reliable on Android TV). */
+    private String getLanIp() {
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface ni = interfaces.nextElement();
+                if (ni.isLoopback() || !ni.isUp()) continue;
+                Enumeration<InetAddress> addrs = ni.getInetAddresses();
+                while (addrs.hasMoreElements()) {
+                    InetAddress addr = addrs.nextElement();
+                    if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
+                        String ip = addr.getHostAddress();
+                        if (ip != null && (ip.startsWith("192.168.") || ip.startsWith("10.") || ip.startsWith("172."))) {
+                            Log.i(TAG, "Detected LAN IP: " + ip);
+                            return ip;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to detect LAN IP", e);
+        }
+        return null;
     }
 
     /** Called by RemoteServer to inject JavaScript into the WebView (e.g. config push). */

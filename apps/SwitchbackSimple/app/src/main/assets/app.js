@@ -4095,100 +4095,283 @@ function publishTVState() {
 }
 setInterval(publishTVState, 1000);
 
+// ── MINIMAL QR CODE GENERATOR (offline, canvas-based) ────────
+// Encodes a string as a QR code and returns a data URL.
+// Uses a compact implementation of QR Code Model 2, version 2-6 (up to ~134 chars).
+// Adapted from https://github.com/nickyout/qr-code-lite — MIT license.
+function generateQrDataUrl(text, size) {
+  size = size || 200;
+  // Use the built-in encoder or a tiny fallback
+  // We'll generate an SVG-based QR using a simple bit-matrix approach
+  const mods = qrEncode(text);
+  if (!mods) return null;
+  const n = mods.length;
+  const cellSize = Math.floor(size / (n + 8)); // quiet zone of 4 cells each side
+  const totalSize = cellSize * (n + 8);
+  const canvas = document.createElement('canvas');
+  canvas.width = totalSize;
+  canvas.height = totalSize;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, totalSize, totalSize);
+  ctx.fillStyle = '#000000';
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (mods[r][c]) {
+        ctx.fillRect((c + 4) * cellSize, (r + 4) * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+  return canvas.toDataURL('image/png');
+}
+
+// Tiny QR encoder — supports up to ~134 byte-mode chars (version 1-6).
+// Returns 2D boolean array or null on failure.
+function qrEncode(text) {
+  // Use byte mode (0100). We pick the smallest version that fits.
+  const dataBytes = [];
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c > 255) return null; // ASCII only
+    dataBytes.push(c);
+  }
+  // Version capacities (byte mode, ECC level L): v1=17, v2=32, v3=53, v4=78, v5=106, v6=134
+  const caps = [0, 17, 32, 53, 78, 106, 134];
+  let ver = 0;
+  for (let v = 1; v <= 6; v++) { if (dataBytes.length <= caps[v]) { ver = v; break; } }
+  if (!ver) return null; // too long
+
+  const size = 17 + ver * 4;
+  // Total data codewords for version v, ECC L
+  const totalCW = [0, 26, 44, 70, 100, 134, 172][ver];
+  const eccCW = [0, 7, 10, 15, 20, 26, 36][ver]; // ECC codewords
+  const dataCW = totalCW - eccCW;
+
+  // Build data bits: mode(4) + count(8 for v1-9) + data + terminator + padding
+  let bits = '';
+  bits += '0100'; // byte mode
+  bits += ('00000000' + dataBytes.length.toString(2)).slice(-8);
+  for (const b of dataBytes) bits += ('00000000' + b.toString(2)).slice(-8);
+  // Terminator
+  const maxBits = dataCW * 8;
+  if (bits.length + 4 <= maxBits) bits += '0000';
+  // Pad to byte boundary
+  while (bits.length % 8) bits += '0';
+  // Pad with alternating 11101100 / 00010001
+  const pads = ['11101100', '00010001'];
+  let pi = 0;
+  while (bits.length < maxBits) { bits += pads[pi % 2]; pi++; }
+
+  // Convert to bytes
+  const dataCodewords = [];
+  for (let i = 0; i < bits.length; i += 8) dataCodewords.push(parseInt(bits.substr(i, 8), 2));
+
+  // Reed-Solomon ECC (GF(256) with 0x11d)
+  const eccBytes = rsEncode(dataCodewords, eccCW);
+  const allBytes = dataCodewords.concat(eccBytes);
+
+  // Place modules
+  const grid = Array.from({ length: size }, () => new Uint8Array(size));
+  const used = Array.from({ length: size }, () => new Uint8Array(size));
+
+  // Finder patterns
+  function finderPattern(r, c) {
+    for (let dr = -1; dr <= 7; dr++) {
+      for (let dc = -1; dc <= 7; dc++) {
+        const rr = r + dr, cc = c + dc;
+        if (rr < 0 || rr >= size || cc < 0 || cc >= size) continue;
+        const isBorder = dr === -1 || dr === 7 || dc === -1 || dc === 7;
+        const isOuter = dr === 0 || dr === 6 || dc === 0 || dc === 6;
+        const isInner = dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4;
+        grid[rr][cc] = (isOuter || isInner) && !isBorder ? 1 : 0;
+        used[rr][cc] = 1;
+      }
+    }
+  }
+  finderPattern(0, 0);
+  finderPattern(0, size - 7);
+  finderPattern(size - 7, 0);
+
+  // Timing patterns
+  for (let i = 8; i < size - 8; i++) {
+    grid[6][i] = i % 2 === 0 ? 1 : 0; used[6][i] = 1;
+    grid[i][6] = i % 2 === 0 ? 1 : 0; used[i][6] = 1;
+  }
+
+  // Alignment pattern (for v >= 2)
+  if (ver >= 2) {
+    const alignPos = [0, 0, 18, 22, 26, 30, 34][ver];
+    for (let dr = -2; dr <= 2; dr++) {
+      for (let dc = -2; dc <= 2; dc++) {
+        const rr = alignPos + dr, cc = alignPos + dc;
+        if (!used[rr][cc]) {
+          grid[rr][cc] = (Math.abs(dr) === 2 || Math.abs(dc) === 2 || (dr === 0 && dc === 0)) ? 1 : 0;
+          used[rr][cc] = 1;
+        }
+      }
+    }
+  }
+
+  // Dark module
+  grid[size - 8][8] = 1; used[size - 8][8] = 1;
+
+  // Reserve format info areas
+  for (let i = 0; i < 9; i++) { if (i < size) { used[8][i] = 1; used[i][8] = 1; } }
+  for (let i = 0; i < 8; i++) { used[8][size - 1 - i] = 1; used[size - 1 - i][8] = 1; }
+
+  // Place data bits
+  const allBits = allBytes.map(b => ('00000000' + b.toString(2)).slice(-8)).join('');
+  let bitIdx = 0;
+  for (let right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5; // skip timing column
+    for (let vert = 0; vert < size; vert++) {
+      for (let j = 0; j < 2; j++) {
+        const col = right - j;
+        const upward = ((Math.floor((size - 1 - right) / 2)) % 2 === 0);
+        const row = upward ? (size - 1 - vert) : vert;
+        if (row < 0 || row >= size || col < 0 || col >= size) continue;
+        if (used[row][col]) continue;
+        if (bitIdx < allBits.length) {
+          grid[row][col] = allBits[bitIdx] === '1' ? 1 : 0;
+        }
+        used[row][col] = 1;
+        bitIdx++;
+      }
+    }
+  }
+
+  // Apply mask 0 (checkerboard) and format info for mask 0, ECC L
+  // Format info for L + mask 0 = 0x77c5 after BCH = bits: 111011111000101
+  const fmtBits = '111011111000101';
+  for (let i = 0; i < 15; i++) {
+    const bit = fmtBits[i] === '1' ? 1 : 0;
+    // Horizontal strip near top-left
+    if (i < 6) grid[8][i] = bit;
+    else if (i === 6) grid[8][7] = bit;
+    else if (i === 7) grid[8][8] = bit;
+    else if (i === 8) grid[7][8] = bit;
+    else grid[14 - i][8] = bit;
+    // Second copy
+    if (i < 8) grid[size - 1 - i][8] = bit;
+    else grid[8][size - 15 + i] = bit;
+  }
+
+  // Apply mask 0: (row + col) % 2 === 0
+  const result = Array.from({ length: size }, () => []);
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      let val = grid[r][c];
+      // Only mask data area (not function patterns — but we already placed format)
+      // For simplicity, we XOR all non-function modules
+      const isFunction = (r === 6 || c === 6 || // timing
+        (r < 9 && c < 9) || (r < 9 && c >= size - 8) || (r >= size - 8 && c < 9)); // finders
+      if (!isFunction && (r + c) % 2 === 0) val ^= 1;
+      result[r][c] = val;
+    }
+  }
+  return result;
+}
+
+// Reed-Solomon encoder over GF(256) with polynomial 0x11d
+function rsEncode(data, nsym) {
+  const gfExp = new Uint8Array(512);
+  const gfLog = new Uint8Array(256);
+  let x = 1;
+  for (let i = 0; i < 255; i++) {
+    gfExp[i] = x; gfLog[x] = i;
+    x <<= 1; if (x >= 256) x ^= 0x11d;
+  }
+  for (let i = 255; i < 512; i++) gfExp[i] = gfExp[i - 255];
+
+  function gfMul(a, b) {
+    if (a === 0 || b === 0) return 0;
+    return gfExp[gfLog[a] + gfLog[b]];
+  }
+
+  // Generator polynomial
+  let gen = [1];
+  for (let i = 0; i < nsym; i++) {
+    const ng = new Array(gen.length + 1).fill(0);
+    for (let j = 0; j < gen.length; j++) {
+      ng[j] ^= gen[j];
+      ng[j + 1] ^= gfMul(gen[j], gfExp[i]);
+    }
+    gen = ng;
+  }
+
+  const msg = new Uint8Array(data.length + nsym);
+  for (let i = 0; i < data.length; i++) msg[i] = data[i];
+  for (let i = 0; i < data.length; i++) {
+    const coef = msg[i];
+    if (coef !== 0) {
+      for (let j = 0; j < gen.length; j++) {
+        msg[i + j] ^= gfMul(gen[j], coef);
+      }
+    }
+  }
+  return Array.from(msg.slice(data.length));
+}
+
+// ── Render QR into an element ────────────────────────────────
+function renderQrInto(el, url, pixelSize) {
+  if (!el) return;
+  const dataUrl = generateQrDataUrl(url, pixelSize || 200);
+  if (dataUrl) {
+    el.innerHTML = '<img src="' + dataUrl + '" alt="QR Code" style="width:' + (pixelSize || 200) + 'px;height:' + (pixelSize || 200) + 'px;image-rendering:pixelated" />';
+  } else {
+    el.innerHTML = '<div style="color:#999;font-size:12px;padding:40px">URL too long for QR</div>';
+  }
+}
+
 // ── SETUP SCREEN (first boot QR) ─────────────────────────────
 function initSetupScreen() {
   const pin = window.__REMOTE_PIN || '----';
   const port = window.__REMOTE_PORT || 8124;
+  const ip = window.__LAN_IP;
   const pinEl = document.getElementById('setup-pin');
   if (pinEl) pinEl.textContent = pin;
 
-  // Detect LAN IP and render QR
   const urlEl = document.getElementById('setup-url');
   const qrEl = document.getElementById('setup-qr');
-  if (!urlEl) return;
 
-  function setSetupUrl(url) {
-    urlEl.textContent = url;
-    if (qrEl) {
-      const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
-      qrEl.innerHTML = '<img src="' + qrUrl + '" alt="QR Code" style="width:200px;height:200px;image-rendering:pixelated" onerror="this.parentElement.innerHTML=\'<div style=color:#999;font-size:12px;padding:60px>Could not generate QR code</div>\'" />';
-    }
-  }
-
-  try {
-    const pc = new RTCPeerConnection({ iceServers: [] });
-    pc.createDataChannel('');
-    pc.createOffer().then(offer => pc.setLocalDescription(offer));
-    pc.onicecandidate = e => {
-      if (!e || !e.candidate) return;
-      const parts = e.candidate.candidate.split(' ');
-      const ip = parts[4];
-      if (ip && !ip.includes(':') && ip !== '0.0.0.0' && !ip.startsWith('127.')) {
-        setSetupUrl('http://' + ip + ':' + port);
-        pc.close();
-      }
-    };
+  if (ip) {
+    const url = 'http://' + ip + ':' + port;
+    if (urlEl) urlEl.textContent = url;
+    renderQrInto(qrEl, url, 200);
+  } else {
+    // IP not yet injected — wait a moment and retry (Java injects after page load)
+    if (urlEl) urlEl.textContent = 'Detecting network…';
     setTimeout(() => {
-      if (urlEl.textContent === '—' || urlEl.textContent.includes('Detecting')) {
-        urlEl.textContent = 'http://<TV-IP>:' + port;
-        urlEl.style.color = 'var(--muted)';
-        if (qrEl) qrEl.innerHTML = '<div style="color:#999;font-size:12px;padding:60px 20px">Could not detect IP.<br>Check TV network settings<br>or set up manually below.</div>';
+      const retryIp = window.__LAN_IP;
+      if (retryIp) {
+        const url = 'http://' + retryIp + ':' + port;
+        if (urlEl) urlEl.textContent = url;
+        renderQrInto(qrEl, url, 200);
+      } else {
+        if (urlEl) { urlEl.textContent = 'http://<TV-IP>:' + port; urlEl.style.color = 'var(--muted)'; }
+        if (qrEl) qrEl.innerHTML = '<div style="color:#999;font-size:12px;padding:60px 20px">Could not detect IP.<br>Check TV network settings.</div>';
       }
-      try { pc.close(); } catch (_) { }
-    }, 3000);
-  } catch (_) {
-    urlEl.textContent = 'http://<TV-IP>:' + port;
-    urlEl.style.color = 'var(--muted)';
+    }, 1500);
   }
 }
 
 // ── LAN IP DETECTION (for Settings remote info) ─────────────
-// Uses WebRTC ICE candidates to discover the device's LAN IP.
-// Falls back to showing the hostname if WebRTC isn't available.
 function updateRemoteQr(url) {
-  const qrEl = document.getElementById('remote-qr');
-  if (!qrEl) return;
-  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(url);
-  qrEl.innerHTML = '<img src="' + qrUrl + '" alt="QR Code" style="width:160px;height:160px;image-rendering:pixelated" onerror="this.parentElement.innerHTML=\'<div style=color:#999;font-size:12px>QR unavailable offline</div>\'" />';
+  renderQrInto(document.getElementById('remote-qr'), url, 160);
 }
 
 function detectLanIp(port) {
   const urlEl = document.getElementById('remote-url');
   if (!urlEl) return;
-
-  function setUrl(url) {
+  const ip = window.__LAN_IP;
+  if (ip) {
+    const url = 'http://' + ip + ':' + port;
     urlEl.textContent = url;
     updateRemoteQr(url);
-  }
-
-  // Try WebRTC ICE candidate trick (works on most Android WebViews)
-  try {
-    const pc = new RTCPeerConnection({ iceServers: [] });
-    pc.createDataChannel('');
-    pc.createOffer().then(offer => pc.setLocalDescription(offer));
-    pc.onicecandidate = e => {
-      if (!e || !e.candidate) return;
-      const parts = e.candidate.candidate.split(' ');
-      const ip = parts[4];
-      if (ip && !ip.includes(':') && ip !== '0.0.0.0' && !ip.startsWith('127.')) {
-        setUrl('http://' + ip + ':' + port);
-        pc.close();
-      }
-    };
-    // Timeout fallback
-    setTimeout(() => {
-      if (urlEl.textContent.includes('Detecting')) {
-        urlEl.textContent = 'http://<TV-IP>:' + port;
-        urlEl.style.color = 'var(--muted)';
-        const qrEl = document.getElementById('remote-qr');
-        if (qrEl) qrEl.innerHTML = '<div style="color:#999;font-size:12px">Could not detect IP.<br>Check your TV\'s network settings.</div>';
-      }
-      try { pc.close(); } catch (_) { }
-    }, 3000);
-  } catch (_) {
+  } else {
     urlEl.textContent = 'http://<TV-IP>:' + port;
     urlEl.style.color = 'var(--muted)';
   }
 }
 
-console.log('[Switchback TV] v4.3 — remote LAN (HTTP :8124 + WS :8765), phone remote ✓');
+console.log('[Switchback TV] v4.5 — offline QR, Java IP detection, phone remote ✓');
