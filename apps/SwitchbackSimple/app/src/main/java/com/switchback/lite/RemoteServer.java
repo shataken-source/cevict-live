@@ -16,12 +16,13 @@ import java.util.Map;
  * HTTP server on port 8124 (LAN) for remote control and config provisioning.
  *
  * Endpoints:
- *   GET  /              — serves remote.html (phone remote UI)
- *   GET  /pin?pin=XXXX  — verify PIN
+ *   GET  /                   — serves remote.html (phone remote UI)
+ *   GET  /pin?pin=XXXX       — verify PIN
  *   GET  /key?name=X&pin=XXXX — inject D-pad key into WebView
- *   POST /config?pin=XXXX — push IPTV credentials from phone to TV
- *        body params: server, username, password
- *   GET  /state?pin=XXXX — get current TV state (playing channel, etc.)
+ *   POST /cmd?pin=XXXX       — high-level command (vol, ch, nav, switchback, sleep)
+ *   POST /config?pin=XXXX    — push IPTV credentials from phone to TV
+ *   POST /state-push          — TV WebView pushes state (localhost only, no PIN)
+ *   GET  /state?pin=XXXX     — get current TV state (playing channel, slots, etc.)
  */
 public class RemoteServer extends NanoHTTPD {
     private static final String TAG = "RemoteServer";
@@ -101,6 +102,24 @@ public class RemoteServer extends NanoHTTPD {
             return cors(newFixedLengthResponse(Response.Status.FORBIDDEN, "text/plain", "Wrong PIN"));
         }
 
+        // ── /state-push — TV WebView pushes its state here (localhost only, no PIN needed) ──
+        if ("/state-push".equals(uri) && "POST".equals(method)) {
+            if (remoteIp != null && (remoteIp.equals("127.0.0.1") || remoteIp.equals("::1") || remoteIp.equals("localhost"))) {
+                try {
+                    Map<String, String> bodyMap = new HashMap<>();
+                    session.parseBody(bodyMap);
+                    String jsonBody = bodyMap.get("postData");
+                    if (jsonBody != null && !jsonBody.isEmpty()) {
+                        activity.setTvState(jsonBody);
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to parse state-push body", e);
+                }
+                return cors(newFixedLengthResponse(Response.Status.OK, "application/json", "{\"ok\":true}"));
+            }
+            return cors(newFixedLengthResponse(Response.Status.FORBIDDEN, "text/plain", "Localhost only"));
+        }
+
         // All remaining endpoints require PIN
         Map<String, String> params = session.getParms();
 
@@ -159,6 +178,41 @@ public class RemoteServer extends NanoHTTPD {
                 "{\"ok\":true,\"message\":\"Config applied\"}"));
         }
 
+        // ── /cmd — high-level command from phone remote ──
+        // Injects handleRemoteCommand({action:'...', ...}) into WebView
+        if ("/cmd".equals(uri) && "POST".equals(method)) {
+            String action = params.get("action");
+            if (action == null || action.isEmpty()) {
+                return cors(newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json",
+                    "{\"ok\":false,\"error\":\"Missing action\"}"));
+            }
+            // Build JSON object from all params except pin
+            StringBuilder json = new StringBuilder("{");
+            boolean first = true;
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                if ("pin".equals(entry.getKey())) continue;
+                if (!first) json.append(",");
+                json.append("\"")
+                    .append(entry.getKey().replace("\"", "\\\""))
+                    .append("\":");
+                // Try to parse as number
+                try {
+                    int num = Integer.parseInt(entry.getValue());
+                    json.append(num);
+                } catch (NumberFormatException e) {
+                    json.append("\"")
+                        .append(entry.getValue().replace("\\", "\\\\").replace("\"", "\\\""))
+                        .append("\"");
+                }
+                first = false;
+            }
+            json.append("}");
+            String js = "if(typeof handleRemoteCommand==='function')handleRemoteCommand(" + json.toString() + ");";
+            activity.injectJs(js);
+            Log.d(TAG, "Remote cmd: " + action);
+            return cors(newFixedLengthResponse(Response.Status.OK, "application/json", "{\"ok\":true}"));
+        }
+
         // ── /state — get current TV state ──
         if ("/state".equals(uri)) {
             String state = activity.getTvState();
@@ -183,18 +237,48 @@ public class RemoteServer extends NanoHTTPD {
 
     private static int nameToKeyCode(String name) {
         switch (name.toLowerCase()) {
-            case "back":       return KeyEvent.KEYCODE_BACK;
-            case "up":         return KeyEvent.KEYCODE_DPAD_UP;
-            case "down":       return KeyEvent.KEYCODE_DPAD_DOWN;
-            case "left":       return KeyEvent.KEYCODE_DPAD_LEFT;
-            case "right":      return KeyEvent.KEYCODE_DPAD_RIGHT;
+            case "back":           return KeyEvent.KEYCODE_BACK;
+            case "up":             return KeyEvent.KEYCODE_DPAD_UP;
+            case "down":           return KeyEvent.KEYCODE_DPAD_DOWN;
+            case "left":           return KeyEvent.KEYCODE_DPAD_LEFT;
+            case "right":          return KeyEvent.KEYCODE_DPAD_RIGHT;
             case "select":
             case "enter":
-            case "ok":         return KeyEvent.KEYCODE_DPAD_CENTER;
+            case "ok":             return KeyEvent.KEYCODE_DPAD_CENTER;
             case "playpause":
-            case "play_pause": return KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE;
-            case "menu":       return KeyEvent.KEYCODE_MENU;
-            default:           return 0;
+            case "play_pause":     return KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE;
+            case "play":           return KeyEvent.KEYCODE_MEDIA_PLAY;
+            case "pause":          return KeyEvent.KEYCODE_MEDIA_PAUSE;
+            case "stop":           return KeyEvent.KEYCODE_MEDIA_STOP;
+            case "rewind":
+            case "rew":            return KeyEvent.KEYCODE_MEDIA_REWIND;
+            case "forward":
+            case "fwd":
+            case "fastforward":    return KeyEvent.KEYCODE_MEDIA_FAST_FORWARD;
+            case "menu":           return KeyEvent.KEYCODE_MENU;
+            case "home":           return KeyEvent.KEYCODE_HOME;
+            case "info":           return KeyEvent.KEYCODE_INFO;
+            case "guide":          return KeyEvent.KEYCODE_GUIDE;
+            case "volup":
+            case "vol_up":         return KeyEvent.KEYCODE_VOLUME_UP;
+            case "voldown":
+            case "vol_down":       return KeyEvent.KEYCODE_VOLUME_DOWN;
+            case "mute":           return KeyEvent.KEYCODE_VOLUME_MUTE;
+            case "chup":
+            case "ch_up":          return KeyEvent.KEYCODE_CHANNEL_UP;
+            case "chdown":
+            case "ch_down":        return KeyEvent.KEYCODE_CHANNEL_DOWN;
+            case "0":              return KeyEvent.KEYCODE_0;
+            case "1":              return KeyEvent.KEYCODE_1;
+            case "2":              return KeyEvent.KEYCODE_2;
+            case "3":              return KeyEvent.KEYCODE_3;
+            case "4":              return KeyEvent.KEYCODE_4;
+            case "5":              return KeyEvent.KEYCODE_5;
+            case "6":              return KeyEvent.KEYCODE_6;
+            case "7":              return KeyEvent.KEYCODE_7;
+            case "8":              return KeyEvent.KEYCODE_8;
+            case "9":              return KeyEvent.KEYCODE_9;
+            default:               return 0;
         }
     }
 }

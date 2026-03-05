@@ -836,13 +836,14 @@
     // ═══════════════════════════════════════════════════════════════
     // Switchback TV Phone Remote
     // Connects to RemoteServer.java on port 8124 (same host)
-    // Protocol: GET /key?name=<key>&pin=<pin>
-    // Also sends high-level commands via WebSocket to app.js
+    // D-pad keys:   GET  /key?name=<key>&pin=<pin>
+    // Commands:     POST /cmd  (vol, ch, nav, switchback, sleep)
+    // Config:       POST /config (push IPTV credentials)
+    // State:        GET  /state?pin=<pin>
     // ═══════════════════════════════════════════════════════════════
 
     const BASE = window.location.origin; // e.g. http://192.168.1.50:8124
     let PIN = localStorage.getItem('sb_remote_pin') || '';
-    let ws = null;
 
     // ── PIN ENTRY ────────────────────────────────────────────────
     let pinBuf = '';
@@ -880,7 +881,6 @@
           localStorage.setItem('sb_remote_pin', PIN);
           document.getElementById('pin-screen').style.display = 'none';
           document.getElementById('remote-screen').style.display = 'flex';
-          connectWs();
           pollState();
         } else {
           errEl.textContent = 'Wrong PIN. Try again.';
@@ -894,7 +894,21 @@
       }
     }
 
-    // Auto-connect if PIN is saved
+    // Auto-PIN from URL hash (QR code includes #pin=XXXX)
+    (function () {
+      const hash = window.location.hash;
+      if (hash) {
+        const m = hash.match(/pin=(\d{4})/);
+        if (m) {
+          PIN = m[1];
+          localStorage.setItem('sb_remote_pin', PIN);
+          // Clear hash so it doesn't show in URL bar
+          history.replaceState(null, '', window.location.pathname);
+        }
+      }
+    })();
+
+    // Auto-connect if PIN is saved or extracted from QR
     if (PIN.length === 4) {
       verifyPin(PIN);
     }
@@ -921,28 +935,21 @@
       btn.addEventListener('mousedown', handler);
     });
 
-    // ── HIGH-LEVEL COMMANDS (via WebSocket to app.js) ────────────
-    // These go beyond simple key injection — they control the app directly
-    function sendCmd(cmd) {
+    // ── HIGH-LEVEL COMMANDS (via HTTP POST /cmd) ──────────────────
+    // All remote commands (vol, ch, nav, switchback, sleep) go through /cmd
+    async function sendCmd(cmd) {
       vibrate();
-      // Try WebSocket first
-      if (ws && ws.readyState === 1) {
-        try { ws.send(JSON.stringify(cmd)); return; } catch (_) { }
+      try {
+        const params = new URLSearchParams(cmd);
+        params.set('pin', PIN);
+        await fetch(BASE + '/cmd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        });
+      } catch (_) {
+        showDisconnected();
       }
-      // Fallback: encode as key presses for simple actions
-      const keyMap = {
-        'vol_up': null, 'vol_down': null, 'mute': null,
-        'ch_up': null, 'ch_down': null,
-        'play_pause': 'PlayPause',
-      };
-      if (keyMap[cmd.action]) {
-        sendKey(keyMap[cmd.action]);
-        return;
-      }
-      // For nav commands and complex actions, use a POST to a /cmd endpoint
-      // or localStorage bridge — but since we're on different origins, POST is simplest
-      // Fallback: try WS reconnect
-      connectWs();
     }
 
     function seekKey(secs) {
@@ -950,42 +957,29 @@
       sendCmd({ action: secs < 0 ? 'seek_back' : 'seek_fwd' });
     }
 
-    // ── WEBSOCKET ────────────────────────────────────────────────
-    function connectWs() {
-      if (ws && ws.readyState <= 1) return;
-      try {
-        const host = window.location.hostname;
-        ws = new WebSocket('ws://' + host + ':8765');
-        ws.onopen = () => {
-          ws.send(JSON.stringify({ type: 'register', role: 'remote', pin: PIN }));
-          showConnected();
-        };
-        ws.onmessage = e => {
-          try {
-            const state = JSON.parse(e.data);
-            if (state.channel !== undefined) updateNowPlaying(state);
-          } catch (_) { }
-        };
-        ws.onclose = () => { ws = null; };
-        ws.onerror = () => { ws = null; };
-      } catch (_) { }
-    }
-
     // ── POLL TV STATE ────────────────────────────────────────────
-    // Even without WS, we can poll the TV state from localStorage bridge
-    // Since we're cross-origin (different port), we use the /key endpoint as a heartbeat
+    // Poll /state every 2s to update now-playing info and switchback slots
     let pollTimer = null;
     function pollState() {
       if (pollTimer) clearInterval(pollTimer);
-      pollTimer = setInterval(async () => {
+      async function poll() {
         try {
-          const res = await fetch(BASE + '/pin?pin=' + PIN);
-          if (res.ok) showConnected();
-          else showDisconnected();
+          const res = await fetch(BASE + '/state?pin=' + PIN);
+          if (res.ok) {
+            showConnected();
+            const state = await res.json();
+            if (state && (state.channel !== undefined || state.playing !== undefined)) {
+              updateNowPlaying(state);
+            }
+          } else {
+            showDisconnected();
+          }
         } catch (_) {
           showDisconnected();
         }
-      }, 5000);
+      }
+      poll(); // immediate first poll
+      pollTimer = setInterval(poll, 2000);
     }
 
     // ── NOW PLAYING ──────────────────────────────────────────────

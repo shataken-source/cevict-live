@@ -4055,23 +4055,7 @@ setInterval(() => {
   } catch (_) { }
 }, 200);
 
-// LAN remote: WebSocket client (connects to remote-server.js on port 8765)
-let remoteWs = null;
-function connectRemoteWs() {
-  if (remoteWs && remoteWs.readyState === 1) return;
-  try {
-    const host = (typeof localStorage !== 'undefined' && localStorage.getItem('remote_ws_server')) || 'localhost';
-    const ws = new WebSocket('ws://' + host + ':8765');
-    ws.onopen = () => { try { ws.send(JSON.stringify({ type: 'register', role: 'tv' })); } catch (_) { } };
-    ws.onmessage = (e) => { try { const cmd = JSON.parse(e.data); if (cmd && cmd.action) handleRemoteCommand(cmd); } catch (_) { } };
-    ws.onclose = () => { remoteWs = null; };
-    remoteWs = ws;
-  } catch (_) { }
-}
-setInterval(connectRemoteWs, 15000);
-connectRemoteWs();
-
-// Publish TV state to localStorage and to LAN remote (WebSocket)
+// Publish TV state to localStorage and to RemoteServer (via HTTP POST)
 function publishTVState() {
   const ch = S.currentChannel;
   const video = document.getElementById('player-video');
@@ -4089,11 +4073,18 @@ function publishTVState() {
     currentSlot: S.switchbackSlots?.indexOf(ch) ?? -1,
   };
   try { localStorage.setItem('sb_state', JSON.stringify(state)); } catch (_) { }
-  if (remoteWs && remoteWs.readyState === 1) {
-    try { remoteWs.send(JSON.stringify(state)); } catch (_) { }
-  }
+  // Push state to RemoteServer so /state endpoint returns live data
+  const pin = window.__REMOTE_PIN || '';
+  const port = window.__REMOTE_PORT || 8124;
+  try {
+    fetch('http://localhost:' + port + '/state-push?pin=' + pin, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state),
+    }).catch(() => { });
+  } catch (_) { }
 }
-setInterval(publishTVState, 1000);
+setInterval(publishTVState, 2000);
 
 // ── MINIMAL QR CODE GENERATOR (offline, canvas-based) ────────
 // Encodes a string as a QR code and returns a data URL.
@@ -4335,8 +4326,8 @@ function initSetupScreen() {
   const qrEl = document.getElementById('setup-qr');
 
   if (ip) {
-    const url = 'http://' + ip + ':' + port;
-    if (urlEl) urlEl.textContent = url;
+    const url = 'http://' + ip + ':' + port + '#pin=' + pin;
+    if (urlEl) urlEl.textContent = 'http://' + ip + ':' + port;
     renderQrInto(qrEl, url, 200);
   } else {
     // IP not yet injected — wait a moment and retry (Java injects after page load)
@@ -4344,8 +4335,8 @@ function initSetupScreen() {
     setTimeout(() => {
       const retryIp = window.__LAN_IP;
       if (retryIp) {
-        const url = 'http://' + retryIp + ':' + port;
-        if (urlEl) urlEl.textContent = url;
+        const url = 'http://' + retryIp + ':' + port + '#pin=' + pin;
+        if (urlEl) urlEl.textContent = 'http://' + retryIp + ':' + port;
         renderQrInto(qrEl, url, 200);
       } else {
         if (urlEl) { urlEl.textContent = 'http://<TV-IP>:' + port; urlEl.style.color = 'var(--muted)'; }
