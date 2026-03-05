@@ -9,6 +9,5 @@
   "framework": "nextjs",
   "buildCommand": "next build",
   "outputDirectory": ".next",
-  "installCommand": "npm install",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- apps/alpha-hunter/"
+  "installCommand": "npm install"
 }
