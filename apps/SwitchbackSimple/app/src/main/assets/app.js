@@ -2,8 +2,8 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.7';
-const APP_BUILD = 49;
+const APP_VERSION = '5.8';
+const APP_BUILD = 50;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -485,58 +485,80 @@ function clearAllData() {
 // ═══════════════════════════════════════════════════════════════
 
 async function initChannels() {
-  if (S.allChannels.length) {
+  // If we already have categories, just render the dropdown
+  if (S.liveCategories.length) {
     renderChannelCats();
     return;
   }
-  document.getElementById('channel-list').innerHTML = '<div class="loading"><div class="spinner"></div> Loading channels...</div>';
+  document.getElementById('channel-list').innerHTML = '<div class="loading"><div class="spinner"></div> Loading categories...</div>';
   try {
-    const [cats, streams] = await Promise.all([
-      api('get_live_categories'),
-      api('get_live_streams'),
-    ]);
+    // Only fetch categories (tiny payload). Full channel list loads in background from bootData.
+    const cats = await api('get_live_categories');
     S.liveCategories = Array.isArray(cats) ? cats : [];
-    S.allChannels = Array.isArray(streams) ? streams : [];
-    const visibleCount = applyLangFilter(S.allChannels).length;
     document.getElementById('channels-sub').textContent =
-      `${visibleCount.toLocaleString()} channels · ${S.liveCategories.length} categories`;
-    S.channelList = []; // empty until user picks a category
+      `${S.liveCategories.length} categories${S.allChannels.length ? ` · ${S.allChannels.length.toLocaleString()} channels` : ''}`;
+    S.channelList = [];
     renderChannelCats();
+    // Kick off background channel load if not already loaded
+    if (!S.allChannels.length) {
+      api('get_live_streams').then(d => {
+        if (Array.isArray(d)) {
+          S.allChannels = assignChannelNumbers(d);
+          renderChannelCats(); // re-render with counts
+          console.log(`[channels] Background load: ${S.allChannels.length}`);
+        }
+      }).catch(() => { });
+    }
   } catch (e) {
     document.getElementById('channel-list').innerHTML =
-      `<div class="error-box">Failed to load channels: ${esc(e.message)}</div>`;
+      `<div class="error-box">Failed to load categories: ${esc(e.message)}</div>`;
   }
 }
 
 function renderChannelCats() {
   const sel = document.getElementById('cat-select');
   if (!sel) return;
-  // Count channels per category (after lang filter)
-  const filtered = applyLangFilter(S.allChannels);
+  // Count channels per category (after lang filter) — if allChannels loaded
+  const filtered = S.allChannels.length ? applyLangFilter(S.allChannels) : [];
   const catCount = {};
   filtered.forEach(ch => {
     const cid = ch.category_id || '';
     catCount[cid] = (catCount[cid] || 0) + 1;
   });
-  sel.innerHTML = `<option value="">Select a Category (${filtered.length} channels)</option>` +
+  const hasCount = filtered.length > 0;
+  sel.innerHTML = `<option value="">Select a Category${hasCount ? ` (${filtered.length} channels)` : ''}</option>` +
     S.liveCategories
-      .filter(c => catCount[c.category_id] > 0)
-      .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
+      .filter(c => hasCount ? catCount[c.category_id] > 0 : true)
+      .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)}${hasCount ? ` (${catCount[c.category_id] || 0})` : ''}</option>`)
       .join('');
   // Wire change event (only once)
   if (!sel._wired) {
     sel._wired = true;
-    sel.addEventListener('change', () => {
+    sel.addEventListener('change', async () => {
       const catId = sel.value;
       if (!catId) {
         S.channelList = [];
         showCategoryPrompt();
         return;
       }
-      const base = S.allChannels.filter(c => c.category_id == catId);
-      S.channelList = applyLangFilter(base);
-      document.getElementById('ch-search').value = '';
-      renderChannelList(S.channelList);
+      // If allChannels loaded, filter locally; otherwise fetch just this category
+      if (S.allChannels.length) {
+        const base = S.allChannels.filter(c => c.category_id == catId);
+        S.channelList = applyLangFilter(base);
+        document.getElementById('ch-search').value = '';
+        renderChannelList(S.channelList);
+      } else {
+        document.getElementById('channel-list').innerHTML = '<div class="loading"><div class="spinner"></div> Loading category...</div>';
+        try {
+          const streams = await api('get_live_streams', { category_id: catId });
+          const base = Array.isArray(streams) ? streams : [];
+          S.channelList = applyLangFilter(base);
+          document.getElementById('ch-search').value = '';
+          renderChannelList(S.channelList);
+        } catch (e) {
+          document.getElementById('channel-list').innerHTML = `<div class="error-box">Failed to load: ${esc(e.message)}</div>`;
+        }
+      }
     });
   }
   // Don't render all channels — show prompt until user picks a category
@@ -2065,48 +2087,44 @@ async function bootData() {
     S.userInfo = info;
     renderAccountInfo(info);
 
-    splashStatus('Loading channels...');
-    // Channels + categories in parallel (60s timeout so we don't hang forever)
-    const timeout = (ms) => new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), ms));
-    let _loadSec = 0;
-    const _loadTimer = setInterval(() => {
-      _loadSec++;
-      splashStatus(`Loading channels... ${_loadSec}s${_loadSec > 15 ? ' (large channel list, please wait)' : ''}`);
-    }, 1000);
-    const [cats, streams] = await Promise.allSettled([
-      Promise.race([api('get_live_categories'), timeout(60000)]),
-      Promise.race([api('get_live_streams'), timeout(60000)]),
-    ]);
-    clearInterval(_loadTimer);
-    if (cats.status === 'fulfilled' && Array.isArray(cats.value)) S.liveCategories = cats.value;
-    if (streams.status === 'fulfilled' && Array.isArray(streams.value)) {
-      S.allChannels = assignChannelNumbers(streams.value);
-      S.channelList = []; // empty until user picks a category
-    }
-    if (streams.status === 'rejected') {
-      splashStatus('Channel loading timed out — continuing with limited data');
-      await new Promise(r => setTimeout(r, 2000));
+    splashStatus('Loading categories...');
+    // Only fetch categories at boot (tiny payload ~50KB).
+    // The full channel list (16+ MB) is loaded in the background AFTER the app is usable.
+    try {
+      const cats = await api('get_live_categories');
+      if (Array.isArray(cats)) S.liveCategories = cats;
+    } catch (e) {
+      console.warn('[boot] Categories failed:', e.message);
     }
 
-    // Update TV home with real counts
+    // Update TV home with category count
     if (S.currentScreen === 'tvhome') initTVHome();
 
-    // Re-stamp focusable elements and re-focus sidebar after async data load
+    // Re-stamp focusable elements and re-focus sidebar
     setTimeout(() => { tvStampFocusable(); tvFocusSidebar(); }, 300);
 
     // Update channels sub
     const chSub = document.getElementById('channels-sub');
-    if (chSub) chSub.textContent = `${S.allChannels.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
+    if (chSub) chSub.textContent = `${S.liveCategories.length} categories · loading channels...`;
 
-    splashStatus('Loading movies & series...');
-    // VOD + Series in background (non-blocking)
+    // Hide splash immediately — app is usable (categories loaded)
+    hideSplash();
+
+    // ── BACKGROUND: load full channel list + VOD/series (non-blocking) ──
+    api('get_live_streams').then(d => {
+      if (Array.isArray(d)) {
+        S.allChannels = assignChannelNumbers(d);
+        S.channelList = [];
+        const chSub2 = document.getElementById('channels-sub');
+        if (chSub2) chSub2.textContent = `${S.allChannels.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
+        if (S.currentScreen === 'tvhome') initTVHome();
+        console.log(`[boot] Channels loaded in background: ${S.allChannels.length}`);
+      }
+    }).catch(e => console.warn('[boot] Background channel load failed:', e.message));
     api('get_vod_categories').then(d => { if (Array.isArray(d)) S.vodCategories = d; }).catch(() => { });
     api('get_vod_streams').then(d => { if (Array.isArray(d)) S.allVod = d; }).catch(() => { });
     api('get_series_categories').then(d => { if (Array.isArray(d)) S.seriesCategories = d; }).catch(() => { });
     api('get_series').then(d => { if (Array.isArray(d)) S.allSeries = d; }).catch(() => { });
-
-    // Hide splash after channels are loaded
-    hideSplash();
 
   } catch (e) {
     console.warn('[boot]', e.message);
