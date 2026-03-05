@@ -2,8 +2,8 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.4';
-const APP_BUILD = 46;
+const APP_VERSION = '5.5';
+const APP_BUILD = 47;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -799,9 +799,26 @@ async function initEPG(offsetDelta = 0) {
     await initChannels();
   }
 
+  // Populate category dropdown
+  const catSel = document.getElementById('epg-cat-select');
+  if (catSel && catSel.options.length <= 1 && S.liveCategories?.length) {
+    S.liveCategories.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.category_id;
+      opt.textContent = c.category_name;
+      catSel.appendChild(opt);
+    });
+  }
+
+  // Filter by selected category
+  const selectedCat = catSel ? catSel.value : '';
+  const filtered = selectedCat
+    ? applyLangFilter(S.allChannels.filter(c => c.category_id == selectedCat))
+    : applyLangFilter(S.allChannels);
+
   // Show first 30 channels with EPG channel IDs, fetch their short EPG
-  const chansWithEpg = S.allChannels.filter(c => c.epg_channel_id).slice(0, 30);
-  const chans = chansWithEpg.length ? chansWithEpg : S.allChannels.slice(0, 30);
+  const chansWithEpg = filtered.filter(c => c.epg_channel_id).slice(0, 30);
+  const chans = chansWithEpg.length ? chansWithEpg : filtered.slice(0, 30);
 
   wrap.innerHTML = '<div class="loading"><div class="spinner"></div> Loading program guide...</div>';
 
@@ -880,6 +897,7 @@ async function initEPG(offsetDelta = 0) {
 document.getElementById('epg-now')?.addEventListener('click', () => { S.epgOffset = 0; initEPG(0); });
 document.getElementById('epg-prev')?.addEventListener('click', () => initEPG(-1));
 document.getElementById('epg-next')?.addEventListener('click', () => initEPG(1));
+document.getElementById('epg-cat-select')?.addEventListener('change', () => { S.epgOffset = 0; initEPG(0); });
 // Make EPG nav buttons focusable for D-pad
 ['epg-now', 'epg-prev', 'epg-next'].forEach(id => {
   const el = document.getElementById(id);
@@ -3161,9 +3179,9 @@ initSettings = function () {
   if (!document.getElementById('dezor-section')) {
     const dezorSection = document.createElement('div');
     dezorSection.id = 'dezor-section';
-    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns:1fr 1fr"]');
+    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns"]');
     if (settingsGrid) {
-      const rightCol = settingsGrid.children[1];
+      const col = settingsGrid.children[1] || settingsGrid.children[0];
       dezorSection.innerHTML = `
         <div class="section-title">Dezor IPTV Provider</div>
         <div class="settings-group" style="padding:13px" id="dezor-group">
@@ -3182,11 +3200,11 @@ initSettings = function () {
           </div>
         </div>`;
 
-      // Insert before first child of right column
-      if (rightCol.firstChild) {
-        rightCol.insertBefore(dezorSection, rightCol.firstChild);
+      // Insert before first child of column
+      if (col.firstChild) {
+        col.insertBefore(dezorSection, col.firstChild);
       } else {
-        rightCol.appendChild(dezorSection);
+        col.appendChild(dezorSection);
       }
 
       document.getElementById('load-dezor-btn').addEventListener('click', loadDezorPlaylist);
@@ -3224,7 +3242,7 @@ initSettings = function () {
 
   // Inject Remote Control info section
   if (!document.getElementById('remote-info-section')) {
-    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns:1fr 1fr"]');
+    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns"]');
     if (settingsGrid) {
       const leftCol = settingsGrid.children[0];
       const remoteSection = document.createElement('div');
