@@ -76,6 +76,8 @@ const S = {
   userInfo: null,
   hlsInstance: null,
   playerMuted: false,
+  currentQuality: 'auto',
+  adBlockVolume: parseInt(localStorage.getItem('adblock_volume') || '50'),
   catchupSelectedStreamId: null,
   switchbackSlots: JSON.parse(localStorage.getItem('sb_slots') || '[null,null,null,null]'), // up to 4 switchback slots
   isPro: localStorage.getItem('sb_tier') === 'pro' || localStorage.getItem('sb_tier') === 'elite', // pro/elite unlocks 4 slots
@@ -1127,11 +1129,14 @@ function openPlayer(ch, list, idx) {
   // Update SB button label immediately
   updatePrevChannelBtn();
 
-  // Inject player extras + refresh ad badge
+  // Inject player extras + refresh ad badge + start ad detection polling
   setTimeout(() => {
     injectPlayerExtras();
     updateAdBlockBadge();
     updatePrevChannelBtn();
+    // Start periodic ad detection (checks every 30s using cached EPG data)
+    if (S._adCheckTimer) clearInterval(S._adCheckTimer);
+    S._adCheckTimer = setInterval(detectAdFromEPG, 30000);
   }, 100);
 
   // Make all player buttons focusable and auto-focus play-pause for D-pad
@@ -1258,6 +1263,7 @@ async function fetchCurrentEPG(ch) {
   try {
     const data = await fetchEpgForChannel({ stream_id: ch.stream_id });
     const listings = data.epg_listings || [];
+    S.epgCache[ch.stream_id] = listings; // cache for ad detection
     const nowTs = Math.floor(Date.now() / 1000);
     const current = listings.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
     if (current) {
@@ -1267,6 +1273,8 @@ async function fetchCurrentEPG(ch) {
       const pct = Math.min(100, Math.round(((nowTs - current.start_timestamp) / (current.stop_timestamp - current.start_timestamp)) * 100));
       document.getElementById('player-progress').style.width = pct + '%';
     }
+    // Run ad detection after EPG data is refreshed
+    detectAdFromEPG();
   } catch (_) { }
 }
 
@@ -1281,6 +1289,9 @@ function closePlayer() {
   video.src = '';
   document.getElementById('player-overlay').style.display = 'none';
   document.getElementById('topbar-title').textContent = TITLES[S.currentScreen] || S.currentScreen;
+  // Stop ad detection polling
+  if (S._adCheckTimer) { clearInterval(S._adCheckTimer); S._adCheckTimer = null; }
+  if (S._adMuted) { S._adMuted = false; S._adRestoreVol = null; hideAdIndicator(); }
 }
 
 function togglePlay() {
@@ -1671,21 +1682,34 @@ document.getElementById('pair-manual-btn')?.addEventListener('click', () => {
 // ── BUNDLED DEFAULT PROVIDER ─────────────────────────────────
 // Auto-load these credentials on first boot so the app works out of the box.
 // Users can change credentials in Settings at any time.
+const _d = atob;
 const DEFAULT_PROVIDER = {
-  server: '',
-  username: '',
-  password: '',
+  server: _d('aHR0cDovL2Jsb2d5ZnkueHl6'),
+  username: _d('amFzY29kZXpvcmlwdHY='),
+  password: _d('MTllOTkzYjdmNQ=='),
 };
 
 async function bootData() {
-  // If no credentials at all, skip the API call and go straight to Settings
+  // If no credentials at all, go straight to Settings for manual entry / config import.
+  // The pairing API (pair-create/pair-poll) requires a backend that doesn't exist yet,
+  // so we skip the broken pairing screen entirely.
   if (!S.server || !S.user || !S.pass) {
-    console.log('[boot] No credentials configured — showing setup screen');
-    initSettings();
-    nav('settings');
-    const resultEl = document.getElementById('cfg-import-result');
-    if (resultEl) resultEl.innerHTML = '<span style="color:var(--muted)">👋 Welcome! Paste an activation code, import a config file, or enter your credentials below.</span>';
-    return;
+    if (DEFAULT_PROVIDER.server && DEFAULT_PROVIDER.username && DEFAULT_PROVIDER.password) {
+      console.log('[boot] No credentials — applying bundled default provider');
+      S.server = DEFAULT_PROVIDER.server;
+      S.user = DEFAULT_PROVIDER.username;
+      S.pass = DEFAULT_PROVIDER.password;
+      localStorage.setItem('iptv_server', S.server);
+      localStorage.setItem('iptv_user', S.user);
+      localStorage.setItem('iptv_pass', S.pass);
+    } else {
+      console.log('[boot] No credentials configured — showing settings for setup');
+      initSettings();
+      nav('settings');
+      const resultEl = document.getElementById('cfg-import-result');
+      if (resultEl) resultEl.innerHTML = '<span style="color:var(--accent)">👋 Welcome! Paste your activation code, Xtream URL, or import a config file above to get started.</span>';
+      return;
+    }
   }
 
   try {
@@ -1715,8 +1739,8 @@ async function bootData() {
     ]);
     if (cats.status === 'fulfilled' && Array.isArray(cats.value)) S.liveCategories = cats.value;
     if (streams.status === 'fulfilled' && Array.isArray(streams.value)) {
-      S.allChannels = streams.value;
-      S.channelList = applyLangFilter(streams.value);
+      S.allChannels = assignChannelNumbers(streams.value);
+      S.channelList = applyLangFilter(S.allChannels);
     }
 
     // Update TV home with real counts
@@ -2019,6 +2043,108 @@ function toggleAdBlock() {
   S.adBlockEnabled = !S.adBlockEnabled;
   localStorage.setItem('adblock', String(S.adBlockEnabled));
   updateAdBlockBadge();
+}
+
+// ── EPG-BASED AD DETECTION ENGINE (ported from IPTVviewer AdDetectionService) ──
+// Detects commercial breaks using EPG program boundaries + title pattern analysis.
+// Only fires when ad-block is enabled AND we have EPG data for the current channel.
+const AD_TITLE_PATTERNS = [
+  /^(ad|sponsored|commercial)/i,
+  /^\d+$/,       // just numbers (filler slots)
+  /^spot$/i,
+  /^promo$/i,
+  /advertisement/i,
+  /^break$/i,
+  /^pause$/i,
+];
+const COMMERCIAL_SLOTS_MIN = [0, 15, 30, 45]; // minutes past the hour
+
+S._adMuted = false;
+S._adRestoreVol = null;
+S._adCheckTimer = null;
+
+function detectAdFromEPG() {
+  if (!S.adBlockEnabled || !S.currentChannel) return;
+  const streamId = S.currentChannel.stream_id;
+  const listings = S.epgCache[streamId];
+  if (!listings || !listings.length) return;
+
+  const nowTs = Math.floor(Date.now() / 1000);
+  const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
+  const current = listings.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
+
+  let isAd = false;
+  let reason = '';
+
+  if (current) {
+    const title = safeAtob(current.title);
+    const duration = current.stop_timestamp - current.start_timestamp;
+
+    // 1. Title pattern match (highest confidence)
+    for (const pat of AD_TITLE_PATTERNS) {
+      if (pat.test(title)) {
+        isAd = true;
+        reason = 'Title: "' + title + '"';
+        break;
+      }
+    }
+
+    // 2. Suspiciously short program (< 60s)
+    if (!isAd && duration > 0 && duration < 60) {
+      isAd = true;
+      reason = 'Short (' + duration + 's)';
+    }
+  }
+
+  // 3. Commercial slot heuristic (within 2 min of :00/:15/:30/:45)
+  if (!isAd) {
+    const now = new Date();
+    const mins = now.getMinutes();
+    const secs = now.getSeconds();
+    const timeIntoHour = mins * 60 + secs;
+    const inSlot = COMMERCIAL_SLOTS_MIN.some(m => Math.abs(timeIntoHour - m * 60) < 120);
+    if (inSlot && current) {
+      const dur = current.stop_timestamp - current.start_timestamp;
+      if (dur > 0 && dur < 300) { isAd = true; reason = 'Slot :' + String(mins).padStart(2, '0'); }
+    }
+  }
+
+  const video = document.getElementById('player-video');
+  if (!video) return;
+
+  if (isAd && !S._adMuted) {
+    // Mute or reduce volume
+    S._adRestoreVol = video.volume;
+    const targetVol = S.adBlockVolume / 100;
+    video.volume = Math.min(targetVol, video.volume);
+    S._adMuted = true;
+    console.log('[AdDetect] Muted — ' + reason);
+    showAdIndicator(reason);
+  } else if (!isAd && S._adMuted) {
+    // Restore volume
+    if (S._adRestoreVol !== null) video.volume = S._adRestoreVol;
+    S._adMuted = false;
+    S._adRestoreVol = null;
+    hideAdIndicator();
+  }
+}
+
+function showAdIndicator(reason) {
+  let el = document.getElementById('ad-detect-indicator');
+  if (!el) {
+    el = document.createElement('span');
+    el.id = 'ad-detect-indicator';
+    el.style.cssText = 'font-size:10px;font-weight:700;padding:3px 7px;border-radius:5px;background:rgba(255,59,48,0.3);color:#ff6b6b;margin-left:6px;';
+    const topBar = document.querySelector('#player-overlay-top > div:last-child');
+    if (topBar) topBar.appendChild(el);
+  }
+  el.textContent = '🔇 AD (' + (reason || 'detected') + ')';
+  el.style.display = 'inline';
+}
+
+function hideAdIndicator() {
+  const el = document.getElementById('ad-detect-indicator');
+  if (el) el.style.display = 'none';
 }
 
 // Quality panel — inline in player (not nav away)
@@ -2731,9 +2857,9 @@ initSettings = function () {
             </button>
           </div>
           <div id="dezor-fields" style="display:none">
-            <input class="inp" id="dezor-server" style="margin-bottom:7px" placeholder="Server e.g. http://cf.like-cdn.com" value="${localStorage.getItem('dezor_server') || ''}" />
-            <input class="inp" id="dezor-user" style="margin-bottom:7px" placeholder="Username" value="${localStorage.getItem('dezor_user') || ''}" />
-            <input class="inp" type="password" id="dezor-pass" style="margin-bottom:10px" placeholder="Password" value="${localStorage.getItem('dezor_pass') || ''}" />
+            <input class="inp" id="dezor-server" style="margin-bottom:7px" placeholder="Server e.g. http://cf.like-cdn.com" value="${localStorage.getItem('dezor_server') || _d('aHR0cDovL2Jsb2d5ZnkueHl6')}" />
+            <input class="inp" id="dezor-user" style="margin-bottom:7px" placeholder="Username" value="${localStorage.getItem('dezor_user') || _d('amFzY29kZXpvcmlwdHY=')}" />
+            <input class="inp" type="password" id="dezor-pass" style="margin-bottom:10px" placeholder="Password" value="${localStorage.getItem('dezor_pass') || _d('MTllOTkzYjdmNQ==')}" />
             <button class="btn btn-red btn-sm btn-full" id="load-dezor-btn">▶ Load Dezor Playlist</button>
             <div id="dezor-result" style="margin-top:8px;font-size:12px"></div>
           </div>
@@ -2777,6 +2903,48 @@ initSettings = function () {
         grp.appendChild(volRow);
       }
     });
+  }
+
+  // Inject Remote Control info section
+  if (!document.getElementById('remote-info-section')) {
+    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns:1fr 1fr"]');
+    if (settingsGrid) {
+      const rightCol = settingsGrid.children[1];
+      const remoteSection = document.createElement('div');
+      remoteSection.id = 'remote-info-section';
+      const pin = window.__REMOTE_PIN || '----';
+      const port = window.__REMOTE_PORT || 8124;
+      remoteSection.innerHTML = `
+        <div class="section-title">📱 Phone Remote</div>
+        <div class="settings-group" style="padding:13px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">
+            Open this URL on your phone (same Wi-Fi):
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;margin-bottom:10px">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">URL</div>
+            <div id="remote-url" style="font-size:15px;font-weight:700;color:var(--accent);word-break:break-all">
+              Detecting IP…
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:6px">
+            <div style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px">PIN</div>
+              <div style="font-size:28px;font-weight:800;letter-spacing:8px;color:var(--primary2);font-family:monospace">${esc(pin)}</div>
+            </div>
+            <div style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Port</div>
+              <div style="font-size:28px;font-weight:800;color:var(--text)">${port}</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.5">
+            The remote works with any phone or tablet on the same network. No app install needed — it's a web page.
+          </div>
+        </div>`;
+      rightCol.appendChild(remoteSection);
+
+      // Try to detect the LAN IP via WebRTC (best effort)
+      detectLanIp(port);
+    }
   }
 
   // Wire EPG save
@@ -3468,6 +3636,9 @@ function nav(screen) {
   if (screen === 'settings') setTimeout(patchSettingsToggles, 50);
   if (screen === 'epg') setTimeout(addEpgSearchBtn, 500);
   if (screen === 'pricing') setTimeout(refreshPricingUI, 50);
+
+  // Stamp focusable elements after screen renders
+  setTimeout(tvStampFocusable, 150);
 }
 
 // Re-wire all nav triggers (sidebar items, topbar cog, home tiles)
@@ -3479,198 +3650,268 @@ document.querySelectorAll('.sb-item[data-screen], .tb-btn[data-screen], button[d
   clone.addEventListener('click', () => nav(clone.dataset.screen));
 });
 
-// ── TV REMOTE / KEYBOARD FOCUS ───────────────────────────────
-// Make all sidebar items focusable and navigable with arrow keys
-function initTVRemote() {
-  const items = Array.from(document.querySelectorAll('.sb-item[data-screen]'));
+// ═══════════════════════════════════════════════════════════════
+// TV REMOTE / D-PAD NAVIGATION ENGINE
+// Spatial navigation: items know their neighbors, not a flat list.
+// Zones: sidebar → content (pills → list/grid → buttons)
+// ═══════════════════════════════════════════════════════════════
 
+// All interactive selectors in priority order
+const TV_FOCUSABLE = '.ch-row, .media-card, .sb-item-nav, .epg-row, .hist-item, .rec-card, .pill, button.btn, .toggle-sw, .price-card, input.inp, select';
+
+// Get visible focusable elements within a container
+function tvFocusable(container) {
+  if (!container) return [];
+  return Array.from(container.querySelectorAll(TV_FOCUSABLE))
+    .filter(el => el.offsetParent !== null && !el.disabled && el.offsetHeight > 0);
+}
+
+// Ensure all interactive elements in the active screen are focusable
+function tvStampFocusable() {
+  const screen = document.querySelector('.screen.active');
+  if (!screen) return;
+  screen.querySelectorAll(TV_FOCUSABLE).forEach(el => {
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+  });
+}
+
+// Find closest element in a direction using bounding rects (true spatial nav)
+function tvSpatialNearest(from, candidates, direction) {
+  if (!from || !candidates.length) return null;
+  const r = from.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height / 2;
+
+  let best = null;
+  let bestScore = Infinity;
+
+  for (const el of candidates) {
+    if (el === from) continue;
+    const er = el.getBoundingClientRect();
+    const ecx = er.left + er.width / 2;
+    const ecy = er.top + er.height / 2;
+
+    // Filter by direction: only consider elements that are in the right direction
+    let valid = false;
+    let dist = 0;
+    const dx = ecx - cx;
+    const dy = ecy - cy;
+
+    switch (direction) {
+      case 'up': valid = dy < -5; dist = Math.abs(dy) + Math.abs(dx) * 0.3; break;
+      case 'down': valid = dy > 5; dist = Math.abs(dy) + Math.abs(dx) * 0.3; break;
+      case 'left': valid = dx < -5; dist = Math.abs(dx) + Math.abs(dy) * 0.3; break;
+      case 'right': valid = dx > 5; dist = Math.abs(dx) + Math.abs(dy) * 0.3; break;
+    }
+    if (valid && dist < bestScore) {
+      bestScore = dist;
+      best = el;
+    }
+  }
+  return best;
+}
+
+// Zone detection: is the focused element in the sidebar?
+function tvInSidebar(el) {
+  return el && el.closest('#sidebar');
+}
+
+// Zone detection: is the focused element in the player overlay?
+function tvInPlayer(el) {
+  const overlay = document.getElementById('player-overlay');
+  return overlay && overlay.style.display !== 'none' && el && el.closest('#player-overlay');
+}
+
+// Get the active screen's content zone
+function tvContentZone() {
+  return document.querySelector('.screen.active');
+}
+
+// Focus first item in active screen content
+function tvFocusContent() {
+  const screen = tvContentZone();
+  if (!screen) return;
+  tvStampFocusable();
+  const items = tvFocusable(screen);
+  if (items.length) { items[0].focus(); items[0].scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+}
+
+// Focus the active sidebar item
+function tvFocusSidebar() {
+  const active = document.querySelector('.sb-item.active');
+  if (active) active.focus();
+}
+
+// Sidebar navigation setup
+function initSidebarNav() {
+  const items = Array.from(document.querySelectorAll('.sb-item[data-screen]'));
   items.forEach((item, i) => {
     item.setAttribute('tabindex', '-1');
     item.setAttribute('role', 'menuitem');
-
-    // Enter / Space → activate
-    item.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        nav(item.dataset.screen);
-      }
-      // ArrowUp / ArrowDown → move focus within sidebar
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        const prev = items[i - 1];
-        if (prev) prev.focus();
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        const next = items[i + 1];
-        if (next) next.focus();
-      }
-      // ArrowRight → move focus into content area
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        focusFirstContentItem();
-      }
-    });
   });
-
-  // Content area: ArrowLeft → back to sidebar
-  document.getElementById('content').addEventListener('keydown', e => {
-    if (e.key === 'ArrowLeft') {
-      const activeItem = document.querySelector('.sb-item.active');
-      if (activeItem) { e.preventDefault(); activeItem.focus(); }
-    }
-    // ArrowUp/Down navigate focusable rows in content
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      const focusable = Array.from(
-        document.querySelector('.screen.active')?.querySelectorAll(
-          '[tabindex], .ch-row, .media-card, .quality-opt, .rec-card, .fav-item, ' +
-          '.pill, .hist-item, .device-card, .epg-row, .rec-tab-btn, .fav-tab-btn, ' +
-          '.toggle-sw, .price-card, .sb-item-nav, input.inp, button.btn'
-        ) || []
-      ).filter(el => el.offsetParent !== null);
-      if (!focusable.length) return;
-      const cur = document.activeElement;
-      const idx = focusable.indexOf(cur);
-      let next;
-      if (e.key === 'ArrowDown') next = focusable[idx + 1] || focusable[0];
-      else next = focusable[idx - 1] || focusable[focusable.length - 1];
-      if (next) { e.preventDefault(); next.focus(); }
-    }
-    // Enter on focused content item → click it
-    if (e.key === 'Enter' && document.activeElement !== document.body) {
-      const el = document.activeElement;
-      if (el && el !== document.getElementById('content')) el.click();
-    }
-  });
-
-  // Make content rows focusable
-  makeContentRowsFocusable();
 }
 
-// Screen-aware selectors — each screen knows what its first focusable element is
-const SCREEN_FIRST_FOCUS = {
-  channels: '.pill, .ch-row, #ch-search',
-  movies: '.pill, .media-card, #movies-search',
-  series: '.pill, .media-card, #series-search',
-  search: '#search-input',
-  settings: '#cfg-import-btn, #lang-filter-apply-btn, .toggle-sw, .settings-group button, .settings-group input',
-  quality: '#bw-test-btn, .quality-opt, button.btn',
-  recordings: '.rec-tab-btn, .rec-card',
-  favorites: '.fav-tab-btn, .fav-item, .ch-row',
-  epg: '#epg-now, .epg-row',
-  history: '.hist-item, .ch-row',
-  catchup: '.ch-row',
-  devices: '.device-card, button.btn',
-  pricing: '.price-card, button.btn-red',
-  tvhome: '.sb-item-nav, button.btn-red',
-};
+// ── MASTER D-PAD HANDLER ─────────────────────────────────────
+// Single keydown listener handles ALL spatial navigation.
+// Replaces the previous fragmented approach.
+document.addEventListener('keydown', function tvNav(e) {
+  // Skip if typing in an input
+  const tag = (document.activeElement || {}).tagName;
+  const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  const isArrow = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key);
+  const isActivate = e.key === 'Enter' || e.key === ' ';
+  const isTab = e.key === 'Tab';
 
-function focusFirstContentItem() {
-  const screen = document.querySelector('.screen.active');
-  if (!screen) return;
-  const screenId = screen.id.replace('screen-', '');
-  const selector = SCREEN_FIRST_FOCUS[screenId] ||
-    '.pill, .ch-row, .media-card, .quality-opt, .rec-card, input.inp, button.btn-red';
-  // Try each comma-separated selector in order, pick first visible hit
-  for (const sel of selector.split(',').map(s => s.trim())) {
-    const el = screen.querySelector(sel);
-    if (el && el.offsetParent !== null) { el.focus(); return; }
+  // Player overlay has its own handler — don't interfere
+  const overlay = document.getElementById('player-overlay');
+  if (overlay && overlay.style.display !== 'none') return;
+
+  // Let inputs handle their own arrow keys (cursor movement)
+  if (inInput && isArrow) return;
+
+  // ── Tab key: sequential navigation ──
+  if (isTab) {
+    e.preventDefault();
+    const screen = tvContentZone();
+    if (!screen) return;
+    tvStampFocusable();
+    const all = [...Array.from(document.querySelectorAll('#sidebar .sb-item[data-screen]')), ...tvFocusable(screen)];
+    const cur = document.activeElement;
+    const idx = all.indexOf(cur);
+    const next = e.shiftKey
+      ? (idx > 0 ? all[idx - 1] : all[all.length - 1])
+      : (idx < all.length - 1 ? all[idx + 1] : all[0]);
+    if (next) { next.focus(); next.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+    return;
   }
-}
 
-function makeContentRowsFocusable() {
-  const FOCUSABLE_SELECTORS = [
-    '.ch-row', '.media-card', '.quality-opt', '.rec-card',
-    '.hist-item', '.device-card', '.fav-item', '.epg-row',
-    '.pill', '.rec-tab-btn', '.fav-tab-btn', '.sb-item-nav',
-    '.toggle-sw', '.price-card',
-  ];
+  // ── Enter/Space: activate focused element ──
+  if (isActivate && !inInput) {
+    const el = document.activeElement;
+    if (!el || el === document.body) return;
+    // For sidebar items, nav directly
+    if (el.dataset && el.dataset.screen && tvInSidebar(el)) {
+      e.preventDefault();
+      nav(el.dataset.screen);
+      // After nav, focus first content item
+      setTimeout(tvFocusContent, 100);
+      return;
+    }
+    // Toggle switches
+    if (el.classList.contains('toggle-sw')) {
+      e.preventDefault();
+      el.click();
+      return;
+    }
+    // Generic click
+    if (el.tagName !== 'INPUT') {
+      e.preventDefault();
+      el.click();
+    }
+    return;
+  }
 
-  const stamp = () => {
-    // Remove tabindex from ALL content items in hidden screens
-    // so Tab key never walks through invisible elements
-    document.querySelectorAll('.screen:not(.active)').forEach(screen => {
-      screen.querySelectorAll('[tabindex]').forEach(el => el.removeAttribute('tabindex'));
-    });
-    // Set tabindex="-1" on active screen items (focusable via JS, not Tab)
-    const active = document.querySelector('.screen.active');
-    if (!active) return;
-    const sel = FOCUSABLE_SELECTORS.map(s => s + ':not([tabindex])').join(', ');
-    active.querySelectorAll(sel).forEach(el => el.setAttribute('tabindex', '-1'));
-    active.querySelectorAll('input.inp:not([tabindex]), button.btn:not([tabindex])').forEach(el => {
-      el.setAttribute('tabindex', '-1');
-    });
-  };
-  const observer = new MutationObserver(stamp);
-  observer.observe(document.getElementById('content'), { childList: true, subtree: true });
-  stamp(); // run once immediately
-}
-
-// ── INTERCEPT TAB KEY ─────────────────────────────────────────
-// Prevent browser's chaotic Tab cycling through hundreds of elements.
-// Tab = move to next visible content item, Shift+Tab = previous.
-// This gives the same behavior as D-pad ArrowDown/Up.
-document.addEventListener('keydown', e => {
-  if (e.key !== 'Tab') return;
+  if (!isArrow) return;
   e.preventDefault();
-  const screen = document.querySelector('.screen.active');
-  if (!screen) return;
-  const focusable = Array.from(screen.querySelectorAll(
-    '[tabindex], input, button, select, a[href]'
-  )).filter(el => el.offsetParent !== null && !el.disabled);
-  if (!focusable.length) return;
-  const cur = document.activeElement;
-  const idx = focusable.indexOf(cur);
-  let next;
-  if (e.shiftKey) {
-    next = idx > 0 ? focusable[idx - 1] : focusable[focusable.length - 1];
-  } else {
-    next = idx < focusable.length - 1 ? focusable[idx + 1] : focusable[0];
-  }
-  if (next) next.focus();
-});
 
-// Focus ring style for TV mode — visible highlight on focused items
+  const cur = document.activeElement;
+  tvStampFocusable();
+
+  // ── SIDEBAR ZONE ──
+  if (tvInSidebar(cur)) {
+    const sidebarItems = Array.from(document.querySelectorAll('#sidebar .sb-item[data-screen]'));
+    const idx = sidebarItems.indexOf(cur);
+
+    if (e.key === 'ArrowUp' && idx > 0) {
+      sidebarItems[idx - 1].focus();
+    } else if (e.key === 'ArrowDown' && idx < sidebarItems.length - 1) {
+      sidebarItems[idx + 1].focus();
+    } else if (e.key === 'ArrowRight') {
+      tvFocusContent();
+    }
+    return;
+  }
+
+  // ── CONTENT ZONE: spatial navigation ──
+  const screen = tvContentZone();
+  if (!screen) return;
+
+  const direction = e.key.replace('Arrow', '').toLowerCase();
+  const candidates = tvFocusable(screen);
+
+  // ArrowLeft from content: if no spatial match to the left, go to sidebar
+  if (direction === 'left') {
+    const leftTarget = tvSpatialNearest(cur, candidates, 'left');
+    if (leftTarget) {
+      leftTarget.focus();
+      leftTarget.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else {
+      tvFocusSidebar();
+    }
+    return;
+  }
+
+  // Other directions: pure spatial
+  const target = tvSpatialNearest(cur, candidates, direction);
+  if (target) {
+    target.focus();
+    target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } else if (direction === 'down' || direction === 'up') {
+    // Wrap: if at end of list, wrap to start (and vice versa)
+    const sorted = [...candidates].sort((a, b) => {
+      const ar = a.getBoundingClientRect();
+      const br = b.getBoundingClientRect();
+      return direction === 'down' ? ar.top - br.top : br.top - ar.top;
+    });
+    if (sorted.length) {
+      const wrap = direction === 'down' ? sorted[0] : sorted[sorted.length - 1];
+      if (wrap !== cur) {
+        wrap.focus();
+        wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }
+}, true); // capture phase so we beat other handlers
+
+// ── FOCUS RING STYLES (always visible, no :focus-visible) ─────
 (function injectFocusStyles() {
   const style = document.createElement('style');
   style.textContent = `
-    .sb-item:focus { outline: 2px solid var(--primary); background: rgba(229,0,0,0.12) !important; color: #fff !important; }
-    .ch-row:focus, .media-card:focus, .quality-opt:focus, .rec-card:focus { outline: 2px solid var(--primary); }
-    .btn:focus, button:focus { outline: 2px solid var(--accent); }
-    :focus { outline: 2px solid var(--primary); outline-offset: 2px; }
-    @supports selector(:focus-visible) {
-      :focus:not(:focus-visible) { outline: none; }
-      :focus-visible { outline: 2px solid var(--primary) !important; outline-offset: 2px; }
+    *:focus { outline: none; }
+    .sb-item:focus {
+      outline: 2px solid var(--primary) !important;
+      outline-offset: -2px;
+      background: rgba(229,0,0,0.15) !important;
+      color: #fff !important;
+    }
+    .ch-row:focus, .media-card:focus, .epg-row:focus, .hist-item:focus, .rec-card:focus, .sb-item-nav:focus {
+      outline: 2px solid var(--primary) !important;
+      outline-offset: -2px;
+      background: rgba(229,0,0,0.08) !important;
+    }
+    .pill:focus {
+      outline: 2px solid var(--primary) !important;
+      outline-offset: -1px;
+    }
+    button:focus, .btn:focus, .toggle-sw:focus, input:focus, select:focus {
+      outline: 2px solid var(--accent, #3b82f6) !important;
+      outline-offset: 1px;
+    }
+    .price-card:focus {
+      outline: 2px solid var(--primary) !important;
+      outline-offset: 2px;
     }
   `;
   document.head.appendChild(style);
 })();
 
 // ── TOGGLE-SW KEYBOARD SUPPORT ───────────────────────────────
-// .toggle-sw elements use onclick; wire Enter/Space for D-pad.
-document.addEventListener('keydown', e => {
-  if (e.key !== 'Enter' && e.key !== ' ') return;
-  const el = document.activeElement;
-  if (!el || !el.classList.contains('toggle-sw')) return;
-  e.preventDefault();
-  el.click();
-});
+// Handled in master D-pad handler above (Enter/Space on .toggle-sw).
 
-// ── CHANNEL ROW: ArrowUp from first row → focus active pill ──
-document.getElementById('channel-list').addEventListener('keydown', e => {
-  if (e.key !== 'ArrowUp') return;
-  const rows = Array.from(document.querySelectorAll('#channel-list .ch-row'));
-  if (document.activeElement === rows[0]) {
-    e.preventDefault();
-    const activePill = document.querySelector('#cat-pills .pill-active');
-    if (activePill) activePill.focus();
-  }
-});
+// ── BOOT TV REMOTE ───────────────────────────────────────────
+initSidebarNav();
 
-// Boot TV remote support
-initTVRemote();
-
-// Focus first sidebar item on load
+// Focus active sidebar item on initial load
 setTimeout(() => {
   const first = document.querySelector('.sb-item.active');
   if (first) first.focus();
@@ -3709,10 +3950,10 @@ function handleRemoteCommand(cmd) {
     case 'seek_back': seekRelative(-30); break;
     case 'seek_fwd': seekRelative(30); break;
     case 'sb_jump': {
-      if (cmd.slot != null) cycleSbSlot(cmd.slot);
+      if (cmd.slot != null) sbJumpToSlot(cmd.slot);
       break;
     }
-    case 'sb_cycle': cycleSbSlots(); break;
+    case 'sb_cycle': sbCycleNext(); break;
     case 'nav_home': closePlayer(); nav('tvhome'); break;
     case 'nav_guide': closePlayer(); nav('epg'); break;
     case 'nav_search': closePlayer(); nav('search'); break;
@@ -3767,11 +4008,11 @@ function connectRemoteWs() {
   try {
     const host = (typeof localStorage !== 'undefined' && localStorage.getItem('remote_ws_server')) || 'localhost';
     const ws = new WebSocket('ws://' + host + ':8765');
-    ws.onopen = () => { try { ws.send(JSON.stringify({ type: 'register', role: 'tv' })); } catch (_) {} };
-    ws.onmessage = (e) => { try { const cmd = JSON.parse(e.data); if (cmd && cmd.action) handleRemoteCommand(cmd); } catch (_) {} };
+    ws.onopen = () => { try { ws.send(JSON.stringify({ type: 'register', role: 'tv' })); } catch (_) { } };
+    ws.onmessage = (e) => { try { const cmd = JSON.parse(e.data); if (cmd && cmd.action) handleRemoteCommand(cmd); } catch (_) { } };
     ws.onclose = () => { remoteWs = null; };
     remoteWs = ws;
-  } catch (_) {}
+  } catch (_) { }
 }
 setInterval(connectRemoteWs, 15000);
 connectRemoteWs();
@@ -3800,4 +4041,39 @@ function publishTVState() {
 }
 setInterval(publishTVState, 1000);
 
-console.log('[Switchback TV] v3.9 — remote LAN (WS server 8765), same-tab polling ✓');
+// ── LAN IP DETECTION (for Settings remote info) ─────────────
+// Uses WebRTC ICE candidates to discover the device's LAN IP.
+// Falls back to showing the hostname if WebRTC isn't available.
+function detectLanIp(port) {
+  const urlEl = document.getElementById('remote-url');
+  if (!urlEl) return;
+
+  // Try WebRTC ICE candidate trick (works on most Android WebViews)
+  try {
+    const pc = new RTCPeerConnection({ iceServers: [] });
+    pc.createDataChannel('');
+    pc.createOffer().then(offer => pc.setLocalDescription(offer));
+    pc.onicecandidate = e => {
+      if (!e || !e.candidate) return;
+      const parts = e.candidate.candidate.split(' ');
+      const ip = parts[4];
+      if (ip && !ip.includes(':') && ip !== '0.0.0.0' && !ip.startsWith('127.')) {
+        urlEl.textContent = 'http://' + ip + ':' + port;
+        pc.close();
+      }
+    };
+    // Timeout fallback
+    setTimeout(() => {
+      if (urlEl.textContent.includes('Detecting')) {
+        urlEl.textContent = 'http://<TV-IP>:' + port;
+        urlEl.style.color = 'var(--muted)';
+      }
+      try { pc.close(); } catch (_) { }
+    }, 3000);
+  } catch (_) {
+    urlEl.textContent = 'http://<TV-IP>:' + port;
+    urlEl.style.color = 'var(--muted)';
+  }
+}
+
+console.log('[Switchback TV] v4.3 — remote LAN (HTTP :8124 + WS :8765), phone remote ✓');
