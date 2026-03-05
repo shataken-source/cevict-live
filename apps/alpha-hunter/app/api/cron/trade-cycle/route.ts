@@ -346,6 +346,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ── ROBINHOOD METALS (PAXG-USD gold proxy) ──────────────────────
+    // Position-aware: checks holdings, enforces max exposure, sells on TP/SL
     let rhMetalsExecuted = 0;
     try {
       const rh = new RobinhoodExchange();
@@ -354,66 +355,120 @@ export async function GET(req: NextRequest) {
         log(`[METALS] Signal: ${metalsSignal.direction ?? 'none'} | Gold=$${metalsSignal.goldPrice?.toLocaleString() ?? '?'} | Conf=${metalsSignal.confidence}%`);
         for (const r of metalsSignal.reasoning) log(`[METALS]   ${r}`);
 
-        if (metalsSignal.direction === 'long' && metalsSignal.confidence >= 60) {
-          // Check daily metals trade limit
-          const sb = getSupabase();
+        const RH_METALS_MAX_POSITION = parseFloat(process.env.RH_METALS_MAX_POSITION || '25'); // max $ in PAXG
+        const RH_METALS_TP_PCT = parseFloat(process.env.RH_METALS_TP_PCT || '3');   // take profit %
+        const RH_METALS_SL_PCT = parseFloat(process.env.RH_METALS_SL_PCT || '2');   // stop loss %
+        const sb = getSupabase();
+
+        // ── Step 1: Check current PAXG holdings ──
+        let paxgQty = 0;
+        let paxgCostBasis = 0;
+        let paxgCurrentValue = 0;
+        let paxgPnlPct = 0;
+        try {
+          const holdings = await rh.getHoldings(['PAXG']);
+          const paxg = holdings.find((h: any) => h.asset_code === 'PAXG');
+          if (paxg && paxg.total_quantity > 0) {
+            paxgQty = paxg.total_quantity;
+            paxgCostBasis = paxg.cost_basis; // total $ spent
+            paxgCurrentValue = paxgQty * (metalsSignal.goldPrice || 0);
+            paxgPnlPct = paxgCostBasis > 0 ? ((paxgCurrentValue - paxgCostBasis) / paxgCostBasis) * 100 : 0;
+            log(`[METALS] Holdings: ${paxgQty.toFixed(6)} PAXG | cost=$${paxgCostBasis.toFixed(2)} | value=$${paxgCurrentValue.toFixed(2)} | P/L=${paxgPnlPct >= 0 ? '+' : ''}${paxgPnlPct.toFixed(2)}%`);
+          } else {
+            log('[METALS] Holdings: no PAXG position');
+          }
+        } catch (e: any) {
+          log(`[METALS] Could not check holdings (WAF?): ${e.message}`);
+        }
+
+        // ── Step 2: SELL — take profit or stop loss on existing position ──
+        if (paxgQty > 0 && paxgCostBasis > 0) {
+          const shouldSell = paxgPnlPct >= RH_METALS_TP_PCT || paxgPnlPct <= -RH_METALS_SL_PCT;
+          const sellReason = paxgPnlPct >= RH_METALS_TP_PCT
+            ? `TAKE PROFIT: +${paxgPnlPct.toFixed(2)}% >= +${RH_METALS_TP_PCT}%`
+            : `STOP LOSS: ${paxgPnlPct.toFixed(2)}% <= -${RH_METALS_SL_PCT}%`;
+
+          if (shouldSell) {
+            log(`[METALS] ${sellReason} — selling ${paxgQty.toFixed(6)} PAXG ($${paxgCurrentValue.toFixed(2)})`);
+            try {
+              const sellOrder = await rh.marketSell('PAXG-USD', paxgQty);
+              const ok = sellOrder.state === 'filled' || sellOrder.state === 'confirmed' || sellOrder.state === 'queued' || sellOrder.state === 'open';
+              if (ok) {
+                rhMetalsExecuted++;
+                log(`[METALS] ✅ SOLD ${paxgQty.toFixed(6)} PAXG @ ~$${metalsSignal.goldPrice?.toLocaleString()} (${sellReason}, order ${sellOrder.id})`);
+                if (sb) {
+                  try {
+                    await sb.from('alpha_hunter_trades').insert({
+                      pair: 'PAXG-USD', side: 'sell', amount: paxgCurrentValue,
+                      price: metalsSignal.goldPrice || 0, platform: 'robinhood',
+                      confidence: metalsSignal.confidence,
+                      reasoning: `${sellReason}; ${metalsSignal.reasoning.slice(0, 2).join('; ')}`,
+                      opened_at: new Date().toISOString(), closed: true, sandbox: false,
+                    });
+                  } catch { /* non-fatal */ }
+                }
+                await smsAlerter.tradeExecuted('PAXG (Gold)', paxgCurrentValue, 'SELL', 'Robinhood');
+                // After selling, reset position tracking — don't buy in same cycle
+                paxgQty = 0;
+                paxgCurrentValue = 0;
+              } else {
+                log(`[METALS] ❌ PAXG SELL order state: ${sellOrder.state}`);
+              }
+            } catch (err: any) {
+              log(`[METALS] ❌ PAXG SELL error: ${err.message}`);
+            }
+          }
+        }
+
+        // ── Step 3: BUY — only if signal is long, under max position, and not just sold ──
+        if (metalsSignal.direction === 'long' && metalsSignal.confidence >= 60 && paxgCurrentValue < RH_METALS_MAX_POSITION) {
+          // Check daily trade limit + 30-min cooldown
           let metalsTradesToday = 0;
+          let lastMetalsTradeAge = Infinity;
           if (sb) {
             try {
               const { data } = await sb.from('alpha_hunter_trades')
-                .select('id')
+                .select('id, opened_at')
                 .eq('platform', 'robinhood')
                 .like('pair', '%PAXG%')
-                .gte('opened_at', `${getTodayCst()}T00:00:00`);
+                .gte('opened_at', `${getTodayCst()}T00:00:00`)
+                .order('opened_at', { ascending: false });
               metalsTradesToday = (data || []).length;
+              if (data && data.length > 0 && data[0].opened_at) {
+                lastMetalsTradeAge = (Date.now() - new Date(data[0].opened_at).getTime()) / 60000;
+              }
             } catch { /* ignore */ }
           }
 
           const RH_METALS_MAX_DAILY = parseInt(process.env.RH_METALS_MAX_DAILY || '2', 10);
           if (metalsTradesToday >= RH_METALS_MAX_DAILY) {
             log(`[METALS] Daily limit reached (${metalsTradesToday}/${RH_METALS_MAX_DAILY})`);
+          } else if (lastMetalsTradeAge < 30) {
+            log(`[METALS] Cooldown: last PAXG trade ${lastMetalsTradeAge.toFixed(0)}min ago (need 30min)`);
           } else {
-            // Check if PAXG-USD is tradable (assume yes if WAF-blocked — order will fail gracefully)
-            let paxgTradable = true;
-            try {
-              const pairs = await rh.getTradingPairs(['PAXG-USD']);
-              if (pairs && pairs.length > 0) {
-                paxgTradable = pairs.some((p: any) => p.symbol === 'PAXG-USD' && p.status === 'tradable');
-              }
-              // If pairs is empty (WAF-blocked), keep paxgTradable = true and let order attempt
-            } catch (e: any) {
-              log(`[METALS] Could not check PAXG tradability (WAF?): ${e.message} — attempting anyway`);
-            }
-
-            if (!paxgTradable) {
-              log('[METALS] PAXG-USD confirmed not tradable on Robinhood — skipping');
+            // Cap buy size to not exceed max position
+            const roomLeft = RH_METALS_MAX_POSITION - paxgCurrentValue;
+            const tradeSize = Math.min(metalsSignal.suggestedSize, roomLeft);
+            if (tradeSize < 1) {
+              log(`[METALS] Position $${paxgCurrentValue.toFixed(2)} near max $${RH_METALS_MAX_POSITION} — skipping buy`);
             } else {
-              const tradeSize = metalsSignal.suggestedSize;
               try {
                 const order = await rh.marketBuyWithPrice('PAXG-USD', tradeSize, metalsSignal.goldPrice!);
                 const ok = order.state === 'filled' || order.state === 'confirmed' || order.state === 'queued' || order.state === 'open';
                 if (ok) {
                   rhMetalsExecuted++;
-                  log(`[METALS] ✅ PAXG-USD BUY $${tradeSize} (conf ${metalsSignal.confidence}%, gold $${metalsSignal.goldPrice?.toLocaleString()}, order ${order.id})`);
-
-                  // Record to Supabase
+                  log(`[METALS] ✅ PAXG-USD BUY $${tradeSize} (conf ${metalsSignal.confidence}%, gold $${metalsSignal.goldPrice?.toLocaleString()}, position $${(paxgCurrentValue + tradeSize).toFixed(2)}/$${RH_METALS_MAX_POSITION}, order ${order.id})`);
                   if (sb) {
                     try {
                       await sb.from('alpha_hunter_trades').insert({
-                        pair: 'PAXG-USD',
-                        side: 'buy',
-                        amount: tradeSize,
-                        price: parseFloat(order.average_price || '0'),
-                        platform: 'robinhood',
+                        pair: 'PAXG-USD', side: 'buy', amount: tradeSize,
+                        price: parseFloat(order.average_price || '0'), platform: 'robinhood',
                         confidence: metalsSignal.confidence,
                         reasoning: metalsSignal.reasoning.join('; '),
-                        opened_at: new Date().toISOString(),
-                        closed: false,
-                        sandbox: false,
+                        opened_at: new Date().toISOString(), closed: false, sandbox: false,
                       });
                     } catch { /* non-fatal */ }
                   }
-
                   await smsAlerter.tradeExecuted('PAXG (Gold)', tradeSize, 'BUY', 'Robinhood');
                 } else {
                   log(`[METALS] ❌ PAXG-USD order state: ${order.state}`);
@@ -423,6 +478,8 @@ export async function GET(req: NextRequest) {
               }
             }
           }
+        } else if (metalsSignal.direction === 'long' && paxgCurrentValue >= RH_METALS_MAX_POSITION) {
+          log(`[METALS] Max position reached ($${paxgCurrentValue.toFixed(2)} >= $${RH_METALS_MAX_POSITION}) — holding, not buying`);
         }
       } else {
         log('[METALS] Robinhood not configured — skipping metals');

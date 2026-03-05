@@ -558,6 +558,28 @@ export class CryptoTrader {
     tradeLimiter.recordTrade(best.symbol, result.amount, 'crypto');
     this.dailyTrades++;
 
+    // Record to Supabase alpha_hunter_trades
+    try {
+      const { createClient } = require('@supabase/supabase-js');
+      const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (sbUrl && sbKey) {
+        const sb = createClient(sbUrl, sbKey);
+        await sb.from('alpha_hunter_trades').insert({
+          pair: `${best.symbol}-USD`,
+          side: best.direction === 'long' ? 'buy' : 'sell',
+          amount: result.amount,
+          price: result.price,
+          platform: 'coinbase',
+          confidence: best.confidence,
+          reasoning: best.reasoning.join('; '),
+          opened_at: new Date().toISOString(),
+          closed: false,
+          sandbox: false,
+        });
+      }
+    } catch { /* non-fatal */ }
+
     return {
       id: result.orderId,
       opportunityId: `crypto_${best.symbol}_${Date.now()}`,
