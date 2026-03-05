@@ -129,18 +129,9 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                // Inject remote server PIN + port so Settings screen can display it
-                if (remoteServer != null) {
-                    String rPin = remoteServer.getPin();
-                    int rPort = RemoteServer.getPort();
-                    String lanIp = getLanIp();
-                    String ipJs = lanIp != null ? "window.__LAN_IP='" + lanIp + "';" : "";
-                    String deviceId = getAndroidId();
-                    String devJs = deviceId != null ? "window.__DEVICE_ID='" + deviceId + "';" : "";
-                    view.evaluateJavascript(
-                            "window.__REMOTE_PIN='" + rPin + "';window.__REMOTE_PORT=" + rPort + ";" + ipJs + devJs,
-                            null);
-                }
+                // Native globals (__DEVICE_ID, __LAN_IP, __REMOTE_PIN, __REMOTE_PORT)
+                // are now injected synchronously via the Android JavascriptInterface
+                // added in onCreate — no need to inject them here.
                 if (pendingConfigCode != null) {
                     String code = pendingConfigCode.replace("\\", "\\\\")
                             .replace("'", "\\'");
@@ -344,6 +335,24 @@ public class MainActivity extends Activity {
             }
         } else {
             super.onActivityResult(requestCode, resultCode, data);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (webView != null) {
+            webView.onPause();
+            webView.pauseTimers();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null) {
+            webView.onResume();
+            webView.resumeTimers();
         }
     }
 

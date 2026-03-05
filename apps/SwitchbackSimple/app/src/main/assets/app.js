@@ -2,8 +2,8 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.9';
-const APP_BUILD = 51;
+const APP_VERSION = '5.9.1';
+const APP_BUILD = 52;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -47,9 +47,9 @@ const APP_BUILD = 51;
   document.addEventListener('focusout', e => {
     const el = e.target;
     if (!el.matches(TEXT_INPUTS)) return;
-    // Don't re-arm if we just blurred for the blur/refocus trick above
-    if (el._kbOpen) return;
-    el.setAttribute('inputmode', 'none');
+    // After blur, reset _kbOpen so next focus re-arms suppression
+    // (small delay to avoid interfering with the blur/refocus trick in openKeyboardOn)
+    setTimeout(() => { el._kbOpen = false; el.setAttribute('inputmode', 'none'); }, 100);
   });
 })();
 
@@ -243,7 +243,7 @@ document.getElementById('sb-toggle-btn').addEventListener('click', () => {
 // ── TV HOME ──────────────────────────────────────────────────
 function initTVHome() {
   const info = S.userInfo;
-  const chCount = S.allChannels.length || '47,393';
+  const chCount = S.allChannels.length ? S.allChannels.length.toLocaleString() : (S.liveCategories.length ? S.liveCategories.length + ' categories' : 'Loading…');
   const expires = info?.user_info?.exp_date
     ? new Date(info.user_info.exp_date * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     : '—';
@@ -592,11 +592,8 @@ function focusFirstChannelRow() {
 }
 
 function renderChannelList(list) {
-  // Delegate to the canonical version defined later in the file
-  // (canonical renderChannelList is assigned below via renderChannelList = function(...))
-  // This stub is intentionally minimal — the var-assignment below will override it
-  // when the script reaches that point. However if called before that point, we
-  // fall back to a basic render so the screen is never blank.
+  // Early fallback — overridden by the canonical version later in the file.
+  // Only used if renderChannelList is somehow called during initial script parse.
   const el = document.getElementById('channel-list');
   if (!el) return;
   if (!list || !list.length) { el.innerHTML = '<div style="color:var(--muted);padding:20px;font-size:13px">No channels found.</div>'; return; }
@@ -2131,7 +2128,8 @@ async function bootData() {
     api('get_live_streams').then(d => {
       if (Array.isArray(d)) {
         S.allChannels = assignChannelNumbers(d);
-        S.channelList = [];
+        // Only reset channelList if user hasn't selected a category yet
+        if (!S.channelList.length) S.channelList = [];
         const chSub2 = document.getElementById('channels-sub');
         if (chSub2) chSub2.textContent = `${S.allChannels.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
         if (S.currentScreen === 'tvhome') initTVHome();
@@ -3619,8 +3617,7 @@ async function loadDezorPlaylist() {
 // ═══════════════════════════════════════════════════════════════
 
 // renderChannelList — canonical version with channel number badge + now-playing EPG subtitle
-// Declared as var at top-level so the assignment is valid in all environments.
-if (typeof renderChannelList === 'undefined') var renderChannelList;
+// Overrides the early fallback stub declared via function declaration above.
 renderChannelList = function (list) {
   const el = document.getElementById('channel-list');
   if (!list.length) { el.innerHTML = '<div style="color:var(--muted);padding:20px;font-size:13px">No channels found.</div>'; return; }
@@ -3681,6 +3678,9 @@ renderChannelList = function (list) {
       toggleFav(ch, star);
     });
   });
+
+  // Wire long-press context menu (Switchback assign + fav toggle)
+  patchChRowLongPress(list);
 }
 
 function showToast(msg, duration = 2200) {
@@ -3895,15 +3895,8 @@ document.addEventListener('keydown', e => {
   showSwitchbackPanel();
 });
 
-// ── Long-press on ch-row shows SB assign context menu ────────
-// (Injected after renderChannelList wires its own long-press)
-// We hook into the existing long-press by patching renderChannelList post-hook.
-const _origRenderCL = typeof renderChannelList === 'function' ? renderChannelList : null;
-renderChannelList = function (list) {
-  if (_origRenderCL) _origRenderCL(list);
-  // After rows are rendered, patch long-press to show SB context menu
-  patchChRowLongPress(list);
-};
+// Long-press context menu (SB assign + fav) is now wired directly
+// inside the canonical renderChannelList — no wrapper needed.
 
 function patchChRowLongPress(list) {
   document.querySelectorAll('#channel-list .ch-row').forEach(row => {
@@ -4492,10 +4485,9 @@ function publishTVState() {
   };
   try { localStorage.setItem('sb_state', JSON.stringify(state)); } catch (_) { }
   // Push state to RemoteServer so /state endpoint returns live data
-  const pin = window.__REMOTE_PIN || '';
   const port = window.__REMOTE_PORT || 8124;
   try {
-    fetch('http://localhost:' + port + '/state-push?pin=' + pin, {
+    fetch('http://localhost:' + port + '/state-push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(state),
@@ -4743,24 +4735,14 @@ function initSetupScreen() {
   const urlEl = document.getElementById('setup-url');
   const qrEl = document.getElementById('setup-qr');
 
+  // __LAN_IP is set synchronously by Android JavascriptInterface at boot
   if (ip) {
     const url = 'http://' + ip + ':' + port + '#pin=' + pin;
     if (urlEl) urlEl.textContent = 'http://' + ip + ':' + port;
     renderQrInto(qrEl, url, 200);
   } else {
-    // IP not yet injected — wait a moment and retry (Java injects after page load)
-    if (urlEl) urlEl.textContent = 'Detecting network…';
-    setTimeout(() => {
-      const retryIp = window.__LAN_IP;
-      if (retryIp) {
-        const url = 'http://' + retryIp + ':' + port + '#pin=' + pin;
-        if (urlEl) urlEl.textContent = 'http://' + retryIp + ':' + port;
-        renderQrInto(qrEl, url, 200);
-      } else {
-        if (urlEl) { urlEl.textContent = 'http://<TV-IP>:' + port; urlEl.style.color = 'var(--muted)'; }
-        if (qrEl) qrEl.innerHTML = '<div style="color:#999;font-size:12px;padding:60px 20px">Could not detect IP.<br>Check TV network settings.</div>';
-      }
-    }, 1500);
+    if (urlEl) { urlEl.textContent = 'http://<TV-IP>:' + port; urlEl.style.color = 'var(--muted)'; }
+    if (qrEl) qrEl.innerHTML = '<div style="color:#999;font-size:12px;padding:60px 20px">Could not detect IP.<br>Check TV network settings.</div>';
   }
 }
 
@@ -4769,22 +4751,19 @@ function updateRemoteQr(url) {
   renderQrInto(document.getElementById('remote-qr'), url, 160);
 }
 
-function detectLanIp(port, _retries) {
+function detectLanIp(port) {
   const urlEl = document.getElementById('remote-url');
   if (!urlEl) return;
+  // __LAN_IP is set synchronously by Android JavascriptInterface at boot
   const ip = window.__LAN_IP;
   if (ip) {
     const url = 'http://' + ip + ':' + port;
     urlEl.textContent = url;
     updateRemoteQr(url);
-  } else if ((_retries || 0) < 3) {
-    // Java injects __LAN_IP in onPageFinished — may not be ready yet
-    urlEl.textContent = 'Detecting IP…';
-    setTimeout(() => detectLanIp(port, (_retries || 0) + 1), 2000);
   } else {
     urlEl.textContent = 'http://<TV-IP>:' + port;
     urlEl.style.color = 'var(--muted)';
   }
 }
 
-console.log('[Switchback TV] v4.5 — offline QR, Java IP detection, phone remote ✓');
+console.log('[Switchback TV] v' + APP_VERSION + ' — offline QR, Java IP detection, phone remote ✓');
