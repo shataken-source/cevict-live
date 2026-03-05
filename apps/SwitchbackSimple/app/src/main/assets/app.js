@@ -1866,16 +1866,30 @@ function showDeviceBlocked(deviceId, reason) {
   main.appendChild(overlay);
 }
 
+function splashStatus(msg) {
+  const el = document.getElementById('splash-status');
+  if (el) el.textContent = msg;
+}
+function hideSplash() {
+  const splash = document.getElementById('boot-splash');
+  if (!splash) return;
+  splash.style.transition = 'opacity 0.4s ease';
+  splash.style.opacity = '0';
+  setTimeout(() => splash.remove(), 500);
+}
+
 async function bootData() {
+  splashStatus('Checking device license...');
   // ── DEVICE LICENSE CHECK (must pass before anything loads) ──
   const licensed = await checkDeviceLicense();
-  if (!licensed) return;
+  if (!licensed) { hideSplash(); return; }
 
   // If no credentials at all, go straight to Settings for manual entry / config import.
   // The pairing API (pair-create/pair-poll) requires a backend that doesn't exist yet,
   // so we skip the broken pairing screen entirely.
   if (!S.server || !S.user || !S.pass) {
     if (DEFAULT_PROVIDER.server && DEFAULT_PROVIDER.username && DEFAULT_PROVIDER.password) {
+      splashStatus('Applying provider credentials...');
       console.log('[boot] No credentials — applying bundled default provider');
       S.server = DEFAULT_PROVIDER.server;
       S.user = DEFAULT_PROVIDER.username;
@@ -1885,6 +1899,7 @@ async function bootData() {
       localStorage.setItem('iptv_pass', S.pass);
     } else {
       console.log('[boot] No credentials — showing QR setup screen');
+      hideSplash();
       nav('setup');
       initSetupScreen();
       return;
@@ -1892,12 +1907,14 @@ async function bootData() {
   }
 
   try {
+    splashStatus('Authenticating...');
     // User info first (fast) — also validates credentials
     const info = await api('get_user_info');
 
     // Check if auth succeeded
     if (info?.user_info?.auth === 0) {
       console.warn('[boot] IPTV credentials rejected by server');
+      hideSplash();
       initSettings();
       nav('settings');
       const statusEl = document.getElementById('creds-test-result');
@@ -1911,6 +1928,7 @@ async function bootData() {
     S.userInfo = info;
     renderAccountInfo(info);
 
+    splashStatus('Loading channels...');
     // Channels + categories in parallel
     const [cats, streams] = await Promise.allSettled([
       api('get_live_categories'),
@@ -1932,15 +1950,20 @@ async function bootData() {
     const chSub = document.getElementById('channels-sub');
     if (chSub) chSub.textContent = `${S.allChannels.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
 
+    splashStatus('Loading movies & series...');
     // VOD + Series in background (non-blocking)
     api('get_vod_categories').then(d => { if (Array.isArray(d)) S.vodCategories = d; }).catch(() => { });
     api('get_vod_streams').then(d => { if (Array.isArray(d)) S.allVod = d; }).catch(() => { });
     api('get_series_categories').then(d => { if (Array.isArray(d)) S.seriesCategories = d; }).catch(() => { });
     api('get_series').then(d => { if (Array.isArray(d)) S.allSeries = d; }).catch(() => { });
 
+    // Hide splash after channels are loaded
+    hideSplash();
+
   } catch (e) {
     console.warn('[boot]', e.message);
     // Connection failed — likely server is down or wrong URL
+    hideSplash();
     initSettings();
     nav('settings');
     const statusEl = document.getElementById('creds-test-result');
