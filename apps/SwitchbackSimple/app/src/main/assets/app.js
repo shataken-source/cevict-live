@@ -2,8 +2,6 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.4';
-const APP_BUILD = 46;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -261,13 +259,8 @@ function initTVHome() {
         <div data-screen="catchup"    class="sb-item-nav tile"><div style="font-size:24px;margin-bottom:5px">⏪</div><div style="font-size:13px;font-weight:700">Catch-Up</div></div>
       </div>
     </div>`;
-  document.querySelectorAll('.sb-item-nav[data-screen]').forEach(el => {
-    el.setAttribute('tabindex', '-1');
-    el.addEventListener('click', () => nav(el.dataset.screen));
-  });
-  // Focus the first tile for immediate D-pad navigation
-  const firstTile = document.querySelector('#tvhome-content .sb-item-nav[data-screen]');
-  if (firstTile) setTimeout(() => firstTile.focus(), 100);
+  document.querySelectorAll('.sb-item-nav[data-screen]').forEach(el =>
+    el.addEventListener('click', () => nav(el.dataset.screen)));
 }
 
 // ── LANGUAGE / COUNTRY CHANNEL FILTER ────────────────────────
@@ -358,12 +351,11 @@ function renderLangFilterUI() {
       // Re-filter and reload channels + refresh category dropdown
       if (S.allChannels.length) {
         const catSel = document.getElementById('cat-select');
-        if (catSel) catSel.value = '';
-        S.channelList = [];
+        if (catSel) catSel.value = ''; // reset to All
+        S.channelList = applyLangFilter(S.allChannels);
         renderChannelCats();
-        const visCount = applyLangFilter(S.allChannels).length;
         const statusEl = document.getElementById('lang-filter-status');
-        if (statusEl) statusEl.textContent = `Showing ${visCount.toLocaleString()} of ${S.allChannels.length.toLocaleString()} channels`;
+        if (statusEl) statusEl.textContent = `Showing ${S.channelList.length.toLocaleString()} of ${S.allChannels.length.toLocaleString()} channels`;
       }
       showToast('Filters applied ✓');
     });
@@ -378,7 +370,7 @@ function renderLangFilterUI() {
       if (S.allChannels.length) {
         const catSel = document.getElementById('cat-select');
         if (catSel) catSel.value = '';
-        S.channelList = [];
+        S.channelList = applyLangFilter(S.allChannels);
         renderChannelCats();
       }
       renderLangFilterUI();
@@ -475,6 +467,7 @@ function clearAllData() {
 
 async function initChannels() {
   if (S.allChannels.length) {
+    S.channelList = applyLangFilter(S.allChannels);
     renderChannelCats();
     return;
   }
@@ -486,10 +479,9 @@ async function initChannels() {
     ]);
     S.liveCategories = Array.isArray(cats) ? cats : [];
     S.allChannels = Array.isArray(streams) ? streams : [];
-    const visibleCount = applyLangFilter(S.allChannels).length;
+    S.channelList = applyLangFilter(S.allChannels);
     document.getElementById('channels-sub').textContent =
-      `${visibleCount.toLocaleString()} channels · ${S.liveCategories.length} categories`;
-    S.channelList = []; // empty until user picks a category
+      `${S.channelList.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
     renderChannelCats();
   } catch (e) {
     document.getElementById('channel-list').innerHTML =
@@ -507,9 +499,9 @@ function renderChannelCats() {
     const cid = ch.category_id || '';
     catCount[cid] = (catCount[cid] || 0) + 1;
   });
-  sel.innerHTML = `<option value="">Select a Category (${filtered.length} channels)</option>` +
+  sel.innerHTML = `<option value="">All Categories (${filtered.length})</option>` +
     S.liveCategories
-      .filter(c => catCount[c.category_id] > 0)
+      .filter(c => catCount[c.category_id] > 0) // hide empty categories
       .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
       .join('');
   // Wire change event (only once)
@@ -517,29 +509,13 @@ function renderChannelCats() {
     sel._wired = true;
     sel.addEventListener('change', () => {
       const catId = sel.value;
-      if (!catId) {
-        S.channelList = [];
-        showCategoryPrompt();
-        return;
-      }
-      const base = S.allChannels.filter(c => c.category_id == catId);
+      const base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
       S.channelList = applyLangFilter(base);
       document.getElementById('ch-search').value = '';
       renderChannelList(S.channelList);
     });
   }
-  // Don't render all channels — show prompt until user picks a category
-  showCategoryPrompt();
-}
-
-function showCategoryPrompt() {
-  const el = document.getElementById('channel-list');
-  if (!el) return;
-  el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
-    <div style="font-size:48px;margin-bottom:12px">📡</div>
-    <div style="font-size:15px;font-weight:600;margin-bottom:6px">Select a category to browse channels</div>
-    <div style="font-size:12px">Use the dropdown above to pick a category</div>
-  </div>`;
+  renderChannelList(S.channelList);
 }
 
 function focusFirstChannelRow() {
@@ -563,12 +539,10 @@ function renderChannelList(list) {
 document.getElementById('ch-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
   const catId = document.getElementById('cat-select')?.value || '';
-  if (!catId && !q) { showCategoryPrompt(); return; }
-  // If searching with no category, search ALL channels
   const base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
   const langFiltered = applyLangFilter(base);
   const filtered = q ? langFiltered.filter(c => c.name.toLowerCase().includes(q)) : langFiltered;
-  S.channelList = langFiltered;
+  S.channelList = langFiltered; // keep channelList in sync for player navigation
   renderChannelList(filtered);
 });
 
@@ -601,7 +575,7 @@ function renderMovieCats() {
   // Count per category
   const catCount = {};
   S.allVod.forEach(v => { const cid = v.category_id || ''; catCount[cid] = (catCount[cid] || 0) + 1; });
-  sel.innerHTML = `<option value="">Select a Category (${S.allVod.length} movies)</option>` +
+  sel.innerHTML = `<option value="">All Categories (${S.allVod.length})</option>` +
     S.vodCategories
       .filter(c => catCount[c.category_id] > 0)
       .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
@@ -610,13 +584,12 @@ function renderMovieCats() {
     sel._wired = true;
     sel.addEventListener('change', () => {
       const catId = sel.value;
-      if (!catId) { showVodCategoryPrompt('movies-grid', '🎬', 'movies'); return; }
-      const list = S.allVod.filter(v => v.category_id == catId);
+      const list = catId ? S.allVod.filter(v => v.category_id == catId) : S.allVod;
       document.getElementById('movies-search').value = '';
       renderVodGrid('movies-grid', list, 'vod');
     });
   }
-  showVodCategoryPrompt('movies-grid', '🎬', 'movies');
+  renderVodGrid('movies-grid', S.allVod, 'vod');
 }
 
 function renderVodGrid(containerId, list, type) {
@@ -697,7 +670,7 @@ function renderSeriesCats() {
   if (!sel) return;
   const catCount = {};
   S.allSeries.forEach(s => { const cid = s.category_id || ''; catCount[cid] = (catCount[cid] || 0) + 1; });
-  sel.innerHTML = `<option value="">Select a Category (${S.allSeries.length} series)</option>` +
+  sel.innerHTML = `<option value="">All Categories (${S.allSeries.length})</option>` +
     S.seriesCategories
       .filter(c => catCount[c.category_id] > 0)
       .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
@@ -706,13 +679,12 @@ function renderSeriesCats() {
     sel._wired = true;
     sel.addEventListener('change', () => {
       const catId = sel.value;
-      if (!catId) { showVodCategoryPrompt('series-grid', '🎭', 'series'); return; }
-      const list = S.allSeries.filter(s => s.category_id == catId);
+      const list = catId ? S.allSeries.filter(s => s.category_id == catId) : S.allSeries;
       document.getElementById('series-search').value = '';
       renderVodGrid('series-grid', list, 'series');
     });
   }
-  showVodCategoryPrompt('series-grid', '🎭', 'series');
+  renderVodGrid('series-grid', S.allSeries, 'series');
 }
 
 async function openSeriesDetail(seriesId) {
@@ -737,28 +709,16 @@ async function openSeriesDetail(seriesId) {
   }
 }
 
-function showVodCategoryPrompt(containerId, emoji, label) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted);grid-column:1/-1">
-    <div style="font-size:48px;margin-bottom:12px">${emoji}</div>
-    <div style="font-size:15px;font-weight:600;margin-bottom:6px">Select a category to browse ${label}</div>
-    <div style="font-size:12px">Use the dropdown above to pick a category</div>
-  </div>`;
-}
-
 // search within movies/series — respects selected category
 document.getElementById('movies-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
   const catId = document.getElementById('movies-cat-select')?.value || '';
-  if (!catId && !q) { showVodCategoryPrompt('movies-grid', '🎬', 'movies'); return; }
   const base = catId ? S.allVod.filter(v => v.category_id == catId) : S.allVod;
   renderVodGrid('movies-grid', q ? base.filter(v => (v.name || '').toLowerCase().includes(q)) : base, 'vod');
 });
 document.getElementById('series-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
   const catId = document.getElementById('series-cat-select')?.value || '';
-  if (!catId && !q) { showVodCategoryPrompt('series-grid', '🎭', 'series'); return; }
   const base = catId ? S.allSeries.filter(s => s.category_id == catId) : S.allSeries;
   renderVodGrid('series-grid', q ? base.filter(s => (s.name || '').toLowerCase().includes(q)) : base, 'series');
 });
@@ -1216,10 +1176,9 @@ function openPlayer(ch, list, idx) {
     document.querySelectorAll('#player-overlay button, #player-overlay input[type=range]').forEach(el => {
       el.setAttribute('tabindex', '-1');
     });
+    const pp = document.getElementById('play-pause-btn');
+    if (pp) pp.focus();
   }, 150);
-
-  // Show overlay UI and start auto-hide timer
-  showPlayerUI();
 }
 
 let _playerErrTimer = null;
@@ -1243,36 +1202,6 @@ function showPlayerError(msg, duration) {
 function clearPlayerError() {
   const el = document.getElementById('player-error-msg');
   if (el) el.style.display = 'none';
-  const branded = document.getElementById('player-stream-error');
-  if (branded) branded.style.display = 'none';
-}
-
-function showStreamUnavailable(detail) {
-  clearPlayerUITimer(); // stop auto-hide — error stays until user acts
-  clearPlayerError();
-  let el = document.getElementById('player-stream-error');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'player-stream-error';
-    el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;' +
-      'justify-content:center;gap:18px;background:rgba(10,10,15,0.95);z-index:10002;pointer-events:none;';
-    el.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="80" height="80">
-        <defs><linearGradient id="eg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e50000"/><stop offset="100%" stop-color="#ff3a3a"/></linearGradient>
-        <linearGradient id="eg2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00c2ff"/><stop offset="100%" stop-color="#7c4dff"/></linearGradient></defs>
-        <rect x="10" y="10" width="180" height="180" rx="36" fill="#13131a" stroke="url(#eg2)" stroke-width="3"/>
-        <polygon points="78,55 78,145 152,100" fill="url(#eg1)" opacity="0.4"/>
-        <line x1="60" y1="60" x2="140" y2="140" stroke="#e50000" stroke-width="6" stroke-linecap="round"/>
-        <line x1="140" y1="60" x2="60" y2="140" stroke="#e50000" stroke-width="6" stroke-linecap="round"/>
-      </svg>
-      <div style="font-size:18px;font-weight:800;color:#fff">Stream Unavailable</div>
-      <div id="stream-error-detail" style="font-size:13px;color:#8b8b9e;max-width:340px;text-align:center"></div>
-      <div style="font-size:12px;color:#555;margin-top:8px">Press BACK to return · UP/DOWN to try another channel</div>`;
-    document.getElementById('player-overlay').appendChild(el);
-  }
-  el.style.display = 'flex';
-  const detailEl = el.querySelector('#stream-error-detail');
-  if (detailEl) detailEl.textContent = detail || 'This stream is not available right now. Try again later.';
 }
 
 function safePlay(video, onError) {
@@ -1350,7 +1279,7 @@ async function loadStream(ch) {
           : `/api/stream?url=${encodeURIComponent(tsRaw)}`;
         video.src = tsUrl;
         safePlay(video, function (err) {
-          showStreamUnavailable('Could not play this stream. Try again later.');
+          showPlayerError('Cannot play stream. Check your connection. (' + err.message + ')');
         });
       }
     });
@@ -1366,14 +1295,9 @@ async function loadStream(ch) {
       ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
       : `/api/stream?url=${encodeURIComponent(tsRaw)}`;
     safePlay(video, function (err) {
-      showStreamUnavailable('Stream unavailable. Try again later.');
+      showPlayerError('Stream unavailable. (' + err.message + ')');
     });
   }
-
-  // Catch video-level load errors (e.g. 404, network timeout)
-  video.onerror = function () {
-    showStreamUnavailable('This stream is not available right now. Try again later.');
-  };
 
   updateEPGBar(ch);
   fetchCurrentEPG(ch);
@@ -1409,12 +1333,6 @@ function closePlayer() {
   if (S.hlsInstance) { S.hlsInstance.destroy(); S.hlsInstance = null; }
   video.src = '';
   clearPlayerError();
-  clearPlayerUITimer();
-  // Reset UI opacity so it's visible next time player opens
-  ['player-overlay-top', 'player-overlay-bottom', 'player-controls'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
-  });
   document.getElementById('player-overlay').style.display = 'none';
   document.getElementById('topbar-title').textContent = TITLES[S.currentScreen] || S.currentScreen;
   // Stop ad detection polling
@@ -1451,47 +1369,8 @@ function seekRelative(secs) {
 function navigateChannel(delta) {
   const list = S.channelList;
   if (!list?.length) return;
-  // Clear stream error when switching channels
-  const streamErr = document.getElementById('player-stream-error');
-  if (streamErr) streamErr.style.display = 'none';
   const newIdx = ((S.currentChannelIndex + delta) + list.length) % list.length;
   openPlayer(list[newIdx], list, newIdx);
-}
-
-// ── PLAYER OVERLAY AUTO-HIDE ───────────────────────────────
-let _playerUITimer = null;
-const PLAYER_UI_TIMEOUT = 4000; // 4 seconds
-
-function isPlayerUIVisible() {
-  const top = document.getElementById('player-overlay-top');
-  return top && top.style.opacity !== '0';
-}
-
-function showPlayerUI() {
-  ['player-overlay-top', 'player-overlay-bottom', 'player-controls'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.style.transition = 'opacity 0.3s ease'; el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
-  });
-  resetPlayerUITimer();
-}
-
-function hidePlayerUI() {
-  // Don't auto-hide controls while stream error is showing — user needs to see instructions
-  const streamErr = document.getElementById('player-stream-error');
-  if (streamErr && streamErr.style.display !== 'none') return;
-  ['player-overlay-top', 'player-overlay-bottom', 'player-controls'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.style.transition = 'opacity 0.4s ease'; el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
-  });
-}
-
-function resetPlayerUITimer() {
-  if (_playerUITimer) clearTimeout(_playerUITimer);
-  _playerUITimer = setTimeout(hidePlayerUI, PLAYER_UI_TIMEOUT);
-}
-
-function clearPlayerUITimer() {
-  if (_playerUITimer) { clearTimeout(_playerUITimer); _playerUITimer = null; }
 }
 
 document.getElementById('next-ch-btn')?.addEventListener('click', () => navigateChannel(1));
@@ -1508,7 +1387,7 @@ S._screenHistory = [];
 document.addEventListener('keydown', e => {
   const tag = (document.activeElement || {}).tagName;
   const inInput = tag === 'INPUT' || tag === 'TEXTAREA';
-  const isBack = e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack'
+  const isBack = e.key === 'GoBack' || e.key === 'BrowserBack'
     || (e.key === 'Backspace' && !inInput);
   if (!isBack) return;
 
@@ -1584,71 +1463,54 @@ document.addEventListener('keydown', e => {
   const overlay = document.getElementById('player-overlay');
   if (!overlay || overlay.style.display === 'none') return;
   if (e.target.tagName === 'INPUT') return;
-
-  const uiVisible = isPlayerUIVisible();
-
-  // Back/Escape → close player (always works, UI visible or not)
+  // Back/Escape → close player (handled first so back key works in player)
   if (e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack') {
-    e.preventDefault(); clearPlayerUITimer(); closePlayer(); return;
+    e.preventDefault(); closePlayer(); return;
   }
-
-  // Enter/OK when UI is hidden → just show UI, don't activate anything
-  if ((e.key === 'Enter' || e.key === ' ') && !uiVisible) {
-    e.preventDefault(); showPlayerUI(); return;
-  }
-
   // Play/Pause — space bar, 'k', Enter on play button, or media key
   if (e.key === ' ' || e.key === 'k' || e.key === 'MediaPlayPause' || e.key === 'MediaPlay' || e.key === 'MediaStop') {
-    e.preventDefault(); showPlayerUI(); togglePlay(); return;
+    e.preventDefault(); togglePlay(); return;
   }
-  // Enter when UI is visible → activate focused button
-  if (e.key === 'Enter' && uiVisible) {
-    showPlayerUI(); // reset timer
-    return; // let default click handling work
-  }
-  if (e.key === 'm' || e.key === 'AudioVolumeMute') { showPlayerUI(); toggleMute(); return; }
+  if (e.key === 'm' || e.key === 'AudioVolumeMute') { toggleMute(); return; }
   // Volume up/down — hardware remote volume keys
   if (e.key === 'AudioVolumeUp') {
     e.preventDefault();
     const v = document.getElementById('player-video');
     if (v) { v.volume = Math.min(1, v.volume + 0.1); v.muted = false; }
-    showPlayerUI(); return;
+    return;
   }
   if (e.key === 'AudioVolumeDown') {
     e.preventDefault();
     const v = document.getElementById('player-video');
     if (v) v.volume = Math.max(0, v.volume - 0.1);
-    showPlayerUI(); return;
+    return;
   }
-  // Channel up/down — dedicated remote buttons (always work)
+  // Channel up/down — dedicated remote buttons
   if (e.key === 'ChannelUp' || e.key === 'PageUp') { e.preventDefault(); navigateChannel(-1); return; }
   if (e.key === 'ChannelDown' || e.key === 'PageDown') { e.preventDefault(); navigateChannel(1); return; }
-  // D-pad arrows — always perform action + show UI briefly
-  if (e.key === 'ArrowLeft') { e.preventDefault(); seekRelative(-10); showPlayerUI(); return; }
-  if (e.key === 'ArrowRight') { e.preventDefault(); seekRelative(10); showPlayerUI(); return; }
-  if (e.key === 'ArrowUp') { e.preventDefault(); navigateChannel(-1); return; }
-  if (e.key === 'ArrowDown') { e.preventDefault(); navigateChannel(1); return; }
+  // D-pad navigation
+  if (e.key === 'ArrowLeft') { e.preventDefault(); seekRelative(-10); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); seekRelative(10); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); navigateChannel(-1); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); navigateChannel(1); }
   // Numeric channel entry — type digits then auto-jump after 1.5s pause
   if (/^[0-9]$/.test(e.key)) {
     e.preventDefault();
     _numBuf += e.key;
     clearTimeout(_numTimer);
-    showPlayerUI();
     showPlayerError('Channel: ' + _numBuf);
     _numTimer = setTimeout(() => {
       const num = parseInt(_numBuf, 10);
       _numBuf = '';
       clearPlayerError();
       if (S.channelList?.length) {
+        // Try matching by channel number first, then by index
         const byNum = S.channelList.findIndex(c => parseInt(c.num, 10) === num || parseInt(c.stream_id, 10) === num);
         const idx = byNum >= 0 ? byNum : Math.min(num - 1, S.channelList.length - 1);
         if (idx >= 0 && idx < S.channelList.length) openPlayer(S.channelList[idx], S.channelList, idx);
       }
     }, 1500);
-    return;
   }
-  // Any other key → show UI
-  showPlayerUI();
 });
 
 function togglePlayerFav() {
@@ -1971,30 +1833,16 @@ function showDeviceBlocked(deviceId, reason) {
   main.appendChild(overlay);
 }
 
-function splashStatus(msg) {
-  const el = document.getElementById('splash-status');
-  if (el) el.textContent = msg;
-}
-function hideSplash() {
-  const splash = document.getElementById('boot-splash');
-  if (!splash) return;
-  splash.style.transition = 'opacity 0.4s ease';
-  splash.style.opacity = '0';
-  setTimeout(() => splash.remove(), 500);
-}
-
 async function bootData() {
-  splashStatus('Checking device license...');
   // ── DEVICE LICENSE CHECK (must pass before anything loads) ──
   const licensed = await checkDeviceLicense();
-  if (!licensed) { hideSplash(); return; }
+  if (!licensed) return;
 
   // If no credentials at all, go straight to Settings for manual entry / config import.
   // The pairing API (pair-create/pair-poll) requires a backend that doesn't exist yet,
   // so we skip the broken pairing screen entirely.
   if (!S.server || !S.user || !S.pass) {
     if (DEFAULT_PROVIDER.server && DEFAULT_PROVIDER.username && DEFAULT_PROVIDER.password) {
-      splashStatus('Applying provider credentials...');
       console.log('[boot] No credentials — applying bundled default provider');
       S.server = DEFAULT_PROVIDER.server;
       S.user = DEFAULT_PROVIDER.username;
@@ -2004,7 +1852,6 @@ async function bootData() {
       localStorage.setItem('iptv_pass', S.pass);
     } else {
       console.log('[boot] No credentials — showing QR setup screen');
-      hideSplash();
       nav('setup');
       initSetupScreen();
       return;
@@ -2012,14 +1859,12 @@ async function bootData() {
   }
 
   try {
-    splashStatus('Authenticating...');
     // User info first (fast) — also validates credentials
     const info = await api('get_user_info');
 
     // Check if auth succeeded
     if (info?.user_info?.auth === 0) {
       console.warn('[boot] IPTV credentials rejected by server');
-      hideSplash();
       initSettings();
       nav('settings');
       const statusEl = document.getElementById('creds-test-result');
@@ -2033,7 +1878,6 @@ async function bootData() {
     S.userInfo = info;
     renderAccountInfo(info);
 
-    splashStatus('Loading channels...');
     // Channels + categories in parallel
     const [cats, streams] = await Promise.allSettled([
       api('get_live_categories'),
@@ -2042,7 +1886,7 @@ async function bootData() {
     if (cats.status === 'fulfilled' && Array.isArray(cats.value)) S.liveCategories = cats.value;
     if (streams.status === 'fulfilled' && Array.isArray(streams.value)) {
       S.allChannels = assignChannelNumbers(streams.value);
-      S.channelList = []; // empty until user picks a category
+      S.channelList = applyLangFilter(S.allChannels);
     }
 
     // Update TV home with real counts
@@ -2055,20 +1899,15 @@ async function bootData() {
     const chSub = document.getElementById('channels-sub');
     if (chSub) chSub.textContent = `${S.allChannels.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
 
-    splashStatus('Loading movies & series...');
     // VOD + Series in background (non-blocking)
     api('get_vod_categories').then(d => { if (Array.isArray(d)) S.vodCategories = d; }).catch(() => { });
     api('get_vod_streams').then(d => { if (Array.isArray(d)) S.allVod = d; }).catch(() => { });
     api('get_series_categories').then(d => { if (Array.isArray(d)) S.seriesCategories = d; }).catch(() => { });
     api('get_series').then(d => { if (Array.isArray(d)) S.allSeries = d; }).catch(() => { });
 
-    // Hide splash after channels are loaded
-    hideSplash();
-
   } catch (e) {
     console.warn('[boot]', e.message);
     // Connection failed — likely server is down or wrong URL
-    hideSplash();
     initSettings();
     nav('settings');
     const statusEl = document.getElementById('creds-test-result');
@@ -2083,13 +1922,6 @@ async function bootData() {
 
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Show version everywhere
-  const verStr = `v${APP_VERSION} (build ${APP_BUILD})`;
-  const splashVer = document.getElementById('splash-version');
-  if (splashVer) splashVer.textContent = verStr;
-  const sbVer = document.getElementById('sb-version');
-  if (sbVer) sbVer.textContent = verStr;
-
   nav('tvhome');
   bootData();
   // Clock tick in player
@@ -3226,7 +3058,7 @@ initSettings = function () {
   if (!document.getElementById('remote-info-section')) {
     const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns:1fr 1fr"]');
     if (settingsGrid) {
-      const leftCol = settingsGrid.children[0];
+      const rightCol = settingsGrid.children[1];
       const remoteSection = document.createElement('div');
       remoteSection.id = 'remote-info-section';
       const pin = window.__REMOTE_PIN || '----';
@@ -3260,7 +3092,7 @@ initSettings = function () {
             Scan the QR code or type the URL on any phone/tablet on the same Wi-Fi. No app install needed.
           </div>
         </div>`;
-      leftCol.appendChild(remoteSection);
+      rightCol.appendChild(remoteSection);
 
       // Try to detect the LAN IP via WebRTC (best effort)
       detectLanIp(port);
@@ -4654,7 +4486,7 @@ function updateRemoteQr(url) {
   renderQrInto(document.getElementById('remote-qr'), url, 160);
 }
 
-function detectLanIp(port, _retries) {
+function detectLanIp(port) {
   const urlEl = document.getElementById('remote-url');
   if (!urlEl) return;
   const ip = window.__LAN_IP;
@@ -4662,10 +4494,6 @@ function detectLanIp(port, _retries) {
     const url = 'http://' + ip + ':' + port;
     urlEl.textContent = url;
     updateRemoteQr(url);
-  } else if ((_retries || 0) < 3) {
-    // Java injects __LAN_IP in onPageFinished — may not be ready yet
-    urlEl.textContent = 'Detecting IP…';
-    setTimeout(() => detectLanIp(port, (_retries || 0) + 1), 2000);
   } else {
     urlEl.textContent = 'http://<TV-IP>:' + port;
     urlEl.style.color = 'var(--muted)';
