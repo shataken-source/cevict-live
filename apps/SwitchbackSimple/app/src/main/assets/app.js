@@ -3308,7 +3308,7 @@ initSettings = function () {
   if (!document.getElementById('dezor-section')) {
     const dezorSection = document.createElement('div');
     dezorSection.id = 'dezor-section';
-    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns:1fr 1fr"]');
+    const settingsGrid = document.querySelector('#screen-settings [style*="flex-direction:column"]');
     if (settingsGrid) {
       const rightCol = settingsGrid.children[1];
       dezorSection.innerHTML = `
@@ -3371,7 +3371,7 @@ initSettings = function () {
 
   // Inject Remote Control info section
   if (!document.getElementById('remote-info-section')) {
-    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns:1fr 1fr"]');
+    const settingsGrid = document.querySelector('#screen-settings [style*="flex-direction:column"]');
     if (settingsGrid) {
       const rightCol = settingsGrid.children[1];
       const remoteSection = document.createElement('div');
