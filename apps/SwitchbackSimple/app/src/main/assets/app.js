@@ -1561,9 +1561,18 @@ function seekRelative(secs) {
 }
 
 function navigateChannel(delta) {
-  const list = S.channelList;
-  if (!list?.length) return;
-  const newIdx = ((S.currentChannelIndex + delta) + list.length) % list.length;
+  var list = S.channelList;
+  // Fall back to all filtered channels if no category list is active
+  // (e.g. opened from Favorites, History, or Search)
+  if (!list || !list.length) list = applyAllFilters(S.allChannels);
+  if (!list.length) return;
+  // If currentChannelIndex is out of bounds, find current channel in list
+  var idx = S.currentChannelIndex;
+  if (idx < 0 || idx >= list.length || !list[idx] || (S.currentChannel && list[idx].stream_id !== S.currentChannel.stream_id)) {
+    idx = S.currentChannel ? list.findIndex(function (c) { return c.stream_id === S.currentChannel.stream_id; }) : 0;
+    if (idx < 0) idx = 0;
+  }
+  var newIdx = ((idx + delta) + list.length) % list.length;
   openPlayer(list[newIdx], list, newIdx);
 }
 
@@ -1581,6 +1590,11 @@ function showPlayerUI() {
     const el = document.getElementById(id);
     if (el) { el.style.transition = 'opacity 0.3s ease'; el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
   });
+  // Auto-focus play/pause so D-pad has a starting point
+  var ppBtn = document.getElementById('play-pause-btn');
+  if (ppBtn && document.activeElement !== ppBtn && !document.activeElement.closest('#player-overlay')) {
+    ppBtn.focus();
+  }
   resetPlayerUITimer();
 }
 
@@ -1729,11 +1743,40 @@ document.addEventListener('keydown', e => {
   // Channel up/down — dedicated remote buttons (always work)
   if (e.key === 'ChannelUp' || e.key === 'PageUp') { e.preventDefault(); navigateChannel(-1); return; }
   if (e.key === 'ChannelDown' || e.key === 'PageDown') { e.preventDefault(); navigateChannel(1); return; }
-  // D-pad arrows — always perform action + show UI briefly
-  if (e.key === 'ArrowLeft') { e.preventDefault(); seekRelative(-10); showPlayerUI(); return; }
-  if (e.key === 'ArrowRight') { e.preventDefault(); seekRelative(10); showPlayerUI(); return; }
-  if (e.key === 'ArrowUp') { e.preventDefault(); navigateChannel(-1); return; }
-  if (e.key === 'ArrowDown') { e.preventDefault(); navigateChannel(1); return; }
+  // D-pad arrows — navigate between player buttons when UI is visible
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (!uiVisible) { showPlayerUI(); return; }
+    showPlayerUI(); // reset auto-hide timer
+    // Collect all focusable buttons in the player overlay
+    var topBtns = Array.from(document.querySelectorAll('#player-overlay-top button'));
+    var ctrlBtns = Array.from(document.querySelectorAll('#player-controls button, #player-controls input'));
+    var allBtns = topBtns.concat(ctrlBtns);
+    if (!allBtns.length) return;
+    var focused = document.activeElement;
+    var idx = allBtns.indexOf(focused);
+    if (e.key === 'ArrowLeft') {
+      if (idx <= 0) idx = allBtns.length - 1; else idx--;
+      allBtns[idx].focus();
+    } else if (e.key === 'ArrowRight') {
+      if (idx < 0 || idx >= allBtns.length - 1) idx = 0; else idx++;
+      allBtns[idx].focus();
+    } else if (e.key === 'ArrowUp') {
+      // Move from controls bar to top bar (or vice versa)
+      if (ctrlBtns.indexOf(focused) >= 0 && topBtns.length) {
+        topBtns[0].focus();
+      } else {
+        navigateChannel(-1);
+      }
+    } else if (e.key === 'ArrowDown') {
+      if (topBtns.indexOf(focused) >= 0 && ctrlBtns.length) {
+        ctrlBtns[0].focus();
+      } else {
+        navigateChannel(1);
+      }
+    }
+    return;
+  }
   // Numeric channel entry — type digits then auto-jump after 1.5s pause
   if (/^[0-9]$/.test(e.key)) {
     e.preventDefault();
