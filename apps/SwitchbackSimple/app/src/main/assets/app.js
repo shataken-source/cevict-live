@@ -1155,7 +1155,7 @@ async function loadCatchUpEPG(streamId, chans) {
 // ── PLAYER ────────────────────────────────────────────────────
 function openPlayer(ch, list, idx) {
   // ch can be a JSON string (from inline onclick) or object
-  if (typeof ch === 'string') { try { ch = JSON.parse(ch); } catch { } }
+  if (typeof ch === 'string') { try { ch = JSON.parse(ch); } catch (_) { } }
 
   // Track previous channel before switching (inlined from override)
   if (S.currentChannel && S.currentChannel.stream_id !== ch.stream_id) {
@@ -1939,24 +1939,7 @@ async function checkDeviceLicense() {
 }
 
 function showDeviceBlocked(deviceId, reason) {
-  // Hide everything and show a blocking overlay
-  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
-  document.getElementById('sidebar')?.setAttribute('style', 'display:none!important');
-  document.getElementById('topbar')?.setAttribute('style', 'display:none!important');
-  const main = document.getElementById('main-content') || document.body;
-  const overlay = document.createElement('div');
-  overlay.id = 'device-blocked';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;font-family:inherit;color:#fff';
-  overlay.innerHTML = `
-    <div style="font-size:72px;margin-bottom:20px">🔒</div>
-    <div style="font-size:24px;font-weight:800;margin-bottom:10px">Device Not Authorized</div>
-    <div style="font-size:14px;color:#999;max-width:400px;margin-bottom:24px;line-height:1.6">${reason}<br>Contact your provider with your Device ID to get activated.</div>
-    <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 28px;margin-bottom:16px">
-      <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Device ID</div>
-      <div style="font-size:18px;font-weight:700;font-family:monospace;letter-spacing:2px;color:#e50000">${deviceId}</div>
-    </div>
-    <div style="font-size:11px;color:#555">Switchback TV</div>`;
-  main.appendChild(overlay);
+  console.warn('[license] Device blocked: ' + deviceId + ' — ' + reason);
 }
 
 function splashStatus(msg) {
@@ -1972,10 +1955,11 @@ function hideSplash() {
 }
 
 async function bootData() {
-  splashStatus('Checking device license...');
-  // ── DEVICE LICENSE CHECK (must pass before anything loads) ──
-  const licensed = await checkDeviceLicense();
-  if (!licensed) { hideSplash(); return; }
+  splashStatus('Starting...');
+  // ── DEVICE LICENSE CHECK (fire-and-forget — never blocks boot) ──
+  checkDeviceLicense().catch(function (_) {
+    console.warn('[license] Check failed silently — allowing boot');
+  });
 
   // If no credentials at all, go straight to Settings for manual entry / config import.
   // The pairing API (pair-create/pair-poll) requires a backend that doesn't exist yet,
@@ -3295,7 +3279,7 @@ function parseProviderConfig(raw) {
         epg: j.epg || j.epg_url || null,
         provider: j.provider || null,
       };
-    } catch { }
+    } catch (_) { }
   }
   // 2. Xtream URL: http://server/username/password  (3-segment path)
   //    or  http://server/player_api.php?username=...&password=...
@@ -3311,7 +3295,7 @@ function parseProviderConfig(raw) {
     if (parts.length >= 2 && parts[0] && parts[1]) {
       return { server: `${u.protocol}//${u.host}`, user: parts[0], pass: parts[1], epg: null };
     }
-  } catch { }
+  } catch (_) { }
   // 3. M3U URL with username/password params
   if (s.includes('get.php') || s.includes('.m3u')) {
     try {
@@ -3321,7 +3305,7 @@ function parseProviderConfig(raw) {
       if (user && pass) {
         return { server: `${u2.protocol}//${u2.host}`, user, pass, epg: null };
       }
-    } catch { }
+    } catch (_) { }
   }
   // 4. Activation code: base64url-encoded JSON
   if (s.length > 20 && !s.includes(' ') && !s.startsWith('http')) {
@@ -3339,7 +3323,7 @@ function parseProviderConfig(raw) {
           };
         }
       }
-    } catch { }
+    } catch (_) { }
   }
   return null;
 }
