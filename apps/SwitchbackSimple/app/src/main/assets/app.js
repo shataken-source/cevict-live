@@ -286,7 +286,7 @@ const LANG_FILTER_GROUPS = [
 
 // Returns the set of category keyword groups the user has HIDDEN
 function getLangFilterHidden() {
-  try { return JSON.parse(localStorage.getItem('lang_filter_hidden') || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem('lang_filter_hidden') || '[]'); } catch (_) { return []; }
 }
 
 // Apply language filter to a channel list
@@ -311,6 +311,9 @@ function initSettings() {
   document.getElementById('cfg-pass').value = S.pass || '';
   if (S.userInfo) renderAccountInfo(S.userInfo);
   renderLangFilterUI();
+  // Show device ID
+  const devIdEl = document.getElementById('settings-device-id');
+  if (devIdEl && window.__DEVICE_ID) devIdEl.textContent = window.__DEVICE_ID;
 }
 
 function renderLangFilterUI() {
@@ -318,7 +321,7 @@ function renderLangFilterUI() {
   if (!listEl) return;
   const hidden = getLangFilterHidden();
   listEl.innerHTML = LANG_FILTER_GROUPS.map(g => `
-    <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;font-size:13px" tabindex="-1" role="checkbox" aria-checked="${hidden.includes(g.id)}">
+    <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;font-size:13px" tabindex="0" role="checkbox" aria-checked="${hidden.includes(g.id)}">
       <span style="width:18px;height:18px;border:2px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${hidden.includes(g.id) ? 'var(--primary)' : 'transparent'};font-size:11px">
         ${hidden.includes(g.id) ? '✓' : ''}
       </span>
@@ -567,20 +570,25 @@ async function initMovies() {
 }
 
 function renderMovieCats() {
-  const pills = document.getElementById('movies-cat-pills');
-  pills.innerHTML = `<button class="pill pill-active" data-vod-cat="">All</button>` +
-    S.vodCategories.slice(0, 16).map(c =>
-      `<button class="pill pill-inactive" data-vod-cat="${esc(c.category_id)}">${esc(c.category_name)}</button>`
-    ).join('');
-  pills.querySelectorAll('.pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      pills.querySelectorAll('.pill').forEach(p => p.className = 'pill pill-inactive');
-      btn.className = 'pill pill-active';
-      const catId = btn.dataset.vodCat;
+  const sel = document.getElementById('movies-cat-select');
+  if (!sel) return;
+  // Count per category
+  const catCount = {};
+  S.allVod.forEach(v => { const cid = v.category_id || ''; catCount[cid] = (catCount[cid] || 0) + 1; });
+  sel.innerHTML = `<option value="">All Categories (${S.allVod.length})</option>` +
+    S.vodCategories
+      .filter(c => catCount[c.category_id] > 0)
+      .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
+      .join('');
+  if (!sel._wired) {
+    sel._wired = true;
+    sel.addEventListener('change', () => {
+      const catId = sel.value;
       const list = catId ? S.allVod.filter(v => v.category_id == catId) : S.allVod;
+      document.getElementById('movies-search').value = '';
       renderVodGrid('movies-grid', list, 'vod');
     });
-  });
+  }
   renderVodGrid('movies-grid', S.allVod, 'vod');
 }
 
@@ -658,20 +666,24 @@ async function initSeries() {
 }
 
 function renderSeriesCats() {
-  const pills = document.getElementById('series-cat-pills');
-  pills.innerHTML = `<button class="pill pill-active" data-series-cat="">All</button>` +
-    S.seriesCategories.slice(0, 16).map(c =>
-      `<button class="pill pill-inactive" data-series-cat="${esc(c.category_id)}">${esc(c.category_name)}</button>`
-    ).join('');
-  pills.querySelectorAll('.pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      pills.querySelectorAll('.pill').forEach(p => p.className = 'pill pill-inactive');
-      btn.className = 'pill pill-active';
-      const catId = btn.dataset.seriesCat;
+  const sel = document.getElementById('series-cat-select');
+  if (!sel) return;
+  const catCount = {};
+  S.allSeries.forEach(s => { const cid = s.category_id || ''; catCount[cid] = (catCount[cid] || 0) + 1; });
+  sel.innerHTML = `<option value="">All Categories (${S.allSeries.length})</option>` +
+    S.seriesCategories
+      .filter(c => catCount[c.category_id] > 0)
+      .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
+      .join('');
+  if (!sel._wired) {
+    sel._wired = true;
+    sel.addEventListener('change', () => {
+      const catId = sel.value;
       const list = catId ? S.allSeries.filter(s => s.category_id == catId) : S.allSeries;
+      document.getElementById('series-search').value = '';
       renderVodGrid('series-grid', list, 'series');
     });
-  });
+  }
   renderVodGrid('series-grid', S.allSeries, 'series');
 }
 
@@ -697,14 +709,18 @@ async function openSeriesDetail(seriesId) {
   }
 }
 
-// search within movies/series
+// search within movies/series — respects selected category
 document.getElementById('movies-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
-  renderVodGrid('movies-grid', q ? S.allVod.filter(v => (v.name || '').toLowerCase().includes(q)) : S.allVod, 'vod');
+  const catId = document.getElementById('movies-cat-select')?.value || '';
+  const base = catId ? S.allVod.filter(v => v.category_id == catId) : S.allVod;
+  renderVodGrid('movies-grid', q ? base.filter(v => (v.name || '').toLowerCase().includes(q)) : base, 'vod');
 });
 document.getElementById('series-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
-  renderVodGrid('series-grid', q ? S.allSeries.filter(s => (s.name || '').toLowerCase().includes(q)) : S.allSeries, 'series');
+  const catId = document.getElementById('series-cat-select')?.value || '';
+  const base = catId ? S.allSeries.filter(s => s.category_id == catId) : S.allSeries;
+  renderVodGrid('series-grid', q ? base.filter(s => (s.name || '').toLowerCase().includes(q)) : base, 'series');
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -1068,7 +1084,7 @@ async function loadCatchUpEPG(streamId, chans) {
   document.getElementById('catchup-epg-title').textContent = `Programs — ${ch?.name || ''}`;
   const epgEl = document.getElementById('catchup-epg');
   epgEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
+  const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
   try {
     const fakeCh = { stream_id: streamId };
     const data = await fetchEpgForChannel(fakeCh);
@@ -1104,7 +1120,7 @@ async function loadCatchUpEPG(streamId, chans) {
 // ── PLAYER ────────────────────────────────────────────────────
 function openPlayer(ch, list, idx) {
   // ch can be a JSON string (from inline onclick) or object
-  if (typeof ch === 'string') { try { ch = JSON.parse(ch); } catch { } }
+  if (typeof ch === 'string') { try { ch = JSON.parse(ch); } catch (_) { } }
 
   // Track previous channel before switching (inlined from override)
   if (S.currentChannel && S.currentChannel.stream_id !== ch.stream_id) {
@@ -1734,7 +1750,79 @@ const DEFAULT_PROVIDER = {
   password: _d('MTllOTkzYjdmNQ=='),
 };
 
+// ── DEVICE LICENSE CHECK ─────────────────────────────────────
+// Checks ANDROID_ID against Supabase switchback_devices table.
+// Blocks app if device is not registered or revoked.
+const _SB_URL = 'https://rdbuwyefbgnbuhmjrizo.supabase.co';
+const _SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkYnV3eWVmYmduYnVobWpyaXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2Mjk4NzksImV4cCI6MjA3OTIwNTg3OX0.YZV-svCsqxaJaH7NGAa0FyW5F5VXrAwlQKAUon-FsLw';
+
+async function checkDeviceLicense() {
+  const deviceId = window.__DEVICE_ID;
+  if (!deviceId) {
+    // Running in browser (dev) or injection not ready — retry once after delay
+    await new Promise(r => setTimeout(r, 1500));
+    if (!window.__DEVICE_ID) {
+      console.warn('[license] No device ID available — allowing (dev mode)');
+      return true;
+    }
+  }
+  const did = window.__DEVICE_ID;
+
+  // Check localStorage cache (valid for 24h) so offline boot works
+  try {
+    const cache = JSON.parse(localStorage.getItem('_dev_lic') || '{}');
+    if (cache.id === did && cache.status === 'active' && cache.ts > Date.now() - 86400000) {
+      console.log('[license] Cached: active');
+      return true;
+    }
+  } catch (_) { }
+
+  try {
+    const res = await fetch(_SB_URL + '/rest/v1/rpc/check_switchback_device', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': _SB_ANON,
+        'Authorization': 'Bearer ' + _SB_ANON,
+      },
+      body: JSON.stringify({ p_device_id: did, p_version: '5.0' }),
+    });
+    if (!res.ok) {
+      console.warn('[license] Server error ' + res.status + ' — allowing (grace)');
+      return true; // don't block on server errors
+    }
+    const rows = await res.json();
+    if (rows && rows.length > 0 && rows[0].status === 'active') {
+      localStorage.setItem('_dev_lic', JSON.stringify({ id: did, status: 'active', ts: Date.now() }));
+      console.log('[license] Active: ' + (rows[0].label || did));
+      return true;
+    }
+    if (rows && rows.length > 0 && rows[0].status === 'revoked') {
+      console.warn('[license] REVOKED');
+      showDeviceBlocked(did, 'This device has been deactivated.');
+      return false;
+    }
+    // Not found — device not registered
+    console.warn('[license] Not registered: ' + did);
+    showDeviceBlocked(did, 'This device is not registered.');
+    return false;
+  } catch (e) {
+    console.warn('[license] Check failed: ' + e.message + ' — allowing (offline grace)');
+    return true; // don't block if offline
+  }
+}
+
+function showDeviceBlocked(deviceId, reason) {
+  // Non-blocking: just log it — don't hide the UI
+  console.warn('[license] Device blocked: ' + deviceId + ' — ' + reason);
+}
+
 async function bootData() {
+  // ── DEVICE LICENSE CHECK (informational only — never blocks boot) ──
+  checkDeviceLicense().catch(function (_) {
+    console.warn('[license] Check failed silently — allowing boot');
+  });
+
   // If no credentials at all, go straight to Settings for manual entry / config import.
   // The pairing API (pair-create/pair-poll) requires a backend that doesn't exist yet,
   // so we skip the broken pairing screen entirely.
@@ -2116,7 +2204,7 @@ function detectAdFromEPG() {
   if (!listings || !listings.length) return;
 
   const nowTs = Math.floor(Date.now() / 1000);
-  const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
+  const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
   const current = listings.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
 
   let isAd = false;
@@ -3036,7 +3124,7 @@ function parseProviderConfig(raw) {
         epg: j.epg || j.epg_url || null,
         provider: j.provider || null,
       };
-    } catch { }
+    } catch (_) { }
   }
   // 2. Xtream URL: http://server/username/password  (3-segment path)
   //    or  http://server/player_api.php?username=...&password=...
@@ -3052,7 +3140,7 @@ function parseProviderConfig(raw) {
     if (parts.length >= 2 && parts[0] && parts[1]) {
       return { server: `${u.protocol}//${u.host}`, user: parts[0], pass: parts[1], epg: null };
     }
-  } catch { }
+  } catch (_) { }
   // 3. M3U URL with username/password params
   if (s.includes('get.php') || s.includes('.m3u')) {
     try {
@@ -3062,7 +3150,7 @@ function parseProviderConfig(raw) {
       if (user && pass) {
         return { server: `${u2.protocol}//${u2.host}`, user, pass, epg: null };
       }
-    } catch { }
+    } catch (_) { }
   }
   // 4. Activation code: base64url-encoded JSON
   if (s.length > 20 && !s.includes(' ') && !s.startsWith('http')) {
@@ -3080,7 +3168,7 @@ function parseProviderConfig(raw) {
           };
         }
       }
-    } catch { }
+    } catch (_) { }
   }
   return null;
 }
@@ -3272,7 +3360,7 @@ renderChannelList = function (list) {
     // EPG now-playing from cache
     const epgListings = S.epgCache[ch.stream_id] || [];
     const nowProg = epgListings.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
-    const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
+    const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
     const nowTitle = nowProg ? safeAtob(nowProg.title) : '';
 
     const logo = ch.stream_icon
@@ -3400,6 +3488,14 @@ function patchSettingsToggles() {
       toggle.classList.toggle('on', S.adBlockEnabled);
     } else if (label.includes('Auto-Play')) {
       toggle.classList.toggle('on', S.autoPlay);
+    } else if (label.includes('Smart Favorites')) {
+      toggle.classList.toggle('on', localStorage.getItem('smart_favorites') !== 'false');
+    } else if (label.includes('Auto-Updates')) {
+      toggle.classList.toggle('on', localStorage.getItem('auto_updates') !== 'false');
+    } else if (label.includes('Hardware Decode')) {
+      toggle.classList.toggle('on', localStorage.getItem('hw_decode') !== 'false');
+    } else if (label.includes('Auto Quality')) {
+      toggle.classList.toggle('on', localStorage.getItem('auto_quality') !== 'false');
     }
   });
 }
@@ -3714,7 +3810,7 @@ document.querySelectorAll('.sb-item[data-screen], .tb-btn[data-screen], button[d
 // ═══════════════════════════════════════════════════════════════
 
 // All interactive selectors in priority order
-const TV_FOCUSABLE = '.sb-item, .ch-row, .media-card, .sb-item-nav, .epg-row, .hist-item, .rec-card, .pill, button.btn, .toggle-sw, .price-card, input.inp, select';
+const TV_FOCUSABLE = '.sb-item, .ch-row, .media-card, .sb-item-nav, .epg-row, .hist-item, .rec-card, .pill, button.btn, .toggle-sw, .price-card, input.inp, select, label[role=checkbox]';
 
 // Get visible focusable elements within a container
 function tvFocusable(container) {
@@ -3823,8 +3919,9 @@ document.addEventListener('keydown', function tvNav(e) {
   const overlay = document.getElementById('player-overlay');
   if (overlay && overlay.style.display !== 'none') return;
 
-  // Let inputs handle their own arrow keys (cursor movement)
-  if (inInput && isArrow) return;
+  // Let text inputs handle their own arrow keys (cursor movement)
+  // But allow arrows on SELECT so D-pad can navigate away from dropdowns
+  if ((tag === 'INPUT' || tag === 'TEXTAREA') && isArrow) return;
 
   // ── Tab key: sequential navigation ──
   if (isTab) {
@@ -3843,15 +3940,26 @@ document.addEventListener('keydown', function tvNav(e) {
   }
 
   // ── Enter/Space: activate focused element ──
-  if (isActivate && !inInput) {
+  if (isActivate) {
     const el = document.activeElement;
     if (!el || el === document.body) return;
     // For sidebar items, nav directly
     if (el.dataset && el.dataset.screen && tvInSidebar(el)) {
       e.preventDefault();
       nav(el.dataset.screen);
-      // After nav, focus first content item
       setTimeout(tvFocusContent, 100);
+      return;
+    }
+    // INPUT: focus it to bring up keyboard on Android TV
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      // Don't prevent default — let the system handle Enter in inputs
+      el.focus();
+      return;
+    }
+    // SELECT: open the native dropdown picker
+    if (el.tagName === 'SELECT') {
+      e.preventDefault();
+      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
       return;
     }
     // Toggle switches
@@ -3860,11 +3968,15 @@ document.addEventListener('keydown', function tvNav(e) {
       el.click();
       return;
     }
-    // Generic click
-    if (el.tagName !== 'INPUT') {
+    // LABEL with checkbox role: toggle it
+    if (el.tagName === 'LABEL' || el.getAttribute('role') === 'checkbox') {
       e.preventDefault();
       el.click();
+      return;
     }
+    // Generic click
+    e.preventDefault();
+    el.click();
     return;
   }
 
@@ -4381,4 +4493,4 @@ function detectLanIp(port) {
   }
 }
 
-console.log('[Switchback TV] v4.5 — offline QR, Java IP detection, phone remote ✓');
+console.log('[Switchback TV] v5.0 — offline QR, Java IP detection, phone remote ✓');
