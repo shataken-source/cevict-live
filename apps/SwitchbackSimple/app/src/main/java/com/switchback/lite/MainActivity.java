@@ -3,7 +3,6 @@ package com.switchback.lite;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.provider.Settings;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -14,10 +13,6 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.view.KeyEvent;
 import java.io.File;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.util.Enumeration;
 
 public class MainActivity extends Activity {
     private static final String TAG = "SwitchbackLite";
@@ -72,30 +67,6 @@ public class MainActivity extends Activity {
         webView.setFocusableInTouchMode(true);
         webView.requestFocus();
 
-        // Expose native data to JS synchronously via Android.getDeviceId() etc.
-        webView.addJavascriptInterface(new Object() {
-            @android.webkit.JavascriptInterface
-            public String getDeviceId() {
-                return getAndroidId();
-            }
-
-            @android.webkit.JavascriptInterface
-            public String getLanIp() {
-                String ip = MainActivity.this.getLanIp();
-                return ip != null ? ip : "";
-            }
-
-            @android.webkit.JavascriptInterface
-            public String getRemotePin() {
-                return remoteServer != null ? remoteServer.getPin() : "";
-            }
-
-            @android.webkit.JavascriptInterface
-            public int getRemotePort() {
-                return RemoteServer.getPort();
-            }
-        }, "Android");
-
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
@@ -125,19 +96,15 @@ public class MainActivity extends Activity {
                 }
                 return false;
             }
-
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                // Native globals (__DEVICE_ID, __LAN_IP, __REMOTE_PIN, __REMOTE_PORT)
-                // are now injected synchronously via the Android JavascriptInterface
-                // added in onCreate — no need to inject them here.
                 if (pendingConfigCode != null) {
                     String code = pendingConfigCode.replace("\\", "\\\\")
                             .replace("'", "\\'");
                     view.evaluateJavascript(
-                            "if(typeof handleDeepLinkConfig==='function')handleDeepLinkConfig('" + code + "');",
-                            null);
+                        "if(typeof handleDeepLinkConfig==='function')handleDeepLinkConfig('" + code + "');",
+                        null);
                     pendingConfigCode = null;
                 }
             }
@@ -154,8 +121,7 @@ public class MainActivity extends Activity {
         int currentVersion = 0;
         try {
             currentVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
-        } catch (Exception e) {
-            /* ignore */ }
+        } catch (Exception e) { /* ignore */ }
 
         SharedPreferences prefs = getSharedPreferences("switchback_prefs", MODE_PRIVATE);
         int lastVersion = prefs.getInt("last_version_code", 0);
@@ -165,12 +131,11 @@ public class MainActivity extends Activity {
 
             // Delete WebView cache directory
             File cacheDir = getCacheDir();
-            if (cacheDir.exists())
-                deleteRecursive(cacheDir);
+            if (cacheDir.exists()) deleteRecursive(cacheDir);
 
             // Delete WebView data directories
             File appDir = getFilesDir().getParentFile();
-            String[] webViewDirs = { "app_webview", "app_webview_default", "cache", "code_cache" };
+            String[] webViewDirs = {"app_webview", "app_webview_default", "cache", "code_cache"};
             for (String dirName : webViewDirs) {
                 File dir = new File(appDir, dirName);
                 if (dir.exists()) {
@@ -206,96 +171,23 @@ public class MainActivity extends Activity {
             String code = pendingConfigCode.replace("\\", "\\\\")
                     .replace("'", "\\'");
             webView.evaluateJavascript(
-                    "if(typeof handleDeepLinkConfig==='function')handleDeepLinkConfig('" + code + "');",
-                    null);
+                "if(typeof handleDeepLinkConfig==='function')handleDeepLinkConfig('" + code + "');",
+                null);
             pendingConfigCode = null;
         }
     }
 
     private void handleConfigIntent(Intent intent) {
-        if (intent == null || intent.getData() == null)
-            return;
+        if (intent == null || intent.getData() == null) return;
         Uri uri = intent.getData();
         if ("switchback".equals(uri.getScheme()) && "import".equals(uri.getHost())) {
             String path = uri.getPath();
-            if (path != null && path.startsWith("/"))
-                path = path.substring(1);
+            if (path != null && path.startsWith("/")) path = path.substring(1);
             if (path != null && !path.isEmpty()) {
                 pendingConfigCode = path;
                 Log.i(TAG, "Deep link config received");
             }
         }
-    }
-
-    /**
-     * Get unique device identifier (ANDROID_ID — 64-bit hex, unique per
-     * device+app).
-     */
-    private String getAndroidId() {
-        try {
-            String id = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
-            if (id != null && !id.isEmpty()) {
-                Log.i(TAG, "Device ID: " + id);
-                return id;
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to get device ID", e);
-        }
-        return null;
-    }
-
-    /**
-     * Get the device's LAN IPv4 address using NetworkInterface (reliable on Android
-     * TV).
-     */
-    private String getLanIp() {
-        try {
-            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-            while (interfaces.hasMoreElements()) {
-                NetworkInterface ni = interfaces.nextElement();
-                if (ni.isLoopback() || !ni.isUp())
-                    continue;
-                Enumeration<InetAddress> addrs = ni.getInetAddresses();
-                while (addrs.hasMoreElements()) {
-                    InetAddress addr = addrs.nextElement();
-                    if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
-                        String ip = addr.getHostAddress();
-                        if (ip != null
-                                && (ip.startsWith("192.168.") || ip.startsWith("10.") || ip.startsWith("172."))) {
-                            Log.i(TAG, "Detected LAN IP: " + ip);
-                            return ip;
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to detect LAN IP", e);
-        }
-        return null;
-    }
-
-    /**
-     * Called by RemoteServer to inject JavaScript into the WebView (e.g. config
-     * push).
-     */
-    public void injectJs(String js) {
-        runOnUiThread(() -> {
-            if (webView != null) {
-                webView.evaluateJavascript(js, null);
-            }
-        });
-    }
-
-    /** Called by RemoteServer to get current TV state as JSON. */
-    private volatile String lastTvState = "{}";
-
-    public String getTvState() {
-        return lastTvState;
-    }
-
-    public void setTvState(String state) {
-        if (state != null)
-            lastTvState = state;
     }
 
     /** Called by RemoteServer when a phone sends GET /key?name=Up etc. */
@@ -309,17 +201,11 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            // Inject JS directly — dispatchKeyEvent gets swallowed by WebView
-            if (webView != null) {
-                webView.evaluateJavascript(
-                        "document.dispatchEvent(new KeyboardEvent('keydown',{key:'GoBack',bubbles:true}));",
-                        null);
-            }
-            return true; // consume so Android doesn't finish the activity
-        }
-        return super.onKeyDown(keyCode, event);
+    public void onBackPressed() {
+        // Dispatch GoBack key to JavaScript so the SPA handles navigation.
+        // The JS handler shows exit confirm on home screen and closes player otherwise.
+        webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK));
+        webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK));
     }
 
     @Override
@@ -328,7 +214,7 @@ public class MainActivity extends Activity {
             if (fileUploadCallback != null) {
                 Uri[] results = null;
                 if (resultCode == RESULT_OK && data != null && data.getData() != null) {
-                    results = new Uri[] { data.getData() };
+                    results = new Uri[]{data.getData()};
                 }
                 fileUploadCallback.onReceiveValue(results);
                 fileUploadCallback = null;
@@ -339,29 +225,9 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onPause() {
-        super.onPause();
-        if (webView != null) {
-            webView.onPause();
-            webView.pauseTimers();
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (webView != null) {
-            webView.onResume();
-            webView.resumeTimers();
-        }
-    }
-
-    @Override
     protected void onDestroy() {
-        if (server != null)
-            server.stop();
-        if (remoteServer != null)
-            remoteServer.stop();
+        if (server != null) server.stop();
+        if (remoteServer != null) remoteServer.stop();
         super.onDestroy();
     }
 }

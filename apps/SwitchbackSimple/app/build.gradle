@@ -8,8 +8,8 @@ android {
         applicationId "com.switchback.lite"
         minSdk 23
         targetSdk 34
-        versionCode 53
-        versionName "5.9.2"
+        versionCode 35
+        versionName "4.3"
     }
 
     signingConfigs {
@@ -19,20 +19,11 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
-        release {
-            // For production: set SWITCHBACK_KEYSTORE_PATH, SWITCHBACK_KEYSTORE_PASSWORD,
-            // SWITCHBACK_KEY_ALIAS, SWITCHBACK_KEY_PASSWORD as env vars or gradle props.
-            // Falls back to debug keystore if not configured.
-            storeFile file(System.getenv('SWITCHBACK_KEYSTORE_PATH') ?: 'debug.keystore')
-            storePassword System.getenv('SWITCHBACK_KEYSTORE_PASSWORD') ?: 'android'
-            keyAlias System.getenv('SWITCHBACK_KEY_ALIAS') ?: 'androiddebugkey'
-            keyPassword System.getenv('SWITCHBACK_KEY_PASSWORD') ?: 'android'
-        }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            signingConfig signingConfigs.debug
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
