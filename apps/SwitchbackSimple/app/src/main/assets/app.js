@@ -79,7 +79,7 @@ const S = {
   hlsInstance: null,
   playerMuted: false,
   currentQuality: 'auto',
-  adBlockVolume: parseInt(localStorage.getItem('adblock_volume') || '50'),
+  adBlockVolume: parseInt(localStorage.getItem('adblock_volume') || '0'),
   catchupSelectedStreamId: null,
   switchbackSlots: JSON.parse(localStorage.getItem('sb_slots') || '[null,null,null,null]'), // up to 4 switchback slots
   isPro: localStorage.getItem('sb_tier') === 'pro' || localStorage.getItem('sb_tier') === 'elite', // pro/elite unlocks 4 slots
@@ -95,15 +95,8 @@ const IS_ANDROID_WEBVIEW = (
 ) && window.location.port === '8123';
 
 // Pairing API lives on the Vercel deployment.
-// Android WebView can't use relative URLs for pairing, so we need the full origin.
-// TODO: Update 'switchback-tv-web.vercel.app' to the actual Vercel deployment domain
-//       once confirmed (check Vercel dashboard for the production URL).
-const PAIR_API_BASE = IS_ANDROID_WEBVIEW
-  ? 'https://switchback-tv-apk.vercel.app'
-  : window.location.origin;
-
-// TODO: Update this URL to match the real Vercel production domain
-const PAIR_URL = 'switchback-tv-apk.vercel.app/pair';
+// Pairing uses the local RemoteServer (port 8124) — no cloud API needed.
+// Phone opens http://<TV-IP>:8124, enters PIN, pushes credentials via POST /config.
 
 function buildApiUrl(action, extra = {}) {
   const xtreamAction = {
@@ -313,6 +306,7 @@ function initSettings() {
   document.getElementById('cfg-pass').value = S.pass || '';
   if (S.userInfo) renderAccountInfo(S.userInfo);
   renderLangFilterUI();
+  renderCatFilterUI();
   // Show device ID
   const devIdEl = document.getElementById('settings-device-id');
   if (devIdEl && window.__DEVICE_ID) devIdEl.textContent = window.__DEVICE_ID;
@@ -356,7 +350,7 @@ function renderLangFilterUI() {
         if (catSel) catSel.value = '';
         S.channelList = [];
         renderChannelCats();
-        const visCount = applyLangFilter(S.allChannels).length;
+        const visCount = applyAllFilters(S.allChannels).length;
         const statusEl = document.getElementById('lang-filter-status');
         if (statusEl) statusEl.textContent = `Showing ${visCount.toLocaleString()} of ${S.allChannels.length.toLocaleString()} channels`;
       }
@@ -386,11 +380,120 @@ function renderLangFilterUI() {
   const hidden2 = getLangFilterHidden();
   if (statusEl) {
     if (hidden2.length) {
-      const filtered = S.allChannels.length ? applyLangFilter(S.allChannels).length : null;
+      const filtered = S.allChannels.length ? applyAllFilters(S.allChannels).length : null;
       statusEl.textContent = `${hidden2.length} group(s) hidden${filtered !== null ? ` · ${filtered.toLocaleString()} channels visible` : ''}`;
     } else {
       statusEl.textContent = 'No filters active — all channels shown';
     }
+  }
+}
+
+// ── CATEGORY FILTER (hide/show entire provider categories) ──
+function getHiddenCategories() {
+  try { return JSON.parse(localStorage.getItem('hidden_categories') || '[]'); } catch (_) { return []; }
+}
+
+function applyCategoryFilter(channels) {
+  var hidden = getHiddenCategories();
+  if (!hidden.length) return channels;
+  return channels.filter(function (ch) { return hidden.indexOf(String(ch.category_id)) < 0; });
+}
+
+function applyAllFilters(channels) {
+  return applyLangFilter(applyCategoryFilter(channels));
+}
+
+function renderCatFilterUI() {
+  var listEl = document.getElementById('cat-filter-list');
+  if (!listEl) return;
+  if (!S.liveCategories || !S.liveCategories.length) {
+    listEl.innerHTML = '<div style="color:var(--muted);font-size:12px">Load Live TV first to see categories</div>';
+    return;
+  }
+  var hidden = getHiddenCategories();
+  var filtered = applyCategoryFilter(S.allChannels);
+  var catCount = {};
+  S.allChannels.forEach(function (ch) {
+    var cid = String(ch.category_id || '');
+    catCount[cid] = (catCount[cid] || 0) + 1;
+  });
+  listEl.innerHTML = S.liveCategories.map(function (cat) {
+    var cid = String(cat.category_id);
+    var isHidden = hidden.indexOf(cid) >= 0;
+    var count = catCount[cid] || 0;
+    return '<label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:3px 0;font-size:12px" tabindex="0" role="checkbox" data-catid="' + cid + '">' +
+      '<span style="width:16px;height:16px;border:2px solid var(--border);border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:' + (isHidden ? 'transparent' : 'var(--primary)') + ';font-size:10px">' + (isHidden ? '' : '✓') + '</span>' +
+      '<span style="flex:1">' + (cat.category_name || 'Unknown') + '</span>' +
+      '<span style="color:var(--muted);font-size:10px">' + count + '</span></label>';
+  }).join('');
+
+  // Toggle each checkbox
+  listEl.querySelectorAll('label').forEach(function (lbl) {
+    lbl.addEventListener('click', function () {
+      var cid = lbl.dataset.catid;
+      var h = getHiddenCategories();
+      var idx = h.indexOf(cid);
+      if (idx >= 0) h.splice(idx, 1); else h.push(cid);
+      localStorage.setItem('hidden_categories', JSON.stringify(h));
+      renderCatFilterUI();
+    });
+  });
+
+  // Search filter
+  var searchEl = document.getElementById('cat-filter-search');
+  if (searchEl && !searchEl._wired) {
+    searchEl._wired = true;
+    searchEl.addEventListener('input', function () {
+      var q = searchEl.value.toLowerCase();
+      listEl.querySelectorAll('label').forEach(function (lbl) {
+        lbl.style.display = lbl.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+  }
+
+  // Apply button
+  var applyBtn = document.getElementById('cat-filter-apply-btn');
+  if (applyBtn && !applyBtn._wired) {
+    applyBtn._wired = true;
+    applyBtn.addEventListener('click', function () {
+      var catSel = document.getElementById('cat-select');
+      if (catSel) catSel.value = '';
+      S.channelList = [];
+      renderChannelCats();
+      showToast('Category filter applied ✓');
+      renderCatFilterUI();
+    });
+  }
+
+  // Show All button
+  var showAllBtn = document.getElementById('cat-filter-show-all-btn');
+  if (showAllBtn && !showAllBtn._wired) {
+    showAllBtn._wired = true;
+    showAllBtn.addEventListener('click', function () {
+      localStorage.setItem('hidden_categories', '[]');
+      renderCatFilterUI();
+      showToast('All categories shown');
+    });
+  }
+
+  // Hide All button
+  var hideAllBtn = document.getElementById('cat-filter-hide-all-btn');
+  if (hideAllBtn && !hideAllBtn._wired) {
+    hideAllBtn._wired = true;
+    hideAllBtn.addEventListener('click', function () {
+      var allIds = S.liveCategories.map(function (c) { return String(c.category_id); });
+      localStorage.setItem('hidden_categories', JSON.stringify(allIds));
+      renderCatFilterUI();
+      showToast('All categories hidden');
+    });
+  }
+
+  // Status
+  var statEl = document.getElementById('cat-filter-status');
+  if (statEl) {
+    var shown = S.liveCategories.length - hidden.length;
+    var vis = applyAllFilters(S.allChannels).length;
+    statEl.textContent = shown + ' of ' + S.liveCategories.length + ' categories shown · ' + vis.toLocaleString() + ' channels visible';
   }
 }
 
@@ -481,7 +584,7 @@ async function initChannels() {
     ]);
     S.liveCategories = Array.isArray(cats) ? cats : [];
     S.allChannels = Array.isArray(streams) ? streams : [];
-    const visibleCount = applyLangFilter(S.allChannels).length;
+    const visibleCount = applyAllFilters(S.allChannels).length;
     document.getElementById('channels-sub').textContent =
       `${visibleCount.toLocaleString()} channels · ${S.liveCategories.length} categories`;
     S.channelList = []; // empty until user picks a category
@@ -495,8 +598,8 @@ async function initChannels() {
 function renderChannelCats() {
   const sel = document.getElementById('cat-select');
   if (!sel) return;
-  // Count channels per category (after lang filter)
-  const filtered = applyLangFilter(S.allChannels);
+  // Count channels per category (after all filters)
+  const filtered = applyAllFilters(S.allChannels);
   const catCount = {};
   filtered.forEach(ch => {
     const cid = ch.category_id || '';
@@ -518,7 +621,7 @@ function renderChannelCats() {
         return;
       }
       const base = S.allChannels.filter(c => c.category_id == catId);
-      S.channelList = applyLangFilter(base);
+      S.channelList = applyAllFilters(base);
       document.getElementById('ch-search').value = '';
       renderChannelList(S.channelList);
     });
@@ -561,9 +664,9 @@ document.getElementById('ch-search').addEventListener('input', function () {
   if (!catId && !q) { showCategoryPrompt(); return; }
   // If searching with no category, search ALL channels
   const base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
-  const langFiltered = applyLangFilter(base);
-  const filtered = q ? langFiltered.filter(c => c.name.toLowerCase().includes(q)) : langFiltered;
-  S.channelList = langFiltered;
+  const allFiltered = applyAllFilters(base);
+  const filtered = q ? allFiltered.filter(c => c.name.toLowerCase().includes(q)) : allFiltered;
+  S.channelList = allFiltered;
   renderChannelList(filtered);
 });
 
@@ -1201,9 +1304,16 @@ function openPlayer(ch, list, idx) {
     injectPlayerExtras();
     updateAdBlockBadge();
     updatePrevChannelBtn();
-    // Start periodic ad detection (checks every 30s using cached EPG data)
+    // Start periodic ad detection (checks every 5s using cached EPG data)
     if (S._adCheckTimer) clearInterval(S._adCheckTimer);
-    S._adCheckTimer = setInterval(detectAdFromEPG, 30000);
+    S._adCheckTimer = setInterval(detectAdFromEPG, 5000);
+    // Re-fetch EPG every 2 min to keep cache fresh for ad detection
+    if (S._adEpgRefreshTimer) clearInterval(S._adEpgRefreshTimer);
+    S._adEpgRefreshTimer = setInterval(function () {
+      if (S.currentChannel) fetchCurrentEPG(S.currentChannel);
+    }, 120000);
+    // Run detection immediately (don't wait 5s)
+    detectAdFromEPG();
   }, 100);
 
   // Make all player buttons focusable and auto-focus play-pause for D-pad
@@ -1411,9 +1521,17 @@ function closePlayer() {
   });
   document.getElementById('player-overlay').style.display = 'none';
   document.getElementById('topbar-title').textContent = TITLES[S.currentScreen] || S.currentScreen;
-  // Stop ad detection polling
+  // Stop ad detection polling + EPG refresh + boundary timer
   if (S._adCheckTimer) { clearInterval(S._adCheckTimer); S._adCheckTimer = null; }
-  if (S._adMuted) { S._adMuted = false; S._adRestoreVol = null; hideAdIndicator(); }
+  if (S._adEpgRefreshTimer) { clearInterval(S._adEpgRefreshTimer); S._adEpgRefreshTimer = null; }
+  if (S._adBoundaryTimer) { clearTimeout(S._adBoundaryTimer); S._adBoundaryTimer = null; }
+  S._adLastProgEndTs = 0;
+  // Restore volume if ad-muted when closing player
+  if (S._adMuted) {
+    var v = document.getElementById('player-video');
+    if (v && S._adRestoreVol !== null) v.volume = S._adRestoreVol;
+    S._adMuted = false; S._adRestoreVol = null; hideAdIndicator();
+  }
 }
 
 function togglePlay() {
@@ -1754,93 +1872,29 @@ document.querySelectorAll('.quality-opt').forEach(opt => {
 // ── PHONE PAIRING FLOW ──────────────────────────────────────
 let pairPollTimer = null;
 
-async function startPairing() {
-  console.log('[pair] Starting pairing flow');
-  nav('pairing');
+function startPairing() {
+  console.log('[pair] Starting local LAN pairing flow');
+  nav('setup');
+  initSetupScreen();
 
-  const codeEl = document.getElementById('pair-code-display');
-  const urlEl = document.getElementById('pair-url-display');
-  const statusEl = document.getElementById('pair-status');
-
-  if (urlEl) urlEl.textContent = PAIR_URL;
-  if (codeEl) codeEl.textContent = '----';
-  if (statusEl) statusEl.textContent = 'Requesting pairing code...';
-
-  try {
-    const res = await fetch(`${PAIR_API_BASE}/api/pair-create`, { method: 'POST' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    const code = data.code;
-
-    if (codeEl) codeEl.textContent = code;
-    if (statusEl) statusEl.textContent = 'Waiting for your phone...';
-    console.log('[pair] Code:', code);
-
-    // Poll every 3 seconds
-    if (pairPollTimer) clearInterval(pairPollTimer);
-    pairPollTimer = setInterval(() => pollPairCode(code), 3000);
-
-    // Auto-expire after 5 minutes
-    setTimeout(() => {
-      if (pairPollTimer) {
-        clearInterval(pairPollTimer);
-        pairPollTimer = null;
-        if (statusEl) statusEl.textContent = 'Code expired. Press OK to get a new code.';
-      }
-    }, 5 * 60 * 1000);
-
-  } catch (e) {
-    console.error('[pair] Failed to create code:', e.message);
-    if (statusEl) statusEl.textContent = 'Could not connect. Check your internet connection.';
-    // Fall back to manual settings
-    setTimeout(() => {
-      initSettings();
-      nav('settings');
-      showToast('Pairing unavailable. Enter credentials manually.', 5000);
-    }, 3000);
-  }
-}
-
-async function pollPairCode(code) {
-  try {
-    const res = await fetch(`${PAIR_API_BASE}/api/pair-poll?code=${code}`);
-    if (!res.ok) {
-      // Code expired or not found
-      if (pairPollTimer) clearInterval(pairPollTimer);
+  // Poll localStorage every 2s to detect when credentials arrive
+  // (handleRemoteConfig sets them in localStorage + S.server/S.user/S.pass)
+  if (pairPollTimer) clearInterval(pairPollTimer);
+  pairPollTimer = setInterval(function () {
+    if (S.server && S.user && S.pass) {
+      clearInterval(pairPollTimer);
       pairPollTimer = null;
-      const statusEl = document.getElementById('pair-status');
-      if (statusEl) statusEl.textContent = 'Code expired. Press OK to get a new code.';
-      return;
+      console.log('[pair] Credentials detected — booting');
+      showToast('Credentials received! Loading channels...', 3000);
+      nav('tvhome');
+      bootData();
     }
-    const data = await res.json();
-    if (data.status === 'ready' && data.config) {
-      // Credentials received!
-      if (pairPollTimer) clearInterval(pairPollTimer);
-      pairPollTimer = null;
+  }, 2000);
 
-      const { server, username, password, epg } = data.config;
-      localStorage.setItem('iptv_server', server);
-      localStorage.setItem('iptv_user', username);
-      localStorage.setItem('iptv_pass', password);
-      if (epg) localStorage.setItem('epg_url', epg);
-      S.server = server;
-      S.user = username;
-      S.pass = password;
-
-      const statusEl = document.getElementById('pair-status');
-      if (statusEl) statusEl.textContent = '✅ Connected! Loading channels...';
-      showToast('Provider connected! Loading channels...', 4000);
-
-      // Boot with new credentials
-      setTimeout(() => {
-        nav('tvhome');
-        bootData();
-      }, 1500);
-    }
-    // else status === 'waiting', keep polling
-  } catch (e) {
-    console.warn('[pair] Poll error:', e.message);
-  }
+  // Stop polling after 10 minutes
+  setTimeout(function () {
+    if (pairPollTimer) { clearInterval(pairPollTimer); pairPollTimer = null; }
+  }, 10 * 60 * 1000);
 }
 
 // Manual fallback: skip setup screen and go to Settings for manual credential entry
@@ -2345,75 +2399,98 @@ const AD_TITLE_PATTERNS = [
   /advertisement/i,
   /^break$/i,
   /^pause$/i,
+  /^werbung$/i,  // German
+  /^reklam$/i,   // Swedish/Turkish
+  /^pub$/i,      // French
+  /^n\/a$/i,
+  /^tba$/i,
+  /^tbd$/i,
+  /^no\s*program/i,
 ];
-const COMMERCIAL_SLOTS_MIN = [0, 15, 30, 45]; // minutes past the hour
 
 S._adMuted = false;
 S._adRestoreVol = null;
 S._adCheckTimer = null;
+S._adEpgRefreshTimer = null;
+S._adBoundaryTimer = null;
+S._adLastProgEndTs = 0;
 
 function detectAdFromEPG() {
   if (!S.adBlockEnabled || !S.currentChannel) return;
-  const streamId = S.currentChannel.stream_id;
-  const listings = S.epgCache[streamId];
+  var streamId = S.currentChannel.stream_id;
+  var listings = S.epgCache[streamId];
   if (!listings || !listings.length) return;
 
-  const nowTs = Math.floor(Date.now() / 1000);
-  const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
-  const current = listings.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
+  var nowTs = Math.floor(Date.now() / 1000);
+  var safeAtob = function (s) { try { return atob(s || ''); } catch (_) { return s || ''; } };
+  var current = listings.find(function (e) { return e.start_timestamp <= nowTs && e.stop_timestamp > nowTs; });
 
-  let isAd = false;
-  let reason = '';
+  var isAd = false;
+  var reason = '';
 
   if (current) {
-    const title = safeAtob(current.title);
-    const duration = current.stop_timestamp - current.start_timestamp;
+    var title = safeAtob(current.title).trim();
+    var duration = current.stop_timestamp - current.start_timestamp;
 
     // 1. Title pattern match (highest confidence)
-    for (const pat of AD_TITLE_PATTERNS) {
-      if (pat.test(title)) {
+    for (var i = 0; i < AD_TITLE_PATTERNS.length; i++) {
+      if (AD_TITLE_PATTERNS[i].test(title)) {
         isAd = true;
         reason = 'Title: "' + title + '"';
         break;
       }
     }
 
-    // 2. Suspiciously short program (< 60s)
-    if (!isAd && duration > 0 && duration < 60) {
+    // 2. Very short program (< 90s) with empty/generic title
+    if (!isAd && duration > 0 && duration < 90 && (!title || title.length < 3)) {
       isAd = true;
-      reason = 'Short (' + duration + 's)';
+      reason = 'Short (' + duration + 's) + no title';
+    }
+
+    // Schedule boundary-aware EPG re-fetch
+    var timeLeft = current.stop_timestamp - nowTs;
+    if (timeLeft > 0 && timeLeft < 300 && !S._adBoundaryTimer) {
+      S._adBoundaryTimer = setTimeout(function () {
+        S._adBoundaryTimer = null;
+        if (S.currentChannel) fetchCurrentEPG(S.currentChannel);
+      }, Math.max(1000, (timeLeft - 3) * 1000));
+    }
+
+    S._adLastProgEndTs = current.stop_timestamp;
+  } else {
+    // No current program — check for EPG gap (likely commercial)
+    var before = listings.filter(function (e) { return e.stop_timestamp <= nowTs; });
+    var after = listings.filter(function (e) { return e.start_timestamp > nowTs; });
+    if (before.length && after.length) {
+      var gapStart = before[before.length - 1].stop_timestamp;
+      var gapEnd = after[0].start_timestamp;
+      var gapLen = gapEnd - gapStart;
+      if (gapLen > 30 && gapLen < 600) {
+        isAd = true;
+        reason = 'EPG gap (' + Math.round(gapLen / 60) + 'min)';
+      }
+    }
+    // Post-program gap: last program ended, nothing follows for a while
+    if (!isAd && S._adLastProgEndTs && (nowTs - S._adLastProgEndTs) < 300 && (nowTs - S._adLastProgEndTs) > 5) {
+      isAd = true;
+      reason = 'Post-program gap';
     }
   }
 
-  // 3. Commercial slot heuristic (within 2 min of :00/:15/:30/:45)
-  if (!isAd) {
-    const now = new Date();
-    const mins = now.getMinutes();
-    const secs = now.getSeconds();
-    const timeIntoHour = mins * 60 + secs;
-    const inSlot = COMMERCIAL_SLOTS_MIN.some(m => Math.abs(timeIntoHour - m * 60) < 120);
-    if (inSlot && current) {
-      const dur = current.stop_timestamp - current.start_timestamp;
-      if (dur > 0 && dur < 300) { isAd = true; reason = 'Slot :' + String(mins).padStart(2, '0'); }
-    }
-  }
-
-  const video = document.getElementById('player-video');
+  var video = document.getElementById('player-video');
   if (!video) return;
 
   if (isAd && !S._adMuted) {
-    // Mute or reduce volume
     S._adRestoreVol = video.volume;
-    const targetVol = S.adBlockVolume / 100;
-    video.volume = Math.min(targetVol, video.volume);
+    video.volume = S.adBlockVolume / 100;
     S._adMuted = true;
     console.log('[AdDetect] Muted — ' + reason);
     showAdIndicator(reason);
   } else if (!isAd && S._adMuted) {
-    // Restore volume
     if (S._adRestoreVol !== null) video.volume = S._adRestoreVol;
     S._adMuted = false;
     S._adRestoreVol = null;
+    console.log('[AdDetect] Unmuted — program resumed');
     hideAdIndicator();
   }
 }
@@ -3112,7 +3189,7 @@ async function runBandwidthTest() {
 
 // Load EPG URL from localStorage on boot
 S.epgUrl = localStorage.getItem('epg_url') || '';
-S.adBlockVolume = parseInt(localStorage.getItem('adblock_volume') || '50');
+S.adBlockVolume = parseInt(localStorage.getItem('adblock_volume') || '0');
 S.autoPlay = localStorage.getItem('autoplay') !== 'false';
 
 // Override initSettings to populate all fields including new ones
@@ -3261,6 +3338,10 @@ initSettings = function () {
       alert(S.epgUrl ? `EPG URL saved: ${S.epgUrl}` : 'EPG URL cleared.');
     };
   }
+
+  // Populate filter UIs (language + category checkboxes)
+  renderLangFilterUI();
+  renderCatFilterUI();
 }
 
 // ── PROVIDER IMPORT CONFIG ───────────────────────────────────
