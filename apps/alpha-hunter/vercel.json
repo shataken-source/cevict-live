@@ -1,11 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [
-    {
-      "path": "/api/cron/trade-cycle",
-      "schedule": "*/15 * * * *"
-    }
-  ],
+  "crons": [],
   "framework": "nextjs",
   "buildCommand": "next build",
   "outputDirectory": ".next",

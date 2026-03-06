@@ -1,16 +1,19 @@
 /**
- * Odds Tracker Cron Job
- * Per Claude Effect Complete Guide - runs every 30 minutes
- * Tracks line movements from multiple sportsbooks for IAI detection
+ * Odds Tracker Cron Job — Backtesting Data Collector
+ * Runs hourly. Collects odds snapshots from 4 bookmakers × 7 sports.
+ * Tags opening lines (first snapshot per game) and closing lines
+ * (last snapshot before commence_time). Also writes game results
+ * from ESPN for completed games.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const maxDuration = 120;
 
-// Bookmakers to track (per guide)
 const BOOKMAKERS = [
   'pinnacle',    // Sharp book (most important!)
   'draftkings',  // Public book
@@ -18,9 +21,35 @@ const BOOKMAKERS = [
   'betmgm',      // Public book
 ];
 
+const SPORTS = [
+  'americanfootball_nfl',
+  'basketball_nba',
+  'baseball_mlb',
+  'icehockey_nhl',
+  'americanfootball_ncaaf',
+  'basketball_ncaab',
+  'baseball_ncaa',
+];
+
+const ESPN_LEAGUE_PATH: Record<string, string> = {
+  americanfootball_nfl: 'football/nfl',
+  basketball_nba: 'basketball/nba',
+  baseball_mlb: 'baseball/mlb',
+  icehockey_nhl: 'hockey/nhl',
+  americanfootball_ncaaf: 'football/college-football',
+  basketball_ncaab: 'basketball/mens-college-basketball',
+  baseball_ncaa: 'baseball/college-baseball',
+};
+
+function getSupabase(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
 export async function GET(request: NextRequest) {
   try {
-    // Verify cron secret (Vercel Cron sends `x-vercel-cron: 1`)
     const isVercelCron = request.headers.get('x-vercel-cron') === '1';
     const authHeader = request.headers.get('authorization');
     if (!isVercelCron && process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -31,74 +60,271 @@ export async function GET(request: NextRequest) {
 
     const oddsApiKey = process.env.ODDS_API_KEY;
     if (!oddsApiKey) {
-      console.warn('[Odds Tracker] No ODDS_API_KEY configured');
-      return NextResponse.json({
-        success: false,
-        error: 'ODDS_API_KEY not configured',
-      }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'ODDS_API_KEY not configured' }, { status: 500 });
     }
 
-    // Sports to track
-    const sports = [
-      'americanfootball_nfl',
-      'basketball_nba',
-      'baseball_mlb',
-      'icehockey_nhl',
-      'americanfootball_ncaaf',
-      'basketball_ncaab',
-      'baseball_ncaa',
-    ];
-
+    const sb = getSupabase();
     const allSnapshots: any[] = [];
+    let closingTagged = 0;
+    let openingTagged = 0;
+    let resultsWritten = 0;
 
-    for (const sport of sports) {
+    for (const sport of SPORTS) {
       try {
         const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${oddsApiKey}&markets=h2h,spreads,totals&bookmakers=${BOOKMAKERS.join(',')}`;
         const response = await fetch(url);
-
-        if (!response.ok) {
-          console.warn(`[Odds Tracker] Failed to fetch ${sport}: HTTP ${response.status}`);
-          continue;
-        }
-
+        if (!response.ok) { console.warn(`[Odds Tracker] ${sport}: HTTP ${response.status}`); continue; }
         const games = await response.json();
 
         for (const game of games) {
           const snapshot = createOddsSnapshot(game);
           allSnapshots.push(snapshot);
-
-          // Detect line movement signals
-          const signals = await detectLineMovementSignals(snapshot);
-          if (signals.length > 0) {
-            console.log(`[Odds Tracker] Signals detected for ${game.id}:`, signals);
-          }
         }
-
-        console.log(`[Odds Tracker] Collected ${games.length} games for ${sport}`);
+        console.log(`[Odds Tracker] ${sport}: ${games.length} games`);
       } catch (error: any) {
-        console.error(`[Odds Tracker] Error fetching ${sport}:`, error);
+        console.error(`[Odds Tracker] ${sport}:`, error?.message);
       }
     }
 
-    // Store all snapshots
+    // Store snapshots
     await storeOddsSnapshots(allSnapshots);
 
-    console.log(`[Odds Tracker] Completed: ${allSnapshots.length} game snapshots`);
+    // Tag opening/closing lines and collect results
+    if (sb) {
+      openingTagged = await tagOpeningLines(sb);
+      closingTagged = await tagClosingLines(sb);
+      resultsWritten = await collectGameResults(sb);
+    }
+
+    console.log(`[Odds Tracker] Done: ${allSnapshots.length} snapshots, ${openingTagged} opening, ${closingTagged} closing, ${resultsWritten} results`);
 
     return NextResponse.json({
       success: true,
       gamesTracked: allSnapshots.length,
-      sports,
+      openingTagged,
+      closingTagged,
+      resultsWritten,
+      sports: SPORTS,
       bookmakers: BOOKMAKERS,
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
     console.error('[Odds Tracker] Error:', error);
-    return NextResponse.json({
-      success: false,
-      error: error?.message || 'Failed to track odds',
-    }, { status: 500 });
+    return NextResponse.json({ success: false, error: error?.message || 'Failed' }, { status: 500 });
   }
+}
+
+// ── Tag opening lines: first snapshot per game_id ────────────────────────────
+
+async function tagOpeningLines(sb: SupabaseClient): Promise<number> {
+  try {
+    // Find game_ids that have NO opening line tagged yet
+    // Then mark their earliest snapshot as opening
+    const { data: untagged, error: e1 } = await sb.rpc('tag_opening_lines');
+    if (e1) {
+      // Fallback: manual query if RPC doesn't exist
+      // Get game_ids with no opening tag
+      const { data: games } = await sb
+        .from('historical_odds')
+        .select('game_id')
+        .eq('is_opening', false)
+        .is('is_opening', null)
+        .limit(500);
+
+      if (!games?.length) return 0;
+
+      const uniqueIds = [...new Set(games.map((g: any) => g.game_id))];
+      let tagged = 0;
+
+      for (const gameId of uniqueIds.slice(0, 100)) {
+        // Check if this game already has an opening tag
+        const { data: existing } = await sb
+          .from('historical_odds')
+          .select('id')
+          .eq('game_id', gameId)
+          .eq('is_opening', true)
+          .limit(1);
+
+        if (existing?.length) continue;
+
+        // Get earliest snapshot for this game
+        const { data: earliest } = await sb
+          .from('historical_odds')
+          .select('captured_at')
+          .eq('game_id', gameId)
+          .order('captured_at', { ascending: true })
+          .limit(1);
+
+        if (!earliest?.length) continue;
+
+        // Tag all rows with that game_id + captured_at as opening
+        const { error } = await sb
+          .from('historical_odds')
+          .update({ is_opening: true })
+          .eq('game_id', gameId)
+          .eq('captured_at', earliest[0].captured_at);
+
+        if (!error) tagged++;
+      }
+      return tagged;
+    }
+    return (untagged as any)?.tagged ?? 0;
+  } catch (e) {
+    console.warn('[Odds Tracker] Opening tag error:', e);
+    return 0;
+  }
+}
+
+// ── Tag closing lines: last snapshot before commence_time ────────────────────
+
+async function tagClosingLines(sb: SupabaseClient): Promise<number> {
+  try {
+    const now = new Date().toISOString();
+
+    // Find games that have started (commence_time < now) but no closing tag
+    const { data: started } = await sb
+      .from('historical_odds')
+      .select('game_id, commence_time')
+      .lt('commence_time', now)
+      .eq('is_closing', false)
+      .limit(500);
+
+    if (!started?.length) return 0;
+
+    const uniqueGames = new Map<string, string>();
+    for (const row of started) {
+      if (!uniqueGames.has(row.game_id)) uniqueGames.set(row.game_id, row.commence_time);
+    }
+
+    let tagged = 0;
+    for (const [gameId, commenceTime] of [...uniqueGames].slice(0, 100)) {
+      // Check if already has a closing tag
+      const { data: existing } = await sb
+        .from('historical_odds')
+        .select('id')
+        .eq('game_id', gameId)
+        .eq('is_closing', true)
+        .limit(1);
+
+      if (existing?.length) continue;
+
+      // Get the last snapshot BEFORE game start
+      const { data: latest } = await sb
+        .from('historical_odds')
+        .select('captured_at')
+        .eq('game_id', gameId)
+        .lt('captured_at', commenceTime)
+        .order('captured_at', { ascending: false })
+        .limit(1);
+
+      if (!latest?.length) continue;
+
+      // Tag all rows with that game_id + captured_at as closing
+      const { error } = await sb
+        .from('historical_odds')
+        .update({ is_closing: true })
+        .eq('game_id', gameId)
+        .eq('captured_at', latest[0].captured_at);
+
+      if (!error) tagged++;
+    }
+    return tagged;
+  } catch (e) {
+    console.warn('[Odds Tracker] Closing tag error:', e);
+    return 0;
+  }
+}
+
+// ── Collect game results from ESPN ──────────────────────────────────────────
+
+async function collectGameResults(sb: SupabaseClient): Promise<number> {
+  let written = 0;
+
+  for (const [sportKey, espnPath] of Object.entries(ESPN_LEAGUE_PATH)) {
+    try {
+      const res = await fetch(
+        `https://site.api.espn.com/apis/site/v2/sports/${espnPath}/scoreboard`,
+        { headers: { 'Cache-Control': 'no-store' }, signal: AbortSignal.timeout(8000) }
+      );
+      if (!res.ok) continue;
+      const data: any = await res.json();
+
+      for (const event of data.events || []) {
+        const statusType = event.status?.type;
+        if (statusType?.state !== 'post') continue; // Only completed games
+
+        const comp = event.competitions?.[0];
+        if (!comp) continue;
+        const homeComp = comp.competitors?.find((c: any) => c.homeAway === 'home');
+        const awayComp = comp.competitors?.find((c: any) => c.homeAway === 'away');
+        if (!homeComp?.team || !awayComp?.team) continue;
+
+        const homeScore = parseInt(String(homeComp.score || 0), 10) || 0;
+        const awayScore = parseInt(String(awayComp.score || 0), 10) || 0;
+        const homeTeam = (homeComp.team.displayName || homeComp.team.abbreviation || '').trim();
+        const awayTeam = (awayComp.team.displayName || awayComp.team.abbreviation || '').trim();
+
+        // Try to match to a game_id in historical_odds by team name fuzzy match
+        const gameId = await findGameId(sb, sportKey, homeTeam, awayTeam);
+
+        const gameDate = event.date
+          ? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(event.date))
+          : null;
+
+        const row = {
+          game_id: gameId || `espn_${event.id}`,
+          sport: sportKey,
+          home_team: homeTeam,
+          away_team: awayTeam,
+          commence_time: event.date || null,
+          game_date: gameDate,
+          home_score: homeScore,
+          away_score: awayScore,
+          winner: homeScore > awayScore ? 'home' : awayScore > homeScore ? 'away' : 'draw',
+          total_points: homeScore + awayScore,
+          home_margin: homeScore - awayScore,
+          status: 'final',
+          source: 'espn',
+        };
+
+        const { error } = await sb
+          .from('game_results')
+          .upsert(row, { onConflict: 'game_id', ignoreDuplicates: true });
+
+        if (!error) written++;
+      }
+    } catch { continue; }
+  }
+  return written;
+}
+
+/** Fuzzy match ESPN team names to historical_odds game_id */
+async function findGameId(sb: SupabaseClient, sport: string, home: string, away: string): Promise<string | null> {
+  try {
+    // Look for recent games matching both team names
+    const yesterday = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const { data } = await sb
+      .from('historical_odds')
+      .select('game_id, home_team, away_team')
+      .eq('sport', sport)
+      .gte('commence_time', yesterday)
+      .limit(200);
+
+    if (!data?.length) return null;
+
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const nh = normalize(home);
+    const na = normalize(away);
+
+    for (const row of data) {
+      const rh = normalize(row.home_team || '');
+      const ra = normalize(row.away_team || '');
+      if ((rh.includes(nh) || nh.includes(rh)) && (ra.includes(na) || na.includes(ra))) {
+        return row.game_id;
+      }
+    }
+    return null;
+  } catch { return null; }
 }
 
 interface OddsSnapshot {
