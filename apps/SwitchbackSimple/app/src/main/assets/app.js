@@ -254,8 +254,10 @@ function initTVHome() {
         <div data-screen="catchup"    class="sb-item-nav tile"><div style="font-size:24px;margin-bottom:5px">⏪</div><div style="font-size:13px;font-weight:700">Catch-Up</div></div>
       </div>
     </div>`;
-  document.querySelectorAll('.sb-item-nav[data-screen]').forEach(el =>
-    el.addEventListener('click', () => nav(el.dataset.screen)));
+  document.querySelectorAll('.sb-item-nav[data-screen]').forEach(el => {
+    el.setAttribute('tabindex', '-1');
+    el.addEventListener('click', () => nav(el.dataset.screen));
+  });
 }
 
 // ── LANGUAGE / COUNTRY CHANNEL FILTER ────────────────────────
@@ -429,14 +431,16 @@ function renderCatFilterUI() {
 
   // Toggle each checkbox
   listEl.querySelectorAll('label').forEach(function (lbl) {
-    lbl.addEventListener('click', function () {
+    var toggle = function () {
       var cid = lbl.dataset.catid;
       var h = getHiddenCategories();
       var idx = h.indexOf(cid);
       if (idx >= 0) h.splice(idx, 1); else h.push(cid);
       localStorage.setItem('hidden_categories', JSON.stringify(h));
       renderCatFilterUI();
-    });
+    };
+    lbl.addEventListener('click', toggle);
+    lbl.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
   });
 
   // Search filter
@@ -897,9 +901,27 @@ async function initEPG(offsetDelta = 0) {
     await initChannels();
   }
 
+  // Populate EPG category dropdown
+  const epgCatSel = document.getElementById('epg-cat-select');
+  if (epgCatSel && S.liveCategories && S.liveCategories.length) {
+    const prevVal = epgCatSel.value;
+    epgCatSel.innerHTML = '<option value="">All Categories</option>' +
+      S.liveCategories.map(c => '<option value="' + esc(String(c.category_id)) + '">' + esc(c.category_name || 'Unknown') + '</option>').join('');
+    epgCatSel.value = prevVal || '';
+    if (!epgCatSel._wired) {
+      epgCatSel._wired = true;
+      epgCatSel.addEventListener('change', () => { S.epgOffset = 0; initEPG(0); });
+    }
+  }
+
+  // Filter channels by selected category, then apply user filters
+  var epgFilteredChannels = applyAllFilters(S.allChannels);
+  var selCatId = epgCatSel ? epgCatSel.value : '';
+  if (selCatId) epgFilteredChannels = epgFilteredChannels.filter(c => String(c.category_id) === selCatId);
+
   // Show first 30 channels with EPG channel IDs, fetch their short EPG
-  const chansWithEpg = S.allChannels.filter(c => c.epg_channel_id).slice(0, 30);
-  const chans = chansWithEpg.length ? chansWithEpg : S.allChannels.slice(0, 30);
+  const chansWithEpg = epgFilteredChannels.filter(c => c.epg_channel_id).slice(0, 30);
+  const chans = chansWithEpg.length ? chansWithEpg : epgFilteredChannels.slice(0, 30);
 
   wrap.innerHTML = '<div class="loading"><div class="spinner"></div> Loading program guide...</div>';
 
@@ -4198,9 +4220,9 @@ document.addEventListener('keydown', function tvNav(e) {
   const overlay = document.getElementById('player-overlay');
   if (overlay && overlay.style.display !== 'none') return;
 
-  // Let text inputs handle their own arrow keys (cursor movement)
-  // But allow arrows on SELECT so D-pad can navigate away from dropdowns
-  if ((tag === 'INPUT' || tag === 'TEXTAREA') && isArrow) return;
+  // Let text inputs handle Left/Right arrow keys (cursor movement)
+  // But allow Up/Down to escape inputs via spatial nav (needed for D-pad to reach filter checkboxes etc.)
+  if ((tag === 'INPUT' || tag === 'TEXTAREA') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
 
   // ── Tab key: sequential navigation ──
   if (isTab) {
