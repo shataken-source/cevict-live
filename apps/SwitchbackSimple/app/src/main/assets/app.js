@@ -61,7 +61,7 @@ const S = {
   server: localStorage.getItem('iptv_server'),
   user: localStorage.getItem('iptv_user'),
   pass: localStorage.getItem('iptv_pass'),
-  currentScreen: 'tvhome',
+  currentScreen: 'channels',
   currentChannel: null,      // { stream_id, name, category_id, ... }
   currentChannelIndex: 0,
   channelList: [],            // full flat list currently displayed
@@ -160,7 +160,9 @@ function colorFromName(name) {
 function formatEpgTime(ts) {
   if (!ts) return '';
   const d = new Date(ts * 1000);
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  var opts = { hour: 'numeric', minute: '2-digit' };
+  if (S.userTimezone) opts.timeZone = S.userTimezone;
+  return d.toLocaleTimeString('en-US', opts);
 }
 function saveState() {
   localStorage.setItem('fav_channels', JSON.stringify(S.favorites));
@@ -1675,7 +1677,7 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  if (S.currentScreen === 'tvhome') {
+  if (S.currentScreen === 'channels' || S.currentScreen === 'tvhome') {
     e.preventDefault();
     showExitConfirm();
     return;
@@ -1683,7 +1685,7 @@ document.addEventListener('keydown', e => {
 
   // Navigate back through history stack
   e.preventDefault();
-  const prev = S._screenHistory.pop() || 'tvhome';
+  const prev = S._screenHistory.pop() || 'channels';
   nav(prev);
 });
 
@@ -1951,7 +1953,7 @@ function startPairing() {
       pairPollTimer = null;
       console.log('[pair] Credentials detected — booting');
       showToast('Credentials received! Loading channels...', 3000);
-      nav('tvhome');
+      nav('channels');
       bootData();
     }
   }, 2000);
@@ -1980,8 +1982,8 @@ function handleRemoteConfig(server, username, password) {
   localStorage.setItem('iptv_user', username);
   localStorage.setItem('iptv_pass', password);
   showToast('Credentials received! Loading channels...', 3000);
-  // Navigate to home and boot with new credentials
-  nav('tvhome');
+  // Navigate to channels and boot with new credentials
+  nav('channels');
   bootData();
 }
 
@@ -2181,13 +2183,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const sbVer = document.getElementById('sb-version');
   if (sbVer) sbVer.textContent = verStr;
 
-  nav('tvhome');
+  nav('channels');
   bootData();
   // Clock tick in player
   setInterval(() => {
     const el = document.getElementById('player-clock');
     if (el && document.getElementById('player-overlay').style.display !== 'none') {
-      el.textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      var clockOpts = { hour: 'numeric', minute: '2-digit' };
+      if (S.userTimezone) clockOpts.timeZone = S.userTimezone;
+      el.textContent = new Date().toLocaleTimeString('en-US', clockOpts);
     }
   }, 30000);
 });
@@ -3192,29 +3196,41 @@ async function runBandwidthTest() {
   const btn = document.getElementById('bw-test-btn');
   const bwEl = document.getElementById('bw-result');
   const pingEl = document.getElementById('bw-ping-result');
-  if (btn) btn.textContent = 'Testing…';
+  if (btn) btn.textContent = 'Testing… 0s';
   if (bwEl) { bwEl.textContent = '…'; bwEl.style.color = 'var(--muted)'; }
 
   try {
-    // Ping test — use api() so it routes through Android proxy automatically
-    const t0 = performance.now();
-    await api('get_user_info');
-    const ping = Math.round(performance.now() - t0);
+    // Ping test — average of 3 pings
+    var pings = [];
+    for (var p = 0; p < 3; p++) {
+      var pt0 = performance.now();
+      await api('get_user_info');
+      pings.push(Math.round(performance.now() - pt0));
+    }
+    const ping = Math.round(pings.reduce(function (a, b) { return a + b }, 0) / pings.length);
 
     if (pingEl) { pingEl.textContent = ping + 'ms'; pingEl.style.color = ping < 100 ? 'var(--green)' : ping < 300 ? 'var(--yellow)' : 'var(--primary)'; }
     const qPingEl = document.getElementById('q-ping');
     if (qPingEl) qPingEl.textContent = ping + 'ms';
 
-    // Bandwidth estimate: use HLS if stream active, else time a categories fetch
+    // Bandwidth estimate: run repeated fetches for at least 10 seconds
     let mbps = null;
     if (S.hlsInstance?.bandwidthEstimate) {
       mbps = (S.hlsInstance.bandwidthEstimate / 1000000).toFixed(1);
     } else {
-      const t1 = performance.now();
-      const cats = await api('get_live_categories');
-      const bytes = JSON.stringify(cats).length;
-      const secs = (performance.now() - t1) / 1000;
-      mbps = ((bytes * 8) / secs / 1000000).toFixed(2);
+      var totalBytes = 0;
+      var bwStart = performance.now();
+      var elapsed = 0;
+      var iter = 0;
+      while (elapsed < 10000) {
+        var data = await api('get_live_categories');
+        totalBytes += JSON.stringify(data).length;
+        iter++;
+        elapsed = performance.now() - bwStart;
+        if (btn) btn.textContent = 'Testing… ' + Math.round(elapsed / 1000) + 's';
+      }
+      var totalSecs = elapsed / 1000;
+      mbps = ((totalBytes * 8) / totalSecs / 1000000).toFixed(2);
     }
 
     if (bwEl) {
@@ -3256,6 +3272,7 @@ async function runBandwidthTest() {
 S.epgUrl = localStorage.getItem('epg_url') || '';
 S.adBlockVolume = parseInt(localStorage.getItem('adblock_volume') || '0');
 S.autoPlay = localStorage.getItem('autoplay') !== 'false';
+S.userTimezone = localStorage.getItem('user_timezone') || '';
 
 // Override initSettings to populate all fields including new ones
 // initSettings() — canonical single version (inlined upgrade logic, no hoisting risk)
@@ -3402,6 +3419,40 @@ initSettings = function () {
       S.epgCache = {};
       alert(S.epgUrl ? `EPG URL saved: ${S.epgUrl}` : 'EPG URL cleared.');
     };
+  }
+
+  // Inject timezone picker if not present
+  if (!document.getElementById('tz-picker-section')) {
+    const epgGroup = document.querySelector('#screen-settings .settings-group:has(#cfg-epg)');
+    if (epgGroup) {
+      const tzSection = document.createElement('div');
+      tzSection.id = 'tz-picker-section';
+      tzSection.className = 'row-item';
+      tzSection.style.cssText = 'margin-top:10px;flex-direction:column;align-items:stretch;gap:6px';
+      var savedTz = localStorage.getItem('user_timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      var tzOptions = [
+        'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+        'America/Phoenix', 'America/Anchorage', 'Pacific/Honolulu',
+        'Europe/London', 'Europe/Paris', 'Europe/Berlin',
+        'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Kolkata',
+        'Australia/Sydney', 'Pacific/Auckland', 'UTC'
+      ];
+      // Ensure saved TZ is in the list
+      if (tzOptions.indexOf(savedTz) < 0) tzOptions.unshift(savedTz);
+      tzSection.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center">' +
+        '<span style="font-size:13px">Your Timezone</span>' +
+        '<select class="inp" id="tz-select" style="width:auto;padding:3px 7px;font-size:12px" tabindex="0">' +
+        tzOptions.map(function (tz) {
+          return '<option value="' + esc(tz) + '"' + (tz === savedTz ? ' selected' : '') + '>' + esc(tz.replace(/_/g, ' ')) + '</option>';
+        }).join('') +
+        '</select></div>';
+      epgGroup.appendChild(tzSection);
+      document.getElementById('tz-select').addEventListener('change', function () {
+        localStorage.setItem('user_timezone', this.value);
+        S.userTimezone = this.value;
+        showToast('Timezone set to ' + this.value.replace(/_/g, ' '));
+      });
+    }
   }
 
   // Populate filter UIs (language + category checkboxes)
@@ -4070,7 +4121,7 @@ function nav(screen) {
 
   // ── Show/hide topbar back button ────────────────────────────
   const backBtn = document.getElementById('topbar-back-btn');
-  if (backBtn) backBtn.style.display = (screen === 'tvhome' || screen === 'setup') ? 'none' : 'inline-block';
+  if (backBtn) backBtn.style.display = (screen === 'channels' || screen === 'tvhome' || screen === 'setup') ? 'none' : 'inline-block';
 
   // ── Hide sidebar on setup screen for clean first-boot look ──
   const sidebar = document.getElementById('sidebar');
@@ -4289,7 +4340,8 @@ document.addEventListener('keydown', function tvNav(e) {
 
   // ── SIDEBAR ZONE ──
   if (tvInSidebar(cur)) {
-    const sidebarItems = Array.from(document.querySelectorAll('#sidebar .sb-item[data-screen]'));
+    // Include collapse button in sidebar nav
+    const sidebarItems = Array.from(document.querySelectorAll('#sidebar .sb-item[data-screen], #sb-toggle-btn'));
     const idx = sidebarItems.indexOf(cur);
 
     if (e.key === 'ArrowUp' && idx > 0) {
@@ -4348,7 +4400,7 @@ document.addEventListener('keydown', function tvNav(e) {
   const style = document.createElement('style');
   style.textContent = `
     *:focus { outline: none; }
-    .sb-item:focus {
+    .sb-item:focus, .sb-toggle:focus {
       outline: 2px solid var(--primary) !important;
       outline-offset: -2px;
       background: rgba(229,0,0,0.15) !important;
@@ -4386,7 +4438,7 @@ function navBack() {
     S.currentScreen = null; // reset so nav doesn't double-push
     nav(prev);
   } else {
-    nav('tvhome');
+    nav('channels');
   }
 }
 document.getElementById('topbar-back-btn')?.addEventListener('click', navBack);
@@ -4445,7 +4497,7 @@ function handleRemoteCommand(cmd) {
       break;
     }
     case 'sb_cycle': sbCycleNext(); break;
-    case 'nav_home': closePlayer(); nav('tvhome'); break;
+    case 'nav_home': closePlayer(); nav('channels'); break;
     case 'nav_guide': closePlayer(); nav('epg'); break;
     case 'nav_search': closePlayer(); nav('search'); break;
     case 'nav_channels': closePlayer(); nav('channels'); break;
