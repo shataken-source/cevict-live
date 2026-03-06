@@ -2208,31 +2208,44 @@ async function bootData() {
   initSettings();
 }
 
+// ── GLOBAL ERROR HANDLER (shows errors on splash for debugging) ──
+window.onerror = function (msg, src, line, col, err) {
+  const el = document.getElementById('splash-status');
+  if (el) el.textContent = 'ERROR: ' + msg + ' (line ' + line + ')';
+  console.error('[FATAL]', msg, src, line, col, err);
+};
+
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Show version everywhere
-  const verStr = `v${APP_VERSION} (build ${APP_BUILD})`;
-  const splashVer = document.getElementById('splash-version');
-  if (splashVer) splashVer.textContent = verStr;
-  const sbVer = document.getElementById('sb-version');
-  if (sbVer) sbVer.textContent = verStr;
+  try {
+    // Show version everywhere
+    const verStr = `v${APP_VERSION} (build ${APP_BUILD})`;
+    const splashVer = document.getElementById('splash-version');
+    if (splashVer) splashVer.textContent = verStr;
+    const sbVer = document.getElementById('sb-version');
+    if (sbVer) sbVer.textContent = verStr;
 
-  // Restore provider branding from previous import
-  const savedProvider = localStorage.getItem('provider_name');
-  if (savedProvider) {
-    const logoEl = document.querySelector('.sb-logo-text');
-    if (logoEl) logoEl.textContent = savedProvider;
-  }
-
-  nav('tvhome');
-  bootData();
-  // Clock tick in player
-  setInterval(() => {
-    const el = document.getElementById('player-clock');
-    if (el && document.getElementById('player-overlay').style.display !== 'none') {
-      el.textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    // Restore provider branding from previous import
+    const savedProvider = localStorage.getItem('provider_name');
+    if (savedProvider) {
+      const logoEl = document.querySelector('.sb-logo-text');
+      if (logoEl) logoEl.textContent = savedProvider;
     }
-  }, 30000);
+
+    nav('tvhome');
+    bootData();
+    // Clock tick in player
+    setInterval(() => {
+      const el = document.getElementById('player-clock');
+      if (el && document.getElementById('player-overlay').style.display !== 'none') {
+        el.textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      }
+    }, 30000);
+  } catch (e) {
+    const el = document.getElementById('splash-status');
+    if (el) el.textContent = 'BOOT ERROR: ' + e.message;
+    console.error('[BOOT CRASH]', e);
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════
