@@ -136,10 +136,26 @@ function buildApiUrl(action, extra = {}) {
 
 // ── API CLIENT ───────────────────────────────────────────────
 async function api(action, extra = {}) {
-  const url = buildApiUrl(action, extra);
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`API ${action} failed: ${res.status}`);
-  return res.json();
+  var url = buildApiUrl(action, extra);
+  var maxRetries = 3;
+  var lastErr = null;
+  for (var attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      var res = await fetch(url);
+      if (res.ok) return res.json();
+      // Read error body for better diagnostics
+      var errBody = '';
+      try { errBody = await res.text(); } catch (_) { }
+      lastErr = new Error('API ' + action + ' failed (HTTP ' + res.status + ')' + (errBody ? ': ' + errBody.slice(0, 120) : ''));
+      // Don't retry on auth failures (401/403)
+      if (res.status === 401 || res.status === 403) break;
+    } catch (e) {
+      lastErr = new Error('API ' + action + ' network error: ' + e.message);
+    }
+    // Wait before retry (2s, 4s)
+    if (attempt < maxRetries - 1) await new Promise(function (r) { setTimeout(r, 2000 * (attempt + 1)); });
+  }
+  throw lastErr;
 }
 
 // ── HELPERS ──────────────────────────────────────────────────
