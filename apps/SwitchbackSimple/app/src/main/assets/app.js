@@ -288,7 +288,7 @@ const LANG_FILTER_GROUPS = [
 
 // Returns the set of category keyword groups the user has HIDDEN
 function getLangFilterHidden() {
-  try { return JSON.parse(localStorage.getItem('lang_filter_hidden') || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem('lang_filter_hidden') || '[]'); } catch (_) { return []; }
 }
 
 // Apply language filter to a channel list
@@ -1119,7 +1119,7 @@ async function loadCatchUpEPG(streamId, chans) {
   document.getElementById('catchup-epg-title').textContent = `Programs — ${ch?.name || ''}`;
   const epgEl = document.getElementById('catchup-epg');
   epgEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
+  const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
   try {
     const fakeCh = { stream_id: streamId };
     const data = await fetchEpgForChannel(fakeCh);
@@ -2359,7 +2359,7 @@ function detectAdFromEPG() {
   if (!listings || !listings.length) return;
 
   const nowTs = Math.floor(Date.now() / 1000);
-  const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
+  const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
   const current = listings.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
 
   let isAd = false;
@@ -3515,7 +3515,7 @@ renderChannelList = function (list) {
     // EPG now-playing from cache
     const epgListings = S.epgCache[ch.stream_id] || [];
     const nowProg = epgListings.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
-    const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
+    const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
     const nowTitle = nowProg ? safeAtob(nowProg.title) : '';
 
     const logo = ch.stream_icon
@@ -3643,6 +3643,14 @@ function patchSettingsToggles() {
       toggle.classList.toggle('on', S.adBlockEnabled);
     } else if (label.includes('Auto-Play')) {
       toggle.classList.toggle('on', S.autoPlay);
+    } else if (label.includes('Smart Favorites')) {
+      toggle.classList.toggle('on', localStorage.getItem('smart_favorites') !== 'false');
+    } else if (label.includes('Auto-Updates')) {
+      toggle.classList.toggle('on', localStorage.getItem('auto_updates') !== 'false');
+    } else if (label.includes('Hardware Decode')) {
+      toggle.classList.toggle('on', localStorage.getItem('hw_decode') !== 'false');
+    } else if (label.includes('Auto Quality')) {
+      toggle.classList.toggle('on', localStorage.getItem('auto_quality') !== 'false');
     }
   });
 }
