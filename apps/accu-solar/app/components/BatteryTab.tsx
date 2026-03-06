@@ -152,7 +152,7 @@ export default function BatteryTab() {
       <div className="panel">
         <div className="panelTitleRow">
           <Battery className="w-4 h-4 text-blue-400" />
-          <span className="panelTitle">Battery String Comparison — 8× EcoWorthy 280Ah 12V</span>
+          <span className="panelTitle">Battery Comparison — 8× EcoWorthy 280Ah 12V (Parallel)</span>
           {spread > 0.2 && (
             <span className="ml-auto alertBadge flex items-center gap-1">
               <AlertCircle className="w-3 h-3" /> Imbalance {spread}V
@@ -193,8 +193,8 @@ export default function BatteryTab() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           {[
             { label: 'Battery Count', value: `${SYSTEM_CONFIG.batteryCount}× batteries` },
-            { label: 'Nominal Voltage', value: `${SYSTEM_CONFIG.batteryVoltage}V each` },
-            { label: 'Capacity Each', value: `${SYSTEM_CONFIG.batteryAh}Ah` },
+            { label: 'Nominal Voltage', value: `${SYSTEM_CONFIG.batteryVoltage}V` },
+            { label: 'Capacity Each', value: `280Ah` },
             { label: 'Total Capacity', value: `${SYSTEM_CONFIG.totalAh}Ah` },
             { label: 'Total Energy', value: `${SYSTEM_CONFIG.totalKwh.toFixed(1)} kWh` },
             { label: 'Usable (80% DoD)', value: `${SYSTEM_CONFIG.usableKwh.toFixed(1)} kWh` },

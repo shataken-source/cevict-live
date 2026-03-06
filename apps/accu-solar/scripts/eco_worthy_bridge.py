@@ -17,6 +17,8 @@ import os
 import time
 import struct
 import logging
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 
 try:
@@ -35,6 +37,9 @@ BMS_ADDRESS   = os.getenv("BMS_ADDRESS", "")          # Set this! e.g. "AA:BB:CC
 MQTT_BROKER   = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT     = int(os.getenv("MQTT_PORT", "1883"))
 POLL_INTERVAL = int(os.getenv("POLL_INTERVAL", "5"))  # seconds
+# HTTP ingest endpoint (optional — sends data to Accu-Solar API for remote/Vercel access)
+HTTP_INGEST_URL = os.getenv("HTTP_INGEST_URL", "http://localhost:3208/api/telemetry/ingest")
+HTTP_INGEST_SECRET = os.getenv("HTTP_INGEST_SECRET", "")  # matches TELEMETRY_SECRET env var
 
 # JBD BMS BLE UUIDs (confirmed via discover_uuids.py on DP04S007L4S200A)
 BMS_SERVICE = "0000ff00-0000-1000-8000-00805f9b34fb"
@@ -217,6 +222,45 @@ def publish(client: mqtt.Client, basic: dict, cells: list[float] | None):
     )
 
 
+def publish_http(basic: dict, cells: list[float] | None):
+    """POST telemetry to the Accu-Solar HTTP API for remote/Vercel access."""
+    if not HTTP_INGEST_URL:
+        return
+    try:
+        payload = {
+            "voltage":         basic["voltage"],
+            "current":         basic["current"],
+            "soc":             basic["soc"],
+            "power":           basic["power"],
+            "temperature":     basic["temp_avg"],
+            "cycles":          basic["cycles"],
+            "capacity_remain": basic["capacity_remain"],
+            "capacity_full":   basic["capacity_full"],
+            "cells":           cells,
+            "health":          "Normal",
+            "timestamp":       datetime.now(timezone.utc).isoformat(),
+        }
+        if cells:
+            spread = round(max(cells) - min(cells), 3)
+            payload["health"] = "Critical" if spread > 0.1 else "Warning" if spread > 0.05 else "Normal"
+
+        data = json.dumps(payload).encode("utf-8")
+        headers = {"Content-Type": "application/json"}
+        if HTTP_INGEST_SECRET:
+            headers["Authorization"] = f"Bearer {HTTP_INGEST_SECRET}"
+
+        req = urllib.request.Request(HTTP_INGEST_URL, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            if resp.status == 200:
+                log.debug("HTTP ingest OK")
+            else:
+                log.warning(f"HTTP ingest status {resp.status}")
+    except urllib.error.URLError as e:
+        log.debug(f"HTTP ingest failed (non-fatal): {e.reason}")
+    except Exception as e:
+        log.debug(f"HTTP ingest error (non-fatal): {e}")
+
+
 # ── Scanner ───────────────────────────────────────────────────────────────────
 async def scan_for_bms():
     log.info("Scanning for BLE devices (10s)...")
@@ -264,6 +308,7 @@ async def main():
 
             if basic:
                 publish(mqtt_client, basic, cells)
+                publish_http(basic, cells)
                 fail_count = 0
             else:
                 log.warning("Empty BMS response — retrying next cycle")

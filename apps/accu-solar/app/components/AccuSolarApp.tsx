@@ -29,7 +29,22 @@ const TABS: { id: TabId; label: string; icon: React.FC<{ className?: string }> }
 export default function AccuSolarApp() {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [time, setTime] = useState<string>('');
+  const [wallMode, setWallMode] = useState(false);
   const { data, isConnected } = useSolar();
+
+  // Detect wall mode from URL ?wall or localStorage
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('wall') || localStorage.getItem('accusolar_wall') === '1') {
+      setWallMode(true);
+    }
+  }, []);
+
+  const toggleWallMode = () => {
+    const next = !wallMode;
+    setWallMode(next);
+    localStorage.setItem('accusolar_wall', next ? '1' : '0');
+  };
 
   useEffect(() => {
     const tick = () => setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -41,7 +56,7 @@ export default function AccuSolarApp() {
   const hasAlert = data.batterySoc < 20 || data.controllerTemp > 50 || data.overheatWarning;
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col">
+    <div className={`min-h-screen bg-slate-950 flex flex-col ${wallMode ? 'wallMode' : ''}`}>
       {/* Header */}
       <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -81,6 +96,12 @@ export default function AccuSolarApp() {
 
           {/* Status + time */}
           <div className="flex items-center gap-3 shrink-0">
+            <button onClick={toggleWallMode} title={wallMode ? 'Exit wall mode' : 'Wall display mode'}
+              className={`p-1.5 rounded-lg transition-colors ${wallMode ? 'bg-amber-500/20 text-amber-400' : 'text-slate-500 hover:text-slate-300'}`}>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
+              </svg>
+            </button>
             {hasAlert && (
               <div className="alertBadge flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
@@ -112,7 +133,7 @@ export default function AccuSolarApp() {
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                     }`}>
                   <tab.icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>
+                  <span>{tab.label}</span>
                 </button>
               );
             })}
@@ -133,7 +154,7 @@ export default function AccuSolarApp() {
 
       {/* Footer */}
       <footer className="border-t border-slate-800 px-4 py-3 text-center text-xs text-slate-600">
-        Accu Solar — Home Energy Monitor · AmpinVT 150/80 · 8× 300W · 8× 280Ah 12V
+        Accu Solar — Home Energy Monitor · AmpinVT 150/80 · 8× 300W panels (4S2P) · 8× 280Ah 12V (parallel)
       </footer>
     </div>
   );

@@ -7,6 +7,12 @@ import { SettingsProvider } from './context/SettingsContext';
 export const metadata: Metadata = {
   title: 'Accu Solar',
   description: 'Home solar system monitoring dashboard',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Accu Solar',
+  },
 };
 
 export const viewport: Viewport = {

@@ -8,24 +8,20 @@ export const SYSTEM_CONFIG = {
   panelCount: 8,
   panelWiring: '4S2P',           // 4 strings of 2 panels in series → ~74V Voc
   peakWatts: 2400,               // 8 × 300W
-  batteryVoltage: 48,            // 4S2P battery bank: 4× 12V in series = 48V
-  batteryAh: 560,                // 2 parallel strings × 280Ah = 560Ah @ 48V
+  batteryVoltage: 12,            // 8 batteries all in parallel = 12V nominal
+  batteryAh: 2240,               // 8 × 280Ah in parallel = 2,240Ah @ 12V
   batteryCount: 8,
-  totalAh: 560,                  // 560Ah @ 48V
-  totalKwh: 26.88,               // 560Ah × 48V / 1000
+  totalAh: 2240,                 // 2,240Ah @ 12V
+  totalKwh: 26.88,               // 2,240Ah × 12V / 1000
   usableKwh: 21.5,               // ~80% DoD for LiFePO4
-  controller: 'EG4 6000EHV-48', // Hybrid inverter with built-in MPPT
-  maxChargeAmps: 120,            // EG4 6000EHV-48 max charge current
-  maxInputVolts: 500,            // EG4 max PV input voltage (74V Voc is safe)
-  // Battery bank wiring: 4S2P — 4 batteries in series (String 1 + String 2), 2 strings in parallel
-  // String 1: Batt 1→2→3→4 in series = 48V
-  // String 2: Batt 5→6→7→8 in series = 48V
-  // Both strings joined at busbars = 560Ah @ 48V
-  // HC02 balancers: one per string (5-wire tap across all 4 batteries)
-  // 500A shunt on negative side between batteries and busbar
-  // 2× 150A Class T fuses (one per string positive)
-  // 150A DC main breaker on positive busbar → inverter
-  // 63A PV disconnect on solar input (safe for 4S2P ~32A)
+  controller: 'AmpinVT 150/80',  // MPPT charge controller
+  maxChargeAmps: 80,             // AmpinVT 150/80 max charge current
+  maxInputVolts: 150,            // AmpinVT max PV input voltage (74V Voc is safe)
+  // Battery bank wiring: 8P — all 8 batteries in parallel = 2,240Ah @ 12V
+  // Each battery has its own JBD BMS with BLE (device name: DP04S007L4S200A)
+  // 100A ANL fuse on each battery positive before joining at busbar
+  // 500A shunt on negative busbar for current sensing
+  // AmpinVT 150/80 MPPT controller handles 4S2P panel array
 };
 
 // ─── AmpinVT ESPHome MQTT Topics ─────────────────────────────────────────────
@@ -109,7 +105,7 @@ function makeDemoReading(prev?: SolarReading): SolarReading {
     ? Math.min(100, Math.max(5, prev.batterySoc + (batteryCurrent / SYSTEM_CONFIG.totalAh) * (5 / 3600) * 100))
     : 78 + Math.random() * 10;
 
-  const batteryVoltage = 11.8 + (batterySoc / 100) * 2.4; // 11.8V–14.2V range
+  const batteryVoltage = 11.8 + (batterySoc / 100) * 2.8; // 11.8V–14.6V range (LiFePO4 12V)
   const panelVoltage = solarPowerW > 10 ? 72 + Math.random() * 8 : 0; // 2S wiring ~72-80V
   const panelCurrent = panelVoltage > 0 ? solarPowerW / panelVoltage : 0;
   const controllerTemp = 25 + (solarPowerW / SYSTEM_CONFIG.peakWatts) * 30 + Math.random() * 3;
@@ -160,22 +156,78 @@ const SolarContext = createContext<SolarContextValue>({
   setDataSource: () => { },
 });
 
+// Convert a telemetry API reading into a SolarReading for the UI
+function telemetryToReading(t: any, prev?: SolarReading): SolarReading {
+  const voltage = Number(t.voltage) || 12.8;
+  const current = Number(t.current) || 0;
+  const soc = Number(t.soc) || 0;
+  const power = Number(t.power) || 0;
+  const temp = Number(t.temperature) || 25;
+  const loadPowerW = prev?.loadPowerW ?? 450; // load not available from BMS alone
+
+  let chargingMode: ChargingMode = 'Idle';
+  if (current > 0.5) {
+    if (soc < 80) chargingMode = 'Bulk';
+    else if (soc < 95) chargingMode = 'Absorption';
+    else chargingMode = 'Float';
+    if (power > 200) chargingMode = 'MPPT';
+  }
+
+  const systemHealth: SystemHealth =
+    temp > 65 || soc < 10 ? 'Critical' :
+      temp > 50 || soc < 20 ? 'Warning' : 'Normal';
+
+  return {
+    solarPowerW: Math.max(0, power > 0 ? power : 0),
+    panelVoltage: prev?.panelVoltage ?? 0,
+    panelCurrent: prev?.panelCurrent ?? 0,
+    todayKwh: prev?.todayKwh ?? 0,
+    batteryVoltage: voltage,
+    batteryCurrent: current,
+    batterySoc: soc,
+    batteryPowerW: Math.round(power),
+    loadPowerW: Math.round(loadPowerW),
+    controllerTemp: temp,
+    chargingMode,
+    mpptTracking: chargingMode === 'MPPT',
+    floatCharging: chargingMode === 'Float',
+    overheatWarning: temp > 65,
+    systemHealth,
+    gridStatus: power > 50 ? 'Exporting' : power < -50 ? 'Importing' : 'Idle',
+    netPowerW: Math.round(power - loadPowerW),
+    todayConsumedKwh: prev?.todayConsumedKwh ?? 0,
+    todayExportedKwh: prev?.todayExportedKwh ?? 0,
+    uptimeSeconds: prev ? prev.uptimeSeconds + 5 : 0,
+  };
+}
+
 export function SolarProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<SolarReading>(() => makeDemoReading());
   const [spark, setSpark] = useState<SparkPoint[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [dataSource, setDataSource] = useState<DataSource>('demo');
+  const [dataSource, setDataSourceState] = useState<DataSource>('demo');
   const [lastUpdated, setLastUpdated] = useState(new Date());
 
-  // Boot: simulate connection delay
-  useEffect(() => {
-    const t = setTimeout(() => setIsConnected(true), 900);
-    return () => clearTimeout(t);
+  // Persist data source preference
+  const setDataSource = useCallback((ds: DataSource) => {
+    setDataSourceState(ds);
+    if (typeof window !== 'undefined') localStorage.setItem('accusolar_source', ds);
   }, []);
 
-  // Live updates every 5s
+  // Restore saved data source on mount
   useEffect(() => {
-    if (!isConnected) return;
+    const saved = localStorage.getItem('accusolar_source') as DataSource | null;
+    if (saved && ['demo', 'ampinvt', 'victron', 'manual'].includes(saved)) {
+      setDataSourceState(saved);
+    }
+  }, []);
+
+  // ── Demo mode: simulated data every 5s ──
+  useEffect(() => {
+    if (dataSource !== 'demo') return;
+    setIsConnected(false);
+    const bootTimer = setTimeout(() => setIsConnected(true), 900);
+
     const interval = setInterval(() => {
       setData(prev => {
         const next = makeDemoReading(prev);
@@ -186,12 +238,8 @@ export function SolarProvider({ children }: { children: ReactNode }) {
         return next;
       });
     }, 5000);
-    return () => clearInterval(interval);
-  }, [isConnected]);
 
-  // Seed spark history on connect
-  useEffect(() => {
-    if (!isConnected) return;
+    // Seed spark
     const now = new Date();
     const seed: SparkPoint[] = Array.from({ length: 30 }, (_, i) => {
       const t = new Date(now.getTime() - (29 - i) * 5000);
@@ -203,7 +251,45 @@ export function SolarProvider({ children }: { children: ReactNode }) {
       };
     });
     setSpark(seed);
-  }, [isConnected]);
+
+    return () => { clearTimeout(bootTimer); clearInterval(interval); };
+  }, [dataSource]);
+
+  // ── Live mode: poll /api/telemetry/ingest every 5s ──
+  useEffect(() => {
+    if (dataSource !== 'ampinvt') return;
+    setIsConnected(false);
+    let alive = true;
+
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/telemetry/ingest');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        if (!alive) return;
+
+        if (json.reading) {
+          setIsConnected(json.connected);
+          setData(prev => {
+            const next = telemetryToReading(json.reading, prev);
+            const now = new Date();
+            const label = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setSpark(s => [...s.slice(-59), { time: label, watts: next.batteryPowerW > 0 ? next.batteryPowerW : 0 }]);
+            setLastUpdated(now);
+            return next;
+          });
+        } else {
+          setIsConnected(false);
+        }
+      } catch {
+        if (alive) setIsConnected(false);
+      }
+    };
+
+    poll(); // initial fetch
+    const interval = setInterval(poll, 5000);
+    return () => { alive = false; clearInterval(interval); };
+  }, [dataSource]);
 
   return (
     <SolarContext.Provider value={{ data, spark, isConnected, dataSource, lastUpdated, setDataSource }}>

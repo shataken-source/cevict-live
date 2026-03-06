@@ -92,3 +92,51 @@ button.kpiTile {
 .recharts-tooltip-wrapper .recharts-default-tooltip {
   @apply bg-slate-800 border-slate-700 rounded-lg text-sm;
 }
+
+/* ── Touch / Tablet Optimization ─────────────────────────────────────────── */
+/* Larger tap targets for touch devices */
+@media (pointer: coarse) {
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .kpiTile {
+    @apply p-5;
+  }
+}
+
+/* ── Wall Display Mode ───────────────────────────────────────────────────── */
+/* Activated via ?wall query param or localStorage wallMode */
+.wallMode {
+  cursor: none;
+}
+
+.wallMode .kpiValueLarge {
+  @apply text-5xl;
+  text-shadow: 0 0 30px currentColor;
+}
+
+.wallMode .panelTitle {
+  @apply text-base;
+}
+
+.wallMode .kpiTile {
+  @apply p-5;
+}
+
+.wallMode .kpiTile .text-lg {
+  @apply text-2xl;
+}
+
+.wallMode .badge, .wallMode .statusBadge, .wallMode .alertBadge {
+  @apply text-sm px-3 py-1;
+}
+
+/* Hide scrollbar in wall mode */
+.wallMode ::-webkit-scrollbar {
+  display: none;
+}
+
+.wallMode {
+  scrollbar-width: none;
+}
