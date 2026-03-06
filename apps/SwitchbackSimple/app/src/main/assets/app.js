@@ -627,7 +627,9 @@ function renderChannelCats() {
     const cid = ch.category_id || '';
     catCount[cid] = (catCount[cid] || 0) + 1;
   });
+  var favCount = S.favorites ? S.favorites.filter(f => filtered.some(ch => ch.stream_id == f.stream_id)).length : 0;
   sel.innerHTML = `<option value="">Select a Category (${filtered.length} channels)</option>` +
+    (favCount > 0 ? `<option value="__favorites__">★ Favorites (${favCount})</option>` : '') +
     S.liveCategories
       .filter(c => catCount[c.category_id] > 0)
       .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
@@ -642,7 +644,13 @@ function renderChannelCats() {
         showCategoryPrompt();
         return;
       }
-      const base = S.allChannels.filter(c => c.category_id == catId);
+      var base;
+      if (catId === '__favorites__') {
+        var favIds = S.favorites.map(f => f.stream_id);
+        base = S.allChannels.filter(c => favIds.includes(c.stream_id));
+      } else {
+        base = S.allChannels.filter(c => c.category_id == catId);
+      }
       S.channelList = applyAllFilters(base);
       document.getElementById('ch-search').value = '';
       renderChannelList(S.channelList);
@@ -685,7 +693,13 @@ document.getElementById('ch-search').addEventListener('input', function () {
   const catId = document.getElementById('cat-select')?.value || '';
   if (!catId && !q) { showCategoryPrompt(); return; }
   // If searching with no category, search ALL channels
-  const base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
+  var base;
+  if (catId === '__favorites__') {
+    var favIds = S.favorites.map(f => f.stream_id);
+    base = S.allChannels.filter(c => favIds.includes(c.stream_id));
+  } else {
+    base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
+  }
   const allFiltered = applyAllFilters(base);
   const filtered = q ? allFiltered.filter(c => c.name.toLowerCase().includes(q)) : allFiltered;
   S.channelList = allFiltered;
@@ -923,7 +937,9 @@ async function initEPG(offsetDelta = 0) {
   const epgCatSel = document.getElementById('epg-cat-select');
   if (epgCatSel && S.liveCategories && S.liveCategories.length) {
     const prevVal = epgCatSel.value;
+    var epgFavCount = S.favorites ? S.favorites.length : 0;
     epgCatSel.innerHTML = '<option value="">All Categories</option>' +
+      (epgFavCount > 0 ? '<option value="__favorites__">★ Favorites (' + epgFavCount + ')</option>' : '') +
       S.liveCategories.map(c => '<option value="' + esc(String(c.category_id)) + '">' + esc(c.category_name || 'Unknown') + '</option>').join('');
     epgCatSel.value = prevVal || '';
     if (!epgCatSel._wired) {
@@ -935,7 +951,12 @@ async function initEPG(offsetDelta = 0) {
   // Filter channels by selected category, then apply user filters
   var epgFilteredChannels = applyAllFilters(S.allChannels);
   var selCatId = epgCatSel ? epgCatSel.value : '';
-  if (selCatId) epgFilteredChannels = epgFilteredChannels.filter(c => String(c.category_id) === selCatId);
+  if (selCatId === '__favorites__') {
+    var favIds = S.favorites.map(function (f) { return f.stream_id; });
+    epgFilteredChannels = epgFilteredChannels.filter(function (c) { return favIds.includes(c.stream_id); });
+  } else if (selCatId) {
+    epgFilteredChannels = epgFilteredChannels.filter(c => String(c.category_id) === selCatId);
+  }
 
   // Show first 30 channels with EPG channel IDs, fetch their short EPG
   const chansWithEpg = epgFilteredChannels.filter(c => c.epg_channel_id).slice(0, 30);
@@ -4370,7 +4391,7 @@ document.addEventListener('keydown', function tvNav(e) {
     return;
   }
 
-  // ── CONTENT ZONE: spatial navigation ──
+  // ── CONTENT ZONE ──
   const screen = tvContentZone();
   if (!screen) return;
 
@@ -4389,7 +4410,19 @@ document.addEventListener('keydown', function tvNav(e) {
     return;
   }
 
-  // Other directions: pure spatial
+  // Settings screen: use DOM-order sequential nav (forms are linear, not spatial)
+  if (S.currentScreen === 'settings') {
+    if (direction === 'up' || direction === 'down') {
+      var idx = candidates.indexOf(cur);
+      var next = direction === 'down'
+        ? (idx < candidates.length - 1 ? candidates[idx + 1] : candidates[0])
+        : (idx > 0 ? candidates[idx - 1] : candidates[candidates.length - 1]);
+      if (next) { next.focus(); next.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+    }
+    return;
+  }
+
+  // Other screens: pure spatial navigation
   const target = tvSpatialNearest(cur, candidates, direction);
   if (target) {
     target.focus();
