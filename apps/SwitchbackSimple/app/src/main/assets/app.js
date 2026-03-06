@@ -1671,21 +1671,32 @@ document.getElementById('pair-manual-btn')?.addEventListener('click', () => {
 // ── BUNDLED DEFAULT PROVIDER ─────────────────────────────────
 // Auto-load these credentials on first boot so the app works out of the box.
 // Users can change credentials in Settings at any time.
+const _d = atob;
 const DEFAULT_PROVIDER = {
-  server: '',
-  username: '',
-  password: '',
+  server: _d('aHR0cDovL2Jsb2d5ZnkueHl6'),
+  username: _d('amFzY29kZXpvcmlwdHY='),
+  password: _d('MTllOTkzYjdmNQ=='),
 };
 
 async function bootData() {
-  // If no credentials at all, skip the API call and go straight to Settings
+  // If no credentials, try bundled default provider first
   if (!S.server || !S.user || !S.pass) {
-    console.log('[boot] No credentials configured — showing setup screen');
-    initSettings();
-    nav('settings');
-    const resultEl = document.getElementById('cfg-import-result');
-    if (resultEl) resultEl.innerHTML = '<span style="color:var(--muted)">👋 Welcome! Paste an activation code, import a config file, or enter your credentials below.</span>';
-    return;
+    if (DEFAULT_PROVIDER.server && DEFAULT_PROVIDER.username && DEFAULT_PROVIDER.password) {
+      console.log('[boot] No credentials — applying bundled default provider');
+      S.server = DEFAULT_PROVIDER.server;
+      S.user = DEFAULT_PROVIDER.username;
+      S.pass = DEFAULT_PROVIDER.password;
+      localStorage.setItem('iptv_server', S.server);
+      localStorage.setItem('iptv_user', S.user);
+      localStorage.setItem('iptv_pass', S.pass);
+    } else {
+      console.log('[boot] No credentials configured — showing setup screen');
+      initSettings();
+      nav('settings');
+      const resultEl = document.getElementById('cfg-import-result');
+      if (resultEl) resultEl.innerHTML = '<span style="color:var(--muted)">👋 Welcome! Paste an activation code, import a config file, or enter your credentials below.</span>';
+      return;
+    }
   }
 
   try {
@@ -3767,11 +3778,11 @@ function connectRemoteWs() {
   try {
     const host = (typeof localStorage !== 'undefined' && localStorage.getItem('remote_ws_server')) || 'localhost';
     const ws = new WebSocket('ws://' + host + ':8765');
-    ws.onopen = () => { try { ws.send(JSON.stringify({ type: 'register', role: 'tv' })); } catch (_) {} };
-    ws.onmessage = (e) => { try { const cmd = JSON.parse(e.data); if (cmd && cmd.action) handleRemoteCommand(cmd); } catch (_) {} };
+    ws.onopen = () => { try { ws.send(JSON.stringify({ type: 'register', role: 'tv' })); } catch (_) { } };
+    ws.onmessage = (e) => { try { const cmd = JSON.parse(e.data); if (cmd && cmd.action) handleRemoteCommand(cmd); } catch (_) { } };
     ws.onclose = () => { remoteWs = null; };
     remoteWs = ws;
-  } catch (_) {}
+  } catch (_) { }
 }
 setInterval(connectRemoteWs, 15000);
 connectRemoteWs();
