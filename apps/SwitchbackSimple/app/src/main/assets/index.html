@@ -276,12 +276,6 @@
       display: block;
     }
 
-    #screen-setup.active {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
     .screen.full-h {
       padding: 0;
     }
@@ -1075,6 +1069,9 @@
       <div class="sb-footer">
         <div id="sb-version" style="font-size:10px;color:#555;text-align:center;padding:4px 0;letter-spacing:0.5px">
         </div>
+        <div class="sb-toggle" id="sb-toggle-btn">
+          <span class="icon">◀</span><span class="label" style="font-size:12px">Collapse</span>
+        </div>
       </div>
     </nav>
     <div id="main">
@@ -1094,7 +1091,8 @@
       <div id="content">
 
         <!-- SETUP SCREEN (first boot) -->
-        <div class="screen" id="screen-setup" style="padding:40px 20px;height:calc(100vh - 54px);">
+        <div class="screen" id="screen-setup"
+          style="padding:40px 20px;height:calc(100vh - 54px);display:flex;align-items:center;justify-content:center;">
           <div style="text-align:center;max-width:520px;">
             <div
               style="font-size:32px;font-weight:800;margin-bottom:6px;background:linear-gradient(90deg,#ff3a3a,#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
@@ -1280,11 +1278,7 @@
         <div class="screen" id="screen-epg">
           <div class="page-title">📋 TV Guide</div>
           <div class="page-sub">Live program schedule · Click any show to watch</div>
-          <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px;flex-wrap:wrap">
-            <select id="epg-cat-select" class="inp"
-              style="width:auto;min-width:180px;max-width:260px;padding:6px 10px;font-size:12px" tabindex="-1">
-              <option value="">All Categories</option>
-            </select>
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px">
             <button class="btn btn-ghost btn-sm" id="epg-prev">◀ Earlier</button>
             <button class="btn btn-red btn-sm" id="epg-now">● Now</button>
             <button class="btn btn-ghost btn-sm" id="epg-next">Later ▶</button>
@@ -1545,7 +1539,7 @@
           <div class="page-title">⚙️ Settings</div>
           <div class="page-sub">Provider credentials, playback, and app preferences</div>
           <div id="settings-status"></div>
-          <div style="display:grid;grid-template-columns:1fr;gap:22px;max-width:560px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:860px">
             <div>
               <div class="section-title">Quick Setup</div>
               <div class="settings-group" style="padding:13px" id="import-config-group">

@@ -2,8 +2,8 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.6';
-const APP_BUILD = 48;
+const APP_VERSION = '5.4';
+const APP_BUILD = 46;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -11,12 +11,12 @@ const APP_BUILD = 48;
 // on focus/tab. Only an explicit pointer click OR pressing Enter/OK
 // while the input is already focused will open the keyboard.
 (function () {
-  const TEXT_INPUTS = 'INPUT, TEXTAREA';
+  const INPUTS = 'INPUT, TEXTAREA, SELECT';
 
-  // Ensure inputmode=none on text inputs unless explicitly opened
+  // Ensure inputmode=none on every input at all times unless we opened it
   document.addEventListener('focusin', e => {
     const el = e.target;
-    if (!el.matches(TEXT_INPUTS)) return;
+    if (!el.matches(INPUTS)) return;
     if (!el._kbOpen) {
       el.setAttribute('inputmode', 'none');
     }
@@ -25,7 +25,7 @@ const APP_BUILD = 48;
   // Pointer click on an input → open real keyboard
   document.addEventListener('pointerdown', e => {
     const el = e.target;
-    if (!el.matches(TEXT_INPUTS)) return;
+    if (!el.matches(INPUTS)) return;
     el._kbOpen = true;
     el.removeAttribute('inputmode');
   }, true);
@@ -34,33 +34,22 @@ const APP_BUILD = 48;
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     const el = document.activeElement;
-    if (!el || !el.matches(TEXT_INPUTS)) return;
+    if (!el || !el.matches(INPUTS)) return;
     e.preventDefault();
     el._kbOpen = true;
     el.removeAttribute('inputmode');
-    // Blur + re-focus forces Android WebView to re-evaluate inputmode
-    el.blur();
-    setTimeout(() => { el.focus(); el.click(); }, 50);
+    el.focus();
+    el.click();
   }, true);
 
   // When input loses focus, re-arm suppression
   document.addEventListener('focusout', e => {
     const el = e.target;
-    if (!el.matches(TEXT_INPUTS)) return;
-    // Don't re-arm if we just blurred for the blur/refocus trick above
-    if (el._kbOpen) return;
+    if (!el.matches(INPUTS)) return;
+    el._kbOpen = false;
     el.setAttribute('inputmode', 'none');
   });
 })();
-
-// Helper: explicitly open keyboard on an input element
-function openKeyboardOn(el) {
-  if (!el) return;
-  el._kbOpen = true;
-  el.removeAttribute('inputmode');
-  el.blur();
-  setTimeout(() => { el.focus(); el.click(); }, 50);
-}
 
 // ── DEFAULTS ─────────────────────────────────────────────────
 // No hardcoded credentials. User must enter their own via Settings
@@ -810,26 +799,9 @@ async function initEPG(offsetDelta = 0) {
     await initChannels();
   }
 
-  // Populate category dropdown
-  const catSel = document.getElementById('epg-cat-select');
-  if (catSel && catSel.options.length <= 1 && S.liveCategories?.length) {
-    S.liveCategories.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.category_id;
-      opt.textContent = c.category_name;
-      catSel.appendChild(opt);
-    });
-  }
-
-  // Filter by selected category
-  const selectedCat = catSel ? catSel.value : '';
-  const filtered = selectedCat
-    ? applyLangFilter(S.allChannels.filter(c => c.category_id == selectedCat))
-    : applyLangFilter(S.allChannels);
-
   // Show first 30 channels with EPG channel IDs, fetch their short EPG
-  const chansWithEpg = filtered.filter(c => c.epg_channel_id).slice(0, 30);
-  const chans = chansWithEpg.length ? chansWithEpg : filtered.slice(0, 30);
+  const chansWithEpg = S.allChannels.filter(c => c.epg_channel_id).slice(0, 30);
+  const chans = chansWithEpg.length ? chansWithEpg : S.allChannels.slice(0, 30);
 
   wrap.innerHTML = '<div class="loading"><div class="spinner"></div> Loading program guide...</div>';
 
@@ -908,7 +880,6 @@ async function initEPG(offsetDelta = 0) {
 document.getElementById('epg-now')?.addEventListener('click', () => { S.epgOffset = 0; initEPG(0); });
 document.getElementById('epg-prev')?.addEventListener('click', () => initEPG(-1));
 document.getElementById('epg-next')?.addEventListener('click', () => initEPG(1));
-document.getElementById('epg-cat-select')?.addEventListener('change', () => { S.epgOffset = 0; initEPG(0); });
 // Make EPG nav buttons focusable for D-pad
 ['epg-now', 'epg-prev', 'epg-next'].forEach(id => {
   const el = document.getElementById(id);
@@ -933,9 +904,7 @@ function initSearch() {
       });
     });
   }
-  // Focus search input and open keyboard for immediate typing
-  const searchEl = document.getElementById('search-input');
-  setTimeout(() => openKeyboardOn(searchEl), 200);
+  document.getElementById('search-input').focus();
 }
 
 document.getElementById('search-input').addEventListener('input', function () {
@@ -1106,7 +1075,6 @@ function renderDeviceInfo(info) {
       <div class="row-item"><span style="font-size:13px">Max Connections</span><span style="font-size:12px;color:var(--muted)">${max}</span></div>
       <div class="row-item"><span style="font-size:13px">Server Timezone</span><span style="font-size:12px;color:var(--muted)">${esc(si.timezone || '—')}</span></div>
       <div class="row-item"><span style="font-size:13px">Server Time</span><span style="font-size:12px;color:var(--muted)">${esc(si.time_now || '—')}</span></div>
-      <div class="row-item"><span style="font-size:13px">Device ID</span><span style="font-size:11px;color:var(--muted);font-family:monospace;word-break:break-all">${esc(window.__DEVICE_ID || 'Unknown')}</span></div>
     </div>
     ${pct > 75 ? `<div style="margin-top:14px;padding:13px;background:rgba(229,0,0,0.07);border:1px solid rgba(229,0,0,0.2);border-radius:var(--radius)"><div style="font-size:13px;font-weight:700;margin-bottom:3px">⚠️ Approaching Stream Limit</div><div style="font-size:12px;color:var(--muted)">You're using ${active} of ${max} allowed streams.</div></div>` : ''}`;
 }
@@ -1983,7 +1951,24 @@ async function checkDeviceLicense() {
 }
 
 function showDeviceBlocked(deviceId, reason) {
-  console.warn('[license] Device blocked: ' + deviceId + ' — ' + reason);
+  // Hide everything and show a blocking overlay
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.getElementById('sidebar')?.setAttribute('style', 'display:none!important');
+  document.getElementById('topbar')?.setAttribute('style', 'display:none!important');
+  const main = document.getElementById('main-content') || document.body;
+  const overlay = document.createElement('div');
+  overlay.id = 'device-blocked';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;font-family:inherit;color:#fff';
+  overlay.innerHTML = `
+    <div style="font-size:72px;margin-bottom:20px">🔒</div>
+    <div style="font-size:24px;font-weight:800;margin-bottom:10px">Device Not Authorized</div>
+    <div style="font-size:14px;color:#999;max-width:400px;margin-bottom:24px;line-height:1.6">${reason}<br>Contact your provider with your Device ID to get activated.</div>
+    <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 28px;margin-bottom:16px">
+      <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Device ID</div>
+      <div style="font-size:18px;font-weight:700;font-family:monospace;letter-spacing:2px;color:#e50000">${deviceId}</div>
+    </div>
+    <div style="font-size:11px;color:#555">Switchback TV</div>`;
+  main.appendChild(overlay);
 }
 
 function splashStatus(msg) {
@@ -1999,11 +1984,10 @@ function hideSplash() {
 }
 
 async function bootData() {
-  splashStatus('Starting...');
-  // ── DEVICE LICENSE CHECK (fire-and-forget — never blocks boot) ──
-  checkDeviceLicense().catch(function (_) {
-    console.warn('[license] Check failed silently — allowing boot');
-  });
+  splashStatus('Checking device license...');
+  // ── DEVICE LICENSE CHECK (must pass before anything loads) ──
+  const licensed = await checkDeviceLicense();
+  if (!licensed) { hideSplash(); return; }
 
   // If no credentials at all, go straight to Settings for manual entry / config import.
   // The pairing API (pair-create/pair-poll) requires a backend that doesn't exist yet,
@@ -3094,42 +3078,29 @@ async function runBandwidthTest() {
   const btn = document.getElementById('bw-test-btn');
   const bwEl = document.getElementById('bw-result');
   const pingEl = document.getElementById('bw-ping-result');
-  if (btn) { btn.textContent = 'Testing…'; btn.disabled = true; }
+  if (btn) btn.textContent = 'Testing…';
   if (bwEl) { bwEl.textContent = '…'; bwEl.style.color = 'var(--muted)'; }
-  if (pingEl) { pingEl.textContent = '…'; pingEl.style.color = 'var(--muted)'; }
 
   try {
-    // ── Ping test: 3 samples, take median ──
-    const pings = [];
-    for (let i = 0; i < 3; i++) {
-      if (bwEl) bwEl.textContent = `Ping ${i + 1}/3…`;
-      const t0 = performance.now();
-      await api('get_user_info');
-      pings.push(Math.round(performance.now() - t0));
-    }
-    pings.sort((a, b) => a - b);
-    const ping = pings[1]; // median
+    // Ping test — use api() so it routes through Android proxy automatically
+    const t0 = performance.now();
+    await api('get_user_info');
+    const ping = Math.round(performance.now() - t0);
 
     if (pingEl) { pingEl.textContent = ping + 'ms'; pingEl.style.color = ping < 100 ? 'var(--green)' : ping < 300 ? 'var(--yellow)' : 'var(--primary)'; }
     const qPingEl = document.getElementById('q-ping');
     if (qPingEl) qPingEl.textContent = ping + 'ms';
 
-    // ── Bandwidth test: 3 samples, take best ──
+    // Bandwidth estimate: use HLS if stream active, else time a categories fetch
     let mbps = null;
     if (S.hlsInstance?.bandwidthEstimate) {
       mbps = (S.hlsInstance.bandwidthEstimate / 1000000).toFixed(1);
     } else {
-      const speeds = [];
-      for (let i = 0; i < 3; i++) {
-        if (bwEl) bwEl.textContent = `Speed ${i + 1}/3…`;
-        const t1 = performance.now();
-        const data = await api('get_live_streams');
-        const bytes = JSON.stringify(data).length;
-        const secs = (performance.now() - t1) / 1000;
-        speeds.push((bytes * 8) / secs / 1000000);
-      }
-      speeds.sort((a, b) => b - a);
-      mbps = speeds[0].toFixed(1); // best of 3
+      const t1 = performance.now();
+      const cats = await api('get_live_categories');
+      const bytes = JSON.stringify(cats).length;
+      const secs = (performance.now() - t1) / 1000;
+      mbps = ((bytes * 8) / secs / 1000000).toFixed(2);
     }
 
     if (bwEl) {
@@ -3146,8 +3117,7 @@ async function runBandwidthTest() {
     if (sub) sub.textContent = ping < 200 ? 'Excellent connection' : ping < 500 ? 'Good connection' : 'Slow connection';
 
     // Update quality screen top stats
-    const qBit = document.getElementById('q-bitrate');
-    if (qBit) qBit.textContent = mbps || '—';
+    document.getElementById('q-bitrate').textContent = mbps || '—';
 
     updateQualityHealthStats();
   } catch (e) {
@@ -3157,7 +3127,7 @@ async function runBandwidthTest() {
     const lbl = document.getElementById('q-server-label');
     if (lbl) lbl.textContent = 'Unreachable';
   } finally {
-    if (btn) { btn.textContent = 'Re-test'; btn.disabled = false; }
+    if (btn) btn.textContent = 'Re-test';
   }
 }
 
@@ -3191,9 +3161,9 @@ initSettings = function () {
   if (!document.getElementById('dezor-section')) {
     const dezorSection = document.createElement('div');
     dezorSection.id = 'dezor-section';
-    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns"]');
+    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns:1fr 1fr"]');
     if (settingsGrid) {
-      const col = settingsGrid.children[1] || settingsGrid.children[0];
+      const rightCol = settingsGrid.children[1];
       dezorSection.innerHTML = `
         <div class="section-title">Dezor IPTV Provider</div>
         <div class="settings-group" style="padding:13px" id="dezor-group">
@@ -3212,11 +3182,11 @@ initSettings = function () {
           </div>
         </div>`;
 
-      // Insert before first child of column
-      if (col.firstChild) {
-        col.insertBefore(dezorSection, col.firstChild);
+      // Insert before first child of right column
+      if (rightCol.firstChild) {
+        rightCol.insertBefore(dezorSection, rightCol.firstChild);
       } else {
-        col.appendChild(dezorSection);
+        rightCol.appendChild(dezorSection);
       }
 
       document.getElementById('load-dezor-btn').addEventListener('click', loadDezorPlaylist);
@@ -3254,7 +3224,7 @@ initSettings = function () {
 
   // Inject Remote Control info section
   if (!document.getElementById('remote-info-section')) {
-    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns"]');
+    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns:1fr 1fr"]');
     if (settingsGrid) {
       const leftCol = settingsGrid.children[0];
       const remoteSection = document.createElement('div');
@@ -3863,29 +3833,6 @@ function patchChRowLongPress(list) {
     row.addEventListener('mouseleave', sbCancel);
     row.addEventListener('touchend', sbCancel);
     row.addEventListener('touchcancel', sbCancel);
-
-    // TV remote: long-press Enter/OK on focused row → toggle favorite
-    let keyTimer = null;
-    row.addEventListener('keydown', e => {
-      if (e.key !== 'Enter') return;
-      if (keyTimer) return; // already timing
-      keyTimer = setTimeout(() => {
-        row._longPressed = true;
-        e.preventDefault();
-        const idx = parseInt(row.dataset.idx);
-        const ch = list[idx];
-        if (!ch) return;
-        const isFav = S.favorites.some(f => f.stream_id == ch.stream_id);
-        toggleFav(ch, null);
-        showToast(isFav ? 'Removed from favorites' : '★ Added to favorites');
-        // Update the star icon in this row
-        const star = row.querySelector('.fav-star');
-        if (star) { star.classList.toggle('on'); }
-      }, 700);
-    });
-    row.addEventListener('keyup', e => {
-      if (e.key === 'Enter' && keyTimer) { clearTimeout(keyTimer); keyTimer = null; }
-    });
   });
 }
 
