@@ -305,7 +305,7 @@ const LANG_FILTER_GROUPS = [
 
 // Returns the set of category keyword groups the user has HIDDEN
 function getLangFilterHidden() {
-  try { return JSON.parse(localStorage.getItem('lang_filter_hidden') || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem('lang_filter_hidden') || '[]'); } catch (_) { return []; }
 }
 
 // Apply language filter to a channel list
@@ -326,7 +326,7 @@ function applyLangFilter(channels) {
 // ── CATEGORY FILTER (hide/show entire provider categories) ────
 // Stores an array of hidden category_ids in localStorage.
 function getHiddenCategories() {
-  try { return JSON.parse(localStorage.getItem('hidden_categories') || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem('hidden_categories') || '[]'); } catch (_) { return []; }
 }
 
 function applyCategoryFilter(channels) {
@@ -363,7 +363,7 @@ function applyProviderPrefixes() {
       localStorage.setItem('hidden_categories', JSON.stringify(hideIds));
       console.log(`[prefixes] Auto-hid ${hideIds.length} of ${S.liveCategories.length} categories (keeping ${S.liveCategories.length - hideIds.length} matching prefixes)`);
     }
-  } catch { }
+  } catch (_) { }
 }
 
 function renderCatFilterUI() {
@@ -1289,7 +1289,7 @@ async function loadCatchUpEPG(streamId, chans) {
   document.getElementById('catchup-epg-title').textContent = `Programs — ${ch?.name || ''}`;
   const epgEl = document.getElementById('catchup-epg');
   epgEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
+  const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
   try {
     const fakeCh = { stream_id: streamId };
     const data = await fetchEpgForChannel(fakeCh);
@@ -1325,7 +1325,7 @@ async function loadCatchUpEPG(streamId, chans) {
 // ── PLAYER ────────────────────────────────────────────────────
 function openPlayer(ch, list, idx) {
   // ch can be a JSON string (from inline onclick) or object
-  if (typeof ch === 'string') { try { ch = JSON.parse(ch); } catch { } }
+  if (typeof ch === 'string') { try { ch = JSON.parse(ch); } catch (_) { } }
 
   // Track previous channel before switching (inlined from override)
   if (S.currentChannel && S.currentChannel.stream_id !== ch.stream_id) {
@@ -2526,7 +2526,7 @@ function detectAdFromEPG() {
   const listings = S.epgCache[streamId];
 
   const nowTs = Math.floor(Date.now() / 1000);
-  const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
+  const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
   const current = listings?.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
 
   let isAd = false;
@@ -3509,7 +3509,7 @@ function parseProviderConfig(raw) {
         autoLoad: j.autoLoad === true,
         isSwitchback: !!j._switchback,
       };
-    } catch { }
+    } catch (_) { }
   }
   // 2. Xtream URL: http://server/username/password  (3-segment path)
   //    or  http://server/player_api.php?username=...&password=...
@@ -3525,7 +3525,7 @@ function parseProviderConfig(raw) {
     if (parts.length >= 2 && parts[0] && parts[1]) {
       return { server: `${u.protocol}//${u.host}`, user: parts[0], pass: parts[1], epg: null };
     }
-  } catch { }
+  } catch (_) { }
   // 3. M3U URL with username/password params
   if (s.includes('get.php') || s.includes('.m3u')) {
     try {
@@ -3535,7 +3535,7 @@ function parseProviderConfig(raw) {
       if (user && pass) {
         return { server: `${u2.protocol}//${u2.host}`, user, pass, epg: null };
       }
-    } catch { }
+    } catch (_) { }
   }
   // 4. Activation code: base64url-encoded JSON
   if (s.length > 20 && !s.includes(' ') && !s.startsWith('http')) {
@@ -3553,7 +3553,7 @@ function parseProviderConfig(raw) {
           };
         }
       }
-    } catch { }
+    } catch (_) { }
   }
   return null;
 }
@@ -3754,7 +3754,7 @@ renderChannelList = function (list) {
     // EPG now-playing from cache
     const epgListings = S.epgCache[ch.stream_id] || [];
     const nowProg = epgListings.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
-    const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
+    const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
     const nowTitle = nowProg ? safeAtob(nowProg.title) : '';
 
     const logo = ch.stream_icon
