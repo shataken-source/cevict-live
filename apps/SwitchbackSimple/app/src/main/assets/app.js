@@ -2077,20 +2077,11 @@ function hideSplash() {
 }
 
 async function bootData() {
-  splashStatus('Checking device license...');
   console.log('[boot] Starting boot sequence...');
-  // ── DEVICE LICENSE CHECK (must pass before anything loads) ──
-  const licensed = await checkDeviceLicense();
-  console.log('[boot] License check result:', licensed);
-  if (!licensed) { hideSplash(); return; }
-  // Brief pause so user sees the license check passed
-  splashStatus('Device authorized ✓');
-  await new Promise(r => setTimeout(r, 800));
 
-  // If no credentials, try bundled default provider first, then show LAN setup screen.
+  // If no credentials, try bundled default provider first, then show setup screen.
   if (!S.server || !S.user || !S.pass) {
     if (DEFAULT_PROVIDER.server && DEFAULT_PROVIDER.username && DEFAULT_PROVIDER.password) {
-      splashStatus('Applying provider credentials...');
       console.log('[boot] No credentials — applying bundled default provider');
       S.server = DEFAULT_PROVIDER.server;
       S.user = DEFAULT_PROVIDER.username;
@@ -2099,112 +2090,78 @@ async function bootData() {
       localStorage.setItem('iptv_user', S.user);
       localStorage.setItem('iptv_pass', S.pass);
     } else {
-      console.log('[boot] No credentials — showing QR setup screen');
+      console.log('[boot] No credentials — showing setup screen');
       hideSplash();
       startPairing();
       return;
     }
   }
 
-  // Start a countdown timer on the splash so user knows it's not frozen
-  let _bootSec = 0;
-  const _bootTimer = setInterval(() => {
-    _bootSec++;
-    if (_bootSec > 10) splashStatus(`Still connecting... ${_bootSec}s`);
-  }, 1000);
+  // Hide splash immediately — show the main app right away
+  hideSplash();
 
+  // ── BACKGROUND: auth + load everything (non-blocking) ──
   try {
-    splashStatus('Authenticating...');
-    console.log('[boot] Authenticating with server:', S.server);
-    // User info first (fast) — also validates credentials
-    const info = await apiWithTimeout('get_user_info', {}, 20000);
-
-    // Check if auth succeeded
+    const info = await apiWithTimeout('get_user_info', {}, 15000);
     if (info?.user_info?.auth === 0) {
-      console.warn('[boot] IPTV credentials rejected by server');
-      // Clear bad credentials so next boot shows setup screen
+      console.warn('[boot] IPTV credentials rejected');
       localStorage.removeItem('iptv_server');
       localStorage.removeItem('iptv_user');
       localStorage.removeItem('iptv_pass');
       S.server = null; S.user = null; S.pass = null;
-      hideSplash();
       startPairing();
-      showToast('Credentials invalid. Scan the QR code with your phone to set up, or tap "set up manually".', 6000);
+      showToast('Credentials invalid. Set up manually or import a config.', 5000);
       return;
     }
-
     S.userInfo = info;
     renderAccountInfo(info);
-
-    splashStatus('Authenticated ✓');
-    console.log('[boot] Auth OK, loading categories...');
-    await new Promise(r => setTimeout(r, 600));
-    splashStatus('Loading categories...');
-    // Only fetch categories at boot (tiny payload ~50KB).
-    // The full channel list (16+ MB) is loaded in the background AFTER the app is usable.
-    try {
-      const cats = await apiWithTimeout('get_live_categories', {}, 20000);
-      if (Array.isArray(cats)) S.liveCategories = cats;
-      console.log('[boot] Categories loaded:', S.liveCategories.length);
-    } catch (e) {
-      console.warn('[boot] Categories failed:', e.message);
-    }
-
-    // Auto-hide categories that don't match provider prefixes (from .switchback config)
-    applyProviderPrefixes();
-
-    // Show provider welcome message (once, on first import)
-    const welcomeMsg = localStorage.getItem('provider_welcome');
-    if (welcomeMsg && !sessionStorage.getItem('_welcomeShown')) {
-      sessionStorage.setItem('_welcomeShown', '1');
-      setTimeout(() => showToast(welcomeMsg, 5000), 1500);
-    }
-
-    // Update TV home with category count
-    if (S.currentScreen === 'tvhome') initTVHome();
-
-    // Re-stamp focusable elements and re-focus sidebar
-    setTimeout(() => { tvStampFocusable(); tvFocusSidebar(); }, 300);
-
-    // Update channels sub
-    const chSub = document.getElementById('channels-sub');
-    if (chSub) chSub.textContent = `${S.liveCategories.length} categories · loading channels...`;
-
-    // Hide splash immediately — app is usable (categories loaded)
-    clearInterval(_bootTimer);
-    hideSplash();
-
-    // ── BACKGROUND: load full channel list + VOD/series (non-blocking) ──
-    api('get_live_streams').then(d => {
-      if (Array.isArray(d)) {
-        S.allChannels = assignChannelNumbers(d);
-        // Only reset channelList if user hasn't selected a category yet
-        if (!S.channelList.length) S.channelList = [];
-        const chSub2 = document.getElementById('channels-sub');
-        if (chSub2) chSub2.textContent = `${S.allChannels.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
-        if (S.currentScreen === 'tvhome') initTVHome();
-        console.log(`[boot] Channels loaded in background: ${S.allChannels.length}`);
-      }
-    }).catch(e => console.warn('[boot] Background channel load failed:', e.message));
-    api('get_vod_categories').then(d => { if (Array.isArray(d)) S.vodCategories = d; }).catch(() => { });
-    api('get_vod_streams').then(d => { if (Array.isArray(d)) S.allVod = d; }).catch(() => { });
-    api('get_series_categories').then(d => { if (Array.isArray(d)) S.seriesCategories = d; }).catch(() => { });
-    api('get_series').then(d => { if (Array.isArray(d)) S.allSeries = d; }).catch(() => { });
-
+    console.log('[boot] Auth OK');
   } catch (e) {
-    clearInterval(_bootTimer);
-    console.warn('[boot] Boot failed:', e.message);
-    // Connection failed — server is down or wrong URL
-    // Clear bad creds and show setup screen so user can re-pair
-    localStorage.removeItem('iptv_server');
-    localStorage.removeItem('iptv_user');
-    localStorage.removeItem('iptv_pass');
-    S.server = null; S.user = null; S.pass = null;
-    hideSplash();
-    startPairing();
-    showToast('Could not connect to IPTV server. Scan QR to set up, or tap "set up manually".', 6000);
-    return;
+    console.warn('[boot] Auth failed:', e.message);
+    showToast('Could not reach IPTV server. Check connection or re-enter credentials in Settings.', 5000);
   }
+
+  // Load categories
+  try {
+    const cats = await apiWithTimeout('get_live_categories', {}, 15000);
+    if (Array.isArray(cats)) S.liveCategories = cats;
+    console.log('[boot] Categories:', S.liveCategories.length);
+  } catch (e) {
+    console.warn('[boot] Categories failed:', e.message);
+  }
+
+  // Apply provider prefixes if set
+  applyProviderPrefixes();
+
+  // Show provider welcome (once per session)
+  const welcomeMsg = localStorage.getItem('provider_welcome');
+  if (welcomeMsg && !sessionStorage.getItem('_welcomeShown')) {
+    sessionStorage.setItem('_welcomeShown', '1');
+    setTimeout(() => showToast(welcomeMsg, 5000), 1500);
+  }
+
+  // Update UI
+  if (S.currentScreen === 'tvhome') initTVHome();
+  setTimeout(() => { tvStampFocusable(); tvFocusSidebar(); }, 300);
+  const chSub = document.getElementById('channels-sub');
+  if (chSub) chSub.textContent = `${S.liveCategories.length} categories · loading channels...`;
+
+  // Background: full channel list + VOD/series
+  api('get_live_streams').then(d => {
+    if (Array.isArray(d)) {
+      S.allChannels = assignChannelNumbers(d);
+      if (!S.channelList.length) S.channelList = [];
+      const chSub2 = document.getElementById('channels-sub');
+      if (chSub2) chSub2.textContent = `${S.allChannels.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
+      if (S.currentScreen === 'tvhome') initTVHome();
+      console.log(`[boot] Channels: ${S.allChannels.length}`);
+    }
+  }).catch(e => console.warn('[boot] Channel load failed:', e.message));
+  api('get_vod_categories').then(d => { if (Array.isArray(d)) S.vodCategories = d; }).catch(() => { });
+  api('get_vod_streams').then(d => { if (Array.isArray(d)) S.allVod = d; }).catch(() => { });
+  api('get_series_categories').then(d => { if (Array.isArray(d)) S.seriesCategories = d; }).catch(() => { });
+  api('get_series').then(d => { if (Array.isArray(d)) S.allSeries = d; }).catch(() => { });
+
   initSettings();
 }
 
