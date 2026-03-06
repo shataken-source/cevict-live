@@ -1703,9 +1703,13 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  // If exit dialog is open, dismiss it
+  // If any modal/menu is open, dismiss it first
+  const smartModal = document.getElementById('smart-add-modal');
+  if (smartModal) { e.preventDefault(); smartModal.remove(); return; }
+  const ctxMenu = document.getElementById('ch-context-menu');
+  if (ctxMenu) { e.preventDefault(); ctxMenu.remove(); return; }
   const exitDlg = document.getElementById('exit-confirm-dialog');
-  if (exitDlg) { e.preventDefault(); exitDlg.remove(); return; }
+  if (exitDlg) { e.preventDefault(); exitDlg.remove(); tvFocusSidebar(); return; }
 
   const overlay = document.getElementById('player-overlay');
   if (overlay && overlay.style.display !== 'none') {
@@ -1743,7 +1747,7 @@ function showExitConfirm() {
       </div>
     </div>`;
   document.body.appendChild(dlg);
-  document.getElementById('exit-cancel-btn').addEventListener('click', () => dlg.remove());
+  document.getElementById('exit-cancel-btn').addEventListener('click', () => { dlg.remove(); tvFocusSidebar(); });
   document.getElementById('exit-confirm-btn').addEventListener('click', () => {
     if (IS_ANDROID_WEBVIEW) {
       // Signal Android to close the activity
@@ -2920,7 +2924,7 @@ renderFavorites = function () {
   tabBar.innerHTML = [
     { id: 'all', label: '⭐ All Favorites' },
     { id: 'smart', label: '🧠 Smart Categories' },
-    { id: 'import', label: '📤 Share' },
+    { id: 'import', label: '💾 Backup' },
   ].map(t => `<button class="btn btn-sm ${activeTab === t.id ? 'btn-red' : 'btn-ghost'}" data-fav-tab="${t.id}">${t.label}</button>`).join('');
   tabBar.querySelectorAll('[data-fav-tab]').forEach(btn => {
     btn.addEventListener('click', () => { S.favTab = btn.dataset.favTab; renderFavorites(); });
@@ -3027,21 +3031,20 @@ renderFavorites = function () {
 
   } else if (activeTab === 'import') {
     document.getElementById('fav-hdr')?.remove();
-    const exportUrl = `switchbacktv://favorites?data=${btoa(JSON.stringify(S.favorites.map(f => f.stream_id)))}`;
     el.innerHTML = `
-      <div class="section-title">Export Your Favorites</div>
+      <div class="section-title">Backup Favorites</div>
       <div class="card" style="margin-bottom:14px">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Share your favorite channels across devices</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Save your ${S.favorites.length} favorites to a backup so you can restore them if anything goes wrong.</div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost btn-sm" onclick="exportFavorites()">📤 Share List</button>
-          <button class="btn btn-ghost btn-sm" onclick="copyFavUrl()">🔗 Copy Import URL</button>
+          <button class="btn btn-ghost btn-sm" onclick="backupFavorites()">💾 Create Backup</button>
         </div>
+        <div id="fav-backup-status" style="margin-top:8px;font-size:12px"></div>
       </div>
-      <div class="section-title">Import Favorites</div>
+      <div class="section-title">Restore Favorites</div>
       <div class="card">
-        <input class="inp" id="fav-import-input" placeholder="Paste import URL or channel IDs..." style="margin-bottom:8px" />
-        <button class="btn btn-red btn-sm" onclick="importFavorites()">Import</button>
-        <div id="fav-import-result" style="margin-top:8px;font-size:12px"></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Restore from a previous backup.</div>
+        <button class="btn btn-red btn-sm" onclick="restoreFavorites()">🔄 Restore Backup</button>
+        <div id="fav-restore-status" style="margin-top:8px;font-size:12px"></div>
       </div>`;
   }
 }
@@ -3086,39 +3089,56 @@ function showSmartAddModal() {
     });
   });
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  // Close on Back/Escape key
+  var modalKeyHandler = function (e) {
+    if (e.key === 'Escape' || e.key === 'GoBack' || (e.key === 'Backspace' && document.activeElement?.tagName !== 'INPUT')) {
+      e.preventDefault(); e.stopPropagation();
+      modal.remove();
+      document.removeEventListener('keydown', modalKeyHandler, true);
+    }
+  };
+  document.addEventListener('keydown', modalKeyHandler, true);
 }
 
 function exportFavorites() {
-  const text = 'Switchback TV Favorites\n\n' + S.favorites.map((f, i) => `${i + 1}. ${f.name}`).join('\n');
-  if (navigator.share) {
-    navigator.share({ title: 'My IPTV Favorites', text });
-  } else {
-    navigator.clipboard.writeText(text).then(() => alert('Favorites copied to clipboard!'));
+  showSmartAddModal();
+}
+
+function backupFavorites() {
+  var status = document.getElementById('fav-backup-status');
+  try {
+    localStorage.setItem('fav_channels_backup', JSON.stringify(S.favorites));
+    var count = S.favorites.length;
+    var date = new Date().toLocaleString();
+    localStorage.setItem('fav_backup_date', date);
+    if (status) status.innerHTML = '<span style="color:var(--green)">✓ Backed up ' + count + ' favorites (' + date + ')</span>';
+    showToast('Backup saved: ' + count + ' favorites');
+  } catch (e) {
+    if (status) status.innerHTML = '<span style="color:#ff5555">Backup failed: ' + e.message + '</span>';
   }
 }
 
-function copyFavUrl() {
-  const ids = S.favorites.map(f => f.stream_id).join(',');
-  navigator.clipboard.writeText(`switchbacktv://import?ids=${ids}`).then(() => alert('Import URL copied!'));
-}
-
-function importFavorites() {
-  const input = document.getElementById('fav-import-input').value.trim();
-  const result = document.getElementById('fav-import-result');
+function restoreFavorites() {
+  var status = document.getElementById('fav-restore-status');
   try {
-    const ids = input.includes('ids=') ? input.split('ids=')[1].split(',') : input.split(',');
-    let added = 0;
-    ids.forEach(id => {
-      const ch = S.allChannels.find(c => c.stream_id == id.trim());
-      if (ch && !S.favorites.some(f => f.stream_id == ch.stream_id)) {
-        S.favorites.push(ch); added++;
-      }
-    });
+    var backup = localStorage.getItem('fav_channels_backup');
+    if (!backup) {
+      if (status) status.innerHTML = '<span style="color:#ff5555">No backup found. Create a backup first.</span>';
+      return;
+    }
+    var date = localStorage.getItem('fav_backup_date') || 'unknown';
+    var parsed = JSON.parse(backup);
+    if (!Array.isArray(parsed) || !parsed.length) {
+      if (status) status.innerHTML = '<span style="color:#ff5555">Backup is empty.</span>';
+      return;
+    }
+    S.favorites = parsed;
     saveState();
-    result.innerHTML = `<span style="color:var(--green)">✓ Added ${added} channels</span>`;
-    if (added > 0) renderFavorites();
+    if (status) status.innerHTML = '<span style="color:var(--green)">✓ Restored ' + parsed.length + ' favorites (from ' + date + ')</span>';
+    showToast('Restored ' + parsed.length + ' favorites');
+    setTimeout(function () { renderFavorites(); }, 500);
   } catch (e) {
-    result.innerHTML = `<span style="color:#ff5555">Failed to import</span>`;
+    if (status) status.innerHTML = '<span style="color:#ff5555">Restore failed: ' + e.message + '</span>';
   }
 }
 
@@ -4047,6 +4067,13 @@ function patchChRowLongPress(list) {
     row.addEventListener('mouseleave', sbCancel);
     row.addEventListener('touchend', sbCancel);
     row.addEventListener('touchcancel', sbCancel);
+    // D-pad: hold Enter/OK to long-press (no mousedown on remote)
+    row.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { if (!pressTimer) sbStart(); }
+    });
+    row.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') sbCancel();
+    });
   });
 }
 
@@ -4116,6 +4143,15 @@ function showChRowContextMenu(ch, anchorEl) {
       if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', closer); }
     });
   }, 50);
+  // Close on Back/Escape key
+  var ctxKeyHandler = function (e) {
+    if (e.key === 'Escape' || e.key === 'GoBack' || e.key === 'Backspace') {
+      e.preventDefault(); e.stopPropagation();
+      menu.remove();
+      document.removeEventListener('keydown', ctxKeyHandler, true);
+    }
+  };
+  document.addEventListener('keydown', ctxKeyHandler, true);
 }
 
 console.log('[Switchback TV] All upgrades loaded ✓');
@@ -4339,9 +4375,10 @@ document.addEventListener('keydown', function tvNav(e) {
       setTimeout(tvFocusContent, 100);
       return;
     }
-    // INPUT: focus it to bring up keyboard on Android TV
+    // INPUT: click to bring up keyboard on Android TV
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-      // Don't prevent default — let the system handle Enter in inputs
+      e.preventDefault();
+      el.click();
       el.focus();
       return;
     }
