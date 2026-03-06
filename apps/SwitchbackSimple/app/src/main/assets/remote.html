@@ -771,6 +771,23 @@
             class="nav-icon">⚙️</span>Settings</button>
         <button class="nav-btn" onclick="sendCmd({action:'sb_cycle'})"><span class="nav-icon">⇄</span>Swap</button>
       </div>
+
+      <!-- Sleep Timer -->
+      <div style="margin-top:8px">
+        <div
+          style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;padding-left:2px">
+          Sleep Timer</div>
+        <div class="quick-nav">
+          <button class="nav-btn" onclick="sendCmd({action:'sleep',mins:15})"><span class="nav-icon"
+              style="font-size:13px;font-weight:700">15m</span>Sleep</button>
+          <button class="nav-btn" onclick="sendCmd({action:'sleep',mins:30})"><span class="nav-icon"
+              style="font-size:13px;font-weight:700">30m</span>Sleep</button>
+          <button class="nav-btn" onclick="sendCmd({action:'sleep',mins:60})"><span class="nav-icon"
+              style="font-size:13px;font-weight:700">60m</span>Sleep</button>
+          <button class="nav-btn" onclick="sendCmd({action:'sleep_cancel'})"><span
+              class="nav-icon">✕</span>Cancel</button>
+        </div>
+      </div>
     </div>
 
     <!-- ═══ SETUP TAB ═══ -->
@@ -805,6 +822,21 @@
           File</button>
         <div class="setup-result" id="cfg-file-result"></div>
       </div>
+    </div>
+
+    <!-- Mini Now-Playing Bar -->
+    <div id="mini-bar"
+      style="padding:8px 16px;background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0">
+      <div style="font-size:20px;flex-shrink:0" id="mini-icon">📺</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+          id="mini-name">No channel</div>
+        <div style="font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+          id="mini-prog">—</div>
+      </div>
+      <button
+        style="width:36px;height:36px;border-radius:50%;border:none;background:var(--red);color:#fff;font-size:16px;cursor:pointer;flex-shrink:0"
+        onclick="sendCmd({action:'play_pause'})">⏯</button>
     </div>
 
     <div class="status-bar" id="status-bar">
@@ -988,6 +1020,12 @@
       document.getElementById('now-prog').textContent = state.program || '—';
       document.getElementById('now-dot').className = 'now-dot' + (state.playing ? '' : ' off');
       document.getElementById('now-badge').textContent = state.playing ? 'LIVE' : 'PAUSED';
+
+      // Mini bar
+      var miniName = document.getElementById('mini-name');
+      var miniProg = document.getElementById('mini-prog');
+      if (miniName) miniName.textContent = state.channel || 'No channel';
+      if (miniProg) miniProg.textContent = state.program || '—';
 
       // Update switchback slots
       if (state.slots) {

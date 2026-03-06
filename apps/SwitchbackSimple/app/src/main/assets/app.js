@@ -4385,6 +4385,14 @@ function handleRemoteCommand(cmd) {
   if (!cmd || !cmd.action) return;
   const a = cmd.action;
   switch (a) {
+    case 'play_channel': {
+      var channels = S.allChannels || [];
+      var ch = null;
+      if (cmd.stream_id) ch = channels.find(function (c) { return String(c.stream_id) === String(cmd.stream_id); });
+      if (!ch && cmd.name) ch = channels.find(function (c) { return c.name && c.name.toLowerCase() === cmd.name.toLowerCase(); });
+      if (ch) openPlayer(ch, channels, channels.indexOf(ch));
+      break;
+    }
     case 'play_pause': togglePlay(); break;
     case 'mute': toggleMute(); break;
     case 'vol_up': {
