@@ -276,12 +276,6 @@
       display: block;
     }
 
-    .screen.setup-screen.active {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
     .screen.full-h {
       padding: 0;
     }
@@ -450,31 +444,6 @@
 
     .inp:focus {
       border-color: var(--primary);
-    }
-
-    /* D-pad focus ring for all navigable elements */
-    .sb-item-nav:focus,
-    .tile:focus,
-    .sidebar-tile:focus,
-    .ch-row:focus,
-    .media-card:focus,
-    .hist-item:focus,
-    .rec-card:focus,
-    .epg-row:focus,
-    .price-card:focus,
-    .toggle-sw:focus,
-    .settings-group:focus,
-    label[role=checkbox]:focus,
-    button.btn:focus,
-    select:focus {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
-      box-shadow: 0 0 0 4px rgba(0, 194, 255, 0.15);
-    }
-
-    .sb-item:focus {
-      outline: 2px solid var(--accent);
-      outline-offset: -2px;
     }
 
     .inp::placeholder {
@@ -954,10 +923,7 @@
   <div id="app">
     <nav id="sidebar">
       <div class="sb-logo">
-        <div class="sb-logo-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="28" height="28">
-            <rect x="10" y="10" width="180" height="180" rx="36" fill="#13131a" stroke="url(#sg2)" stroke-width="6" />
-            <polygon points="78,55 78,145 152,100" fill="url(#sg1)" />
-          </svg></div>
+        <div class="sb-logo-icon">📺</div>
         <span class="sb-logo-text">Switchback TV</span>
       </div>
       <div class="sb-nav">
@@ -985,7 +951,8 @@
         </div>
       </div>
       <div class="sb-footer">
-        <div id="sb-version" style="font-size:10px;color:#555;text-align:center;padding:4px 0;letter-spacing:0.5px">
+        <div class="sb-toggle" id="sb-toggle-btn">
+          <span class="icon">◀</span><span class="label" style="font-size:12px">Collapse</span>
         </div>
       </div>
     </nav>
@@ -1006,7 +973,8 @@
       <div id="content">
 
         <!-- SETUP SCREEN (first boot) -->
-        <div class="screen setup-screen" id="screen-setup" style="padding:40px 20px;height:calc(100vh - 54px);">
+        <div class="screen" id="screen-setup"
+          style="padding:40px 20px;height:calc(100vh - 54px);display:flex;align-items:center;justify-content:center;">
           <div style="text-align:center;max-width:520px;">
             <div
               style="font-size:32px;font-weight:800;margin-bottom:6px;background:linear-gradient(90deg,#ff3a3a,#ff8c00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
@@ -1064,14 +1032,10 @@
         <div class="screen" id="screen-movies">
           <div class="page-title">🎬 Movies</div>
           <div class="page-sub" id="movies-sub">Loading VOD library...</div>
-          <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
-            <select id="movies-cat-select" class="inp"
-              style="flex:1;max-width:320px;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer"
-              tabindex="0">
-              <option value="">All Categories</option>
-            </select>
-            <input class="inp" id="movies-search" placeholder="🔍 Search movies..." style="flex:1;margin:0" />
+          <div class="pill-row" id="movies-cat-pills">
+            <button class="pill pill-active" data-vod-cat="">All</button>
           </div>
+          <input class="inp" id="movies-search" placeholder="🔍 Search movies..." style="margin-bottom:16px" />
           <div id="movies-grid" class="media-grid">
             <div class="loading">
               <div class="spinner"></div> Loading movies...
@@ -1083,14 +1047,10 @@
         <div class="screen" id="screen-series">
           <div class="page-title">🎭 Series</div>
           <div class="page-sub" id="series-sub">Loading series library...</div>
-          <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
-            <select id="series-cat-select" class="inp"
-              style="flex:1;max-width:320px;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer"
-              tabindex="0">
-              <option value="">All Categories</option>
-            </select>
-            <input class="inp" id="series-search" placeholder="🔍 Search series..." style="flex:1;margin:0" />
+          <div class="pill-row" id="series-cat-pills">
+            <button class="pill pill-active" data-series-cat="">All</button>
           </div>
+          <input class="inp" id="series-search" placeholder="🔍 Search series..." style="margin-bottom:16px" />
           <div id="series-grid" class="media-grid">
             <div class="loading">
               <div class="spinner"></div> Loading series...
@@ -1192,11 +1152,7 @@
         <div class="screen" id="screen-epg">
           <div class="page-title">📋 TV Guide</div>
           <div class="page-sub">Live program schedule · Click any show to watch</div>
-          <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px;flex-wrap:wrap">
-            <select id="epg-cat-select" class="inp"
-              style="width:auto;min-width:180px;max-width:260px;padding:6px 10px;font-size:12px" tabindex="-1">
-              <option value="">All Categories</option>
-            </select>
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px">
             <button class="btn btn-ghost btn-sm" id="epg-prev">◀ Earlier</button>
             <button class="btn btn-red btn-sm" id="epg-now">● Now</button>
             <button class="btn btn-ghost btn-sm" id="epg-next">Later ▶</button>
@@ -1251,16 +1207,6 @@
             </div>
           </div>
           <div id="devices-info"></div>
-          <div class="settings-group" style="margin-top:16px;padding:13px">
-            <div
-              style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
-              Device ID</div>
-            <div id="settings-device-id"
-              style="font-family:monospace;font-size:14px;font-weight:700;letter-spacing:1px;color:var(--primary);word-break:break-all">
-              —</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">Share this ID with your provider to activate
-              this device.</div>
-          </div>
         </div>
 
         <!-- QUALITY -->
@@ -1457,7 +1403,7 @@
           <div class="page-title">⚙️ Settings</div>
           <div class="page-sub">Provider credentials, playback, and app preferences</div>
           <div id="settings-status"></div>
-          <div style="display:grid;grid-template-columns:1fr;gap:22px;max-width:560px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;max-width:860px">
             <div>
               <div class="section-title">Quick Setup</div>
               <div class="settings-group" style="padding:13px" id="import-config-group">
@@ -1523,32 +1469,11 @@
                   <!-- populated by JS -->
                 </div>
                 <div style="margin-top:10px;display:flex;gap:8px">
-                  <button class="btn btn-red btn-sm" id="lang-filter-apply-btn" tabindex="0" style="flex:1">✓ Apply
+                  <button class="btn btn-red btn-sm" id="lang-filter-apply-btn" tabindex="-1" style="flex:1">✓ Apply
                     Filters</button>
-                  <button class="btn btn-ghost btn-sm" id="lang-filter-clear-btn" tabindex="0">Clear All</button>
+                  <button class="btn btn-ghost btn-sm" id="lang-filter-clear-btn" tabindex="-1">Clear All</button>
                 </div>
                 <div id="lang-filter-status" style="margin-top:7px;font-size:11px;color:var(--muted)"></div>
-              </div>
-              <div class="settings-group" style="padding:13px;margin-top:10px" id="cat-filter-group">
-                <div
-                  style="font-size:10px;color:var(--muted);margin-bottom:9px;text-transform:uppercase;letter-spacing:1px">
-                  Hide / Show categories from your provider</div>
-                <div id="cat-filter-search-wrap" style="margin-bottom:8px">
-                  <input class="inp" id="cat-filter-search" placeholder="Search categories..."
-                    style="width:100%;font-size:12px;padding:6px 10px" />
-                </div>
-                <div id="cat-filter-list"
-                  style="display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto;padding-right:4px">
-                  <div style="color:var(--muted);font-size:12px;padding:20px 0;text-align:center">Load channels first to
-                    see categories</div>
-                </div>
-                <div style="margin-top:10px;display:flex;gap:8px">
-                  <button class="btn btn-red btn-sm" id="cat-filter-apply-btn" tabindex="0" style="flex:1">✓
-                    Apply</button>
-                  <button class="btn btn-ghost btn-sm" id="cat-filter-show-all-btn" tabindex="0">Show All</button>
-                  <button class="btn btn-ghost btn-sm" id="cat-filter-hide-all-btn" tabindex="0">Hide All</button>
-                </div>
-                <div id="cat-filter-status" style="margin-top:7px;font-size:11px;color:var(--muted)"></div>
               </div>
               <div class="section-title">Playback</div>
               <div class="settings-group">

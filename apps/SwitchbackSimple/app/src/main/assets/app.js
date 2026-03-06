@@ -2,8 +2,6 @@
 // SWITCHBACK TV — app.js
 // All real data from Xtream Codes API via /api/iptv proxy
 // ═══════════════════════════════════════════════════════════════
-const APP_VERSION = '5.9.2';
-const APP_BUILD = 53;
 
 // ── VIRTUAL KEYBOARD SUPPRESSION ────────────────────────────
 // inputmode="none" is set on all inputs in HTML (belt-and-suspenders).
@@ -11,12 +9,12 @@ const APP_BUILD = 53;
 // on focus/tab. Only an explicit pointer click OR pressing Enter/OK
 // while the input is already focused will open the keyboard.
 (function () {
-  const TEXT_INPUTS = 'INPUT, TEXTAREA';
+  const INPUTS = 'INPUT, TEXTAREA, SELECT';
 
-  // Ensure inputmode=none on text inputs unless explicitly opened
+  // Ensure inputmode=none on every input at all times unless we opened it
   document.addEventListener('focusin', e => {
     const el = e.target;
-    if (!el.matches(TEXT_INPUTS)) return;
+    if (!el.matches(INPUTS)) return;
     if (!el._kbOpen) {
       el.setAttribute('inputmode', 'none');
     }
@@ -25,7 +23,7 @@ const APP_BUILD = 53;
   // Pointer click on an input → open real keyboard
   document.addEventListener('pointerdown', e => {
     const el = e.target;
-    if (!el.matches(TEXT_INPUTS)) return;
+    if (!el.matches(INPUTS)) return;
     el._kbOpen = true;
     el.removeAttribute('inputmode');
   }, true);
@@ -34,33 +32,22 @@ const APP_BUILD = 53;
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     const el = document.activeElement;
-    if (!el || !el.matches(TEXT_INPUTS)) return;
+    if (!el || !el.matches(INPUTS)) return;
     e.preventDefault();
     el._kbOpen = true;
     el.removeAttribute('inputmode');
-    // Blur + re-focus forces Android WebView to re-evaluate inputmode
-    el.blur();
-    setTimeout(() => { el.focus(); el.click(); }, 50);
+    el.focus();
+    el.click();
   }, true);
 
   // When input loses focus, re-arm suppression
   document.addEventListener('focusout', e => {
     const el = e.target;
-    if (!el.matches(TEXT_INPUTS)) return;
-    // After blur, reset _kbOpen so next focus re-arms suppression
-    // (small delay to avoid interfering with the blur/refocus trick in openKeyboardOn)
-    setTimeout(() => { el._kbOpen = false; el.setAttribute('inputmode', 'none'); }, 100);
+    if (!el.matches(INPUTS)) return;
+    el._kbOpen = false;
+    el.setAttribute('inputmode', 'none');
   });
 })();
-
-// Helper: explicitly open keyboard on an input element
-function openKeyboardOn(el) {
-  if (!el) return;
-  el._kbOpen = true;
-  el.removeAttribute('inputmode');
-  el.blur();
-  setTimeout(() => { el.focus(); el.click(); }, 50);
-}
 
 // ── DEFAULTS ─────────────────────────────────────────────────
 // No hardcoded credentials. User must enter their own via Settings
@@ -90,7 +77,7 @@ const S = {
   hlsInstance: null,
   playerMuted: false,
   currentQuality: 'auto',
-  adBlockVolume: parseInt(localStorage.getItem('adblock_volume') || '0'),
+  adBlockVolume: parseInt(localStorage.getItem('adblock_volume') || '50'),
   catchupSelectedStreamId: null,
   switchbackSlots: JSON.parse(localStorage.getItem('sb_slots') || '[null,null,null,null]'), // up to 4 switchback slots
   isPro: localStorage.getItem('sb_tier') === 'pro' || localStorage.getItem('sb_tier') === 'elite', // pro/elite unlocks 4 slots
@@ -105,19 +92,16 @@ const IS_ANDROID_WEBVIEW = (
   window.location.hostname === 'localhost'
 ) && window.location.port === '8123';
 
-// ── EARLY NATIVE DATA INJECTION ──────────────────────────────
-// Pull device info synchronously from the Android JavascriptInterface
-// so it's available BEFORE any async boot code (checkDeviceLicense etc.)
-if (IS_ANDROID_WEBVIEW && typeof Android !== 'undefined') {
-  try { window.__DEVICE_ID = Android.getDeviceId(); } catch (_) { }
-  try { const ip = Android.getLanIp(); if (ip) window.__LAN_IP = ip; } catch (_) { }
-  try { window.__REMOTE_PIN = Android.getRemotePin(); } catch (_) { }
-  try { window.__REMOTE_PORT = Android.getRemotePort(); } catch (_) { }
-  console.log('[init] Device ID:', window.__DEVICE_ID || 'unavailable');
-}
+// Pairing API lives on the Vercel deployment.
+// Android WebView can't use relative URLs for pairing, so we need the full origin.
+// TODO: Update 'switchback-tv-web.vercel.app' to the actual Vercel deployment domain
+//       once confirmed (check Vercel dashboard for the production URL).
+const PAIR_API_BASE = IS_ANDROID_WEBVIEW
+  ? 'https://switchback-tv-apk.vercel.app'
+  : window.location.origin;
 
-// Pairing uses the local RemoteServer (port 8124) — no cloud API needed.
-// Phone opens http://<TV-IP>:8124, enters PIN, pushes credentials via POST /config.
+// TODO: Update this URL to match the real Vercel production domain
+const PAIR_URL = 'switchback-tv-apk.vercel.app/pair';
 
 function buildApiUrl(action, extra = {}) {
   const xtreamAction = {
@@ -163,19 +147,6 @@ async function api(action, extra = {}) {
   return res.json();
 }
 
-// Fetch with timeout — prevents boot from hanging forever on slow IPTV providers
-function fetchWithTimeout(url, timeoutMs = 15000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
-}
-async function apiWithTimeout(action, extra = {}, timeoutMs = 15000) {
-  const url = buildApiUrl(action, extra);
-  const res = await fetchWithTimeout(url, timeoutMs);
-  if (!res.ok) throw new Error(`API ${action} failed: ${res.status}`);
-  return res.json();
-}
-
 // ── HELPERS ──────────────────────────────────────────────────
 function esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function streamUrl(id) {
@@ -214,8 +185,23 @@ const TITLES = {
   devices: 'Devices', quality: 'Stream Quality', pricing: 'Plans & Pricing', settings: 'Settings',
 };
 
-// nav() — canonical version defined later in file (wins via hoisting)
-function nav(screen) { }
+function nav(screen) {
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('screen-' + screen);
+  if (el) el.classList.add('active');
+  const sbItem = document.querySelector(`.sb-item[data-screen="${screen}"]`);
+  if (sbItem) sbItem.classList.add('active');
+  document.getElementById('topbar-title').textContent = TITLES[screen] || screen;
+  S.currentScreen = screen;
+  const lazy = {
+    tvhome: initTVHome, channels: initChannels, movies: initMovies,
+    series: initSeries, epg: initEPG, favorites: renderFavorites,
+    history: renderHistory, devices: initDevices, catchup: initCatchUp,
+    search: initSearch, recordings: renderRecordings
+  };
+  if (lazy[screen]) lazy[screen]();
+}
 
 document.querySelectorAll('.sb-item[data-screen], .tb-btn[data-screen], button[data-screen]').forEach(el => {
   el.addEventListener('click', () => nav(el.dataset.screen));
@@ -233,7 +219,7 @@ document.getElementById('sb-toggle-btn').addEventListener('click', () => {
 // ── TV HOME ──────────────────────────────────────────────────
 function initTVHome() {
   const info = S.userInfo;
-  const chCount = S.allChannels.length ? S.allChannels.length.toLocaleString() : (S.liveCategories.length ? S.liveCategories.length + ' categories' : 'Loading…');
+  const chCount = S.allChannels.length || '47,393';
   const expires = info?.user_info?.exp_date
     ? new Date(info.user_info.exp_date * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
     : '—';
@@ -273,13 +259,8 @@ function initTVHome() {
         <div data-screen="catchup"    class="sb-item-nav tile"><div style="font-size:24px;margin-bottom:5px">⏪</div><div style="font-size:13px;font-weight:700">Catch-Up</div></div>
       </div>
     </div>`;
-  document.querySelectorAll('.sb-item-nav[data-screen]').forEach(el => {
-    el.setAttribute('tabindex', '-1');
-    el.addEventListener('click', () => nav(el.dataset.screen));
-  });
-  // Focus the first tile for immediate D-pad navigation
-  const firstTile = document.querySelector('#tvhome-content .sb-item-nav[data-screen]');
-  if (firstTile) setTimeout(() => firstTile.focus(), 100);
+  document.querySelectorAll('.sb-item-nav[data-screen]').forEach(el =>
+    el.addEventListener('click', () => nav(el.dataset.screen)));
 }
 
 // ── LANGUAGE / COUNTRY CHANNEL FILTER ────────────────────────
@@ -305,7 +286,7 @@ const LANG_FILTER_GROUPS = [
 
 // Returns the set of category keyword groups the user has HIDDEN
 function getLangFilterHidden() {
-  try { return JSON.parse(localStorage.getItem('lang_filter_hidden') || '[]'); } catch (_) { return []; }
+  try { return JSON.parse(localStorage.getItem('lang_filter_hidden') || '[]'); } catch { return []; }
 }
 
 // Apply language filter to a channel list
@@ -323,173 +304,21 @@ function applyLangFilter(channels) {
   });
 }
 
-// ── CATEGORY FILTER (hide/show entire provider categories) ────
-// Stores an array of hidden category_ids in localStorage.
-function getHiddenCategories() {
-  try { return JSON.parse(localStorage.getItem('hidden_categories') || '[]'); } catch (_) { return []; }
+// ── SETTINGS INIT ────────────────────────────────────────────
+function initSettings() {
+  document.getElementById('cfg-server').value = S.server || '';
+  document.getElementById('cfg-user').value = S.user || '';
+  document.getElementById('cfg-pass').value = S.pass || '';
+  if (S.userInfo) renderAccountInfo(S.userInfo);
+  renderLangFilterUI();
 }
-
-function applyCategoryFilter(channels) {
-  const hidden = getHiddenCategories();
-  if (!hidden.length) return channels;
-  return channels.filter(ch => !hidden.includes(String(ch.category_id)));
-}
-
-// Combined filter: category + language
-function applyAllFilters(channels) {
-  return applyLangFilter(applyCategoryFilter(channels));
-}
-
-// Auto-hide categories that don't match provider prefixes (from .switchback config)
-// Called once at boot after categories load. Only runs if prefixes are set AND
-// the user hasn't already customized hidden_categories.
-function applyProviderPrefixes() {
-  const raw = localStorage.getItem('provider_prefixes');
-  if (!raw || !S.liveCategories.length) return;
-  // Only auto-apply if user hasn't manually customized category filters yet
-  const existing = localStorage.getItem('hidden_categories');
-  if (existing && existing !== '[]') return;
-  try {
-    const prefixes = JSON.parse(raw);
-    if (!Array.isArray(prefixes) || !prefixes.length) return;
-    const lowerPrefixes = prefixes.map(p => p.toLowerCase());
-    const hideIds = [];
-    S.liveCategories.forEach(c => {
-      const name = (c.category_name || '').toLowerCase();
-      const matches = lowerPrefixes.some(p => name.includes(p));
-      if (!matches) hideIds.push(String(c.category_id));
-    });
-    if (hideIds.length && hideIds.length < S.liveCategories.length) {
-      localStorage.setItem('hidden_categories', JSON.stringify(hideIds));
-      console.log(`[prefixes] Auto-hid ${hideIds.length} of ${S.liveCategories.length} categories (keeping ${S.liveCategories.length - hideIds.length} matching prefixes)`);
-    }
-  } catch (_) { }
-}
-
-function renderCatFilterUI() {
-  const listEl = document.getElementById('cat-filter-list');
-  if (!listEl) return;
-
-  if (!S.liveCategories || !S.liveCategories.length) {
-    listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:20px 0;text-align:center">Load channels first to see categories</div>';
-    return;
-  }
-
-  const hidden = getHiddenCategories();
-  const searchQ = (document.getElementById('cat-filter-search')?.value || '').toLowerCase();
-
-  // Count channels per category
-  const catCount = {};
-  S.allChannels.forEach(ch => {
-    const cid = String(ch.category_id || '');
-    catCount[cid] = (catCount[cid] || 0) + 1;
-  });
-
-  // Filter categories by search
-  const cats = S.liveCategories.filter(c => {
-    if (!searchQ) return true;
-    return (c.category_name || '').toLowerCase().includes(searchQ);
-  });
-
-  listEl.innerHTML = cats.map(c => {
-    const cid = String(c.category_id);
-    const isHidden = hidden.includes(cid);
-    const count = catCount[cid] || 0;
-    return `<label data-cid="${esc(cid)}" style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;font-size:13px" tabindex="0">
-      <span style="width:18px;height:18px;border:2px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${isHidden ? 'transparent' : 'var(--primary)'};font-size:11px;color:#fff">
-        ${isHidden ? '' : '✓'}
-      </span>
-      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.category_name)}</span>
-      <span style="font-size:10px;color:var(--muted)">${count}</span>
-    </label>`;
-  }).join('');
-
-  // Toggle each checkbox
-  listEl.querySelectorAll('label').forEach(lbl => {
-    const toggle = () => {
-      const cid = lbl.dataset.cid;
-      const h = getHiddenCategories();
-      const idx = h.indexOf(cid);
-      if (idx >= 0) h.splice(idx, 1); else h.push(cid);
-      localStorage.setItem('hidden_categories', JSON.stringify(h));
-      renderCatFilterUI();
-    };
-    lbl.addEventListener('click', toggle);
-    lbl.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
-  });
-
-  // Apply button
-  const applyBtn = document.getElementById('cat-filter-apply-btn');
-  if (applyBtn && !applyBtn._wired) {
-    applyBtn._wired = true;
-    applyBtn.addEventListener('click', () => {
-      if (S.allChannels.length) {
-        const catSel = document.getElementById('cat-select');
-        if (catSel) catSel.value = '';
-        S.channelList = [];
-        renderChannelCats();
-      }
-      updateCatFilterStatus();
-      showToast('Category filters applied ✓');
-    });
-  }
-
-  // Show All button
-  const showAllBtn = document.getElementById('cat-filter-show-all-btn');
-  if (showAllBtn && !showAllBtn._wired) {
-    showAllBtn._wired = true;
-    showAllBtn.addEventListener('click', () => {
-      localStorage.setItem('hidden_categories', '[]');
-      renderCatFilterUI();
-      showToast('All categories visible');
-    });
-  }
-
-  // Hide All button
-  const hideAllBtn = document.getElementById('cat-filter-hide-all-btn');
-  if (hideAllBtn && !hideAllBtn._wired) {
-    hideAllBtn._wired = true;
-    hideAllBtn.addEventListener('click', () => {
-      const allIds = S.liveCategories.map(c => String(c.category_id));
-      localStorage.setItem('hidden_categories', JSON.stringify(allIds));
-      renderCatFilterUI();
-      showToast('All categories hidden — check the ones you want');
-    });
-  }
-
-  // Search filter
-  const searchInput = document.getElementById('cat-filter-search');
-  if (searchInput && !searchInput._wired) {
-    searchInput._wired = true;
-    searchInput.addEventListener('input', () => renderCatFilterUI());
-  }
-
-  updateCatFilterStatus();
-}
-
-function updateCatFilterStatus() {
-  const statusEl = document.getElementById('cat-filter-status');
-  if (!statusEl) return;
-  const hidden = getHiddenCategories();
-  const total = S.liveCategories?.length || 0;
-  if (hidden.length && total) {
-    const visible = total - hidden.length;
-    const chVisible = S.allChannels.length ? applyAllFilters(S.allChannels).length : null;
-    statusEl.textContent = `${visible} of ${total} categories shown${chVisible !== null ? ' · ' + chVisible.toLocaleString() + ' channels visible' : ''}`;
-  } else {
-    statusEl.textContent = total ? 'All categories shown' : '';
-  }
-}
-
-// initSettings() — canonical version defined later via assignment (overrides this stub)
-function initSettings() { }
 
 function renderLangFilterUI() {
   const listEl = document.getElementById('lang-filter-list');
   if (!listEl) return;
   const hidden = getLangFilterHidden();
   listEl.innerHTML = LANG_FILTER_GROUPS.map(g => `
-    <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;font-size:13px" tabindex="0" role="checkbox" aria-checked="${hidden.includes(g.id)}">
+    <label style="display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;font-size:13px" tabindex="-1" role="checkbox" aria-checked="${hidden.includes(g.id)}">
       <span style="width:18px;height:18px;border:2px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${hidden.includes(g.id) ? 'var(--primary)' : 'transparent'};font-size:11px">
         ${hidden.includes(g.id) ? '✓' : ''}
       </span>
@@ -519,12 +348,11 @@ function renderLangFilterUI() {
       // Re-filter and reload channels + refresh category dropdown
       if (S.allChannels.length) {
         const catSel = document.getElementById('cat-select');
-        if (catSel) catSel.value = '';
-        S.channelList = [];
+        if (catSel) catSel.value = ''; // reset to All
+        S.channelList = applyLangFilter(S.allChannels);
         renderChannelCats();
-        const visCount = applyAllFilters(S.allChannels).length;
         const statusEl = document.getElementById('lang-filter-status');
-        if (statusEl) statusEl.textContent = `Showing ${visCount.toLocaleString()} of ${S.allChannels.length.toLocaleString()} channels`;
+        if (statusEl) statusEl.textContent = `Showing ${S.channelList.length.toLocaleString()} of ${S.allChannels.length.toLocaleString()} channels`;
       }
       showToast('Filters applied ✓');
     });
@@ -539,7 +367,7 @@ function renderLangFilterUI() {
       if (S.allChannels.length) {
         const catSel = document.getElementById('cat-select');
         if (catSel) catSel.value = '';
-        S.channelList = [];
+        S.channelList = applyLangFilter(S.allChannels);
         renderChannelCats();
       }
       renderLangFilterUI();
@@ -552,7 +380,7 @@ function renderLangFilterUI() {
   const hidden2 = getLangFilterHidden();
   if (statusEl) {
     if (hidden2.length) {
-      const filtered = S.allChannels.length ? applyAllFilters(S.allChannels).length : null;
+      const filtered = S.allChannels.length ? applyLangFilter(S.allChannels).length : null;
       statusEl.textContent = `${hidden2.length} group(s) hidden${filtered !== null ? ` · ${filtered.toLocaleString()} channels visible` : ''}`;
     } else {
       statusEl.textContent = 'No filters active — all channels shown';
@@ -635,94 +463,56 @@ function clearAllData() {
 // ═══════════════════════════════════════════════════════════════
 
 async function initChannels() {
-  // If we already have categories, just render the dropdown
-  if (S.liveCategories.length) {
+  if (S.allChannels.length) {
+    S.channelList = applyLangFilter(S.allChannels);
     renderChannelCats();
     return;
   }
-  document.getElementById('channel-list').innerHTML = '<div class="loading"><div class="spinner"></div> Loading categories...</div>';
+  document.getElementById('channel-list').innerHTML = '<div class="loading"><div class="spinner"></div> Loading channels...</div>';
   try {
-    // Only fetch categories (tiny payload). Full channel list loads in background from bootData.
-    const cats = await api('get_live_categories');
+    const [cats, streams] = await Promise.all([
+      api('get_live_categories'),
+      api('get_live_streams'),
+    ]);
     S.liveCategories = Array.isArray(cats) ? cats : [];
+    S.allChannels = Array.isArray(streams) ? streams : [];
+    S.channelList = applyLangFilter(S.allChannels);
     document.getElementById('channels-sub').textContent =
-      `${S.liveCategories.length} categories${S.allChannels.length ? ` · ${S.allChannels.length.toLocaleString()} channels` : ''}`;
-    S.channelList = [];
+      `${S.channelList.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
     renderChannelCats();
-    // Kick off background channel load if not already loaded
-    if (!S.allChannels.length) {
-      api('get_live_streams').then(d => {
-        if (Array.isArray(d)) {
-          S.allChannels = assignChannelNumbers(d);
-          renderChannelCats(); // re-render with counts
-          console.log(`[channels] Background load: ${S.allChannels.length}`);
-        }
-      }).catch(() => { });
-    }
   } catch (e) {
     document.getElementById('channel-list').innerHTML =
-      `<div class="error-box">Failed to load categories: ${esc(e.message)}</div>`;
+      `<div class="error-box">Failed to load channels: ${esc(e.message)}</div>`;
   }
 }
 
 function renderChannelCats() {
   const sel = document.getElementById('cat-select');
   if (!sel) return;
-  // Count channels per category (after all filters) — if allChannels loaded
-  const filtered = S.allChannels.length ? applyAllFilters(S.allChannels) : [];
+  // Count channels per category (after lang filter)
+  const filtered = applyLangFilter(S.allChannels);
   const catCount = {};
   filtered.forEach(ch => {
     const cid = ch.category_id || '';
     catCount[cid] = (catCount[cid] || 0) + 1;
   });
-  const hasCount = filtered.length > 0;
-  sel.innerHTML = `<option value="">Select a Category${hasCount ? ` (${filtered.length} channels)` : ''}</option>` +
+  sel.innerHTML = `<option value="">All Categories (${filtered.length})</option>` +
     S.liveCategories
-      .filter(c => hasCount ? catCount[c.category_id] > 0 : true)
-      .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)}${hasCount ? ` (${catCount[c.category_id] || 0})` : ''}</option>`)
+      .filter(c => catCount[c.category_id] > 0) // hide empty categories
+      .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
       .join('');
   // Wire change event (only once)
   if (!sel._wired) {
     sel._wired = true;
-    sel.addEventListener('change', async () => {
+    sel.addEventListener('change', () => {
       const catId = sel.value;
-      if (!catId) {
-        S.channelList = [];
-        showCategoryPrompt();
-        return;
-      }
-      // If allChannels loaded, filter locally; otherwise fetch just this category
-      if (S.allChannels.length) {
-        const base = S.allChannels.filter(c => c.category_id == catId);
-        S.channelList = applyAllFilters(base);
-        document.getElementById('ch-search').value = '';
-        renderChannelList(S.channelList);
-      } else {
-        document.getElementById('channel-list').innerHTML = '<div class="loading"><div class="spinner"></div> Loading category...</div>';
-        try {
-          const streams = await api('get_live_streams', { category_id: catId });
-          const base = Array.isArray(streams) ? streams : [];
-          S.channelList = applyAllFilters(base);
-          document.getElementById('ch-search').value = '';
-          renderChannelList(S.channelList);
-        } catch (e) {
-          document.getElementById('channel-list').innerHTML = `<div class="error-box">Failed to load: ${esc(e.message)}</div>`;
-        }
-      }
+      const base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
+      S.channelList = applyLangFilter(base);
+      document.getElementById('ch-search').value = '';
+      renderChannelList(S.channelList);
     });
   }
-  // Don't render all channels — show prompt until user picks a category
-  showCategoryPrompt();
-}
-
-function showCategoryPrompt() {
-  const el = document.getElementById('channel-list');
-  if (!el) return;
-  el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted)">
-    <div style="font-size:48px;margin-bottom:12px">📡</div>
-    <div style="font-size:15px;font-weight:600;margin-bottom:6px">Select a category to browse channels</div>
-    <div style="font-size:12px">Use the dropdown above to pick a category</div>
-  </div>`;
+  renderChannelList(S.channelList);
 }
 
 function focusFirstChannelRow() {
@@ -730,19 +520,26 @@ function focusFirstChannelRow() {
   if (row) row.focus();
 }
 
-// renderChannelList() — canonical version defined later via assignment (overrides this stub)
-function renderChannelList(list) { }
+function renderChannelList(list) {
+  // Delegate to the canonical version defined later in the file
+  // (canonical renderChannelList is assigned below via renderChannelList = function(...))
+  // This stub is intentionally minimal — the var-assignment below will override it
+  // when the script reaches that point. However if called before that point, we
+  // fall back to a basic render so the screen is never blank.
+  const el = document.getElementById('channel-list');
+  if (!el) return;
+  if (!list || !list.length) { el.innerHTML = '<div style="color:var(--muted);padding:20px;font-size:13px">No channels found.</div>'; return; }
+  el.innerHTML = '<div class="loading"><div class="spinner"></div> Loading...</div>';
+}
 
 // channel search — filters within currently selected category
 document.getElementById('ch-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
   const catId = document.getElementById('cat-select')?.value || '';
-  if (!catId && !q) { showCategoryPrompt(); return; }
-  // If searching with no category, search ALL channels
   const base = catId ? S.allChannels.filter(c => c.category_id == catId) : S.allChannels;
-  const allFiltered = applyAllFilters(base);
-  const filtered = q ? allFiltered.filter(c => c.name.toLowerCase().includes(q)) : allFiltered;
-  S.channelList = allFiltered;
+  const langFiltered = applyLangFilter(base);
+  const filtered = q ? langFiltered.filter(c => c.name.toLowerCase().includes(q)) : langFiltered;
+  S.channelList = langFiltered; // keep channelList in sync for player navigation
   renderChannelList(filtered);
 });
 
@@ -770,27 +567,21 @@ async function initMovies() {
 }
 
 function renderMovieCats() {
-  const sel = document.getElementById('movies-cat-select');
-  if (!sel) return;
-  // Count per category
-  const catCount = {};
-  S.allVod.forEach(v => { const cid = v.category_id || ''; catCount[cid] = (catCount[cid] || 0) + 1; });
-  sel.innerHTML = `<option value="">Select a Category (${S.allVod.length} movies)</option>` +
-    S.vodCategories
-      .filter(c => catCount[c.category_id] > 0)
-      .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
-      .join('');
-  if (!sel._wired) {
-    sel._wired = true;
-    sel.addEventListener('change', () => {
-      const catId = sel.value;
-      if (!catId) { showVodCategoryPrompt('movies-grid', '🎬', 'movies'); return; }
-      const list = S.allVod.filter(v => v.category_id == catId);
-      document.getElementById('movies-search').value = '';
+  const pills = document.getElementById('movies-cat-pills');
+  pills.innerHTML = `<button class="pill pill-active" data-vod-cat="">All</button>` +
+    S.vodCategories.slice(0, 16).map(c =>
+      `<button class="pill pill-inactive" data-vod-cat="${esc(c.category_id)}">${esc(c.category_name)}</button>`
+    ).join('');
+  pills.querySelectorAll('.pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pills.querySelectorAll('.pill').forEach(p => p.className = 'pill pill-inactive');
+      btn.className = 'pill pill-active';
+      const catId = btn.dataset.vodCat;
+      const list = catId ? S.allVod.filter(v => v.category_id == catId) : S.allVod;
       renderVodGrid('movies-grid', list, 'vod');
     });
-  }
-  showVodCategoryPrompt('movies-grid', '🎬', 'movies');
+  });
+  renderVodGrid('movies-grid', S.allVod, 'vod');
 }
 
 function renderVodGrid(containerId, list, type) {
@@ -867,26 +658,21 @@ async function initSeries() {
 }
 
 function renderSeriesCats() {
-  const sel = document.getElementById('series-cat-select');
-  if (!sel) return;
-  const catCount = {};
-  S.allSeries.forEach(s => { const cid = s.category_id || ''; catCount[cid] = (catCount[cid] || 0) + 1; });
-  sel.innerHTML = `<option value="">Select a Category (${S.allSeries.length} series)</option>` +
-    S.seriesCategories
-      .filter(c => catCount[c.category_id] > 0)
-      .map(c => `<option value="${esc(c.category_id)}">${esc(c.category_name)} (${catCount[c.category_id] || 0})</option>`)
-      .join('');
-  if (!sel._wired) {
-    sel._wired = true;
-    sel.addEventListener('change', () => {
-      const catId = sel.value;
-      if (!catId) { showVodCategoryPrompt('series-grid', '🎭', 'series'); return; }
-      const list = S.allSeries.filter(s => s.category_id == catId);
-      document.getElementById('series-search').value = '';
+  const pills = document.getElementById('series-cat-pills');
+  pills.innerHTML = `<button class="pill pill-active" data-series-cat="">All</button>` +
+    S.seriesCategories.slice(0, 16).map(c =>
+      `<button class="pill pill-inactive" data-series-cat="${esc(c.category_id)}">${esc(c.category_name)}</button>`
+    ).join('');
+  pills.querySelectorAll('.pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pills.querySelectorAll('.pill').forEach(p => p.className = 'pill pill-inactive');
+      btn.className = 'pill pill-active';
+      const catId = btn.dataset.seriesCat;
+      const list = catId ? S.allSeries.filter(s => s.category_id == catId) : S.allSeries;
       renderVodGrid('series-grid', list, 'series');
     });
-  }
-  showVodCategoryPrompt('series-grid', '🎭', 'series');
+  });
+  renderVodGrid('series-grid', S.allSeries, 'series');
 }
 
 async function openSeriesDetail(seriesId) {
@@ -911,30 +697,14 @@ async function openSeriesDetail(seriesId) {
   }
 }
 
-function showVodCategoryPrompt(containerId, emoji, label) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-  el.innerHTML = `<div style="text-align:center;padding:40px 20px;color:var(--muted);grid-column:1/-1">
-    <div style="font-size:48px;margin-bottom:12px">${emoji}</div>
-    <div style="font-size:15px;font-weight:600;margin-bottom:6px">Select a category to browse ${label}</div>
-    <div style="font-size:12px">Use the dropdown above to pick a category</div>
-  </div>`;
-}
-
-// search within movies/series — respects selected category
+// search within movies/series
 document.getElementById('movies-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
-  const catId = document.getElementById('movies-cat-select')?.value || '';
-  if (!catId && !q) { showVodCategoryPrompt('movies-grid', '🎬', 'movies'); return; }
-  const base = catId ? S.allVod.filter(v => v.category_id == catId) : S.allVod;
-  renderVodGrid('movies-grid', q ? base.filter(v => (v.name || '').toLowerCase().includes(q)) : base, 'vod');
+  renderVodGrid('movies-grid', q ? S.allVod.filter(v => (v.name || '').toLowerCase().includes(q)) : S.allVod, 'vod');
 });
 document.getElementById('series-search').addEventListener('input', function () {
   const q = this.value.toLowerCase();
-  const catId = document.getElementById('series-cat-select')?.value || '';
-  if (!catId && !q) { showVodCategoryPrompt('series-grid', '🎭', 'series'); return; }
-  const base = catId ? S.allSeries.filter(s => s.category_id == catId) : S.allSeries;
-  renderVodGrid('series-grid', q ? base.filter(s => (s.name || '').toLowerCase().includes(q)) : base, 'series');
+  renderVodGrid('series-grid', q ? S.allSeries.filter(s => (s.name || '').toLowerCase().includes(q)) : S.allSeries, 'series');
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -973,26 +743,9 @@ async function initEPG(offsetDelta = 0) {
     await initChannels();
   }
 
-  // Populate category dropdown
-  const catSel = document.getElementById('epg-cat-select');
-  if (catSel && catSel.options.length <= 1 && S.liveCategories?.length) {
-    S.liveCategories.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.category_id;
-      opt.textContent = c.category_name;
-      catSel.appendChild(opt);
-    });
-  }
-
-  // Filter by selected category
-  const selectedCat = catSel ? catSel.value : '';
-  const filtered = selectedCat
-    ? applyAllFilters(S.allChannels.filter(c => c.category_id == selectedCat))
-    : applyAllFilters(S.allChannels);
-
   // Show first 30 channels with EPG channel IDs, fetch their short EPG
-  const chansWithEpg = filtered.filter(c => c.epg_channel_id).slice(0, 30);
-  const chans = chansWithEpg.length ? chansWithEpg : filtered.slice(0, 30);
+  const chansWithEpg = S.allChannels.filter(c => c.epg_channel_id).slice(0, 30);
+  const chans = chansWithEpg.length ? chansWithEpg : S.allChannels.slice(0, 30);
 
   wrap.innerHTML = '<div class="loading"><div class="spinner"></div> Loading program guide...</div>';
 
@@ -1071,7 +824,6 @@ async function initEPG(offsetDelta = 0) {
 document.getElementById('epg-now')?.addEventListener('click', () => { S.epgOffset = 0; initEPG(0); });
 document.getElementById('epg-prev')?.addEventListener('click', () => initEPG(-1));
 document.getElementById('epg-next')?.addEventListener('click', () => initEPG(1));
-document.getElementById('epg-cat-select')?.addEventListener('change', () => { S.epgOffset = 0; initEPG(0); });
 // Make EPG nav buttons focusable for D-pad
 ['epg-now', 'epg-prev', 'epg-next'].forEach(id => {
   const el = document.getElementById(id);
@@ -1096,9 +848,7 @@ function initSearch() {
       });
     });
   }
-  // Focus search input and open keyboard for immediate typing
-  const searchEl = document.getElementById('search-input');
-  setTimeout(() => openKeyboardOn(searchEl), 200);
+  document.getElementById('search-input').focus();
 }
 
 document.getElementById('search-input').addEventListener('input', function () {
@@ -1158,8 +908,38 @@ document.getElementById('global-search').addEventListener('keydown', function (e
   }
 });
 
-// renderFavorites() — canonical version defined later via assignment (overrides this stub)
-function renderFavorites() { }
+// ── FAVORITES ─────────────────────────────────────────────────
+function renderFavorites() {
+  const el = document.getElementById('favorites-list');
+  if (!S.favorites.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0">No favorites yet — star a channel while browsing Live TV.</div>';
+    return;
+  }
+  el.innerHTML = S.favorites.map(ch => `
+    <div class="ch-row" data-id="${ch.stream_id}">
+      <div class="ch-icon" style="background:${colorFromName(ch.name)}">${channelInitials(ch.name)}</div>
+      <div class="ch-info"><div class="ch-name">${esc(ch.name)}</div><div class="ch-sub">${esc(ch.category_name || '')}</div></div>
+      <div class="ch-meta">
+        <span class="badge badge-live">LIVE</span>
+        <span class="fav-star on" data-id="${ch.stream_id}" style="margin-left:8px">★</span>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('.ch-row').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.classList.contains('fav-star')) return;
+      const ch = S.favorites.find(f => f.stream_id == row.dataset.id);
+      if (ch) openPlayer(ch, S.favorites, S.favorites.indexOf(ch));
+    });
+  });
+  el.querySelectorAll('.fav-star').forEach(star => {
+    star.addEventListener('click', e => {
+      e.stopPropagation();
+      const ch = S.favorites.find(f => f.stream_id == star.dataset.id);
+      toggleFav(ch, star);
+      renderFavorites();
+    });
+  });
+}
 
 function toggleFav(ch, starEl) {
   if (!ch) return;
@@ -1239,7 +1019,6 @@ function renderDeviceInfo(info) {
       <div class="row-item"><span style="font-size:13px">Max Connections</span><span style="font-size:12px;color:var(--muted)">${max}</span></div>
       <div class="row-item"><span style="font-size:13px">Server Timezone</span><span style="font-size:12px;color:var(--muted)">${esc(si.timezone || '—')}</span></div>
       <div class="row-item"><span style="font-size:13px">Server Time</span><span style="font-size:12px;color:var(--muted)">${esc(si.time_now || '—')}</span></div>
-      <div class="row-item"><span style="font-size:13px">Device ID</span><span style="font-size:11px;color:var(--muted);font-family:monospace;word-break:break-all">${esc(window.__DEVICE_ID || 'Unknown')}</span></div>
     </div>
     ${pct > 75 ? `<div style="margin-top:14px;padding:13px;background:rgba(229,0,0,0.07);border:1px solid rgba(229,0,0,0.2);border-radius:var(--radius)"><div style="font-size:13px;font-weight:700;margin-bottom:3px">⚠️ Approaching Stream Limit</div><div style="font-size:12px;color:var(--muted)">You're using ${active} of ${max} allowed streams.</div></div>` : ''}`;
 }
@@ -1289,7 +1068,7 @@ async function loadCatchUpEPG(streamId, chans) {
   document.getElementById('catchup-epg-title').textContent = `Programs — ${ch?.name || ''}`;
   const epgEl = document.getElementById('catchup-epg');
   epgEl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-  const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
+  const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
   try {
     const fakeCh = { stream_id: streamId };
     const data = await fetchEpgForChannel(fakeCh);
@@ -1325,7 +1104,7 @@ async function loadCatchUpEPG(streamId, chans) {
 // ── PLAYER ────────────────────────────────────────────────────
 function openPlayer(ch, list, idx) {
   // ch can be a JSON string (from inline onclick) or object
-  if (typeof ch === 'string') { try { ch = JSON.parse(ch); } catch (_) { } }
+  if (typeof ch === 'string') { try { ch = JSON.parse(ch); } catch { } }
 
   // Track previous channel before switching (inlined from override)
   if (S.currentChannel && S.currentChannel.stream_id !== ch.stream_id) {
@@ -1371,16 +1150,9 @@ function openPlayer(ch, list, idx) {
     injectPlayerExtras();
     updateAdBlockBadge();
     updatePrevChannelBtn();
-    // Start periodic ad detection (checks every 5s using cached EPG data)
+    // Start periodic ad detection (checks every 30s using cached EPG data)
     if (S._adCheckTimer) clearInterval(S._adCheckTimer);
-    if (S._adEpgRefreshTimer) clearInterval(S._adEpgRefreshTimer);
-    S._adCheckTimer = setInterval(detectAdFromEPG, 5000);
-    // Re-fetch EPG every 2 min so we catch new program boundaries
-    S._adEpgRefreshTimer = setInterval(() => {
-      if (S.currentChannel) fetchCurrentEPG(S.currentChannel);
-    }, 120000);
-    // Run detection immediately (don't wait 5s)
-    detectAdFromEPG();
+    S._adCheckTimer = setInterval(detectAdFromEPG, 30000);
   }, 100);
 
   // Make all player buttons focusable and auto-focus play-pause for D-pad
@@ -1388,10 +1160,9 @@ function openPlayer(ch, list, idx) {
     document.querySelectorAll('#player-overlay button, #player-overlay input[type=range]').forEach(el => {
       el.setAttribute('tabindex', '-1');
     });
+    const pp = document.getElementById('play-pause-btn');
+    if (pp) pp.focus();
   }, 150);
-
-  // Show overlay UI and start auto-hide timer
-  showPlayerUI();
 }
 
 let _playerErrTimer = null;
@@ -1415,36 +1186,6 @@ function showPlayerError(msg, duration) {
 function clearPlayerError() {
   const el = document.getElementById('player-error-msg');
   if (el) el.style.display = 'none';
-  const branded = document.getElementById('player-stream-error');
-  if (branded) branded.style.display = 'none';
-}
-
-function showStreamUnavailable(detail) {
-  clearPlayerUITimer(); // stop auto-hide — error stays until user acts
-  clearPlayerError();
-  let el = document.getElementById('player-stream-error');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'player-stream-error';
-    el.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;' +
-      'justify-content:center;gap:18px;background:rgba(10,10,15,0.95);z-index:10002;pointer-events:none;';
-    el.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="80" height="80">
-        <defs><linearGradient id="eg1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#e50000"/><stop offset="100%" stop-color="#ff3a3a"/></linearGradient>
-        <linearGradient id="eg2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00c2ff"/><stop offset="100%" stop-color="#7c4dff"/></linearGradient></defs>
-        <rect x="10" y="10" width="180" height="180" rx="36" fill="#13131a" stroke="url(#eg2)" stroke-width="3"/>
-        <polygon points="78,55 78,145 152,100" fill="url(#eg1)" opacity="0.4"/>
-        <line x1="60" y1="60" x2="140" y2="140" stroke="#e50000" stroke-width="6" stroke-linecap="round"/>
-        <line x1="140" y1="60" x2="60" y2="140" stroke="#e50000" stroke-width="6" stroke-linecap="round"/>
-      </svg>
-      <div style="font-size:18px;font-weight:800;color:#fff">Stream Unavailable</div>
-      <div id="stream-error-detail" style="font-size:13px;color:#8b8b9e;max-width:340px;text-align:center"></div>
-      <div style="font-size:12px;color:#555;margin-top:8px">Press BACK to return · UP/DOWN to try another channel</div>`;
-    document.getElementById('player-overlay').appendChild(el);
-  }
-  el.style.display = 'flex';
-  const detailEl = el.querySelector('#stream-error-detail');
-  if (detailEl) detailEl.textContent = detail || 'This stream is not available right now. Try again later.';
 }
 
 function safePlay(video, onError) {
@@ -1490,7 +1231,6 @@ async function loadStream(ch) {
   const bufSel = document.getElementById('q-buffer-select');
   const bufSecs = bufSel ? (bufSel.selectedIndex === 0 ? 3 : bufSel.selectedIndex === 2 ? 10 : 5) : 5;
 
-  S._fpsStart = performance.now(); // track for real FPS measurement
   if (typeof Hls !== 'undefined' && Hls.isSupported()) {
     const hls = new Hls({
       enableWorker: true,
@@ -1523,7 +1263,7 @@ async function loadStream(ch) {
           : `/api/stream?url=${encodeURIComponent(tsRaw)}`;
         video.src = tsUrl;
         safePlay(video, function (err) {
-          showStreamUnavailable('Could not play this stream. Try again later.');
+          showPlayerError('Cannot play stream. Check your connection. (' + err.message + ')');
         });
       }
     });
@@ -1539,14 +1279,9 @@ async function loadStream(ch) {
       ? `http://localhost:8123/proxy?url=${encodeURIComponent(tsRaw)}`
       : `/api/stream?url=${encodeURIComponent(tsRaw)}`;
     safePlay(video, function (err) {
-      showStreamUnavailable('Stream unavailable. Try again later.');
+      showPlayerError('Stream unavailable. (' + err.message + ')');
     });
   }
-
-  // Catch video-level load errors (e.g. 404, network timeout)
-  video.onerror = function () {
-    showStreamUnavailable('This stream is not available right now. Try again later.');
-  };
 
   updateEPGBar(ch);
   fetchCurrentEPG(ch);
@@ -1582,24 +1317,11 @@ function closePlayer() {
   if (S.hlsInstance) { S.hlsInstance.destroy(); S.hlsInstance = null; }
   video.src = '';
   clearPlayerError();
-  clearPlayerUITimer();
-  // Reset UI opacity so it's visible next time player opens
-  ['player-overlay-top', 'player-overlay-bottom', 'player-controls'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
-  });
   document.getElementById('player-overlay').style.display = 'none';
   document.getElementById('topbar-title').textContent = TITLES[S.currentScreen] || S.currentScreen;
-  // Stop ad detection polling + EPG refresh + boundary timer
+  // Stop ad detection polling
   if (S._adCheckTimer) { clearInterval(S._adCheckTimer); S._adCheckTimer = null; }
-  if (S._adEpgRefreshTimer) { clearInterval(S._adEpgRefreshTimer); S._adEpgRefreshTimer = null; }
-  if (S._adBoundaryTimer) { clearTimeout(S._adBoundaryTimer); S._adBoundaryTimer = null; }
-  S._adLastProgEndTs = 0;
-  // Restore volume if ad-muted when closing player
-  if (S._adMuted) {
-    if (S._adRestoreVol !== null) video.volume = S._adRestoreVol;
-    S._adMuted = false; S._adRestoreVol = null; hideAdIndicator();
-  }
+  if (S._adMuted) { S._adMuted = false; S._adRestoreVol = null; hideAdIndicator(); }
 }
 
 function togglePlay() {
@@ -1631,47 +1353,8 @@ function seekRelative(secs) {
 function navigateChannel(delta) {
   const list = S.channelList;
   if (!list?.length) return;
-  // Clear stream error when switching channels
-  const streamErr = document.getElementById('player-stream-error');
-  if (streamErr) streamErr.style.display = 'none';
   const newIdx = ((S.currentChannelIndex + delta) + list.length) % list.length;
   openPlayer(list[newIdx], list, newIdx);
-}
-
-// ── PLAYER OVERLAY AUTO-HIDE ───────────────────────────────
-let _playerUITimer = null;
-const PLAYER_UI_TIMEOUT = 4000; // 4 seconds
-
-function isPlayerUIVisible() {
-  const top = document.getElementById('player-overlay-top');
-  return top && top.style.opacity !== '0';
-}
-
-function showPlayerUI() {
-  ['player-overlay-top', 'player-overlay-bottom', 'player-controls'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.style.transition = 'opacity 0.3s ease'; el.style.opacity = '1'; el.style.pointerEvents = 'auto'; }
-  });
-  resetPlayerUITimer();
-}
-
-function hidePlayerUI() {
-  // Don't auto-hide controls while stream error is showing — user needs to see instructions
-  const streamErr = document.getElementById('player-stream-error');
-  if (streamErr && streamErr.style.display !== 'none') return;
-  ['player-overlay-top', 'player-overlay-bottom', 'player-controls'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) { el.style.transition = 'opacity 0.4s ease'; el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
-  });
-}
-
-function resetPlayerUITimer() {
-  if (_playerUITimer) clearTimeout(_playerUITimer);
-  _playerUITimer = setTimeout(hidePlayerUI, PLAYER_UI_TIMEOUT);
-}
-
-function clearPlayerUITimer() {
-  if (_playerUITimer) { clearTimeout(_playerUITimer); _playerUITimer = null; }
 }
 
 document.getElementById('next-ch-btn')?.addEventListener('click', () => navigateChannel(1));
@@ -1688,7 +1371,7 @@ S._screenHistory = [];
 document.addEventListener('keydown', e => {
   const tag = (document.activeElement || {}).tagName;
   const inInput = tag === 'INPUT' || tag === 'TEXTAREA';
-  const isBack = e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack'
+  const isBack = e.key === 'GoBack' || e.key === 'BrowserBack'
     || (e.key === 'Backspace' && !inInput);
   if (!isBack) return;
 
@@ -1764,71 +1447,54 @@ document.addEventListener('keydown', e => {
   const overlay = document.getElementById('player-overlay');
   if (!overlay || overlay.style.display === 'none') return;
   if (e.target.tagName === 'INPUT') return;
-
-  const uiVisible = isPlayerUIVisible();
-
-  // Back/Escape → close player (always works, UI visible or not)
+  // Back/Escape → close player (handled first so back key works in player)
   if (e.key === 'Escape' || e.key === 'GoBack' || e.key === 'BrowserBack') {
-    e.preventDefault(); clearPlayerUITimer(); closePlayer(); return;
+    e.preventDefault(); closePlayer(); return;
   }
-
-  // Enter/OK when UI is hidden → just show UI, don't activate anything
-  if ((e.key === 'Enter' || e.key === ' ') && !uiVisible) {
-    e.preventDefault(); showPlayerUI(); return;
-  }
-
   // Play/Pause — space bar, 'k', Enter on play button, or media key
   if (e.key === ' ' || e.key === 'k' || e.key === 'MediaPlayPause' || e.key === 'MediaPlay' || e.key === 'MediaStop') {
-    e.preventDefault(); showPlayerUI(); togglePlay(); return;
+    e.preventDefault(); togglePlay(); return;
   }
-  // Enter when UI is visible → activate focused button
-  if (e.key === 'Enter' && uiVisible) {
-    showPlayerUI(); // reset timer
-    return; // let default click handling work
-  }
-  if (e.key === 'm' || e.key === 'AudioVolumeMute') { showPlayerUI(); toggleMute(); return; }
+  if (e.key === 'm' || e.key === 'AudioVolumeMute') { toggleMute(); return; }
   // Volume up/down — hardware remote volume keys
   if (e.key === 'AudioVolumeUp') {
     e.preventDefault();
     const v = document.getElementById('player-video');
     if (v) { v.volume = Math.min(1, v.volume + 0.1); v.muted = false; }
-    showPlayerUI(); return;
+    return;
   }
   if (e.key === 'AudioVolumeDown') {
     e.preventDefault();
     const v = document.getElementById('player-video');
     if (v) v.volume = Math.max(0, v.volume - 0.1);
-    showPlayerUI(); return;
+    return;
   }
-  // Channel up/down — dedicated remote buttons (always work)
+  // Channel up/down — dedicated remote buttons
   if (e.key === 'ChannelUp' || e.key === 'PageUp') { e.preventDefault(); navigateChannel(-1); return; }
   if (e.key === 'ChannelDown' || e.key === 'PageDown') { e.preventDefault(); navigateChannel(1); return; }
-  // D-pad arrows — always perform action + show UI briefly
-  if (e.key === 'ArrowLeft') { e.preventDefault(); seekRelative(-10); showPlayerUI(); return; }
-  if (e.key === 'ArrowRight') { e.preventDefault(); seekRelative(10); showPlayerUI(); return; }
-  if (e.key === 'ArrowUp') { e.preventDefault(); navigateChannel(-1); return; }
-  if (e.key === 'ArrowDown') { e.preventDefault(); navigateChannel(1); return; }
+  // D-pad navigation
+  if (e.key === 'ArrowLeft') { e.preventDefault(); seekRelative(-10); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); seekRelative(10); }
+  if (e.key === 'ArrowUp') { e.preventDefault(); navigateChannel(-1); }
+  if (e.key === 'ArrowDown') { e.preventDefault(); navigateChannel(1); }
   // Numeric channel entry — type digits then auto-jump after 1.5s pause
   if (/^[0-9]$/.test(e.key)) {
     e.preventDefault();
     _numBuf += e.key;
     clearTimeout(_numTimer);
-    showPlayerUI();
     showPlayerError('Channel: ' + _numBuf);
     _numTimer = setTimeout(() => {
       const num = parseInt(_numBuf, 10);
       _numBuf = '';
       clearPlayerError();
       if (S.channelList?.length) {
+        // Try matching by channel number first, then by index
         const byNum = S.channelList.findIndex(c => parseInt(c.num, 10) === num || parseInt(c.stream_id, 10) === num);
         const idx = byNum >= 0 ? byNum : Math.min(num - 1, S.channelList.length - 1);
         if (idx >= 0 && idx < S.channelList.length) openPlayer(S.channelList[idx], S.channelList, idx);
       }
     }, 1500);
-    return;
   }
-  // Any other key → show UI
-  showPlayerUI();
 });
 
 function togglePlayerFav() {
@@ -1858,7 +1524,43 @@ function scheduleRecording() {
   document.getElementById('rec-count').textContent = S.recordings.length;
 }
 
-// renderRecordings() — canonical version with tabs defined later (wins via hoisting, last declaration wins)
+// ── RECORDINGS ────────────────────────────────────────────────
+function renderRecordings() {
+  document.getElementById('rec-count').textContent = S.recordings.length;
+  const el = document.getElementById('recordings-list');
+  if (!S.recordings.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px 0">No recordings yet.</div>';
+    return;
+  }
+  el.innerHTML = S.recordings.map((rec, idx) => {
+    const isLive = rec.status === 'recording';
+    return `
+      <div class="rec-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px">
+          <div>
+            <div style="font-size:14px;font-weight:700">${esc(rec.program || rec.channel)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(rec.channel)} · ${esc(new Date(rec.startedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}</div>
+          </div>
+          <span class="badge ${isLive ? 'badge-live' : 'badge-green'}">${isLive ? '● RECORDING' : '✓ Saved'}</span>
+        </div>
+        <div style="display:flex;gap:7px">
+          ${rec.stream_id ? `<button class="btn btn-red btn-sm" onclick="replayRecording(${idx})">▶ Play</button>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="deleteRecording(${idx})">🗑 Delete</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('add-rec-btn').onclick = () => {
+    const ch = document.getElementById('rec-channel').value.trim();
+    const prog = document.getElementById('rec-program').value.trim();
+    if (!ch) return;
+    S.recordings.unshift({ id: Date.now(), channel: ch, program: prog, startedAt: new Date().toISOString(), status: 'scheduled' });
+    saveState();
+    renderRecordings();
+    document.getElementById('rec-channel').value = '';
+    document.getElementById('rec-program').value = '';
+  };
+}
 
 function replayRecording(idx) {
   const rec = S.recordings[idx];
@@ -1907,35 +1609,96 @@ document.querySelectorAll('.quality-opt').forEach(opt => {
 // ═══════════════════════════════════════════════════════════════
 // BOOT — load all data on startup
 // ═══════════════════════════════════════════════════════════════
-// ── PHONE PAIRING FLOW (LAN-based via RemoteServer on port 8124) ──
-// No cloud API needed. Phone opens http://<TV-IP>:8124, enters PIN,
-// and pushes IPTV credentials via the Setup tab → POST /config.
-// The TV polls for credentials arriving via handleRemoteConfig().
+// ── PHONE PAIRING FLOW ──────────────────────────────────────
 let pairPollTimer = null;
 
-function startPairing() {
-  console.log('[pair] Starting local LAN pairing flow');
-  nav('setup');
-  initSetupScreen();
+async function startPairing() {
+  console.log('[pair] Starting pairing flow');
+  nav('pairing');
 
-  // Poll localStorage every 2s to detect when credentials arrive
-  // (handleRemoteConfig sets them in localStorage + S.server/S.user/S.pass)
-  if (pairPollTimer) clearInterval(pairPollTimer);
-  pairPollTimer = setInterval(() => {
-    if (S.server && S.user && S.pass) {
-      clearInterval(pairPollTimer);
+  const codeEl = document.getElementById('pair-code-display');
+  const urlEl = document.getElementById('pair-url-display');
+  const statusEl = document.getElementById('pair-status');
+
+  if (urlEl) urlEl.textContent = PAIR_URL;
+  if (codeEl) codeEl.textContent = '----';
+  if (statusEl) statusEl.textContent = 'Requesting pairing code...';
+
+  try {
+    const res = await fetch(`${PAIR_API_BASE}/api/pair-create`, { method: 'POST' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const code = data.code;
+
+    if (codeEl) codeEl.textContent = code;
+    if (statusEl) statusEl.textContent = 'Waiting for your phone...';
+    console.log('[pair] Code:', code);
+
+    // Poll every 3 seconds
+    if (pairPollTimer) clearInterval(pairPollTimer);
+    pairPollTimer = setInterval(() => pollPairCode(code), 3000);
+
+    // Auto-expire after 5 minutes
+    setTimeout(() => {
+      if (pairPollTimer) {
+        clearInterval(pairPollTimer);
+        pairPollTimer = null;
+        if (statusEl) statusEl.textContent = 'Code expired. Press OK to get a new code.';
+      }
+    }, 5 * 60 * 1000);
+
+  } catch (e) {
+    console.error('[pair] Failed to create code:', e.message);
+    if (statusEl) statusEl.textContent = 'Could not connect. Check your internet connection.';
+    // Fall back to manual settings
+    setTimeout(() => {
+      initSettings();
+      nav('settings');
+      showToast('Pairing unavailable. Enter credentials manually.', 5000);
+    }, 3000);
+  }
+}
+
+async function pollPairCode(code) {
+  try {
+    const res = await fetch(`${PAIR_API_BASE}/api/pair-poll?code=${code}`);
+    if (!res.ok) {
+      // Code expired or not found
+      if (pairPollTimer) clearInterval(pairPollTimer);
       pairPollTimer = null;
-      console.log('[pair] Credentials received from phone remote!');
-      showToast('Provider connected! Loading channels...', 4000);
-      nav('tvhome');
-      bootData();
+      const statusEl = document.getElementById('pair-status');
+      if (statusEl) statusEl.textContent = 'Code expired. Press OK to get a new code.';
+      return;
     }
-  }, 2000);
+    const data = await res.json();
+    if (data.status === 'ready' && data.config) {
+      // Credentials received!
+      if (pairPollTimer) clearInterval(pairPollTimer);
+      pairPollTimer = null;
 
-  // Stop polling after 10 minutes
-  setTimeout(() => {
-    if (pairPollTimer) { clearInterval(pairPollTimer); pairPollTimer = null; }
-  }, 10 * 60 * 1000);
+      const { server, username, password, epg } = data.config;
+      localStorage.setItem('iptv_server', server);
+      localStorage.setItem('iptv_user', username);
+      localStorage.setItem('iptv_pass', password);
+      if (epg) localStorage.setItem('epg_url', epg);
+      S.server = server;
+      S.user = username;
+      S.pass = password;
+
+      const statusEl = document.getElementById('pair-status');
+      if (statusEl) statusEl.textContent = '✅ Connected! Loading channels...';
+      showToast('Provider connected! Loading channels...', 4000);
+
+      // Boot with new credentials
+      setTimeout(() => {
+        nav('tvhome');
+        bootData();
+      }, 1500);
+    }
+    // else status === 'waiting', keep polling
+  } catch (e) {
+    console.warn('[pair] Poll error:', e.message);
+  }
 }
 
 // Manual fallback: skip setup screen and go to Settings for manual credential entry
@@ -1971,115 +1734,10 @@ const DEFAULT_PROVIDER = {
   password: _d('MTllOTkzYjdmNQ=='),
 };
 
-// ── DEVICE LICENSE CHECK ─────────────────────────────────────
-// Checks ANDROID_ID against Supabase switchback_devices table.
-// Blocks app if device is not registered or revoked.
-const _SB_URL = 'https://rdbuwyefbgnbuhmjrizo.supabase.co';
-const _SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkYnV3eWVmYmduYnVobWpyaXpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2Mjk4NzksImV4cCI6MjA3OTIwNTg3OX0.YZV-svCsqxaJaH7NGAa0FyW5F5VXrAwlQKAUon-FsLw';
-
-async function checkDeviceLicense() {
-  // Use synchronous JavascriptInterface (Android.getDeviceId()) — no race condition.
-  // Falls back to window.__DEVICE_ID for legacy or if interface unavailable.
-  let did = null;
-  try {
-    if (typeof Android !== 'undefined' && Android.getDeviceId) {
-      did = Android.getDeviceId();
-    }
-  } catch (_) { }
-  if (!did) did = window.__DEVICE_ID;
-  if (!did) {
-    // Running in browser (dev) — no Android interface, no injected ID
-    console.warn('[license] No device ID available — allowing (dev mode)');
-    return true;
-  }
-  // Store for other parts of the app
-  window.__DEVICE_ID = did;
-
-  // Always check Supabase on boot — no cache. User needs to see the check happening.
-  console.log('[license] Checking device: ' + did);
-
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10000);
-    const res = await fetch(_SB_URL + '/rest/v1/rpc/check_switchback_device', {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': _SB_ANON,
-        'Authorization': 'Bearer ' + _SB_ANON,
-      },
-      body: JSON.stringify({ p_device_id: did, p_version: APP_VERSION }),
-    });
-    clearTimeout(timer);
-    console.log('[license] Supabase response status:', res.status);
-    if (!res.ok) {
-      console.warn('[license] Server error ' + res.status + ' — allowing (grace)');
-      return true; // don't block on server errors
-    }
-    const rows = await res.json();
-    console.log('[license] Supabase response:', JSON.stringify(rows));
-    if (rows && rows.length > 0 && rows[0].status === 'active') {
-      console.log('[license] Active: ' + (rows[0].label || did));
-      return true;
-    }
-    if (rows && rows.length > 0 && rows[0].status === 'revoked') {
-      console.warn('[license] REVOKED');
-      showDeviceBlocked(did, 'This device has been deactivated.');
-      return false;
-    }
-    // Not found — device not pre-registered; allow and auto-register
-    console.log('[license] Device not in DB — allowing (auto-register on first boot)');
-    // Fire-and-forget: insert this device so it shows up in the dashboard
-    fetch(_SB_URL + '/rest/v1/switchback_devices', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': _SB_ANON, 'Authorization': 'Bearer ' + _SB_ANON, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ device_id: did, status: 'active', label: 'Auto-registered', app_version: APP_VERSION }),
-    }).catch(() => { });
-    return true;
-  } catch (e) {
-    console.warn('[license] Check failed: ' + e.message + ' — allowing (offline grace)');
-    return true; // don't block if offline
-  }
-}
-
-function showDeviceBlocked(deviceId, reason) {
-  // Hide everything and show a blocking overlay
-  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
-  document.getElementById('sidebar')?.setAttribute('style', 'display:none!important');
-  document.getElementById('topbar')?.setAttribute('style', 'display:none!important');
-  const main = document.getElementById('main-content') || document.body;
-  const overlay = document.createElement('div');
-  overlay.id = 'device-blocked';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#0a0a0f;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;font-family:inherit;color:#fff';
-  overlay.innerHTML = `
-    <div style="font-size:72px;margin-bottom:20px">🔒</div>
-    <div style="font-size:24px;font-weight:800;margin-bottom:10px">Device Not Authorized</div>
-    <div style="font-size:14px;color:#999;max-width:400px;margin-bottom:24px;line-height:1.6">${reason}<br>Contact your provider with your Device ID to get activated.</div>
-    <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px 28px;margin-bottom:16px">
-      <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Device ID</div>
-      <div style="font-size:18px;font-weight:700;font-family:monospace;letter-spacing:2px;color:#e50000">${deviceId}</div>
-    </div>
-    <div style="font-size:11px;color:#555">Switchback TV</div>`;
-  main.appendChild(overlay);
-}
-
-function splashStatus(msg) {
-  const el = document.getElementById('splash-status');
-  if (el) el.textContent = msg;
-}
-function hideSplash() {
-  const splash = document.getElementById('boot-splash');
-  if (!splash) return;
-  splash.style.transition = 'opacity 0.4s ease';
-  splash.style.opacity = '0';
-  setTimeout(() => splash.remove(), 500);
-}
-
 async function bootData() {
-  console.log('[boot] Starting boot sequence...');
-
-  // If no credentials, try bundled default provider first, then show setup screen.
+  // If no credentials at all, go straight to Settings for manual entry / config import.
+  // The pairing API (pair-create/pair-poll) requires a backend that doesn't exist yet,
+  // so we skip the broken pairing screen entirely.
   if (!S.server || !S.user || !S.pass) {
     if (DEFAULT_PROVIDER.server && DEFAULT_PROVIDER.username && DEFAULT_PROVIDER.password) {
       console.log('[boot] No credentials — applying bundled default provider');
@@ -2090,119 +1748,86 @@ async function bootData() {
       localStorage.setItem('iptv_user', S.user);
       localStorage.setItem('iptv_pass', S.pass);
     } else {
-      console.log('[boot] No credentials — showing setup screen');
-      hideSplash();
-      startPairing();
+      console.log('[boot] No credentials — showing QR setup screen');
+      nav('setup');
+      initSetupScreen();
       return;
     }
   }
 
-  // Hide splash immediately — show the main app right away
-  hideSplash();
-
-  // ── BACKGROUND: auth + load everything (non-blocking) ──
   try {
-    const info = await apiWithTimeout('get_user_info', {}, 15000);
+    // User info first (fast) — also validates credentials
+    const info = await api('get_user_info');
+
+    // Check if auth succeeded
     if (info?.user_info?.auth === 0) {
-      console.warn('[boot] IPTV credentials rejected');
-      localStorage.removeItem('iptv_server');
-      localStorage.removeItem('iptv_user');
-      localStorage.removeItem('iptv_pass');
-      S.server = null; S.user = null; S.pass = null;
-      startPairing();
-      showToast('Credentials invalid. Set up manually or import a config.', 5000);
+      console.warn('[boot] IPTV credentials rejected by server');
+      initSettings();
+      nav('settings');
+      const statusEl = document.getElementById('creds-test-result');
+      if (statusEl) {
+        statusEl.innerHTML = '<span style="color:var(--primary)">❌ Authentication failed — check your username and password</span>';
+      }
+      showToast('Authentication failed. Please check your credentials in Settings.');
       return;
     }
+
     S.userInfo = info;
     renderAccountInfo(info);
-    console.log('[boot] Auth OK');
-  } catch (e) {
-    console.warn('[boot] Auth failed:', e.message);
-    showToast('Could not reach IPTV server. Check connection or re-enter credentials in Settings.', 5000);
-  }
 
-  // Load categories
-  try {
-    const cats = await apiWithTimeout('get_live_categories', {}, 15000);
-    if (Array.isArray(cats)) S.liveCategories = cats;
-    console.log('[boot] Categories:', S.liveCategories.length);
-  } catch (e) {
-    console.warn('[boot] Categories failed:', e.message);
-  }
-
-  // Apply provider prefixes if set
-  applyProviderPrefixes();
-
-  // Show provider welcome (once per session)
-  const welcomeMsg = localStorage.getItem('provider_welcome');
-  if (welcomeMsg && !sessionStorage.getItem('_welcomeShown')) {
-    sessionStorage.setItem('_welcomeShown', '1');
-    setTimeout(() => showToast(welcomeMsg, 5000), 1500);
-  }
-
-  // Update UI
-  if (S.currentScreen === 'tvhome') initTVHome();
-  setTimeout(() => { tvStampFocusable(); tvFocusSidebar(); }, 300);
-  const chSub = document.getElementById('channels-sub');
-  if (chSub) chSub.textContent = `${S.liveCategories.length} categories · loading channels...`;
-
-  // Background: full channel list + VOD/series
-  api('get_live_streams').then(d => {
-    if (Array.isArray(d)) {
-      S.allChannels = assignChannelNumbers(d);
-      if (!S.channelList.length) S.channelList = [];
-      const chSub2 = document.getElementById('channels-sub');
-      if (chSub2) chSub2.textContent = `${S.allChannels.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
-      if (S.currentScreen === 'tvhome') initTVHome();
-      console.log(`[boot] Channels: ${S.allChannels.length}`);
+    // Channels + categories in parallel
+    const [cats, streams] = await Promise.allSettled([
+      api('get_live_categories'),
+      api('get_live_streams'),
+    ]);
+    if (cats.status === 'fulfilled' && Array.isArray(cats.value)) S.liveCategories = cats.value;
+    if (streams.status === 'fulfilled' && Array.isArray(streams.value)) {
+      S.allChannels = assignChannelNumbers(streams.value);
+      S.channelList = applyLangFilter(S.allChannels);
     }
-  }).catch(e => console.warn('[boot] Channel load failed:', e.message));
-  api('get_vod_categories').then(d => { if (Array.isArray(d)) S.vodCategories = d; }).catch(() => { });
-  api('get_vod_streams').then(d => { if (Array.isArray(d)) S.allVod = d; }).catch(() => { });
-  api('get_series_categories').then(d => { if (Array.isArray(d)) S.seriesCategories = d; }).catch(() => { });
-  api('get_series').then(d => { if (Array.isArray(d)) S.allSeries = d; }).catch(() => { });
 
+    // Update TV home with real counts
+    if (S.currentScreen === 'tvhome') initTVHome();
+
+    // Re-stamp focusable elements and re-focus sidebar after async data load
+    setTimeout(() => { tvStampFocusable(); tvFocusSidebar(); }, 300);
+
+    // Update channels sub
+    const chSub = document.getElementById('channels-sub');
+    if (chSub) chSub.textContent = `${S.allChannels.length.toLocaleString()} channels · ${S.liveCategories.length} categories`;
+
+    // VOD + Series in background (non-blocking)
+    api('get_vod_categories').then(d => { if (Array.isArray(d)) S.vodCategories = d; }).catch(() => { });
+    api('get_vod_streams').then(d => { if (Array.isArray(d)) S.allVod = d; }).catch(() => { });
+    api('get_series_categories').then(d => { if (Array.isArray(d)) S.seriesCategories = d; }).catch(() => { });
+    api('get_series').then(d => { if (Array.isArray(d)) S.allSeries = d; }).catch(() => { });
+
+  } catch (e) {
+    console.warn('[boot]', e.message);
+    // Connection failed — likely server is down or wrong URL
+    initSettings();
+    nav('settings');
+    const statusEl = document.getElementById('creds-test-result');
+    if (statusEl) {
+      statusEl.innerHTML = `<span style="color:var(--primary)">❌ Could not connect to server: ${esc(e.message)}</span>`;
+    }
+    showToast('Could not connect to IPTV server. Check Settings.');
+    return;
+  }
   initSettings();
 }
 
-// ── GLOBAL ERROR HANDLER (shows errors on splash for debugging) ──
-window.onerror = function (msg, src, line, col, err) {
-  const el = document.getElementById('splash-status');
-  if (el) el.textContent = 'ERROR: ' + msg + ' (line ' + line + ')';
-  console.error('[FATAL]', msg, src, line, col, err);
-};
-
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  try {
-    // Show version everywhere
-    const verStr = `v${APP_VERSION} (build ${APP_BUILD})`;
-    const splashVer = document.getElementById('splash-version');
-    if (splashVer) splashVer.textContent = verStr;
-    const sbVer = document.getElementById('sb-version');
-    if (sbVer) sbVer.textContent = verStr;
-
-    // Restore provider branding from previous import
-    const savedProvider = localStorage.getItem('provider_name');
-    if (savedProvider) {
-      const logoEl = document.querySelector('.sb-logo-text');
-      if (logoEl) logoEl.textContent = savedProvider;
+  nav('tvhome');
+  bootData();
+  // Clock tick in player
+  setInterval(() => {
+    const el = document.getElementById('player-clock');
+    if (el && document.getElementById('player-overlay').style.display !== 'none') {
+      el.textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     }
-
-    nav('tvhome');
-    bootData();
-    // Clock tick in player
-    setInterval(() => {
-      const el = document.getElementById('player-clock');
-      if (el && document.getElementById('player-overlay').style.display !== 'none') {
-        el.textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      }
-    }, 30000);
-  } catch (e) {
-    const el = document.getElementById('splash-status');
-    if (el) el.textContent = 'BOOT ERROR: ' + e.message;
-    console.error('[BOOT CRASH]', e);
-  }
+  }, 30000);
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -2466,49 +2091,39 @@ function toggleAdBlock() {
   updateAdBlockBadge();
 }
 
-// ── EPG-BASED AD DETECTION ENGINE ──────────────────────────────────
-// Detects commercial breaks using EPG program boundaries + title analysis.
-// Fires every 5s while player is open. Re-fetches EPG every 2 min AND
-// near program-end boundaries for timely detection of transitions.
+// ── EPG-BASED AD DETECTION ENGINE (ported from IPTVviewer AdDetectionService) ──
+// Detects commercial breaks using EPG program boundaries + title pattern analysis.
+// Only fires when ad-block is enabled AND we have EPG data for the current channel.
 const AD_TITLE_PATTERNS = [
-  /^(ad|ads|advert|sponsored|commercial|spot|promo|break|pause|teaser|bumper|filler)$/i,
+  /^(ad|sponsored|commercial)/i,
+  /^\d+$/,       // just numbers (filler slots)
+  /^spot$/i,
+  /^promo$/i,
   /advertisement/i,
-  /\bcommercial\s*break\b/i,
-  /\bad\s*break\b/i,
-  /^\d{1,3}$/,                // just numbers (filler slots like "30", "60")
-  /^(?:n\/a|tba|tbd|na|no\s+info)$/i,  // placeholder titles
-  /reklam/i,                  // Swedish/Turkish for "commercial"
-  /werbung/i,                 // German
-  /publicité/i,               // French
-  /^[\s\-_.]+$/,              // blank-ish titles (dashes, dots, underscores)
+  /^break$/i,
+  /^pause$/i,
 ];
+const COMMERCIAL_SLOTS_MIN = [0, 15, 30, 45]; // minutes past the hour
 
 S._adMuted = false;
 S._adRestoreVol = null;
 S._adCheckTimer = null;
-S._adEpgRefreshTimer = null;
-S._adBoundaryTimer = null;     // timer to re-fetch EPG near program end
-S._adLastProgEndTs = 0;        // last program end we scheduled a boundary fetch for
 
 function detectAdFromEPG() {
   if (!S.adBlockEnabled || !S.currentChannel) return;
   const streamId = S.currentChannel.stream_id;
   const listings = S.epgCache[streamId];
+  if (!listings || !listings.length) return;
 
   const nowTs = Math.floor(Date.now() / 1000);
-  const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
-  const current = listings?.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
+  const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
+  const current = listings.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
 
   let isAd = false;
   let reason = '';
 
-  if (!listings || !listings.length) {
-    // No EPG data at all — can't detect, don't guess
-    return;
-  }
-
   if (current) {
-    const title = safeAtob(current.title).trim();
+    const title = safeAtob(current.title);
     const duration = current.stop_timestamp - current.start_timestamp;
 
     // 1. Title pattern match (highest confidence)
@@ -2520,54 +2135,23 @@ function detectAdFromEPG() {
       }
     }
 
-    // 2. Suspiciously short program (< 90s) with a generic or empty title
-    if (!isAd && duration > 0 && duration <= 90) {
-      if (!title || title.length < 3) {
-        isAd = true;
-        reason = 'Short+untitled (' + duration + 's)';
-      }
+    // 2. Suspiciously short program (< 60s)
+    if (!isAd && duration > 0 && duration < 60) {
+      isAd = true;
+      reason = 'Short (' + duration + 's)';
     }
+  }
 
-    // 3. Schedule a boundary fetch — when the current program is about to end,
-    //    re-fetch EPG so we immediately know what the next program is
-    if (current.stop_timestamp !== S._adLastProgEndTs) {
-      S._adLastProgEndTs = current.stop_timestamp;
-      const secsUntilEnd = current.stop_timestamp - nowTs;
-      if (secsUntilEnd > 0 && secsUntilEnd < 300) {
-        // Fetch EPG 3s before program ends, and again 3s after
-        if (S._adBoundaryTimer) clearTimeout(S._adBoundaryTimer);
-        const fetchDelay = Math.max(0, (secsUntilEnd - 3)) * 1000;
-        S._adBoundaryTimer = setTimeout(() => {
-          if (S.currentChannel) {
-            console.log('[AdDetect] Boundary fetch — program ending');
-            fetchCurrentEPG(S.currentChannel);
-            // Second fetch 6s later to catch the new program listing
-            setTimeout(() => {
-              if (S.currentChannel) fetchCurrentEPG(S.currentChannel);
-            }, 6000);
-          }
-        }, fetchDelay);
-      }
-    }
-  } else {
-    // 4. EPG GAP: we have listings but nothing covers "now" — this is a gap
-    //    between programs, which is often a commercial break
-    const nextProg = listings.find(e => e.start_timestamp > nowTs);
-    const prevProg = [...listings].reverse().find(e => e.stop_timestamp <= nowTs);
-    if (prevProg && nextProg) {
-      const gapDuration = nextProg.start_timestamp - prevProg.stop_timestamp;
-      // Gaps of 30s to 10min between programs are likely commercial breaks
-      if (gapDuration > 30 && gapDuration < 600) {
-        isAd = true;
-        reason = 'EPG gap (' + Math.round(gapDuration / 60) + 'min)';
-      }
-    } else if (prevProg && !nextProg) {
-      // Program ended but no next one listed — possible commercial before next show
-      const sincePrevEnd = nowTs - prevProg.stop_timestamp;
-      if (sincePrevEnd < 300) {
-        isAd = true;
-        reason = 'Post-program gap (' + sincePrevEnd + 's)';
-      }
+  // 3. Commercial slot heuristic (within 2 min of :00/:15/:30/:45)
+  if (!isAd) {
+    const now = new Date();
+    const mins = now.getMinutes();
+    const secs = now.getSeconds();
+    const timeIntoHour = mins * 60 + secs;
+    const inSlot = COMMERCIAL_SLOTS_MIN.some(m => Math.abs(timeIntoHour - m * 60) < 120);
+    if (inSlot && current) {
+      const dur = current.stop_timestamp - current.start_timestamp;
+      if (dur > 0 && dur < 300) { isAd = true; reason = 'Slot :' + String(mins).padStart(2, '0'); }
     }
   }
 
@@ -2575,10 +2159,10 @@ function detectAdFromEPG() {
   if (!video) return;
 
   if (isAd && !S._adMuted) {
-    // Mute: save current volume, then set to ad volume (default 0 = full mute)
+    // Mute or reduce volume
     S._adRestoreVol = video.volume;
     const targetVol = S.adBlockVolume / 100;
-    video.volume = targetVol;
+    video.volume = Math.min(targetVol, video.volume);
     S._adMuted = true;
     console.log('[AdDetect] Muted — ' + reason);
     showAdIndicator(reason);
@@ -2587,7 +2171,6 @@ function detectAdFromEPG() {
     if (S._adRestoreVol !== null) video.volume = S._adRestoreVol;
     S._adMuted = false;
     S._adRestoreVol = null;
-    console.log('[AdDetect] Unmuted — program resumed');
     hideAdIndicator();
   }
 }
@@ -2734,15 +2317,20 @@ function cancelSleepTimer() {
 //                  storage bar, progress on active recordings
 // ═══════════════════════════════════════════════════════════════
 
+// Override renderRecordings with full native-app equivalent
 function renderRecordings() {
   document.getElementById('rec-count').textContent = S.recordings.length;
   const activeRecs = S.recordings.filter(r => r.status === 'recording');
 
-  // Recordings are metadata bookmarks stored in localStorage (no actual video capture)
-  const recCount = S.recordings.filter(r => r.status !== 'recording').length;
+  // Storage mock (localStorage-based estimate)
+  const usedGB = Math.round(S.recordings.filter(r => r.status !== 'recording').length * 0.3 * 10) / 10;
+  const totalGB = 50;
+  const pct = Math.min(100, Math.round((usedGB / totalGB) * 100));
+  const barColor = pct > 80 ? '#FF3B30' : pct > 60 ? '#fbbf24' : '#3b82f6';
+
   // Update stat boxes
   document.querySelectorAll('#screen-recordings .stat-box')[1].querySelector('.stat-val').textContent = activeRecs.length;
-  document.querySelectorAll('#screen-recordings .stat-box')[2].querySelector('.stat-val').textContent = 'Local only';
+  document.querySelectorAll('#screen-recordings .stat-box')[2].querySelector('.stat-val').textContent = usedGB + ' GB';
 
   // Build tab bar if not present
   let tabBar = document.getElementById('rec-tab-bar');
@@ -2779,8 +2367,11 @@ function renderRecordings() {
   }
   storageBar.innerHTML = `
     <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px">
-      <span>Recordings</span>
-      <span style="color:var(--muted)">${recCount} saved (local bookmarks)</span>
+      <span>Cloud Storage</span>
+      <span style="color:${barColor}">${usedGB} GB / ${totalGB} GB used</span>
+    </div>
+    <div class="progress-bar" style="height:6px">
+      <div class="progress-fill" style="width:${pct}%;background:${barColor};"></div>
     </div>`;
 
   // Filter list
@@ -3160,7 +2751,7 @@ function initQualityScreen() {
           <div style="font-size:13px;font-weight:600" id="q-server-label">Online</div>
           <div style="font-size:11px;color:var(--muted)" id="q-server-sub">${S.server.replace('http://', '').replace('https://', ' ')}</div>
         </div>
-        <div style="font-size:12px;color:var(--muted)" id="q-server-uptime"></div>
+        <div style="font-size:12px;color:var(--muted)" id="q-server-uptime">99.9% uptime</div>
       </div>`;
 
     // Insert before existing quality options section
@@ -3190,25 +2781,12 @@ function updateQualityHealthStats() {
       bufferEl.textContent = buf !== null ? Math.round(buf * 10) + 's' : 'Good';
       bufferEl.style.color = buf > 5 ? 'var(--green)' : buf > 2 ? 'var(--yellow)' : 'var(--primary)';
     }
-    if (fpsEl) {
-      const video = document.getElementById('player-video');
-      const quality = video?.getVideoPlaybackQuality?.();
-      if (quality && quality.totalVideoFrames > 0) {
-        const elapsed = (performance.now() - (S._fpsStart || performance.now())) / 1000;
-        fpsEl.textContent = elapsed > 1 ? Math.round(quality.totalVideoFrames / elapsed) : '—';
-      } else {
-        fpsEl.textContent = '—';
-      }
-    }
+    if (fpsEl) fpsEl.textContent = '60';
     if (latencyEl) {
       const lat = hls.latency ?? hls.targetLatency ?? null;
       latencyEl.textContent = lat !== null ? Math.round(lat * 1000) + 'ms' : '—';
     }
-    if (droppedEl) {
-      const video = document.getElementById('player-video');
-      const quality = video?.getVideoPlaybackQuality?.();
-      droppedEl.textContent = quality ? String(quality.droppedVideoFrames || 0) : '—';
-    }
+    if (droppedEl) droppedEl.textContent = '0';
 
     // Bandwidth from HLS
     const bwMbps = hls.bandwidthEstimate ? (hls.bandwidthEstimate / 1000000).toFixed(1) : null;
@@ -3229,42 +2807,29 @@ async function runBandwidthTest() {
   const btn = document.getElementById('bw-test-btn');
   const bwEl = document.getElementById('bw-result');
   const pingEl = document.getElementById('bw-ping-result');
-  if (btn) { btn.textContent = 'Testing…'; btn.disabled = true; }
+  if (btn) btn.textContent = 'Testing…';
   if (bwEl) { bwEl.textContent = '…'; bwEl.style.color = 'var(--muted)'; }
-  if (pingEl) { pingEl.textContent = '…'; pingEl.style.color = 'var(--muted)'; }
 
   try {
-    // ── Ping test: 3 samples, take median ──
-    const pings = [];
-    for (let i = 0; i < 3; i++) {
-      if (bwEl) bwEl.textContent = `Ping ${i + 1}/3…`;
-      const t0 = performance.now();
-      await api('get_user_info');
-      pings.push(Math.round(performance.now() - t0));
-    }
-    pings.sort((a, b) => a - b);
-    const ping = pings[1]; // median
+    // Ping test — use api() so it routes through Android proxy automatically
+    const t0 = performance.now();
+    await api('get_user_info');
+    const ping = Math.round(performance.now() - t0);
 
     if (pingEl) { pingEl.textContent = ping + 'ms'; pingEl.style.color = ping < 100 ? 'var(--green)' : ping < 300 ? 'var(--yellow)' : 'var(--primary)'; }
     const qPingEl = document.getElementById('q-ping');
     if (qPingEl) qPingEl.textContent = ping + 'ms';
 
-    // ── Bandwidth test: 3 samples, take best ──
+    // Bandwidth estimate: use HLS if stream active, else time a categories fetch
     let mbps = null;
     if (S.hlsInstance?.bandwidthEstimate) {
       mbps = (S.hlsInstance.bandwidthEstimate / 1000000).toFixed(1);
     } else {
-      const speeds = [];
-      for (let i = 0; i < 3; i++) {
-        if (bwEl) bwEl.textContent = `Speed ${i + 1}/3…`;
-        const t1 = performance.now();
-        const data = await api('get_live_categories');
-        const bytes = JSON.stringify(data).length;
-        const secs = (performance.now() - t1) / 1000;
-        speeds.push((bytes * 8) / secs / 1000000);
-      }
-      speeds.sort((a, b) => b - a);
-      mbps = speeds[0].toFixed(1); // best of 3
+      const t1 = performance.now();
+      const cats = await api('get_live_categories');
+      const bytes = JSON.stringify(cats).length;
+      const secs = (performance.now() - t1) / 1000;
+      mbps = ((bytes * 8) / secs / 1000000).toFixed(2);
     }
 
     if (bwEl) {
@@ -3281,8 +2846,7 @@ async function runBandwidthTest() {
     if (sub) sub.textContent = ping < 200 ? 'Excellent connection' : ping < 500 ? 'Good connection' : 'Slow connection';
 
     // Update quality screen top stats
-    const qBit = document.getElementById('q-bitrate');
-    if (qBit) qBit.textContent = mbps || '—';
+    document.getElementById('q-bitrate').textContent = mbps || '—';
 
     updateQualityHealthStats();
   } catch (e) {
@@ -3292,7 +2856,7 @@ async function runBandwidthTest() {
     const lbl = document.getElementById('q-server-label');
     if (lbl) lbl.textContent = 'Unreachable';
   } finally {
-    if (btn) { btn.textContent = 'Re-test'; btn.disabled = false; }
+    if (btn) btn.textContent = 'Re-test';
   }
 }
 
@@ -3305,7 +2869,7 @@ async function runBandwidthTest() {
 
 // Load EPG URL from localStorage on boot
 S.epgUrl = localStorage.getItem('epg_url') || '';
-S.adBlockVolume = parseInt(localStorage.getItem('adblock_volume') || '0');
+S.adBlockVolume = parseInt(localStorage.getItem('adblock_volume') || '50');
 S.autoPlay = localStorage.getItem('autoplay') !== 'false';
 
 // Override initSettings to populate all fields including new ones
@@ -3318,10 +2882,6 @@ initSettings = function () {
   document.getElementById('cfg-pass').value = S.pass || '';
   if (S.userInfo) renderAccountInfo(S.userInfo);
 
-  // Populate filter UIs (language + category checkboxes)
-  renderLangFilterUI();
-  renderCatFilterUI();
-
   // EPG URL
   const epgInput = document.getElementById('cfg-epg');
   if (epgInput) epgInput.value = S.epgUrl;
@@ -3330,9 +2890,9 @@ initSettings = function () {
   if (!document.getElementById('dezor-section')) {
     const dezorSection = document.createElement('div');
     dezorSection.id = 'dezor-section';
-    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns"]');
+    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns:1fr 1fr"]');
     if (settingsGrid) {
-      const col = settingsGrid.children[1] || settingsGrid.children[0];
+      const rightCol = settingsGrid.children[1];
       dezorSection.innerHTML = `
         <div class="section-title">Dezor IPTV Provider</div>
         <div class="settings-group" style="padding:13px" id="dezor-group">
@@ -3351,11 +2911,11 @@ initSettings = function () {
           </div>
         </div>`;
 
-      // Insert before first child of column
-      if (col.firstChild) {
-        col.insertBefore(dezorSection, col.firstChild);
+      // Insert before first child of right column
+      if (rightCol.firstChild) {
+        rightCol.insertBefore(dezorSection, rightCol.firstChild);
       } else {
-        col.appendChild(dezorSection);
+        rightCol.appendChild(dezorSection);
       }
 
       document.getElementById('load-dezor-btn').addEventListener('click', loadDezorPlaylist);
@@ -3393,9 +2953,9 @@ initSettings = function () {
 
   // Inject Remote Control info section
   if (!document.getElementById('remote-info-section')) {
-    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns"]');
+    const settingsGrid = document.querySelector('#screen-settings [style*="grid-template-columns:1fr 1fr"]');
     if (settingsGrid) {
-      const leftCol = settingsGrid.children[0];
+      const rightCol = settingsGrid.children[1];
       const remoteSection = document.createElement('div');
       remoteSection.id = 'remote-info-section';
       const pin = window.__REMOTE_PIN || '----';
@@ -3429,7 +2989,7 @@ initSettings = function () {
             Scan the QR code or type the URL on any phone/tablet on the same Wi-Fi. No app install needed.
           </div>
         </div>`;
-      leftCol.appendChild(remoteSection);
+      rightCol.appendChild(remoteSection);
 
       // Try to detect the LAN IP via WebRTC (best effort)
       detectLanIp(port);
@@ -3475,11 +3035,8 @@ function parseProviderConfig(raw) {
         pass: j.password || j.pass || null,
         epg: j.epg || j.epg_url || null,
         provider: j.provider || null,
-        prefixes: j.prefixes || null,
-        autoLoad: j.autoLoad === true,
-        isSwitchback: !!j._switchback,
       };
-    } catch (_) { }
+    } catch { }
   }
   // 2. Xtream URL: http://server/username/password  (3-segment path)
   //    or  http://server/player_api.php?username=...&password=...
@@ -3495,7 +3052,7 @@ function parseProviderConfig(raw) {
     if (parts.length >= 2 && parts[0] && parts[1]) {
       return { server: `${u.protocol}//${u.host}`, user: parts[0], pass: parts[1], epg: null };
     }
-  } catch (_) { }
+  } catch { }
   // 3. M3U URL with username/password params
   if (s.includes('get.php') || s.includes('.m3u')) {
     try {
@@ -3505,7 +3062,7 @@ function parseProviderConfig(raw) {
       if (user && pass) {
         return { server: `${u2.protocol}//${u2.host}`, user, pass, epg: null };
       }
-    } catch (_) { }
+    } catch { }
   }
   // 4. Activation code: base64url-encoded JSON
   if (s.length > 20 && !s.includes(' ') && !s.startsWith('http')) {
@@ -3523,7 +3080,7 @@ function parseProviderConfig(raw) {
           };
         }
       }
-    } catch (_) { }
+    } catch { }
   }
   return null;
 }
@@ -3559,16 +3116,6 @@ async function applyImportedConfig(raw) {
     localStorage.setItem('provider_name', cfg.provider.name);
     const logoEl = document.querySelector('.sb-logo-text');
     if (logoEl) logoEl.textContent = cfg.provider.name;
-  }
-
-  // .switchback prefixes: auto-hide categories that don't match the provider's preferred prefixes
-  if (cfg.prefixes && Array.isArray(cfg.prefixes) && cfg.prefixes.length) {
-    localStorage.setItem('provider_prefixes', JSON.stringify(cfg.prefixes));
-  }
-
-  // Provider welcome message
-  if (cfg.provider?.welcome) {
-    localStorage.setItem('provider_welcome', cfg.provider.welcome);
   }
 
   const providerLabel = cfg.provider?.name ? ` (${cfg.provider.name})` : '';
@@ -3709,7 +3256,8 @@ async function loadDezorPlaylist() {
 // ═══════════════════════════════════════════════════════════════
 
 // renderChannelList — canonical version with channel number badge + now-playing EPG subtitle
-// Overrides the early fallback stub declared via function declaration above.
+// Declared as var at top-level so the assignment is valid in all environments.
+if (typeof renderChannelList === 'undefined') var renderChannelList;
 renderChannelList = function (list) {
   const el = document.getElementById('channel-list');
   if (!list.length) { el.innerHTML = '<div style="color:var(--muted);padding:20px;font-size:13px">No channels found.</div>'; return; }
@@ -3724,7 +3272,7 @@ renderChannelList = function (list) {
     // EPG now-playing from cache
     const epgListings = S.epgCache[ch.stream_id] || [];
     const nowProg = epgListings.find(e => e.start_timestamp <= nowTs && e.stop_timestamp > nowTs);
-    const safeAtob = s => { try { return atob(s || ''); } catch (_) { return s || ''; } };
+    const safeAtob = s => { try { return atob(s || ''); } catch { return s || ''; } };
     const nowTitle = nowProg ? safeAtob(nowProg.title) : '';
 
     const logo = ch.stream_icon
@@ -3770,9 +3318,6 @@ renderChannelList = function (list) {
       toggleFav(ch, star);
     });
   });
-
-  // Wire long-press context menu (Switchback assign + fav toggle)
-  patchChRowLongPress(list);
 }
 
 function showToast(msg, duration = 2200) {
@@ -3855,14 +3400,6 @@ function patchSettingsToggles() {
       toggle.classList.toggle('on', S.adBlockEnabled);
     } else if (label.includes('Auto-Play')) {
       toggle.classList.toggle('on', S.autoPlay);
-    } else if (label.includes('Smart Favorites')) {
-      toggle.classList.toggle('on', localStorage.getItem('smart_favorites') === 'true');
-    } else if (label.includes('Auto-Updates')) {
-      toggle.classList.toggle('on', localStorage.getItem('auto_updates') === 'true');
-    } else if (label.includes('Hardware Decode')) {
-      toggle.classList.toggle('on', localStorage.getItem('hw_decode') === 'true');
-    } else if (label.includes('Auto Quality')) {
-      toggle.classList.toggle('on', localStorage.getItem('auto_quality') !== 'false');
     }
   });
 }
@@ -3995,8 +3532,15 @@ document.addEventListener('keydown', e => {
   showSwitchbackPanel();
 });
 
-// Long-press context menu (SB assign + fav) is now wired directly
-// inside the canonical renderChannelList — no wrapper needed.
+// ── Long-press on ch-row shows SB assign context menu ────────
+// (Injected after renderChannelList wires its own long-press)
+// We hook into the existing long-press by patching renderChannelList post-hook.
+const _origRenderCL = typeof renderChannelList === 'function' ? renderChannelList : null;
+renderChannelList = function (list) {
+  if (_origRenderCL) _origRenderCL(list);
+  // After rows are rendered, patch long-press to show SB context menu
+  patchChRowLongPress(list);
+};
 
 function patchChRowLongPress(list) {
   document.querySelectorAll('#channel-list .ch-row').forEach(row => {
@@ -4018,29 +3562,6 @@ function patchChRowLongPress(list) {
     row.addEventListener('mouseleave', sbCancel);
     row.addEventListener('touchend', sbCancel);
     row.addEventListener('touchcancel', sbCancel);
-
-    // TV remote: long-press Enter/OK on focused row → toggle favorite
-    let keyTimer = null;
-    row.addEventListener('keydown', e => {
-      if (e.key !== 'Enter') return;
-      if (keyTimer) return; // already timing
-      keyTimer = setTimeout(() => {
-        row._longPressed = true;
-        e.preventDefault();
-        const idx = parseInt(row.dataset.idx);
-        const ch = list[idx];
-        if (!ch) return;
-        const isFav = S.favorites.some(f => f.stream_id == ch.stream_id);
-        toggleFav(ch, null);
-        showToast(isFav ? 'Removed from favorites' : '★ Added to favorites');
-        // Update the star icon in this row
-        const star = row.querySelector('.fav-star');
-        if (star) { star.classList.toggle('on'); }
-      }, 700);
-    });
-    row.addEventListener('keyup', e => {
-      if (e.key === 'Enter' && keyTimer) { clearTimeout(keyTimer); keyTimer = null; }
-    });
   });
 }
 
@@ -4193,7 +3714,7 @@ document.querySelectorAll('.sb-item[data-screen], .tb-btn[data-screen], button[d
 // ═══════════════════════════════════════════════════════════════
 
 // All interactive selectors in priority order
-const TV_FOCUSABLE = '.sb-item, .ch-row, .media-card, .sb-item-nav, .epg-row, .hist-item, .rec-card, .pill, button.btn, .toggle-sw, .price-card, input.inp, select, label[role=checkbox]';
+const TV_FOCUSABLE = '.sb-item, .ch-row, .media-card, .sb-item-nav, .epg-row, .hist-item, .rec-card, .pill, button.btn, .toggle-sw, .price-card, input.inp, select';
 
 // Get visible focusable elements within a container
 function tvFocusable(container) {
@@ -4302,9 +3823,8 @@ document.addEventListener('keydown', function tvNav(e) {
   const overlay = document.getElementById('player-overlay');
   if (overlay && overlay.style.display !== 'none') return;
 
-  // Let text inputs handle their own arrow keys (cursor movement)
-  // But allow arrows on SELECT so D-pad can navigate away from dropdowns
-  if ((tag === 'INPUT' || tag === 'TEXTAREA') && isArrow) return;
+  // Let inputs handle their own arrow keys (cursor movement)
+  if (inInput && isArrow) return;
 
   // ── Tab key: sequential navigation ──
   if (isTab) {
@@ -4323,26 +3843,15 @@ document.addEventListener('keydown', function tvNav(e) {
   }
 
   // ── Enter/Space: activate focused element ──
-  if (isActivate) {
+  if (isActivate && !inInput) {
     const el = document.activeElement;
     if (!el || el === document.body) return;
     // For sidebar items, nav directly
     if (el.dataset && el.dataset.screen && tvInSidebar(el)) {
       e.preventDefault();
       nav(el.dataset.screen);
+      // After nav, focus first content item
       setTimeout(tvFocusContent, 100);
-      return;
-    }
-    // INPUT: focus it to bring up keyboard on Android TV
-    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-      // Don't prevent default — let the system handle Enter in inputs
-      el.focus();
-      return;
-    }
-    // SELECT: open the native dropdown picker
-    if (el.tagName === 'SELECT') {
-      e.preventDefault();
-      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
       return;
     }
     // Toggle switches
@@ -4351,15 +3860,11 @@ document.addEventListener('keydown', function tvNav(e) {
       el.click();
       return;
     }
-    // LABEL with checkbox role: toggle it
-    if (el.tagName === 'LABEL' || el.getAttribute('role') === 'checkbox') {
+    // Generic click
+    if (el.tagName !== 'INPUT') {
       e.preventDefault();
       el.click();
-      return;
     }
-    // Generic click
-    e.preventDefault();
-    el.click();
     return;
   }
 
@@ -4585,9 +4090,10 @@ function publishTVState() {
   };
   try { localStorage.setItem('sb_state', JSON.stringify(state)); } catch (_) { }
   // Push state to RemoteServer so /state endpoint returns live data
+  const pin = window.__REMOTE_PIN || '';
   const port = window.__REMOTE_PORT || 8124;
   try {
-    fetch('http://localhost:' + port + '/state-push', {
+    fetch('http://localhost:' + port + '/state-push?pin=' + pin, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(state),
@@ -4835,14 +4341,24 @@ function initSetupScreen() {
   const urlEl = document.getElementById('setup-url');
   const qrEl = document.getElementById('setup-qr');
 
-  // __LAN_IP is set synchronously by Android JavascriptInterface at boot
   if (ip) {
     const url = 'http://' + ip + ':' + port + '#pin=' + pin;
     if (urlEl) urlEl.textContent = 'http://' + ip + ':' + port;
     renderQrInto(qrEl, url, 200);
   } else {
-    if (urlEl) { urlEl.textContent = 'http://<TV-IP>:' + port; urlEl.style.color = 'var(--muted)'; }
-    if (qrEl) qrEl.innerHTML = '<div style="color:#999;font-size:12px;padding:60px 20px">Could not detect IP.<br>Check TV network settings.</div>';
+    // IP not yet injected — wait a moment and retry (Java injects after page load)
+    if (urlEl) urlEl.textContent = 'Detecting network…';
+    setTimeout(() => {
+      const retryIp = window.__LAN_IP;
+      if (retryIp) {
+        const url = 'http://' + retryIp + ':' + port + '#pin=' + pin;
+        if (urlEl) urlEl.textContent = 'http://' + retryIp + ':' + port;
+        renderQrInto(qrEl, url, 200);
+      } else {
+        if (urlEl) { urlEl.textContent = 'http://<TV-IP>:' + port; urlEl.style.color = 'var(--muted)'; }
+        if (qrEl) qrEl.innerHTML = '<div style="color:#999;font-size:12px;padding:60px 20px">Could not detect IP.<br>Check TV network settings.</div>';
+      }
+    }, 1500);
   }
 }
 
@@ -4854,7 +4370,6 @@ function updateRemoteQr(url) {
 function detectLanIp(port) {
   const urlEl = document.getElementById('remote-url');
   if (!urlEl) return;
-  // __LAN_IP is set synchronously by Android JavascriptInterface at boot
   const ip = window.__LAN_IP;
   if (ip) {
     const url = 'http://' + ip + ':' + port;
@@ -4866,4 +4381,4 @@ function detectLanIp(port) {
   }
 }
 
-console.log('[Switchback TV] v' + APP_VERSION + ' — offline QR, Java IP detection, phone remote ✓');
+console.log('[Switchback TV] v4.5 — offline QR, Java IP detection, phone remote ✓');
