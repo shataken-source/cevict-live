@@ -35,64 +35,65 @@ SwitchbackSimple is a native Android app that hosts a single-page application (S
 - **Supported keys**: back, up, down, left, right, select/enter/ok, playpause, menu
 - **LAN filter**: Only accepts 192.168.x, 10.x, 172.16-31.x, localhost
 
-## JavaScript Layer (`app.js` — ~3900 lines)
+## JavaScript Layer (`app.js` — ~4500 lines)
 
-### Code Organization (by line range)
+### Code Organization (approximate sections)
 
 ```
-Lines    Section
-──────── ────────────────────────────────────────
-1-50     Virtual keyboard suppression (TV input handling)
-52-84    State object (S) — all app state in one object
-84-102   Environment detection (Android WebView vs Vercel web)
-104-146  API client (buildApiUrl, api())
-148-176  Helpers (esc, streamUrl, channelInitials, colorFromName, saveState)
-178-216  Navigation (nav(), sidebar toggle)
-217-262  TV Home screen
-264-303  Language/country channel filter (15 groups, keyword matching)
-305-378  Settings init + language filter UI
-380-448  Credential management (save, test, reset, clear)
-450-526  Channels screen (live categories + streams)
-528-603  Movies screen (VOD grid)
-619-690  Series screen + episode picker
-692-813  EPG / TV Guide (time slots, program grid)
-815-891  Search (cross-content: live + VOD + series)
-893-957  Favorites + Watch History
-959-1006 Devices screen (account info, stream usage)
-1008-1080 Catch-Up TV (7-day archive)
-1086-1254 HLS Player (openPlayer, loadStream, quality switching)
-1257-1278 EPG bar + current program fetch
-1280-1290 closePlayer (cleanup + ad detection reset)
-1292-1320 Player controls (play/pause, mute, volume, seek, channel nav)
-1321-1401 Back key handling + exit confirm dialog
-1402-1457 Player keyboard shortcuts (D-pad, media keys, numeric entry)
-1459-1536 Player favorites + recording (bookmark) system
-1538-1566 Quality stat polling + HLS level switching
-1568-1661 Phone pairing flow (code generation, polling)
-1671-1753 Boot sequence (credential check → API load → channel fetch)
-1755-1766 DOMContentLoaded init
-1768-1877 Ad block toggle + Switchback slot management
-1870-1975 Switchback panel UI (slot display, jump, cycle, clear)
-1977-2027 Previous channel + ad block badge
-2029-2129 EPG-based ad detection engine (ported from IPTVviewer)
-2131-2182 Player quality panel (inline)
-2198-2247 Sleep timer
-2248-2360 Recordings (tabs, storage bar, progress)
-2390-2530 Favorites upgrade (Smart Categories, import/export, Smart Add)
-2537-2694 Quality screen (bandwidth test, health grid, server status)
-2698-2809 Settings upgrade (Dezor, EPG URL, ad volume slider)
-2811-2985 Provider config import (JSON, Xtream URL, M3U, base64, file, deep link)
-2987-3039 Dezor playlist loader
-3042-3123 Channel list upgrade (numbers, EPG subtitle, toast)
-3125-3147 Player extras injection (sleep timer button)
-3148-3193 Settings toggle persistence
-3203-3213 Channel number assignment
-3217-3247 EPG search/jump
-3250-3310 Pricing/plan activation
-3312-3422 Channel row context menu (long-press → SB assign)
-3426-3590 Canonical nav() with focusable stamp after screen switch
-3600-3862 Spatial D-pad navigation engine (tvSpatialNearest, zone-aware)
-3864-3990 Remote command listener (localStorage, WebSocket, LAN)
+Lines      Section
+────────── ────────────────────────────────────────
+1-50       Virtual keyboard suppression (TV input handling)
+52-84      State object (S) — all app state + user_timezone
+84-102     Environment detection (Android WebView vs Vercel web)
+104-170    API client (buildApiUrl, api() with 3x retry + backoff)
+172-190    Helpers (esc, streamUrl, channelInitials, colorFromName, saveState, formatEpgTime w/ timezone)
+192-262    Navigation (nav(), sidebar toggle)
+264-310    TV Home screen
+312-400    Language/country channel filter (15 groups, keyword matching)
+400-520    Settings init + language/category filter UI + timezone picker
+520-600    Credential management (save, test, reset, clear)
+600-710    Channels screen (live categories + streams + ★ Favorites in dropdown)
+712-830    Movies screen (VOD grid)
+832-910    Series screen + episode picker
+910-1000   EPG / TV Guide (category dropdown w/ favorites, time slots, program grid)
+1000-1070  Search (cross-content: live + VOD + series)
+1070-1170  Favorites + Watch History + renderFavorites()
+1170-1220  Devices screen (account info, stream usage)
+1220-1300  Catch-Up TV (7-day archive)
+1300-1500  HLS Player (openPlayer, loadStream, quality switching)
+1500-1540  EPG bar + current program fetch
+1540-1560  closePlayer (cleanup + ad detection reset)
+1560-1620  Player controls (play/pause, mute, volume, seek, channel nav)
+1620-1760  Back key handling + exit confirm (dismisses modals first) + modal checks
+1760-1870  Player keyboard shortcuts (D-pad, media keys, numeric entry)
+1870-1960  Player favorites + recording (bookmark) system
+1960-2000  Quality stat polling + HLS level switching
+2000-2100  Phone pairing flow (code generation, polling)
+2100-2200  Boot sequence (credential check → API load → nav('channels'))
+2200-2220  DOMContentLoaded init
+2220-2350  Ad block toggle + Switchback slot management
+2350-2460  Switchback panel UI (slot display, jump, cycle, clear)
+2460-2530  Previous channel + ad block badge
+2530-2650  EPG-based ad detection engine (ported from IPTVviewer)
+2650-2720  Player quality panel (inline)
+2720-2800  Sleep timer
+2800-2920  Recordings (tabs, storage bar, progress)
+2920-3100  Favorites: Smart Categories, Smart Add modal, backup/restore
+3100-3300  Quality screen (10s bandwidth test, health grid, server status)
+3300-3500  Settings upgrade (Dezor, EPG URL, ad volume, timezone picker)
+3500-3700  Provider config import (JSON, Xtream URL, M3U, base64, file, deep link)
+3700-3780  Dezor playlist loader
+3780-3870  Channel list (numbers, EPG subtitle, toast, fav stars, long-press)
+3870-3910  Player extras injection (sleep timer button)
+3910-3970  Settings toggle persistence
+3970-4000  Channel number assignment + EPG search/jump
+4000-4060  Pricing/plan activation
+4060-4170  Channel row context menu (long-press Enter/touch → fav + SB assign + back-key dismiss)
+4170-4430  Canonical nav() + D-pad navigation engine
+              • tvSpatialNearest() for grid screens
+              • DOM-order sequential nav for settings screen
+              • Sidebar zone nav (ArrowUp/Down + ArrowRight → content)
+4430-4510  Remote command listener (localStorage, WebSocket, LAN)
 ```
 
 ### State Object (`S`)
@@ -142,21 +143,34 @@ const S = {
 
 ```
 Boot:
-  DOMContentLoaded → nav('tvhome') → bootData()
-    → No creds? → startPairing() (QR screen + credential polling)
-    → Has creds? → api('get_user_info') → validate
-      → api('get_live_categories') + api('get_live_streams') [parallel]
-      → api('get_vod_*') + api('get_series_*') [background]
+  DOMContentLoaded → nav('channels') → bootData()
+    → No creds + no default? → nav('setup') (QR screen + credential polling)
+    → No creds + default? → Apply bundled provider → continue
+    → Has creds? → api('get_user_info') → validate auth
+      → Promise.allSettled([get_live_categories, get_live_streams])
+      → api('get_vod_*') + api('get_series_*') [background, non-blocking]
+      → checkDeviceLicense() [fire-and-forget, never blocks]
 
 Channel Play:
-  User clicks channel → openPlayer(ch)
+  User clicks channel (or Enter on focused row) → openPlayer(ch)
     → loadStream(ch) → HLS.js or .ts fallback
     → fetchCurrentEPG(ch) → epgCache update → detectAdFromEPG()
     → setInterval(detectAdFromEPG, 5000) + boundary-aware EPG re-fetch
 
+Long-press (touch OR hold Enter 700ms):
+  Channel row → showChRowContextMenu(ch)
+    → Add/Remove Favorite, Assign to Switchback Slot, Cancel
+    → Dismiss via: tap outside, Cancel, Back/Escape key
+
 Provider Import:
   Paste/file/deep-link → parseProviderConfig(raw)
     → applyImportedConfig(cfg) → save to localStorage → bootData()
+
+Back Key Priority:
+  1. Dismiss smart-add-modal / context-menu / exit-dialog
+  2. Close player overlay
+  3. Pop screen history stack
+  4. Show exit confirm (if on channels/tvhome)
 
 Remote Control:
   Phone → GET /key?name=Up&pin=1234 → RemoteServer.java
@@ -187,8 +201,8 @@ dependencies:
 
 | File | Size | Purpose |
 |---|---|---|
-| `index.html` | ~58KB | Full SPA: HTML structure + CSS (inline) |
-| `app.js` | ~200KB | All JavaScript logic |
+| `index.html` | ~70KB | Full SPA: HTML structure + CSS (inline, ~1650 lines) |
+| `app.js` | ~220KB | All JavaScript logic (~4500 lines) |
 | `hls.min.js` | ~414KB | HLS.js adaptive streaming library |
 | `remote.html` | ~15KB | Phone remote control UI (served on :8124) |
 
@@ -196,6 +210,24 @@ dependencies:
 
 1. **LocalServer** — localhost only, SSRF-protected, no path traversal
 2. **RemoteServer** — LAN only + 4-digit PIN on every request
-3. **No hardcoded credentials** — user must enter or import
+3. **No hardcoded credentials** — user must enter or import (bundled default provider for first-run)
 4. **Cleartext traffic** — required for Xtream API servers (most use HTTP)
 5. **WebView cache nuked on upgrade** — prevents stale JS/HTML from persisting
+6. **Device license check** — Supabase lookup, fire-and-forget (never blocks boot)
+
+## D-pad Navigation Engine
+
+The keyboard handler (`document.addEventListener('keydown', ...)`) implements zone-aware navigation:
+
+1. **Sidebar zone**: ArrowUp/Down cycles sidebar items (including collapse button). ArrowRight enters content.
+2. **Content zone (Settings)**: DOM-order sequential nav. ArrowDown = next focusable, ArrowUp = previous. Wraps at boundaries.
+3. **Content zone (other screens)**: Spatial navigation via `tvSpatialNearest()`. Finds the nearest element in the arrow direction by computing geometric distance from element bounding rects.
+4. **ArrowLeft in content**: Spatial search left; if nothing found, returns to sidebar.
+5. **Enter/Space**: Activates focused element (click, toggle, open dropdown, trigger keyboard on inputs).
+6. **Long-press Enter (700ms)**: On channel rows, triggers context menu via keydown/keyup timer.
+
+## Proxy Resilience
+
+- **JSON passthrough**: `LocalServer.handleProxy()` reads the error stream on non-2xx responses. If content starts with `[` or `{`, passes through as HTTP 200 + `application/json`. Handles providers returning HTTP 513 with valid data.
+- **Server retry**: LocalServer retries 5xx errors up to 2x with backoff.
+- **Client retry**: JS `api()` retries up to 3x with 2s/4s/6s delays before throwing.

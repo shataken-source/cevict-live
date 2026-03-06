@@ -12,8 +12,8 @@ SwitchbackSimple/
 │   │   ├── LocalServer.java       # NanoHTTPD on :8123 — asset server + CORS proxy
 │   │   └── RemoteServer.java      # NanoHTTPD on :8124 — LAN remote control (PIN auth)
 │   ├── assets/
-│   │   ├── index.html             # Full SPA UI (~1100 lines HTML/CSS)
-│   │   ├── app.js                 # All application logic (~3800 lines)
+│   │   ├── index.html             # Full SPA UI (~1650 lines HTML/CSS)
+│   │   ├── app.js                 # All application logic (~4500 lines)
 │   │   └── hls.min.js             # HLS.js for adaptive streaming
 │   ├── res/                       # Icons, themes
 │   └── AndroidManifest.xml        # Package: com.switchback.lite
@@ -38,20 +38,21 @@ SwitchbackSimple/
 - **HLS.js** adaptive bitrate streaming with fallback to `.ts` direct
 - **Quality switching** — Auto/4K/1080p/720p/480p/360p via HLS level control
 - **Buffer config** — 3s/5s/10s buffer size options
-- **Bandwidth test** — Real-time speed test against IPTV server
+- **Bandwidth test** — 10-second speed test with repeated fetches + ping averaging
 - **Stream health** — Buffer %, FPS, latency, dropped frames from HLS.js stats
 
 ### Content
 - **Live TV** — Full Xtream `get_live_streams` + `get_live_categories` with category pills
 - **Movies (VOD)** — `get_vod_streams` + `get_vod_categories` with poster grid
 - **Series** — `get_series` + `get_series_categories` + episode picker
-- **EPG (TV Guide)** — `get_short_epg` per channel, time navigation, now-playing indicators
+- **EPG (TV Guide)** — `get_short_epg` per channel, time navigation, now-playing indicators, category filter dropdown
 - **Catch-Up TV** — 7-day archive for `tv_archive=1` channels
 - **Search** — Cross-content search (live + VOD + series)
 
 ### Channel Management
 - **Switchback Slots** — 2 free / 4 Pro quick-switch slots with true channel swap
-- **Favorites** — Star channels, Smart Categories (Sports/News/Movies/Kids/Music/Docs/Intl/Local), import/export
+- **Favorites** — Star channels, Smart Categories (Sports/News/Movies/Kids/Music/Docs/Intl/Local), backup/restore to localStorage
+- **★ Favorites in dropdowns** — Channel list and EPG category dropdowns include a "★ Favorites" filter option
 - **Watch History** — Last 50 channels with timestamps
 - **Language Filter** — 15 language groups (Arabic, French, Spanish, etc.) with keyword matching
 - **Channel Numbers** — Numeric entry in player (type digits → auto-jump after 1.5s)
@@ -80,10 +81,15 @@ SwitchbackSimple/
 ### TV Remote Support
 - Full D-pad focus management with visible focus rings
 - ArrowUp/Down navigation between sidebar ↔ content
+- **Settings screen**: DOM-order sequential nav (ArrowUp/ArrowDown step through every element top-to-bottom)
+- **Other screens**: Spatial navigation (nearest element in arrow direction)
 - Tab key intercepted for controlled focus cycling
-- Per-screen first-focus selectors (channels→pills, search→input, etc.)
-- Toggle switches respond to Enter/Space
-- Back key: player→close, screen→history stack, home→exit confirm
+- Per-screen first-focus selectors (channels→category dropdown, search→input, etc.)
+- Toggle switches, labels, checkboxes respond to Enter/Space
+- Long-press Enter/OK on channel rows opens favorites context menu (keydown/keyup timer)
+- Back key: dismisses modals → closes player → history stack → exit confirm
+- Exit confirm Cancel properly dismisses and refocuses sidebar
+- All modals (Smart Add, context menu, exit dialog) dismiss on Back/Escape key
 
 ### Monetization
 - **Pricing tiers** — Starter (free, 2 slots), Pro (4 slots), Elite
@@ -131,6 +137,9 @@ All state lives in `localStorage` (persists across app restarts):
 | `lang_filter_hidden` | JSON array | Hidden language group IDs |
 | `hidden_categories` | JSON array | Hidden provider category IDs |
 | `dezor_server/user/pass` | string | Dezor provider credentials |
+| `user_timezone` | string | IANA timezone for EPG/clock (e.g. `America/Chicago`) |
+| `fav_channels_backup` | JSON array | Backup copy of favorites |
+| `fav_backup_date` | string | Timestamp of last favorites backup |
 
 ## Environment Detection
 
@@ -165,6 +174,26 @@ Where BASE64_CONFIG decodes to:
 {"server":"http://example.com:8080","username":"user","password":"pass","epg":"http://example.com/xmltv.php"}
 ```
 
+## Proxy (LocalServer) Resilience
+
+- **JSON passthrough on non-2xx**: Many IPTV providers return non-standard HTTP codes (e.g. 513) but include valid JSON in the error stream. The proxy reads the full error body and if it looks like JSON (`[` or `{` prefix), passes it through as HTTP 200 with `application/json`.
+- **Retry logic**: LocalServer retries 5xx errors up to 2 times with backoff. The JS `api()` function also retries 3 times with 2s/4s/6s delays.
+
+## Timezone Support
+
+- Timezone picker in Settings (injected below EPG URL field)
+- Applies to `formatEpgTime()` and player clock via `Intl.DateTimeFormat` `timeZone` option
+- Stored in `localStorage` as `user_timezone`
+
+## Boot Sequence
+
+1. `DOMContentLoaded` → `nav('channels')` (skips home screen, goes straight to Live TV)
+2. `bootData()` checks credentials → applies bundled default provider if none
+3. `api('get_user_info')` validates auth
+4. `get_live_categories` + `get_live_streams` in parallel (`Promise.allSettled`)
+5. VOD + Series categories/streams loaded in background (non-blocking)
+6. Device license check (Supabase) — fire-and-forget, never blocks boot
+
 ## vs IPTVviewer (Deprecated)
 
 IPTVviewer is a React Native / Expo app that was the original prototype. SwitchbackSimple supersedes it because:
@@ -175,3 +204,19 @@ IPTVviewer is a React Native / Expo app that was the original prototype. Switchb
 - **Better TV support** — Full keyboard/D-pad focus management built for Android TV
 
 The only feature IPTVviewer had that SwitchbackSimple didn't was EPG-based ad detection with program boundary analysis — this has now been ported.
+
+## Recent Changes (March 2026)
+
+- **Boot to Live TV** — Skips home screen, goes straight to channel list
+- **EPG category filter** — Dropdown on TV Guide screen to filter by category or favorites
+- **Timezone picker** — Settings option to override EPG/clock timezone
+- **Speed test 10s** — Extended from quick single-fetch to 10-second repeated fetch + ping averaging
+- **Sidebar collapse button** — Accessible via D-pad (tabindex, focus ring)
+- **Settings single-column layout** — Changed from 2-column grid to single column for D-pad accessibility
+- **Settings sequential nav** — ArrowUp/ArrowDown steps through all elements in DOM order
+- **★ Favorites in dropdowns** — Channel list + EPG dropdowns include favorites filter
+- **Favorites backup/restore** — Replaced clipboard export with localStorage backup/restore
+- **Long-press Enter** — Holding OK/Enter on channel row triggers context menu (add to favorites)
+- **Modal dismiss** — All modals/menus close on Back/Escape key
+- **API retry logic** — JS api() retries 3x with backoff; proxy passes JSON on non-2xx codes
+- **Proxy JSON passthrough** — Handles providers returning HTTP 513 with valid JSON body
