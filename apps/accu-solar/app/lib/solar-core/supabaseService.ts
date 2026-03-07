@@ -7,7 +7,9 @@ let supabase: ReturnType<typeof createClient> | null = null;
 
 function getSupabaseClient() {
   if (!supabase) {
-    const url = "https://rdbuwyefbgnbuhmjrizo.supabase.co";
+    const url =
+      process.env.NEXT_PUBLIC_SUPABASE_URL ??
+      "https://rdbuwyefbgnbuhmjrizo.supabase.co";
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!key) {

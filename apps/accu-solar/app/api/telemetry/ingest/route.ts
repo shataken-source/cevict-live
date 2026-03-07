@@ -1,16 +1,25 @@
 /**
  * Telemetry ingest: store one snapshot per site for history (Pro tier).
- * Call when BLE/Victron is active and user's tier allows history.
- * Auth: in production use session; for now accepts userId in body (replace with real auth).
+ * Requires Authorization: Bearer <token>. userId is derived server-side from auth only.
+ * GET returns 405 with instructions (some clients poll by mistake).
  */
 
 import { NextResponse } from "next/server";
-import { getSupabaseServerClient } from "../../../lib/supabase-server";
+import { getSupabaseServerClient, getUserFromRequest } from "../../../lib/supabase-server";
 
 export const runtime = "nodejs";
 
+export async function GET() {
+  return NextResponse.json(
+    {
+      error: "Method Not Allowed",
+      message: "Use POST with Authorization: Bearer <token> and body: { siteId, ...telemetry } to store telemetry.",
+    },
+    { status: 405 }
+  );
+}
+
 type IngestBody = {
-  userId?: string;
   siteId?: string;
   battery_soc_pct?: number;
   battery_v?: number;
@@ -27,6 +36,13 @@ function isNum(n: unknown): n is number {
 }
 
 export async function POST(request: Request) {
+  const user = await getUserFromRequest(request as Request);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized - valid authentication required" }, { status: 401 });
+  }
+
+  const userId = user.id;
+
   if (request.headers.get("content-type")?.includes("application/json") === false) {
     return NextResponse.json({ error: "Content-Type: application/json required" }, { status: 400 });
   }
@@ -38,11 +54,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const userId = (body.userId ?? "").trim();
   const siteId = (body.siteId ?? "").trim();
-  if (!userId || !siteId) {
+  if (!siteId) {
     return NextResponse.json(
-      { error: "Missing userId or siteId" },
+      { error: "Missing siteId in body" },
       { status: 400 }
     );
   }

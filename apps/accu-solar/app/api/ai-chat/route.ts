@@ -308,7 +308,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Rate limit check
+  // Rate limit check (in-memory per hour)
   const rateLimit = checkRateLimit(user.id);
   if (!rateLimit.allowed) {
     return NextResponse.json(
@@ -321,6 +321,49 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Per-tier monthly usage cap (accu_solar_usage)
+  const PROFESSIONAL_AI_MONTHLY_CAP = 500;
+  const monthStr = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const { data: usageRow } = await supabase
+    .from("accu_solar_usage")
+    .select("ai_requests, exports_count")
+    .eq("user_id", user.id)
+    .eq("month", monthStr)
+    .maybeSingle();
+
+  const currentCount = usageRow?.ai_requests ?? 0;
+  const currentExports = usageRow?.exports_count ?? 0;
+  if (currentCount >= PROFESSIONAL_AI_MONTHLY_CAP) {
+    return NextResponse.json(
+      {
+        error: "Monthly AI request limit reached",
+        limit: PROFESSIONAL_AI_MONTHLY_CAP,
+        current: currentCount,
+        reset_month: monthStr,
+      },
+      { status: 429 }
+    );
+  }
+
+  const { error: upsertError } = await supabase.from("accu_solar_usage").upsert(
+    {
+      user_id: user.id,
+      month: monthStr,
+      ai_requests: currentCount + 1,
+      exports_count: currentExports,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,month" }
+  );
+
+  if (upsertError) {
+    console.error("[ai-chat] usage upsert error:", upsertError);
+    return NextResponse.json(
+      { error: "Failed to record usage" },
+      { status: 500 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -329,13 +372,38 @@ export async function POST(request: NextRequest) {
   }
 
   const rec = body && typeof body === "object" ? (body as UnknownRecord) : {};
-  const messages = coerceMessages(rec.messages);
-  const context = typeof rec.context === "string" ? rec.context : "";
+  let messages = coerceMessages(rec.messages);
+  let context = typeof rec.context === "string" ? rec.context : "";
   const mode: OutputMode = rec.mode === "json" ? "json" : "text";
+
+  // Dashboard shape: single message + history (no messages[]); build messages and context
+  if (messages.length === 0 && typeof rec.message === "string" && rec.message.trim()) {
+    const history = Array.isArray(rec.history) ? rec.history : [];
+    const roleContentPairs: ChatMessage[] = [];
+    for (const h of history) {
+      if (h && typeof h === "object" && (h as UnknownRecord).role && typeof (h as UnknownRecord).content === "string") {
+        const r = (h as UnknownRecord).role as string;
+        if (r === "user" || r === "assistant" || r === "system") {
+          roleContentPairs.push({ role: r, content: (h as UnknownRecord).content as string });
+        }
+      }
+    }
+    roleContentPairs.push({ role: "user", content: (rec.message as string).trim() });
+    messages = roleContentPairs.slice(-16);
+
+    const telemetry = rec.telemetry && typeof rec.telemetry === "object" ? rec.telemetry : null;
+    const weather = rec.weather && typeof rec.weather === "object" ? rec.weather : null;
+    const location = rec.location && typeof rec.location === "object" ? rec.location : null;
+    const contextParts: string[] = [];
+    if (telemetry) contextParts.push("Telemetry (current): " + JSON.stringify(telemetry));
+    if (weather) contextParts.push("Weather: " + JSON.stringify(weather));
+    if (location) contextParts.push("Location: " + JSON.stringify(location));
+    if (contextParts.length) context = contextParts.join("\n");
+  }
 
   if (!messages.length) {
     return NextResponse.json(
-      { error: "Missing messages[] in body" },
+      { error: "Missing messages[] or message in body" },
       { status: 400 },
     );
   }

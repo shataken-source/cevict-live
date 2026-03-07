@@ -2,11 +2,17 @@
 ECO-Worthy 12V 280Ah LiFePO4 → MQTT Bridge
 Reads JBD BMS via BLE, publishes to MQTT for Accu-Solar
 
-Install:  pip install bleak jbd-bms paho-mqtt
+Install:  pip install bleak paho-mqtt
 Usage:    python eco_worthy_bridge.py
 
-Set your BLE address and MQTT broker below, or use env vars:
-  BMS_ADDRESS=AA:BB:CC:DD:EE:FF
+If BMS_ADDRESS is not set:
+  - On Windows: tries paired Bluetooth devices first (no scan). Connects to each
+    and uses the first that has the JBD BMS service.
+  - If no paired BMS found (or not Windows): scans for devices and picks the
+    best BMS-like one by RSSI.
+
+Env vars:
+  BMS_ADDRESS=AA:BB:CC:DD:EE:FF   (optional; auto from paired or scan)
   MQTT_BROKER=192.168.1.100
   MQTT_PORT=1883
 """
@@ -262,9 +268,23 @@ def publish_http(basic: dict, cells: list[float] | None):
 
 
 # ── Scanner ───────────────────────────────────────────────────────────────────
-async def scan_for_bms():
+BMS_NAME_HINTS = ("JBD", "xiaoxiang", "ECO", "BMS", "DP04", "Daly", "JK ")
+
+def _is_likely_bms(device, adv) -> bool:
+    name = (device.name or getattr(adv, "local_name", None) or "").upper()
+    for hint in BMS_NAME_HINTS:
+        if hint.upper() in name:
+            return True
+    service_uuids = getattr(adv, "service_uuids", set()) or set()
+    if service_uuids and BMS_SERVICE.lower() in {str(u).lower() for u in service_uuids}:
+        return True
+    return False
+
+
+async def scan_for_bms() -> list[tuple[str, int, str]]:
+    """Scan for BLE devices; return list of (address, rssi, name) for BMS-like devices, best RSSI first."""
     log.info("Scanning for BLE devices (10s)...")
-    results = []
+    results: list = []
 
     def callback(device, adv_data):
         results.append((device, adv_data))
@@ -272,32 +292,135 @@ async def scan_for_bms():
     async with BleakScanner(detection_callback=callback):
         await asyncio.sleep(10.0)
 
-    # Deduplicate by address, keep highest RSSI
     seen: dict = {}
     for device, adv in results:
         rssi = adv.rssi if adv.rssi is not None else -999
         if device.address not in seen or rssi > seen[device.address][1]:
             seen[device.address] = (device, rssi, adv)
 
-    log.info(f"Found {len(seen)} devices:")
-    for addr, (device, rssi, adv) in sorted(seen.items(), key=lambda x: x[1][1], reverse=True):
-        name = device.name or adv.local_name or "(unknown)"
-        log.info(f"  {device.address}  RSSI {rssi:4d}  {name}")
-    log.info("Look for: JBD, xiaoxiang, ECO, BMS, or unnamed devices near your battery.")
+    bms_candidates = []
+    for addr, (dev, rssi, adv) in seen.items():
+        name = dev.name or getattr(adv, "local_name", None) or "(unknown)"
+        if _is_likely_bms(dev, adv):
+            bms_candidates.append((addr, rssi, name))
+    if not bms_candidates:
+        bms_candidates = [(addr, rssi, dev.name or getattr(adv, "local_name", None) or "(unknown)")
+                          for addr, (dev, rssi, adv) in seen.items()]
+    bms_candidates.sort(key=lambda x: x[1], reverse=True)
+
+    all_sorted = sorted(seen.items(), key=lambda x: x[1][1], reverse=True)
+    log.info(f"Found {len(seen)} devices total, {len(bms_candidates)} BMS-like:")
+    for addr, (dev, rssi, adv) in all_sorted[:20]:
+        name = dev.name or getattr(adv, "local_name", None) or "(unknown)"
+        mark = " *" if addr in [c[0] for c in bms_candidates] else ""
+        log.info(f"  {addr}  RSSI {rssi:4d}  {name}{mark}")
+    if not bms_candidates:
+        log.info("Look for: JBD, xiaoxiang, ECO, BMS, or DP04 devices near your battery.")
+    return bms_candidates
+
+
+async def scan_and_pick_best() -> str | None:
+    """Run scan and return the best BMS address (highest RSSI), or None."""
+    candidates = await scan_for_bms()
+    if not candidates:
+        return None
+    return candidates[0][0]
+
+
+# ── Paired devices (Windows) ───────────────────────────────────────────────────
+def get_paired_ble_addresses() -> list[tuple[str, str]]:
+    """Return list of (address, name) for paired Bluetooth devices. Windows only."""
+    if os.name != "nt":
+        return []
+    try:
+        import winreg
+        key_path = r"SYSTEM\CurrentControlSet\Services\BTHPORT\Parameters\Devices"
+        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path)
+        result = []
+        for i in range(winreg.QueryInfoKey(key)[0]):
+            raw_addr = winreg.EnumKey(key, i)
+            if len(raw_addr) != 12 or not all(c in "0123456789ABCDEFabcdef" for c in raw_addr):
+                continue
+            addr = ":".join([raw_addr[j : j + 2].upper() for j in range(0, 12, 2)])
+            name = ""
+            try:
+                dev_key = winreg.OpenKey(key, raw_addr)
+                name_val, _ = winreg.QueryValueEx(dev_key, "Name")
+                winreg.CloseKey(dev_key)
+                if isinstance(name_val, bytes):
+                    name = name_val.decode("utf-16-le", errors="ignore").strip("\x00") or "(unknown)"
+                elif isinstance(name_val, str):
+                    name = name_val or "(unknown)"
+            except (OSError, TypeError):
+                name = "(unknown)"
+            result.append((addr, name))
+        winreg.CloseKey(key)
+        return result
+    except Exception as e:
+        log.debug(f"Could not read paired devices from registry: {e}")
+        return []
+
+
+async def device_has_jbd_service(address: str) -> bool:
+    """Connect to address and return True if the JBD BMS service is present."""
+    try:
+        async with BleakClient(address, timeout=8.0) as client:
+            await client.get_services()
+            for s in client.services:
+                if s.uuid and BMS_SERVICE.lower() in str(s.uuid).lower():
+                    return True
+            return False
+    except Exception:
+        return False
+
+
+async def try_paired_first() -> str | None:
+    """If Windows: get paired devices, try each that looks like a BMS until one has JBD service. Return address or None."""
+    paired = get_paired_ble_addresses()
+    if not paired:
+        return None
+    log.info(f"Found {len(paired)} paired Bluetooth device(s) — trying those first (no scan)...")
+    # Prefer devices with BMS-like names
+    def bms_rank(item: tuple[str, str]) -> tuple[int, str]:
+        addr, name = item
+        name_upper = name.upper()
+        for hint in BMS_NAME_HINTS:
+            if hint.upper() in name_upper:
+                return (0, addr)
+        return (1, addr)
+    paired_sorted = sorted(paired, key=bms_rank)
+    for addr, name in paired_sorted:
+        log.info(f"  Trying paired: {addr}  ({name})...")
+        if await device_has_jbd_service(addr):
+            log.info(f"  ✓ {addr} has JBD BMS service — using it.")
+            return addr
+    log.info("  No paired device had JBD BMS service — will scan if needed.")
+    return None
 
 
 # ── Main Loop ─────────────────────────────────────────────────────────────────
-async def main():
-    if not BMS_ADDRESS:
-        log.error("BMS_ADDRESS not set. Run scan first:")
-        log.error("  python eco_worthy_bridge.py scan")
-        return
+AUTO_SCAN_AFTER_FAILURES = 3  # After this many BLE failures, auto-scan and try best device
 
-    log.info(f"Connecting to BMS at {BMS_ADDRESS}")
+async def main():
+    current_address = BMS_ADDRESS
+    if not current_address:
+        # Prefer paired devices (Windows): try them first, no scan
+        current_address = await try_paired_first()
+        if not current_address:
+            log.info("No paired BMS found (or not Windows) — scanning for devices...")
+            current_address = await scan_and_pick_best()
+        if not current_address:
+            log.error("No BLE devices found. Run with battery on and in range:")
+            log.error("  python eco_worthy_bridge.py scan")
+            return
+        log.info(f"Auto-selected: {current_address}")
+        log.info(f"  To use this device next time: $env:BMS_ADDRESS = \"{current_address}\"  (PowerShell)")
+
+    log.info(f"Connecting to BMS at {current_address}")
     log.info(f"Publishing to MQTT {MQTT_BROKER}:{MQTT_PORT} every {POLL_INTERVAL}s")
 
     mqtt_client = make_mqtt_client()
-    reader = JBDBmsReader(BMS_ADDRESS)
+    reader = JBDBmsReader(current_address)
     fail_count = 0
 
     while True:
@@ -317,8 +440,27 @@ async def main():
         except Exception as e:
             fail_count += 1
             log.error(f"BLE error (attempt {fail_count}): {e}")
+
+            if fail_count == AUTO_SCAN_AFTER_FAILURES:
+                log.info("Auto-scanning for BMS (device may have moved or re-advertised)...")
+                try:
+                    new_address = await scan_and_pick_best()
+                    if new_address and new_address != current_address:
+                        log.info(f"Switching to {new_address} (was {current_address})")
+                        log.info(f"  To use this device next time: $env:BMS_ADDRESS = \"{new_address}\"  (PowerShell)")
+                        current_address = new_address
+                        reader = JBDBmsReader(current_address)
+                        fail_count = 0
+                    elif new_address:
+                        log.info("Same device still best — retrying...")
+                        fail_count = 0
+                    else:
+                        log.warning("No BMS found in scan. Ensure battery is on and in range.")
+                except Exception as scan_err:
+                    log.warning(f"Auto-scan failed: {scan_err}")
+
             if fail_count >= 5:
-                log.error("5 consecutive failures — check BMS is powered and in range")
+                log.error("5 consecutive failures — check BMS is powered, in range, and not connected to another app.")
 
         await asyncio.sleep(POLL_INTERVAL)
 

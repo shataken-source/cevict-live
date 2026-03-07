@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import styles from './page.module.css';
 import type { Telemetry } from './lib/telemetry-types';
+import type { WeatherData, BatteryBankConfig, BleDevice, GeocodeResult, DialogState } from './lib/accu-solar-command-types';
 import { generateRecommendations, type Recommendation } from './lib/ai-recommendations';
 import { calculateSolarImpactScore, classifyImpact, getImpactLabel, type WeatherSnapshotInput } from './lib/solar-impact';
 import { calculateTiltProfiles, type TiltProfile } from './lib/tilt-optimizer';
@@ -28,227 +29,8 @@ import {
   MobileStatusBar,
   MobileActionBar,
 } from './components/SolarDashboard';
-
-interface WeatherData {
-  cloudCover: number;
-  temperatureC: number;
-  windSpeed: number;
-  shortwave_radiation: number;
-  irradiance?: number;
-  humidity?: number;
-  uvIndex?: number;
-}
-interface BatteryBankConfig {
-  banks: number;
-  packsPerBank: number;
-  voltagePerBank: number;
-}
-
-interface BleDevice {
-  id: string;
-  name: string;
-}
-
-interface GeocodeResult {
-  id: number;
-  name: string;
-  latitude: number;
-  longitude: number;
-  country: string;
-  admin1: string;
-  timezone: string;
-}
-
-interface AIChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
-
-interface AIChatPanelProps {
-  telemetry: Telemetry | null;
-  weather: WeatherData | null;
-  selectedLocation: { lat: number, lon: number, name: string } | null;
-}
-
-const AIChatPanel: React.FC<AIChatPanelProps> = ({ telemetry, weather, selectedLocation }) => {
-  const [messages, setMessages] = useState<AIChatMessage[]>([
-    {
-      role: 'assistant',
-      content: 'Hello! I\'m your solar AI assistant. Ask me anything about your system, energy production, or optimization tips.',
-      timestamp: new Date(),
-    },
-  ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSend = async () => {
-    if (!input.trim()) return;
-
-    const userMessage: AIChatMessage = {
-      role: 'user',
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    try {
-      const res = await fetch('/api/ai-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage.content,
-          telemetry,
-          weather,
-          location: selectedLocation,
-          history: messages.slice(-5), // Send last 5 messages for context
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const assistantMessage: AIChatMessage = {
-          role: 'assistant',
-          content: data.response || 'I\'m not sure how to answer that right now.',
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-      } else {
-        throw new Error('Failed to get AI response');
-      }
-    } catch (err) {
-      const errorMessage: AIChatMessage = {
-        role: 'assistant',
-        content: 'Sorry, I\'m having trouble connecting right now. Please try again later.',
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  return (
-    <div className={styles.panel} style={{ gridColumn: '1 / -1' }}>
-      <div className={styles.panelTitleRow}>
-        <div className={styles.panelTitle}>💬 ASK AI</div>
-        <div style={{ fontSize: '11px', color: '#a78bfa' }}>Claude AI Chat</div>
-      </div>
-
-      {/* Chat Messages */}
-      <div
-        style={{
-          maxHeight: '300px',
-          overflowY: 'auto',
-          marginBottom: '12px',
-          padding: '10px',
-          background: 'rgba(0,0,0,0.2)',
-          borderRadius: '10px',
-        }}
-      >
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            style={{
-              marginBottom: '10px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
-            }}
-          >
-            <div
-              style={{
-                maxWidth: '80%',
-                padding: '10px 14px',
-                borderRadius: '12px',
-                fontSize: '13px',
-                lineHeight: 1.5,
-                background: msg.role === 'user' ? 'rgba(102, 126, 234, 0.3)' : 'rgba(125, 211, 252, 0.1)',
-                border: msg.role === 'user' ? '1px solid rgba(102, 126, 234, 0.4)' : '1px solid rgba(125, 211, 252, 0.2)',
-                color: '#e5e7eb',
-              }}
-            >
-              {msg.content}
-            </div>
-            <span style={{ fontSize: '10px', color: '#a78bfa', marginTop: '4px', marginLeft: msg.role === 'user' ? '0' : '4px', marginRight: msg.role === 'user' ? '4px' : '0' }}>
-              {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
-        ))}
-        {isLoading && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#a78bfa', fontSize: '13px', padding: '10px' }}>
-            <span>AI is thinking</span>
-            <span style={{ animation: 'pulse 1s infinite' }}>...</span>
-          </div>
-        )}
-      </div>
-
-      {/* Input Area */}
-      <div style={{ display: 'flex', gap: '10px' }}>
-        <input
-          type="text"
-          className={styles.input}
-          placeholder="Ask about your solar system..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          style={{ flex: 1, height: '44px' }}
-        />
-        <button
-          onClick={handleSend}
-          disabled={isLoading || !input.trim()}
-          className={styles.button}
-          style={{
-            height: '44px',
-            padding: '0 20px',
-            opacity: isLoading || !input.trim() ? 0.5 : 1,
-            cursor: isLoading || !input.trim() ? 'not-allowed' : 'pointer'
-          }}
-        >
-          Send
-        </button>
-      </div>
-
-      {/* Quick Questions */}
-      <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-        {['How can I save more energy?', 'Is my battery healthy?', 'When will my battery be full?', 'Should I adjust my panels?'].map((q) => (
-          <button
-            key={q}
-            onClick={() => { setInput(q); }}
-            style={{
-              padding: '6px 12px',
-              fontSize: '11px',
-              background: 'rgba(125, 211, 252, 0.1)',
-              border: '1px solid rgba(125, 211, 252, 0.3)',
-              borderRadius: '6px',
-              color: '#7dd3fc',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseOver={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(125, 211, 252, 0.2)';
-            }}
-            onMouseOut={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = 'rgba(125, 211, 252, 0.1)';
-            }}
-          >
-            {q}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
+import AIChatPanelCommand from './components/AIChatPanelCommand';
+import { KpiTile, HealthMetric, DistributionBar, ConfirmationDialog } from './components/AccuSolarCommandHelpers';
 
 export default function AccuSolarDashboard() {
   const [activeDataSource, setActiveDataSource] = useState<string>('ble');
@@ -260,6 +42,7 @@ export default function AccuSolarDashboard() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
   const [bleDevices, setBleDevices] = useState<BleDevice[]>([]);
+  const [bleConnecting, setBleConnecting] = useState(false);
   const [selectedBle, setSelectedBle] = useState<string>('');
   const [batteryConfig, setBatteryConfig] = useState<BatteryBankConfig>({
     banks: 2,
@@ -277,11 +60,11 @@ export default function AccuSolarDashboard() {
         try {
           return JSON.parse(saved);
         } catch {
-          return null;
+          return { lat: 34.0177, lon: -86.0886, name: 'Attalla, AL' };
         }
       }
     }
-    return null;
+    return { lat: 34.0177, lon: -86.0886, name: 'Attalla, AL' };
   });
   const [dialog, setDialog] = useState<{ title: string; message: string; type: 'info' | 'error' | 'warning' } | null>(null);
   const [allowExit, setAllowExit] = useState(false);
@@ -420,7 +203,7 @@ export default function AccuSolarDashboard() {
   }, []);
 
   const MAIN_TABS = ['sun-view', 'overview', 'telemetry', 'battery', 'optimization', 'weather', 'analytics', 'ai-insights', 'controls'];
-  const DATA_SOURCE_TABS = ['demo-data', 'victron-local', 'ble'];
+  const DATA_SOURCE_TABS = ['demo-data', 'victron-local', 'bms-bridge', 'ble'];
 
   // Save selectedLocation to localStorage whenever it changes
   useEffect(() => {
@@ -466,46 +249,80 @@ export default function AccuSolarDashboard() {
 
   // Fetch telemetry
   useEffect(() => {
+    const abort = new AbortController();
     const fetchTelemetry = async () => {
       try {
         // Map tab names to API source parameter
         const sourceMap: Record<string, string> = {
           'victron-local': 'victron_local',
+          'bms-bridge': 'bms_bridge',
           'ble': 'ble',
         };
         const source = sourceMap[activeDataSource] || 'ble';
-        const res = await fetch(`/api/telemetry?source=${source}`);
+        const url = source === 'bms_bridge' ? '/api/telemetry?source=bms_bridge&host=localhost' : `/api/telemetry?source=${source}`;
+        const res = await fetch(url, { signal: abort.signal });
         if (res.ok) {
-          const data = await res.json();
-          setTelemetry(data);
+          let data: unknown;
+          try {
+            data = await res.json();
+          } catch {
+            setTelemetryError('Invalid telemetry response (not JSON)');
+            setTelemetry(null);
+            return;
+          }
+          const telemetryData = data as Telemetry;
+          setTelemetry(telemetryData);
           setTelemetryError(null);
-          // Append to history for sparkline (keep last 60 points)
           setTelemetryHistory(prev => {
             const newPoint = {
               ts: Date.now(),
-              solar_w: data.solar_w || 0,
-              load_w: data.load_w || 0,
-              battery_soc_pct: data.battery_soc_pct || 0
+              solar_w: telemetryData.solar_w || 0,
+              load_w: telemetryData.load_w || 0,
+              battery_soc_pct: telemetryData.battery_soc_pct || 0
             };
-            const updated = [...prev, newPoint];
-            return updated.slice(-60); // Keep last 60 data points
+            return [...prev, newPoint].slice(-60);
           });
         } else {
-          const errorData = await res.json();
-          setTelemetryError(errorData.error || 'Failed to fetch telemetry');
+          let msg: string;
+          try {
+            const errorData = await res.json();
+            msg = errorData.error || `Failed to fetch telemetry (${res.status})`;
+          } catch {
+            msg = `Failed to fetch telemetry (${res.status})`;
+          }
+          if (activeDataSource === 'bms-bridge' && !msg.includes('bridge') && !msg.includes('BMS')) {
+            msg = `BMS Bridge: ${msg} Is eco_worthy_bridge.py running and connected to the battery? If the script shows "Device not found", run: python eco_worthy_bridge.py scan`;
+          }
+          setTelemetryError(msg);
           setTelemetry(null);
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Failed to fetch telemetry';
-        setTelemetryError(message);
-        setTelemetry(null);
-        console.error('Telemetry fetch failed:', err);
+        if (err instanceof Error && err.name === 'AbortError') return;
+        const raw = err instanceof Error ? err.message : 'Network error';
+        const message = activeDataSource === 'bms-bridge'
+          ? `BMS Bridge: ${raw}. Run eco_worthy_bridge.py (and "python eco_worthy_bridge.py scan" if the battery is not found).`
+          : raw;
+        try {
+          setTelemetryError(message);
+          setTelemetry(null);
+        } catch (_) {
+          // Ignore setState errors (e.g. after unmount)
+        }
+        // Log as warn for expected network failures so console doesn't show red TypeError
+        if (raw === 'Failed to fetch' || raw === 'Network error') {
+          console.warn('[Telemetry]', message);
+        } else {
+          console.error('Telemetry fetch failed:', err);
+        }
       }
     };
 
     fetchTelemetry();
     const interval = setInterval(fetchTelemetry, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      abort.abort();
+      clearInterval(interval);
+    };
   }, [activeDataSource]);
 
   // Fetch weather
@@ -638,36 +455,6 @@ export default function AccuSolarDashboard() {
     );
   }
 
-  // Helper Components
-  const KpiTile = ({ label, value, color }: { label: string; value: string; color?: string }) => (
-    <div className={styles.kpiTile}>
-      <div className={styles.kpiLabel}>{label}</div>
-      <div className={styles.kpiValue} style={{ color: color || '#e5e7eb' }}>
-        {value}
-      </div>
-    </div>
-  );
-
-  const HealthMetric = ({ label, value }: { label: string; value: string }) => (
-    <div className={styles.healthMetric}>
-      <span>{label}</span>
-      <span>{value}</span>
-    </div>
-  );
-
-  const DistributionBar = ({ label, value }: { label: string; value: number }) => (
-    <div className={styles.distRow}>
-      <div className={styles.distLabel}>{label}</div>
-      <div className={styles.distBarWrap}>
-        <div
-          className={styles.distBar}
-          style={{ width: `${value}%` }}
-        />
-      </div>
-      <div className={styles.distValue}>{value}%</div>
-    </div>
-  );
-
   // Derived telemetry values
   const solarKW = (telemetry?.solar_w || 0) / 1000;
   const loadKW = (telemetry?.load_w || 0) / 1000;
@@ -722,14 +509,16 @@ export default function AccuSolarDashboard() {
 
         {/* Tab Navigation */}
         <div className={styles.tabBar}>
-          {['victron-local', 'ble'].map((source) => (
+          {['demo-data', 'victron-local', 'bms-bridge', 'ble'].map((source) => (
             <button
               key={source}
               className={`${styles.tab} ${activeDataSource === source ? styles.tabActive : ''}`}
               onClick={() => setActiveDataSource(source)}
               style={{ borderColor: activeDataSource === source ? '#667eea' : 'rgba(102, 126, 234, 0.2)' }}
             >
+              {source === 'demo-data' && 'DEMO'}
               {source === 'victron-local' && 'VICTRON LOCAL'}
+              {source === 'bms-bridge' && 'BMS BRIDGE'}
               {source === 'ble' && 'BLE'}
             </button>
           ))}
@@ -754,10 +543,10 @@ export default function AccuSolarDashboard() {
 
         <div style={{ fontSize: '12px', color: '#a78bfa', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            Victron Local = Venus OS on your LAN. BLE = connect a compatible battery in Controls.
+            Victron Local = Venus OS. BMS Bridge = run <code style={{ fontSize: '11px' }}>eco_worthy_bridge.py</code> + Mosquitto, then select this. BLE = in-browser pair (experimental).
           </div>
           <div style={{ background: 'rgba(102, 126, 234, 0.1)', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', color: '#667eea', fontWeight: '600' }}>
-            SOURCE: {activeDataSource === 'victron-local' ? '🔌 VICTRON LOCAL' : '📱 BLE'}
+            SOURCE: {activeDataSource === 'victron-local' ? '🔌 VICTRON' : activeDataSource === 'bms-bridge' ? '🔋 BMS BRIDGE' : activeDataSource === 'demo-data' ? '📊 DEMO' : '📱 BLE'}
           </div>
         </div>
 
@@ -776,7 +565,7 @@ export default function AccuSolarDashboard() {
           }}>
             <span style={{ fontSize: '16px' }}>⚠️</span>
             <span style={{ flex: 1 }}>{telemetryError}</span>
-            {telemetryError?.includes('BLE') || telemetryError?.includes('Bluetooth') ? (
+            {(telemetryError?.includes('BLE') || telemetryError?.includes('Bluetooth')) && activeDataSource === 'ble' ? (
               <button
                 onClick={() => setActiveTab('controls')}
                 style={{
@@ -799,6 +588,50 @@ export default function AccuSolarDashboard() {
               >
                 Go to Controls
               </button>
+            ) : (telemetryError?.includes('bridge') || telemetryError?.includes('BMS') || telemetryError?.includes('eco_worthy')) && activeDataSource === 'bms-bridge' ? (
+              <>
+                <button
+                  onClick={async () => {
+                    const cmd = 'python eco_worthy_bridge.py scan';
+                    try {
+                      await navigator.clipboard.writeText(cmd);
+                      setDialog({ title: 'Copied', message: 'Paste in terminal (in the scripts folder) to find your BMS.', type: 'info' });
+                      setTimeout(() => setDialog(null), 2500);
+                    } catch {
+                      setDialog({ title: 'Copy failed', message: 'Run in terminal: ' + cmd, type: 'warning' });
+                    }
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'rgba(102, 126, 234, 0.2)',
+                    color: '#a78bfa',
+                    border: '1px solid rgba(102, 126, 234, 0.3)',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Copy scan command
+                </button>
+                <button
+                  onClick={() => setActiveTab('controls')}
+                  style={{
+                    padding: '6px 12px',
+                    background: 'rgba(102, 126, 234, 0.2)',
+                    color: '#a78bfa',
+                    border: '1px solid rgba(102, 126, 234, 0.3)',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Go to Controls
+                </button>
+              </>
             ) : (
               <button
                 onClick={() => setActiveDataSource('demo-data')}
@@ -2286,7 +2119,7 @@ export default function AccuSolarDashboard() {
             </div>
 
             <div className={styles.analyticsRight}>
-              <AIChatPanel telemetry={telemetry} weather={weather} selectedLocation={selectedLocation} />
+              <AIChatPanelCommand telemetry={telemetry} weather={weather} selectedLocation={selectedLocation} />
             </div>
           </div>
         )}
@@ -2385,12 +2218,51 @@ export default function AccuSolarDashboard() {
                 </div>
                 <select className={styles.input} value={selectedBle} onChange={(e) => setSelectedBle(e.target.value)} style={{ marginBottom: '10px' }}>
                   <option value="">Select a battery...</option>
+                  {bleDevices.map(dev => (
+                    <option key={dev.id} value={dev.id}>{dev.name}</option>
+                  ))}
                 </select>
                 <div style={{ display: 'flex', gap: '10px' }}>
-                  <button className={styles.button} style={{ flex: 1 }}>
-                    Connect BLE
+                  <button
+                    className={styles.button}
+                    style={{ flex: 1 }}
+                    onClick={async () => {
+                      if (!(navigator as { bluetooth?: unknown }).bluetooth) {
+                        setDialog({ title: '❌ Not Supported', message: 'Web Bluetooth is not supported in this browser. Use Chrome, Edge, or Opera.', type: 'error' });
+                        return;
+                      }
+                      setBleConnecting(true);
+                      try {
+                        const device = await (navigator as unknown as { bluetooth: { requestDevice: (o: unknown) => Promise<{ id: string; name?: string }> } }).bluetooth.requestDevice({
+                          filters: [{ services: ['0000ff00-0000-1000-8000-00805f9b34fb'] }],
+                          optionalServices: ['0000ff00-0000-1000-8000-00805f9b34fb']
+                        });
+                        const newDevice = { id: device.id, name: device.name || 'Unknown Battery' };
+                        setBleDevices(prev => [...prev.filter(d => d.id !== device.id), newDevice]);
+                        setSelectedBle(device.id);
+                        setDialog({ title: '✓ Connected', message: `Connected to ${newDevice.name}`, type: 'info' });
+                      } catch (err: any) {
+                        if (err.name !== 'NotFoundError') {
+                          setDialog({ title: '❌ Connection Failed', message: err.message || 'Failed to connect to BLE device', type: 'error' });
+                        }
+                      } finally {
+                        setBleConnecting(false);
+                      }
+                    }}
+                    disabled={bleConnecting}
+                  >
+                    {bleConnecting ? 'Connecting...' : 'Connect BLE'}
                   </button>
-                  <button className={styles.button} style={{ flex: 1, opacity: 0.6 }}>
+                  <button
+                    className={styles.button}
+                    style={{ flex: 1, opacity: bleDevices.length === 0 ? 0.3 : 0.6 }}
+                    onClick={() => {
+                      setBleDevices([]);
+                      setSelectedBle('');
+                      setDialog({ title: '✓ Cleared', message: 'All BLE devices removed', type: 'info' });
+                    }}
+                    disabled={bleDevices.length === 0}
+                  >
                     Clear
                   </button>
                 </div>
@@ -2462,6 +2334,7 @@ export default function AccuSolarDashboard() {
               <div className={styles.panelTitle}>
                 {activeDataSource === 'demo-data' && 'DEMO DATA'}
                 {activeDataSource === 'victron-local' && 'VICTRON LOCAL'}
+                {activeDataSource === 'bms-bridge' && 'BMS BRIDGE'}
                 {activeDataSource === 'ble' && 'BLUETOOTH'}
               </div>
               <button
@@ -2479,6 +2352,7 @@ export default function AccuSolarDashboard() {
               Data streaming live from{' '}
               {activeDataSource === 'demo-data' && 'simulated telemetry'}
               {activeDataSource === 'victron-local' && 'Venus OS / Victron system'}
+              {activeDataSource === 'bms-bridge' && 'Python BMS bridge (eco_worthy_bridge.py → MQTT)'}
               {activeDataSource === 'ble' && 'BLE battery'}
               ...
             </div>
@@ -2487,116 +2361,18 @@ export default function AccuSolarDashboard() {
 
         {/* MODAL DIALOG */}
         {dialog && (
-          <div
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.6)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000,
-            }}
-            onClick={() => setDialog(null)}
-          >
-            <div
-              style={{
-                background: 'linear-gradient(135deg, #1a1f3a 0%, #0f1419 100%)',
-                border: '1px solid rgba(102, 126, 234, 0.3)',
-                borderRadius: '12px',
-                padding: '32px',
-                maxWidth: '420px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-              }}
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => {
-                if (e.key === 'Backspace') {
-                  e.preventDefault();
-                }
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '18px',
-                  fontWeight: 600,
-                  color: dialog.type === 'error' ? '#fb7185' : dialog.type === 'warning' ? '#fbbf24' : '#a78bfa',
-                  marginBottom: '12px',
-                }}
-              >
-                {dialog.title}
-              </div>
-              <div
-                style={{
-                  fontSize: '14px',
-                  color: '#c4b5fd',
-                  lineHeight: '1.6',
-                  marginBottom: '24px',
-                }}
-              >
-                {dialog.message}
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '12px',
-                  justifyContent: 'flex-end',
-                }}
-              >
-                <button
-                  onClick={() => setDialog(null)}
-                  style={{
-                    padding: '10px 20px',
-                    background: 'rgba(102, 126, 234, 0.2)',
-                    color: '#a78bfa',
-                    border: '1px solid rgba(102, 126, 234, 0.3)',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseOver={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(102, 126, 234, 0.3)';
-                  }}
-                  onMouseOut={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(102, 126, 234, 0.2)';
-                  }}
-                >
-                  {dialog.title.includes('Exit') ? 'Cancel' : 'Close'}
-                </button>
-                {dialog.title.includes('Exit') && (
-                  <button
-                    onClick={() => {
-                      setAllowExit(true);
-                      window.history.back();
-                    }}
-                    style={{
-                      padding: '10px 20px',
-                      background: 'rgba(251, 113, 133, 0.2)',
-                      color: '#fb7185',
-                      border: '1px solid rgba(251, 113, 133, 0.3)',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      transition: 'all 0.2s',
-                    }}
-                    onMouseOver={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251, 113, 133, 0.3)';
-                    }}
-                    onMouseOut={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.background = 'rgba(251, 113, 133, 0.2)';
-                    }}
-                  >
-                    Exit
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+          <ConfirmationDialog
+            dialog={dialog}
+            onClose={() => setDialog(null)}
+            onConfirm={
+              dialog.title.includes('Exit')
+                ? () => {
+                    setAllowExit(true);
+                    window.history.back();
+                  }
+                : undefined
+            }
+          />
         )}
       </div>
     </div>

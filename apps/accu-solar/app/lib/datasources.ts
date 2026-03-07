@@ -1,6 +1,6 @@
 import type { Telemetry } from "@/app/lib/telemetry-types";
 
-export type DatasourceType = "demo" | "victron_local" | "victron_vrm" | "ble";
+export type DatasourceType = "demo" | "victron_local" | "victron_vrm" | "ble" | "bms_bridge";
 
 export type DatasourceConfig = {
   id: string;

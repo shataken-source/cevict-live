@@ -3,15 +3,17 @@ import { getSupabaseServerClient, getUserFromRequest } from '../../lib/supabase-
 import { demoAdapter } from '../../lib/telemetry-adapters/demo';
 import { victronLocalAdapter } from '../../lib/telemetry-adapters/victron-local';
 import { bleAdapter } from '../../lib/telemetry-adapters/ble';
+import { bmsBridgeAdapter } from '../../lib/telemetry-adapters/bms-bridge';
 import type { Telemetry } from '../../lib/telemetry-types';
 
 /**
- * GET /api/telemetry?source=demo|victron_local|ble
+ * GET /api/telemetry?source=demo|victron_local|ble|bms_bridge
  *
  * Returns current telemetry from the specified datasource.
  * - demo: simulated data
  * - victron_local: Venus OS / Victron system (LAN)
- * - ble: Bluetooth battery (experimental)
+ * - ble: in-browser BLE (not implemented; use bms_bridge instead for Eco-Worthy/JBD)
+ * - bms_bridge: Python BMS bridge MQTT (accusolar/battery/*). Optional ?host=localhost
  *
  * Returns error with detailed message if data source fails.
  */
@@ -61,9 +63,23 @@ export async function GET(request: NextRequest) {
         },
         nowMs,
       });
+    } else if (source === 'bms_bridge') {
+      const host = request.nextUrl.searchParams.get('host') || 'localhost';
+      telemetry = await bmsBridgeAdapter.getTelemetry({
+        datasource: {
+          id: 'bms_bridge',
+          user_id: 'default',
+          name: 'BMS Bridge',
+          type: 'bms_bridge',
+          config: { host },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        nowMs,
+      });
     } else {
       return NextResponse.json(
-        { error: 'Unknown source. Use "demo", "victron_local", or "ble".' },
+        { error: 'Unknown source. Use "demo", "victron_local", "ble", or "bms_bridge".' },
         { status: 400 }
       );
     }
@@ -81,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     // Return user-friendly error message
     const errorMessage = error?.message || 'Failed to fetch telemetry';
-    const statusCode = error?.name === 'VictronConnectionError' ? 503 : error?.name === 'BleNotConnectedError' ? 400 : 500;
+    const statusCode = error?.name === 'VictronConnectionError' ? 503 : error?.name === 'BleNotConnectedError' ? 400 : error?.name === 'BmsBridgeConnectionError' ? 503 : 500;
 
     return NextResponse.json(
       {

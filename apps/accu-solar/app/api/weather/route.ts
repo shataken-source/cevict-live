@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Try WeatherAPI.com first (includes solar irradiance)
-    const weatherApiKey = process.env.WEATHERAPI_KEY;
+    const weatherApiKey = process.env.WEATHERAPI_KEY ?? process.env.NEXT_PUBLIC_WEATHERAPI_KEY;
     if (weatherApiKey) {
       try {
         const result = await fetchFromWeatherAPI(latNum, lonNum, weatherApiKey);

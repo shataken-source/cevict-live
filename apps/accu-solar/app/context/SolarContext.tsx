@@ -255,40 +255,11 @@ export function SolarProvider({ children }: { children: ReactNode }) {
     return () => { clearTimeout(bootTimer); clearInterval(interval); };
   }, [dataSource]);
 
-  // ── Live mode: poll /api/telemetry/ingest every 5s ──
+  // ── Live mode: AmpinVT / BMS data comes from dashboard polling /api/telemetry (not ingest).
+  // Ingest is POST-only for storing history (Pro tier). Skip GET poll to avoid 405.
   useEffect(() => {
     if (dataSource !== 'ampinvt') return;
     setIsConnected(false);
-    let alive = true;
-
-    const poll = async () => {
-      try {
-        const res = await fetch('/api/telemetry/ingest');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
-        if (!alive) return;
-
-        if (json.reading) {
-          setIsConnected(json.connected);
-          setData(prev => {
-            const next = telemetryToReading(json.reading, prev);
-            const now = new Date();
-            const label = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            setSpark(s => [...s.slice(-59), { time: label, watts: next.batteryPowerW > 0 ? next.batteryPowerW : 0 }]);
-            setLastUpdated(now);
-            return next;
-          });
-        } else {
-          setIsConnected(false);
-        }
-      } catch {
-        if (alive) setIsConnected(false);
-      }
-    };
-
-    poll(); // initial fetch
-    const interval = setInterval(poll, 5000);
-    return () => { alive = false; clearInterval(interval); };
   }, [dataSource]);
 
   return (
