@@ -4,7 +4,10 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
+import android.content.Context;
 import android.os.Bundle;
+import android.text.format.Formatter;
 import android.util.Log;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -20,8 +23,44 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private WebView webView;
     private LocalServer server;
+    private RemoteServer remoteServer;
     private ValueCallback<Uri[]> fileUploadCallback;
     private String pendingConfigCode = null;
+
+    // ── TV state (set by WebView via /state-push, read by phone via /state) ──
+    private volatile String tvState = "{}";
+
+    /** Called by RemoteServer when the WebView POSTs its state via /state-push */
+    public void setTvState(String json) {
+        tvState = json;
+    }
+
+    /** Called by RemoteServer to return current TV state to the phone */
+    public String getTvState() {
+        return tvState;
+    }
+
+    /**
+     * Injects a JavaScript snippet into the WebView on the UI thread.
+     * Used by RemoteServer to dispatch commands (handleRemoteCommand) and
+     * push provider config (handleRemoteConfig) into the running app.js.
+     */
+    public void injectJs(final String js) {
+        if (webView == null) return;
+        runOnUiThread(() -> webView.evaluateJavascript(js, null));
+    }
+
+    /**
+     * Dispatches a hardware key event into the WebView on the UI thread.
+     * Used by RemoteServer's /key endpoint for D-pad navigation.
+     */
+    public void dispatchRemoteKey(final int keyCode) {
+        if (webView == null) return;
+        runOnUiThread(() -> {
+            webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, keyCode));
+            webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, keyCode));
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,13 +69,25 @@ public class MainActivity extends Activity {
         // Nuke WebView cache on every version upgrade so fresh assets load
         nukeWebViewCacheIfNeeded();
 
-        // Start local web server to serve assets over HTTP
+        // ── Start local asset server (port 8123) ──────────────────────────
         try {
             server = new LocalServer(PORT, getAssets());
             server.start();
             Log.i(TAG, "Local server started on port " + PORT);
         } catch (Exception e) {
             Log.e(TAG, "Failed to start local server", e);
+        }
+
+        // ── Start LAN remote control server (port 8124) ──────────────────
+        try {
+            remoteServer = new RemoteServer(this);
+            remoteServer.start();
+            String ip = getLanIp();
+            Log.i(TAG, "Remote server started on port " + RemoteServer.getPort()
+                + " — http://" + ip + ":" + RemoteServer.getPort()
+                + "  PIN: " + remoteServer.getPin());
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to start remote server", e);
         }
 
         webView = new WebView(this);
@@ -77,6 +128,7 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -87,11 +139,27 @@ public class MainActivity extends Activity {
                 }
                 return false;
             }
+
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+
+                // Inject remote PIN and LAN IP so app.js can show them in the UI
+                if (remoteServer != null) {
+                    String pin = remoteServer.getPin();
+                    String ip  = getLanIp();
+                    int    port = RemoteServer.getPort();
+                    String js = "window.REMOTE_PIN='" + pin + "';"
+                              + "window.REMOTE_IP='" + ip + "';"
+                              + "window.REMOTE_PORT=" + port + ";"
+                              + "if(typeof onRemoteReady==='function')onRemoteReady('" + pin + "','" + ip + "'," + port + ");";
+                    view.evaluateJavascript(js, null);
+                }
+
+                // Handle deep-link config pending from before page load
                 if (pendingConfigCode != null) {
-                    String code = pendingConfigCode.replace("\\", "\\\\")
+                    String code = pendingConfigCode
+                            .replace("\\", "\\\\")
                             .replace("'", "\\'");
                     view.evaluateJavascript(
                         "if(typeof handleDeepLinkConfig==='function')handleDeepLinkConfig('" + code + "');",
@@ -104,8 +172,21 @@ public class MainActivity extends Activity {
         // Check for deep link intent: switchback://import/CODE
         handleConfigIntent(getIntent());
 
-        // Load from local HTTP server — no more file:// CORS issues
+        // Load from local HTTP server
         webView.loadUrl("http://localhost:" + PORT + "/index.html");
+    }
+
+    /** Returns the device's current LAN IP address (Wi-Fi). Falls back to "unknown". */
+    private String getLanIp() {
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext()
+                    .getSystemService(Context.WIFI_SERVICE);
+            if (wm != null) {
+                int ip = wm.getConnectionInfo().getIpAddress();
+                if (ip != 0) return Formatter.formatIpAddress(ip);
+            }
+        } catch (Exception e) { /* ignore */ }
+        return "unknown";
     }
 
     private void nukeWebViewCacheIfNeeded() {
@@ -119,12 +200,8 @@ public class MainActivity extends Activity {
 
         if (currentVersion != lastVersion) {
             Log.i(TAG, "Version changed " + lastVersion + " -> " + currentVersion + ", nuking WebView cache");
-
-            // Delete WebView cache directory
             File cacheDir = getCacheDir();
             if (cacheDir.exists()) deleteRecursive(cacheDir);
-
-            // Delete WebView data directories
             File appDir = getFilesDir().getParentFile();
             String[] webViewDirs = {"app_webview", "app_webview_default", "cache", "code_cache"};
             for (String dirName : webViewDirs) {
@@ -134,7 +211,6 @@ public class MainActivity extends Activity {
                     deleteRecursive(dir);
                 }
             }
-
             prefs.edit().putInt("last_version_code", currentVersion).apply();
             Log.i(TAG, "WebView cache nuked");
         }
@@ -144,9 +220,7 @@ public class MainActivity extends Activity {
         if (fileOrDir.isDirectory()) {
             File[] children = fileOrDir.listFiles();
             if (children != null) {
-                for (File child : children) {
-                    deleteRecursive(child);
-                }
+                for (File child : children) deleteRecursive(child);
             }
         }
         fileOrDir.delete();
@@ -157,9 +231,9 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         handleConfigIntent(intent);
-        // If WebView is already loaded, inject immediately
         if (pendingConfigCode != null && webView != null) {
-            String code = pendingConfigCode.replace("\\", "\\\\")
+            String code = pendingConfigCode
+                    .replace("\\", "\\\\")
                     .replace("'", "\\'");
             webView.evaluateJavascript(
                 "if(typeof handleDeepLinkConfig==='function')handleDeepLinkConfig('" + code + "');",
@@ -183,8 +257,6 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        // Dispatch GoBack key to JavaScript so the SPA handles navigation.
-        // The JS handler shows exit confirm on home screen and closes player otherwise.
         webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK));
         webView.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK));
     }
@@ -207,9 +279,8 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (server != null) {
-            server.stop();
-        }
+        if (server != null) server.stop();
+        if (remoteServer != null) remoteServer.stop();
         super.onDestroy();
     }
 }
