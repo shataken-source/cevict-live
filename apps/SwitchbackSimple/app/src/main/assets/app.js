@@ -95,11 +95,11 @@ const IS_ANDROID_WEBVIEW = (
 // TODO: Update 'switchback-tv-web.vercel.app' to the actual Vercel deployment domain
 //       once confirmed (check Vercel dashboard for the production URL).
 const PAIR_API_BASE = IS_ANDROID_WEBVIEW
-  ? 'https://switchback-tv-apk.vercel.app'
+  ? 'https://cevict.ai'
   : window.location.origin;
 
 // TODO: Update this URL to match the real Vercel production domain
-const PAIR_URL = 'switchback-tv-apk.vercel.app/pair';
+const PAIR_URL = 'cevict.ai/pair';
 
 function buildApiUrl(action, extra = {}) {
   const xtreamAction = {
@@ -1678,15 +1678,16 @@ const DEFAULT_PROVIDER = {
 };
 
 async function bootData() {
-  // If no credentials at all, skip the API call and go straight to Settings
-  if (!S.server || !S.user || !S.pass) {
-    console.log('[boot] No credentials configured — showing setup screen');
-    initSettings();
-    nav('settings');
-    const resultEl = document.getElementById('cfg-import-result');
-    if (resultEl) resultEl.innerHTML = '<span style="color:var(--muted)">👋 Welcome! Paste an activation code, import a config file, or enter your credentials below.</span>';
-    return;
-  }
+  // ── DEFAULT CREDENTIALS — pre-load if nothing saved ──────────
+  // Skips the pairing/setup screen on first install.
+  // Always ensure correct credentials (clears stale localStorage)
+  S.server = 'http://blogyfy.xyz';
+  S.user   = 'jascodezoriptv';
+  S.pass   = '19e993b7f5';
+  localStorage.setItem('iptv_server', S.server);
+  localStorage.setItem('iptv_user',   S.user);
+  localStorage.setItem('iptv_pass',   S.pass);
+  console.log('[boot] Dezor credentials set: blogyfy.xyz / jascodezoriptv');
 
   try {
     // User info first (fast) — also validates credentials
@@ -2731,7 +2732,7 @@ initSettings = function () {
             </button>
           </div>
           <div id="dezor-fields" style="display:none">
-            <input class="inp" id="dezor-server" style="margin-bottom:7px" placeholder="Server e.g. http://cf.like-cdn.com" value="${localStorage.getItem('dezor_server') || ''}" />
+            <input class="inp" id="dezor-server" style="margin-bottom:7px" placeholder="Server e.g. http://blogyfy.xyz" value="${localStorage.getItem('dezor_server') || ''}" />
             <input class="inp" id="dezor-user" style="margin-bottom:7px" placeholder="Username" value="${localStorage.getItem('dezor_user') || ''}" />
             <input class="inp" type="password" id="dezor-pass" style="margin-bottom:10px" placeholder="Password" value="${localStorage.getItem('dezor_pass') || ''}" />
             <button class="btn btn-red btn-sm btn-full" id="load-dezor-btn">▶ Load Dezor Playlist</button>
@@ -3775,4 +3776,179 @@ function publishTVState() {
 }
 setInterval(publishTVState, 1000);
 
-console.log('[Switchback TV] v3.8 — stream proxy fix, TV remote keys, phone remote bridge, focus fix ✓');
+
+// ═══════════════════════════════════════════════════════════════
+// PATCH: CLOUD REMOTE — drop-in addition to app.js
+//
+// HOW TO APPLY:
+//   Paste this entire block at the END of app.js, just before the
+//   final console.log line.
+//
+// WHAT IT DOES:
+//   1. Generates a 4-digit remote PIN for this TV session (stored in
+//      localStorage as 'sb_remote_pin', regenerates every 24h).
+//   2. Publishes TV state to Vercel every 2 seconds so the phone
+//      remote shows the correct channel, program, slots, etc.
+//   3. Polls Vercel every 1.5 seconds for commands from the phone
+//      and feeds them into the existing handleRemoteCommand().
+//   4. Adds a PIN display element to the player overlay so you can
+//      see the PIN without leaving the player.
+//   5. Replaces the pairing screen PIN display with the remote PIN.
+//
+// VERCEL DOMAIN:
+//   Change REMOTE_API_BASE below to your actual Vercel deployment URL.
+// ═══════════════════════════════════════════════════════════════
+
+// ── Config ───────────────────────────────────────────────────
+const REMOTE_API_BASE = IS_ANDROID_WEBVIEW
+  ? 'https://cevict.ai'   // Cloud remote base (supplementary - LAN remote is primary)
+  : window.location.origin;
+
+const PIN_TTL_MS = 24 * 60 * 60 * 1000; // regenerate PIN every 24h
+
+// ── PIN management ───────────────────────────────────────────
+function getOrCreateRemotePin() {
+  const stored = localStorage.getItem('sb_remote_pin');
+  const storedTime = parseInt(localStorage.getItem('sb_remote_pin_ts') || '0', 10);
+  if (stored && (Date.now() - storedTime) < PIN_TTL_MS) return stored;
+  // Generate new 4-digit PIN
+  const pin = String(Math.floor(1000 + Math.random() * 9000));
+  localStorage.setItem('sb_remote_pin', pin);
+  localStorage.setItem('sb_remote_pin_ts', String(Date.now()));
+  return pin;
+}
+
+const REMOTE_PIN = getOrCreateRemotePin();
+console.log(`[Remote] PIN: ${REMOTE_PIN} — open ${REMOTE_API_BASE}/pair on your phone`);
+
+// ── State publisher (TV → Vercel every 2s) ──────────────────
+let _lastPublishedState = '';
+
+async function publishCloudState() {
+  if (!REMOTE_API_BASE) return;
+  const ch = S.currentChannel;
+  const video = document.getElementById('player-video');
+  const overlay = document.getElementById('player-overlay');
+  const isPlayerOpen = overlay && overlay.style.display !== 'none';
+
+  const state = {
+    channel:  ch?.name || '',
+    program:  document.getElementById('player-program')?.textContent || '',
+    category: ch?.category_name || '',
+    icon:     ch ? channelInitials(ch.name) : '',
+    playing:  isPlayerOpen && video && !video.paused,
+    muted:    video?.muted || false,
+    live:     true,
+    slots:    S.switchbackSlots,
+    isPro:    S.isPro,
+    currentSlot: S.switchbackSlots?.findIndex(s => s && ch && s.stream_id == ch.stream_id) ?? -1,
+    screen:   S.currentScreen,
+    pin:      REMOTE_PIN,
+  };
+
+  // Skip publish if nothing changed (avoid burning Vercel requests)
+  const stateStr = JSON.stringify(state);
+  if (stateStr === _lastPublishedState) return;
+  _lastPublishedState = stateStr;
+
+  try {
+    await fetch(`${REMOTE_API_BASE}/api/remote-state?pin=${REMOTE_PIN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: stateStr,
+    });
+  } catch (_) { /* silently fail — local state still works */ }
+}
+
+// ── Command poller (Vercel → TV every 1.5s) ─────────────────
+let _remotePolling = false;
+
+async function pollCloudCommands() {
+  if (_remotePolling) return;
+  _remotePolling = true;
+  try {
+    const res = await fetch(`${REMOTE_API_BASE}/api/remote-cmd?pin=${REMOTE_PIN}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.commands && data.commands.length > 0) {
+      // Execute each command in order
+      for (const cmd of data.commands) {
+        // Filter out stale commands (older than 8s)
+        if (cmd._ts && (Date.now() - cmd._ts) > 8000) continue;
+        handleRemoteCommand(cmd);
+      }
+    }
+  } catch (_) { /* offline — localStorage fallback still works */ }
+  finally { _remotePolling = false; }
+}
+
+// ── Start both loops ─────────────────────────────────────────
+setInterval(publishCloudState,  2000);
+setInterval(pollCloudCommands,  1500);
+
+// ── Inject PIN into player overlay ──────────────────────────
+// Shows a small tap-to-copy PIN badge in the top-right of the player.
+(function injectPinBadge() {
+  const topBar = document.querySelector('#player-overlay-top > div:last-child');
+  if (!topBar) return;
+  const badge = document.createElement('span');
+  badge.id = 'remote-pin-badge';
+  badge.title = 'Remote PIN — tap to copy';
+  badge.style.cssText = [
+    'font-size:11px', 'font-weight:800', 'padding:3px 9px',
+    'border-radius:5px', 'cursor:pointer', 'letter-spacing:2px',
+    'background:rgba(59,130,246,0.2)', 'color:#60a5fa',
+    'border:1px solid rgba(59,130,246,0.3)', 'user-select:none',
+  ].join(';');
+  badge.textContent = `📱 ${REMOTE_PIN}`;
+  badge.addEventListener('click', () => {
+    navigator.clipboard?.writeText(REMOTE_PIN).catch(() => {});
+    showToast(`PIN ${REMOTE_PIN} copied`);
+  });
+  topBar.prepend(badge);
+})();
+
+// ── Wire PIN into pairing screen ────────────────────────────
+// The pairing screen shows the provider-setup code — we also
+// display the remote PIN there for convenience.
+(function injectPinIntoPairingScreen() {
+  const pairingEl = document.getElementById('screen-pairing');
+  if (!pairingEl) return;
+
+  // Wait until pairing screen is first shown
+  const observer = new MutationObserver(() => {
+    if (!pairingEl.classList.contains('active')) return;
+    let pinRow = document.getElementById('remote-pin-row');
+    if (pinRow) return; // already injected
+    pinRow = document.createElement('div');
+    pinRow.id = 'remote-pin-row';
+    pinRow.style.cssText = [
+      'margin:20px auto 0', 'max-width:320px', 'text-align:center',
+      'background:rgba(59,130,246,0.1)', 'border:1px solid rgba(59,130,246,0.3)',
+      'border-radius:12px', 'padding:16px 20px',
+    ].join(';');
+    pinRow.innerHTML = `
+      <div style="font-size:11px;font-weight:700;color:#60a5fa;letter-spacing:1px;margin-bottom:6px">
+        📱 PHONE REMOTE PIN
+      </div>
+      <div style="font-size:36px;font-weight:900;letter-spacing:8px;color:#fff;margin-bottom:8px">
+        ${REMOTE_PIN}
+      </div>
+      <div style="font-size:11px;color:#888;line-height:1.5">
+        Open <strong style="color:#fff">${REMOTE_API_BASE.replace('https://', '')}/pair</strong>
+        on your phone and enter this PIN to control this TV.
+      </div>`;
+    // Insert after the provider pairing section
+    const codeDisplay = document.getElementById('pair-code-display');
+    if (codeDisplay) {
+      codeDisplay.closest('section, .section, .card, div[style]')?.after(pinRow)
+        || pairingEl.appendChild(pinRow);
+    } else {
+      pairingEl.appendChild(pinRow);
+    }
+  });
+  observer.observe(pairingEl, { attributes: true, attributeFilter: ['class'] });
+})();
+
+
+console.log('[Switchback TV] v3.9 — cloud remote (PIN-based cross-device) ✓');
