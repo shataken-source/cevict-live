@@ -415,6 +415,8 @@ document.getElementById('save-creds-btn').addEventListener('click', async () => 
       S.userInfo = data;
       renderAccountInfo(data);
       result.innerHTML = '<span style="color:var(--green)">✓ Connected — ' + esc(data.user_info.status) + '</span>';
+      localStorage.removeItem('m3u_url');
+      renderActiveProvider();
       // reload data with new creds
       S.allChannels = []; S.allVod = []; S.allSeries = [];
       bootData();
@@ -1660,13 +1662,7 @@ async function pollPairCode(code) {
   }
 }
 
-// Manual fallback: skip pairing and go to Settings for manual credential entry
-document.getElementById('pair-manual-btn')?.addEventListener('click', () => {
-  if (pairPollTimer) { clearInterval(pairPollTimer); pairPollTimer = null; }
-  initSettings();
-  nav('settings');
-  showToast('Enter your IPTV credentials manually below.', 5000);
-});
+// pair-manual-btn handled by startLanPairing block below
 
 // ── BUNDLED DEFAULT PROVIDER ─────────────────────────────────
 // Auto-load these credentials on first boot so the app works out of the box.
@@ -1678,16 +1674,15 @@ const DEFAULT_PROVIDER = {
 };
 
 async function bootData() {
-  // ── DEFAULT CREDENTIALS — pre-load if nothing saved ──────────
-  // Skips the pairing/setup screen on first install.
-  // Always ensure correct credentials (clears stale localStorage)
-  S.server = 'http://blogyfy.xyz';
-  S.user   = 'jascodezoriptv';
-  S.pass   = '19e993b7f5';
-  localStorage.setItem('iptv_server', S.server);
-  localStorage.setItem('iptv_user',   S.user);
-  localStorage.setItem('iptv_pass',   S.pass);
-  console.log('[boot] Dezor credentials set: blogyfy.xyz / jascodezoriptv');
+  // Credentials come from localStorage only — set via import or manual entry in Settings.
+  // S.server/user/pass are already loaded from localStorage at startup (see state init above).
+  if (!S.server || !S.user || !S.pass) {
+    console.log('[boot] No credentials — sending to Settings');
+    initSettings();
+    nav('settings');
+    showToast('Enter your IPTV credentials in Settings to get started.', 6000);
+    return;
+  }
 
   try {
     // User info first (fast) — also validates credentials
@@ -1750,8 +1745,18 @@ async function bootData() {
 
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  nav('tvhome');
-  bootData();
+
+  const alreadyPaired = localStorage.getItem('remote_paired') === '1';
+
+  if (!alreadyPaired && IS_ANDROID_WEBVIEW) {
+    // First run — show QR pairing screen, then boot once dismissed
+    nav('pairing');
+    startLanPairing();
+  } else {
+    nav('tvhome');
+    bootData();
+  }
+
   // Clock tick in player
   setInterval(() => {
     const el = document.getElementById('player-clock');
@@ -1759,6 +1764,80 @@ document.addEventListener('DOMContentLoaded', () => {
       el.textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     }
   }, 30000);
+});
+
+// ── LAN PAIRING SCREEN ────────────────────────────────────────
+// Shows QR code + manual PIN on first run. Uses window.REMOTE_IP/PORT/PIN
+// injected by MainActivity.java after onPageFinished fires.
+function startLanPairing() {
+  let attempts = 0;
+  const MAX = 30; // poll up to 15s for Java to inject REMOTE_IP/PIN
+
+  function tryRender() {
+    const ip   = window.REMOTE_IP   || '';
+    const port = window.REMOTE_PORT || 8124;
+    const pin  = window.REMOTE_PIN  || '';
+
+    if (ip && pin) {
+      renderLanPairingScreen(ip, port, pin);
+    } else if (attempts++ < MAX) {
+      setTimeout(tryRender, 500);
+    } else {
+      // Java never injected — Wi-Fi probably off, skip straight to app
+      advancePastPairing();
+    }
+  }
+  tryRender();
+}
+
+function renderLanPairingScreen(ip, port, pin) {
+  const remoteUrl = `http://${ip}:${port}/#pin=${pin}`;
+
+  const urlEl = document.getElementById('pair-url-display');
+  if (urlEl) urlEl.textContent = `${ip}:${port}`;
+
+  const codeEl = document.getElementById('pair-code-display');
+  if (codeEl) codeEl.textContent = pin;
+
+  const qrUrlEl = document.getElementById('pair-qr-url');
+  if (qrUrlEl) qrUrlEl.textContent = remoteUrl;
+
+  // Render QR into pair-qr-wrap
+  const wrap = document.getElementById('pair-qr-wrap');
+  if (wrap) {
+    wrap.innerHTML = '';
+    const canvas = document.createElement('canvas');
+    canvas.id = 'pair-qr-canvas';
+    canvas.style.cssText = 'border-radius:8px;background:#fff;padding:6px;image-rendering:pixelated;max-width:168px;max-height:168px;';
+    wrap.appendChild(canvas);
+    renderQRToCanvas(remoteUrl, 'pair-qr-canvas');
+  }
+
+  // Countdown then auto-advance (remote pairing doesn't block loading channels)
+  let secs = 20;
+  const statusEl = document.getElementById('pair-status');
+  function tick() {
+    if (document.getElementById('screen-pairing')?.classList.contains('active') === false) return;
+    if (statusEl) statusEl.textContent = `Scan to pair your phone — continuing in ${secs}s`;
+    if (secs-- > 0) {
+      setTimeout(tick, 1000);
+    } else {
+      advancePastPairing();
+    }
+  }
+  tick();
+}
+
+function advancePastPairing() {
+  localStorage.setItem('remote_paired', '1');
+  nav('tvhome');
+  bootData();
+}
+
+// "Skip" button — immediately advance
+document.getElementById('pair-manual-btn')?.addEventListener('click', () => {
+  if (pairPollTimer) { clearInterval(pairPollTimer); pairPollTimer = null; }
+  advancePastPairing();
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -2723,20 +2802,10 @@ initSettings = function () {
     if (settingsGrid) {
       const rightCol = settingsGrid.children[1];
       dezorSection.innerHTML = `
-        <div class="section-title">Dezor IPTV Provider</div>
+        <div class="section-title">Active Provider</div>
         <div class="settings-group" style="padding:13px" id="dezor-group">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
-            <span style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Dezor Credentials</span>
-            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('dezor-fields').style.display=document.getElementById('dezor-fields').style.display==='none'?'block':'none'">
-              Toggle
-            </button>
-          </div>
-          <div id="dezor-fields" style="display:none">
-            <input class="inp" id="dezor-server" style="margin-bottom:7px" placeholder="Server e.g. http://blogyfy.xyz" value="${localStorage.getItem('dezor_server') || ''}" />
-            <input class="inp" id="dezor-user" style="margin-bottom:7px" placeholder="Username" value="${localStorage.getItem('dezor_user') || ''}" />
-            <input class="inp" type="password" id="dezor-pass" style="margin-bottom:10px" placeholder="Password" value="${localStorage.getItem('dezor_pass') || ''}" />
-            <button class="btn btn-red btn-sm btn-full" id="load-dezor-btn">▶ Load Dezor Playlist</button>
-            <div id="dezor-result" style="margin-top:8px;font-size:12px"></div>
+          <div id="active-provider-display">
+            <div style="font-size:12px;color:var(--muted)">No provider configured. Use Quick Setup or enter credentials manually.</div>
           </div>
         </div>`;
 
@@ -2747,7 +2816,7 @@ initSettings = function () {
         rightCol.appendChild(dezorSection);
       }
 
-      document.getElementById('load-dezor-btn').addEventListener('click', loadDezorPlaylist);
+      renderActiveProvider();
     }
   }
 
@@ -2801,6 +2870,249 @@ initSettings = function () {
       S.epgCache = {};
       alert(S.epgUrl ? `EPG URL saved: ${S.epgUrl}` : 'EPG URL cleared.');
     };
+  }
+
+  // ── Phone Remote QR Code ─────────────────────────────────────
+  // Inject once; re-render QR if IP/PIN changed
+  injectRemoteQR();
+}
+
+function injectRemoteQR() {
+  const ip   = window.REMOTE_IP   || '';
+  const port = window.REMOTE_PORT || 8124;
+  const pin  = window.REMOTE_PIN  || '';
+
+  // Only show when running in the Android WebView with a real IP/PIN
+  if (!IS_ANDROID_WEBVIEW || !ip || !pin) return;
+
+  const remoteUrl = `http://${ip}:${port}/#pin=${pin}`;
+
+  // Create section if not already present
+  let section = document.getElementById('remote-qr-section');
+  if (!section) {
+    section = document.createElement('div');
+    section.id = 'remote-qr-section';
+    section.style.cssText = 'margin-top:0';
+
+    // Find the right column of the settings grid (second child of the grid div)
+    const grid = document.querySelector('#screen-settings > [style*="grid-template-columns"]');
+    const rightCol = grid ? grid.children[1] : null;
+    const target = rightCol || document.getElementById('screen-settings');
+
+    // Insert at top of right column so it's prominent
+    target.insertBefore(section, target.firstChild);
+  }
+
+  // Build inner HTML — QR rendered into a canvas below
+  section.innerHTML = `
+    <div class="section-title">📱 Phone Remote</div>
+    <div class="settings-group" style="padding:16px;text-align:center" id="remote-qr-group">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">
+        Scan to connect your phone — no PIN needed
+      </div>
+      <canvas id="remote-qr-canvas" style="border-radius:10px;background:#fff;padding:8px;width:160px;height:160px;image-rendering:pixelated"></canvas>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.6">
+        Or open on your phone:<br>
+        <span id="remote-qr-url" style="color:var(--accent);font-size:10px;word-break:break-all">${remoteUrl}</span>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted)">
+        PIN: <span style="font-weight:800;letter-spacing:3px;color:#fff">${pin}</span>
+      </div>
+    </div>`;
+
+  // Render QR code onto canvas using built-in approach
+  renderQRToCanvas(remoteUrl, 'remote-qr-canvas');
+}
+
+// ── Self-contained QR code renderer (no CDN, no dependencies) ──
+// Implements QR Version 1–10, byte mode, M-level error correction.
+// Enough for URLs up to ~150 chars (our remote URL is ~30 chars).
+function renderQRToCanvas(text, canvasId) {
+  // ── Reed-Solomon GF(256) arithmetic ──────────────────────────
+  const GF_EXP = new Uint8Array(512);
+  const GF_LOG = new Uint8Array(256);
+  (function buildGF() {
+    let x = 1;
+    for (let i = 0; i < 255; i++) {
+      GF_EXP[i] = x; GF_LOG[x] = i;
+      x <<= 1; if (x & 256) x ^= 285;
+    }
+    for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+  })();
+  function gfMul(a, b) { return (a === 0 || b === 0) ? 0 : GF_EXP[GF_LOG[a] + GF_LOG[b]]; }
+  function gfPoly(degree) {
+    let p = [1];
+    for (let i = 0; i < degree; i++) {
+      const q = [1, GF_EXP[i]];
+      const r = new Uint8Array(p.length + 1);
+      for (let j = 0; j < p.length; j++) for (let k = 0; k < q.length; k++) r[j+k] ^= gfMul(p[j], q[k]);
+      p = Array.from(r);
+    }
+    return p;
+  }
+  function rsEncode(data, nec) {
+    const gen = gfPoly(nec);
+    const msg = new Uint8Array(data.length + nec);
+    msg.set(data);
+    for (let i = 0; i < data.length; i++) {
+      const c = msg[i];
+      if (c !== 0) for (let j = 1; j < gen.length; j++) msg[i+j] ^= gfMul(gen[j], c);
+    }
+    return msg.slice(data.length);
+  }
+
+  // ── QR version/EC parameters (version, data codewords, ec codewords) ──
+  // Using M-level error correction, single block, versions 1–10
+  const EC_PARAMS = [
+    null,
+    [1, 16,  10], [2, 28,  16], [3, 44,  26], [4, 64,  36],
+    [5, 86,  48], [6,108,  64], [7,124,  72], [8,154,  88],
+    [9,182, 110], [10,216, 130],
+  ];
+  const SIZES = [null,21,25,29,33,37,41,45,49,53,57];
+
+  // Pick smallest version that fits
+  const bytes = new TextEncoder().encode(text);
+  let ver = null;
+  for (let v = 1; v <= 10; v++) {
+    if (bytes.length + 3 <= EC_PARAMS[v][1]) { ver = v; break; }
+  }
+  if (!ver) { // text too long — fallback message
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    canvas.width = 160; canvas.height = 160;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,160,160);
+    ctx.fillStyle = '#888'; ctx.font = '11px sans-serif';
+    ctx.fillText('URL too long', 8, 80);
+    return;
+  }
+
+  const [, totalData, ecCount] = EC_PARAMS[ver];
+  const size = SIZES[ver];
+
+  // ── Build data codewords (byte mode) ─────────────────────────
+  const dataBits = [];
+  function pushBits(val, len) { for (let i = len-1; i >= 0; i--) dataBits.push((val>>i)&1); }
+  pushBits(0b0100, 4);           // byte mode indicator
+  pushBits(bytes.length, 8);     // character count
+  for (const b of bytes) pushBits(b, 8);
+  // Terminator
+  for (let i = 0; i < 4 && dataBits.length < totalData*8; i++) dataBits.push(0);
+  // Pad to byte boundary
+  while (dataBits.length % 8) dataBits.push(0);
+  // Pad codewords
+  const padWords = [0xEC, 0x11];
+  let pi = 0;
+  while (dataBits.length < totalData*8) { pushBits(padWords[pi++ & 1], 8); }
+
+  // Convert to bytes
+  const dataBytes = new Uint8Array(totalData);
+  for (let i = 0; i < totalData; i++) {
+    for (let b = 0; b < 8; b++) dataBytes[i] = (dataBytes[i]<<1)|dataBits[i*8+b];
+  }
+  const ecBytes = rsEncode(dataBytes, ecCount);
+  const allBytes = new Uint8Array(totalData + ecCount);
+  allBytes.set(dataBytes); allBytes.set(ecBytes, totalData);
+
+  // ── Build module grid ─────────────────────────────────────────
+  const grid  = Array.from({length:size}, () => new Int8Array(size).fill(-1)); // -1=empty
+  const fType = Array.from({length:size}, () => new Uint8Array(size)); // 1=function module
+
+  function setFn(r,c,v) { if(r>=0&&r<size&&c>=0&&c<size){grid[r][c]=v;fType[r][c]=1;} }
+
+  // Finder patterns
+  function finder(tr, tc) {
+    for (let r=-1;r<=7;r++) for (let c=-1;c<=7;c++) {
+      const inSquare = r>=0&&r<=6&&c>=0&&c<=6;
+      const onRing   = r>=1&&r<=5&&c>=1&&c<=5;
+      const inCore   = r>=2&&r<=4&&c>=2&&c<=4;
+      const v = inSquare && (!onRing || inCore) ? 1 : 0;
+      setFn(tr+r, tc+c, v);
+    }
+  }
+  finder(0,0); finder(0,size-7); finder(size-7,0);
+
+  // Separators (already covered by finder -1 ring being 0; explicit for clarity)
+  // Timing patterns
+  for (let i=8;i<size-8;i++) { setFn(6,i,i%2===0?1:0); setFn(i,6,i%2===0?1:0); }
+
+  // Dark module
+  setFn(size-8, 8, 1);
+
+  // Alignment patterns (version >= 2)
+  const ALIGN_POS = [null,null,[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,28,46],[6,28,50]];
+  if (ver >= 2 && ALIGN_POS[ver]) {
+    const pos = ALIGN_POS[ver];
+    for (const ar of pos) for (const ac of pos) {
+      if (fType[ar][ac]) continue; // skip if already function module
+      for (let r=-2;r<=2;r++) for (let c=-2;c<=2;c++) {
+        const v = (Math.abs(r)===2||Math.abs(c)===2) ? 1 : (r===0&&c===0) ? 1 : 0;
+        setFn(ar+r, ac+c, v);
+      }
+    }
+  }
+
+  // Format info placeholders (reserved)
+  for (let i=0;i<9;i++) { setFn(8,i,0); setFn(i,8,0); }
+  for (let i=0;i<8;i++) { setFn(8,size-1-i,0); setFn(size-1-i,8,0); }
+
+  // ── Place data bits (zigzag) ───────────────────────────────────
+  const allBits = [];
+  for (const byte of allBytes) for (let b=7;b>=0;b--) allBits.push((byte>>b)&1);
+
+  let bi = 0;
+  for (let right = size-1; right >= 1; right -= 2) {
+    if (right === 6) right = 5; // skip timing column
+    for (let vert = 0; vert < size; vert++) {
+      const row = (Math.floor((size-1-right)/2) % 2 === 0) ? (size-1-vert) : vert;
+      for (let col of [right, right-1]) {
+        if (fType[row][col]) continue;
+        grid[row][col] = bi < allBits.length ? allBits[bi++] : 0;
+      }
+    }
+  }
+
+  // ── Apply mask pattern 0 (i+j)%2==0 ──────────────────────────
+  for (let r=0;r<size;r++) for (let c=0;c<size;c++) {
+    if (!fType[r][c] && (r+c)%2===0) grid[r][c] ^= 1;
+  }
+
+  // ── Write format info (mask 0, M-level EC = 00) ───────────────
+  // EC bits for M=00, mask=000 → format = 101010000010010 (after XOR with 101010000010010)
+  // Precomputed format string for EC=M(00), mask=0(000): 110011000010011 (no, recompute)
+  // Format data: EC(2bits) | mask(3bits) = 00|000 = 00000
+  // Generator poly = 10100110111 (BCH), XOR mask = 101010000010010
+  // 00000 * x^10 = 00000 0000000000, remainder = 0, so info = 00000 0000000000
+  // XOR 101010000010010 → 101010000010010
+  const FMT = [1,0,1,0,1,0,0,0,0,0,1,0,0,1,0];
+  const fmtPos1 = [[8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],[8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8]];
+  const fmtPos2 = [[size-1,8],[size-2,8],[size-3,8],[size-4,8],[size-5,8],[size-6,8],[size-7,8],[size-8,8],[8,size-8],[8,size-7],[8,size-6],[8,size-5],[8,size-4],[8,size-3],[8,size-2]];
+  // Note: fmtPos2 has only 15 entries to mirror fmtPos1
+  for (let i=0;i<15;i++) {
+    setFn(fmtPos1[i][0], fmtPos1[i][1], FMT[i]);
+    if (i < fmtPos2.length) setFn(fmtPos2[i][0], fmtPos2[i][1], FMT[i]);
+  }
+
+  // ── Render to canvas ──────────────────────────────────────────
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const QUIET = 4; // quiet zone in modules
+  const totalMod = size + QUIET * 2;
+  const CANVAS_PX = 160;
+  const cell = Math.floor(CANVAS_PX / totalMod);
+  canvas.width  = totalMod * cell;
+  canvas.height = totalMod * cell;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#000000';
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (grid[r][c] === 1) {
+        ctx.fillRect((c + QUIET) * cell, (r + QUIET) * cell, cell, cell);
+      }
+    }
   }
 }
 
@@ -2894,6 +3206,12 @@ async function applyImportedConfig(raw) {
   localStorage.setItem('iptv_user', S.user);
   localStorage.setItem('iptv_pass', S.pass);
   if (cfg.epg) { S.epgUrl = cfg.epg; localStorage.setItem('epg_url', cfg.epg); }
+  // If the raw input was an M3U URL, store it for display in Active Provider panel
+  if (raw.includes('get.php') || raw.includes('.m3u')) {
+    localStorage.setItem('m3u_url', raw.trim());
+  } else {
+    localStorage.removeItem('m3u_url');
+  }
 
   // Provider branding
   if (cfg.provider && cfg.provider.name) {
@@ -2931,7 +3249,7 @@ document.getElementById('cfg-import-btn')?.addEventListener('click', () => {
   const raw = (document.getElementById('cfg-import-input')?.value || '').trim();
   if (!raw) {
     const result = document.getElementById('cfg-import-result');
-    if (result) result.innerHTML = '<span style="color:var(--muted)">Paste your activation code, Xtream URL, or JSON config above first.</span>';
+    if (result) result.innerHTML = '<span style="color:var(--muted)">Import a config file first.</span>';
     return;
   }
   applyImportedConfig(raw);
@@ -2980,6 +3298,24 @@ function handleDeepLinkConfig(code) {
   applyImportedConfig(code);
 }
 
+// Remote config handler: called by RemoteServer.java when phone pushes credentials
+// via POST /config?pin=XXXX (from remote.html Setup tab → "Send to TV")
+function handleRemoteConfig(server, username, password) {
+  if (!server || !username || !password) {
+    console.warn('[remote-config] Missing fields, ignoring');
+    return;
+  }
+  console.log('[remote-config] Credentials received from phone, server=' + server);
+  localStorage.setItem('iptv_server', server.trim().replace(/\/+$/, ''));
+  localStorage.setItem('iptv_user', username.trim());
+  localStorage.setItem('iptv_pass', password.trim());
+  S.server = localStorage.getItem('iptv_server');
+  S.user = localStorage.getItem('iptv_user');
+  S.pass = localStorage.getItem('iptv_pass');
+  showToast('Credentials received from phone — loading channels…');
+  bootData();
+}
+
 function adjustAdVol(delta) {
   S.adBlockVolume = Math.max(0, Math.min(100, S.adBlockVolume + delta));
   localStorage.setItem('adblock_volume', S.adBlockVolume);
@@ -2989,49 +3325,34 @@ function adjustAdVol(delta) {
   if (fill) fill.style.width = S.adBlockVolume + '%';
 }
 
-async function loadDezorPlaylist() {
-  const server = document.getElementById('dezor-server').value.trim().replace(/\/$/, '');
-  const user = document.getElementById('dezor-user').value.trim();
-  const pass = document.getElementById('dezor-pass').value.trim();
-  const result = document.getElementById('dezor-result');
-  if (!server || !user || !pass) { result.innerHTML = '<span style="color:var(--primary)">Fill in all fields</span>'; return; }
+// Renders the Active Provider panel in Settings with whatever is currently saved.
+// Called each time initSettings runs so it reflects current state.
+function renderActiveProvider() {
+  const el = document.getElementById('active-provider-display');
+  if (!el) return;
 
-  result.textContent = 'Testing Dezor credentials…';
-  try {
-    // Save dezor-specific creds
-    localStorage.setItem('dezor_server', server);
-    localStorage.setItem('dezor_user', user);
-    localStorage.setItem('dezor_pass', pass);
+  const server = S.server || localStorage.getItem('iptv_server') || '';
+  const user   = S.user   || localStorage.getItem('iptv_user')   || '';
+  const name   = localStorage.getItem('provider_name') || '';
+  const m3u    = localStorage.getItem('m3u_url') || '';
+  const epg    = localStorage.getItem('epg_url') || '';
 
-    // Apply as active IPTV provider
-    S.server = server;
-    S.user = user;
-    S.pass = pass;
-    localStorage.setItem('iptv_server', server);
-    localStorage.setItem('iptv_user', user);
-    localStorage.setItem('iptv_pass', pass);
-
-    // Update the main credential fields too
-    document.getElementById('cfg-server').value = server;
-    document.getElementById('cfg-user').value = user;
-    document.getElementById('cfg-pass').value = pass;
-
-    // Test connection
-    const info = await api('get_user_info');
-    if (info?.user_info?.auth === 0) {
-      result.innerHTML = '<span style="color:#ff5555">✗ Auth failed — check Dezor credentials</span>';
-      return;
-    }
-    S.userInfo = info;
-    renderAccountInfo(info);
-    result.innerHTML = `<span style="color:var(--green)">✓ Connected as ${esc(info.user_info?.username || user)}. Loading channels…</span>`;
-
-    // Reload all data with new creds
-    S.allChannels = []; S.allVod = []; S.allSeries = [];
-    bootData();
-  } catch (e) {
-    result.innerHTML = `<span style="color:#ff5555">Error: ${esc(e.message)}</span>`;
+  if (!server || !user) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted)">No provider configured. Use Quick Setup or enter credentials manually.</div>';
+    return;
   }
+
+  const xtreamUrl = server + '/player_api.php?username=' + encodeURIComponent(user) + '&password=' + encodeURIComponent('*****');
+
+  let html = '<div style="font-size:11px;line-height:2;word-break:break-all">';
+  if (name) html += '<div><span style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-size:10px">Provider</span><br><strong>' + esc(name) + '</strong></div>';
+  html += '<div><span style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-size:10px">Server</span><br>' + esc(server) + '</div>';
+  html += '<div><span style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-size:10px">Username</span><br>' + esc(user) + '</div>';
+  html += '<div><span style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-size:10px">Xtream URL</span><br><span style="font-size:10px">' + esc(xtreamUrl) + '</span></div>';
+  if (m3u) html += '<div><span style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-size:10px">M3U URL</span><br><span style="font-size:10px">' + esc(m3u) + '</span></div>';
+  if (epg) html += '<div><span style="color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-size:10px">EPG URL</span><br><span style="font-size:10px">' + esc(epg) + '</span></div>';
+  html += '</div>';
+  el.innerHTML = html;
 }
 
 // ═══════════════════════════════════════════════════════════════

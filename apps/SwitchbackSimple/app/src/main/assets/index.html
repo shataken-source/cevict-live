@@ -973,27 +973,35 @@
         <!-- PAIRING SCREEN -->
         <div class="screen" id="screen-pairing"
           style="padding:40px 20px;height:calc(100vh - 54px);display:flex;align-items:center;justify-content:center;">
-          <div style="text-align:center;max-width:600px;">
-            <div style="font-size:28px;font-weight:700;margin-bottom:12px;">📺 Welcome to Switchback TV</div>
-            <div style="font-size:16px;color:var(--muted);margin-bottom:36px;">Pair with your phone to set up your IPTV
-              provider</div>
-            <div style="background:rgba(255,255,255,0.05);border-radius:16px;padding:32px;margin-bottom:24px;">
-              <div style="font-size:14px;color:var(--muted);margin-bottom:8px;">On your phone, go to:</div>
-              <div id="pair-url-display"
-                style="font-size:22px;font-weight:700;color:var(--primary);margin-bottom:24px;letter-spacing:0.5px;">---
+          <div style="text-align:center;max-width:700px;width:100%;">
+            <div style="font-size:28px;font-weight:700;margin-bottom:8px;">📺 Welcome to Switchback TV</div>
+            <div style="font-size:15px;color:var(--muted);margin-bottom:32px;">Scan with your phone — then tap <b style="color:#fff">Setup</b> to enter your provider credentials</div>
+
+            <div style="display:flex;gap:32px;align-items:center;justify-content:center;margin-bottom:28px;flex-wrap:wrap;">
+
+              <!-- QR code panel -->
+              <div style="background:rgba(255,255,255,0.05);border-radius:16px;padding:28px;flex-shrink:0;">
+                <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">Scan with your phone camera</div>
+                <div id="pair-qr-wrap" style="display:flex;align-items:center;justify-content:center;width:180px;height:180px;margin:0 auto;">
+                  <div id="pair-qr-status" style="font-size:12px;color:var(--muted);">Waiting for network…</div>
+                </div>
+                <div style="margin-top:12px;font-size:10px;color:var(--muted);word-break:break-all;" id="pair-qr-url">—</div>
               </div>
-              <div style="font-size:14px;color:var(--muted);margin-bottom:8px;">Then enter this code:</div>
-              <div id="pair-code-display"
-                style="font-size:72px;font-weight:800;letter-spacing:16px;color:#fff;font-family:monospace;margin-bottom:12px;">
-                ----</div>
-              <div id="pair-status" style="font-size:14px;color:var(--muted);">Requesting pairing code...</div>
+
+              <div style="font-size:13px;color:#444;font-weight:600;">OR</div>
+
+              <!-- Manual PIN fallback -->
+              <div style="text-align:left;">
+                <div style="font-size:13px;color:var(--muted);margin-bottom:6px;">Open on your phone:</div>
+                <div id="pair-url-display" style="font-size:15px;font-weight:700;color:var(--primary);margin-bottom:20px;">—</div>
+                <div style="font-size:13px;color:var(--muted);margin-bottom:6px;">Then enter this PIN:</div>
+                <div id="pair-code-display" style="font-size:56px;font-weight:900;letter-spacing:12px;color:#fff;font-family:monospace;margin-bottom:8px;">----</div>
+                <div id="pair-status" style="font-size:13px;color:var(--muted);">Waiting for remote info…</div>
+              </div>
             </div>
-            <div style="font-size:13px;color:#555;">Code expires in 5 minutes · Press OK on your remote to get a new
-              code</div>
-            <div style="margin-top:20px;">
-              <button class="btn btn-ghost btn-sm" id="pair-manual-btn" tabindex="-1" style="font-size:13px;">Or enter
-                credentials manually →</button>
-            </div>
+
+            <div style="font-size:12px;color:#444;margin-bottom:16px;">Phone and TV must be on the same Wi-Fi network</div>
+            <button class="btn btn-ghost btn-sm" id="pair-manual-btn" tabindex="-1" style="font-size:13px;">Skip — enter credentials manually →</button>
           </div>
         </div>
 
@@ -1012,7 +1020,7 @@
           <input class="inp" id="ch-search" placeholder="🔍 Search channels..." style="margin-bottom:14px" />
           <div id="channel-list">
             <div class="loading">
-              <div class="spinner"></div> Loading channels from blogyfy.xyz...
+              <div class="spinner"></div> Loading channels...
             </div>
           </div>
         </div>
@@ -1395,23 +1403,18 @@
             <div>
               <div class="section-title">Quick Setup</div>
               <div class="settings-group" style="padding:13px" id="import-config-group">
-                <div
-                  style="font-size:10px;color:var(--muted);margin-bottom:9px;text-transform:uppercase;letter-spacing:1px">
-                  Activate Your Account</div>
+                <div style="font-size:10px;color:var(--muted);margin-bottom:9px;text-transform:uppercase;letter-spacing:1px">
+                  Import Provider Config</div>
                 <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">
-                  Paste an activation code, Xtream URL, or JSON config below. You can also import a
-                  <b>.switchback</b> config file.
+                  Import a config file from USB or storage. Supported formats: .switchback, .json, .txt (Xtream URL or JSON).
                 </div>
-                <input class="inp" id="cfg-import-input" inputmode="text"
-                  style="margin-bottom:8px;font-size:13px;text-align:center;letter-spacing:1px"
-                  placeholder="Paste activation code or URL here" />
-                <div style="display:flex;gap:8px;margin-bottom:4px">
-                  <button class="btn btn-red btn-sm" id="cfg-import-btn" tabindex="-1" style="flex:1">⚡
-                    Activate</button>
-                  <button class="btn btn-ghost btn-sm" id="cfg-import-file-btn" tabindex="-1">📂 Import File</button>
-                </div>
+                <button class="btn btn-red btn-sm btn-full" id="cfg-import-file-btn" tabindex="-1" style="margin-bottom:8px">Import Config File</button>
                 <input type="file" id="cfg-import-file" accept=".switchback,.json,.txt" style="display:none" />
                 <div id="cfg-import-result" style="margin-top:8px;font-size:12px"></div>
+                <!-- hidden input: populated by file import and deep links for display/processing, not for manual entry -->
+                <input id="cfg-import-input" type="hidden" />
+                <!-- hidden activate button: used by deep link handler only -->
+                <button id="cfg-import-btn" style="display:none"></button>
               </div>
               <div class="section-title">IPTV Provider</div>
               <div class="settings-group" style="padding:13px">

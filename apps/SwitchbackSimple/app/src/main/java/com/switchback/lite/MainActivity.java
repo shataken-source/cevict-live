@@ -156,8 +156,10 @@ public class MainActivity extends Activity {
             int ip = wm.getConnectionInfo().getIpAddress();
             String ipStr = String.format("%d.%d.%d.%d",
                 (ip & 0xff), (ip >> 8 & 0xff), (ip >> 16 & 0xff), (ip >> 24 & 0xff));
+            String pin = (remoteServer != null) ? remoteServer.getPin() : "";
             String js = "window.REMOTE_IP='" + ipStr + "';" +
-                        "window.REMOTE_PORT=" + REMOTE_PORT + ";";
+                        "window.REMOTE_PORT=" + REMOTE_PORT + ";" +
+                        "window.REMOTE_PIN='" + pin + "';";
             webView.evaluateJavascript(js, null);
         } catch (Exception e) {
             Log.w(TAG, "Could not inject remote info: " + e.getMessage());
