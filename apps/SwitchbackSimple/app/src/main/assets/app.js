@@ -2882,8 +2882,28 @@ function injectRemoteQR() {
   const port = window.REMOTE_PORT || 8124;
   const pin  = window.REMOTE_PIN  || '';
 
-  // Only show when running in the Android WebView with a real IP/PIN
-  if (!IS_ANDROID_WEBVIEW || !ip || !pin) return;
+  if (!IS_ANDROID_WEBVIEW) return;
+
+  // If IP/PIN not injected yet, show placeholder and retry
+  if (!ip || !pin) {
+    let section = document.getElementById('remote-qr-section');
+    if (!section) {
+      section = document.createElement('div');
+      section.id = 'remote-qr-section';
+      section.style.cssText = 'margin-top:0';
+      const grid = document.querySelector('#screen-settings > [style*="grid-template-columns"]');
+      const rightCol = grid ? grid.children[1] : null;
+      const target = rightCol || document.getElementById('screen-settings');
+      target.insertBefore(section, target.firstChild);
+      section.innerHTML = '<div class="section-title">\u{1F4F1} Phone Remote</div>' +
+        '<div class="settings-group" style="padding:16px;text-align:center">' +
+        '<div style="font-size:12px;color:var(--muted)">Waiting for network info…</div></div>';
+    }
+    injectRemoteQR._tries = (injectRemoteQR._tries || 0) + 1;
+    if (injectRemoteQR._tries < 20) setTimeout(injectRemoteQR, 500);
+    return;
+  }
+  injectRemoteQR._tries = 0;
 
   const remoteUrl = `http://${ip}:${port}/#pin=${pin}`;
 
